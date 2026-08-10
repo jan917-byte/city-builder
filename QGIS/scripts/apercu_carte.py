@@ -30,6 +30,8 @@ for flux in (sys.stdout, sys.stderr):
         pass
 
 ICI = os.path.dirname(os.path.abspath(__file__))
+DATA = os.path.join(os.path.dirname(ICI), "data")
+RENDUS = os.path.join(os.path.dirname(ICI), "rendus")
 # `python apercu_carte.py autre_fichier.gpkg` pour regarder une autre version
 # `python apercu_carte.py fichier.gpkg --adjacences` pour voir le graphe
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
@@ -38,9 +40,9 @@ MODE_ADJ = "--adjacences" in sys.argv
 # Les attributs de rue (charge, emprise_libre_m…) colorent les traits.
 CALQUE = next((a.split("=", 1)[1] for a in sys.argv
                if a.startswith("--calque=")), None)
-GPKG = os.path.abspath(ARGS[0]) if ARGS else os.path.join(ICI, "Vallmar2.gpkg")
+GPKG = os.path.abspath(ARGS[0]) if ARGS else os.path.join(DATA, "Vallmar2.gpkg")
 CLASSIF = os.path.join(ICI, "classification.json")
-SORTIE = os.path.join(ICI, "apercu_%s%s.png"
+SORTIE = os.path.join(RENDUS, "apercu_%s%s.png"
                       % (os.path.splitext(os.path.basename(GPKG))[0].lower(),
                          "_adjacences" if MODE_ADJ
                          else ("_" + CALQUE if CALQUE else "")))

@@ -41,7 +41,7 @@ La ville est un **noyau ovale d'environ 900 × 1 000 m**, avec cinq routes radia
 
 **L'Ilse traverse la carte du nord au sud en décrivant un grand S** : elle entre au nord-est, mord vers l'ouest à mi-hauteur, ressort au sud-est. Cinq franchissements la découpent en six morceaux. Ce méandre n'est pas un détail de dessin — c'est lui qui fait que **Wehrau est une ville de rive droite avec un petit faubourg en face** : 50 îlots d'un côté, 13 de l'autre.
 
-Fichier : `QGIS/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
+Fichier : `QGIS/data/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
 
 ## Ce que la ville pèse
 

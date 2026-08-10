@@ -27,8 +27,8 @@ maj: 2026-08-10
 
 | | |
 |---|---|
-| Source intouchée | `QGIS/Vallmar2.gpkg` |
-| Fichier de travail | `QGIS/Prototype_qualifie.gpkg` |
+| Source intouchée | `QGIS/data/Vallmar2.gpkg` |
+| Fichier de travail | `QGIS/data/Prototype_qualifie.gpkg` |
 | Emprise | 0,93 km² · 898 × 1 036 m |
 | `ilots` | 69 polygones — 56 bâtis, 7 champs, 6 morceaux de rivière |
 | `routes` | 178 tronçons · 13,6 km · médiane 62 m |
@@ -37,13 +37,13 @@ maj: 2026-08-10
 
 ## Les outils
 
-Quatre scripts, à la racine de `QGIS/`. Aucun n'écrit dans `Vallmar2.gpkg`.
+Quatre scripts dans `QGIS/scripts/`. Les données sont dans `QGIS/data/`, les préviews dans `QGIS/rendus/`. Aucun n'écrit dans `Vallmar2.gpkg`.
 
 ### `apercu_carte.py` — la boucle de contrôle
 
 ```
-python apercu_carte.py                        # la source
-python apercu_carte.py Prototype_qualifie.gpkg  # la version qualifiée
+python QGIS/scripts/apercu_carte.py QGIS/data/Vallmar2.gpkg            # la source
+python QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg  # la version qualifiée
 ```
 
 Sort un PNG légendé et un bilan chiffré : nombre d'îlots, linéaire, ce qui est renseigné et ce qui ne l'est pas, brins morts. **Lecture seule** (SQLite en mode `ro`) : tourne pendant que QGIS est ouvert. C'est ce qui permet de regarder la ville à deux au lieu de la décrire.
@@ -88,8 +88,8 @@ Le compte rendu sert de contrôle, pas de décoration. Il sort quatre choses qu'
 ### `apercu_carte.py --calque=<champ>` — voir un attribut
 
 ```
-python apercu_carte.py Prototype_qualifie.gpkg --calque=alea
-python apercu_carte.py Prototype_qualifie.gpkg --calque=charge
+python QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=alea
+python QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=charge
 ```
 
 N'importe quel champ numérique, en dégradé du froid au chaud. Sur les îlots si le champ y est, sinon sur les traits de rue. C'est ce qui permet de vérifier un attribut **en le regardant** au lieu de lire une colonne : `charge` fait apparaître l'axe de transit tout seul, sans qu'on ait eu à le désigner.

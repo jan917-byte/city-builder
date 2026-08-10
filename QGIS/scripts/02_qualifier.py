@@ -27,8 +27,9 @@ for flux in (sys.stdout, sys.stderr):
         pass
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-SOURCE = os.path.join(ICI, "Vallmar2.gpkg")
-CIBLE = os.path.join(ICI, "Prototype_qualifie.gpkg")
+DATA = os.path.join(os.path.dirname(ICI), "data")
+SOURCE = os.path.join(DATA, "Vallmar2.gpkg")
+CIBLE = os.path.join(DATA, "Prototype_qualifie.gpkg")
 
 # ==========================================================================
 # LE LEVEL DESIGN — c'est ici que ça se joue

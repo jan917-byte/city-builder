@@ -28,7 +28,8 @@ for flux in (sys.stdout, sys.stderr):
         pass
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-GPKG = os.path.join(ICI, "Prototype_qualifie.gpkg")
+DATA = os.path.join(os.path.dirname(ICI), "data")
+GPKG = os.path.join(DATA, "Prototype_qualifie.gpkg")
 
 TOL = 0.5          # m — distance max entre une frontière et la rue qui la porte
 

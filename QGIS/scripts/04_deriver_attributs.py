@@ -48,7 +48,8 @@ for flux in (sys.stdout, sys.stderr):
         pass
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-GPKG = os.path.join(ICI, "Prototype_qualifie.gpkg")
+DATA = os.path.join(os.path.dirname(ICI), "data")
+GPKG = os.path.join(DATA, "Prototype_qualifie.gpkg")
 BLANC = "--blanc" in sys.argv          # dry-run : calcule et affiche, n'écrit pas
 
 # ==========================================================================

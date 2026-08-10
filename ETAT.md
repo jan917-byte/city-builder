@@ -1,9 +1,9 @@
 # ETAT.md — où on en est
 
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
-> Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
+> Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-10**
+**Dernière mise à jour : 2026-08-10 (session 5)**
 
 ---
 
@@ -31,12 +31,12 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 3. ☐ Export GeoJSON (mois 2)
 
 **Boucle de contrôle** :
-`python "QGIS/apercu_carte.py" Prototype_qualifie.gpkg` → la carte
-`python "QGIS/apercu_carte.py" Prototype_qualifie.gpkg --adjacences` → le graphe, rouge = coupure, vert = on passe
-`python "QGIS/apercu_carte.py" Prototype_qualifie.gpkg --calque=alea` → n'importe quel attribut en dégradé (`charge`, `emprise_libre_m`, `densite`, `riverain`…)
-`python "QGIS/04_deriver_attributs.py" --blanc` → tout recalculer sans rien écrire
+`python "QGIS/scripts/apercu_carte.py" "QGIS/data/Prototype_qualifie.gpkg"` → la carte
+`python "QGIS/scripts/apercu_carte.py" "QGIS/data/Prototype_qualifie.gpkg" --adjacences` → le graphe, rouge = coupure, vert = on passe
+`python "QGIS/scripts/apercu_carte.py" "QGIS/data/Prototype_qualifie.gpkg" --calque=alea` → n'importe quel attribut en dégradé (`charge`, `emprise_libre_m`, `densite`, `riverain`…)
+`python "QGIS/scripts/04_deriver_attributs.py" --blanc` → tout recalculer sans rien écrire
 
-**Les outils** (dans `QGIS/`, aucun n'écrit dans la source) :
+**Les outils** (dans `QGIS/scripts/`, aucun n'écrit dans la source) :
 `apercu_carte.py` la vue · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
 
 ⚠️ **Chaîne à relancer dans l'ordre** : 02 → 03 → 04. Le 02 repart de `Vallmar2.gpkg` et écrase `Prototype_qualifie.gpkg`.
@@ -57,8 +57,7 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 - [ ] **Le grand ensemble de 1974 est à 200 m de l'eau**, pas « contre l'eau ». J'ai corrigé la phrase du vault ; l'autre option est de déplacer la barre. → n°14
 - [ ] **Cinq franchissements pour la rivière**, alors que le vault en voulait deux au maximum. Ils sont maintenant typés dans les données. → n°12
 - [ ] **Le nom.** « Wehrau » et la rivière « l'Ilse » sont mes propositions, marquées comme telles dans la note. Se renomment en une commande tant que rien n'est codé.
-- [ ] **Relire deux fichiers de level design** : les listes de `fid` en haut de `QGIS/02_qualifier.py`, et la table de correspondance `TISSU` en haut de `QGIS/04_deriver_attributs.py` — treize lignes qui décident du comportement de toute la carte. Une ligne changée, on relance, on regarde.
-- [ ] **Doublon** : `Vault - Jeu urbanisme/Production/ETAT.md` était une copie bit à bit de ce fichier-ci — donc désormais périmée. Je ne l'ai pas supprimée. Pas de collision de wikilink (un seul `ETAT` est dans le vault), mais deux copies destinées à diverger.
+- [ ] **Relire deux fichiers de level design** : les listes de `fid` en haut de `QGIS/scripts/02_qualifier.py`, et la table de correspondance `TISSU` en haut de `QGIS/scripts/04_deriver_attributs.py` — treize lignes qui décident du comportement de toute la carte. Une ligne changée, on relance, on regarde.
 
 ## Ce que le brainstorm a donné
 
@@ -74,6 +73,12 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 
 ## Historique des sessions Claude
 
+### 2026-08-10 (session 5)
+- **Restructuration du dépôt** (recommandations de la session) : doublon `Vault - Jeu urbanisme/Production/ETAT.md` supprimé ; skill projet déplacé `SKILLS/` → `.claude/skills/solo-dev-systems/` ; `QGIS/` scindé en `scripts/`, `data/`, `rendus/` (préviews régénérables gitignorées, chemins des scripts recâblés sur `data/` et `rendus/`) ; `README.md` racine ajouté. Les scripts tournent (`apercu_carte.py` et `04 --blanc` vérifiés).
+
+### 2026-08-10 (session 4)
+- **Dépôt GitHub créé** : [jan917-byte/city-builder](https://github.com/jan917-byte/city-builder) (privé). 60 fichiers, commit initial. `.gitignore` exclut `__pycache__`, config locale Claude, raccourcis Windows, `workspace.json` Obsidian.
+
 ### 2026-08-10 (session 3)
 - **Étape 5 faite** : `04_deriver_attributs.py`, 12 attributs d'îlot + 4 de rue, tous justifiés par une décision nommée. Table de correspondance de 13 lignes.
 - Le dry-run a sorti **quatre défauts réels**, tous corrigés : aucun pont dans le réseau (5 franchissements typés comme des rives) ; graphe de rues construit sur les extrémités au lieu des sommets ; largeurs constantes rendant tout seuil inopérant ; axe droit se trompant de rive sur les méandres de l'Ilse.
@@ -82,7 +87,7 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 
 ### 2026-08-10 (session 2)
 - Audit du GeoPackage, puis **qualification complète** : `fonction`, `sous_type`, `exception`, `surface_m2` sur 69 îlots ; `hierarchie`, `largeur_m` sur 178 tronçons. Quatre plaies de 1965 placées consciemment.
-- Trois scripts écrits dans `QGIS/`. Aucun n'écrit dans `Vallmar2.gpkg`.
+- Trois scripts écrits dans `QGIS/scripts/`. Aucun n'écrit dans `Vallmar2.gpkg`.
 - **Table d'adjacence construite** (`03_adjacences.py`) : 179 paires, perméabilité par hiérarchie, contrôle de coupure de la rivière réussi.
 - **Vault modifié** (sauvegarde zip préalable) : note neuve `Ville/Wehrau.md` ; révisions de `Décisions arrêtées` (13b, 13c, 26, 27, 28, 28b, 31, 31b, 31c, 32, 32b, 32c), `Pipeline QGIS`, `Géométrie et données`, `Périmètre et coupes`, `Altstadt`, `Questions ouvertes`, `Plan 3 mois`, `00 - Index`. Vérification : **0 wikilink cassé**.
 

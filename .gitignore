@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+# Rendu régénérable (apercu_carte.py), pas des sources
+QGIS/rendus/
+
 # Claude (config locale)
 .claude/settings.local.json
 
