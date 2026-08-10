@@ -1,0 +1,120 @@
+---
+tags: [ville, prototype, level-design]
+statut: 🎯 périmètre du prototype
+maj: 2026-08-10
+habitants: 5350  # mesuré sur la carte ; 18000 était annoncé → Questions ouvertes n°13
+---
+
+# Wehrau
+
+> 🎯 **C'est le périmètre du prototype.** Tout le mois 1 se joue ici.
+> **Wehrau n'est pas [[Vallmar]]** — c'est une autre ville, plus petite, qu'on voit **en entier**. Vallmar reste la ville visée pour le jeu complet ; on verra plus tard si ce centre y devient un quartier.
+
+**Une rivière : l'Ilse. Une petite ville qu'on tient tout entière dans un écran.**
+
+> Les noms sont proposés, pas arrêtés — c'est la structure qui compte. → [[Questions ouvertes]]
+
+> ⚠️ **Le nombre d'habitants est en question.** Le vault annonçait 18 000 ; la carte, une fois les densités posées, en porte **5 350** sur 38,3 ha bâtis. Ce n'est pas une erreur de calibrage — il faudrait 470 hab/ha bâti pour tenir 18 000, quand un centre allemand dense plafonne vers 350. → [[Questions ouvertes]] n°13
+
+## Ce qui ne va pas ici, en cinq phrases
+
+1. **La place du marché est un parking.** C'est le point le plus central de la ville, il touche l'eau, et il est couvert de voitures depuis 1968.
+2. **La ville a été coupée de sa rivière** par une voie rapide de berge, sur la rive gauche, là où le centre la touchait.
+3. **Une route de transit traverse le cœur du nord au sud** — c'est aussi la rue commerçante, donc la toucher, c'est toucher les commerçants.
+4. **En 1971 on a rasé un îlot de tissu fin pour une galerie commerciale et son parking en toiture** ; il fait trois fois la taille de ses voisins et ça se voit.
+5. **En aval, un grand ensemble de 1974 est posé dans la plaine élargie** — la ville envoie sa crue sur ceux qui n'ont pas voix au chapitre. C'est l'îlot le plus en aval de toute la carte, et de loin le plus fragile. → [[Questions ouvertes]] n°14
+
+C'est la sortie attendue de la semaine 1. → [[Plan 3 mois]]
+
+## La carte
+
+**0,93 km² · 69 polygones · 13,6 km de voirie · EPSG:25832**
+
+| | |
+|---|---|
+| îlots bâtis | 56 |
+| champs (hors les murs) | 7 |
+| morceaux de rivière | 6 — l'Ilse est découpée par ses franchissements |
+| exceptions de level design | 17 (cible du vault : ~20) |
+
+La ville est un **noyau ovale d'environ 900 × 1 000 m**, avec cinq routes radiales qui sortent vers la campagne. Autour, des champs : ce n'est pas un décor en attente, c'est **la réserve foncière et l'espace d'expansion de crue**.
+
+**L'Ilse traverse la carte du nord au sud en décrivant un grand S** : elle entre au nord-est, mord vers l'ouest à mi-hauteur, ressort au sud-est. Cinq franchissements la découpent en six morceaux. Ce méandre n'est pas un détail de dessin — c'est lui qui fait que **Wehrau est une ville de rive droite avec un petit faubourg en face** : 50 îlots d'un côté, 13 de l'autre.
+
+Fichier : `QGIS/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
+
+## Ce que la ville pèse
+
+| | |
+|---|---|
+| logements | 2 549 |
+| habitants | ~5 350 — [[Questions ouvertes]] n°13 |
+| surface bâtie | 38,3 ha (sur 92,8 ha d'emprise) |
+| places de stationnement | 4 587, dont 3 350 sur rue — **1,8 place par logement** |
+| franchissements de l'Ilse | 5 |
+
+> **1,8 place par logement.** C'est le chiffre qui dit ce qu'est cette ville en 1965 : un stock de voitures rangé partout, dont **1 237 places sur les îlots eux-mêmes** — la place du marché en tient 127, la galerie de 1971 en tient 223 sur son toit. Chaque décision qui touche l'emprise publique se paiera là-dessus. → [[Ressources]]
+
+## Les deux rives
+
+| | îlots | logements | aléa moyen |
+|---|---|---|---|
+| rive droite (la ville) | 50 | 2 132 | 0,43 |
+| rive gauche (le faubourg) | 13 | 417 | 0,75 |
+
+**C'est le faubourg qui est exposé, pas la ville.** Treize îlots, un sixième du parc, un aléa presque deux fois supérieur — et personne pour peser dans un conseil municipal. Si le jeu s'ouvre sur une crue, c'est là qu'elle tombe. → [[Questions ouvertes]] n°15
+
+## Le tissu
+
+| `sous_type` | `fonction` | n | Ce que ça joue |
+|---|---|---|---|
+| `maisons_de_ville` | habitation | 20 | le tissu ordinaire, la matière de fond |
+| `coeur_ancien` | mixte | 12 | parcellaire fin, mitoyen, cours minérales |
+| `pavillonnaire` | habitation | 11 | la frange, la plus dure à faire bouger |
+| `champ` | freiraum | 7 | hors les murs — ce qui peut recevoir l'eau |
+| `riviere` | riviere | 6 | l'Ilse, canalisée |
+| `front_commercant` | mixte | 4 | les commerçants organisés, sur l'axe de transit |
+| `equipement` | mixte | 2 | Rathaus et église · lycée |
+| `friche_industrielle` | industrie | 2 | le moulin et la brasserie, en aval |
+| `place_minerale` | freiraum | 1 | 🔴 la place du marché, devenue parking |
+| `dalle_commerciale` | mixte | 1 | 🔴 la galerie de 1971 |
+| `barre_1970` | habitation | 1 | 🔴 le grand ensemble en aval |
+| `parc` | freiraum | 1 | le jardin de ville |
+| `jardins_familiaux` | freiraum | 1 | la réserve de terre la plus facile à mobiliser |
+
+**13 sous-types**, pour une cible de ~12 dans [[Géométrie et données]]. Chacun est une ligne de table de correspondance à remplir : si l'étape de dérivation devient pénible, c'est ici qu'il faut couper.
+
+> 🔴 **La voie rapide de berge n'est pas un type d'îlot.** Elle a d'abord été encodée comme tel (`quai_voie_rapide`), à tort : c'est une propriété de la **rue** — 22 m de largeur sur les tronçons de rive de la rive gauche. Les îlots derrière sont du tissu ordinaire. La plaie est entière, elle est juste au bon endroit dans les données.
+
+> Wehrau n'a **pas d'hôpital** sur la carte. Un choix, pas un oubli : à cette échelle il est hors emprise, voire dans la ville voisine. Il se remet en ajoutant un `fid` dans `EQUIPEMENTS`.
+
+## Les quatre plaies de 1965
+
+Le principe : *dur mais réparable*. Chaque plaie se répare par une décision **différente**, et aucune ne se répare gratuitement. → [[Ton et règles d'écriture]]
+
+| La plaie | Où | Ce que sa réparation coûte |
+|---|---|---|
+| La place-parking | îlot 19, le plus central, à 41 m de l'eau · aléa 0,86 · **127 places** | le stationnement du centre, donc les commerçants |
+| Le quai en voie rapide | les tronçons de rive à 22 m | le report de trafic sur le reste du réseau |
+| L'axe de transit | traverse le cœur du nord au sud | c'est la rue commerçante : conflit frontal |
+| La galerie de 1971 | îlot 45, au contact du cœur ancien · **223 places en toiture** | du temps long, et la question de ce qu'on met à la place |
+
+> **L'axe de transit n'a pas eu besoin d'être désigné : il sort tout seul des données.** L'affectation de trafic minimale — plus court chemin en temps, entre les cinq radiales et entre les carrefours — fait apparaître une épine rouge nord-sud qui traverse le cœur. Le récit du vault et la mesure disent la même chose. → `apercu_carte.py --calque=charge`
+
+**La place-parking est la candidate au titre de « LA décision la plus satisfaisante »** : elle est centrale, elle est visible, et la libérer rend la rivière au centre-ville du même geste. → [[Questions ouvertes]]
+
+## Ce que Wehrau permet et que l'Altstadt seule ne permettait pas
+
+**L'amont et l'aval sont dans la carte.** L'Ilse entre au nord et sort au sud ; le grand ensemble de 1974 et les friches sont en aval, le centre marchand est au milieu. Autrement dit : **la ville qui cause la crue et la ville qui la subit sont dans le même écran**, et le joueur peut faire les deux.
+
+Et ce n'est pas qu'une affaire de position sur une ligne : **la vallée s'élargit vers l'aval**, donc à distance égale de l'eau on y est plus exposé. Aléa moyen 0,41 en amont, 0,51 en aval. L'injustice est dans le terrain, pas dans un coefficient. → [[Géométrie et données]]
+
+C'est le pilier « le lieu change le résultat », testable dès le mois 1. → [[Périmètre et coupes]]
+
+## Rapport à Vallmar
+
+[[Vallmar]] reste la ville du jeu complet : 112 000 habitants, six quartiers, une structure qui encode des injustices que Wehrau ne peut qu'esquisser. Rien de ce qui suit n'est annulé — c'est du design en réserve.
+
+Ce que Wehrau sert à savoir : **est-ce que la forme des décisions tient ?** Si elle tient à cette échelle, on la porte à 112 000. Si elle ne tient pas, on n'a pas perdu six quartiers dessinés pour rien.
+
+**Voir aussi** : [[Vallmar]] · [[Pipeline QGIS]] · [[Périmètre et coupes]] · [[Décisions]]

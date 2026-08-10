@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Claude (config locale)
+.claude/settings.local.json
+
+# Windows (personnalisation du dossier Bureau)
+desktop.ini
+folder-icon.ico
+*.lnk
+
+# Obsidian (état de session, pas le vault)
+**/.obsidian/workspace.json
+**/.obsidian/workspace-mobile.json
