@@ -67,7 +67,7 @@ Le classeur `Classeur/` existe : 11 décisions, 37 effets, coûts calculés depu
 - ⚠️ Le **délai** est la variable centrale en temps continu. S'il n'est pas dans le classeur, je teste un jeu qui n'est pas le mien. → [[Chantiers et temps]]
 - ⚠️ Les décisions doivent se différencier **d'un îlot à l'autre** et **d'amont en aval**, sinon le pilier de spécificité spatiale n'est pas testé. → [[Périmètre et coupes]]
 
-Puis, dans Godot : **noyau de simulation écrit par moi**, pas vibe-codé → [[Moteur et architecture]] · ghost preview · calques thématiques.
+Puis, dans Godot : **le noyau de simulation est codé par Claude, je le teste et je reviens dessus** → [[Moteur et architecture]] · ghost preview · calques thématiques.
 
 **Ce que je perds à jouer au tableur** : faire jouer quelqu'un d'autre. Les tests externes attendent le mois 3.
 

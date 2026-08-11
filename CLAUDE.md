@@ -11,10 +11,10 @@ City-builder PC de **transformation urbaine**. Le joueur ne construit pas, il **
 
 - **But affiché** : inspirer, pas simuler la bureaucratie.
 - **Règle mère de ton** : *dur mais possible, jamais cynique*.
-- **Prototype en cours** : l'**Altstadt** seule (~1 km², 50–120 îlots).
-- **Cadre** : solo, 3–5 ans, ~15 000 €, Godot 4, moteur de simu écrit à la main.
+- **Prototype en cours** : **Wehrau**, une petite ville entière (~5 350 hab., 0,93 km², 69 îlots) — pas un quartier de Vallmar. → `Décisions arrêtées` 13b · 13d
+- **Cadre** : solo, 3–5 ans, ~15 000 €, Godot 4.
 
-Le projet est **du design, pas encore du code** : à ce jour il n'existe ni dépôt Godot ni script versionné, seulement le vault et un travail QGIS en cours.
+Le design reste devant, mais **le code existe** : `QGIS/scripts/` (la chaîne qui fabrique la carte) et `Godot/` (la maquette 3D de Wehrau à t0). Le vault reste la source de vérité du design ; le `.gpkg` celle de la carte.
 
 ## 2. Où est quoi
 
@@ -44,9 +44,11 @@ Ces règles viennent du vault lui-même, pas de moi. Elles ne se négocient pas 
 **Délégué :**
 - **PyQGIS** : j'écris les scripts. L'auteur les relit, puis les exécute lui-même dans la console QGIS **sur une copie** du GeoPackage. Je n'exécute rien sur les données réelles. → `Technique/Pipeline QGIS.md`
 - Tableurs, tables de correspondance, outillage, structuration de notes, relecture.
+- **Le code Godot, noyau de simulation et architecture compris.** L'auteur teste, itère et revient sur mes décisions. 🔄 *Révisé le 2026-08-11 — l'ancienne règle réservait le noyau à l'auteur.* → `Méta/Décisions arrêtées.md` 40b · `Technique/Moteur et architecture.md`
+  - Corollaire : ce que l'ancienne règle protégeait était la **compréhension**. Donc j'explique ce que je code au moment où je le code, et je signale les endroits où l'auteur doit revenir — pas seulement le résultat à l'écran.
+  - Le noyau de génération de géométrie reste **isolé derrière une interface propre** (décision 41), pour rester basculable en C# — et réécrivable.
 
 **Non délégué :**
-- **Le noyau de simulation Godot est écrit par l'auteur, pas vibe-codé.** → `Technique/Moteur et architecture.md`
 - **Aucun plugin IA dans QGIS.**
 - Les arbitrages de design : je peux poser les options et recommander, l'auteur tranche. Une question ouverte se ferme dans `Questions ouvertes.md` **et** se consigne dans `Décisions arrêtées.md` — jamais implicitement au détour d'une réponse.
 
@@ -73,6 +75,7 @@ Le travail se fait **principalement sous Windows**, parfois sur un Mac. Le pont 
 - **Obsidian ouvert** pendant qu'on renomme des fichiers : le fermer d'abord, et corriger `.obsidian/workspace.json` si des chemins morts y traînent. Ce fichier est gitignoré — l'état de session ne se synchronise pas d'une machine à l'autre, et c'est voulu.
 - **Windows uniquement** : le dossier du projet est en lecture seule côté attribut — c'est **volontaire** (`desktop.ini` + `folder-icon.ico` pour l'icône bleue, tous deux gitignorés). Ne pas « corriger » cet attribut.
 - **Les chemins des commandes** diffèrent selon la machine (`python` vs `python3`). Les scripts, eux, sont indifférents : chemins relatifs à la racine du dépôt, pas de séparateur codé en dur.
+- **`.mcp.json` est écrit pour Windows.** Le serveur MCP Godot y est lancé par `cmd /c npx` — sans le `cmd /c`, Node refuse de démarrer un `.cmd` (`EINVAL`). Et `GODOT_PATH` y pointe l'exécutable du Bureau, que le serveur ne sait pas deviner tout seul. **Sur le Mac**, remplacer `"command": "cmd"` / `"args": ["/c", "npx", …]` par `"command": "npx"` / `"args": ["-y", …]`, et `GODOT_PATH` par le chemin de `Godot.app`. C'est le seul fichier du dépôt qui n'est pas portable — le corriger à la main, ne pas le committer en version Mac.
 
 ## 6. Protocole de session
 

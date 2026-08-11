@@ -1,6 +1,7 @@
 ---
 tags: [technique, moteur]
 statut: privilégié, pas verrouillé
+maj: 2026-08-11 (la réserve sur le noyau est levée — 40b)
 ---
 
 # Moteur et architecture
@@ -33,9 +34,15 @@ Architecture · performance · game feel · **GDScript spécifiquement** (donné
 
 ### La règle
 
-> **J'écris et je comprends le noyau de simulation moi-même. Le reste est de l'échafaudage jetable.**
+🔄 **Révision du 2026-08-11 : la réserve sur le noyau est levée.** L'ancienne règle — *« j'écris et je comprends le noyau de simulation moi-même »* — tombe. → [[Décisions arrêtées]] 40b
 
-Prototyper librement en vibe coding, puis reconstruire le noyau **avec compréhension**.
+> **Claude écrit le code, noyau et architecture compris. Je teste, j'itère, je reviens sur ses décisions.**
+
+Ce que l'ancienne règle protégeait n'était pas la frappe, c'était la **compréhension** : au mois 18, tenir les raisons d'un système qui se met à mal se comporter. Cette compréhension n'est plus produite par la construction. Elle devient une chose à aller chercher — en relisant, en cassant volontairement, en demandant pourquoi.
+
+Le tableau ✅/❌ ci-dessus ne dit plus où est la frontière. Il dit **où regarder** : c'est sur l'architecture, la performance, le game feel et les API Godot que les erreurs se logeront. Et la ligne ❌ sur le GDScript reste la plus concrète — les fautes prendront la forme d'appels Godot 3 obsolètes qui compilent sans broncher, pas de plantages.
+
+La contrepartie tenue depuis le départ : le noyau de génération de géométrie reste isolé derrière une interface propre (voir plus haut). Un module dont on peut changer l'intérieur sans tout casser est aussi un module dont on peut réécrire l'intérieur à la main si le besoin s'en fait sentir.
 
 ### L'effet réel sur le calendrier
 

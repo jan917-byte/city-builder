@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-08-11 (population · crue d'ouverture · milestones · capital politique · durée de partie · **la ville de t0 passe devant** · Townscaper)
+maj: 2026-08-11 (population · crue d'ouverture · milestones · capital politique · durée de partie · **la ville de t0 passe devant** · Townscaper · **le noyau n'est plus réservé — 40b**)
 ---
 
 # Décisions arrêtées
@@ -86,7 +86,8 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 | 38 | **Prototype papier rejeté** → QGIS + tableur | 🔓 | Ce qui compte est la vitesse d'itération |
 | 39 | ~~Pas de Godot avant le mois 2~~ → voir 39b | 🔓 | |
 | 39b | **Godot entre au mois 1**, pour le rendu seulement | 🔓 | 🔄 **révisé 2026-08-11.** La maquette de masses est de l'**affichage**, pas de la simulation : elle ne touche pas au noyau réservé par 40. Ce qui justifiait « pas de Godot avant le mois 2 » — ne pas coder un système de décisions non testé — reste entier, et le classeur attend toujours d'être joué → [[Plan 3 mois]] |
-| 40 | **J'écris le noyau de simulation moi-même** | 🔒 | Le reste = échafaudage jetable |
+| 40 | ~~**J'écris le noyau de simulation moi-même**~~ → voir 40b | 🔒 | Le reste = échafaudage jetable |
+| 40b | **Claude écrit le code, noyau et architecture compris. Je teste, j'itère, je reviens sur ses décisions** | 🔓 | 🔄 **révisé 2026-08-11.** La règle de 40 protégeait la **compréhension**, pas la frappe — [[Moteur et architecture]] disait déjà « prototyper librement, puis reconstruire **avec compréhension** ». Ce qui la remplace : je reviens sur les décisions de code au lieu de les prendre. **Ce que ça coûte, en clair** : la compréhension n'est plus garantie par la construction, elle devient une chose à aller chercher. Le risque n'est pas que le code ne marche pas — il marchera — c'est un système dont je ne tiens plus les raisons quand une boucle s'emballe au mois 18. Et le GDScript est le pire terrain pour ça : les erreurs prendront la forme d'API Godot 3 obsolètes qui compilent, pas de plantages francs. **Réversible, mais le coût du retour grandit avec la base de code** : revenir en arrière, c'est réécrire, pas relire. |
 | 41 | Godot 4 privilégié, C# isolé derrière une interface propre | 🟡 | Pas verrouillé |
 | 42 | ~~Low-poly flat-shaded, référence Mini Motorways~~ → voir 42b | 🔓 | Réversible |
 | 42b | **Référence de travail : Townscaper** — volumes doux, palette pastel, zéro texture, occlusion ambiante marquée | 🔓 | ✅ 2026-08-11. « Pour l'instant » : un registre de travail, pas un verrou. **On prend la couche rendu, on écarte la couche géométrie** — ce qui confirme le brainstorm du même jour plutôt que de le contredire : il validait déjà le rendu comme « la voie la moins chère vers le beau » et écartait la grille de quadrilatères. Trois conflits à tenir en tête : Townscaper ré-effondre le voisinage à chaque clic (contre 35), **il n'a pas de sol** — ni rue ni stationnement, soit le sujet entier d'ici — et il ne sait produire que du charme. Le non-raccord des bâtiments voisins devient un travail à faire → n°16. |

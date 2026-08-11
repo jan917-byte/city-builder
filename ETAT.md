@@ -3,7 +3,7 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-11 (session 9)**
+**Dernière mise à jour : 2026-08-12 (session 10)**
 
 ---
 
@@ -32,9 +32,7 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## Prochaine action concrète
 
-1. 🔴 **Les deux commandes qui écrivent dans le `.gpkg`, jamais lancées sur les données réelles.** Elles ont été validées sur une copie ; `CLAUDE.md` §3 réserve l'exécution sur les vraies données à l'auteur. Filet : le `.gpkg` est suivi par git, `git checkout -- QGIS/data/Prototype_qualifie.gpkg` défait tout.
-   `python "QGIS/scripts/04_deriver_attributs.py"` → écrit la colonne `emplois`, débloque `05` et `06`
-   `python "QGIS/scripts/04b_emprises_baties.py"` → écrit la couche `emprises` (le retrait de voirie). **Regarder la couche dans QGIS par-dessus `ilots` avant de continuer**
+1. ✅ **Les deux écritures dans le `.gpkg` sont faites** (par l'auteur, 2026-08-12) : colonne `emplois` = **878**, couche `emprises` = **69 lignes**. Vérifié en lecture seule. Reste à **regarder `emprises` dans QGIS par-dessus `ilots`** — le contrôle à l'œil n'a pas été fait.
 2. 🎯 **Regarder la maquette et trancher trois choses.** `python "QGIS/scripts/07_exporter_godot.py"` puis ouvrir `Godot/` dans Godot 4.7 (F5).
    · **la vallée se sent-elle à ×1 ?** touches `1` `2` `3` `4` — c'est le seul arbitrage qui ne se fait pas dans le vide
    · **le retrait est-il juste ?** 17,6 % de voirie, trois îlots de cœur ancien reculés de 22 m par le quai
@@ -64,6 +62,8 @@ Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un che
 ⚠️ **Chaîne à relancer dans l'ordre** : 02 → 03 → **04 → 04b**. Le 02 repart de `Vallmar2.gpkg` et écrase `Prototype_qualifie.gpkg` — **y compris la couche `emprises`**.
 
 **La maquette 3D** : `Godot/` — voir `Godot/README.md`. Touches `V` la vallée · `B` la barre de 1974 · `R` les rues à 20 et 22 m · `1..4` l'exagération verticale · `P` capture. Une touche par critère de réussite : on ne juge pas de mémoire.
+
+**Claude lance Godot lui-même** depuis le 2026-08-12 : `.mcp.json` déclare le serveur MCP `@coding-solo/godot-mcp` — lancer le projet, lire la console, monter des scènes. → `Godot/README.md` § « Claude lance Godot lui-même » · `CLAUDE.md` §5 bis pour la variante Mac.
 
 ## Ce qui bloque
 
@@ -105,6 +105,12 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 
 ## Historique des sessions Claude
 
+### 2026-08-12 (session 10) — le noyau n'est plus réservé
+- 🔓 **La décision 40 est levée → 40b, tranchée par l'auteur.** Claude écrit le code, noyau **et architecture** compris ; l'auteur teste, itère et revient sur ses décisions. La règle était écrite à **cinq endroits** — tous corrigés, plus `Godot/README.md`. Ce que 40 protégeait n'était pas la frappe mais la **compréhension** : elle n'est plus produite par la construction, elle devient une chose à aller chercher. Réversible, mais le coût du retour grandit avec la base de code. → `Décisions arrêtées` 40b
+- 🆕 **Serveur MCP Godot** (`.mcp.json`, `@coding-solo/godot-mcp`, MIT) : Claude lance la maquette et lit la console lui-même. Testé de bout en bout avant écriture — handshake, 14 outils, `get_godot_version` → `4.7.1.stable.official.a13da4feb`. Deux pièges vécus : `npx` seul ne démarre pas sous Windows (Node refuse un `.cmd` sans shell, `EINVAL`) d'où `cmd /c`, et `GODOT_PATH` est obligatoire — l'exécutable est sur le Bureau, hors des emplacements devinés. **Seul fichier non portable du dépôt.**
+- 🐞 **`Godot/README.md` pointait `Downloads/` pour la sonde** ; l'exécutable est sur le **Bureau**. La commande de débogage ne marchait pas telle quelle.
+- 🧹 **`CLAUDE.md` §1 rattrape le réel** : le prototype y était encore l'Altstadt (13b l'a remplacé par Wehrau le 2026-08-10) et le fichier affirmait qu'il n'existait « ni dépôt Godot ni script versionné ». « Moteur de simu écrit à la main » retiré — contredisait 40b.
+
 ### 2026-08-11 (session 9) — la maquette existe
 - 🔴 **Le fait qui a commandé toute la session** : les 69 îlots **pavent 99,75 % de l'emprise**, et les axes de rue tombent **exactement** sur leurs bords (0,0000 m d'écart, mesuré sur 83 segments). `largeur_m` était un attribut **sans lieu**. Extrudées telles quelles, les empreintes donnaient un bloc plein de 93 ha : le critère « trouver monstrueuses les rues à 20 et 22 m » était littéralement inobservable. → décision **32f**
 - 🆕 **`04b_emprises_baties.py`** : l'îlot recule de la demi-largeur de la rue, la rue devient le négatif. Nouvelle couche `emprises` dans le GeoPackage (écrite en Python pur, en-tête GPKG encodé à la main — aucun GDAL dans ce dépôt). **69/69 anneaux simples, 76,5 ha bâtis, 17,6 % de voirie.** Le pic de mitre aux sommets réflexes envoyait un sommet de l'îlot 43 à **258 m** : limite de mitre + biseau, puis réparation de boucle. Contrôle final : **aucun sommet à plus de 5 cm hors de l'îlot d'origine**.
@@ -141,20 +147,7 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 - **Le vault rattrape la réalité** : `00 - Index` et `Plan 3 mois` annonçaient encore l'adjacence et les attributs dérivés comme « à faire » — faits depuis la session 3. Semaine 1 marquée bouclée.
 - **Travail sur deux machines assumé** : `CLAUDE.md` §5 réécrite (elle décrivait un environnement Windows sans dépôt git), `README.md` corrigé (il s'intitulait « Vallmar » alors que le prototype est Wehrau), `.gitattributes` ajouté — LF partout, `.gpkg` marqués binaires. Vérifié : aucune renormalisation provoquée, le dépôt était déjà propre.
 
-### 2026-08-10 (session 5)
-- **Restructuration du dépôt** (recommandations de la session) : doublon `Vault - Jeu urbanisme/Production/ETAT.md` supprimé ; skill projet déplacé `SKILLS/` → `.claude/skills/solo-dev-systems/` ; `QGIS/` scindé en `scripts/`, `data/`, `rendus/` (préviews régénérables gitignorées, chemins des scripts recâblés sur `data/` et `rendus/`) ; `README.md` racine ajouté. Les scripts tournent (`apercu_carte.py` et `04 --blanc` vérifiés).
-
-### 2026-08-10 (session 4)
-- **Dépôt GitHub créé** : [jan917-byte/city-builder](https://github.com/jan917-byte/city-builder) (privé). 60 fichiers, commit initial. `.gitignore` exclut `__pycache__`, config locale Claude, raccourcis Windows, `workspace.json` Obsidian.
-
-### 2026-08-10 (session 3)
-- **Étape 5 faite** : `04_deriver_attributs.py`, 12 attributs d'îlot + 4 de rue, tous justifiés par une décision nommée. Table de correspondance de 13 lignes.
-- Le dry-run a sorti **quatre défauts réels**, tous corrigés : aucun pont dans le réseau (5 franchissements typés comme des rives) ; graphe de rues construit sur les extrémités au lieu des sommets ; largeurs constantes rendant tout seuil inopérant ; axe droit se trompant de rive sur les méandres de l'Ilse.
-- Nouveau mode `--calque=<champ>` dans `apercu_carte.py` : voir n'importe quel attribut en dégradé.
-- **Trois questions ouvertes neuves** (13, 14, 15), dont deux à trancher avant la semaine 2.
-
-### 2026-08-10 (sessions 1 et 2)
-- Encodage réparé (11 dossiers/fichiers renommés), `CLAUDE.md` et ce fichier mis en place, icône du dossier et raccourci Obsidian.
-- **Qualification complète de la carte** : 69 îlots, 178 tronçons, quatre plaies de 1965 placées consciemment. Trois scripts écrits, aucun n'écrit dans la source. Table d'adjacence construite. **Vault** : note neuve `Ville/Wehrau.md`, douze décisions révisées dans `Décisions arrêtées`, **0 wikilink cassé**.
+### 2026-08-10 (sessions 1 à 5) — compressé
+Encodage réparé · `CLAUDE.md` et ce fichier posés · carte qualifiée (69 îlots, 178 tronçons, 4 plaies de 1965) · `03_adjacences` et `04_deriver_attributs` écrits, quatre défauts réels sortis par le dry-run (aucun pont, graphe sur les extrémités, largeurs constantes, axe se trompant de rive) · [dépôt GitHub](https://github.com/jan917-byte/city-builder) créé · `QGIS/` scindé en `scripts`/`data`/`rendus`. Le détail est dans l'historique git.
 
 *(`Méta/Journal.md` reste vierge de ma main — c'est le fichier de l'auteur.)*

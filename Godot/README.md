@@ -1,9 +1,12 @@
 # Godot — la maquette de masses de Wehrau à t0
 
-Wehrau au temps zéro, en volumes. **De l'affichage, pas de la simulation** :
-la décision 39b le dit explicitement, ce projet ne touche pas au noyau réservé
-par la décision 40. Il sera jeté quand la subdivision en parcelles arrivera —
+Wehrau au temps zéro, en volumes. **De l'affichage, pas de la simulation** —
+c'est la décision 39b, et elle tient : la maquette montre un état, elle n'en
+calcule aucun. Elle sera jetée quand la subdivision en parcelles arrivera —
 `Génération procédurale.md:66`.
+
+*(La décision 40, qui réservait le noyau de simulation à l'auteur, a été levée
+le 2026-08-11 → `Décisions arrêtées` 40b. Ça ne change rien à ce projet-ci.)*
 
 Godot **4.7.1**. Aucun plugin, aucune dépendance.
 
@@ -28,6 +31,34 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé de 1,4 Mo que 07
 régénère en trois secondes. Sur la deuxième machine, on relance 07 — on ne
 transporte pas le fichier.
+
+## Claude lance Godot lui-même (serveur MCP)
+
+Depuis le 2026-08-12, `.mcp.json` à la racine déclare le serveur
+[`@coding-solo/godot-mcp`](https://github.com/Coding-Solo/godot-mcp) (MIT).
+Claude peut donc **lancer la maquette et lire la console** au lieu de demander
+un copier-coller de la pile d'appels. C'est le vrai gain : la boucle
+« j'écris du GDScript → tu lances → tu me colles l'erreur » disparaît.
+
+Quatorze outils, en trois groupes :
+
+| | |
+|---|---|
+| **piloter** | `launch_editor` · `run_project` · `stop_project` · `get_debug_output` · `get_godot_version` |
+| **lire** | `list_projects` · `get_project_info` · `get_uid` |
+| **écrire** | `create_scene` · `add_node` · `save_scene` · `load_sprite` · `export_mesh_library` · `update_project_uids` |
+
+⚠ `run_project` lance un vrai processus. S'il ne rend pas la main, c'est
+`stop_project` qui le tue — pas le gestionnaire de tâches.
+
+**Ce fichier est le seul du dépôt qui ne soit pas portable.** Deux raisons, et
+les deux se corrigent à la main sur le Mac — voir `CLAUDE.md` §5 bis :
+
+- la commande est `cmd /c npx`, parce que Node refuse de démarrer un `.cmd`
+  sans shell (`EINVAL`). Sur macOS : `npx` directement.
+- `GODOT_PATH` pointe l'exécutable **du Bureau**. Le serveur sait deviner
+  `/Applications`, `C:\Program Files\Godot` et `/usr/bin/godot` — pas un
+  binaire posé sur le Bureau. Sans cette variable, tous les outils échouent.
 
 ## Le clavier
 
@@ -115,7 +146,7 @@ Ils sont documentés ici parce qu'ils reviendront.
 ## Déboguer
 
 ```bash
-"C:/Users/janha/Downloads/Godot_v4.7.1-stable_win64.exe/Godot_v4.7.1-stable_win64_console.exe" --headless --path Godot --script res://outils/sonde_api.gd
+"C:/Users/janha/Desktop/Godot_v4.7.1-stable_win64.exe/Godot_v4.7.1-stable_win64_console.exe" --headless --path Godot --script res://outils/sonde_api.gd
 ```
 
 La sonde interroge `ClassDB` sur chaque méthode et propriété utilisées et

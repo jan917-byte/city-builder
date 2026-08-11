@@ -1,6 +1,7 @@
 ---
 tags: [vision, risques]
 statut: vivant
+maj: 2026-08-11 (le piège « vibe-coder le noyau » retiré — 40b)
 ---
 
 # Pièges connus
@@ -40,7 +41,5 @@ Liste des façons identifiées de rater ce projet. À relire avant chaque décis
 **🪤 Équilibrer trop tôt.** Les nombres du prototype sont provisoires et faux, c'est normal. On cherche la **forme** des décisions, pas leur valeur.
 
 **🪤 Économiser sur la capsule, le trailer ou la localisation.** Économiser 2 000 € sur un projet qui en coûte 180 000 en temps, en dégradant précisément ce qui détermine les ventes. → [[Calendrier et budget]]
-
-**🪤 Vibe-coder le noyau de simulation.** Il doit être écrit et compris par moi. Le reste est de l'échafaudage jetable. → [[Moteur et architecture]]
 
 **Voir aussi** : [[Questions ouvertes]] · [[Périmètre et coupes]]
