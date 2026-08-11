@@ -101,8 +101,4 @@ Pas de la complexité artistique, mais de :
 
 Low-poly flat-shaded façon *Mini Motorways* (remplacée) · rendu axonométrique collage · risographie · plan cadastral animé
 
-## Clichés interdits
-
-Voir [[Ton et règles d'écriture]] — pas de Ghibli, pas de tours-forêts, pas de golden hour permanente.
-
 **Voir aussi** : [[Génération procédurale]] · [[Périmètre et coupes]] · [[Diagnostic et calques]]
