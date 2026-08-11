@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://dnjqvradqe0ll"]
 
-[ext_resource type="Script" path="res://scripts/maquette.gd" id="1_maquette"]
+[ext_resource type="Script" uid="uid://cjoh4t1t0mr34" path="res://scripts/maquette.gd" id="1_maquette"]
 
-[node name="Maquette" type="Node3D"]
+[node name="Maquette" type="Node3D" unique_id=625318529]
 script = ExtResource("1_maquette")
