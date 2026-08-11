@@ -3,7 +3,7 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-11 (session 7)**
+**Dernière mise à jour : 2026-08-11 (session 8)**
 
 ---
 
@@ -30,44 +30,8 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 > — le réseau routier, lui, est **d'un seul tenant** : les cinq ponts existent enfin
 > — l'**axe de transit sort tout seul** de l'affectation de trafic, sans qu'on l'ait désigné
 
-## 🔴 À FAIRE EN PREMIER SUR LE PC : le raccorder au dépôt
-
-Constaté le 2026-08-11 : **le dossier du projet sur le PC n'est pas un clone de GitHub**, c'est le dossier d'origine. Tant que ce n'est pas réglé, `git pull` n'y fonctionne pas et les deux machines divergent en silence.
-
-**Étape 1 — savoir dans quel cas on est.** Dans le dossier du projet, sous Git Bash ou PowerShell :
-
-```
-git status
-```
-
-- Ça répond (branche, fichiers) → le dossier *est* un dépôt. Aller à l'étape 2.
-- `fatal: not a git repository` → aller à l'étape 3.
-
-**Étape 2 — le dossier est déjà un dépôt.** La distinction « original / clone » n'existe pas pour git : un dossier avec un `origin` configuré tire exactement comme un clone. Vérifier :
-
-```
-git remote -v
-```
-
-S'il affiche `https://github.com/jan917-byte/city-builder` → committer ce qui traîne, puis `git pull`. C'est fini.
-S'il n'affiche **rien** → pas de remote, deux historiques sans ancêtre commun. Ne pas bricoler un `git remote add` : aller à l'étape 3.
-
-**Étape 3 — repartir d'un clone frais.** C'est la voie sûre, à cause des pièges de `CLAUDE.md` §5 bis : un clone applique `.gitattributes` (LF) et récupère les noms accentués en NFC. Ré-initialiser git par-dessus l'original ferait apparaître tout le vault comme modifié, avec un risque de mojibake sur `Systèmes/`.
-
-1. Renommer l'original en sauvegarde (**ne pas le supprimer**) : `City Builder` → `City Builder - ORIGINAL`
-2. `git clone https://github.com/jan917-byte/city-builder.git` à côté
-3. Comparer les deux dossiers, rapatrier à la main **ce qui n'existe que dans l'original** — le travail fait sur le PC jamais poussé
-4. Committer + pousser depuis le clone, puis garder la sauvegarde quelques jours avant de l'archiver
-
-⚠️ Deux points de vigilance à l'étape 3 :
-- **`QGIS/data/*.gpkg`** : si la carte a été retouchée sur le PC après le dernier push, c'est cette version-là qui écrase celle du clone. Aucune fusion possible — il faut choisir.
-- **Ne pas recopier** `.obsidian/workspace.json`, `desktop.ini`, `folder-icon.ico` : gitignorés volontairement.
-
-*(Supprimer cette section une fois le PC raccordé.)*
-
 ## Prochaine action concrète
 
-0. 🔴 **Raccorder le PC au dépôt** — voir la section ci-dessus. Bloque le travail à deux machines
 1. 🔴 **Lancer `04_deriver_attributs.py` sans `--blanc`.** La colonne `emplois` est écrite dans le script mais **pas encore dans le `.gpkg`** — tant que ce n'est pas fait, `05` et `06` s'arrêtent avec un message qui le dit. Relire d'abord la table `TISSU`, elle a une 7ᵉ colonne
 2. 🎯 **La maquette de masses dans Godot 4.** Les 69 îlots extrudés à leur `hauteur`, la voirie en rubans, la vallée en terrain **continu** (rejouer la formule de pente de `04`, sinon terrain en escalier), la palette Townscaper. **Une semaine, pas plus.** La subdivision en parcelles est hors phase
 3. ☐ Il manque l'export : un `07_exporter_godot.py` — anneaux, polylignes, attributs, recentrés sur le milieu de l'emprise, en un seul JSON
@@ -131,6 +95,11 @@ Le brainstorm du 2026-08-10 (`Brainstorming/…inondation-rive-droite.md`) a ser
 Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / adapter / rendre à l'eau), qui sont la semaine 2.
 
 ## Historique des sessions Claude
+
+### 2026-08-11 (session 8)
+- ✅ **Le PC est raccordé — il l'était déjà.** Le diagnostic de la session 7 était faux : le dossier *est* un dépôt, avec `origin` correctement configuré sur `jan917-byte/city-builder`. Il était simplement **en retard de 5 commits**, en fast-forward propre. Ni clone frais, ni sauvegarde, ni rapatriement manuel — l'étape 3 était inutile. La procédure a été retirée de ce fichier.
+- ⚠️ **Deux modifications locales traînaient sur le PC**, toutes deux sans valeur : Obsidian avait reformaté le tableau de `Décisions arrêtées` (padding des colonnes, zéro changement de fond) et `Direction artistique` avait perdu sa section « Clichés interdits » — que la version amont, entièrement réécrite depuis, conserve. **Mises en stash plutôt qu'en commit** : les committer aurait cassé le fast-forward et réintroduit une régression. Récupérables par `git stash list` / `git stash pop` si besoin, sinon `git stash drop`.
+- 🟢 **Les `.gpkg` n'ont pas divergé** : suivis par git et non modifiés localement. Le point de vigilance « il faudra choisir une version » ne s'est pas matérialisé.
 
 ### 2026-08-11 (session 7, suite)
 - 🎯 **La phase du prototype est réécrite dans le vault** : la ville de t0 passe devant le système de décisions (décision 49), Godot entre au mois 1 pour le rendu seul (39b), **Townscaper** remplace Mini Motorways (42b), les emplois sont consignés (50). Deux questions neuves : le raccord des bâtiments (16) et le dortoir (17). Fichiers touchés : `Direction artistique`, `Génération procédurale`, `Plan 3 mois`, `Décisions arrêtées`, `Questions ouvertes`, `00 - Index`.
