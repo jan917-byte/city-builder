@@ -56,20 +56,25 @@ Les deux `.gpkg` sont versionnés. Ce sont des **binaires : git ne les fusionne 
             │  04_deriver_attributs.py  ← écrit en place
             ▼
    │   + 12 colonnes sur ilots · 4 sur routes
+            │  04b_emprises_baties.py  ← écrit en place
+            ▼
+   │   + couche `emprises` (69 polygones) : l'îlot APRÈS retrait de voirie
             │
-            ▼  apercu_carte.py (ro)          ▼  export GeoJSON → Godot  ☐ mois 2
-       PNG légendé + bilan chiffré
+     ┌──────┴──────┬──────────────┬─────────────────┐
+     ▼             ▼              ▼                 ▼
+ apercu_carte  06_etat_zero  05_exporter      07_exporter_godot
+ PNG légendé   HTML 22 calq.  Classeur/*.csv   Godot/data/wehrau.json
 ```
 
 ### ⚠️ La règle de la chaîne
 
-**02 → 03 → 04, dans cet ordre, sans en sauter.** `02_qualifier.py` fait un `shutil.copy2` de la source : il **écrase** `Prototype_qualifie.gpkg` et détruit tout ce que 03 et 04 y avaient écrit. Relancer 02 seul laisse un fichier amputé de la table `adjacences` — et 04 refuse alors de démarrer.
+**02 → 03 → 04 → 04b, dans cet ordre, sans en sauter.** `02_qualifier.py` fait un `shutil.copy2` de la source : il **écrase** `Prototype_qualifie.gpkg` et détruit tout ce que 03, 04 et 04b y avaient écrit — **y compris la couche `emprises`**. Relancer 02 seul laisse un fichier amputé de la table `adjacences`, et 04 refuse alors de démarrer.
 
-Ce qu'on peut relancer seul, sans risque : **03**, **04**, et **`apercu_carte.py`** (lecture seule, tourne même avec QGIS ouvert sur le fichier).
+Ce qu'on peut relancer seul, sans risque : **03**, **04**, **04b**, et tous les lecteurs (`apercu_carte`, `05`, `06`, `07` — lecture seule, tournent même avec QGIS ouvert sur le fichier).
 
-### Étape 6, la seule qui reste
+### L'étape 6 est faite — et ce n'est pas un GeoJSON
 
-**Export GeoJSON** (`ilots`, `routes`, `adjacences`) vers Godot. Prévu mois 2. Rien n'est écrit pour l'instant.
+Le plan annonçait « export GeoJSON vers Godot, mois 2 ». C'est `07_exporter_godot.py`, et il sort **un JSON dédié**, pas du GeoJSON : un GeoJSON ne peut porter ni le champ d'altitude, ni les caps triangulés, ni les couleurs de sommet — et il obligerait à écrire un parseur GeoJSON en GDScript, exactement ce que le projet cherche à éviter. → `Décisions arrêtées` 33b.
 
 ## 4. Les fichiers, un par un
 
@@ -232,7 +237,14 @@ Autre astuce partagée, moins évidente : les déclencheurs d'index spatial du G
 - le réseau routier, lui, est **d'un seul tenant** (195 nœuds) — les cinq ponts existent
 - l'**axe de transit sort tout seul** de l'affectation de trafic : le tronçon 55 monte à `charge = 1,00` sans qu'on l'ait désigné
 
-Étapes 1 à 5 faites. **Reste l'étape 6, l'export GeoJSON, mois 2.**
+Étapes 1 à 6 faites. Le retrait de voirie ajoute quatre mesures :
+
+| | |
+|---|---|
+| Emprise bâtie après retrait | **76,5 ha** au lieu de 92,8 |
+| Voirie dégagée | **16,3 ha = 17,6 %** de la carte |
+| Anneaux simples après retrait | **69 / 69** |
+| Îlots reculés de 22 m par le quai | **15, 55, 58** — trois îlots de cœur ancien |
 
 ## 8. Dérives connues — à corriger, aucune bloquante
 
@@ -259,7 +271,17 @@ python3 QGIS/scripts/04_deriver_attributs.py --blanc
 # régénérer la carte entière — dans cet ordre, 02 écrase le fichier de travail
 python3 QGIS/scripts/02_qualifier.py && \
 python3 QGIS/scripts/03_adjacences.py && \
-python3 QGIS/scripts/04_deriver_attributs.py
+python3 QGIS/scripts/04_deriver_attributs.py && \
+python3 QGIS/scripts/04b_emprises_baties.py
+
+# le retrait de voirie, sans rien écrire (contrôles + tableau des réparations)
+python3 QGIS/scripts/04b_emprises_baties.py --blanc
+
+# alimenter la maquette 3D — puis ouvrir Godot/ dans Godot 4.7
+python3 QGIS/scripts/07_exporter_godot.py
+
+# la palette : couverture des 13 sous-types, familles, règle du sol
+python3 QGIS/scripts/palette.py
 ```
 
 *(sous Windows, `python` au lieu de `python3`)*

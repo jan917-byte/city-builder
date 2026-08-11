@@ -1,0 +1,21 @@
+; Wehrau à t0 — maquette de masses.
+; Projet d'AFFICHAGE (décision 39b) : il ne touche pas au noyau de simulation.
+
+config_version=5
+
+[application]
+
+config/name="Wehrau t0"
+config/description="Maquette de masses de Wehrau au temps zero. Affichage seul."
+run/main_scene="res://maquette.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+anti_aliasing/quality/msaa_3d=2

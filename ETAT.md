@@ -3,13 +3,13 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-11 (session 8)**
+**Dernière mise à jour : 2026-08-11 (session 9)**
 
 ---
 
 ## Position dans le plan
 
-🎯 **Phase actuelle : Wehrau à t0, crédible et regardable en 3D** — avant toute décision, avant toute crue. → `Méta/Décisions arrêtées.md` 49 · `Technique/Génération procédurale.md`
+🎯 **Phase actuelle : Wehrau à t0, crédible et regardable en 3D** — ✅ **la maquette existe et se lance** (`Godot/`) — avant toute décision, avant toute crue. → `Méta/Décisions arrêtées.md` 49 · `Technique/Génération procédurale.md`
 
 L'ordre a changé le 2026-08-11 : le classeur a été écrit, puis on a constaté qu'une crue est **la perturbation d'un état** et que l'état n'existait pas. Le classeur reste dans `Classeur/`, il passe au mois 2.
 
@@ -32,13 +32,16 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## Prochaine action concrète
 
-1. 🔴 **Lancer `04_deriver_attributs.py` sans `--blanc`.** La colonne `emplois` est écrite dans le script mais **pas encore dans le `.gpkg`** — tant que ce n'est pas fait, `05` et `06` s'arrêtent avec un message qui le dit. Relire d'abord la table `TISSU`, elle a une 7ᵉ colonne
-2. 🎯 **La maquette de masses dans Godot 4.** Les 69 îlots extrudés à leur `hauteur`, la voirie en rubans, la vallée en terrain **continu** (rejouer la formule de pente de `04`, sinon terrain en escalier), la palette Townscaper. **Une semaine, pas plus.** La subdivision en parcelles est hors phase
-3. ☐ Il manque l'export : un `07_exporter_godot.py` — anneaux, polylignes, attributs, recentrés sur le milieu de l'emprise, en un seul JSON
+1. 🔴 **Les deux commandes qui écrivent dans le `.gpkg`, jamais lancées sur les données réelles.** Elles ont été validées sur une copie ; `CLAUDE.md` §3 réserve l'exécution sur les vraies données à l'auteur. Filet : le `.gpkg` est suivi par git, `git checkout -- QGIS/data/Prototype_qualifie.gpkg` défait tout.
+   `python "QGIS/scripts/04_deriver_attributs.py"` → écrit la colonne `emplois`, débloque `05` et `06`
+   `python "QGIS/scripts/04b_emprises_baties.py"` → écrit la couche `emprises` (le retrait de voirie). **Regarder la couche dans QGIS par-dessus `ilots` avant de continuer**
+2. 🎯 **Regarder la maquette et trancher trois choses.** `python "QGIS/scripts/07_exporter_godot.py"` puis ouvrir `Godot/` dans Godot 4.7 (F5).
+   · **la vallée se sent-elle à ×1 ?** touches `1` `2` `3` `4` — c'est le seul arbitrage qui ne se fait pas dans le vide
+   · **le retrait est-il juste ?** 17,6 % de voirie, trois îlots de cœur ancien reculés de 22 m par le quai
+   · **question n°16** (le raccord des voisins) : la maquette est son instrument, elle est prête
+3. ☐ **Le critère de sortie**, et il compte plus que le reste : *est-ce que la 3D m'a montré quelque chose que la page HTML ne montrait pas ?* Si non, **on arrête la 3D et on reprend le classeur — et ce sera un bon résultat, pas un échec**. ⚠️ « Si j'ajoute des toits, j'ai changé de projet »
 4. ☐ **Mois 2 : jouer le classeur.** Écrit et chiffré dans `Classeur/`, jamais joué — les valeurs sont posées, pas calibrées
 5. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
-
-**Critère de sortie de la phase 3D** : est-ce que la maquette m'a montré quelque chose que la page HTML ne montrait pas ? Si non, on arrête et on reprend le classeur.
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
@@ -50,12 +53,17 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 `python "QGIS/scripts/06_etat_zero.py"` → **la ville entière dans une page** : 22 calques cliquables, les stocks à côté, un seul fichier HTML sans dépendance. C'est la boucle « je vois donc je corrige ».
 
-**Les outils** (dans `QGIS/scripts/`, aucun n'écrit dans la source) :
-`apercu_carte.py` la vue en PNG · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `05_exporter_classeur.py` la carte en CSV · `06_etat_zero.py` la vue interactive · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
+`python "QGIS/scripts/04b_emprises_baties.py" --blanc` → le retrait de voirie sans rien écrire : contrôles, tableau des réparations, part de voirie.
+`python "QGIS/scripts/palette.py"` → la palette : 13 sous-types, 9 familles, et la règle du sol vérifiée sur la plaie 19.
 
-`04` et `06` acceptent un chemin de `.gpkg` en argument — pour essayer un changement de `TISSU` sur une copie avant de l'écrire.
+**Les outils** (dans `QGIS/scripts/`) :
+`apercu_carte.py` la vue en PNG · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `04b_emprises_baties.py` **le retrait de voirie, écrit la couche `emprises`** · `05_exporter_classeur.py` la carte en CSV · `06_etat_zero.py` la vue interactive · `07_exporter_godot.py` **la maquette 3D** · `palette.py` les couleurs · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
 
-⚠️ **Chaîne à relancer dans l'ordre** : 02 → 03 → 04. Le 02 repart de `Vallmar2.gpkg` et écrase `Prototype_qualifie.gpkg`.
+Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un chemin en argument — pour essayer un changement sur une copie avant de l'écrire.
+
+⚠️ **Chaîne à relancer dans l'ordre** : 02 → 03 → **04 → 04b**. Le 02 repart de `Vallmar2.gpkg` et écrase `Prototype_qualifie.gpkg` — **y compris la couche `emprises`**.
+
+**La maquette 3D** : `Godot/` — voir `Godot/README.md`. Touches `V` la vallée · `B` la barre de 1974 · `R` les rues à 20 et 22 m · `1..4` l'exagération verticale · `P` capture. Une touche par critère de réussite : on ne juge pas de mémoire.
 
 ## Ce qui bloque
 
@@ -70,7 +78,8 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## En attente d'une décision de l'auteur
 
-- [ ] **Le raccord des bâtiments voisins** (question n°16). Townscaper coud ses modules parce qu'il a une grille ; l'îlot polygonisé n'en a pas. Assumer le non-raccord, coudre à la subdivision, ou une grille locale par îlot — à regarder sur la maquette avant de trancher
+- [ ] **Le raccord des bâtiments voisins** (question n°16). 🟢 **L'instrument existe** : la maquette est construite et assume le non-raccord. À l'échelle de l'îlot la question ne se pose pas — un pâté plein n'a pas de voisin à coudre, et le retrait de voirie lui a donné des faces franches. Elle ne redeviendra vive qu'à la subdivision en parcelles. **Reste à confirmer à l'œil**
+- [ ] **L'exagération verticale.** 9 m de relief sur 898 m de large, contre 27 m pour la barre. Touches `1..4` dans la maquette. Se tranche devant l'image, pas dans le vide — et une fois tranchée, se consigne
 - [ ] **Wehrau est un dortoir** (question n°17). 0,16 emploi par habitant. On assume, ou on dessine du sol d'activité dans QGIS
 
 - [x] ✅ **Wehrau porte ~5 350 habitants** (2026-08-11, prototype seulement — Vallmar garde ses 112 000) → `Décisions arrêtées` 13d
@@ -95,6 +104,15 @@ Le brainstorm du 2026-08-10 (`Brainstorming/…inondation-rive-droite.md`) a ser
 Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / adapter / rendre à l'eau), qui sont la semaine 2.
 
 ## Historique des sessions Claude
+
+### 2026-08-11 (session 9) — la maquette existe
+- 🔴 **Le fait qui a commandé toute la session** : les 69 îlots **pavent 99,75 % de l'emprise**, et les axes de rue tombent **exactement** sur leurs bords (0,0000 m d'écart, mesuré sur 83 segments). `largeur_m` était un attribut **sans lieu**. Extrudées telles quelles, les empreintes donnaient un bloc plein de 93 ha : le critère « trouver monstrueuses les rues à 20 et 22 m » était littéralement inobservable. → décision **32f**
+- 🆕 **`04b_emprises_baties.py`** : l'îlot recule de la demi-largeur de la rue, la rue devient le négatif. Nouvelle couche `emprises` dans le GeoPackage (écrite en Python pur, en-tête GPKG encodé à la main — aucun GDAL dans ce dépôt). **69/69 anneaux simples, 76,5 ha bâtis, 17,6 % de voirie.** Le pic de mitre aux sommets réflexes envoyait un sommet de l'îlot 43 à **258 m** : limite de mitre + biseau, puis réparation de boucle. Contrôle final : **aucun sommet à plus de 5 cm hors de l'îlot d'origine**.
+- 🆕 **`palette.py`**, qui **ferme la décision 33** : le `.qml` désigné comme référence couleur unique n'a jamais existé, et Godot ne sait pas le lire. 9 familles pour 13 sous-types. La règle `lerp(teinte, MINERAL, impermeabilise)` donne à la place du marché (îlot 19, `imperm = 1,00`) **exactement la couleur de la chaussée** — la plaie apparaît sans avoir été peinte. → **33b**
+- 🆕 **`07_exporter_godot.py`** + **le projet `Godot/`**. Terrain continu rejoué depuis la formule de `04` (grille de 8 m, 16 440 sommets). Toute la géométrie est en Python ; Godot empaquette des tableaux et ne décide rien — l'« interface propre » de `Moteur et architecture:18` est **le contrat JSON**, pas une hiérarchie de classes.
+- ✅ **Les trois critères sont atteints, vérifiés sur capture** : la barre de 1974 écrase ses voisines (le gris-bleu froid la rend étrangère au pastel), le quai à 22 m recule trois îlots de cœur ancien, la place-parking se lit comme une rue qui a enflé. Reste **la vallée** : 9 m sur 898 m, à arbitrer devant l'image avec les touches `1..4`.
+- 🐞 **Trois pièges Godot 4.7, tous trouvés par l'expérience et pas par le raisonnement** — consignés dans `Godot/README.md` : les faces avant sont en sens **horaire** (le terrain entier était cullé, les bâtiments ne se voyaient que par leurs murs) · les couleurs de sommet sont en espace **linéaire** (tout ressortait délavé, et le contraste pastel/minéral avec) · `class_name` ne suffit pas en ligne de commande, d'où `preload()`.
+- ⚠️ **Rien n'a été écrit dans le vrai `.gpkg`** — `CLAUDE.md` §3 réserve ça à l'auteur. Tout a été validé sur une copie. Les deux commandes sont l'action n°1.
 
 ### 2026-08-11 (session 8)
 - ✅ **Le PC est raccordé — il l'était déjà.** Le diagnostic de la session 7 était faux : le dossier *est* un dépôt, avec `origin` correctement configuré sur `jan917-byte/city-builder`. Il était simplement **en retard de 5 commits**, en fast-forward propre. Ni clone frais, ni sauvegarde, ni rapatriement manuel — l'étape 3 était inutile. La procédure a été retirée de ce fichier.

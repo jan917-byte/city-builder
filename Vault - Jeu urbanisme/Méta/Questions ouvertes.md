@@ -54,6 +54,10 @@ Trois sorties, aucune tranchée :
 
 Ne se tranche pas avant d'avoir regardé la maquette de masses : peut-être que le non-raccord ne choque pas. → [[Génération procédurale]]
 
+🟢 **L'instrument existe depuis le 2026-08-11 : la maquette est construite et se regarde** (`Godot/`, touches V · B · R). Elle assume le non-raccord — c'était la seule des trois sorties compatible avec la phase, les deux autres relevant de la subdivision. **La question est donc mûre pour être tranchée, et elle se tranche à l'œil.**
+
+Ce que la maquette change à l'énoncé : à l'échelle de l'îlot le raccord **ne se pose pas** — un pâté plein n'a pas de voisin à coudre. Le retrait de voirie (32f) a même donné aux îlots des faces franches séparées par la rue, ce qui rend le non-raccord lisible plutôt que raté. La question ne redeviendra vive qu'**à la subdivision en parcelles**, où deux parcelles d'un même îlot se toucheront vraiment.
+
 ### 17. Wehrau est un dortoir — on assume ou on dessine du sol d'activité ?
 
 Ouverte le 2026-08-11 par l'arrivée des emplois. → [[Décisions arrêtées]] 50
