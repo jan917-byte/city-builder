@@ -1,0 +1,14 @@
+# Windows ↔ Mac : le dépôt stocke du LF, et le disque aussi, sur les deux machines.
+# Sans ça, un aller-retour entre les deux fait apparaître tout le vault comme modifié.
+* text=auto eol=lf
+
+# Binaires : aucune conversion de fins de ligne, aucune fusion tentée.
+# Un .gpkg « fusionné » par git est un .gpkg mort — la carte se déplace d'une machine
+# à l'autre par push/pull, jamais en parallèle.
+*.gpkg  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.zip   binary
+*.lnk   binary

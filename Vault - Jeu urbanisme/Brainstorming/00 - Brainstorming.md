@@ -1,7 +1,7 @@
 ---
 tags: [moc, brainstorming]
 statut: vivant
-maj: 2026-08-10
+maj: 2026-08-11
 ---
 
 # 💭 Brainstorming
@@ -38,9 +38,12 @@ Une fois la discussion vidée de sa substance, passer son `statut` à `digéré`
 
 ## 📚 Les discussions
 
-*(aucune pour l'instant — première ligne à ajouter ici)*
+- [[2026-08-11_brainstorm_refs-positionnement-ui]] — **brut** · positionnement, veille concurrentielle, direction artistique et UI. Importé d'une autre session, vocabulaire d'un autre vault (voir l'encart de provenance en tête). **9 décisions cochées et 7 questions ouvertes n'ont pas encore été remontées.** Le plus urgent pour la semaine 2 : la colonne `signal_diagnostic` à ajouter au classeur, et **la coupe de rue** comme candidate à la question n°5.
+- [[2026-08-10_brainstorm_inondation-rive-droite]] — **digéré en partie** · ses trois idées transférables sont passées dans les données (doctrine à seuil → `emprise_libre_m`, modèle de trafic → `charge`, rendre à l'eau → `alea`). Son scénario d'ouverture est arrêté depuis le 2026-08-11 → [[Décisions arrêtées]] 23b. Reste en brut : le tableau `decisions` et les trois postures.
 
 Format de ligne : `- [[AAAA-MM-JJ — sujet]] — statut · ce qui en est sorti`
+
+⚠️ **Le nommage réel diverge de la consigne ci-dessus** : les deux fichiers déposés utilisent `AAAA-MM-JJ_brainstorm_sujet-en-tirets`, sans espaces ni tiret cadratin — plus sûr en aller-retour Windows ↔ Mac. À trancher : aligner la consigne sur la pratique, ou renommer les deux fichiers.
 
 ---
 

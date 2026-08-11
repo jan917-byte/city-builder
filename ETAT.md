@@ -3,13 +3,13 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-10 (session 5)**
+**Dernière mise à jour : 2026-08-11 (session 6)**
 
 ---
 
 ## Position dans le plan
 
-**Mois 1, semaine 1** — la carte, presque bouclée. → `Production/Plan 3 mois.md`
+**Mois 1, semaine 1 bouclée. On entre en semaine 2** — le classeur des 10 décisions. → `Production/Plan 3 mois.md`
 
 🔄 **Le prototype n'est plus l'Altstadt de Vallmar.** C'est **Wehrau**, une petite ville qu'on voit en entier. Vallmar reste la ville du jeu complet, intacte dans le vault. → `Ville/Wehrau.md`
 
@@ -26,9 +26,12 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## Prochaine action concrète
 
-1. ☐ **Trancher les trois questions ouvertes par le prototype** (n°13, 14, 15 dans `Méta/Questions ouvertes.md`) — le scénario d'amorce conditionne le classeur de la semaine 2
-2. ☐ Semaine 2 du plan : le classeur des 10 décisions
-3. ☐ Export GeoJSON (mois 2)
+1. ✅ ~~Trancher le scénario d'amorce et la population~~ — fait le 2026-08-11 → `Méta/Décisions arrêtées.md` 13d et 23b
+2. ☐ **Semaine 2 du plan : le classeur des 10 décisions.** Plus rien ne le bloque. Le premier tour part d'une crue sur la rive gauche : 13 îlots, 417 logements, une seconde crue annoncée
+3. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter, dont la colonne `signal_diagnostic` du classeur
+4. ☐ Export GeoJSON (mois 2)
+
+**Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
 **Boucle de contrôle** :
 `python "QGIS/scripts/apercu_carte.py" "QGIS/data/Prototype_qualifie.gpkg"` → la carte
@@ -43,21 +46,25 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## Ce qui bloque
 
-🔴 **Combien de temps dure une partie ?** Sans réponse, le classeur de la semaine 2 ne peut pas être équilibré. Se découvre en jouant les 5 parties du mois 1.
+**Rien.** La semaine 2 peut s'écrire.
 
-🟠 À trancher pendant le mois 1 : capital politique · d'où vient l'argent · le deuxième axe des fins · le premier clic.
+⏸️ La durée d'une partie est **mise de côté volontairement** : pas de fin imposée, on joue jusqu'à l'ennui puis on recommence dans une autre direction. Hypothèse de travail non fixée : ~20 ans en ~2 h. → `Décisions arrêtées` 14b · 14c
+
+🟠 À trancher pendant le mois 1 : d'où vient l'argent · le deuxième axe des fins · le premier clic.
 🟢 Détendue : « quand tracer le deuxième quartier » — Wehrau teste déjà l'amont/aval.
 
 → `Méta/Questions ouvertes.md`
 
 ## En attente d'une décision de l'auteur
 
-- [ ] 🔴 **Wehrau porte 5 350 habitants, pas 18 000.** La carte n'a que 38,3 ha bâtis et la table de densité est déjà au plafond du réalisme. Recommandation : descendre le chiffre. → `Méta/Questions ouvertes.md` n°13
-- [ ] 🔴 **Le jeu s'ouvre-t-il sur une crue ?** (proposition du brainstorm). Si oui, elle tombe sur la **rive gauche** — le petit faubourg de 13 îlots, pas la ville. À trancher **avant** le classeur de la semaine 2. → n°15
+- [x] ✅ **Wehrau porte ~5 350 habitants** (2026-08-11, prototype seulement — Vallmar garde ses 112 000) → `Décisions arrêtées` 13d
+- [x] ✅ **Le jeu s'ouvre sur une crue, sur la rive gauche** (2026-08-11) → `Décisions arrêtées` 23b
 - [ ] **Le grand ensemble de 1974 est à 200 m de l'eau**, pas « contre l'eau ». J'ai corrigé la phrase du vault ; l'autre option est de déplacer la barre. → n°14
 - [ ] **Cinq franchissements pour la rivière**, alors que le vault en voulait deux au maximum. Ils sont maintenant typés dans les données. → n°12
 - [ ] **Le nom.** « Wehrau » et la rivière « l'Ilse » sont mes propositions, marquées comme telles dans la note. Se renomment en une commande tant que rien n'est codé.
 - [ ] **Relire deux fichiers de level design** : les listes de `fid` en haut de `QGIS/scripts/02_qualifier.py`, et la table de correspondance `TISSU` en haut de `QGIS/scripts/04_deriver_attributs.py` — treize lignes qui décident du comportement de toute la carte. Une ligne changée, on relance, on regarde.
+- [ ] **Le tag `jeu/brightvale`** du brainstorm importé — nom de travail abandonné, autre projet, ou candidat à verser dans `Marketing et Steam` ?
+- [ ] **Les conséquences de 5 350 habitants** sur trois équipements : le lycée devient une Realschule, la galerie de 1971 un supermarché, la barre de 1974 un petit Neubau. Acté dans la décision, pas encore écrit dans `Ville/Wehrau.md`.
 
 ## Ce que le brainstorm a donné
 
@@ -73,6 +80,14 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 
 ## Historique des sessions Claude
 
+### 2026-08-11 (session 6)
+- 🎯 **Trois questions fermées par l'auteur** : population de Wehrau (~5 350, prototype seulement) · **crue d'ouverture sur la rive gauche** · **capital politique = un chiffre**. Consignées dans `Décisions arrêtées` (13d, 23b, 16b), fermées dans `Questions ouvertes` (13, 15, 2), répercutées dans `Wehrau.md`, `Ressources.md` et `00 - Index`.
+- 🆕 **Système des milestones** (`Systèmes/Milestones.md`, décision 9b) : des jalons **cumulables**, pas des fins — zéro voiture, ville-éponge, autonomies. Ce qui les rend durs est un **coût d'opportunité**, pas une interdiction : *la rareté est dans le calendrier, pas dans les règles*. Conséquence notée dans `Ressources` : un capital politique en chiffre unique règle le **rythme**, jamais la **direction** — l'arbitrage vient du sol et du temps.
+- ⏸️ **La durée d'une partie est reportée, pas tranchée** (14b, 14c) : **pas de fin imposée**, on joue jusqu'à l'ennui puis on recommence dans une autre direction. Les milestones deviennent le marqueur de progression. Hypothèse de travail assumée : ~20 ans en ~2 h.
+- **Brainstorm importé** dans `Brainstorming/2026-08-11_brainstorm_refs-positionnement-ui.md` — positionnement, veille concurrentielle, DA et UI. Déposé brut avec un encart de provenance : il vient d'un autre vault, son vocabulaire diffère (table de correspondance dans l'encart). Non digéré.
+- **Le vault rattrape la réalité** : `00 - Index` et `Plan 3 mois` annonçaient encore l'adjacence et les attributs dérivés comme « à faire » — faits depuis la session 3. Semaine 1 marquée bouclée.
+- **Travail sur deux machines assumé** : `CLAUDE.md` §5 réécrite (elle décrivait un environnement Windows sans dépôt git), `README.md` corrigé (il s'intitulait « Vallmar » alors que le prototype est Wehrau), `.gitattributes` ajouté — LF partout, `.gpkg` marqués binaires. Vérifié : aucune renormalisation provoquée, le dépôt était déjà propre.
+
 ### 2026-08-10 (session 5)
 - **Restructuration du dépôt** (recommandations de la session) : doublon `Vault - Jeu urbanisme/Production/ETAT.md` supprimé ; skill projet déplacé `SKILLS/` → `.claude/skills/solo-dev-systems/` ; `QGIS/` scindé en `scripts/`, `data/`, `rendus/` (préviews régénérables gitignorées, chemins des scripts recâblés sur `data/` et `rendus/`) ; `README.md` racine ajouté. Les scripts tournent (`apercu_carte.py` et `04 --blanc` vérifiés).
 
@@ -85,15 +100,8 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 - Nouveau mode `--calque=<champ>` dans `apercu_carte.py` : voir n'importe quel attribut en dégradé.
 - **Trois questions ouvertes neuves** (13, 14, 15), dont deux à trancher avant la semaine 2.
 
-### 2026-08-10 (session 2)
-- Audit du GeoPackage, puis **qualification complète** : `fonction`, `sous_type`, `exception`, `surface_m2` sur 69 îlots ; `hierarchie`, `largeur_m` sur 178 tronçons. Quatre plaies de 1965 placées consciemment.
-- Trois scripts écrits dans `QGIS/scripts/`. Aucun n'écrit dans `Vallmar2.gpkg`.
-- **Table d'adjacence construite** (`03_adjacences.py`) : 179 paires, perméabilité par hiérarchie, contrôle de coupure de la rivière réussi.
-- **Vault modifié** (sauvegarde zip préalable) : note neuve `Ville/Wehrau.md` ; révisions de `Décisions arrêtées` (13b, 13c, 26, 27, 28, 28b, 31, 31b, 31c, 32, 32b, 32c), `Pipeline QGIS`, `Géométrie et données`, `Périmètre et coupes`, `Altstadt`, `Questions ouvertes`, `Plan 3 mois`, `00 - Index`. Vérification : **0 wikilink cassé**.
-
-### 2026-08-10 (session 1)
-- Icône du dossier `City Builder` et raccourci Obsidian (lecture seule volontaire, ne pas défaire).
-- **Encodage réparé** : 11 dossiers/fichiers renommés, `.obsidian/workspace.json` nettoyé.
-- Mise en place de `CLAUDE.md` et de ce fichier.
+### 2026-08-10 (sessions 1 et 2)
+- Encodage réparé (11 dossiers/fichiers renommés), `CLAUDE.md` et ce fichier mis en place, icône du dossier et raccourci Obsidian.
+- **Qualification complète de la carte** : 69 îlots, 178 tronçons, quatre plaies de 1965 placées consciemment. Trois scripts écrits, aucun n'écrit dans la source. Table d'adjacence construite. **Vault** : note neuve `Ville/Wehrau.md`, douze décisions révisées dans `Décisions arrêtées`, **0 wikilink cassé**.
 
 *(`Méta/Journal.md` reste vierge de ma main — c'est le fichier de l'auteur.)*

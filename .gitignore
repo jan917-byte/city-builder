@@ -12,6 +12,11 @@ QGIS/rendus/
 desktop.ini
 folder-icon.ico
 *.lnk
+Thumbs.db
+
+# macOS (métadonnées du Finder — ne doivent jamais partir vers Windows)
+.DS_Store
+._*
 
 # Obsidian (état de session, pas le vault)
 **/.obsidian/workspace.json

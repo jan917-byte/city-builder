@@ -1,6 +1,7 @@
 ---
 tags: [production, plan, actif]
-statut: en cours — mois 1
+statut: en cours — mois 1, semaine 2
+maj: 2026-08-11
 ---
 
 # Plan 3 mois
@@ -11,17 +12,21 @@ statut: en cours — mois 1
 
 ❌ Prototype papier **rejeté** (je veux du digital). Ce qui comptait n'était pas le carton, c'était **la vitesse d'itération** : pouvoir jeter un système de décisions entier en une soirée. La version tableur va plus vite que le papier : on change un coefficient, les 60 mois se recalculent.
 
-### Semaine 1 — la carte 🟡 *presque bouclée*
+### Semaine 1 — la carte ✅ *bouclée le 2026-08-10*
 **Périmètre : [[Wehrau]]**, une petite ville entière — plus un quartier. → [[Périmètre et coupes]]
 ✅ Carte générée puis qualifiée : **69 polygones sur 0,93 km²**, 13 sous-types, 17 exceptions.
 La rivière est un **îlot** (`fonction = 'riviere'`), pas une ligne.
-☐ Reste la table d'adjacence et les attributs dérivés → [[Pipeline QGIS]]
+✅ Table d'adjacence (179 paires) et 12 attributs dérivés par îlot → [[Pipeline QGIS]]
 
 Placer les dilemmes **consciemment**. C'est du level design, pas de la cartographie.
 
 > **Sortie de semaine** : ✅ les cinq phrases sont écrites → [[Wehrau]]
+> **Et au-delà** : la carte est **simulable**. Trois contrôles le disent — la ville privée de sa rivière tombe en deux morceaux, le réseau routier tient par ses cinq ponts, et l'axe de transit sort tout seul de l'affectation de trafic sans qu'on l'ait désigné.
 
-### Semaine 2 — le système de décisions
+### Semaine 2 — le système de décisions 🎯 *en cours*
+
+⚠️ **À trancher avant d'écrire une ligne** : le scénario d'amorce (n°15) et la population de Wehrau (n°13). Les deux changent la liste des décisions du premier tour. → [[Questions ouvertes]]
+
 Classeur, feuille `decisions` :
 `échelle` · `cout_budget` · `cout_capital_politique` · **`delai_avant_effet`** · **`duree_montee_en_charge`** · `effet_maturite` · `effet_de_bord` · `condition_deblocage`
 

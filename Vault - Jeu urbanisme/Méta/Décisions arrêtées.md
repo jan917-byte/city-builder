@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-08-10 (rév. rivière · périmètre · le prototype devient une ville à part)
+maj: 2026-08-11 (population · crue d'ouverture · milestones · capital politique · durée de partie)
 ---
 
 # Décisions arrêtées
@@ -26,15 +26,20 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 
 | # | Décision | | Note |
 |---|---|---|---|
+| 9b | **Des [[Milestones]] cumulables** — zéro carbone, zéro voiture, autonome en énergie, autonome en nourriture, ville-éponge | 🔓 | ✅ 2026-08-11. Ce **ne sont pas des fins** : rien n'interdit d'en franchir plusieurs. Ce qui les rend durs est un **coût d'opportunité** — tout mettre dans l'autonomie alimentaire sacrifie un peu la ville-éponge, et avec assez de temps on peut peut-être avoir les deux. **La rareté est dans le calendrier, pas dans les règles.** Ne résout rien de [[Fins et pluralisme]], qui reste ouvert |
 | 10 | **Aucune manipulation directe** — le joueur pose des intentions | 🔒 | Le geste central |
 | 11 | Le joueur écrit la **structure**, le système écrit le **grain** | 🔒 | |
 | 12 | **Ghost preview instantané** obligatoire | 🔒 | Anti-spectateur |
 | 13 | Échelle du **jeu** : ville entière, interventions par quartier, 2 niveaux réseau/tissu | 🟡 | |
 | 13b | ~~Échelle du **prototype** : l'[[Altstadt]] uniquement~~ → **le prototype est [[Wehrau]], une petite ville entière (~5 350 hab.)**, pas un quartier de [[Vallmar]] | 🔓 | 🔄 **révisé 2026-08-10.** La carte disponible est une ville complète : noyau + rivière traversante + campagne. Gain décisif : **l'amont/aval entre dans le prototype** → [[Périmètre et coupes]] |
 | 13c | **Quatre plaies héritées de 1965** dans le prototype : la place-parking · le quai en voie rapide · l'axe de transit dans le cœur · la galerie de 1971 | 🔓 | ✅ 2026-08-10. « Fort mais réparable » : chacune se répare par une décision **différente**, aucune gratuitement → [[Wehrau]] |
+| 13d | **[[Wehrau]] porte ~5 350 habitants**, pas 18 000 | 🔓 | ✅ 2026-08-11, ferme la question n°13. 38,3 ha bâtis ne portent pas 18 000 personnes : la carte est la source de vérité (31b) et le chiffre s'aligne sur elle. **Ne concerne que le prototype** — [[Vallmar]] garde ses 112 000. Conséquences à écrire : le lycée devient une Realschule, la galerie de 1971 un supermarché, la barre de 1974 un petit Neubau |
 | 14 | **Temps continu**, tick mensuel, 3 vitesses. Tour par tour rejeté | 🔒 | |
+| 14b | **Hypothèse de travail, pas une décision** : ~20 ans d'évolution en ~2 h pour le prototype | 🟡 | 2026-08-11. Explicitement **non fixé** — de quoi écrire le classeur sans se mentir, rien de plus. La question de la durée est **mise de côté volontairement**, pas oubliée → [[Questions ouvertes]] n°1 |
+| 14c | **Pas de fin imposée** — la partie continue jusqu'à ce que le joueur s'ennuie, comme Minecraft ou Cities: Skylines. On recommence alors pour tester **une autre direction** | 🟡 | 2026-08-11. Conséquence : la rejouabilité ne vient pas d'une condition de victoire mais du **redémarrage**, et les [[Milestones]] deviennent le marqueur de progression principal. Cohérent avec 20 (pas de game over) |
 | 15 | Pause généreuse + pause auto sur événement climatique | 🔓 | |
 | 16 | **Deux ressources non convertibles** : argent + capital politique | 🔒 | |
+| 16b | **Le capital politique est un chiffre unique**, pas 3–4 groupes | 🔓 | ✅ 2026-08-11, ferme la question n°2. Contrepartie exigée : chaque décision **nomme qui perd** dans son `effet_de_bord` — le « pour qui on fait la ville » passe dans le texte et l'image, pas dans des jauges d'humeur. Corollaire : le capital ne porte **pas** l'arbitrage entre [[Milestones]], il ne fait que régler le rythme → [[Ressources]] |
 | 17 | Le capital politique **ne s'achète pas** — se regagne par les résultats visibles | 🔒 | |
 | 18 | **Pas d'échéance électorale** | 🔒 | Écarté |
 | 19 | Décisions **irréversibles mais pas irrécupérables** | 🔒 | |
@@ -42,6 +47,7 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 | 21 | **Pas de difficulté adaptative** | 🔒 | Écarté |
 | 22 | Système de **happenings** : crises rares, lourdes, espacées | 🟡 | |
 | 23 | La crise ouvre une **fenêtre politique** pour l'impossible | 🟡 | |
+| 23b | **Le jeu s'ouvre sur une crue**, et elle frappe la **rive gauche** — le faubourg de 13 îlots, pas la ville | 🔓 | ✅ 2026-08-11, ferme la question n°15. Ruines encore chaudes + **une seconde crue annoncée** : c'est l'annonce qui fait de « ne pas reconstruire » un calcul et non un choix sentimental. 417 logements, aléa 0,75 contre 0,43 en face, et personne pour peser dans un conseil municipal → [[Wehrau]] |
 | 24 | Le **diagnostic par cartes thématiques** est l'activité principale entre deux décisions | 🔒 | |
 | 25 | 3 calques parents : vert/climat, mobilité, social/éco | 🔓 | |
 

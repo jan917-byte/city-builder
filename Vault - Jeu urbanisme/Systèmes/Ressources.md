@@ -1,6 +1,7 @@
 ---
 tags: [système, économie]
 statut: arrêté (paramètres ouverts)
+maj: 2026-08-11
 ---
 
 # Ressources
@@ -38,19 +39,18 @@ Ce sont les deux vrais leviers du métier. Le joueur les sentira sans jamais lir
 
 À chaque crise, les deux ressources s'échangent au pire moment : **l'argent d'urgence est de l'argent brûlé**, et refuser de le dépenser coûte du capital politique. → [[Happenings]]
 
-## ❓ Question ouverte : un chiffre ou plusieurs groupes ?
+## ✅ Un chiffre, pas des groupes — arrêté le 2026-08-11
 
-| Option | Pour | Contre |
-|---|---|---|
-| **Un seul chiffre** | Simple, lisible | Plat |
-| **3–4 groupes** (propriétaires, locataires, commerçants, périurbains) | Oblige à choisir **pour qui** on fait la ville — le vrai geste politique de l'urbanisme. Alimente directement le pluralisme des fins | Risque de dégénérer en gestion de jauges d'humeur |
+~~3–4 groupes (propriétaires, locataires, commerçants, périurbains)~~ → **un seul chiffre.** Simple et lisible ; le risque des jauges d'humeur est écarté. → [[Décisions arrêtées]] 16b
 
-Garde-fou si option 2 : les groupes se manifestent par des **positions sur des décisions concrètes**, jamais par des barres de satisfaction.
+**Ce que ce choix coûte** : les groupes servaient à obliger le joueur à choisir **pour qui** il fait la ville — le vrai geste politique de l'urbanisme. Un chiffre unique ne le demande plus.
 
-→ [[Questions ouvertes]]
+**Comment on le récupère sans jauges** : chaque décision **nomme qui perd**, dans son `effet_de_bord`. Les commerçants, les artisans qui livrent, les parents d'élèves — ils ne sont pas comptés, ils sont **dits**, et ils reviennent à l'écran. Le pluralisme passe dans le texte et dans l'image, pas dans quatre barres de couleur. C'est aussi ce qui tient la cible de ~10 000 mots. → [[Décisions]] · [[Ton et règles d'écriture]]
+
+⚠️ **Conséquence sur la rejouabilité** : un chiffre unique limite le **rythme**, jamais la **direction**. Il ne peut donc pas empêcher un joueur patient de tout accomplir — ce n'est pas lui qui porte l'arbitrage entre [[Milestones]]. Ce sont le sol et le temps.
 
 ## ❌ Écarté
 
 **L'échéance électorale.** Tentant et juste métier, mais ça bascule le jeu vers « se faire réélire » — un autre projet, beaucoup plus cynique. → [[Ton et règles d'écriture]]
 
-**Voir aussi** : [[Décisions]] · [[Boucle de jeu]]
+**Voir aussi** : [[Décisions]] · [[Boucle de jeu]] · [[Milestones]]

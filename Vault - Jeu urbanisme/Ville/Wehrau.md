@@ -1,8 +1,8 @@
 ---
 tags: [ville, prototype, level-design]
 statut: 🎯 périmètre du prototype
-maj: 2026-08-10
-habitants: 5350  # mesuré sur la carte ; 18000 était annoncé → Questions ouvertes n°13
+maj: 2026-08-11
+habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 ---
 
 # Wehrau
@@ -14,7 +14,7 @@ habitants: 5350  # mesuré sur la carte ; 18000 était annoncé → Questions ou
 
 > Les noms sont proposés, pas arrêtés — c'est la structure qui compte. → [[Questions ouvertes]]
 
-> ⚠️ **Le nombre d'habitants est en question.** Le vault annonçait 18 000 ; la carte, une fois les densités posées, en porte **5 350** sur 38,3 ha bâtis. Ce n'est pas une erreur de calibrage — il faudrait 470 hab/ha bâti pour tenir 18 000, quand un centre allemand dense plafonne vers 350. → [[Questions ouvertes]] n°13
+> ✅ **5 350 habitants, arrêté le 2026-08-11.** Le vault annonçait 18 000 ; la carte, une fois les densités posées, en porte 5 350 sur 38,3 ha bâtis, et c'est la carte qui gagne. Il aurait fallu 470 hab/ha bâti pour tenir 18 000, quand un centre allemand dense plafonne vers 350. Wehrau est une **petite ville de marché** — c'est le cadre le plus lisible pour l'histoire qu'on raconte, puisque la place du marché y est *la* place. → [[Décisions arrêtées]] 13d
 
 ## Ce qui ne va pas ici, en cinq phrases
 
@@ -48,7 +48,7 @@ Fichier : `QGIS/data/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
 | | |
 |---|---|
 | logements | 2 549 |
-| habitants | ~5 350 — [[Questions ouvertes]] n°13 |
+| habitants | ~5 350 — arrêté, [[Décisions arrêtées]] 13d |
 | surface bâtie | 38,3 ha (sur 92,8 ha d'emprise) |
 | places de stationnement | 4 587, dont 3 350 sur rue — **1,8 place par logement** |
 | franchissements de l'Ilse | 5 |
@@ -62,7 +62,24 @@ Fichier : `QGIS/data/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
 | rive droite (la ville) | 50 | 2 132 | 0,43 |
 | rive gauche (le faubourg) | 13 | 417 | 0,75 |
 
-**C'est le faubourg qui est exposé, pas la ville.** Treize îlots, un sixième du parc, un aléa presque deux fois supérieur — et personne pour peser dans un conseil municipal. Si le jeu s'ouvre sur une crue, c'est là qu'elle tombe. → [[Questions ouvertes]] n°15
+**C'est le faubourg qui est exposé, pas la ville.** Treize îlots, un sixième du parc, un aléa presque deux fois supérieur — et personne pour peser dans un conseil municipal.
+
+## L'ouverture : la crue
+
+✅ **Arrêté le 2026-08-11 : le jeu s'ouvre sur une crue, et elle tombe sur la rive gauche.** → [[Décisions arrêtées]] 23b
+
+Des ruines encore chaudes sur les treize îlots du faubourg, 417 logements touchés — et **une seconde crue annoncée**. C'est l'annonce qui fait le jeu : sans elle, « ne pas reconstruire » est un choix sentimental ; avec elle, c'est un calcul.
+
+Ce que la carte porte, si on veut chiffrer l'événement :
+
+| Niveau | Îlots touchés | Logements | Part du parc |
+|---|---|---|---|
+| +2 m | 23 | 935 | 37 % |
+| +3 m | 30 | 1 320 | 52 % |
+
+Ce n'est pas la ville industrielle sinistrée du brainstorm d'origine : c'est **le petit bout de ville d'en face**, celui qu'on pourrait décider de ne pas relever. Plus dur, et plus juste par rapport à ce que dit la géométrie — l'amont imperméabilise, l'aval encaisse.
+
+⚠️ **Ce qui reste à écrire** : quelles décisions le premier tour propose, et laquelle est « rendre à l'eau ». C'est le travail de la semaine 2. → [[Décisions]] · [[Plan 3 mois]]
 
 ## Le tissu
 

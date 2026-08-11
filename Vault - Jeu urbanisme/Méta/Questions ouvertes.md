@@ -1,30 +1,35 @@
 ---
 tags: [méta, questions, actif]
 statut: ⚠️ à traiter
+maj: 2026-08-11
 ---
 
 # Questions ouvertes
 
-## 🔴 Bloquante
+## ⏸️ Mise de côté volontairement
 
-### 1. Combien de temps dure une partie ?
+### 1. Combien de temps dure une partie ? — **reportée le 2026-08-11**
 
-**Trois heures ou trente ?**
+Ce n'est plus la question qu'on croyait. **Le jeu n'a pas de fin imposée** : la partie continue jusqu'à ce que le joueur s'ennuie et n'ait plus grand-chose à faire — Minecraft, Cities: Skylines. On recommence alors en prenant **d'autres décisions**, et c'est de là que vient la rejouabilité, pas d'une condition de victoire. → [[Décisions arrêtées]] 14c
 
-Ça bloque tout le reste : une spirale de déclin qui met quinze mois à s'installer ne veut pas dire la même chose dans une partie de 40 mois et dans une partie de 200. L'équilibrage du délai, des happenings, du déblocage — tout en dépend.
+**Hypothèse de travail en attendant** : ~20 ans d'évolution en ~2 h pour le prototype. **Non fixé, assumé comme tel** — de quoi écrire le classeur sans se mentir. → 14b
 
-*Sans réponse à ça, le classeur du mois 1 ne peut pas être équilibré.*
+Ce qui reste vrai et qu'il faudra reprendre un jour : ce n'est pas le temps passé au clavier qui commande l'équilibrage des délais, c'est le **nombre de mois simulés**. Une spirale de déclin qui met quinze mois à s'installer ne dit pas la même chose sur 60 mois et sur 240. À rouvrir quand les 5 parties de la semaine 3 auront donné des chiffres — pas avant.
+
+*Plus rien ne bloque le classeur de la semaine 2.*
 
 ## 🟠 Structurantes — à trancher pendant le mois 1
 
-### 2. Le capital politique : un chiffre ou plusieurs groupes ?
-Un chiffre = simple mais plat. 3–4 groupes = oblige à choisir **pour qui** on fait la ville, alimente le pluralisme des fins, mais risque de dégénérer en jauges d'humeur. → [[Ressources]]
+### ~~2. Le capital politique : un chiffre ou plusieurs groupes ?~~ ✅ **close le 2026-08-11**
+**Un chiffre.** Le risque des jauges d'humeur est écarté ; ce qu'on perd — le « pour qui on fait la ville » — se récupère en exigeant que chaque décision **nomme qui perd** dans son `effet_de_bord`. → [[Décisions arrêtées]] 16b · [[Ressources]]
 
 ### 3. D'où vient l'argent ?
 Budget fixe, ou recettes dépendant de la ville ? Le second est plus riche mais recrée une exponentielle. Contrepartie proposée : les charges d'entretien du réseau montent avec l'étalement. → [[Ressources]]
 
 ### 4. Le deuxième axe des fins
 Les trois archétypes s'effondrent sur un seul axe et deux d'entre eux sont photographiquement indiscernables. Il faut un axe orthogonal qui produise des **différences de forme urbaine**. → [[Fins et pluralisme]]
+
+⚠️ **Les [[Milestones]] ne répondent pas à cette question** — ils sont cumulables, les fins s'excluent. Mais l'un d'eux pourrait faire l'axe : **« personne n'a été chassé »**. Tous les autres jalons disent *quel domaine on optimise* ; celui-là dit *à quel prix*, et il pousse contre tous les autres au lieu de s'ajouter à côté. Proposé le 2026-08-11, non tranché.
 
 ### 5. Quelle est LA décision la plus satisfaisante ?
 Celle que le joueur montre en disant *« regarde ce que j'ai fait »*. Candidat le plus fort à l'échelle du jeu complet : **que faire de [[La Fonderie]]** — hors périmètre du prototype.
@@ -56,16 +61,13 @@ Le vault visait « deux ponts au maximum » pour que la rivière soit une vraie 
 
 **Ce que les données ajoutent** : les îlots ne se touchent **jamais** par-dessus l'eau — la ville privée de sa rivière tombe en deux morceaux. La coupure des îlots est totale ; seules les routes franchissent. Supprimer deux ponts est donc une opération purement routière, sans effet de bord.
 
-### 13. Combien d'habitants Wehrau porte-t-elle vraiment ?
-Le vault annonce **18 000**. La carte en porte **5 350**.
+### ~~13. Combien d'habitants Wehrau porte-t-elle vraiment ?~~ ✅ **close le 2026-08-11**
 
-Ce n'est pas un défaut de la table de densité — elle est calée sur du tissu allemand réel, et les densités y sont déjà hautes (cœur ancien 170 log/ha). Le calcul est simple : **38,3 ha bâtis**. Tenir 18 000 habitants demanderait 470 hab/ha bâti ; un centre allemand dense plafonne vers 350, et Wehrau a une frange pavillonnaire qui occupe autant de sol que tout son tissu mitoyen.
+**~5 350 habitants — pour le prototype.** La géométrie tranche : 38,3 ha bâtis ne portent pas 18 000 personnes, il y faudrait 470 hab/ha bâti quand un centre allemand dense plafonne vers 350. La carte est la source de vérité (décision 31b), et le chiffre annoncé s'aligne sur elle, pas l'inverse.
 
-**Recommandation : descendre Wehrau à ~5 500 habitants.** La géométrie est la source de vérité (décision 31b), et une petite ville de marché est le cadre le plus lisible pour l'histoire qu'on raconte — la place du marché rendue aux piétons pèse plus lourd dans une ville où c'est *la* place.
+La décision ne concerne **que [[Wehrau]]** : [[Vallmar]] garde ses 112 000 habitants, la question de l'échelle du jeu complet reste entière (n°11).
 
-Ce que ça coûte : le lycée devient une Realschule, la galerie de 1971 devient un supermarché avec parking en toiture, la barre de 1974 devient un petit Neubau. Aucun de ces trois n'est absurde à 5 500 habitants, mais aucun n'est évident non plus.
-
-**L'alternative** : garder 18 000 et admettre que la carte ne montre que le centre et sa première couronne. Mais les champs ceinturent la ville de tous les côtés et cinq radiales en sortent — la carte dit « ville entière », pas « centre-ville ». → [[Wehrau]]
+Ce que ça engage, et qui reste à écrire : le lycée devient une Realschule, la galerie de 1971 un supermarché avec parking en toiture, la barre de 1974 un petit Neubau. Aucun des trois n'est absurde à 5 350 habitants, aucun n'est évident non plus. → [[Décisions arrêtées]] 13d
 
 ### 14. Le grand ensemble de 1974 est à 200 m de l'eau
 Le vault écrit qu'il est « posé contre l'eau ». Dans les données, l'îlot 32 est à **199 m de l'Ilse**, altitude relative 3,2 m, aléa 0,53. Il est bien le plus en aval de toute la ville (fil de l'eau 0,84) et de loin le plus fragile socialement (0,85) — l'injustice tient. Mais il n'a pas les pieds dans l'eau.
@@ -74,14 +76,15 @@ Le vault écrit qu'il est « posé contre l'eau ». Dans les données, l'îlot 3
 
 L'alternative serait de déplacer la barre sur l'îlot 58 (39 m de l'eau, en aval) — mais il ne fait que 0,45 ha, trop petit pour un grand ensemble, et ça libère l'îlot le plus en aval de la carte.
 
-### 15. Le jeu s'ouvre-t-il sur une crue ?
-Le brainstorm du 2026-08-10 le propose : une inondation majeure, des ruines encore chaudes, et **une seconde crue annoncée** qui transforme « ne pas reconstruire » d'un choix sentimental en un calcul. C'est la proposition la plus forte du document, et rien dans le vault ne la contredit — mais rien ne l'a arrêtée non plus.
+### ~~15. Le jeu s'ouvre-t-il sur une crue ?~~ ✅ **close le 2026-08-11**
 
-Ce que la carte donnerait, si elle était retenue : à +2 m, **23 îlots et 935 logements** touchés (37 % du parc) ; à +3 m, 30 îlots et 1 320 logements (52 %).
+**Oui — et elle tombe sur la rive gauche.** Le jeu s'ouvre sur une inondation majeure, des ruines encore chaudes, et **une seconde crue annoncée** : c'est elle qui transforme « ne pas reconstruire » d'un choix sentimental en un calcul.
 
-⚠️ **Le brainstorm parle d'une crue de la rive droite avec ses usines. Ici ce serait la rive gauche** — 13 îlots, 417 logements, aléa moyen 0,75 contre 0,43 sur l'autre rive. Wehrau est une ville de rive **droite** avec un petit faubourg de rive gauche en face, et c'est ce faubourg qui est exposé. L'histoire change de nature : ce n'est plus « la ville industrielle sinistrée », c'est « le petit bout de ville d'en face qu'on pourrait décider de ne pas reconstruire ». Plus dur, et plus intéressant.
+Ce n'est pas la ville qui est frappée, c'est le **faubourg de rive gauche** — 13 îlots, 417 logements, aléa moyen 0,75 contre 0,43 sur l'autre rive. Le brainstorm d'origine imaginait une rive droite industrielle sinistrée ; la carte dit autre chose, et dit mieux : *le petit bout de ville d'en face qu'on pourrait décider de ne pas reconstruire*. Treize îlots, un sixième du parc, et personne pour peser dans un conseil municipal.
 
-**Recommandation : retenir le scénario, mais le rejouer sur la rive gauche.** À trancher avant d'écrire le classeur de la semaine 2, parce qu'un scénario d'amorce change la liste des décisions du premier tour. → [[Wehrau]] · [[Décisions]]
+Ce que la carte porte : à +2 m, **23 îlots et 935 logements** touchés (37 % du parc) ; à +3 m, 30 îlots et 1 320 logements (52 %).
+
+Ce qui reste à écrire, et qui est le travail de la semaine 2 : quelles décisions le premier tour propose, et laquelle est « rendre à l'eau ». → [[Décisions arrêtées]] 23b · [[Wehrau]] · [[Décisions]]
 
 ## 🟢 Peut attendre (réversible)
 

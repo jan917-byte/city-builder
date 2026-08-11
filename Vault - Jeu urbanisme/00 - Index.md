@@ -1,7 +1,7 @@
 ---
 tags: [moc, projet]
 statut: vivant
-maj: 2026-08-10
+maj: 2026-08-11
 ---
 
 # 🏙️ Projet jeu — city-builder de transformation urbaine
@@ -9,9 +9,9 @@ maj: 2026-08-10
 > Un city-builder PC où le joueur ne construit pas : il **décide**. Une ville moyenne ordinaire, voiture-dépendante, qu'on transforme sur 20 ans. Objectif : **inspirer**, pas simuler la bureaucratie.
 
 **Titre de travail** : aucun · candidats dans [[Marketing et Steam]]
-**Où j'en suis** : mois 1, semaine 1 — **la carte existe et elle est qualifiée**
+**Où j'en suis** : mois 1, **semaine 1 bouclée** — la carte est qualifiée et **simulable**
 **Périmètre du prototype** : [[Wehrau]], une petite ville entière 🎯 — **pas** un quartier de [[Vallmar]]
-**Prochaine action concrète** : la table d'adjacence, puis les attributs dérivés → [[Pipeline QGIS]]
+**Prochaine action concrète** : trancher le scénario d'amorce, puis écrire le classeur des 10 décisions → [[Questions ouvertes]] · [[Plan 3 mois]]
 
 ---
 
@@ -30,7 +30,8 @@ maj: 2026-08-10
 - [[Happenings]] — canicule, crue, révolte : urgence contre vision
 - [[Diagnostic et calques]] — l'activité principale entre deux décisions
 - [[Déclin et défaite]] — pas de game over, des quartiers qu'on perd
-- [[Fins et pluralisme]] — le problème non résolu des archétypes
+- [[Milestones]] — les jalons cumulables : zéro voiture, ville-éponge, autonomie… la rareté est dans le calendrier
+- [[Fins et pluralisme]] — le problème non résolu des archétypes. **À ne pas confondre avec les milestones**
 
 ## 🗺️ La ville
 
@@ -68,13 +69,26 @@ maj: 2026-08-10
 
 ## ⚠️ Les 3 trucs à trancher maintenant
 
-1. **Combien de temps dure une partie ?** → bloque l'équilibrage de tout le reste. Voir [[Questions ouvertes]]
-2. **Le capital politique est-il un chiffre ou plusieurs groupes ?** → [[Ressources]]
-3. **Le nom de la ville du prototype** — « Wehrau » et « l'Ilse » sont proposés, pas arrêtés. Se renomme en une commande tant que rien n'est codé. [[Wehrau]]
+✅ **Tranché le 2026-08-11** : la crue d'ouverture (rive gauche), 5 350 habitants, le capital politique en **un chiffre**, les [[Milestones]] cumulables, et 2 h de partie pour le prototype. → [[Décisions arrêtées]] 9b · 13d · 14b · 16b · 23b
 
-## 🔄 Révisions récentes (2026-08-10)
+**Plus rien ne bloque la semaine 2.** La durée d'une partie est **mise de côté volontairement** : le jeu n'a pas de fin imposée, on joue jusqu'à ce qu'il n'y ait plus grand-chose à faire, puis on recommence autrement. Hypothèse de travail : ~20 ans en ~2 h, non fixée. → [[Décisions arrêtées]] 14b · 14c
 
+1. **D'où vient l'argent ?** Budget fixe ou recettes dépendant de la ville. → [[Ressources]]
+2. **Le deuxième axe des fins** — le vieux problème, avec un candidat neuf : « personne n'a été chassé ». → [[Fins et pluralisme]]
+3. **Le nom** — « Wehrau » et « l'Ilse » sont proposés, pas arrêtés. Se renomment en une commande tant que rien n'est codé. → [[Wehrau]]
+
+## 🔄 Révisions récentes
+
+**2026-08-11**
+- Mise à jour de l'état affiché : la semaine 1 est bouclée.
+- **Quatre questions fermées** : la population de [[Wehrau]] (5 350), le **scénario d'ouverture — une crue sur la rive gauche**, le **capital politique en un chiffre**, et la durée d'une partie. → [[Décisions arrêtées]] 13d · 23b · 16b · 14b
+- **Système neuf : les [[Milestones]]** — des jalons cumulables, pas des fins. Ce qui les rend durs est un coût d'opportunité : *la rareté est dans le calendrier, pas dans les règles*. → 9b
+- ⏸️ **La durée d'une partie passe de bloquante à reportée** : le jeu n'a **pas de fin imposée**, la rejouabilité vient du redémarrage dans une autre direction. → 14c
+- Brainstorm importé sur les **références, le positionnement et l'UI** — non digéré, 9 décisions et 7 questions y attendent d'être remontées. → [[00 - Brainstorming]]
+
+**2026-08-10**
 - La **rivière est un îlot**, plus une ligne → [[Géométrie et données]]
 - ~~Tracé manuel, extraction abandonnée~~ → **la carte générée est la source de vérité**, le tracé manuel devient un outil de retouche → [[Pipeline QGIS]]
 - ~~Prototype = Altstadt~~ → **prototype = [[Wehrau]], petite ville entière**. Gain : l'amont/aval entre dans le prototype → [[Périmètre et coupes]]
 - **La ville est qualifiée** : 13 sous-types, 17 exceptions, quatre plaies de 1965 → [[Wehrau]]
+- **Les attributs dérivés sont calculés** : 12 par îlot, 4 par tronçon. La carte n'est plus un dessin, elle est **simulable** → [[Pipeline QGIS]]
