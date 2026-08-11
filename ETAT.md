@@ -24,8 +24,44 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 > — le réseau routier, lui, est **d'un seul tenant** : les cinq ponts existent enfin
 > — l'**axe de transit sort tout seul** de l'affectation de trafic, sans qu'on l'ait désigné
 
+## 🔴 À FAIRE EN PREMIER SUR LE PC : le raccorder au dépôt
+
+Constaté le 2026-08-11 : **le dossier du projet sur le PC n'est pas un clone de GitHub**, c'est le dossier d'origine. Tant que ce n'est pas réglé, `git pull` n'y fonctionne pas et les deux machines divergent en silence.
+
+**Étape 1 — savoir dans quel cas on est.** Dans le dossier du projet, sous Git Bash ou PowerShell :
+
+```
+git status
+```
+
+- Ça répond (branche, fichiers) → le dossier *est* un dépôt. Aller à l'étape 2.
+- `fatal: not a git repository` → aller à l'étape 3.
+
+**Étape 2 — le dossier est déjà un dépôt.** La distinction « original / clone » n'existe pas pour git : un dossier avec un `origin` configuré tire exactement comme un clone. Vérifier :
+
+```
+git remote -v
+```
+
+S'il affiche `https://github.com/jan917-byte/city-builder` → committer ce qui traîne, puis `git pull`. C'est fini.
+S'il n'affiche **rien** → pas de remote, deux historiques sans ancêtre commun. Ne pas bricoler un `git remote add` : aller à l'étape 3.
+
+**Étape 3 — repartir d'un clone frais.** C'est la voie sûre, à cause des pièges de `CLAUDE.md` §5 bis : un clone applique `.gitattributes` (LF) et récupère les noms accentués en NFC. Ré-initialiser git par-dessus l'original ferait apparaître tout le vault comme modifié, avec un risque de mojibake sur `Systèmes/`.
+
+1. Renommer l'original en sauvegarde (**ne pas le supprimer**) : `City Builder` → `City Builder - ORIGINAL`
+2. `git clone https://github.com/jan917-byte/city-builder.git` à côté
+3. Comparer les deux dossiers, rapatrier à la main **ce qui n'existe que dans l'original** — le travail fait sur le PC jamais poussé
+4. Committer + pousser depuis le clone, puis garder la sauvegarde quelques jours avant de l'archiver
+
+⚠️ Deux points de vigilance à l'étape 3 :
+- **`QGIS/data/*.gpkg`** : si la carte a été retouchée sur le PC après le dernier push, c'est cette version-là qui écrase celle du clone. Aucune fusion possible — il faut choisir.
+- **Ne pas recopier** `.obsidian/workspace.json`, `desktop.ini`, `folder-icon.ico` : gitignorés volontairement.
+
+*(Supprimer cette section une fois le PC raccordé.)*
+
 ## Prochaine action concrète
 
+0. 🔴 **Raccorder le PC au dépôt** — voir la section ci-dessus. Bloque le travail à deux machines
 1. ✅ ~~Trancher le scénario d'amorce et la population~~ — fait le 2026-08-11 → `Méta/Décisions arrêtées.md` 13d et 23b
 2. ☐ **Semaine 2 du plan : le classeur des 10 décisions.** Plus rien ne le bloque. Le premier tour part d'une crue sur la rive gauche : 13 îlots, 417 logements, une seconde crue annoncée
 3. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter, dont la colonne `signal_diagnostic` du classeur
