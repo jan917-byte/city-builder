@@ -49,8 +49,12 @@ for flux in (sys.stdout, sys.stderr):
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(ICI), "data")
-GPKG = os.path.join(DATA, "Prototype_qualifie.gpkg")
 BLANC = "--blanc" in sys.argv          # dry-run : calcule et affiche, n'écrit pas
+# `python 04_deriver_attributs.py une_copie.gpkg` — même convention
+# qu'apercu_carte.py : travailler sur une copie sans toucher au fichier de
+# travail. C'est la façon de relire un changement de TISSU avant de l'écrire.
+_ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
+GPKG = _ARGS[0] if _ARGS else os.path.join(DATA, "Prototype_qualifie.gpkg")
 
 # ==========================================================================
 # LE DESIGN — la table de correspondance, 13 lignes
@@ -64,29 +68,47 @@ BLANC = "--blanc" in sys.argv          # dry-run : calcule et affiche, n'écrit 
 #   canopee     part couverte par la canopée, 0..1
 #   riverain    fragilité du riverain, 0 = encaisse un choc, 1 = ne l'encaisse pas
 #   park        part de la surface de l'îlot occupée par du stationnement, 0..1
+#   emploi      emplois par hectare d'îlot — nul hors `industrie` et `mixte`
 
 # Les densités sont nettes (par hectare d'îlot, voirie exclue) et calées sur
 # du tissu allemand réel : emprise au sol × niveaux ÷ surface par logement.
 TISSU = {
-    #                       densite hauteur imperm canopee riverain  park
-    "coeur_ancien":       (   170,    4.0,   0.85,   0.08,   0.45,   0.05),
-    "front_commercant":   (   150,    4.0,   0.90,   0.04,   0.35,   0.10),
-    "maisons_de_ville":   (   100,    3.0,   0.68,   0.18,   0.50,   0.05),
-    "pavillonnaire":      (    20,    2.0,   0.42,   0.42,   0.25,   0.05),
-    "barre_1970":         (   130,    9.0,   0.55,   0.32,   0.85,   0.15),
-    "dalle_commerciale":  (     0,    2.0,   0.97,   0.00,   0.20,   0.60),
-    "equipement":         (     0,    3.0,   0.72,   0.18,   0.00,   0.20),
-    "friche_industrielle":(     0,    1.0,   0.80,   0.20,   0.00,   0.05),
-    "place_minerale":     (     0,    0.0,   1.00,   0.02,   0.00,   0.55),
-    "parc":               (     0,    0.0,   0.12,   0.70,   0.00,   0.00),
-    "jardins_familiaux":  (     0,    0.0,   0.06,   0.30,   0.00,   0.00),
-    "champ":              (     0,    0.0,   0.02,   0.04,   0.00,   0.00),
-    "riviere":            (     0,    0.0,   0.00,   0.00,   0.00,   0.00),
+    #                       densite hauteur imperm canopee riverain  park emploi
+    "coeur_ancien":       (   170,    4.0,   0.85,   0.08,   0.45,   0.05,  110),
+    "front_commercant":   (   150,    4.0,   0.90,   0.04,   0.35,   0.10,  140),
+    "maisons_de_ville":   (   100,    3.0,   0.68,   0.18,   0.50,   0.05,    0),
+    "pavillonnaire":      (    20,    2.0,   0.42,   0.42,   0.25,   0.05,    0),
+    "barre_1970":         (   130,    9.0,   0.55,   0.32,   0.85,   0.15,    0),
+    "dalle_commerciale":  (     0,    2.0,   0.97,   0.00,   0.20,   0.60,   70),
+    "equipement":         (     0,    3.0,   0.72,   0.18,   0.00,   0.20,   80),
+    "friche_industrielle":(     0,    1.0,   0.80,   0.20,   0.00,   0.05,   25),
+    "place_minerale":     (     0,    0.0,   1.00,   0.02,   0.00,   0.55,    0),
+    "parc":               (     0,    0.0,   0.12,   0.70,   0.00,   0.00,    0),
+    "jardins_familiaux":  (     0,    0.0,   0.06,   0.30,   0.00,   0.00,    0),
+    "champ":              (     0,    0.0,   0.02,   0.04,   0.00,   0.00,    0),
+    "riviere":            (     0,    0.0,   0.00,   0.00,   0.00,   0.00,    0),
 }
+
+# Les emplois. Un seul coefficient par sous-type, et il ne concerne que les
+# îlots `industrie` et `mixte` : le tissu résidentiel de Wehrau porte zéro
+# emploi, ce qui est une décision, pas un oubli.
+#
+# ⚠ La friche industrielle est une FRICHE. Lui donner 25 emplois/ha, c'est dire
+# qu'il reste un atelier et un dépôt dans une halle qui en abritait cent. Si on
+# monte ce chiffre, on efface la raison d'être des deux îlots.
+#
+# Ce que ces coefficients produisent, il faut le regarder en face : Wehrau ne
+# porte que 10,4 ha d'activité sur 38 ha bâtis. Quel que soit le coefficient,
+# la ville sortira à ~0,15 emploi par habitant — un dortoir dont les gens
+# partent travailler ailleurs. C'est cohérent avec l'axe de transit saturé et
+# avec la voiture-dépendance, mais ce n'est pas un réglage : c'est la géométrie
+# qui le dit. Pour en faire autre chose il faudrait du sol d'activité en plus.
 
 PERSONNES_PAR_LOGEMENT = 2.1
 SURFACE_PAR_PLACE = 25.0        # m² par place, accès compris
-HABITANTS_VAULT = 18000         # ce que le vault annonce — contrôlé, pas subi
+HABITANTS_VAULT = 5350          # ce que le vault annonce — contrôlé, pas subi.
+                                # C'était 18000 (Vallmar) : périmé depuis que le
+                                # prototype est Wehrau. → Décisions arrêtées 13d
 
 # --- l'eau ----------------------------------------------------------------
 # Pas de MNT : le relief est un choix de design. L'Ilse coule du nord au sud
@@ -463,10 +485,11 @@ def main():
 
     # ------------------------------------------------------ le tissu
     for fid, d in ilots.items():
-        dens, haut, imp, can, riv_frag, park = TISSU[d["st"]]
+        dens, haut, imp, can, riv_frag, park, emploi = TISSU[d["st"]]
         ha = d["surf"] / 1e4
         d["densite"] = float(dens)
         d["logements"] = int(round(dens * ha))
+        d["emplois"] = int(round(emploi * ha))
         d["hauteur"] = haut
         d["impermeabilise"] = imp
         d["canopee"] = can
@@ -497,6 +520,7 @@ def main():
 
     # ------------------------------------------------------ écriture
     COLS_I = [("densite", "REAL"), ("logements", "INTEGER"),
+              ("emplois", "INTEGER"),
               ("hauteur", "REAL"), ("impermeabilise", "REAL"),
               ("canopee", "REAL"), ("desserte_tc", "REAL"),
               ("riverain", "REAL"), ("stationnement", "INTEGER"),
@@ -514,11 +538,11 @@ def main():
                     pass
         for fid, d in ilots.items():
             cur.execute(
-                "UPDATE ilots SET densite=?, logements=?, hauteur=?, "
+                "UPDATE ilots SET densite=?, logements=?, emplois=?, hauteur=?, "
                 "impermeabilise=?, canopee=?, desserte_tc=?, riverain=?, "
                 "stationnement=?, altitude_relative=?, alea=?, "
                 "position_fil_eau=?, rive=? WHERE fid=?",
-                (d["densite"], d["logements"], d["hauteur"],
+                (d["densite"], d["logements"], d["emplois"], d["hauteur"],
                  d["impermeabilise"], d["canopee"], d["desserte_tc"],
                  d["riverain"], d["stationnement"], d["alt"], d["alea"],
                  d["fil"], d["rive"], fid))
@@ -537,23 +561,26 @@ def main():
     print("=" * W)
 
     print("\nLE TISSU")
-    print("  %-20s %3s %7s %6s %5s %5s %5s %5s %5s"
-          % ("sous_type", "n", "ha", "log.", "ét.", "imp", "can", "frag", "park"))
+    print("  %-20s %3s %7s %6s %6s %5s %5s %5s %5s %5s"
+          % ("sous_type", "n", "ha", "log.", "empl.", "ét.", "imp", "can",
+             "frag", "park"))
     par_st = {}
     for fid, d in ilots.items():
         par_st.setdefault(d["st"], []).append(fid)
-    tot_log = tot_park_i = 0
+    tot_log = tot_park_i = tot_emp = 0
     for st in sorted(par_st, key=lambda k: -sum(ilots[f]["logements"]
                                                 for f in par_st[k])):
         fs = par_st[st]
         ha = sum(ilots[f]["surf"] for f in fs) / 1e4
         log = sum(ilots[f]["logements"] for f in fs)
+        emp = sum(ilots[f]["emplois"] for f in fs)
         park = sum(ilots[f]["stationnement"] for f in fs)
         tot_log += log
+        tot_emp += emp
         tot_park_i += park
         t = TISSU[st]
-        print("  %-20s %3d %7.1f %6d %5.1f %5.2f %5.2f %5.2f %5d"
-              % (st, len(fs), ha, log, t[1], t[2], t[3], t[4], park))
+        print("  %-20s %3d %7.1f %6d %6d %5.1f %5.2f %5.2f %5.2f %5d"
+              % (st, len(fs), ha, log, emp, t[1], t[2], t[3], t[4], park))
 
     hab = tot_log * PERSONNES_PAR_LOGEMENT
     ha_bati = sum(d["surf"] for d in ilots.values()
@@ -574,6 +601,18 @@ def main():
               % (HABITANTS_VAULT / max(1.0, ha_bati)))
         print("       bâti pour tenir le chiffre. La géométrie est la source de")
         print("       vérité (décision 31b) : c'est le vault qu'il faut corriger.")
+
+    ha_act = sum(d["surf"] for d in ilots.values() if d["emplois"]) / 1e4
+    print("\nLES EMPLOIS")
+    print("  → %d emplois sur %.1f ha d'activité (industrie + mixte)"
+          % (tot_emp, ha_act))
+    print("    soit %.2f emploi par habitant." % (tot_emp / max(1.0, hab)))
+    if tot_emp / max(1.0, hab) < 0.35:
+        print("    ⚠️  Wehrau est un dortoir : la ville n'a que %.0f %% du sol"
+              % (100 * ha_act / max(1.0, ha_bati)))
+        print("       bâti en activité. Ce n'est pas un coefficient trop bas,")
+        print("       c'est la géométrie — il faudrait dessiner du sol d'activité.")
+        print("       Cohérent avec l'axe de transit saturé : les gens sortent.")
 
     print("\nL'EAU")
     for cote in ("gauche", "droite", "lit"):

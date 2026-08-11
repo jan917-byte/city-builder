@@ -1,0 +1,38 @@
+decision_id;portee;couche;variable;operation;valeur;commentaire
+D00;cible;ilots;alea;delta;0;aucun effet durable — c'est exactement le sujet du système de happenings
+D00;cible;ilots;logements;restaure;1.00;les gens rentrent chez eux, au même endroit, sous le même risque
+D01;cible;ilots;logements;restaure;1.00;on retrouve le nombre de logements d'avant la crue
+D01;cible;ilots;alea;delta;0;le sol n'a pas changé d'un centimètre
+D01;cible;ilots;impermeabilise;delta;0.05;on rebâtit plus dense qu'avant
+D02;cible;ilots;logements;restaure;0.85;les rez-de-chaussée sortent du logement
+D02;cible;ilots;alea;delta;-0.20;l'eau vient toujours, elle ne fait plus de dégâts
+D02;cible;ilots;hauteur;delta;0.5;on surélève d'un demi-niveau en moyenne
+D03;cible;ilots;logements;set;0;plus personne n'habite là
+D03;cible;ilots;alea;set;0.15;il reste un aléa — c'est un lit de crue, il est fait pour être inondé
+D03;cible;ilots;impermeabilise;set;0.05;
+D03;cible;ilots;canopee;set;0.35;prairie et saules
+D03;aval;ilots;alea;delta;-0.12;l'expansion de crue protège en aval — le seul effet positif à distance du prototype
+D03;ville;partie;logements_a_reloger;delta;=quantite;ce chiffre est la dette que D09 doit rembourser
+D04;cible;ilots;alea;delta;-0.30;les riverains protégés respirent
+D04;aval;ilots;alea;delta;0.10;la fausse bonne solution — l'eau descend plus vite et frappe plus bas
+D04;cible;routes;canopee;delta;-0.05;la berge est bétonnée
+D05;cible;routes;charge;set;0.05;
+D05;voisins;routes;charge;delta;0.35;le report — au-delà de 0.80 la rue voisine se dégrade
+D05;cible;ilots;riverain;delta;-0.05;
+D05;cible;routes;canopee;delta;0.10;
+D06;cible;routes;stationnement;set;0;
+D06;cible;routes;emprise_libre_m;delta;2.5;c'est ça, et rien d'autre, qui rend D07 et D08 possibles
+D06;cible;ilots;riverain;delta;0.04;ceux qui n'ont pas de garage encaissent
+D07;cible;routes;canopee;delta;0.25;
+D07;voisins;ilots;canopee;delta;0.10;
+D07;cible;routes;emprise_libre_m;delta;-1.5;l'arbre prend les mètres que la noue voulait
+D08;voisins;ilots;impermeabilise;delta;-0.20;
+D08;aval;ilots;alea;delta;-0.06;
+D08;cible;routes;emprise_libre_m;delta;-1.0;la noue prend les mètres que l'arbre voulait
+D09;cible;ilots;logements;delta;=quantite;
+D09;cible;ilots;densite;delta;35;
+D09;cible;ilots;impermeabilise;delta;0.12;
+D09;cible;ilots;riverain;delta;0.06;
+D09;ville;partie;logements_a_reloger;delta;-quantite;
+D10;cible;ilots;riverain;delta;0.08;la rénovation chasse ceux qu'elle devait protéger
+D10;cible;ilots;confort_ete;delta;0.20;⚠ variable absente du .gpkg — à dériver dans 04 si la décision survit

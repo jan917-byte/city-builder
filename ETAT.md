@@ -3,7 +3,7 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-11 (session 6)**
+**Dernière mise à jour : 2026-08-11 (session 7)**
 
 ---
 
@@ -62,10 +62,11 @@ S'il n'affiche **rien** → pas de remote, deux historiques sans ancêtre commun
 ## Prochaine action concrète
 
 0. 🔴 **Raccorder le PC au dépôt** — voir la section ci-dessus. Bloque le travail à deux machines
-1. ✅ ~~Trancher le scénario d'amorce et la population~~ — fait le 2026-08-11 → `Méta/Décisions arrêtées.md` 13d et 23b
-2. ☐ **Semaine 2 du plan : le classeur des 10 décisions.** Plus rien ne le bloque. Le premier tour part d'une crue sur la rive gauche : 13 îlots, 417 logements, une seconde crue annoncée
-3. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter, dont la colonne `signal_diagnostic` du classeur
-4. ☐ Export GeoJSON (mois 2)
+1. 🔴 **Lancer `04_deriver_attributs.py` sans `--blanc`.** La colonne `emplois` est écrite dans le script mais **pas encore dans le `.gpkg`** — tant que ce n'est pas fait, `05` et `06` s'arrêtent avec un message qui le dit. Relire d'abord la table `TISSU`, elle a une 7ᵉ colonne
+2. ☐ **Stabiliser l'état zéro avant de revenir aux décisions.** L'ordre a changé : la crue est une *perturbation d'un état*, et l'état n'existait pas. → `Classeur/README.md`
+3. ☐ **Semaine 2 du plan : le classeur.** Écrit et chiffré dans `Classeur/`, jamais joué — les valeurs sont posées, pas calibrées
+4. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
+5. ☐ Export GeoJSON (mois 2)
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
@@ -75,8 +76,12 @@ S'il n'affiche **rien** → pas de remote, deux historiques sans ancêtre commun
 `python "QGIS/scripts/apercu_carte.py" "QGIS/data/Prototype_qualifie.gpkg" --calque=alea` → n'importe quel attribut en dégradé (`charge`, `emprise_libre_m`, `densite`, `riverain`…)
 `python "QGIS/scripts/04_deriver_attributs.py" --blanc` → tout recalculer sans rien écrire
 
+`python "QGIS/scripts/06_etat_zero.py"` → **la ville entière dans une page** : 22 calques cliquables, les stocks à côté, un seul fichier HTML sans dépendance. C'est la boucle « je vois donc je corrige ».
+
 **Les outils** (dans `QGIS/scripts/`, aucun n'écrit dans la source) :
-`apercu_carte.py` la vue · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
+`apercu_carte.py` la vue en PNG · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `05_exporter_classeur.py` la carte en CSV · `06_etat_zero.py` la vue interactive · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
+
+`04` et `06` acceptent un chemin de `.gpkg` en argument — pour essayer un changement de `TISSU` sur une copie avant de l'écrire.
 
 ⚠️ **Chaîne à relancer dans l'ordre** : 02 → 03 → 04. Le 02 repart de `Vallmar2.gpkg` et écrase `Prototype_qualifie.gpkg`.
 
@@ -115,6 +120,14 @@ Le brainstorm du 2026-08-10 (`Brainstorming/…inondation-rive-droite.md`) a ser
 Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / adapter / rendre à l'eau), qui sont la semaine 2.
 
 ## Historique des sessions Claude
+
+### 2026-08-11 (session 7)
+- 🔄 **L'ordre a été corrigé en cours de route.** On a d'abord chiffré la crue (`Classeur/`, 11 décisions, 37 effets), puis constaté qu'une crue est une **perturbation d'un état** — et que l'état n'existait pas. Retour à l'état zéro. Le classeur reste, il repassera devant quand l'état sera stable.
+- ❌ **L'arbre de décision (Miro) écarté comme format de travail**, gardé comme croquis de complétude par happening. Un arbre ne porte ni le délai, ni le lieu, ni les liens `ouvre`/`ferme`. Le format retenu : des CSV `;` dans le dépôt — jamais de `.xlsx`, c'est un binaire qui ne fusionne pas.
+- 🆕 **`06_etat_zero.py`** : la ville entière dans **une page HTML autonome**, 22 calques cliquables, les stocks calculés à côté. Répond à « quand je vois, je corrige ».
+- 🆕 **Les emplois** : 7ᵉ colonne de `TISSU`, uniquement sur `industrie` + `mixte`. **878 emplois pour 5 353 habitants — 0,16 par habitant.** Ce n'est pas un coefficient trop bas : la ville n'a que 10,4 ha d'activité sur 38 ha bâtis. **Wehrau est un dortoir**, ce qui explique l'axe de transit saturé et les 0,86 place de parking par habitant. Pour changer ça il faut dessiner du sol d'activité, pas régler un chiffre.
+- 🐞 **`HABITANTS_VAULT` valait encore 18 000** (Vallmar) : le contrôle de fin de `04` criait à 30 % d'écart depuis que le prototype est Wehrau. Remis à 5 350.
+- 🆕 **`05_exporter_classeur.py`** : la carte en CSV (69 · 178 · 179 lignes) pour que le classeur ne devienne pas une quatrième source de vérité.
 
 ### 2026-08-11 (session 6)
 - 🎯 **Trois questions fermées par l'auteur** : population de Wehrau (~5 350, prototype seulement) · **crue d'ouverture sur la rive gauche** · **capital politique = un chiffre**. Consignées dans `Décisions arrêtées` (13d, 23b, 16b), fermées dans `Questions ouvertes` (13, 15, 2), répercutées dans `Wehrau.md`, `Ressources.md` et `00 - Index`.
