@@ -16,7 +16,7 @@ Ce n'est plus la question qu'on croyait. **Le jeu n'a pas de fin imposée** : la
 
 Ce qui reste vrai et qu'il faudra reprendre un jour : ce n'est pas le temps passé au clavier qui commande l'équilibrage des délais, c'est le **nombre de mois simulés**. Une spirale de déclin qui met quinze mois à s'installer ne dit pas la même chose sur 60 mois et sur 240. À rouvrir quand les 5 parties de la semaine 3 auront donné des chiffres — pas avant.
 
-*Plus rien ne bloque le classeur de la semaine 2.*
+*Le classeur est écrit et chiffré. Il attend d'être joué, au mois 2.* → [[Plan 3 mois]]
 
 ## 🟠 Structurantes — à trancher pendant le mois 1
 
@@ -38,6 +38,33 @@ Celle que le joueur montre en disant *« regarde ce que j'ai fait »*. Candidat 
 
 ### 6. Le premier clic et les 60 premières secondes
 Toujours sans réponse. Se découvre en jouant, pas en réfléchissant.
+
+## 🎯 Nées de la phase actuelle — la ville de t0
+
+### 16. Comment les bâtiments voisins se raccordent-ils ?
+
+Ouverte le 2026-08-11 par le choix de Townscaper. → [[Décisions arrêtées]] 42b
+
+Chez Townscaper, le charme vient d'une **grille de quadrilatères** sur laquelle les modules s'accrochent : murs, toits et arches se raccordent tout seuls entre voisins. Ici la géométrie est **l'îlot polygonisé** et la grille est réservée aux champs continus (27, 29) — donc rien ne se raccorde tout seul.
+
+Trois sorties, aucune tranchée :
+- **Assumer le non-raccord** — des volumes distincts qui se touchent sans se coudre. C'est le registre de la maquette d'urbaniste, et il est cohérent avec un jeu de décisions.
+- **Coudre au moment de la subdivision** — les parcelles d'un même îlot partagent leurs murs mitoyens par construction. Coûteux, et ça charge l'étape déjà la plus dure du pipeline.
+- **Une grille locale par îlot** — le substrat de Townscaper à l'intérieur du polygone. Contredit frontalement 27 et 29.
+
+Ne se tranche pas avant d'avoir regardé la maquette de masses : peut-être que le non-raccord ne choque pas. → [[Génération procédurale]]
+
+### 17. Wehrau est un dortoir — on assume ou on dessine du sol d'activité ?
+
+Ouverte le 2026-08-11 par l'arrivée des emplois. → [[Décisions arrêtées]] 50
+
+**0,16 emploi par habitant.** Une petite ville allemande comparable tourne entre 0,35 et 0,50. Ce n'est pas réglable : il n'y a que 10,4 ha d'activité sur 38 ha bâtis, et atteindre 0,35 demanderait une densité de quartier d'affaires sur un cœur ancien et deux friches.
+
+**Pour** l'assumer : ça explique l'axe de transit saturé et les 0,86 place par habitant, et ça donne une décision forte — reconvertir les friches devient le seul levier d'emploi de la ville.
+
+**Contre** : une ville sans travail est une ville sans matin. Si le jeu doit montrer des gens qui vont quelque part, il leur faut une destination dans le cadre.
+
+Se tranche en dessinant, dans QGIS, ou pas. → [[Wehrau]] · [[Géométrie et données]]
 
 ## 🟡 Contradictions à résoudre
 

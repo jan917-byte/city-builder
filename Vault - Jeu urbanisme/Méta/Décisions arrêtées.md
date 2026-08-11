@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-08-11 (population · crue d'ouverture · milestones · capital politique · durée de partie)
+maj: 2026-08-11 (population · crue d'ouverture · milestones · capital politique · durée de partie · **la ville de t0 passe devant** · Townscaper)
 ---
 
 # Décisions arrêtées
@@ -82,15 +82,20 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 | # | Décision | | Note |
 |---|---|---|---|
 | 38 | **Prototype papier rejeté** → QGIS + tableur | 🔓 | Ce qui compte est la vitesse d'itération |
-| 39 | Pas de Godot avant le mois 2 | 🔓 | |
+| 39 | ~~Pas de Godot avant le mois 2~~ → voir 39b | 🔓 | |
+| 39b | **Godot entre au mois 1**, pour le rendu seulement | 🔓 | 🔄 **révisé 2026-08-11.** La maquette de masses est de l'**affichage**, pas de la simulation : elle ne touche pas au noyau réservé par 40. Ce qui justifiait « pas de Godot avant le mois 2 » — ne pas coder un système de décisions non testé — reste entier, et le classeur attend toujours d'être joué → [[Plan 3 mois]] |
 | 40 | **J'écris le noyau de simulation moi-même** | 🔒 | Le reste = échafaudage jetable |
 | 41 | Godot 4 privilégié, C# isolé derrière une interface propre | 🟡 | Pas verrouillé |
-| 42 | Low-poly flat-shaded, référence Mini Motorways | 🔓 | Réversible |
+| 42 | ~~Low-poly flat-shaded, référence Mini Motorways~~ → voir 42b | 🔓 | Réversible |
+| 42b | **Référence de travail : Townscaper** — volumes doux, palette pastel, zéro texture, occlusion ambiante marquée | 🔓 | ✅ 2026-08-11. « Pour l'instant » : un registre de travail, pas un verrou. **On prend la couche rendu, on écarte la couche géométrie** — ce qui confirme le brainstorm du même jour plutôt que de le contredire : il validait déjà le rendu comme « la voie la moins chère vers le beau » et écartait la grille de quadrilatères. Trois conflits à tenir en tête : Townscaper ré-effondre le voisinage à chaque clic (contre 35), **il n'a pas de sol** — ni rue ni stationnement, soit le sujet entier d'ici — et il ne sait produire que du charme. Le non-raccord des bâtiments voisins devient un travail à faire → n°16. |
+| 42c | **Wehrau à t0 est un peu pastel, et grise quand même** — les bâtiments sont dans la palette dès la première image, **c'est le sol qui est minéral** | 🟡 | ✅ 2026-08-11. Écarte les deux erreurs symétriques : une ville de départ charmante ne laisse rien à transformer, une ville de départ grise et triste tombe dans le cliché dystopique que 5 et 8 interdisent. **La grisaille n'est pas une teinte, c'est une proportion** — 28 % d'imperméabilisé, 14 % de canopée, 4 587 places : elle est déjà dans les données, pas dans un filtre. Ce qui bouge en jeu est la **part minérale du sol**, dérivée de `impermeabilise` · `canopee` · `stationnement` ; les teintes et la lumière ne bougent **jamais**. Le joueur voit une ville qu'il aime bien, posée sur un sol qu'il n'aime pas → [[Direction artistique]] |
 | 43 | **Pixel art écarté** | 🔓 | Pas paramétrique |
 | 44 | Lancement **EN + DE** uniquement | 🔓 | |
 | 45 | i18n + glossaire **dès le jour 1** | 🔒 | |
 | 46 | Cible **~10 000 mots** de texte | 🔓 | |
 | 47 | Page Steam en ligne tôt comme test de marché | 🔓 | |
 | 48 | Pas de dépense avant le vertical slice | 🔓 | |
+| 49 | **La ville de t0 passe devant le système de décisions** — [[Wehrau]] doit exister, être crédible et se regarder en 3D avant qu'on décide quoi que ce soit | 🔓 | ✅ 2026-08-11. Constat qui l'a produite : une crue est la **perturbation d'un état**, et l'état n'existait pas — les effets chiffrés du classeur s'appliquaient à du vide. Le classeur reste écrit dans `Classeur/`, il attend son socle. Conséquence immédiate : les **emplois** entrent dans les données (50), la DA cesse d'être reportable (42b), et Godot entre au mois 1 (39b) → [[Plan 3 mois]] · [[Génération procédurale]] |
+| 50 | **Les emplois se dérivent du `sous_type`**, sur `industrie` et `mixte` uniquement | 🟡 | ✅ 2026-08-11. 7ᵉ colonne de la table de correspondance, comme le reste — rien de saisi à la main. **878 emplois pour 5 353 habitants, soit 0,16 par habitant.** Ce n'est pas un coefficient trop bas : Wehrau n'a que 10,4 ha d'activité sur 38 ha bâtis. **C'est un dortoir**, et ça explique l'axe de transit saturé et les 0,86 place de parking par habitant. En sortir demanderait de **dessiner du sol d'activité**, pas de régler un chiffre. Le tissu résidentiel porte zéro emploi : c'est une décision, pas un oubli → n°17 |
 
 **Voir aussi** : [[Questions ouvertes]] · [[00 - Index]]

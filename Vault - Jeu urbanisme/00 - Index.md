@@ -9,9 +9,10 @@ maj: 2026-08-11
 > Un city-builder PC où le joueur ne construit pas : il **décide**. Une ville moyenne ordinaire, voiture-dépendante, qu'on transforme sur 20 ans. Objectif : **inspirer**, pas simuler la bureaucratie.
 
 **Titre de travail** : aucun · candidats dans [[Marketing et Steam]]
-**Où j'en suis** : mois 1, **semaine 1 bouclée** — la carte est qualifiée et **simulable**
-**Périmètre du prototype** : [[Wehrau]], une petite ville entière 🎯 — **pas** un quartier de [[Vallmar]]
-**Prochaine action concrète** : trancher le scénario d'amorce, puis écrire le classeur des 10 décisions → [[Questions ouvertes]] · [[Plan 3 mois]]
+**Où j'en suis** : mois 1, semaines 1 et 2 bouclées — la carte est **simulable** et la ville a des **stocks**
+**Phase actuelle** 🎯 : **[[Wehrau]] à t0, crédible et regardable en 3D**, avant toute décision → [[Décisions arrêtées]] 49
+**Périmètre du prototype** : [[Wehrau]], une petite ville entière — **pas** un quartier de [[Vallmar]]
+**Prochaine action concrète** : la maquette de masses dans Godot, une semaine, pas plus → [[Génération procédurale]] · [[Plan 3 mois]]
 
 ---
 
@@ -43,9 +44,9 @@ maj: 2026-08-11
 
 - [[Géométrie et données]] — l'îlot comme entité, la rue comme adjacence
 - [[Pipeline QGIS]] — le GeoPackage, les trois scripts, ce qui reste à faire
-- [[Génération procédurale]] — parcelles persistantes, volumes paramétriques
+- [[Génération procédurale]] 🎯 — **la phase active** : la maquette de masses de t0
 - [[Moteur et architecture]] — Godot 4, GDScript vs C#
-- [[Direction artistique]] — low-poly, Mini Motorways, système de calques
+- [[Direction artistique]] — **Townscaper**, palette qui se réchauffe avec la ville
 
 ## 📦 Production
 
@@ -69,15 +70,22 @@ maj: 2026-08-11
 
 ## ⚠️ Les 3 trucs à trancher maintenant
 
-✅ **Tranché le 2026-08-11** : la crue d'ouverture (rive gauche), 5 350 habitants, le capital politique en **un chiffre**, les [[Milestones]] cumulables, et 2 h de partie pour le prototype. → [[Décisions arrêtées]] 9b · 13d · 14b · 16b · 23b
-
-**Plus rien ne bloque la semaine 2.** La durée d'une partie est **mise de côté volontairement** : le jeu n'a pas de fin imposée, on joue jusqu'à ce qu'il n'y ait plus grand-chose à faire, puis on recommence autrement. Hypothèse de travail : ~20 ans en ~2 h, non fixée. → [[Décisions arrêtées]] 14b · 14c
+✅ **Tranché le 2026-08-11** : la crue d'ouverture (rive gauche), 5 350 habitants, le capital politique en **un chiffre**, les [[Milestones]] cumulables, 2 h de partie, **la ville de t0 avant les décisions** (49) et **Townscaper** comme référence de travail (42b).
 
 1. **D'où vient l'argent ?** Budget fixe ou recettes dépendant de la ville. → [[Ressources]]
 2. **Le deuxième axe des fins** — le vieux problème, avec un candidat neuf : « personne n'a été chassé ». → [[Fins et pluralisme]]
 3. **Le nom** — « Wehrau » et « l'Ilse » sont proposés, pas arrêtés. Se renomment en une commande tant que rien n'est codé. → [[Wehrau]]
 
+Et deux questions neuves, nées de la phase actuelle : **le raccord des bâtiments voisins** (n°16) et **Wehrau est un dortoir, on assume ?** (n°17). → [[Questions ouvertes]]
+
 ## 🔄 Révisions récentes
+
+**2026-08-11 (soir)**
+- 🔄 **L'ordre a changé : la ville de t0 passe devant le système de décisions.** Une crue est la perturbation d'un état, et l'état n'existait pas. Le classeur est écrit et chiffré, il attend son socle. → [[Décisions arrêtées]] 49 · [[Plan 3 mois]]
+- 🎨 **Townscaper remplace Mini Motorways** comme référence de travail. On prend la couche rendu, on écarte la couche géométrie : sa grille de quadrilatères contredit l'îlot polygonisé, et il n'a **pas de sol** — ni rue ni stationnement, soit le sujet entier d'ici. → 42b
+- 🎨 **Wehrau à t0 est un peu pastel, et grise quand même** : les bâtiments sont dans la palette dès la première image, **c'est le sol qui est minéral**. La grisaille est une **proportion** — 28 % d'imperméabilisé, 14 % de canopée — pas une teinte posée. Ni cliché dystopique, ni tout donné d'avance. → 42c · [[Direction artistique]]
+- 💼 **Les emplois entrent dans les données** : 878 pour 5 353 habitants, soit **0,16 par habitant**. Pas un coefficient trop bas — 10,4 ha d'activité sur 38 ha bâtis. **Wehrau est un dortoir**, et ça explique l'axe de transit saturé. → 50 · n°17
+- 🖥️ **Godot entre au mois 1**, pour le rendu seulement — la maquette de masses ne touche pas au noyau de simulation. → 39b
 
 **2026-08-11**
 - Mise à jour de l'état affiché : la semaine 1 est bouclée.

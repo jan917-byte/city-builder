@@ -9,7 +9,13 @@
 
 ## Position dans le plan
 
-**Mois 1, semaine 1 bouclée. On entre en semaine 2** — le classeur des 10 décisions. → `Production/Plan 3 mois.md`
+🎯 **Phase actuelle : Wehrau à t0, crédible et regardable en 3D** — avant toute décision, avant toute crue. → `Méta/Décisions arrêtées.md` 49 · `Technique/Génération procédurale.md`
+
+L'ordre a changé le 2026-08-11 : le classeur a été écrit, puis on a constaté qu'une crue est **la perturbation d'un état** et que l'état n'existait pas. Le classeur reste dans `Classeur/`, il passe au mois 2.
+
+**Style graphique : Townscaper** — volumes doux, palette pastel, zéro texture. On prend le rendu, pas la grille. → `Décisions arrêtées` 42b
+
+**Wehrau à t0 : un peu pastel, et grise quand même.** Les bâtiments sont dans la palette dès la première image — c'est **le sol** qui est minéral, et il l'est parce qu'il l'est vraiment : 28 % d'imperméabilisé, 14 % de canopée, 4 587 places. La grisaille est une **proportion**, pas une teinte, donc ni cliché dystopique ni tout donné d'avance. → `Décisions arrêtées` 42c
 
 🔄 **Le prototype n'est plus l'Altstadt de Vallmar.** C'est **Wehrau**, une petite ville qu'on voit en entier. Vallmar reste la ville du jeu complet, intacte dans le vault. → `Ville/Wehrau.md`
 
@@ -63,10 +69,12 @@ S'il n'affiche **rien** → pas de remote, deux historiques sans ancêtre commun
 
 0. 🔴 **Raccorder le PC au dépôt** — voir la section ci-dessus. Bloque le travail à deux machines
 1. 🔴 **Lancer `04_deriver_attributs.py` sans `--blanc`.** La colonne `emplois` est écrite dans le script mais **pas encore dans le `.gpkg`** — tant que ce n'est pas fait, `05` et `06` s'arrêtent avec un message qui le dit. Relire d'abord la table `TISSU`, elle a une 7ᵉ colonne
-2. ☐ **Stabiliser l'état zéro avant de revenir aux décisions.** L'ordre a changé : la crue est une *perturbation d'un état*, et l'état n'existait pas. → `Classeur/README.md`
-3. ☐ **Semaine 2 du plan : le classeur.** Écrit et chiffré dans `Classeur/`, jamais joué — les valeurs sont posées, pas calibrées
-4. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
-5. ☐ Export GeoJSON (mois 2)
+2. 🎯 **La maquette de masses dans Godot 4.** Les 69 îlots extrudés à leur `hauteur`, la voirie en rubans, la vallée en terrain **continu** (rejouer la formule de pente de `04`, sinon terrain en escalier), la palette Townscaper. **Une semaine, pas plus.** La subdivision en parcelles est hors phase
+3. ☐ Il manque l'export : un `07_exporter_godot.py` — anneaux, polylignes, attributs, recentrés sur le milieu de l'emprise, en un seul JSON
+4. ☐ **Mois 2 : jouer le classeur.** Écrit et chiffré dans `Classeur/`, jamais joué — les valeurs sont posées, pas calibrées
+5. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
+
+**Critère de sortie de la phase 3D** : est-ce que la maquette m'a montré quelque chose que la page HTML ne montrait pas ? Si non, on arrête et on reprend le classeur.
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
@@ -98,6 +106,9 @@ S'il n'affiche **rien** → pas de remote, deux historiques sans ancêtre commun
 
 ## En attente d'une décision de l'auteur
 
+- [ ] **Le raccord des bâtiments voisins** (question n°16). Townscaper coud ses modules parce qu'il a une grille ; l'îlot polygonisé n'en a pas. Assumer le non-raccord, coudre à la subdivision, ou une grille locale par îlot — à regarder sur la maquette avant de trancher
+- [ ] **Wehrau est un dortoir** (question n°17). 0,16 emploi par habitant. On assume, ou on dessine du sol d'activité dans QGIS
+
 - [x] ✅ **Wehrau porte ~5 350 habitants** (2026-08-11, prototype seulement — Vallmar garde ses 112 000) → `Décisions arrêtées` 13d
 - [x] ✅ **Le jeu s'ouvre sur une crue, sur la rive gauche** (2026-08-11) → `Décisions arrêtées` 23b
 - [ ] **Le grand ensemble de 1974 est à 200 m de l'eau**, pas « contre l'eau ». J'ai corrigé la phrase du vault ; l'autre option est de déplacer la barre. → n°14
@@ -120,6 +131,10 @@ Le brainstorm du 2026-08-10 (`Brainstorming/…inondation-rive-droite.md`) a ser
 Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / adapter / rendre à l'eau), qui sont la semaine 2.
 
 ## Historique des sessions Claude
+
+### 2026-08-11 (session 7, suite)
+- 🎯 **La phase du prototype est réécrite dans le vault** : la ville de t0 passe devant le système de décisions (décision 49), Godot entre au mois 1 pour le rendu seul (39b), **Townscaper** remplace Mini Motorways (42b), les emplois sont consignés (50). Deux questions neuves : le raccord des bâtiments (16) et le dortoir (17). Fichiers touchés : `Direction artistique`, `Génération procédurale`, `Plan 3 mois`, `Décisions arrêtées`, `Questions ouvertes`, `00 - Index`.
+- ⚠️ **Les deux erreurs symétriques, tranchées par l'auteur (42c)** : une ville de départ charmante ne laisse rien à transformer ; une ville de départ grise et triste tombe dans le cliché dystopique interdit par 5 et 8. La sortie : **les bâtiments sont pastel, le sol est minéral**. Et la grisaille n'est pas un filtre, c'est une **proportion déjà présente dans les données** — 28 % d'imperméabilisé, 14 % de canopée, 4 587 places. Ce qui bouge en jeu est la part minérale du sol ; les teintes et la lumière ne bougent jamais.
 
 ### 2026-08-11 (session 7)
 - 🔄 **L'ordre a été corrigé en cours de route.** On a d'abord chiffré la crue (`Classeur/`, 11 décisions, 37 effets), puis constaté qu'une crue est une **perturbation d'un état** — et que l'état n'existait pas. Retour à l'état zéro. Le classeur reste, il repassera devant quand l'état sera stable.
