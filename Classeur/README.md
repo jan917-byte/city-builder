@@ -104,13 +104,16 @@ Une décision ne touche pas que sa cible. C'est ce qu'un arbre ne peut pas dessi
 - **11 décisions, pas 10.** La onzième est `D00 Indemniser et attendre` — le « ne rien transformer » de ton arbre, qui est la mécanique même des happenings. Si tu veux revenir à 10, la candidate au retrait est `D10` (rénovation thermique) : c'est la seule hors sujet par rapport à la crue, mais c'est aussi la seule qui couvre le thème `energie` et la seule boucle de gentrification.
 - **`confort_ete` n'existe pas** dans le `.gpkg` (dernière ligne d'`effets.csv`). Soit on l'ajoute à `04_deriver_attributs.py`, soit `D10` s'exprime autrement.
 - **`D04` cible les 21 tronçons de rive d'un coup.** Une digue devrait se poser par tronçon choisi — donc `parametre` devrait devenir une liste de `fid`. Laissé grossier volontairement : à trancher en jouant.
-- **`partie.csv` n'est pas calculée.** Les 60 lignes existent, l'état du mois 0 est réel, le reste est vide. C'est la boucle des §4 — celle que tu retraduiras en Godot au mois 2, et que `Technique/Moteur et architecture.md` réserve à ta main. Dis un mot si tu veux que je l'écrive quand même.
+- ~~**`partie.csv` n'est pas calculée.**~~ ✅ **`QGIS/scripts/08_jouer.py` la calcule** depuis le 2026-08-12. Le moteur est en Python, il ne touche pas au noyau Godot que `Technique/Moteur et architecture.md` réserve à ta main.
+- **`largeur_m >= 20` (cible de D05) rate quatre des cinq rues les plus chargées.** Les tronçons 13, 21, 54 et 55 font **18 m** et portent des charges de 0,87 à 1,00. « Retirer la voiture de l'axe de transit » n'attrape que le tronçon 11. Deux mètres de seuil décident si la décision existe.
 
 ## 7. La boucle de travail
 
 1. `python3 QGIS/scripts/05_exporter_classeur.py` si la carte a bougé
 2. ouvrir `decisions.csv`, changer un délai ou un seuil
-3. relancer les 60 mois
-4. regarder le mois 34, quand tombe la seconde crue
+3. `python3 QGIS/scripts/08_jouer.py --toutes` — relance les 60 mois de chaque partie
+4. ouvrir `QGIS/rendus/parties.html` et pousser le curseur
+
+Une partie est un fichier de `parties/` : trois colonnes, `mois_debut;decision_id;parametre`. Le résultat s'écrit à côté en `_resultat.csv`, et les parties se superposent dans la page.
 
 Le critère de la semaine 4 est le **ratio hésitation / ennui**, pas la justesse des chiffres.

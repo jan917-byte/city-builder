@@ -1,20 +1,30 @@
 ---
 tags: [production, plan, actif]
-statut: 🔄 réordonné le 2026-08-11 — la ville de t0 passe devant
-maj: 2026-08-11
+statut: 🔄 réordonné le 2026-08-12 — la ville crédible et belle passe devant les systèmes
+maj: 2026-08-12
 ---
 
 # Plan 3 mois
 
-> **Le principe qui gouverne tout** : tant que la question ouverte est *quelles décisions et quels effets*, la traiter dans un outil où **changer d'avis est gratuit**.
+> **Le principe qui gouverne tout** : tant que la question ouverte est *quelles décisions et quels effets*, la traiter dans un outil où **changer d'avis est gratuit**. Le classeur reste cet outil — il ne disparaît pas, il devient le banc d'essai. → [[Décisions arrêtées]] 39c
 
-## 🔄 L'ordre a changé le 2026-08-11
+## 🔄 L'ordre a changé deux fois
 
-Le plan enchaînait carte → décisions → Godot. On a écrit le classeur, puis constaté que **l'ordre était faux** : une crue est la perturbation d'un état, et l'état n'existait pas. Les effets chiffrés s'appliquaient à du vide.
+**Le 2026-08-11.** Le plan enchaînait carte → décisions → Godot. On a écrit le classeur, puis constaté que l'ordre était faux : une crue est la perturbation d'un état, et l'état n'existait pas. Les effets chiffrés s'appliquaient à du vide. → 49
 
-**La phase actuelle est donc : [[Wehrau]] à t0, crédible et regardable.** Une ville qui existe avant qu'on décide quoi que ce soit — et visible en 3D, parce que c'est en voyant qu'on corrige. → [[Décisions arrêtées]] 49
+**Le 2026-08-12.** La ville de t0 existe, elle se clique et elle se joue. Mais c'est encore **63 pâtés pleins** : un îlot extrudé n'est pas un ensemble de bâtiments. L'ordre change une seconde fois — **la ville crédible et belle passe devant les systèmes**, et les systèmes se traiteront ensuite **un par un**, pas en lot. → **51**
 
-Le classeur reste écrit et chiffré dans `Classeur/`. Il ne disparaît pas, il attend son socle.
+Ce que ça déplace : 49 posait le seuil à *« on doit sentir le lieu »*. Le seuil devient *« on doit avoir envie de la regarder, et croire qu'on y habite »*.
+
+## ⚠️ Ce qui remplace la limite d'une semaine
+
+L'ancien plan protégeait la 3D par un calendrier : *une semaine, et si j'ajoute des toits j'ai changé de projet*. **51 fait entrer les toits dans le plan**, donc cette phrase n'a plus d'objet. Le risque qu'elle couvrait, lui, est intact : la 3D est séduisante, chaque amélioration se voit, donc elle avance toujours.
+
+Ce qui la remplace est une **règle de production**, pas une date → 52 :
+
+> **Si je devais en faire 200, est-ce que je tiendrais ?** Si non, la tâche n'est pas de peindre l'asset, c'est d'écrire le générateur.
+
+Et son corollaire, déjà en vigueur : *si un rendu ne s'explique pas par une valeur de simulation, c'est un bug de design.*
 
 ## 📍 Mois 1 — QGIS + classeur
 
@@ -41,40 +51,58 @@ Deux d'entre eux n'existaient pas et disent quelque chose :
 
 Une page HTML autonome montre les 22 calques et les stocks côte à côte. C'est la boucle *je vois donc je corrige*, et c'est elle qui a fait apparaître les deux trous ci-dessus.
 
-### Semaine 3 — la ville en volume 🎯 *en cours*
+### Semaine 3 — la ville en volume ✅ *faite le 2026-08-11*
 
 **Une maquette de masses dans Godot 4.** Les 69 îlots extrudés à leur `hauteur`, la voirie en rubans, la vallée en terrain continu, la palette de [[Direction artistique]]. → [[Génération procédurale]]
 
-**Ce que ça doit prouver, et rien d'autre** : que Wehrau **existe** comme lieu. On doit sentir la vallée, voir la barre de 1974 comme un objet aberrant de 9 niveaux au milieu de rangées à 3, et trouver monstrueuses les rues à 20 et 22 m. Aucun de ces trois constats ne se lit sur un dégradé de couleurs.
+Les trois constats sont acquis : la barre de 1974 écrase ses voisines, le quai à 22 m recule trois îlots de cœur ancien, la place-parking se lit comme une rue qui a enflé. **La vallée, non** — elle ne se lit à aucune des quatre exagérations verticales, et le facteur n'y peut rien : 9 m de relief sur 898 m de large en axonométrie à angle fixe. Ça se réglera par l'ombre ou par la caméra.
 
-⚠️ **Limite de temps posée d'avance : une semaine.** Si j'ajoute des toits, j'ai changé de projet. La subdivision en parcelles est **hors phase** — c'est le point dur du pipeline, 2 à 4 semaines à lui seul.
+### Semaine 4 — la boucle entre dans Godot ✅ *faite le 2026-08-12*
 
-⚠️ Piège de la DA : Wehrau à t0 doit rester **ordinaire et un peu triste**. Une ville de départ charmante ne laisse rien à transformer. → [[Direction artistique]]
+On clique un îlot ou une rue, sa fiche s'ouvre, on décide de planter un alignement, et vingt ans passent : les arbres poussent, la canopée monte, la surchauffe baisse, le budget encaisse. → 39c
 
-### Semaine 4 — regarder et corriger
+Le critère de sortie de la semaine 3 est répondu par l'usage : **oui, la 3D a montré ce que la page HTML ne montrait pas.** Ce qui appelle la suite plutôt que l'arrêt.
 
-La maquette rend visibles des erreurs que les tableaux cachent. On corrige la table de correspondance et les exceptions, on relance, on regarde.
+## 🎯 Phase A — une ville crédible et belle
 
-Critère de sortie : **est-ce que la 3D m'a montré quelque chose que la page HTML ne montrait pas ?** Si non, on arrête la 3D et on reprend le classeur.
+C'est **la phase active**. Le seuil : *avoir envie de la regarder, et croire qu'on y habite.*
 
-## 📍 Mois 2 — le système de décisions
+Ce qui manque, dans l'ordre où ça change l'image :
 
-Le classeur `Classeur/` existe : 11 décisions, 37 effets, coûts calculés depuis la carte. Il n'a **jamais été joué** et ses valeurs sont posées, pas calibrées.
+| | Ce que c'est | |
+|---|---|---|
+| **1. Les parcelles** | 63 pâtés pleins → des bâtiments. C'est le **point dur du pipeline**, 2 à 4 semaines à lui seul, et c'est aussi ce qui sépare une maquette d'une ville | 🔴 |
+| **2. Les toits et les gabarits** | une fois les parcelles là : pentes, hauteurs qui varient dans l'îlot, décalages. Une **recette**, pas des assets | 🟡 |
+| **3. Le trafic** | `charge` existe déjà et sort tout seul de l'affectation — mais rien ne bouge à l'écran. Des voitures rendent la variable **visible**, et une rue saturée cesse d'être un chiffre | 🟡 |
+| **4. Les carrefours** | [[Génération procédurale]] les classait « le plus dur de tous ». 32f les a largement dissous : il n'y a plus de rubans à raccorder, il y a un vide qui se referme | 🟡 |
+| **5. Le sol** | un seul matériau paramétré par `impermeabilise`, `canopee`, usure — asphalte neuf, asphalte fissuré, pavé drainant, plateau piéton. Quatre curseurs qui **sont déjà des attributs** | 🟡 |
+| **6. La lumière et la vallée** | le relief ne se lit pas. C'est l'ombre et la caméra, pas l'exagération | 🟡 |
+| **7. L'ambiance** | piétons, mobilier, végétation d'îlot. **En dernier**, et par une réserve d'objets réutilisés | 🟢 |
 
-- Feuilles `chantiers` et `partie` (1 ligne = 1 mois, **60 mois**)
-- **5 parties jouées** par moi
-- Critère : **ratio hésitation / ennui**
-- ⚠️ Le **délai** est la variable centrale en temps continu. S'il n'est pas dans le classeur, je teste un jeu qui n'est pas le mien. → [[Chantiers et temps]]
-- ⚠️ Les décisions doivent se différencier **d'un îlot à l'autre** et **d'amont en aval**, sinon le pilier de spécificité spatiale n'est pas testé. → [[Périmètre et coupes]]
+⚠️ **Deux questions se rouvrent avec les parcelles**, et aucune n'est un détail : le **raccord des bâtiments voisins** (n°16), que la maquette de masses avait rendu sans objet, et **la parcelle comme entité persistante** (35) — à trancher *avant* la première ligne du générateur, irréversible en pratique.
 
-Puis, dans Godot : **le noyau de simulation est codé par Claude, je le teste et je reviens dessus** → [[Moteur et architecture]] · ghost preview · calques thématiques.
+⚠️ Piège de la DA, inchangé : Wehrau à t0 reste **ordinaire**. Une ville de départ charmante ne laisse rien à transformer. Ce qu'on rend beau est le **rendu**, pas le sujet. → [[Direction artistique]] 42c
 
-**Ce que je perds à jouer au tableur** : faire jouer quelqu'un d'autre. Les tests externes attendent le mois 3.
+## 🎯 Phase B — un indicateur, un système, une décision à la fois
 
-## 📍 Mois 3 — équilibrage + playtests
+Le classeur `Classeur/` existe : 11 décisions, 37 effets, coûts calculés depuis la carte. Il a été **joué pour la première fois le 2026-08-12** — trois parties, et il a immédiatement sorti une erreur de seuil que personne n'avait vue.
 
-- Équilibrage sur la base des 5 parties du mois 1
+🔄 **Ce qui change** : on ne traite plus les onze décisions en lot. On en prend **une**, on la mène jusqu'au bout — sa cible, son coût, ses effets, ce qu'elle donne à l'écran, contre quoi elle pousse — et on ne passe à la suivante qu'après. Même chose pour chaque indicateur.
+
+Pour chacune, quatre questions, et la dernière est la moins évidente :
+
+1. **Qu'est-ce que ça change à l'écran, sans texte ?** Si la réponse est « rien », c'est une ligne de tableur, pas une mécanique.
+2. **Est-ce que ça se différencie d'un îlot à l'autre, et d'amont en aval ?** Sinon le pilier de spécificité spatiale n'est pas testé. → [[Périmètre et coupes]]
+3. **Le délai est-il juste ?** C'est la variable centrale en temps continu. → [[Chantiers et temps]]
+4. **Contre quel autre système celle-ci pousse-t-elle ?** Si elle ne pousse contre rien, c'est un curseur, pas une mécanique. L'hésitation ne vient pas d'un coût opposé à un bénéfice — elle vient de boucles qui se contraignent l'une l'autre.
+
+Le critère reste le **ratio hésitation / ennui**, et il se lit maintenant en jouant dans Godot plutôt que dans un tableur.
+
+## 📍 Phase C — équilibrage + playtests
+
+- Équilibrage sur la base des parties jouées
 - **5 playtests externes** — première confrontation avec des non-urbanistes
+- **Ce que je perdais à jouer au tableur** — faire jouer quelqu'un d'autre — n'est plus perdu : la boucle est dans Godot
 
 ## 📓 Discipline
 
@@ -82,8 +110,10 @@ Un fichier [[Journal]] où je note à chaque session **ce que j'ai appris**, pas
 
 ## ⚠️ Les deux vrais risques
 
-**Que le classeur soit sauté.** Un mauvais système de décisions codé en Godot coûte trois semaines à corriger ; dans un classeur, une soirée. Le report du mois 1 au mois 2 est un report, pas un abandon.
+**Que le classeur soit sauté.** Un mauvais système de décisions codé en Godot coûte trois semaines à corriger ; dans un classeur, une soirée. 🟢 **Le risque a baissé, il n'a pas disparu** : le classeur a été joué, et la boucle qui vit maintenant dans Godot se recoupe avec lui à chaque fois. Ce qu'il faut tenir, c'est de **continuer à essayer les seuils dans le classeur avant de les coder**.
 
-**Que la 3D mange le calendrier.** Elle est séduisante et chaque amélioration se voit, donc elle avance toujours — c'est exactement ce qui la rend dangereuse. D'où la limite d'une semaine et le critère de sortie de la semaine 3.
+**Que la 3D mange le calendrier.** Elle est séduisante et chaque amélioration se voit, donc elle avance toujours. 🔴 **Ce risque, lui, vient d'être accepté volontairement** — c'est le sens de 51. Il n'est plus couvert par une date mais par la règle de production de 52 : *si je devais en faire 200, est-ce que je tiendrais ?*
+
+C'est un pari, et il vaut d'être nommé comme tel : **on paie du calendrier maintenant pour que chaque système travaillé ensuite se voie immédiatement.** Le pari est perdu si, dans six semaines, la ville est plus belle et qu'aucune décision de plus n'a été traitée.
 
 **Voir aussi** : [[Pipeline QGIS]] · [[Génération procédurale]] · [[Direction artistique]] · [[Décisions]] · [[Calendrier et budget]]

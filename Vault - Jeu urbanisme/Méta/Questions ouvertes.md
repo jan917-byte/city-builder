@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: ⚠️ à traiter
-maj: 2026-08-11
+statut: ⚠️ à traiter — n°16 redevenue vive, n°18 neuve
+maj: 2026-08-12
 ---
 
 # Questions ouvertes
@@ -39,7 +39,7 @@ Celle que le joueur montre en disant *« regarde ce que j'ai fait »*. Candidat 
 ### 6. Le premier clic et les 60 premières secondes
 Toujours sans réponse. Se découvre en jouant, pas en réfléchissant.
 
-## 🎯 Nées de la phase actuelle — la ville de t0
+## 🎯 Nées de la phase actuelle — une ville crédible et belle
 
 ### 16. Comment les bâtiments voisins se raccordent-ils ?
 
@@ -58,6 +58,8 @@ Ne se tranche pas avant d'avoir regardé la maquette de masses : peut-être que 
 
 Ce que la maquette change à l'énoncé : à l'échelle de l'îlot le raccord **ne se pose pas** — un pâté plein n'a pas de voisin à coudre. Le retrait de voirie (32f) a même donné aux îlots des faces franches séparées par la rue, ce qui rend le non-raccord lisible plutôt que raté. La question ne redeviendra vive qu'**à la subdivision en parcelles**, où deux parcelles d'un même îlot se toucheront vraiment.
 
+🔴 **Elle vient de redevenir vive, le 2026-08-12.** La subdivision en parcelles entre en phase (décision 51) : deux parcelles mitoyennes vont se toucher pour de bon. Des trois sorties, la première — *assumer le non-raccord* — était la seule compatible avec la maquette de masses ; elle ne l'est plus avec un tissu de maisons de ville, où le mitoyen **est** la forme urbaine. **Il faut trancher avant d'écrire le générateur de parcelles**, pas après. → [[Génération procédurale]] · [[Plan 3 mois]] phase A
+
 ### 17. Wehrau est un dortoir — on assume ou on dessine du sol d'activité ?
 
 Ouverte le 2026-08-11 par l'arrivée des emplois. → [[Décisions arrêtées]] 50
@@ -69,6 +71,21 @@ Ouverte le 2026-08-11 par l'arrivée des emplois. → [[Décisions arrêtées]] 
 **Contre** : une ville sans travail est une ville sans matin. Si le jeu doit montrer des gens qui vont quelque part, il leur faut une destination dans le cadre.
 
 Se tranche en dessinant, dans QGIS, ou pas. → [[Wehrau]] · [[Géométrie et données]]
+
+### 18. Le trafic : des voitures ou un flux ?
+
+Ouverte le 2026-08-12 par l'entrée du trafic visible en phase. → [[Décisions arrêtées]] 51 · [[Génération procédurale]]
+
+`charge` existe déjà, et **l'axe de transit en est sorti tout seul** sans qu'on le désigne. Mais rien ne bouge à l'écran : la variable la plus politique du jeu est un nombre dans une fiche.
+
+**La question n'est pas « est-ce qu'on montre le trafic »** — il faut le montrer, sinon « retirer la voiture de l'axe » reste une ligne de tableur. La question est *quoi instancier*, et elle est **coûteuse à inverser** :
+
+- **Des voitures individuelles** qui suivent un itinéraire. Le plus lisible, et le plus cher : il faut un graphe routier navigable, des files d'attente aux carrefours, une réserve d'objets réutilisés, et la boucle en tableaux parallèles dès qu'on dépasse quelques centaines.
+- **Un flux agrégé** — une densité qui se déplace le long du tronçon, proportionnelle à `charge`. Beaucoup moins cher, cohérent avec la **simulation agrégée** déjà arrêtée (34), et suffisant si les voitures ne sont qu'une couche d'ambiance.
+
+**Ce qui penche** : ici le spectacle est la **transformation urbaine**, pas la circulation. Un jeu dont le spectacle serait le trafic devrait payer les agents individuels ; celui-ci, probablement pas. Mais c'est à regarder à l'écran, pas à décider sur le papier — et une rue à `charge = 1,00` doit devenir désagréable à regarder, ce qu'un flux trop propre ne fera peut-être pas.
+
+⚠️ Ce qui est déjà sûr et ne dépend pas de la réponse : **jamais un nœud par voiture**, et une réserve d'objets réutilisés plutôt qu'une création/destruction continue.
 
 ## 🟡 Contradictions à résoudre
 

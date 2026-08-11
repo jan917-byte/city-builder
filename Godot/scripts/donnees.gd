@@ -34,10 +34,20 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 
 	var d: Dictionary = brut
 	for cle in ["meta", "palette", "terrain", "masses", "sols", "eau",
-			"voirie", "arbres", "reperes", "controles"]:
+			"voirie", "arbres", "alignements", "objets", "riverains",
+			"reperes", "controles"]:
 		if not d.has(cle):
-			_fatal("clé absente du JSON : `%s`" % cle)
+			_fatal("clé absente du JSON : `%s`\n" % cle
+				+ "Relancer :  python QGIS/scripts/07_exporter_godot.py")
 			return {}
+
+	var o: Dictionary = d["objets"]
+	if not o.has("ilots") or not o.has("routes"):
+		_fatal("`objets` doit porter `ilots` et `routes`")
+		return {}
+	if (o["ilots"] as Dictionary).size() != N_ILOTS:
+		push_warning("objets.ilots : %d fiches pour %d îlots"
+			% [(o["ilots"] as Dictionary).size(), N_ILOTS])
 
 	var t: Dictionary = d["terrain"]
 	var attendu: int = int(t["nx"]) * int(t["nz"])
@@ -62,9 +72,17 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 
 
 static func _valider_maillage(m: Dictionary, nom: String) -> String:
-	for cle in ["v", "n", "c", "i"]:
+	for cle in ["v", "n", "c", "i", "g"]:
 		if not m.has(cle):
 			return "maillage `%s` : clé `%s` absente" % [nom, cle]
+	# Une plage qui déborde donnerait un « index out of bounds » quarante
+	# lignes plus loin, sans dire de quel objet il s'agit.
+	var ni_total: int = (m["i"] as Array).size()
+	for g in (m["g"] as Array):
+		var gr: Array = g
+		if int(gr[1]) + int(gr[2]) > ni_total:
+			return "maillage `%s` : le groupe %d déborde (%d + %d > %d)" \
+				% [nom, int(gr[0]), int(gr[1]), int(gr[2]), ni_total]
 	var nv: int = (m["v"] as Array).size()
 	if (m["n"] as Array).size() != nv:
 		return "maillage `%s` : %d normales pour %d sommets" % [nom,

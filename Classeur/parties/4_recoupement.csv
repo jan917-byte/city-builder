@@ -1,0 +1,2 @@
+mois_debut;decision_id;parametre;note
+0;D07;6.0;le contrôle de recoupement avec Godot — même décision, même seuil, même mois. Les deux moteurs doivent donner la même canopée moyenne au mois 60.

@@ -1,7 +1,7 @@
 ---
 tags: [vision, risques]
 statut: vivant
-maj: 2026-08-11 (le piège « vibe-coder le noyau » retiré — 40b)
+maj: 2026-08-12 (le piège « vibe-coder le noyau » avait été retiré le 2026-08-11 — 40b)
 ---
 
 # Pièges connus
@@ -26,7 +26,7 @@ Liste des façons identifiées de rater ce projet. À relire avant chaque décis
 
 **🪤 La difficulté adaptative.** Explicitement déconseillée : compenser les mauvais choix vide les décisions de leur sens et contredit le message du jeu.
 
-**🪤 Les jauges d'humeur.** Si le capital politique devient des barres de satisfaction à remplir, c'est mort. Les groupes doivent se manifester par des **positions concrètes sur des décisions concrètes**.
+**🪤 Les jauges d'humeur.** Si le capital politique devient des barres de satisfaction à remplir, c'est mort. Les groupes doivent se manifester par des **positions concrètes sur des décisions concrètes**. *Democracy 4* est le cas d'école : des groupes d'électeurs réduits à un pourcentage de contentement, et le jeu devient l'optimisation de ces pourcentages. → [[Décisions]]
 
 **🪤 La deuxième monnaie.** Si le capital politique s'achète, le pluralisme s'effondre. Il se dépense et se **regagne par les résultats visibles**.
 

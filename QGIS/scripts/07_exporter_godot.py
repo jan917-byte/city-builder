@@ -84,10 +84,29 @@ GRAINE = 20260811          # le semis doit être le même à chaque export
 COLS_ILOTS = [
     "fid", "fonction", "sous_type", "surface_m2", "hauteur", "impermeabilise",
     "canopee", "stationnement", "altitude_relative", "alea",
-    "position_fil_eau", "rive", "densite", "logements",
+    "position_fil_eau", "rive", "densite", "logements", "emplois", "riverain",
+    "desserte_tc",
 ]
 COLS_ROUTES = ["fid", "hierarchie", "largeur_m", "emprise_libre_m", "charge",
                "canopee", "stationnement"]
+
+# Ce qui part dans `objets` : la fiche qu'on lit en cliquant, et l'état de
+# départ du noyau. Tout ce qui n'est pas là ne peut ni s'afficher ni évoluer.
+FICHE_ILOTS = [c for c in COLS_ILOTS if c != "fid"]
+FICHE_ROUTES = [c for c in COLS_ROUTES if c != "fid"] + ["longueur_m"]
+
+# La canopée d'un tronçon PLANTÉ DE BOUT EN BOUT — un arbre tous les
+# ESPACEMENT_ALIGNEMENT mètres. C'est l'échelle de lecture de `routes.canopee`,
+# et elle ne vaut PAS 1,0 : dans les données, la canopée de rue plafonne à
+# 0,18, sa médiane est 0,10, et aucun tronçon ne dépasse 0,20. Une rue n'est
+# pas un bois.
+#
+# ⚠️ Constante de RENDU, pas de design : elle ne change aucun chiffre de la
+# simulation, seulement le nombre d'arbres qu'on voit pour une canopée donnée.
+# À 0,40, une rue à 0,10 montre un arbre tous les 32 m (Wehrau aujourd'hui) et
+# la même rue après D07 (+0,25) en montre un tous les 9 m — un vrai alignement.
+# Le chiffre qui mérite l'œil de l'auteur, lui, est le +0,25 de `effets.csv`.
+CANOPEE_ALIGNEMENT_MAX = 0.40
 
 
 def verifier_colonnes(con, table, cols):
@@ -306,6 +325,26 @@ class Maillage(object):
         self.n = []
         self.c = []
         self.i = []
+        # Les plages d'indices, un groupe par objet. Godot en refait un nœud
+        # par îlot et par tronçon — c'est ce qui rend la ville CLIQUABLE, et
+        # c'est aussi ce qui permet de la teinter objet par objet.
+        self.groupes = []
+        self._fid = None
+        self._debut = 0
+
+    def marque(self, fid):
+        """Ouvre un groupe. Les triangles émis jusqu'au prochain `marque()`
+        appartiennent à `fid`. Les triangles émis SANS groupe ouvert n'en ont
+        aucun — ils resteront dans le maillage fusionné, sans être cliquables."""
+        self.fermer()
+        self._fid = fid
+        self._debut = len(self.i)
+
+    def fermer(self):
+        if self._fid is not None and len(self.i) > self._debut:
+            self.groupes.append([self._fid, self._debut,
+                                 len(self.i) - self._debut])
+        self._fid = None
 
     def triangle(self, p, q, r, coul, ao=(1.0, 1.0, 1.0)):
         """Émet un triangle dont la normale main droite est celle de (p, q, r).
@@ -323,15 +362,23 @@ class Maillage(object):
         for s, f in ((p, ao[0]), (r, ao[2]), (q, ao[1])):
             self.v.append(s)
             self.n.append(nn)
-            self.c.append((coul[0] * f, coul[1] * f, coul[2] * f))
+            # RGB = la teinte déjà occluse ; ALPHA = l'occlusion seule.
+            # Garder le facteur séparément coûte un float par sommet et permet
+            # de repeindre un objet en calque thématique sans perdre ce qui le
+            # POSE au sol — l'AO bakée est la fondation, pas un décor
+            # (Direction artistique l.21). Aucun matériau du projet n'active la
+            # transparence : ce canal est libre.
+            self.c.append((coul[0] * f, coul[1] * f, coul[2] * f, f))
         self.i.extend((base, base + 1, base + 2))
 
     def json(self, prec=2):
+        self.fermer()
         return {
             "v": [[round(c, prec) for c in s] for s in self.v],
             "n": [[round(c, 3) for c in s] for s in self.n],
             "c": [[round(c, 3) for c in s] for s in self.c],
             "i": self.i,
+            "g": self.groupes,
         }
 
     def __len__(self):
@@ -398,6 +445,28 @@ def main():
     print("EXPORT GODOT — %s" % os.path.basename(GPKG))
     print("  %d îlots, %d tronçons" % (len(ilots), len(routes)))
 
+    routes_par_fid = {d["fid"]: d for d in routes}
+    for d in routes:
+        d["longueur_m"] = round(sum(
+            math.hypot(b[0] - a[0], b[1] - a[1])
+            for part in d["parts"] for a, b in zip(part, part[1:])), 1)
+
+    # Le lien tronçon → îlots riverains. Il n'est dans AUCUNE table :
+    # `adjacences` est îlot↔îlot. Sans lui, une décision de voirie ne peut pas
+    # retomber sur les îlots qu'elle borde — donc pas de canopée qui monte
+    # autour d'un alignement planté.
+    # Emprunté à 08_jouer.py plutôt que réécrit : c'est le même critère
+    # géométrique que 04b, déjà éprouvé (178/178, zéro orphelin).
+    J8 = import_module("08_jouer")
+    r2i, _ = J8.lier_routes_ilots(
+        {f: [d["brut"]] for f, d in ilots.items()},
+        {d["fid"]: d["parts"] for d in routes})
+    orphelins = [d["fid"] for d in routes if d["fid"] not in r2i]
+    print("  riverains : %d tronçons sur %d ont au moins un îlot (%d orphelins)"
+          % (len(r2i), len(routes), len(orphelins)))
+    if orphelins:
+        print("    ⚠️  %s" % ", ".join(str(f) for f in orphelins[:12]))
+
     # ------------------------------------------------------- le recentrage
     xs = [p[0] for d in ilots.values() for p in d["brut"]]
     ys = [p[1] for d in ilots.values() for p in d["brut"]]
@@ -456,11 +525,13 @@ def main():
 
         if st == "riviere":
             n_eau += 1
+            eau.marque(fid)
             _cap_plat(eau, an, 0.0, coul, G)
             continue
 
         if haut > 0.0:
             n_masse += 1
+            masses.marque(fid)
             a, b, c, e = _masse(masses, an, d, terrain, coul, G)
             murs_ok += a
             murs_tot += b
@@ -472,6 +543,7 @@ def main():
             canopee_perdue += (d["canopee"] or 0.0) * (d["surface_m2"] or 0.0)
         else:
             n_sol += 1
+            sols.marque(fid)
             _sol(sols, an, terrain, coul, G)
             arbres.extend(_semer(an, d, terrain, rng))
 
@@ -489,6 +561,7 @@ def main():
     voirie = Maillage()
     coul_ch = PAL.vers_lineaire(PAL.MINERAL)
     n_seg = 0
+    alignements = {}
     for d in routes:
         h = d["hierarchie"]
         larg = d["largeur_m"] or 0.0
@@ -496,19 +569,38 @@ def main():
         if larg <= 0.0:
             continue                            # 4 tronçons `rive` à 0 m
         ch = min(ch, larg)
+        voirie.marque(d["fid"])
         for part in d["parts"]:
             for a, b in zip(part, part[1:]):
                 if math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-9:
                     continue                    # un segment de longueur nulle
                 _ruban(voirie, a, b, ch, terrain, coul_ch, G)
                 n_seg += 1
-        arbres.extend(_alignement(d, terrain, rng))
+        emplacements = _alignement(d, terrain, rng)
+        if emplacements:
+            alignements[str(d["fid"])] = emplacements
+    n_align = sum(len(v) for v in alignements.values())
+    plantes_t0 = sum(1 for f, v in alignements.items()
+                     for a in v
+                     if a[5] <= (routes_par_fid[int(f)]["canopee"] or 0.0))
     print("  voirie : %d segments, %d triangles" % (n_seg, len(voirie)))
-    print("  arbres : %d" % len(arbres))
+    print("  arbres : %d semés dans les îlots" % len(arbres))
+    print("  alignements : %d emplacements sur %d tronçons plantables, "
+          "%d occupés à t0"
+          % (n_align, len(alignements), plantes_t0))
     print("  canopée non représentable (îlots bâtis) : %.1f ha"
           % (canopee_perdue / 1e4))
 
     # -------------------------------------------------------------- écrire
+    for m in (masses, sols, eau, voirie):
+        m.fermer()
+    n_groupes = sum(len(m.groupes) for m in (masses, sols, eau, voirie))
+    n_gi = len(masses.groupes) + len(sols.groupes) + len(eau.groupes)
+    print("  groupes cliquables : %d îlots sur %d, %d tronçons sur %d"
+          % (n_gi, len(ilots), len(voirie.groupes), len(routes)))
+    if n_gi != len(ilots):
+        print("    ⚠️  des îlots ne seront pas cliquables — anneau dégénéré ?")
+
     doc = {
         "meta": {
             "source": os.path.basename(GPKG),
@@ -535,12 +627,30 @@ def main():
         # aucune conversion de coordonnées, c'est la règle du contrat.
         "arbres": [[round(c, 2) for c in G(a[0], a[1], a[2])]
                    + [round(a[3], 3), round(a[4], 3)] for a in arbres],
+        # Les emplacements d'alignement, avec leur seuil de canopée. Godot en
+        # fait UN MultiMesh et n'affiche que ceux dont le seuil est atteint —
+        # c'est là que le temps se voit sans lire un chiffre.
+        "alignements": {
+            f: [[round(c, 2) for c in G(a[0], a[1], a[2])]
+                + [round(a[3], 3), round(a[4], 3), round(a[5], 4)] for a in v]
+            for f, v in alignements.items()
+        },
+        # La fiche qu'on lit en cliquant, et l'état de départ du noyau.
+        "objets": {
+            "ilots": {str(f): {c: d[c] for c in FICHE_ILOTS}
+                      for f, d in ilots.items()},
+            "routes": {str(d["fid"]): {c: d[c] for c in FICHE_ROUTES}
+                       for d in routes},
+        },
+        "riverains": {str(f): sorted(v) for f, v in r2i.items()},
         "reperes": _reperes(ilots, routes, cx, cy),
         "controles": {
             "ilots": len(ilots), "routes": len(routes),
             "masses": n_masse, "sols": n_sol, "eau": n_eau,
             "triangles": len(masses) + len(sols) + len(eau) + len(voirie),
             "arbres": len(arbres),
+            "alignements": n_align,
+            "groupes": n_groupes,
         },
     }
 
@@ -678,12 +788,22 @@ def _semer(anneau, d, terrain, rng):
 
 
 def _alignement(d, terrain, rng):
-    """Les arbres d'alignement, depuis `routes.canopee` — « quasi nul à t0 ».
-    C'est le diagnostic : la plupart des tronçons n'auront aucun arbre, et
-    c'est exactement ce qu'il faut voir."""
-    can = d["canopee"] or 0.0
+    """TOUS les emplacements d'alignement d'un tronçon — ceux qui existeraient
+    si on plantait — chacun avec le **seuil de canopée** à partir duquel il est
+    occupé. Sortie : [x, y, alt, échelle, lacet, seuil].
+
+    ⚠ Ce n'est plus ce que faisait cette fonction. Avant, elle ne sortait que
+    les arbres de t0 et leur POSITION dépendait de la densité
+    (`t = L·(k+0,5)/n`) : faire monter la canopée redistribuait tout, rien ne
+    poussait, l'alignement sautait d'un endroit à l'autre. Maintenant les
+    positions sont fixes et seul le seuil décide — un arbre planté reste où il
+    est, et les suivants se glissent entre.
+
+    Un tronçon n'est plantable que s'il reste au moins 1 m entre la chaussée et
+    la limite d'emprise. Les ruelles du cœur ancien ne le sont jamais : l'effet
+    est spatialement inégal par construction, et c'est le sujet."""
     larg = d["largeur_m"] or 0.0
-    if can <= 0.0 or larg <= 0.0:
+    if larg <= 0.0:
         return []
     ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
     marge = (larg - ch) / 2.0
@@ -697,15 +817,21 @@ def _alignement(d, terrain, rng):
             if L < 1e-9:
                 continue
             ux, uy = dx / L, dy / L
-            n = int(can * L / ESPACEMENT_ALIGNEMENT)
+            # Le nombre d'EMPLACEMENTS est la densité maximale — un arbre tous
+            # les ESPACEMENT_ALIGNEMENT mètres — et ne dépend d'aucune canopée.
+            # C'est le SEUIL, plus bas, qui décide lesquels sont occupés.
+            n = int(L / ESPACEMENT_ALIGNEMENT)
             for k in range(n):
                 t = L * (k + 0.5) / max(1, n)
                 cote = 1.0 if rng.random() < 0.5 else -1.0
                 ox = -uy * cote * (ch / 2.0 + marge / 2.0)
                 oy = ux * cote * (ch / 2.0 + marge / 2.0)
                 x, y = a[0] + ux * t + ox, a[1] + uy * t + oy
+                # Seuil uniforme sur [0, CANOPEE_ALIGNEMENT_MAX] : à canopée
+                # `c`, la part occupée vaut `c / MAX`. À MAX, tout est planté.
                 out.append([x, y, terrain.alt(x, y),
-                            rng.uniform(0.8, 1.2), rng.uniform(0.0, 6.2832)])
+                            rng.uniform(0.8, 1.2), rng.uniform(0.0, 6.2832),
+                            rng.uniform(0.0, CANOPEE_ALIGNEMENT_MAX)])
     return out
 
 

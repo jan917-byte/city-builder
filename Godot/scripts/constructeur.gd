@@ -34,7 +34,7 @@ static func maillage(d: Dictionary) -> ArrayMesh:
 		var c: Array = cs[k]
 		v[k] = Vector3(a[0], a[1], a[2])
 		nm[k] = Vector3(b[0], b[1], b[2])
-		co[k] = Color(c[0], c[1], c[2])
+		co[k] = _couleur(c)
 
 	var i := PackedInt32Array()
 	i.resize(idx.size())
@@ -42,6 +42,48 @@ static func maillage(d: Dictionary) -> ArrayMesh:
 		i[k] = int(idx[k])
 
 	return _surface(v, nm, co, i)
+
+
+## Une TRANCHE du même maillage : les `nb` indices à partir de `debut`, avec
+## les sommets qu'ils citent et rien d'autre.
+##
+## C'est ce qui donne un nœud par îlot et par tronçon, donc un objet qu'on peut
+## cliquer, surligner et teinter. Les plages viennent de `groupes` (clé `g`),
+## posées par 07 au fil de l'émission — Godot ne redécoupe rien, il lit.
+static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
+	var vs: Array = d["v"]
+	var ns: Array = d["n"]
+	var cs: Array = d["c"]
+	var idx: Array = d["i"]
+
+	# Les indices citent des sommets répartis dans TOUT le tableau : il faut
+	# les renuméroter, sinon la tranche traîne les 40 000 sommets des autres.
+	var renumerote := {}
+	var v := PackedVector3Array()
+	var nm := PackedVector3Array()
+	var co := PackedColorArray()
+	var i := PackedInt32Array()
+	i.resize(nb)
+	for k in nb:
+		var src: int = int(idx[debut + k])
+		if not renumerote.has(src):
+			renumerote[src] = v.size()
+			var a: Array = vs[src]
+			var b: Array = ns[src]
+			v.append(Vector3(a[0], a[1], a[2]))
+			nm.append(Vector3(b[0], b[1], b[2]))
+			co.append(_couleur(cs[src]))
+		i[k] = renumerote[src]
+
+	return _surface(v, nm, co, i)
+
+
+## RGB = la teinte déjà occluse, ALPHA = l'occlusion seule. C'est le shader de
+## `materiaux.gd` qui s'en sert pour repeindre un objet en calque thématique
+## sans perdre l'AO. Les exports d'avant n'ont que trois canaux : on retombe
+## sur 1,0, ce qui donne exactement l'ancien rendu.
+static func _couleur(c: Array) -> Color:
+	return Color(c[0], c[1], c[2], 1.0 if c.size() < 4 else float(c[3]))
 
 
 ## Le terrain, depuis le champ d'altitude. La grille est régulière, donc les

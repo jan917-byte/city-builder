@@ -3,15 +3,21 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-12 (session 10)**
+**Dernière mise à jour : 2026-08-12 (session 11)**
 
 ---
 
 ## Position dans le plan
 
-🎯 **Phase actuelle : Wehrau à t0, crédible et regardable en 3D** — ✅ **la maquette existe et se lance** (`Godot/`) — avant toute décision, avant toute crue. → `Méta/Décisions arrêtées.md` 49 · `Technique/Génération procédurale.md`
+🎯 **Phase actuelle : une ville crédible et belle.** L'ordre a changé une seconde fois le 2026-08-12 → `Décisions arrêtées` **51**. D'abord Wehrau qu'on a envie de regarder — **parcelles, toits, trafic, sol**. *Ensuite* chaque indicateur, système et décision repris **un par un**, plus en lot de onze.
 
-L'ordre a changé le 2026-08-11 : le classeur a été écrit, puis on a constaté qu'une crue est **la perturbation d'un état** et que l'état n'existait pas. Le classeur reste dans `Classeur/`, il passe au mois 2.
+Ce que ça déplace : 49 mettait déjà la ville avant les décisions, mais visait une maquette de masses et posait le seuil à « sentir le lieu ». Le seuil devient **« avoir envie de la regarder, et croire qu'on y habite »**. Ce qu'on regarde aujourd'hui, c'est encore **63 pâtés pleins**.
+
+⚠️ **La limite « une semaine, pas de toits » tombe** — 51 fait entrer les toits dans le plan. Le risque qu'elle couvrait, lui, est intact : la 3D avance toujours parce que chaque amélioration se voit. Ce qui la remplace est une règle de production, pas une date → **52** : *si je devais en faire 200, est-ce que je tiendrais ?* Si non, on n'écrit pas l'asset, on écrit le générateur.
+
+✅ **La boucle est dans Godot** : on clique un îlot ou une rue, on lit sa fiche, on décide de planter un alignement, et vingt ans passent — les arbres poussent, la canopée monte, la surchauffe baisse, le budget encaisse. → `Godot/README.md` · `Décisions arrêtées` **39c**
+
+Le classeur reste le **banc d'essai** — l'endroit où changer d'avis coûte une soirée. Un contrôle de recoupement compare les deux moteurs à chaque fois, sinon la duplication ment sans qu'on le sache.
 
 **Style graphique : Townscaper** — volumes doux, palette pastel, zéro texture. On prend le rendu, pas la grille. → `Décisions arrêtées` 42b
 
@@ -32,14 +38,31 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## Prochaine action concrète
 
-1. ✅ **Les deux écritures dans le `.gpkg` sont faites** (par l'auteur, 2026-08-12) : colonne `emplois` = **878**, couche `emprises` = **69 lignes**. Vérifié en lecture seule. Reste à **regarder `emprises` dans QGIS par-dessus `ilots`** — le contrôle à l'œil n'a pas été fait.
-2. 🎯 **Regarder la maquette et trancher trois choses.** `python "QGIS/scripts/07_exporter_godot.py"` puis ouvrir `Godot/` dans Godot 4.7 (F5).
-   · **la vallée se sent-elle à ×1 ?** touches `1` `2` `3` `4` — c'est le seul arbitrage qui ne se fait pas dans le vide
-   · **le retrait est-il juste ?** 17,6 % de voirie, trois îlots de cœur ancien reculés de 22 m par le quai
-   · **question n°16** (le raccord des voisins) : la maquette est son instrument, elle est prête
-3. ☐ **Le critère de sortie**, et il compte plus que le reste : *est-ce que la 3D m'a montré quelque chose que la page HTML ne montrait pas ?* Si non, **on arrête la 3D et on reprend le classeur — et ce sera un bon résultat, pas un échec**. ⚠️ « Si j'ajoute des toits, j'ai changé de projet »
-4. ☐ **Mois 2 : jouer le classeur.** Écrit et chiffré dans `Classeur/`, jamais joué — les valeurs sont posées, pas calibrées
-5. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
+### Phase A — la ville crédible et belle
+
+1. 🔴 **Trancher deux choses AVANT d'écrire le générateur de parcelles.** Les deux sont irréversibles en pratique une fois la première ligne écrite :
+   · **La question n°16 — le raccord des bâtiments voisins.** La maquette de masses l'avait endormie (un pâté plein n'a pas de voisin à coudre) ; les parcelles la réveillent. Dans un tissu de maisons de ville, le mitoyen **est** la forme urbaine. Trois sorties dans `Questions ouvertes`, aucune tranchée
+   · **La décision 35 — la parcelle est l'entité persistante, seedée individuellement.** Arrêtée 🔒 mais jamais mise à l'épreuve du code. C'est elle qui fait que densifier un secteur ne réinitialise pas l'îlot entier — donc que la mémoire visuelle de la transformation survit
+2. 🎯 **La subdivision de l'îlot en parcelles.** Le point dur du pipeline, **2 à 4 semaines** annoncées, et ce qui sépare 63 pâtés d'une ville. → `Technique/Génération procédurale.md`
+3. ☐ **Les toits et les gabarits**, une fois les parcelles là. Une recette, pas des assets.
+4. ☐ **Le trafic.** `charge` existe et l'axe de transit en sort tout seul — mais rien ne bouge à l'écran. ⚠️ **Question n°18 à trancher : des voitures ou un flux ?** Coûteuse à inverser. Ce qui penche : ici le spectacle est la transformation urbaine, pas la circulation
+5. ☐ **Le sol** — un matériau paramétré par `impermeabilise`, `canopee` et l'usure. Trois curseurs qui sont déjà des attributs.
+6. ☐ **La lumière.** ⚠️ **La vallée ne se lit à aucune des quatre exagérations** (constaté le 2026-08-12). 9 m sur 898 m en axonométrie à angle fixe : le facteur n'y peut rien, c'est l'ombre ou la caméra.
+
+### Phase B — un indicateur, un système, une décision à la fois
+
+7. ☐ **Trois corrections que le classeur a sorties**, à reprendre quand on arrivera sur les décisions concernées :
+   · 🔴 **`largeur_m >= 20`, la cible de D05, rate quatre des cinq rues les plus chargées.** Les tronçons 13, 21, 54 et 55 font **18 m** et portent 0,87 à 1,00 de charge. « Retirer la voiture de l'axe de transit » n'attrape que le tronçon 11. Deux mètres de seuil décident si la décision existe
+   · 🔴 **La montée de D07 est de 60 mois** : sur l'horizon d'une partie, l'arbre ne reprend jamais ses mètres à la noue. La concurrence arbre/noue, qui est le sujet de D07 et D08, ne se joue pas
+   · ⚠️ **Le budget ne mord jamais.** La partie la plus dépensière consomme 418 pts sur 500 et finit à +152 de solde. C'est le **capital** qui arbitre, pas l'argent — à assumer ou à corriger
+8. ☐ **Trois chiffres de D07 attendent ton œil**, tous commentés dans le code et listés dans `Godot/README.md` : la **surchauffe** (`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0), le **+0,25 de canopée** (alors que la canopée d'une rue plafonne à 0,18 dans les données), et **`CANOPEE_ALIGNEMENT_MAX`** (rendu seulement).
+9. ☐ **La deuxième décision dans Godot.** La candidate est **D06 supprimer le stationnement** : c'est elle qui libère l'emprise de D07 et D08, donc c'est elle qui rend la chaîne intéressante. Il ne manque qu'une entrée dans `DECISIONS` de `chantiers.gd` et une portée `voisins` pour le report de charge.
+10. ☐ **`confort_ete` n'existe pas dans le `.gpkg`** et c'est la seule variable de D10, seule décision du thème `energie`. `08_jouer.py` la crée à 0 et le signale ; Godot y répond par la **surchauffe**, dérivée du sol. Soit on la dérive dans `04`, soit D10 s'exprime autrement.
+
+### Reste à faire, sans urgence
+
+11. ☐ **Regarder `emprises` dans QGIS par-dessus `ilots`** — les écritures dans le `.gpkg` sont faites (`emplois` = 878, `emprises` = 69 lignes, vérifiées en lecture seule), mais le contrôle à l'œil ne l'est pas. `04b` signale quatre réparations de boucle : îlots **55, 13, 16, 21**.
+12. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
@@ -54,8 +77,10 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 `python "QGIS/scripts/04b_emprises_baties.py" --blanc` → le retrait de voirie sans rien écrire : contrôles, tableau des réparations, part de voirie.
 `python "QGIS/scripts/palette.py"` → la palette : 13 sous-types, 9 familles, et la règle du sol vérifiée sur la plaie 19.
 
+`python "QGIS/scripts/08_jouer.py" --toutes` → **les parties jouées** : les 60 mois de chaque fichier de `Classeur/parties/`, un `_resultat.csv` par partie, et `QGIS/rendus/parties.html` — la carte à n'importe quel mois, le mode **écart au mois 0**, et les courbes superposées. Le contrôle de fin vérifie que le mois 0 calculé retrouve `partie.csv`.
+
 **Les outils** (dans `QGIS/scripts/`) :
-`apercu_carte.py` la vue en PNG · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `04b_emprises_baties.py` **le retrait de voirie, écrit la couche `emprises`** · `05_exporter_classeur.py` la carte en CSV · `06_etat_zero.py` la vue interactive · `07_exporter_godot.py` **la maquette 3D** · `palette.py` les couleurs · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
+`apercu_carte.py` la vue en PNG · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `04b_emprises_baties.py` **le retrait de voirie, écrit la couche `emprises`** · `05_exporter_classeur.py` la carte en CSV · `06_etat_zero.py` la vue interactive · `07_exporter_godot.py` **la maquette 3D** · `08_jouer.py` **le moteur du classeur** · `palette.py` les couleurs · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
 
 Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un chemin en argument — pour essayer un changement sur une copie avant de l'écrire.
 
@@ -105,11 +130,32 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 
 ## Historique des sessions Claude
 
+### 2026-08-12 (session 11) — Frostpunk et Democracy 4 sortent du brainstorm
+- 🎮 **Deux jeux entrent comme références durables**, répartis là où ils portent plutôt que listés au même endroit : `Systèmes/Décisions.md` (inertie des effets, échelle du district, capital politique — et ce qu'on **ne** reprend pas : le curseur d'intensité de D4, le conseil qui vote de FP2), `Technique/Direction artistique.md` (la jauge en matière à voler ; ⚠️ l'UI blanche sur neige blanche, risque direct avec une palette pastel), `Vision/Ton et règles d'écriture.md` (Frostpunk = le repoussoir du cynisme, mais son livre des lois est à prendre), `Vision/Pièges connus.md` (D4 en cas d'école des jauges d'humeur).
+- ⚠️ **Le brainstorm du 2026-08-11 reste non digéré** : seules ses références sont remontées. Ses **9 décisions et 7 questions** attendent toujours.
+
 ### 2026-08-12 (session 10) — le noyau n'est plus réservé
 - 🔓 **La décision 40 est levée → 40b, tranchée par l'auteur.** Claude écrit le code, noyau **et architecture** compris ; l'auteur teste, itère et revient sur ses décisions. La règle était écrite à **cinq endroits** — tous corrigés, plus `Godot/README.md`. Ce que 40 protégeait n'était pas la frappe mais la **compréhension** : elle n'est plus produite par la construction, elle devient une chose à aller chercher. Réversible, mais le coût du retour grandit avec la base de code. → `Décisions arrêtées` 40b
 - 🆕 **Serveur MCP Godot** (`.mcp.json`, `@coding-solo/godot-mcp`, MIT) : Claude lance la maquette et lit la console lui-même. Testé de bout en bout avant écriture — handshake, 14 outils, `get_godot_version` → `4.7.1.stable.official.a13da4feb`. Deux pièges vécus : `npx` seul ne démarre pas sous Windows (Node refuse un `.cmd` sans shell, `EINVAL`) d'où `cmd /c`, et `GODOT_PATH` est obligatoire — l'exécutable est sur le Bureau, hors des emplacements devinés. **Seul fichier non portable du dépôt.**
 - 🐞 **`Godot/README.md` pointait `Downloads/` pour la sonde** ; l'exécutable est sur le **Bureau**. La commande de débogage ne marchait pas telle quelle.
 - 🧹 **`CLAUDE.md` §1 rattrape le réel** : le prototype y était encore l'Altstadt (13b l'a remplacé par Wehrau le 2026-08-10) et le fichier affirmait qu'il n'existait « ni dépôt Godot ni script versionné ». « Moteur de simu écrit à la main » retiré — contredisait 40b.
+- ✅ **Les deux écritures dans le vrai `.gpkg`**, à la demande de l'auteur : `emplois` = 878, couche `emprises` = 69/69 anneaux simples, 76,5 ha bâtis, 17,6 % de voirie. Contrôle population ✅ 5 353 hab. `04b` signale **quatre réparations de boucle à regarder** : îlots 55, 13, 16 et 21 — deux cœurs anciens, deux fronts commerçants ; le 16 tombe de 2 132 à 560 m².
+- 🆕 **`08_jouer.py`, le moteur du classeur.** Rampes, budget étalé sur `L + M`, capital payé comptant au mois `d`, les quatre portées. Il calcule la quantité d'une décision **sur l'état du mois où le chantier commence**, pas sur t0 — c'est tout le mécanisme de D06, qui n'existe que parce qu'elle libère les mètres de D07 et D08.
+- 🆕 **Trois liens qui n'étaient dans aucune table** : tronçon → îlots riverains (géométrique, critère de `04b` — **178/178 tronçons, 0 orphelin, 2,0 îlots par tronçon**), tronçon → tronçons voisins par sommet partagé, et l'aval d'une décision de voirie. Sans le premier, `D07;voisins;ilots;canopee` ne retombait nulle part et la spécificité spatiale disparaissait.
+- 🔴 **Le résultat qui compte** : **`largeur_m >= 20` rate quatre des cinq rues les plus chargées.** Les tronçons 13, 21, 54 et 55 font 18 m et portent 0,87 à 1,00 de charge. D05 n'attrape que le tronçon 11 — et comme elle reporte +0,35 sur les voisines, elle **double le nombre de rues saturées (5 → 10) sans jamais toucher l'axe**. Le classeur a fait ce qu'on lui demandait : rendre une erreur de seuil visible en une soirée.
+- 🐞 **Trois définitions de stock étaient fausses**, sorties par le contrôle du mois 0 : `canopee_moy` et `impermeabilise_moy` sont des **moyennes simples par îlot**, pas pondérées par la surface, et `riverain_moy` ne compte que les **îlots habités**. Un champ de 50 ha y pèse autant qu'un parc de 0,4 ha — c'est le choix consigné dans `partie.csv`, laissé tel quel, mais il est maintenant écrit quelque part.
+- ⚠️ **Aucune décision n'a été refusée pour cause de budget** sur les trois parties. La contrainte réelle est le capital politique, pas l'argent.
+- 🆕 **`QGIS/rendus/parties.html`** : les trois parties superposées, un curseur de 60 mois, le mode **écart au mois 0** — le seul qui rende un changement lisible — le journal des chantiers et huit courbes.
+- 🎯 **Puis tout est passé dans Godot**, à la demande de l'auteur : *« je veux voir le résultat visible du code plutôt que penser à un système complexe sans pouvoir le visualiser »*. Une décision de bout en bout — D07 planter l'alignement — plutôt que onze à moitié.
+- 🆕 **La ville est cliquable.** 07 exporte trois choses neuves : les **attributs par objet** (la fiche), les **plages d'indices par objet** (`groupes`) et les **emplacements d'alignement avec leur seuil de canopée**. Godot en refait **237 nœuds** — 63 îlots bâtis, 174 tronçons — chacun avec son corps de collision. On passe de 5 draw calls à ~250, et c'est le prix du jeu : un maillage fusionné ne se sélectionne pas, ne se surligne pas, ne se reteinte pas.
+- 🆕 **Le noyau en GDScript** : `ville.gd` (l'état, les rampes, les indicateurs) et `chantiers.gd` (cible, coût, capital, budget étalé). Ni l'un ni l'autre ne touche un nœud — même discipline que `constructeur.gd`. Plus `selection.gd`, `interface.gd`, `alignements.gd`.
+- 🔴 **Le recoupement passe.** À décision, seuil et mois identiques : Godot donne **0,2732** de canopée au mois 60, `08_jouer.py` **0,273** ; 64 tronçons, 6 217 m, 114,9 pts des deux côtés — et la table du `Classeur/README.md` §3 annonçait bien 64 · 6 217 · 115. La commande est dans `Godot/README.md`, elle n'est pas optionnelle.
+- 🐞 **Le budget décalait d'un mois** : `08_jouer.py` paie sur `d` à `d + étale − 1` inclus, donc une mensualité tombe au moment où l'on décide. 397 d'un côté, 399 de l'autre — assez peu pour qu'on l'ignore, ce qui est exactement le danger. Corrigé.
+- 🐞 **Les arbres sautaient au lieu de pousser.** La position d'un arbre d'alignement dépendait de la densité (`t = L·(k+0,5)/n`) : faire monter la canopée redistribuait tout l'alignement. Désormais 07 exporte **tous** les emplacements avec un **seuil**, la position est fixe, et seul le seuil décide. Un arbre planté reste où il est.
+- 🆕 **L'occlusion voyage dans le canal alpha** de la couleur de sommet. C'est ce qui permet de repeindre un îlot en calque thématique sans perdre ce qui le pose au sol. Aucun matériau du projet n'activait la transparence : le canal était libre.
+- 🟠 **Trois chiffres attendent l'œil de l'auteur**, tous commentés dans le code : la **surchauffe** (`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0), le **+0,25 de canopée de D07** (alors que la canopée d'une rue plafonne à 0,18 dans les données), et `CANOPEE_ALIGNEMENT_MAX` (rendu seulement).
+- 🔄 **Puis l'auteur a changé le cap, en fin de session** : *« je veux d'abord avoir une ville crédible et belle — travailler le trafic, les îlots. Ensuite on prendra chaque indicateur, système et décision un à un. »* Consigné en **51**, et répercuté dans cinq notes du vault : `Plan 3 mois` (les phases A/B/C remplacent les mois), `Génération procédurale` (les parcelles entrent en phase, le trafic aussi), `Direction artistique` (ce que « belle » veut dire, et la règle de production), `Questions ouvertes` (n°16 réveillée, **n°18** neuve sur le trafic), `00 - Index`.
+- ⚠️ **Ce que ce virage coûte, écrit noir sur blanc** : la limite « une semaine, pas de toits » tombe (**52**) alors qu'elle était le garde-fou contre le risque nommé *« que la 3D mange le calendrier »*. Le risque est **accepté**, pas éliminé. Ce qui le tient maintenant est une règle de production — *si je devais en faire 200, est-ce que je tiendrais ?* — et un critère d'échec : **le pari est perdu si, dans six semaines, la ville est plus belle et qu'aucune décision de plus n'a été traitée.**
 
 ### 2026-08-11 (session 9) — la maquette existe
 - 🔴 **Le fait qui a commandé toute la session** : les 69 îlots **pavent 99,75 % de l'emprise**, et les axes de rue tombent **exactement** sur leurs bords (0,0000 m d'écart, mesuré sur 83 segments). `largeur_m` était un attribut **sans lieu**. Extrudées telles quelles, les empreintes donnaient un bloc plein de 93 ha : le critère « trouver monstrueuses les rues à 20 et 22 m » était littéralement inobservable. → décision **32f**

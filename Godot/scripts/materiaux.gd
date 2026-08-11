@@ -22,6 +22,38 @@ static func surface(rugosite: float = 0.95) -> StandardMaterial3D:
 	return m
 
 
+## Le matériau des objets cliquables — îlots et tronçons.
+##
+## Un `StandardMaterial3D` ne suffit plus : il faut pouvoir surligner UN îlot,
+## ou repeindre les 69 selon un calque thématique, sans dupliquer le matériau
+## 247 fois. D'où `instance uniform` : une valeur par MeshInstance3D, portée par
+## l'instance et pas par le matériau, donc sans casser le partage.
+##
+## ⚠ Les couleurs de sommet sont en espace LINÉAIRE (07 les convertit). Les
+## deux uniformes ci-dessous ne portent PAS `source_color` : ce sont des
+## facteurs, pas des couleurs d'interface. Une teinte venue de la palette doit
+## donc passer par `.srgb_to_linear()` avant d'arriver ici — même règle que
+## partout ailleurs dans ce projet.
+static func objet() -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = "shader_type spatial;\n" \
+		+ "render_mode cull_back, specular_disabled;\n" \
+		+ "instance uniform vec4 teinte = vec4(1.0, 1.0, 1.0, 1.0);\n" \
+		+ "instance uniform vec4 calque = vec4(1.0, 1.0, 1.0, 0.0);\n" \
+		+ "void fragment() {\n" \
+		+ "\t// COLOR.rgb : la teinte de l'objet, déjà multipliée par l'AO.\n" \
+		+ "\t// COLOR.a   : l'AO seule. C'est elle qui pose le volume au sol,\n" \
+		+ "\t//             et qui doit survivre au repeint thématique.\n" \
+		+ "\tvec3 base = mix(COLOR.rgb, calque.rgb * COLOR.a, calque.a);\n" \
+		+ "\tALBEDO = base * teinte.rgb;\n" \
+		+ "\tROUGHNESS = 0.95;\n" \
+		+ "\tMETALLIC = 0.0;\n" \
+		+ "}\n"
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	return m
+
+
 static func eau(teinte: Color) -> StandardMaterial3D:
 	var m := surface(0.25)
 	m.vertex_color_use_as_albedo = false

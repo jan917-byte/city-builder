@@ -1,7 +1,7 @@
 ---
 tags: [moc, projet]
 statut: vivant
-maj: 2026-08-11
+maj: 2026-08-12
 ---
 
 # 🏙️ Projet jeu — city-builder de transformation urbaine
@@ -9,10 +9,11 @@ maj: 2026-08-11
 > Un city-builder PC où le joueur ne construit pas : il **décide**. Une ville moyenne ordinaire, voiture-dépendante, qu'on transforme sur 20 ans. Objectif : **inspirer**, pas simuler la bureaucratie.
 
 **Titre de travail** : aucun · candidats dans [[Marketing et Steam]]
-**Où j'en suis** : mois 1, semaines 1 et 2 bouclées — la carte est **simulable** et la ville a des **stocks**
-**Phase actuelle** 🎯 : **[[Wehrau]] à t0, crédible et regardable en 3D**, avant toute décision → [[Décisions arrêtées]] 49
+**Où j'en suis** : mois 1 bouclé — la carte est **simulable**, la ville a des **stocks**, et **elle se joue** : on clique, on décide, vingt ans passent
+**Phase actuelle** 🎯 : **une ville crédible et belle** — parcelles, toits, trafic, sol. *Ensuite* chaque indicateur, système et décision **un par un** → [[Décisions arrêtées]] 51
 **Périmètre du prototype** : [[Wehrau]], une petite ville entière — **pas** un quartier de [[Vallmar]]
-**Prochaine action concrète** : la maquette de masses dans Godot, une semaine, pas plus → [[Génération procédurale]] · [[Plan 3 mois]]
+**Prochaine action concrète** : la subdivision de l'îlot en parcelles — le point dur, 2 à 4 semaines → [[Génération procédurale]] · [[Plan 3 mois]]
+**Le garde-fou** ⚠️ : ce n'est plus une date, c'est *« si je devais en faire 200, est-ce que je tiendrais ? »* → 52
 
 ---
 
@@ -43,10 +44,10 @@ maj: 2026-08-11
 ## 🔧 Technique
 
 - [[Géométrie et données]] — l'îlot comme entité, la rue comme adjacence
-- [[Pipeline QGIS]] — le GeoPackage, les trois scripts, ce qui reste à faire
-- [[Génération procédurale]] 🎯 — **la phase active** : la maquette de masses de t0
-- [[Moteur et architecture]] — Godot 4, GDScript vs C#
-- [[Direction artistique]] — **Townscaper**, palette qui se réchauffe avec la ville
+- [[Pipeline QGIS]] — le GeoPackage, les scripts, ce qui reste à faire
+- [[Génération procédurale]] 🎯 — **la phase active** : les parcelles, les toits, le trafic
+- [[Moteur et architecture]] — Godot 4, GDScript vs C#. **Godot porte la boucle** depuis le 2026-08-12 → 39c
+- [[Direction artistique]] 🎯 — **Townscaper**, et la règle de production qui remplace le calendrier
 
 ## 📦 Production
 
@@ -76,9 +77,23 @@ maj: 2026-08-11
 2. **Le deuxième axe des fins** — le vieux problème, avec un candidat neuf : « personne n'a été chassé ». → [[Fins et pluralisme]]
 3. **Le nom** — « Wehrau » et « l'Ilse » sont proposés, pas arrêtés. Se renomment en une commande tant que rien n'est codé. → [[Wehrau]]
 
-Et deux questions neuves, nées de la phase actuelle : **le raccord des bâtiments voisins** (n°16) et **Wehrau est un dortoir, on assume ?** (n°17). → [[Questions ouvertes]]
+🔴 **Et deux qui bloquent la phase A**, à trancher **avant** d'écrire le générateur de parcelles :
+- **n°16 — le raccord des bâtiments voisins.** Endormie par la maquette de masses (un pâté plein n'a pas de voisin à coudre), **réveillée par les parcelles** : deux parcelles mitoyennes vont se toucher pour de bon, et dans un tissu de maisons de ville le mitoyen *est* la forme urbaine.
+- **35 — la parcelle est-elle bien l'entité persistante ?** Déjà arrêtée 🔒, mais elle n'a jamais été mise à l'épreuve du code. Irréversible en pratique une fois le générateur écrit.
+
+Et deux autres questions ouvertes : **n°17** — Wehrau est un dortoir, on assume ? — et **n°18**, neuve : **le trafic, des voitures ou un flux ?** → [[Questions ouvertes]]
 
 ## 🔄 Révisions récentes
+
+**2026-08-12 (soir)**
+- 🔄 **L'ordre change une seconde fois : la ville crédible et belle passe devant les systèmes.** 49 mettait déjà la ville avant les décisions, mais visait une maquette de masses. Le seuil passe de *« sentir le lieu »* à ***« avoir envie de la regarder, et croire qu'on y habite »***. Ensuite seulement, chaque indicateur, système et décision **un par un**, plus en lot de onze. → 51 · [[Plan 3 mois]]
+- ⚠️ **La limite « une semaine, pas de toits » tombe** — 51 fait entrer les toits dans le plan. Mais le risque qu'elle couvrait est intact : la 3D avance toujours parce que chaque amélioration se voit. Ce qui la remplace est une **règle de production**, pas une date : *si je devais en faire 200, est-ce que je tiendrais ?* → 52 · [[Direction artistique]]
+- 🔴 **La subdivision en parcelles entre en phase.** Elle en était explicitement exclue — « le point dur, l'attaquer reviendrait à changer de projet ». C'est un changement de projet, et il est assumé. → [[Génération procédurale]]
+- 🎮 **Godot porte la boucle de jeu** : on clique un îlot, on décide, vingt ans passent. Le classeur devient le **banc d'essai**, et un contrôle de recoupement compare les deux moteurs — il a déjà attrapé un décalage d'un mois sur le budget. → 39c
+- ❓ **Question neuve n°18 : le trafic, des voitures ou un flux ?** Coûteuse à inverser. Ce qui penche : ici le spectacle est la transformation urbaine, pas la circulation. Mais ça se regarde à l'écran. → [[Questions ouvertes]]
+
+**2026-08-12**
+- 🎮 **Frostpunk / Frostpunk 2 et Democracy 4 entrent comme références**, sortis du brainstorm et répartis là où ils portent : la mécanique dans [[Décisions]] (inertie des effets, décision à l'échelle du district, capital politique), l'interface dans [[Direction artistique]] (la jauge en matière à voler, l'UI blanche sur neige blanche à éviter), le ton dans [[Ton et règles d'écriture]] (Frostpunk est le repoussoir du cynisme), et un cas d'école dans [[Pièges connus]] (les jauges d'humeur de D4). Les 9 décisions et 7 questions du brainstorm, elles, **attendent toujours**.
 
 **2026-08-11 (soir)**
 - 🔄 **L'ordre a changé : la ville de t0 passe devant le système de décisions.** Une crue est la perturbation d'un état, et l'état n'existait pas. Le classeur est écrit et chiffré, il attend son socle. → [[Décisions arrêtées]] 49 · [[Plan 3 mois]]
