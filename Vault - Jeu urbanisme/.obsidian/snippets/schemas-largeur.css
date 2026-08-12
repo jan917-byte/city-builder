@@ -1,0 +1,45 @@
+/* schemas-largeur.css
+   Deux réglages, pour que les schémas mermaid tiennent dans la page.
+
+   1. Un schéma plus large que la colonne de texte est RÉDUIT, pas coupé.
+   2. Une note qui porte `cssclasses: large` dans son frontmatter utilise
+      toute la largeur de la fenêtre, au lieu de la largeur de lecture
+      confortable. À réserver aux pages dont le contenu est un schéma et
+      non du texte — par exemple [[Carte des systèmes]].
+
+   Se désactive dans Réglages → Apparence → Extraits CSS. */
+
+/* ---- 1. Le schéma se réduit ---------------------------------------- */
+
+.markdown-rendered .mermaid,
+.markdown-source-view .mermaid {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.markdown-rendered .mermaid > svg,
+.markdown-source-view .mermaid > svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---- 2. Les notes `cssclasses: large` prennent toute la largeur ----- */
+
+.markdown-preview-view.is-readable-line-width.large .markdown-preview-sizer,
+.markdown-source-view.mod-cm6.is-readable-line-width.large .cm-sizer {
+  max-width: none;
+}
+
+/* Les schémas gagnent la largeur, le texte reste lisible : sur ces mêmes
+   notes, les paragraphes et les tableaux gardent une mesure raisonnable. */
+
+.large .markdown-preview-sizer > div > p,
+.large .markdown-preview-sizer > div > ul,
+.large .markdown-preview-sizer > div > ol,
+.large .markdown-preview-sizer > div > blockquote,
+.large .markdown-preview-sizer > div > h1,
+.large .markdown-preview-sizer > div > h2,
+.large .markdown-preview-sizer > div > h3 {
+  max-width: var(--file-line-width);
+}

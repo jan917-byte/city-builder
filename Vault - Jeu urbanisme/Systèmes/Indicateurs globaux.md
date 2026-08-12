@@ -59,6 +59,55 @@ Le renouvelable devient **« la part des toits qui produit »** : il se voit lit
 
 > **Une formule sur des attributs existants n'est pas une sous-simulation.** C'est la manœuvre qui a sauvé trois indicateurs et le budget.
 
+## 🔗 Global et local sont le même indicateur
+
+Un indicateur existe à **deux échelles** : la ville (le bandeau) et l'objet (l'îlot, le tronçon). Ce n'est pas deux systèmes, c'est un seul lu de deux distances.
+
+> **L'indicateur local et le calque sont le même objet vu de deux côtés** — comme le bandeau et les [[Milestones|milestones]] (57). Colorier la carte par la valeur locale, c'est le **calque** ; lire celle d'un seul objet, c'est sa **fiche**.
+
+Ce que ça ajoute à la règle du haut de page : elle disait *chaque chiffre a sa carte*. Elle dit maintenant **comment le chiffre et la carte se calculent l'un depuis l'autre**. → [[Décisions arrêtées]] 63
+
+### Deux familles, deux façons de remonter
+
+| | Exemples | Le global est | Le local est | Sur la fiche |
+|---|---|---|---|---|
+| **Stock** | population · places de stationnement · CO2 · m² de toit qui produit | la **somme** des locaux | une **part du total** | « 4,1 % des habitants » |
+| **Taux** | canopée · imperméabilisé · surchauffe · riverain · desserte | une **moyenne pondérée** | une valeur **autonome** | « 8 % de canopée, contre 14 % en ville » |
+
+Un îlot à 40 % de canopée ne détient pas 40 % de la canopée de la ville — il est simplement au-dessus de la moyenne. **Confondre les deux familles a déjà produit un faux chiffre** : `canopee_moy` et `impermeabilise_moy` sont des moyennes *simples* par îlot, où un champ de 50 ha pèse autant qu'un parc de 0,4 ha.
+
+### La pondération — chaque taux par son propre dénominateur
+
+> **Un taux se pondère par ce dont il est le taux.** S'il parle du sol, par la surface. S'il parle des gens, par la population.
+
+| Le taux | Pondéré par | |
+|---|---|---|
+| canopée · imperméabilisé · surchauffe | la **surface** | des parts de sol |
+| riverain · desserte TC · habitants d'origine | la **population** | des parts d'habitants |
+| stationnement sur rue · charge | les **mètres de voirie** | des parts de rue |
+
+Effet secondaire propre : `riverain_moy` ne comptait que les îlots habités — un cas particulier écrit à la main. Pondéré par la population, un îlot inhabité pèse zéro **tout seul**. La règle absorbe l'exception au lieu de la lister.
+
+☐ **À reprendre** : les trois moyennes de `partie.csv` sont encore simples, côté classeur **et** côté Godot. Le contrôle de recoupement des deux moteurs se refait après.
+
+### Un indicateur vit sur l'entité qui porte sa donnée
+
+Il **remonte**, il ne descend pas. Une rue n'a pas d'habitants ; un îlot n'a pas de charge de trafic.
+
+| L'indicateur | Vit sur |
+|---|---|
+| habitants d'origine · ville exposée · toits qui produisent · surchauffe | l'**îlot** |
+| desserte · l'emprise voiture pour sa part sur rue | le **tronçon** |
+| CO2 | les **deux** — le chauffage sur l'îlot, le trafic sur la rue |
+
+⚠️ **Une collision de nom à démêler avant d'écrire la formule** : `stationnement` désigne **deux choses différentes** — sur un îlot, la part de sa surface en parking ; sur un tronçon, les places sur rue. L'indicateur « emprise voiture » agrège déjà les deux (4 587 places **et** 17,6 % de voirie). Tant qu'ils portent le même nom, une formule les additionnera par accident.
+
+### La fiche reprend l'ordre du bandeau
+
+Mêmes indicateurs, **même ordre, mêmes icônes**. Le joueur apprend un seul vocabulaire, et l'écart à t0 marche aux deux échelles : *« la ville a gagné 3 pts de canopée — cet îlot-là en a gagné 11 »*. C'est aussi ce qui rend visible l'injustice géographique que la moyenne efface.
+
+Ce que ça remplace : la fiche affiche aujourd'hui les attributs bruts du `.gpkg`, dans l'ordre du fichier. → [[Décisions arrêtées]] 63b
+
 ## 🔥 Ce qui pousse contre quoi
 
 **Si deux indicateurs ne se poussent pas dessus, ce sont des décorations.**
@@ -139,5 +188,7 @@ Proposition : la sortir de la rangée et la poser **dessous, en travers, comme l
 - ☐ **Trois valeurs à t0 manquent** : la ville exposée, le CO2, la desserte. Calculables sur les attributs existants.
 - ☐ **Le temps et les chantiers en cours** n'ont pas de place dans le bandeau, alors que c'est l'anti-spectateur → [[Chantiers et temps]]
 - ☐ **Comment le capital politique se regagne** n'a aucune forme à l'écran. Un nombre nu ne dit pas *« ça revient parce que ça s'est vu »* → [[Ressources]]
+- 🔴 **`stationnement` porte deux sens** — part de surface sur l'îlot, places sur rue sur le tronçon. À renommer avant que « l'emprise voiture » ait une formule.
+- ☐ **Trois moyennes à repondérer** dans le classeur et dans Godot (`canopee_moy`, `impermeabilise_moy`, `riverain_moy`), puis refaire le recoupement des deux moteurs.
 
 **Voir aussi** : [[Diagnostic et calques]] · [[Ressources]] · [[Milestones]] · [[Pièges connus]] · [[Fins et pluralisme]]

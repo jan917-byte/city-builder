@@ -3,7 +3,7 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-12 (session 13)**
+**Dernière mise à jour : 2026-08-12 (session 14)**
 
 ---
 
@@ -56,6 +56,8 @@ Trois contrôles en découlent, à faire dans le classeur avant d'écrire quoi q
 7. ☐ 🔴 **Calibrer les deux formules de budget** — recettes ∝ `logements`, charges ∝ mètres de voirie. Le contrôle est nommé : *une stratégie de densification pure ne doit pas s'autofinancer*, sinon le piège de l'exponentielle est rouvert pour de bon. C'est aussi ce qui doit faire **mordre** un budget qui ne mord jamais (418 pts sur 500, +152 de solde, aucune décision refusée).
 8. ☐ **Vérifier que chaque indicateur a un antagoniste.** Ceux qui n'en ont pas sont mal conçus — les bornes sont la ceinture, le frein ce sont les antagonismes.
 9. ☐ **Trois valeurs à t0 manquent** : la ville exposée, le CO2, la desserte. Calculables sur les attributs existants, côté Windows.
+9bis. ☐ 🔴 **Repondérer les trois moyennes** — `canopee_moy` et `impermeabilise_moy` par la **surface**, `riverain_moy` par la **population** (ce qui supprime au passage le cas particulier « îlots habités seulement »). À faire dans `08_jouer.py` **et** dans `ville.gd`, puis refaire le contrôle de recoupement. Les chiffres du classeur bougeront. → `Décisions arrêtées` **63**
+9ter. ☐ **`stationnement` porte deux sens** — part de surface sur l'îlot, places sur rue sur le tronçon — et « l'emprise voiture » agrège déjà les deux (4 587 places **et** 17,6 % de voirie). À renommer avant d'écrire la formule de l'indicateur, sinon quelque chose les additionnera.
 
 10. ☐ **Trois corrections que le classeur a sorties**, à reprendre quand on arrivera sur les décisions concernées :
    · 🔴 **`largeur_m >= 20`, la cible de D05, rate quatre des cinq rues les plus chargées.** Les tronçons 13, 21, 54 et 55 font **18 m** et portent 0,87 à 1,00 de charge. « Retirer la voiture de l'axe de transit » n'attrape que le tronçon 11. Deux mètres de seuil décident si la décision existe
@@ -64,6 +66,18 @@ Trois contrôles en découlent, à faire dans le classeur avant d'écrire quoi q
 11. ☐ **Trois chiffres de D07 attendent ton œil**, tous commentés dans le code et listés dans `Godot/README.md` : la **surchauffe** (`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0), le **+0,25 de canopée** (alors que la canopée d'une rue plafonne à 0,18 dans les données), et **`CANOPEE_ALIGNEMENT_MAX`** (rendu seulement).
 12. ☐ **La deuxième décision dans Godot.** La candidate est **D06 supprimer le stationnement** : c'est elle qui libère l'emprise de D07 et D08, donc c'est elle qui rend la chaîne intéressante. Il ne manque qu'une entrée dans `DECISIONS` de `chantiers.gd` et une portée `voisins` pour le report de charge.
 13. ☐ **`confort_ete` n'existe pas dans le `.gpkg`** et c'est la seule variable de D10, seule décision du thème `energie`. `08_jouer.py` la crée à 0 et le signale ; Godot y répond par la **surchauffe**, dérivée du sol. Soit on la dérive dans `04`, soit D10 s'exprime autrement.
+
+### 🧪 En travers : le test « énergie seule »
+
+🆕 **Un plan de session écrit le 2026-08-12 depuis le Mac, à exécuter sous Windows → [PLAN_energie.md](PLAN_energie.md).** Le jeu réduit à un seul thème : quatre nombres (consommation, production locale, achat, CO2), une décision (poser des panneaux, par îlot), tout le reste masqué mais intact. La question testée : *est-ce qu'une décision qui rapporte de l'argent fait un jeu ?*
+
+🎯 **Le plan a changé de centre de gravité en cours d'écriture, sur un apport de l'auteur** : ce qu'on teste n'est pas « une décision qui rapporte de l'argent », c'est ***choisir où investir, et quand*** — *« pour être efficient, il faut investir au bon endroit au bon moment, la base du métier »*. Deux conséquences écrites dans le plan §6 bis : montrer la rentabilité risque de **résoudre** le jeu (on trie du plus vert au plus rouge), donc il faut **deux cartes qui pointent en sens inverse** — l'argent vers les hangars, la légitimité vers le centre — et **le temps qui déplace la carte** (panneau −6 %/an, énergie +2 %/an, donc « pas encore » devient une réponse valide sur les seuls îlots au-delà de ~17 ans).
+
+Deux choses à savoir avant de le lancer : il **n'écrit rien dans le `.gpkg`** (seul `07` est relancé, en lecture) donc il ne concurrence pas le passage QGIS du point 1 ; et il laisse **trois décisions à l'auteur** — la régie municipale (à qui appartiennent les panneaux), l'ajout du capital politique au périmètre (sans lui le test mesure un tri), et **les quartiers de Wehrau n'ont pas de nom**, ce qui empêche la phrase « c'est là qu'il faut commencer ».
+
+🚧 **La vue chantiers entre au plan** (§6 ter), également sur un apport de l'auteur : un calque de ce qui est **en train** de se faire, et une barre d'état au clic sur l'objet. Ce que ça règle : *les chantiers en cours n'ont pas leur place dans le bandeau du tout* — **trois temps, trois formes**, le bandeau le passé, les ressources le futur, la carte le présent. Deux conséquences : la barre a **deux segments** (le délai n'est pas la montée, et « il ne se passe rien pendant six mois » est une vérité à enseigner), et une décision porte désormais **trois durées** — délai · travaux · maturation — sans quoi 64 tronçons resteraient « en travaux » pendant les cinq ans de croissance d'un arbre. Garde-fou écrit : **jamais une liste de chantiers**, sinon c'est un écran de gestion de projet.
+
+🆕 **Quatre candidats à `Décisions arrêtées`, prêts mais non tranchés** (plan §9 bis) : *la décision spatiale est le jeu* — corollaire opérationnel, **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise** — et *le capital politique se regagne par la visibilité du chantier*, qui fermerait un point ouvert de `Indicateurs globaux`.
 
 ### Reste à faire, sans urgence
 
@@ -138,6 +152,14 @@ Le brainstorm du 2026-08-10 (`Brainstorming/…inondation-rive-droite.md`) a ser
 Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / adapter / rendre à l'eau), qui sont la semaine 2.
 
 ## Historique des sessions Claude
+
+### 2026-08-12 (session 14) — un indicateur vit à deux échelles
+- 🔗 **Ce que l'auteur a apporté et qui n'était nulle part** : les indicateurs existent **globalement et localement** (îlot, tronçon), et les deux sont liés. Le vault avait la règle 53 (« aucun chiffre global sans son calque ») mais **pas la règle de composition** — comment on passe d'un niveau à l'autre. Formulation retenue : **l'indicateur local et le calque sont le même objet vu de deux côtés**, comme le bandeau et les milestones (57). → **63**
+- ⚠️ **Correction apportée à l'énoncé de départ** : « le local est un % du total » est vrai pour les **stocks** (population, places, CO2, m² de toit), faux pour les **taux** (canopée, imperméabilisé, surchauffe, riverain). Un îlot à 40 % de canopée ne détient pas 40 % de la canopée de la ville.
+- 🐞 **Le défaut de session 10 était exactement ça** : `canopee_moy` et `impermeabilise_moy` en moyennes simples par îlot, où un champ de 50 ha pèse autant qu'un parc de 0,4 ha. Il était consigné comme un choix ; il devient une **dette à rembourser** (point 9bis).
+- ⚖️ **Tranché par l'auteur** : *un taux se pondère par ce dont il est le taux* — surface pour le sol, population pour les gens, mètres de voirie pour la rue. Gain non prévu : `riverain_moy` n'a plus besoin de son cas particulier « îlots habités seulement », un îlot inhabité pèse zéro tout seul. **La règle absorbe l'exception.**
+- ⚖️ **Tranché aussi** : la **fiche reprend l'ordre et les icônes du bandeau** — un seul vocabulaire, et l'écart à t0 se lit aux deux échelles. → **63b**
+- 🔴 **Une collision de nom sortie au passage** : `stationnement` désigne la part de surface en parking sur un îlot **et** les places sur rue sur un tronçon, alors que « l'emprise voiture » agrège déjà les deux. À renommer avant que l'indicateur ait une formule (point 9ter).
 
 ### 2026-08-12 (session 13) — la phase A est débloquée en une séance
 - 🟢 **Cinq questions closes, dont les deux qui bloquaient le générateur de parcelles.** Aucune ne demandait de code : elles demandaient un arbitrage.

@@ -26,6 +26,7 @@ maj: 2026-08-12
 
 ## ⚙️ Systèmes
 
+- [[Carte des systèmes]] 🆕 — **la page qui tient l'ensemble** : trois schémas — la machine, les sept, les tensions
 - [[Indicateurs globaux]] 🆕 — les sept chiffres du bandeau, et la règle *un chiffre, un calque*
 - [[Ressources]] — argent + capital politique. Le budget tient en **deux formules** depuis le 2026-08-12
 - [[Décisions]] — l'anatomie d'une décision, l'exemple de référence

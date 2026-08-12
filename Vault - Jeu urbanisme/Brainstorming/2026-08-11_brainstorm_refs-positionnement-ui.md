@@ -86,7 +86,6 @@ Townscaper se décompose en deux couches :
 - [[Dorfromantik]] — lisibilité et palette.
 - **Sprawl Repair Manual** (Galina Tachieva) — les motifs de réparation de l'étalement, du politique au dessin.
 - **URB-I** — collection d'avant/après de transformations voiture → piéton via Street View. Les deux états de chaque élément sont déjà documentés par centaines.
-- ❌ **Écarter le Ghibli** : déjà pris par [[Terra Nil]] et The Wandering Village, et déjà rejeté.
 - 🎯 **Piste propre : la maquette d'architecte.** Matériaux physiques, carton, bois, béton, lumière du nord, palette européenne. Dit « projet » plutôt que « rêve ».
 
 ---

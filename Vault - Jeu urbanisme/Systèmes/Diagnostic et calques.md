@@ -48,6 +48,14 @@ Sans cet appariement, un chiffre global est une **moyenne**, et une moyenne effa
 
 **Ce que ça ajoute à la liste des calques ci-dessus** : le **potentiel solaire** et le **CO2 par îlot** sont neufs, et l'eau cesse d'être un « candidat supplémentaire » pour devenir un calque de premier rang — le jeu s'ouvre dessus.
 
+### 🔗 Un calque n'illustre pas un indicateur, il **est** l'indicateur
+
+Arrêté le 2026-08-12. Le calque, c'est la **valeur locale** du même indicateur, coloriée sur la carte ; la fiche d'un îlot, c'est cette valeur lue sur un seul objet ; le bandeau, c'est la même chose remontée à la ville. Trois vues, un seul nombre.
+
+Deux conséquences ici :
+- **La fiche reprend l'ordre et les icônes du bandeau** — un seul vocabulaire, et l'écart à t0 se lit aux deux échelles → [[Décisions arrêtées]] 63b
+- **Comment ça remonte n'est pas au choix** : les stocks s'additionnent, les taux se pondèrent par la surface, la population ou les mètres de voirie selon ce dont ils sont le taux → [[Indicateurs globaux]] · [[Décisions arrêtées]] 63
+
 ## Hiérarchie de lecture
 
 1. **Les cartes thématiques font le travail de diagnostic primaire** (heat maps)
