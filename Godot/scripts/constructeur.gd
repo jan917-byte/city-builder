@@ -86,59 +86,10 @@ static func _couleur(c: Array) -> Color:
 	return Color(c[0], c[1], c[2], 1.0 if c.size() < 4 else float(c[3]))
 
 
-## Le terrain, depuis le champ d'altitude. La grille est régulière, donc les
-## normales sont analytiques : le gradient du champ, pas une moyenne de faces.
-static func terrain(t: Dictionary, coul: Color) -> ArrayMesh:
-	var nx: int = int(t["nx"])
-	var nz: int = int(t["nz"])
-	var pas: float = float(t["pas"])
-	var x0: float = float(t["x0"])
-	var z0: float = float(t["z0"])
-	var h: Array = t["alt"]
-
-	var v := PackedVector3Array()
-	var nm := PackedVector3Array()
-	var co := PackedColorArray()
-	v.resize(nx * nz)
-	nm.resize(nx * nz)
-	co.resize(nx * nz)
-
-	for j in nz:
-		for i in nx:
-			var k: int = j * nx + i
-			# Z DÉCROÎT quand j croît : le nord reste au nord (07 exporte
-			# z0 = −(y0 − cy), et la source va vers le nord en y croissant).
-			v[k] = Vector3(x0 + i * pas, float(h[k]), z0 - j * pas)
-			var im: int = maxi(i - 1, 0)
-			var ip: int = mini(i + 1, nx - 1)
-			var jm: int = maxi(j - 1, 0)
-			var jp: int = mini(j + 1, nz - 1)
-			var dhx: float = (float(h[j * nx + ip]) - float(h[j * nx + im])) \
-				/ ((ip - im) * pas)
-			# dZ est NÉGATIF quand j croît, d'où le signe inversé.
-			var dhz: float = -(float(h[jp * nx + i]) - float(h[jm * nx + i])) \
-				/ ((jp - jm) * pas)
-			nm[k] = Vector3(-dhx, 1.0, -dhz).normalized()
-			co[k] = coul
-
-	var idx := PackedInt32Array()
-	idx.resize((nx - 1) * (nz - 1) * 6)
-	var w: int = 0
-	for j in nz - 1:
-		for i in nx - 1:
-			var a: int = j * nx + i
-			var b: int = j * nx + i + 1
-			var c: int = (j + 1) * nx + i
-			var e: int = (j + 1) * nx + i + 1
-			# Sens HORAIRE : c'est la convention de face avant de Godot,
-			# l'inverse de la main droite. Émis dans l'ordre naturel, le
-			# terrain entier disparaissait par culling. Les normales, elles,
-			# restent celles du gradient — c'est elles qui éclairent.
-			idx[w] = a; idx[w + 1] = c; idx[w + 2] = b
-			idx[w + 3] = b; idx[w + 4] = c; idx[w + 5] = e
-			w += 6
-
-	return _surface(v, nm, co, idx)
+## 🔄 IL Y AVAIT ICI `terrain()` : le champ d'altitude déplié en grille, avec
+## ses normales analytiques. La carte est plate depuis le 2026-08-12, le sol
+## est un maillage troué par le chenal, et il passe par `maillage()` comme tout
+## le reste. Godot n'a plus qu'UNE façon de lire de la géométrie.
 
 
 static func _surface(v: PackedVector3Array, n: PackedVector3Array,

@@ -88,6 +88,7 @@ les deux se corrigent à la main sur le Mac — voir `CLAUDE.md` §5 bis :
 | **V** | la vallée — tout Wehrau d'un coup |
 | **B** | la barre de 1974 (îlot 32) |
 | **R** | les rues à 20 et 22 m, et le quai |
+| **I** | l'Ilse : le lit creusé et les trois franchissements |
 | **1 2 3 4** | exagération verticale ×1 ×1,5 ×2 ×3 |
 | **Q / E** | rotation de 90° · molette : zoom · clic droit : panoramique |
 | **P** | capture PNG dans `QGIS/rendus/` |
@@ -252,9 +253,68 @@ Depuis le 2026-08-12, la ville n'est plus 63 pâtés pleins.
 
 | | |
 |---|---|
-| `04c_parcelles.py` | découpe l'emprise de chaque îlot en **parcelles** — couche `parcelles` du `.gpkg`, 968 lignes |
+| `04c_parcelles.py` | découpe l'emprise de chaque îlot en **parcelles** — couche `parcelles` du `.gpkg`, 1 003 lignes |
 | table `BATI`, en haut de `07` | transforme une parcelle en bâtiment : recul de rue, jeu au voisin (**0 = mitoyen exact**), profondeur bâtie, pente du toit |
-| → | **690 volumes**, 278 parcelles enclavées devenues cours et jardins |
+| → | **702 volumes**, 301 parcelles enclavées devenues cours et jardins |
+
+### 🌳 Les cœurs d'îlot sont dessinés, et pas tous verts
+
+Le fond de parcelle était calculé puis **jeté** : derrière les maisons, on
+voyait le terrain nu, donc du gris. Il est maintenant émis — **667 espaces
+libres, 9,4 ha**, dont **440 plantés (66 %)** et 317 arbres.
+
+« Pas tous » est le sujet, pas un détail : la table `VERDURE` en haut de `07`
+donne la part plantée par tissu — **0,05 sur une dalle commerciale, 0,92 en
+pavillonnaire, 0,30 au cœur ancien**. C'est ce contraste-là qui fait lire le
+tissu vu d'en haut, mieux que la couleur des façades. Une cour de cœur ancien
+est pavée ; un jardin de lotissement est vert.
+
+Les jardins partent dans le maillage des **masses**, dans le groupe de leur
+îlot : le cœur d'îlot appartient à l'îlot, donc il se clique avec lui et se
+teinte avec lui quand un calque s'allume.
+
+### 📦 Les barres, les hangars et les halles sont des boîtes
+
+`RECTANGULAIRE` (`07`) : `barre_1970`, `dalle_commerciale`,
+`friche_industrielle` ne suivent plus le découpage parcellaire — **18 volumes**
+sont ramenés à un rectangle aligné sur la rue.
+
+🔴 **Le piège, mesuré** : prendre le *rectangle englobant* de l'empreinte est
+immédiat à écrire et faux. Une parcelle en L a un englobant qui sort très loin
+d'elle — **44,5 m de débordement mesurés**, contre 4,8 m avant. On cherche donc
+le plus grand rectangle qui **tient dedans** (rastérisation par balayage, puis
+plus grand rectangle de cellules pleines). C'est l'emprise au sol, pas une
+taille inventée, et ça ne peut pas sortir de la parcelle.
+
+### ✂️ Les pointes sont coupées, `\_/` au lieu de `\/`
+
+Un angle rentrant de l'emprise fabrique des empreintes en lame de couteau. Sous
+**70°**, le sommet est remplacé par une arête franche : **162 pointes coupées
+sur 119 empreintes**.
+
+🔴 **Ce qui a raté au premier essai, et qui vaut d'être gardé** : couper 2,5 m
+de chaque côté d'une pointe à 15° laisse un mur de **65 cm** — c'est encore une
+lame, juste tronquée. Ce qu'on vise n'est pas une longueur de coupe mais **la
+largeur du mur qui reste** (`PAN_COUPE_M = 4,5 m`), et on coupe aussi loin qu'il
+le faut pour l'obtenir.
+
+Et pour ce qu'un chanfrein ne peut pas sauver — une empreinte qui est une lame
+de bout en bout — `LARGEUR_MIN_BATI = 3 m` : en dessous, le volume n'est pas
+construit et la parcelle repart au jardin.
+
+### 🌊 L'Ilse est creusée de 1,6 m
+
+`04` travaille en altitude **relative à l'eau** : son zéro est le fil de l'eau,
+donc la nappe affleurait exactement le sol de toute la ville. La rivière se
+lisait comme une flaque bleue posée dessus.
+
+Le lit descend maintenant de **1,6 m**, la berge remonte sur **12 m**, et la
+grille du terrain est passée de 8 à **4 m** — à 8 m, la berge ne tombait que sur
+un point de grille et la rive ressortait **en escalier**.
+
+⚠️ **La voirie garde le terrain naturel** (`alt_nature`), pas le lit creusé.
+Sans ça les trois franchissements plongeraient dans l'eau ; avec, les tabliers
+passent au-dessus. **Un pont, sans une ligne de code qui parle de pont.**
 
 🟢 **Le clic n'a pas changé de niveau.** Toutes les parcelles d'un îlot
 tombent dans **le même groupe de maillage** : la géométrie descend à la
@@ -267,12 +327,12 @@ Ils sont dans la console de `07`, pas dans un coin de tête :
 
 | Le défaut | Aujourd'hui |
 |---|---|
-| **47 empreintes concaves** prennent un toit plat | la recette du faîtage suppose qu'un versant avance dans un seul sens ; sur une empreinte concave il se retourne |
-| **748 pans réorientés** à l'émission (7 %) | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau. ⚠️ Donc la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve rien — c'est le nombre de réorientations qui informe |
-| **18 bâtiments mordent sur la rue**, jusqu'à 4,8 m | pic de mitre sur angle rentrant. Borné par le recul du tissu, sans commune mesure avec les 258 m de la session 9, mais à reprendre |
+| **50 empreintes concaves** prennent un toit plat | la recette du faîtage suppose qu'un versant avance dans un seul sens ; sur une empreinte concave il se retourne |
+| **794 pans réorientés** à l'émission (7 %) | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau. ⚠️ Donc la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve rien — c'est le nombre de réorientations qui informe |
+| **17 bâtiments mordent sur la rue**, jusqu'à 5,5 m | pic de mitre sur angle rentrant. Borné par le recul du tissu, sans commune mesure avec les 258 m de la session 9, mais à reprendre |
 
 🔗 **L'interface du toit** (41 · 64) est posée : chaque îlot expose
-`toit_m2` (surface réelle, pente comprise — **11,6 ha**), `toit_pente` et
+`toit_m2` (surface réelle, pente comprise — **11,9 ha**), `toit_pente` et
 `toit_plat`. L'ombrage était déjà là, c'est `canopee`. Le code d'énergie lira
 ces quatre nombres **sans savoir** si c'est le générateur ou une table de
 coefficients qui les produit — c'est ce qui fait qu'il ne l'attend pas.
@@ -283,12 +343,21 @@ Aucun n'est tranché. Ils sont dans le code avec ce commentaire, pas cachés.
 
 **La table `TISSU`** (`04c_parcelles.py`) — la largeur de façade et la
 profondeur visées par tissu. C'est elle qui décide du grain de toute la ville :
-7 m au cœur ancien fait un peigne de maisons étroites, 18 m en pavillonnaire
-fait des objets détachés. Le contrôle n'est pas « est-ce que le nombre est
+7 m au cœur ancien fait un peigne de maisons étroites, 13,5 m en pavillonnaire
+fait des maisons individuelles avec un jardin derrière (c'était 18 m, ce qui
+donnait des blocs trop larges et trop peu nombreux). Le contrôle n'est pas « est-ce que le nombre est
 juste » mais **« est-ce que le cœur ancien ressemble à un cœur ancien »**.
 
 **La table `BATI`** (`07_exporter_godot.py`) — recul de rue, jeu au voisin,
-profondeur bâtie, pente du toit. 🔴 Le `jeu` est le seul réglage qui fait
+profondeur bâtie, pente du toit.
+
+🔴 **`profondeur` se mesure depuis la FAÇADE, pas depuis la rue** — et c'était
+faux jusqu'au 2026-08-12. Le recul était pris *sur* la maison : avec 5,5 m de
+recul et 10 m de profondeur, le pavillon faisait **3,5 m de creux**, et ça
+valait pour *tous* les pavillons de la ville. Une table dont le nombre ne décrit
+pas ce qu'on voit est un piège, pas un réglage.
+
+🔴 Le `jeu` est le seul réglage qui fait
 basculer tout un tissu, et il est **réversible dans un seul sens** : écarter des
 maisons mitoyennes est facile, les recoller demanderait de réécrire le
 générateur (61).

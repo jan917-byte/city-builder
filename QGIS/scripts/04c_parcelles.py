@@ -78,7 +78,10 @@ TISSU = {
     "coeur_ancien":            (7.0,   16.0),   # parcellaire fin, très mitoyen
     "maisons_de_ville":        (8.0,   20.0),   # le tissu majoritaire de Wehrau
     "front_commercant":       (11.0,   18.0),   # vitrines en rez-de-chaussée
-    "pavillonnaire":          (18.0,   25.0),   # détaché, jardins
+    # 🔄 2026-08-12 : 18 m de façade donnaient des pavillons trop larges et trop
+    # peu nombreux — une rangée de gros blocs, pas un lotissement. À 12,5 m on
+    # a une maison par parcelle et le jardin derrière a la place d'exister.
+    "pavillonnaire":          (13.5,   28.0),   # détaché, jardins
     "barre_1970":             (60.0,   15.0),   # des barres longues et minces
     "equipement":             (45.0,   35.0),   # un ou deux objets par îlot
     "dalle_commercial":       (80.0,   60.0),   # (alias, voir plus bas)

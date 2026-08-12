@@ -111,21 +111,30 @@ HABITANTS_VAULT = 5350          # ce que le vault annonce — contrôlé, pas su
                                 # prototype est Wehrau. → Décisions arrêtées 13d
 
 # --- l'eau ----------------------------------------------------------------
-# Pas de MNT : le relief est un choix de design. L'Ilse coule du nord au sud
-# en décrivant un grand S ; la vallée remonte de part et d'autre.
+# 🔄 LA CARTE EST PLATE depuis le 2026-08-12, à la demande de l'auteur — dans
+# l'image ET dans la donnée. `altitude_relative` vaut donc 0 partout.
 #
-# La pente n'est pas constante : une vallée s'élargit vers l'aval. Raide en
-# amont, plate en aval. C'est ce qui met l'injustice géographique dans le
-# terrain lui-même, et pas seulement dans un coefficient.
-PENTE_AMONT = 0.032             # m d'altitude par m d'éloignement de l'eau
-PENTE_AVAL = 0.013
-ALT_MAX = 9.0                   # m — au-delà, on est sur le plateau
+# Ce qu'il y avait avant, et qu'il faudrait réécrire pour revenir en arrière :
+# une vallée sans MNT, remontant de part et d'autre de l'Ilse avec une pente
+# qui s'adoucissait vers l'aval (3,2 % → 1,3 %, plafond à 9 m). Elle ne s'est
+# jamais vue à l'écran — 9 m de relief sur 898 m de large.
+#
+# 🔴 CE QUE ÇA OBLIGE À CHANGER, et qui n'est pas un détail : l'ALÉA
+# d'inondation se calculait sur l'altitude. Sans relief, il vaudrait 1 partout
+# — toute la ville également inondable, donc plus d'injustice géographique du
+# tout. Il se calcule maintenant sur la DISTANCE À L'EAU, qui est le seul
+# gradient qui reste. La règle est la même dite autrement : loin de l'eau, on
+# risque moins.
+PORTEE_CRUE = 250.0             # m — au-delà de cette distance, aléa nul
 
-# L'aléa : jusqu'où l'eau peut monter. En aval, à altitude égale, l'eau se
-# retire moins vite. C'est ce qui donne du mordant à « la digue aggrave en
-# aval » : protéger l'amont pousse la crue vers ceux qui sont déjà exposés.
-ALT_ALEA = 6.0
+# En aval, à distance égale, l'eau se retire moins vite. C'est ce qui donne du
+# mordant à « la digue aggrave en aval » : protéger l'amont pousse la crue vers
+# ceux qui sont déjà exposés.
 AMONT_AVAL = (0.80, 1.20)       # multiplicateur d'aléa de l'amont vers l'aval
+
+# Jusqu'où une crue pousse, en mètres depuis la berge. Sert au tableau de fin,
+# là où on lisait « +2 m, +3 m, +4 m » d'altitude.
+CRUES = (60.0, 120.0, 200.0)
 
 # --- les rues -------------------------------------------------------------
 # Ce qu'il faut réserver à la circulation, par hiérarchie : chaussée + trottoirs.
@@ -464,11 +473,11 @@ def main():
         d["rive"] = "lit" if d["st"] == "riviere" else \
             ("gauche" if cote > 0 else "droite")
 
-        # la vallée s'élargit vers l'aval : la pente s'y adoucit
-        pente = PENTE_AMONT + (PENTE_AVAL - PENTE_AMONT) * d["fil"]
-        d["alt"] = round(min(pente * d["dist_eau"], ALT_MAX), 2)
+        # La carte est plate : plus d'altitude, et l'aléa se lit sur la
+        # distance à l'eau. Un îlot de rivière est à 0 m de l'eau, donc à 1.
+        d["alt"] = 0.0
         expo = AMONT_AVAL[0] + (AMONT_AVAL[1] - AMONT_AVAL[0]) * d["fil"]
-        d["alea"] = round(borne((1 - d["alt"] / ALT_ALEA) * expo), 3)
+        d["alea"] = round(borne((1 - d["dist_eau"] / PORTEE_CRUE) * expo), 3)
 
     # ------------------------------------------------------ desserte TC
     # Le bus passe où la rue est large. Une frontière de boulevard trop courte
@@ -640,18 +649,22 @@ def main():
         d = ilots[fid]
         print("    %-24s îlot %-3d rive %-7s fil %.2f · %3.0f m de l'eau"
               % (nom, fid, d["rive"], d["fil"], d["dist_eau"]))
-        print("    %-24s alt %.1f m · aléa %.2f · %d places · fragilité %.2f"
-              % ("", d["alt"], d["alea"], d["stationnement"], d["riverain"]))
+        print("    %-24s aléa %.2f · %d places · fragilité %.2f"
+              % ("", d["alea"], d["stationnement"], d["riverain"]))
 
+    # 🔄 La crue se lisait en HAUTEUR D'EAU (+2, +3, +4 m) sur un terrain qui
+    # montait. La carte est plate : elle se lit maintenant en DISTANCE depuis
+    # la berge — jusqu'où l'eau pousse dans la ville.
     print("\n  SI LE JEU S'OUVRAIT SUR UNE CRUE (brainstorm §1 — non arrêté) :")
-    for h in (2.0, 3.0, 4.0):
+    for m in CRUES:
         touches = [f for f, d in ilots.items()
-                   if d["st"] not in ("riviere", "champ") and d["alt"] < h]
+                   if d["st"] not in ("riviere", "champ") and d["dist_eau"] < m]
         log = sum(ilots[f]["logements"] for f in touches)
         frag = ([ilots[f]["riverain"] for f in touches if ilots[f]["logements"]]
                 or [0])
-        print("    +%.0f m : %2d îlots · %4d logements (%2.0f %%) · fragilité %.2f"
-              % (h, len(touches), log, 100.0 * log / max(1, tot_log),
+        print("    %3.0f m de la berge : %2d îlots · %4d logements (%2.0f %%)"
+              " · fragilité %.2f"
+              % (m, len(touches), log, 100.0 * log / max(1, tot_log),
                  sum(frag) / len(frag)))
 
     print("\nLES RUES")

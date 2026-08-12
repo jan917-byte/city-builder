@@ -10,9 +10,12 @@ extends Node3D
 #
 # CLAVIER
 #   clic   sélectionner un îlot ou une rue
-#   Espace lecture / pause          V B R   les trois points de vue
-#   1..4   exagération verticale    Q / E   rotation de 90°
-#   P      capture PNG              Échap   quitter
+#   Espace lecture / pause        V B R I   les quatre points de vue
+#   Q / E  rotation de 90°          P       capture PNG
+#   Échap  quitter
+#
+# 🔄 Les touches 1..4 exagéraient le relief. La carte est plate depuis le
+# 2026-08-12 : il n'y a plus rien à exagérer.
 #
 # ⚠️ Les 6 îlots de rivière ne sont pas cliquables : ils restent fusionnés dans
 # un seul maillage d'eau, avec leur matériau. La rivière est hors sujet pour
@@ -28,7 +31,6 @@ const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
-const EXAGERATIONS := [1.0, 1.5, 2.0, 3.0]
 
 # La rampe des calques thématiques : bleu froid → jaune → rouge. La même que
 # `06_etat_zero.py` et `parties.html`, pour qu'un calque se lise pareil dans
@@ -55,7 +57,6 @@ var noeuds := {"i": {}, "r": {}}
 var mois := 0.0
 var en_lecture := false
 var vitesse := 4.0
-var exageration := 1.0
 var calque_couche := ""
 var calque_champ := ""
 var _etendue := [0.0, 1.0]
@@ -82,7 +83,7 @@ func _ready() -> void:
 	pivot = CameraAxo.new()
 	pivot.name = "Pivot"
 	add_child(pivot)
-	_repere("vallee")
+	_repere("ville")
 
 	selection = Selection.new()
 	selection.name = "Selection"
@@ -126,9 +127,9 @@ func _ready() -> void:
 func _essai() -> void:
 	print("
 ESSAI — la ville, sans décision")
-	_repere("vallee")
+	_repere("ville")
 	await get_tree().process_frame
-	await _capturer("essai_vallee")
+	await _capturer("essai_ville")
 
 	# De près, sur la barre de 1974 : c'est là qu'on vérifie que les volumes
 	# sont toujours des volumes après le découpage en nœuds — et que le clic
@@ -148,6 +149,12 @@ ESSAI — la ville, sans décision")
 		_rafraichir(true)
 	await get_tree().process_frame
 	await _capturer("essai_barre")
+
+	# L'Ilse : le lit est creuse, la nappe doit etre nettement sous la
+	# ville et les tabliers passer au-dessus sans y plonger.
+	_repere("ilse")
+	await get_tree().process_frame
+	await _capturer("essai_ilse")
 	get_tree().quit()
 
 
@@ -156,10 +163,12 @@ ESSAI — la ville, sans décision")
 func _construire() -> void:
 	var mat := Materiaux.surface()
 
-	# `.srgb_to_linear()` : ces teintes finissent en couleur de SOMMET, comme
-	# celles que 07 a déjà converties. Sans ça elles ressortent délavées.
-	_fusionne("Terrain", Constructeur.terrain(donnees["terrain"],
-		Donnees.teinte(donnees, "_mineral_clair").srgb_to_linear()), mat)
+	# 🔄 Le terrain était un CHAMP D'ALTITUDE déplié ici en grille. La carte est
+	# plate depuis le 2026-08-12 : c'est un maillage comme les autres, troué là
+	# où passe le chenal de l'Ilse, et il porte ses couleurs comme le reste.
+	# Les murs de quai et le fond du chenal sont dedans — pas dans l'eau, dont
+	# le matériau est lisse et d'une seule teinte.
+	_fusionne("Terrain", Constructeur.maillage(donnees["terrain"]), mat)
 	_fusionne("Eau", Constructeur.maillage(donnees["eau"]),
 		Materiaux.eau(Donnees.teinte(donnees, "riviere")))
 
@@ -368,31 +377,16 @@ func _repere(nom: String) -> void:
 	pivot.viser(Vector2(float(c[0]), float(c[1])), float(d["taille"]))
 
 
-## L'exagération s'applique à TOUT le modèle, terrain et bâti ensemble — c'est
-## la convention d'une maquette de relief. Ne dilater que le sol ferait
-## décoller les bâtiments.
-##
-## ⚠️ Constaté le 2026-08-12 : la vallée ne se lit à AUCUN des quatre facteurs.
-## 9 m de relief sur 898 m de large, vus en axonométrie à angle fixe — le
-## facteur n'y peut rien. Ça se réglera par l'ombre ou par la caméra.
-func _exagerer(k: float) -> void:
-	exageration = k
-	monde.scale = Vector3(1.0, k, 1.0)
-
-
 func _unhandled_input(e: InputEvent) -> void:
 	if not (e is InputEventKey) or not (e as InputEventKey).pressed \
 			or (e as InputEventKey).echo:
 		return
 	match (e as InputEventKey).keycode:
 		KEY_SPACE: en_lecture = not en_lecture
-		KEY_V: _repere("vallee")
+		KEY_V: _repere("ville")
 		KEY_B: _repere("barre")
 		KEY_R: _repere("quai")
-		KEY_1: _exagerer(EXAGERATIONS[0])
-		KEY_2: _exagerer(EXAGERATIONS[1])
-		KEY_3: _exagerer(EXAGERATIONS[2])
-		KEY_4: _exagerer(EXAGERATIONS[3])
+		KEY_I: _repere("ilse")
 		KEY_P: _capturer("vue")
 		KEY_ESCAPE: get_tree().quit()
 

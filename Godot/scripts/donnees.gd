@@ -49,20 +49,15 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 		push_warning("objets.ilots : %d fiches pour %d îlots"
 			% [(o["ilots"] as Dictionary).size(), N_ILOTS])
 
-	var t: Dictionary = d["terrain"]
-	var attendu: int = int(t["nx"]) * int(t["nz"])
-	var reel: int = (t["alt"] as Array).size()
-	if reel != attendu:
-		_fatal("terrain : %d altitudes pour une grille %d × %d (attendu %d)"
-			% [reel, int(t["nx"]), int(t["nz"]), attendu])
-		return {}
-
 	var c: Dictionary = d["controles"]
 	if int(c["ilots"]) != N_ILOTS or int(c["routes"]) != N_ROUTES:
 		push_warning("La carte a changé : %d îlots et %d tronçons au lieu de %d et %d."
 			% [int(c["ilots"]), int(c["routes"]), N_ILOTS, N_ROUTES])
 
-	for nom in ["masses", "sols", "eau", "voirie"]:
+	# 🔄 `terrain` était un champ d'altitude et se contrôlait à part (grille
+	# nx × nz contre nombre d'altitudes). La carte étant plate, c'est un
+	# maillage comme les autres — donc il passe le MÊME contrôle qu'eux.
+	for nom in ["terrain", "masses", "sols", "eau", "voirie"]:
 		var e: String = _valider_maillage(d[nom] as Dictionary, nom)
 		if e != "":
 			_fatal(e)

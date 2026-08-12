@@ -58,13 +58,20 @@ SORTIE = os.path.join(RACINE, "Godot", "data", "wehrau.json")
 
 # --- les constantes de la maquette ---------------------------------------
 ETAGE_M = 3.0              # `hauteur` est en ÉTAGES, pas en mètres
-PAS_TERRAIN = 8.0          # grille du champ d'altitude. 4 m si ça facette
+# 🔄 LA CARTE EST PLATE depuis le 2026-08-12, à la demande de l'auteur. Le sol
+# est à 0 partout ; il n'y a plus de champ d'altitude, plus de vallée, plus
+# d'exagération verticale. Le seul relief de Wehrau est le CHENAL de l'Ilse.
+#
+# Ce que ça a retiré, et qu'il faut savoir pour le remettre : une classe
+# `Terrain` qui rejouait la règle de pente de `04` (3,2 % en amont, 1,3 % en
+# aval, plafond à 9 m) et l'échantillonnait sur une grille de 4 m. 9 m de
+# relief sur 898 m de large ne se lisaient à AUCUNE des quatre exagérations —
+# la vallée coûtait un champ d'altitude et ne se voyait pas.
+#
+# La grille ne sert donc plus qu'à découper une plaque plate : elle peut être
+# grossière. Les mailles que la berge traverse sont, elles, coupées à l'exact.
+PAS_TERRAIN = 16.0         # maille de la plaque de sol
 MARGE_TERRAIN = 24.0       # déborde l'emprise, sinon falaise au bord
-# Arête maximale d'un triangle drapé. Les caps de sol tolèrent plus large :
-# les champs sont sur le plateau, où l'altitude est plafonnée à ALT_MAX et donc
-# constante. Les rubans, eux, traversent la pente et la suivent de plus près.
-SUBDIV_SOL = 32.0
-SUBDIV_RUBAN = 20.0
 ENFOUISSEMENT = 0.5        # de combien la base d'une masse plonge sous le sol
 
 # Un ordre vertical explicite : aucun z-fighting, et rien ne dépend du
@@ -82,6 +89,22 @@ AO_HAUTEUR = 6.0
 M2_PAR_ARBRE = 40.0        # une couronne de ~3,5 m de rayon
 ESPACEMENT_ALIGNEMENT = 8.0
 GRAINE = 20260811          # le semis doit être le même à chaque export
+
+# 🌊 L'ILSE EST UN CHENAL, pas une flaque. La carte étant plate, c'est le seul
+# accident du terrain — et il est franc : deux murs VERTICAUX et un fond plat.
+#
+#     sol ─────┐              ┌───── sol            0,00 m
+#              │██████████████│                    −1,00 m  le plan d'eau
+#              └──────────────┘                    −2,00 m  le fond
+#
+# Ce que ça change par rapport à la berge en pente de la veille : on voit un
+# mètre de mur au-dessus de l'eau, sur toute la longueur. Une berge qui remonte
+# en pente douce sur 12 m se lisait comme un talus, donc comme rien.
+FOND_ILSE = -2.0           # le fond du chenal
+NAPPE_ILSE = -1.0          # le plan d'eau
+# ⚠️ La VOIRIE reste à 0, comme tout le reste : les trois franchissements
+# passent donc au-dessus du chenal sans qu'aucune ligne de code ne parle de
+# pont. C'est le creusement qui fabrique le pont, pas un tablier dessiné.
 
 COLS_ILOTS = [
     "fid", "fonction", "sous_type", "surface_m2", "hauteur", "impermeabilise",
@@ -129,8 +152,14 @@ CANOPEE_ALIGNEMENT_MAX = 0.40
 #               tissu, et c'est aussi celui qui est réversible dans un seul
 #               sens — écarter est facile, recoller demanderait de tout
 #               réécrire.
-#   profondeur  au-delà, ce n'est plus la maison, c'est la cour ou le jardin.
-#               C'est ce nombre qui creuse les cœurs d'îlot.
+#   profondeur  🔴 LA PROFONDEUR DU BÂTIMENT, mesurée DEPUIS SA FAÇADE — pas
+#               depuis la rue. Le 2026-08-12 elle était comptée depuis la rue,
+#               donc le recul était pris SUR la maison : avec 5,5 m de recul et
+#               10 m de profondeur, le pavillon faisait 3,5 m de creux. Toute
+#               une rangée de cloisons debout, et le nombre de la table ne
+#               décrivait rien qu'on puisse regarder. Au-delà de cette
+#               profondeur, ce n'est plus la maison, c'est la cour ou le
+#               jardin — c'est ce nombre qui creuse les cœurs d'îlot.
 #   pente       du toit, en montée par mètre d'avancée. 0 = TOIT PLAT.
 #               Le faîtage court PARALLÈLEMENT À LA RUE, jamais selon l'axe
 #               long de l'empreinte : sur une maison de ville plus profonde
@@ -142,26 +171,109 @@ CANOPEE_ALIGNEMENT_MAX = 0.40
 BATI = {
     #  sous_type              recul   jeu  profondeur  pente
     "coeur_ancien":            (0.0,  0.0,   11.0,     1.00),  # sur rue, mitoyen, cour derrière
-    "maisons_de_ville":        (1.5,  0.0,   11.0,     0.85),  # mitoyen, petit jardin
+    "maisons_de_ville":        (1.5,  0.0,   10.0,     0.85),  # mitoyen, petit jardin
     "front_commercant":        (0.0,  0.0,   13.0,     0.70),  # sur rue, vitrines
-    "pavillonnaire":           (5.0,  2.8,   10.0,     0.60),  # détaché, jardins
+    "pavillonnaire":           (5.5,  2.5,   10.0,     0.60),  # détaché, jardin derrière
     "barre_1970":              (6.0,  5.0,   13.0,     0.00),  # toit plat, 1974
-    "equipement":              (4.0,  3.0,   26.0,     0.25),
-    "dalle_commerciale":       (2.0,  2.0,   55.0,     0.00),  # un hangar
-    "friche_industrielle":     (3.0,  2.5,   38.0,     0.00),  # des halles
+    "equipement":              (4.0,  3.0,   22.0,     0.25),
+    "dalle_commerciale":       (2.0,  2.0,   53.0,     0.00),  # un hangar
+    "friche_industrielle":     (3.0,  2.5,   35.0,     0.00),  # des halles
 }
-BATI_DEFAUT = (2.0, 1.0, 14.0, 0.50)
+BATI_DEFAUT = (2.0, 1.0, 12.0, 0.50)
+
+# 📦 LES VOLUMES QUI SE SIMPLIFIENT EN RECTANGLE, alignés sur la rue.
+# Une barre, un hangar, une halle : ce sont des boîtes. Les faire suivre le
+# découpage parcellaire leur donnait des biais et des pointes qu'aucun béton
+# des années 1970 n'a jamais eus. On garde l'emprise au sol — le rectangle est
+# celui de la parcelle bâtie, pas une taille inventée.
+RECTANGULAIRE = {"barre_1970", "dalle_commerciale", "friche_industrielle"}
+
+# ✂️ LES POINTES. Un angle rentrant du parcellaire donne des empreintes en lame
+# de couteau : un coin à 20° est un mur de trois centimètres d'épaisseur vu de
+# face, et ça n'existe dans aucune ville. On COUPE la pointe — `\_/` au lieu de
+# `\/`. Le pan coupé est franc et court, il se lit comme un pan coupé d'angle.
+#
+# 🔴 CE QUI A RATÉ AU PREMIER ESSAI, et qui vaut d'être gardé : couper 2,5 m sur
+# chaque côté d'une pointe à 15° laisse un mur de 65 cm — c'est encore une lame,
+# juste une lame tronquée. Ce qu'on vise n'est pas une longueur de coupe, c'est
+# la LARGEUR DU MUR QUI RESTE. On coupe donc aussi loin qu'il le faut pour que
+# le pan coupé fasse `PAN_COUPE_M`, borné par la longueur des côtés voisins.
+ANGLE_MIN_DEG = 70.0       # en dessous, le sommet est remplacé par une arête
+PAN_COUPE_M = 4.5          # largeur visée du mur qui remplace la pointe
+PART_COTE_MAX = 0.45       # jamais plus que ça de chaque côté adjacent
+
+# 🔪 ET LES EMPREINTES QUI SONT UNE POINTE DE BOUT EN BOUT. Couper un sommet ne
+# sauve pas un bâtiment qui est un coin de 40 m de long et 2 m de large : il
+# reste une lame posée à plat. En dessous de cette largeur, le volume n'est pas
+# construit du tout — la parcelle repart au jardin, ce qui est la seule chose
+# honnête à en faire.
+LARGEUR_MIN_BATI = 3.0
+
+# 🌳 LA VERDURE DES CŒURS D'ÎLOT — part des espaces libres qui sont plantés.
+# « pas tous » est le sujet : une cour de cœur ancien est pavée, un jardin de
+# pavillonnaire est vert. C'est ce contraste qui fait lire le tissu d'en haut,
+# pas la couleur des façades.
+VERDURE = {
+    "coeur_ancien":          0.30,   # des cours, surtout minérales
+    "front_commercant":      0.20,   # arrière-cours de livraison
+    "maisons_de_ville":      0.65,   # petits jardins de ville
+    "pavillonnaire":         0.92,   # le jardin EST le tissu
+    "barre_1970":            0.75,   # l'espace vert de dalle, hérité de 1974
+    "equipement":            0.45,   # cour de récréation ou pelouse
+    "dalle_commerciale":     0.05,   # un parking, pas un jardin
+    "friche_industrielle":   0.20,   # des friches, pas des prés
+}
+VERDURE_DEFAUT = 0.40
+AIRE_JARDIN_MIN = 12.0     # en dessous, c'est un délaissé, pas un jardin
+M2_PAR_ARBRE_JARDIN = 120.0
+PART_JARDINS_ARBORES = 0.55   # parmi les jardins verts, ceux qui ont un arbre
 
 # Un faîtage ne monte jamais plus haut que ça, quelle que soit la pente. Sans
 # ce plafond, une empreinte profonde se coiffe d'un chapeau de dix mètres qui
 # écrase tout le reste.
 FAITAGE_MAX = 5.5
 
+# 🏠 QUAND UNE EMPREINTE NE SAIT PAS PORTER UN TOIT PROPRE, ELLE PREND UN TOIT
+# PLAT. C'est une règle de repli assumée, pas un échec : un toit plat sur une
+# empreinte tordue se lit comme un toit-terrasse, alors qu'un toit à deux
+# pentes sur la même empreinte se lit comme une erreur — pans vrillés, arêtes
+# qui se croisent, faîtage qui sort du bâtiment.
+#
+# Quatre défauts, dans l'ordre où on les teste. Chacun est COMPTÉ et imprimé :
+# si l'un d'eux explose, c'est la recette du faîtage qu'il faut revoir, pas le
+# seuil.
+#   concave        un versant peut repartir en arrière dans un renfoncement,
+#                  et le pan qu'il porte se retourne
+#   pointe         un sommet trop aigu donne deux pans qui se croisent près de
+#                  l'arête ; `_ecorner` en coupe la plupart, pas toutes
+#   sans profondeur  l'empreinte est trop mince EN TRAVERS du faîtage : le toit
+#                  n'a pas la place de monter, il ferait une arête posée sur un
+#                  mur
+#   pan vrillé     les quatre coins d'un pan ne sont pas dans un plan. Au-delà
+#                  d'un pli de GAUCHISSEMENT_MAX, ça se voit comme un froissé
+ANGLE_TOIT_MIN = 40.0        # degrés — sous cet angle intérieur, toit plat
+PROFONDEUR_TOIT_MIN = 5.0    # m — largeur de l'empreinte en travers du faîtage
+GAUCHISSEMENT_MAX = 0.35     # m — pli toléré sur un pan avant de renoncer
+
 # Combien de pans de toit ont dû être retournés à l'émission. Ce n'est pas une
 # erreur — c'est la mesure de à quel point la recette du faîtage doit être
 # corrigée après coup. Si ce nombre s'envole, c'est la recette qu'il faut
 # revoir, pas le compteur.
 retournes = [0]
+
+# Les deux autres compteurs de la même famille : ce que la simplification des
+# empreintes a effectivement changé, à imprimer plutôt qu'à supposer.
+pointes = [0, 0]        # [sommets coupés, empreintes touchées]
+rectangles = [0]        # volumes ramenés à une boîte
+minces = [0]            # empreintes trop fines, rendues au jardin
+# Pourquoi une empreinte a renoncé au toit à deux pentes — un compteur par
+# défaut, dans l'ordre de `RAISONS_PLAT`.
+plats_faute = {}
+RAISONS_PLAT = ["concave", "pointe", "sans profondeur", "pan vrillé"]
+# Le pli du pire pan, empreinte par empreinte, pour celles qui sont allées
+# jusque-là. C'est la distribution qui dit si GAUCHISSEMENT_MAX est un seuil ou
+# un couperet.
+plis = []
 
 # Une arête de parcelle dont le milieu est à moins de ça du bord de l'emprise
 # donne sur la rue. Tout le reste est partagé avec une parcelle voisine — la
@@ -189,77 +301,116 @@ def verifier_couche(con, table, script):
             "Relancer d'abord :  python3 QGIS/scripts/%s" % (table, script))
 
 
-# =========================================================== le champ d'altitude
+# ================================================================== le chenal
 
-class Terrain(object):
-    """Le relief, rejoué depuis la règle de `04`, échantillonnable partout.
+class Chenal(object):
+    """L'Ilse creusée dans une carte plate — et la plaque de sol qu'elle troue.
 
-    `04` évalue l'altitude AU CENTROÏDE de chaque îlot : une valeur par îlot.
-    Extruder chacun depuis la sienne donnerait un terrain en escalier — une
-    marche à chaque limite, invisible en 2D et criante en 3D. On rejoue donc
-    la règle elle-même (`Génération procédurale.md:29-33`), ce qui garantit
-    que le terrain et les données ne peuvent pas diverger : les constantes
-    sont importées de 04, jamais recopiées.
+    Il n'y a plus de champ d'altitude : le sol est à 0 partout, et le seul
+    relief est ce chenal à murs verticaux. Cette classe ne sait donc faire que
+    deux choses, et c'est le but :
+      · dire quelles ARÊTES sont des berges (les autres sont les coupures entre
+        deux îlots de rivière, au milieu de l'eau — il ne faut pas y bâtir un
+        mur) ;
+      · DÉCOUPER la plaque de sol le long de ces berges, à l'exact.
+
+    ⚠️ Le découpage, et c'est le seul endroit un peu retors : une maille que la
+    berge traverse est coupée par la DROITE de chaque arête de berge qui la
+    traverse, puis on ne garde que les morceaux dont le centre est hors de
+    l'eau. La coupe ne fait que subdiviser — c'est le test d'appartenance qui
+    décide, jamais la droite. Une droite qui mord trop loin ne peut donc pas
+    manger du sol : le morceau qu'elle détache est simplement gardé.
     """
 
     def __init__(self, anneaux_riviere):
         self.rivieres = [list(a) + [a[0]] for a in anneaux_riviere]
-        self.segs = []
-        ys = []
+        # Les arêtes qui apparaissent DEUX FOIS sont des limites entre deux
+        # îlots de rivière : elles traversent l'eau, elles ne sont pas des
+        # berges. Six îlots d'eau bout à bout en produisent cinq.
+        compte = {}
+        brut = []
         for a in anneaux_riviere:
             for i in range(len(a)):
                 p, q = a[i], a[(i + 1) % len(a)]
-                if math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-9:
-                    self.segs.append((p, q))
-                ys.append(p[1])
-        self.ynord, self.ysud = max(ys), min(ys)
-        # Index en cellules : 16 000 points de grille × ~200 segments de berge
-        # en force brute, c'est lent pour rien.
+                if math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-9:
+                    continue
+                cle = tuple(sorted((_cle(p), _cle(q))))
+                compte[cle] = compte.get(cle, 0) + 1
+                brut.append((p, q, cle))
+        self.cles_berges = {c for c, k in compte.items() if k == 1}
+        self.berges = [(p, q) for p, q, c in brut if compte[c] == 1]
+        self.internes = len(brut) - len(self.berges)
+        # Index par maille : sans lui, chaque maille de la plaque teste les
+        # ~200 arêtes de berge une par une.
         self.pas = 40.0
         self.idx = {}
-        for k, (p, q) in enumerate(self.segs):
-            x0 = int(min(p[0], q[0]) // self.pas)
-            x1 = int(max(p[0], q[0]) // self.pas)
-            y0 = int(min(p[1], q[1]) // self.pas)
-            y1 = int(max(p[1], q[1]) // self.pas)
-            for cx in range(x0, x1 + 1):
-                for cy in range(y0, y1 + 1):
+        for k, (p, q) in enumerate(self.berges):
+            for cx in range(int(min(p[0], q[0]) // self.pas),
+                            int(max(p[0], q[0]) // self.pas) + 1):
+                for cy in range(int(min(p[1], q[1]) // self.pas),
+                                int(max(p[1], q[1]) // self.pas) + 1):
                     self.idx.setdefault((cx, cy), []).append(k)
 
-    def dist_eau(self, x, y):
-        cx, cy = int(x // self.pas), int(y // self.pas)
-        best = None
-        r = 1
-        while best is None or best > (r - 1) * self.pas:
-            cand = []
-            for ix in range(cx - r, cx + r + 1):
-                for iy in range(cy - r, cy + r + 1):
-                    cand.extend(self.idx.get((ix, iy), ()))
-            for k in cand:
-                p, q = self.segs[k]
-                d = D4.dist_pt_seg((x, y), p, q)
-                if best is None or d < best:
-                    best = d
-            r += 2
-            if r > 60:
-                break
-        if best is None:                       # aucun segment : hors de tout
-            best = min(D4.dist_pt_seg((x, y), p, q) for p, q in self.segs)
-        return best
+    def dans_eau(self, p):
+        return any(dedans(r, p) for r in self.rivieres)
 
-    def alt(self, x, y):
-        # 🔴 LA SEULE DIVERGENCE ASSUMÉE AVEC 04, et elle est nécessaire.
-        # `04:453` force `dist_eau = 0` par un test `sous_type == 'riviere'`,
-        # qui est un cas particulier PAR ÎLOT. Appliquée telle quelle à un
-        # champ continu, la formule fait REMONTER le terrain au milieu de
-        # l'Ilse — une crête sous le plan d'eau. Le test d'appartenance
-        # ci-dessous est la transposition correcte de ce cas particulier.
-        for r in self.rivieres:
-            if dedans(r, (x, y)):
-                return 0.0
-        fil = D4.borne((self.ynord - y) / (self.ynord - self.ysud))
-        pente = D4.PENTE_AMONT + (D4.PENTE_AVAL - D4.PENTE_AMONT) * fil
-        return min(pente * self.dist_eau(x, y), D4.ALT_MAX)
+    def est_berge(self, a, b):
+        return tuple(sorted((_cle(a), _cle(b)))) in self.cles_berges
+
+    def berges_autour(self, x0, y0, x1, y1):
+        """Les arêtes de berge qui peuvent traverser la maille."""
+        vus = set()
+        for cx in range(int(x0 // self.pas), int(x1 // self.pas) + 1):
+            for cy in range(int(y0 // self.pas), int(y1 // self.pas) + 1):
+                vus.update(self.idx.get((cx, cy), ()))
+        return [self.berges[k] for k in vus]
+
+    def plaque(self, x0, y0, x1, y1, pas):
+        """Le sol : des morceaux plats à 0, troués là où passe le chenal."""
+        out = []
+        approx = 0
+        nx = int(math.ceil((x1 - x0) / pas))
+        ny = int(math.ceil((y1 - y0) / pas))
+        for j in range(ny):
+            for i in range(nx):
+                ax, ay = x0 + i * pas, y0 + j * pas
+                bx, by = min(ax + pas, x1), min(ay + pas, y1)
+                maille = [(ax, ay), (bx, ay), (bx, by), (ax, by)]
+                proches = [s for s in self.berges_autour(ax, ay, bx, by)
+                           if _coupe_boite(s, ax, ay, bx, by)]
+                if not proches:
+                    if not self.dans_eau(((ax + bx) / 2.0, (ay + by) / 2.0)):
+                        out.append(maille)
+                    continue
+                if len(proches) > 1:
+                    approx += 1
+                morceaux = [maille]
+                for (p, q) in proches:
+                    nrm = (q[1] - p[1], -(q[0] - p[0]))
+                    suite = []
+                    for mo in morceaux:
+                        suite.extend(D4C.couper(mo, p, nrm))
+                    morceaux = suite
+                for mo in morceaux:
+                    if len(mo) < 3:
+                        continue
+                    c = (sum(p[0] for p in mo) / len(mo),
+                         sum(p[1] for p in mo) / len(mo))
+                    if not self.dans_eau(c):
+                        out.append(mo)
+        return out, approx
+
+
+def _cle(p):
+    return (round(p[0], 4), round(p[1], 4))
+
+
+def _coupe_boite(seg, x0, y0, x1, y1):
+    """L'arête passe-t-elle dans la maille ? Test de boîtes, volontairement
+    large : une arête gardée pour rien ne coûte qu'une coupe sans effet."""
+    (px, py), (qx, qy) = seg
+    return not (max(px, qx) < x0 or min(px, qx) > x1
+                or max(py, qy) < y0 or min(py, qy) > y1)
 
 
 # ================================================================== géométrie
@@ -321,49 +472,6 @@ def _dans_triangle(p, a, b, c):
     neg = (d1 < -1e-12) or (d2 < -1e-12) or (d3 < -1e-12)
     pos = (d1 > 1e-12) or (d2 > 1e-12) or (d3 > 1e-12)
     return not (neg and pos)
-
-
-def subdiviser(tris, pts, seuil):
-    """Coupe récursivement l'arête la plus longue tant qu'elle dépasse le
-    seuil. Sans ça, le cap d'un champ de 384 m de côté traverserait la
-    colline qu'il est censé recouvrir."""
-    pts = list(pts)
-    milieux = {}
-
-    def milieu(i, j):
-        k = (i, j) if i < j else (j, i)
-        if k not in milieux:
-            pts.append(((pts[i][0] + pts[j][0]) / 2.0,
-                        (pts[i][1] + pts[j][1]) / 2.0))
-            milieux[k] = len(pts) - 1
-        return milieux[k]
-
-    pile = list(tris)
-    sortie = []
-    garde = 0
-    while pile and garde < 400000:
-        garde += 1
-        a, b, c = pile.pop()
-        lab = math.hypot(pts[b][0] - pts[a][0], pts[b][1] - pts[a][1])
-        lbc = math.hypot(pts[c][0] - pts[b][0], pts[c][1] - pts[b][1])
-        lca = math.hypot(pts[a][0] - pts[c][0], pts[a][1] - pts[c][1])
-        m = max(lab, lbc, lca)
-        if m <= seuil:
-            sortie.append((a, b, c))
-            continue
-        if m == lab:
-            d = milieu(a, b)
-            pile.append((a, d, c))
-            pile.append((d, b, c))
-        elif m == lbc:
-            d = milieu(b, c)
-            pile.append((b, d, a))
-            pile.append((d, c, a))
-        else:
-            d = milieu(c, a)
-            pile.append((c, d, b))
-            pile.append((d, a, b))
-    return sortie, pts
 
 
 def normale(p, q, r):
@@ -560,23 +668,28 @@ def main():
     def G(x, y, alt):
         return (x - cx, alt, -(y - cy))
 
-    terrain = Terrain([d["brut"] for d in ilots.values()
-                       if d["sous_type"] == "riviere"])
-    print("  berges : %d segments, fil de l'eau de %.1f à %.1f"
-          % (len(terrain.segs), terrain.ysud, terrain.ynord))
+    chenal = Chenal([d["brut"] for d in ilots.values()
+                     if d["sous_type"] == "riviere"])
+    print("  chenal : %d arêtes de berge (%d arêtes internes à l'eau écartées)"
+          % (len(chenal.berges), chenal.internes))
 
-    # --------------------------------------------------------- le heightfield
+    # ------------------------------------------------------ la plaque de sol
+    # La carte est PLATE : le sol est un plan à 0, troué par le chenal. Plus de
+    # champ d'altitude, plus de vallée, plus d'exagération verticale.
+    terre = Maillage()
+    coul_terre = PAL.vers_lineaire(PAL.MINERAL_CLAIR)
     x0 = minx - MARGE_TERRAIN
     y0 = miny - MARGE_TERRAIN
-    nx = int((maxx - minx + 2 * MARGE_TERRAIN) / PAS_TERRAIN) + 2
-    nz = int((maxy - miny + 2 * MARGE_TERRAIN) / PAS_TERRAIN) + 2
-    alt = []
-    for j in range(nz):
-        for i in range(nx):
-            alt.append(terrain.alt(x0 + i * PAS_TERRAIN, y0 + j * PAS_TERRAIN))
-    print("  terrain : grille %d × %d au pas de %.0f m (%d sommets), "
-          "altitude %.2f à %.2f m"
-          % (nx, nz, PAS_TERRAIN, nx * nz, min(alt), max(alt)))
+    x1 = maxx + MARGE_TERRAIN
+    y1 = maxy + MARGE_TERRAIN
+    morceaux, approx = chenal.plaque(x0, y0, x1, y1, PAS_TERRAIN)
+    for mo in morceaux:
+        _cap_plat(terre, mo, Y_TERRAIN, coul_terre, G)
+    print("  sol : plan à 0,00 m — %d morceaux de plaque au pas de %.0f m"
+          % (len(morceaux), PAS_TERRAIN))
+    if approx:
+        print("        dont %d mailles coupées par plusieurs arêtes de berge"
+              % approx)
 
     # ------------------------------------------------------------ les îlots
     masses, sols, eau = Maillage(), Maillage(), Maillage()
@@ -590,6 +703,17 @@ def main():
     toit_total = 0.0
     canopee_perdue = 0.0
     murs_ok = murs_tot = toits_ok = toits_tot = 0
+    quais_ok = quais_tot = 0
+    # Le mur de quai : le minéral de la ville, un peu assombri — un quai est à
+    # l'ombre de sa propre berge une bonne partie de la journée.
+    coul_quai = tuple(c * 0.86 for c in PAL.vers_lineaire(PAL.MINERAL_CLAIR))
+    n_jardin = n_vert = n_arbre_jardin = 0
+    aire_jardin = aire_verte = 0.0
+    # Un vert de jardin, légèrement assombri : un cœur d'îlot est en partie à
+    # l'ombre des volumes qui l'entourent, et rien ici ne calcule d'ombre
+    # portée sur le sol.
+    coul_jardin = PAL.vers_lineaire(PAL.couleur_sol("jardins_familiaux", 0.10))
+    coul_jardin = tuple(c * 0.92 for c in coul_jardin)
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -607,7 +731,12 @@ def main():
         if st == "riviere":
             n_eau += 1
             eau.marque(fid)
-            _cap_plat(eau, an, 0.0, coul, G)
+            # 🌊 Sur l'anneau BRUT, pas sur l'emprise : l'emprise est retirée
+            # de la voirie, et le chenal doit tomber exactement sur la limite
+            # de l'îlot d'eau, sinon un liseré de sol flotte au-dessus du vide.
+            a, b = _chenal_eau(eau, terre, d["brut"], chenal, coul, coul_quai, G)
+            quais_ok += a
+            quais_tot += b
             continue
 
         if haut > 0.0:
@@ -619,12 +748,16 @@ def main():
             # SÉLECTION reste à l'îlot — et la décision aussi. La parcelle est
             # l'entité persistante des données (35), pas celle du clic.
             pente = BATI.get(st, BATI_DEFAUT)[3]
+            toit_ilot = 0.0
             volumes = []
+            jardins = []
             if d["parcelles"]:
                 idx = _index_bord(an)
                 for p in d["parcelles"]:
-                    for emp, faite in _empreinte_batie(p["anneau"], st, idx):
+                    vols, jard = _empreinte_batie(p["anneau"], st, idx)
+                    for emp, faite in vols:
                         volumes.append((emp, p["niveaux"], faite))
+                    jardins.extend(jard)
                 n_parc += len(d["parcelles"])
                 n_vol += len(volumes)
             if not volumes:
@@ -632,21 +765,63 @@ def main():
                 n_pate += 1
                 pente = 0.0
             for emp, niv, faite in volumes:
+                # 🏠 LA DÉCISION DU TOIT, prise ici et une seule fois. Une
+                # empreinte qui ne sait pas porter deux pentes propres prend un
+                # toit plat, et on garde POURQUOI — c'est le seul moyen de
+                # savoir, la fois d'après, si c'est le seuil ou la recette qu'il
+                # faut reprendre.
+                pente_v = 0.0
                 if pente > 0.0:
-                    if faite is not None and _convexe(emp):
-                        n_pentu += 1
-                    else:
+                    raison = ("sans faîtage" if faite is None
+                              else _defaut_toit(emp, 0.0, pente, faite))
+                    if raison:
+                        plats_faute[raison] = plats_faute.get(raison, 0) + 1
                         n_plat_force += 1
+                    else:
+                        pente_v = pente
+                        n_pentu += 1
+                # La surface de toit se compte VOLUME PAR VOLUME, avec la pente
+                # de ce volume-là : un toit plat ne porte pas les 1,4 m² de
+                # couverture par m² d'emprise d'un toit à 45°. C'est ce nombre
+                # que l'énergie viendra lire (41 · 64).
+                toit_ilot += abs(D4C.aire_signee(emp)) * math.hypot(1.0, pente_v)
                 deb = _debordement(emp, d["parcelles"])
                 if deb > 0.5:
                     n_deborde += 1
                     deb_max = max(deb_max, deb)
-                a, b, c, e = _masse(masses, emp, d, terrain, coul, G, niv,
-                                    pente, faite)
+                a, b, c, e = _masse(masses, emp, d, coul, G, niv,
+                                    pente_v, faite)
                 murs_ok += a
                 murs_tot += b
                 toits_ok += c
                 toits_tot += e
+
+            # 🌳 LES CŒURS D'ÎLOT. Les fonds de parcelle étaient calculés puis
+            # jetés : le cœur d'un pâté ressortait en terrain nu, donc gris.
+            # Ils sont maintenant DESSINÉS — mais pas tous verts, et c'est le
+            # sujet. Une cour de cœur ancien est pavée, un jardin de
+            # pavillonnaire est planté ; ce contraste-là fait lire le tissu vu
+            # d'en haut mieux que la couleur des façades.
+            #
+            # Ils partent dans le maillage des MASSES, dans le groupe de
+            # l'îlot : le cœur d'îlot appartient à l'îlot, donc il se clique
+            # avec lui et se teinte avec lui quand un calque s'allume.
+            part_verte = VERDURE.get(st, VERDURE_DEFAUT)
+            for j in jardins:
+                aire_j = abs(D4C.aire_signee(j))
+                if aire_j < AIRE_JARDIN_MIN or len(j) < 3:
+                    continue
+                n_jardin += 1
+                aire_jardin += aire_j
+                if random.Random(_graine_lieu(j)).random() > part_verte:
+                    continue                  # une cour, pas un jardin
+                n_vert += 1
+                aire_verte += aire_j
+                _sol(masses, j, coul_jardin, G)
+                arbres_jardin = _semer_jardin(j, aire_j)
+                arbres.extend(arbres_jardin)
+                n_arbre_jardin += len(arbres_jardin)
+
             # 🔗 L'INTERFACE DU TOIT — décisions 41 et 64.
             # Un objet bâti expose quatre nombres : surface de toit, pente,
             # orientation, ombrage. Aujourd'hui c'est le générateur de
@@ -656,13 +831,13 @@ def main():
             # l'énergie n'attend pas la 3D (64b).
             #   `toit_m2` est la surface RÉELLE, pente comprise : un toit à
             #   45° porte 1,41 fois l'emprise qu'il couvre, et c'est cette
-            #   surface-là qu'on couvrirait de panneaux.
-            emprise_sol = sum(abs(D4C.aire_signee(e)) for e, _, _ in volumes)
-            etirement = math.hypot(1.0, pente) if pente > 0.0 else 1.0
-            d["toit_m2"] = round(emprise_sol * etirement, 1)
+            #   surface-là qu'on couvrirait de panneaux. Elle est sommée
+            #   VOLUME PAR VOLUME : un bâtiment tombé au toit plat compte pour
+            #   son emprise, pas pour l'emprise étirée du tissu.
+            d["toit_m2"] = round(toit_ilot, 1)
             d["toit_pente"] = round(pente, 2)
             d["toit_plat"] = 1 if pente <= 0.0 else 0
-            toit_total += d["toit_m2"]
+            toit_total += toit_ilot
             # La canopée d'un îlot bâti n'est pas représentable dans une
             # maquette de masses : le pâté est plein, il n'y a pas de sol
             # visible dessous. On la compte pour le dire, pas pour la cacher.
@@ -670,8 +845,8 @@ def main():
         else:
             n_sol += 1
             sols.marque(fid)
-            _sol(sols, an, terrain, coul, G)
-            arbres.extend(_semer(an, d, terrain, rng))
+            _sol(sols, an, coul, G)
+            arbres.extend(_semer(an, d, rng))
 
     print("  masses %d · sols %d · eau %d" % (n_masse, n_sol, n_eau))
     if n_parc:
@@ -682,9 +857,22 @@ def main():
         # avant qu'une décision de jeu s'appuie dessus.
         print("  toits : %.1f ha de surface réelle (pente comprise)"
               % (toit_total / 1e4))
-        print("        %d à deux pentes · %d plats par dessin · %d plats faute"
-              " d'empreinte convexe" % (n_pentu, n_vol - n_pentu - n_plat_force,
-                                        n_plat_force))
+        print("        %d à deux pentes · %d plats par dessin (le tissu les"
+              " veut plats) · %d plats faute d'empreinte"
+              % (n_pentu, n_vol - n_pentu - n_plat_force, n_plat_force))
+        # 🏠 POURQUOI on a renoncé, défaut par défaut. Si une ligne enfle, c'est
+        # la recette du faîtage qu'il faut reprendre, pas le seuil.
+        for r in (RAISONS_PLAT
+                  + [x for x in sorted(plats_faute) if x not in RAISONS_PLAT]):
+            if plats_faute.get(r):
+                print("           · %-16s %4d  (%.0f %% des bâtiments)"
+                      % (r, plats_faute[r], 100.0 * plats_faute[r] / n_vol))
+        if plis:
+            q = sorted(plis)
+            print("        pli des pans : médiane %.0f cm · 9e décile %.0f cm"
+                  " · pire %.2f m  (on renonce au-delà de %.2f m)"
+                  % (100 * q[len(q) // 2], 100 * q[int(0.9 * (len(q) - 1))],
+                     q[-1], GAUCHISSEMENT_MAX))
         if n_deborde:
             print("        ⚠️  %d bâtiments sur %d débordent de leur parcelle,"
                   " jusqu'à %.1f m" % (n_deborde, n_vol, deb_max))
@@ -693,11 +881,28 @@ def main():
         plats = [f for f, x in ilots.items() if x.get("toit_plat")]
         print("        dont %d îlots à toit plat — barre, dalle, friches"
               % len(plats))
+        # 📦 Les boîtes et ✂️ les pointes coupées. Deux chiffres à regarder :
+        # si les rectangles font monter le débordement ci-dessus, c'est que la
+        # boîte sort de la parcelle et il faut la rentrer.
+        print("  simplification : %d volumes ramenés à un rectangle (barre,"
+              " dalle, friche)" % rectangles[0])
+        print("        %d pointes coupées sur %d empreintes — `\\_/` au lieu de"
+              " `\\/`, sous %.0f°" % (pointes[0], pointes[1], ANGLE_MIN_DEG))
+        # 🌳 Les cœurs d'îlot. « pas tous » est le chiffre qui compte : à 100 %
+        # de vert, le contraste entre une cour pavée et un jardin disparaît.
+        print("  cœurs d'îlot : %d espaces libres (%.1f ha), dont %d plantés"
+              " (%.0f %%, %.1f ha) et %d arbres"
+              % (n_jardin, aire_jardin / 1e4, n_vert,
+                 100.0 * n_vert / max(n_jardin, 1), aire_verte / 1e4,
+                 n_arbre_jardin))
     if n_pate:
         print("  ⚠️  %d îlots ressortent en pâté plein — pas de parcelle, ou"
               " aucune n'a produit de volume" % n_pate)
-    print("  triangles : masses %d, sols %d, eau %d"
-          % (len(masses), len(sols), len(eau)))
+    print("  chenal : %d murs de quai, tous tournés vers l'eau  %s"
+          % (quais_tot, "✅" if quais_ok == quais_tot
+             else "❌ %d à l'envers" % (quais_tot - quais_ok)))
+    print("  triangles : plaque %d, masses %d, sols %d, eau %d"
+          % (len(terre), len(masses), len(sols), len(eau)))
     print("  sens des faces : murs vers l'extérieur %d/%d · toits dehors %d/%d"
           % (murs_ok, murs_tot, toits_ok, toits_tot))
     # ⚠️ Les deux colonnes ne se lisent PAS de la même façon, et il faut le
@@ -732,9 +937,9 @@ def main():
             for a, b in zip(part, part[1:]):
                 if math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-9:
                     continue                    # un segment de longueur nulle
-                _ruban(voirie, a, b, ch, terrain, coul_ch, G)
+                _ruban(voirie, a, b, ch, coul_ch, G)
                 n_seg += 1
-        emplacements = _alignement(d, terrain, rng)
+        emplacements = _alignement(d, rng)
         if emplacements:
             alignements[str(d["fid"])] = emplacements
     n_align = sum(len(v) for v in alignements.values())
@@ -769,14 +974,10 @@ def main():
             "y_terrain": Y_TERRAIN,
         },
         "palette": PAL.pour_json(),
-        "terrain": {
-            "x0": round(x0 - cx, 3), "z0": round(-(y0 - cy), 3),
-            "pas": PAS_TERRAIN, "nx": nx, "nz": nz,
-            # Le terrain descend de Y_TERRAIN : la chaussée (−0,05) doit
-            # passer AU-DESSUS de lui, et les caps de sol (+0,05)
-            # au-dessus des deux. Un ordre explicite, aucun z-fighting.
-            "alt": [round(a + Y_TERRAIN, 2) for a in alt],
-        },
+        # 🔄 C'ÉTAIT UN CHAMP D'ALTITUDE (`x0, z0, pas, nx, nz, alt`) que Godot
+        # dépliait en grille. La carte étant plate, c'est un maillage comme les
+        # autres : Godot n'a plus qu'UNE façon de lire de la géométrie.
+        "terrain": terre.json(),
         "masses": masses.json(),
         "sols": sols.json(),
         "eau": eau.json(),
@@ -806,7 +1007,8 @@ def main():
         "controles": {
             "ilots": len(ilots), "routes": len(routes),
             "masses": n_masse, "sols": n_sol, "eau": n_eau,
-            "triangles": len(masses) + len(sols) + len(eau) + len(voirie),
+            "triangles": (len(terre) + len(masses) + len(sols) + len(eau)
+                          + len(voirie)),
             "arbres": len(arbres),
             "alignements": n_align,
             "groupes": n_groupes,
@@ -826,16 +1028,56 @@ def _cap_plat(m, anneau, y, coul, G):
         m.triangle(G(a[0], a[1], y), G(b[0], b[1], y), G(c[0], c[1], y), coul)
 
 
-def _sol(m, anneau, terrain, coul, G):
-    """Un cap drapé sur le relief, SANS AUCUN MUR — donc impossible à lire
+def _chenal_eau(m_eau, m_dur, anneau, chenal, coul_eau, coul_mur, G):
+    """Un îlot d'eau : le fond du chenal, la nappe, et les murs de berge.
+
+    ⚠️ Deux maillages, et ce n'est pas un détail : la NAPPE part dans le
+    maillage d'eau, qui a un matériau lisse et une couleur unique ; le FOND et
+    les MURS partent avec le sol, dont le matériau lit la couleur des sommets.
+    Mis dans l'eau, un mur de quai serait bleu et brillant.
+
+    Les murs ne sont posés que sur les arêtes qui SÉPARENT l'eau de la ville.
+    Six îlots d'eau bout à bout partagent cinq arêtes en travers du courant :
+    y bâtir un mur mettrait cinq barrages dans la rivière.
+
+    Renvoie (murs émis, murs qui regardent bien vers l'eau) — un mur de quai
+    tourné vers la ville serait invisible, et ça ne se devine pas."""
+    m = m_dur
+    _cap_plat(m_dur, anneau, FOND_ILSE, coul_mur, G)      # le fond
+    _cap_plat(m_eau, anneau, NAPPE_ILSE, coul_eau, G)     # la nappe
+
+    ok = tot = 0
+    n = len(anneau)
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        if not chenal.est_berge(a, b):
+            continue
+        # Le mur regarde l'EAU, pas la ville : on parcourt l'arête à l'envers
+        # de ce que fait un mur de bâtiment, ce qui retourne la face.
+        pa_h, pb_h = G(a[0], a[1], Y_TERRAIN), G(b[0], b[1], Y_TERRAIN)
+        pa_b, pb_b = G(a[0], a[1], FOND_ILSE), G(b[0], b[1], FOND_ILSE)
+        m.triangle(pb_b, pa_b, pa_h, coul_mur)
+        m.triangle(pb_b, pa_h, pb_h, coul_mur)
+        tot += 1
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy)
+        nn = normale(pb_b, pa_b, pa_h)
+        if L > 1e-9 and (nn[0] * dy + nn[2] * dx) / L < -0.9:
+            ok += 1
+    return ok, tot
+
+
+def _sol(m, anneau, coul, G):
+    """Un cap posé sur la plaque, SANS AUCUN MUR — donc impossible à lire
     comme un bâtiment raté. Les seize îlots à hauteur nulle sont des
-    surfaces : champs, parc, jardins, et la place du marché."""
-    tris, pts = subdiviser(trianguler(anneau), anneau, SUBDIV_SOL)
-    ys = [terrain.alt(p[0], p[1]) + Y_SOL for p in pts]
-    for ia, ib, ic in tris:
-        m.triangle(G(pts[ia][0], pts[ia][1], ys[ia]),
-                   G(pts[ib][0], pts[ib][1], ys[ib]),
-                   G(pts[ic][0], pts[ic][1], ys[ic]), coul)
+    surfaces : champs, parc, jardins, et la place du marché.
+
+    🔄 Il était SUBDIVISÉ pour suivre le relief. La carte étant plate, la
+    subdivision ne servirait plus qu'à multiplier les triangles."""
+    for ia, ib, ic in trianguler(anneau):
+        a, b, c = anneau[ia], anneau[ib], anneau[ic]
+        m.triangle(G(a[0], a[1], Y_SOL), G(b[0], b[1], Y_SOL),
+                   G(c[0], c[1], Y_SOL), coul)
 
 
 def _index_bord(anneau, grille=1.0):
@@ -854,16 +1096,14 @@ def _index_bord(anneau, grille=1.0):
     return idx
 
 
-def _masse(m, anneau, d, terrain, coul, G, niveaux=None, pente=0.0,
-           faitage=None):
+def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None):
     """Un prisme à deux plans horizontaux, base enterrée.
 
-    `y_haut` réutilise `altitude_relative`, déjà dans la base : le toit est à
-    l'altitude que les données annoncent, zéro nouvelle règle. `y_bas` plonge
-    sous le point le plus bas du terrain sous l'anneau — en amont le prisme
-    est enterré et le terrain l'occlut. Le flottement serait laid, pas
-    l'enfouissement : entre les deux erreurs, on choisit celle qui ne se voit
-    pas. Aucune jupe, aucune face inférieure : elles ne sont jamais vues.
+    🔄 `y_haut` ajoutait `altitude_relative` — le bâtiment se posait sur le
+    relief que les données annonçaient. La carte est plate depuis le
+    2026-08-12 : tout part de 0, et un bâtiment ne fait plus que sa hauteur.
+    `y_bas` plonge sous le sol pour qu'aucun volume ne flotte. Aucune jupe,
+    aucune face inférieure : elles ne sont jamais vues.
 
     `niveaux` permet de donner à CHAQUE parcelle sa propre hauteur, tirée de
     sa graine (35). Sans lui, mille bâtiments arasés au même plan ne valent
@@ -871,9 +1111,8 @@ def _masse(m, anneau, d, terrain, coul, G, niveaux=None, pente=0.0,
     """
     if niveaux is None:
         niveaux = d["hauteur"] or 0.0
-    y_haut = (d["altitude_relative"] or 0.0) + niveaux * ETAGE_M
-    sous = [terrain.alt(p[0], p[1]) for p in anneau]
-    y_bas = min(sous) - ENFOUISSEMENT
+    y_haut = niveaux * ETAGE_M
+    y_bas = -ENFOUISSEMENT
 
     def ao(y):
         return AO_MIN + (1.0 - AO_MIN) * min(1.0, max(0.0, (y - y_bas) / AO_HAUTEUR))
@@ -905,15 +1144,13 @@ def _masse(m, anneau, d, terrain, coul, G, niveaux=None, pente=0.0,
         if L > 1e-9 and (nn[0] * dy + nn[2] * dx) / L > 0.9:
             ok += 1
 
-    # ⚠️ TOIT PENTU SUR EMPREINTE CONVEXE SEULEMENT, et c'est une limite du
-    # procédé, pas une préférence. La recette du faîtage suppose que chaque
-    # versant est une chaîne d'arêtes qui avance dans un seul sens ; sur une
-    # empreinte concave, une arête d'égout peut repartir en arrière dans un
-    # renfoncement, et le versant qu'elle porte se retourne — il disparaît au
-    # culling. Mesuré : 93 % des empreintes sont convexes, les 7 % restantes
-    # prennent un toit plat et le compte s'imprime.
-    if pente and pente > 0.0 and faitage is not None and _convexe(anneau):
-        h, t = _toit(m, anneau, y_haut, pente, faitage, coul, G)
+    # ⚠️ TOIT À DEUX PENTES SEULEMENT SI L'EMPREINTE SAIT LE PORTER, et c'est
+    # une limite du procédé, pas une préférence. Le tri est fait en amont par
+    # `_defaut_toit` : ici, une pente nulle veut dire « on a renoncé », et le
+    # bâtiment prend un toit plat — la triangulation du dessus, ci-dessous.
+    if pente and pente > 0.0 and faitage is not None:
+        h, t = _toit(m, _plan_toit(anneau, y_haut, pente, faitage),
+                     y_haut, coul, G)
         return ok, n, h, t
 
     haut_ok = 0
@@ -929,8 +1166,8 @@ def _masse(m, anneau, d, terrain, coul, G, niveaux=None, pente=0.0,
     return ok, n, haut_ok, len(tris)
 
 
-def _toit(m, anneau, y_egout, pente, faitage, coul, G):
-    """Un toit à deux pentes, sans un seul asset.
+def _plan_toit(anneau, y_egout, pente, faitage):
+    """L'OSSATURE du toit, calculée avant d'être émise.
 
     LA RECETTE, et c'est tout : on pose une DROITE DE FAÎTAGE au milieu de
     l'empreinte, parallèle à la rue, puis chaque sommet de l'égout est relié à
@@ -949,6 +1186,10 @@ def _toit(m, anneau, y_egout, pente, faitage, coul, G):
     ⚠️ Le faîtage est parallèle à la RUE, pas à l'axe long de l'empreinte. Sur
     une maison de ville plus profonde que large, l'axe long est perpendiculaire
     à la rue : le toit partirait de travers, et toute une rangée avec.
+
+    🔎 Cette fonction ne dessine rien : elle rend de quoi JUGER le toit avant de
+    l'écrire (`_defaut_toit`) et de quoi l'écrire ensuite (`_toit`). C'est ce
+    dédoublement qui permet de renoncer proprement et de poser un toit plat.
     """
     ux, uy = faitage
     vx, vy = -uy, ux                        # perpendiculaire, vers la profondeur
@@ -982,7 +1223,17 @@ def _toit(m, anneau, y_egout, pente, faitage, coul, G):
         if (sa > 1e-9 and sb < -1e-9) or (sa < -1e-9 and sb > 1e-9):
             t = sa / (sa - sb)
             fendu.append((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
-    anneau = fendu
+
+    return {"anneau": fendu, "faite": [sur_faitage(p) for p in fendu],
+            "y_fait": y_fait, "centre": (ox, oy), "demi": demi}
+
+
+def _toit(m, plan, y_egout, coul, G):
+    """Le toit à deux pentes, émis. L'ossature vient de `_plan_toit`."""
+    anneau = plan["anneau"]
+    faites = plan["faite"]
+    y_fait = plan["y_fait"]
+    ox, oy = plan["centre"]
 
     # Le contrôle d'orientation d'un toit ne peut pas se faire par cas — un
     # versant regarde le ciel, un pignon regarde de côté, et entre les deux il
@@ -995,7 +1246,7 @@ def _toit(m, anneau, y_egout, pente, faitage, coul, G):
     n = len(anneau)
     for i in range(n):
         a, b = anneau[i], anneau[(i + 1) % n]
-        ra, rb = sur_faitage(a), sur_faitage(b)
+        ra, rb = faites[i], faites[(i + 1) % n]
         pa = G(a[0], a[1], y_egout)
         pb = G(b[0], b[1], y_egout)
         qa = G(ra[0], ra[1], y_fait)
@@ -1016,6 +1267,95 @@ def _toit(m, anneau, y_egout, pente, faitage, coul, G):
             tot += 1
             ok += 1
     return ok, tot
+
+
+def _defaut_toit(anneau, y_egout, pente, faitage):
+    """Cette empreinte sait-elle porter un toit à deux pentes PROPRE ?
+
+    Renvoie "" si oui, sinon le nom du défaut. C'est LE point d'entrée de la
+    règle de repli : tout ce qui sort d'ici avec un nom prend un toit plat.
+
+    On teste dans l'ordre du moins cher au plus cher, et surtout du plus
+    général au plus fin : la forme vue de dessus d'abord (convexité, pointes),
+    la forme du toit ensuite (profondeur, pli des pans).
+    """
+    if not _convexe(anneau):
+        return "concave"
+    if _angle_min(anneau) < ANGLE_TOIT_MIN:
+        return "pointe"
+    plan = _plan_toit(anneau, y_egout, pente, faitage)
+    if 2.0 * plan["demi"] < PROFONDEUR_TOIT_MIN:
+        return "sans profondeur"
+    pli = _gauchissement(plan, y_egout)
+    plis.append(pli)
+    if pli > GAUCHISSEMENT_MAX:
+        return "pan vrillé"
+    return ""
+
+
+def _angle_min(anneau):
+    """Le plus petit angle intérieur de l'empreinte, en degrés."""
+    n = len(anneau)
+    pire = 180.0
+    for i in range(n):
+        p0, p, p1 = anneau[(i - 1) % n], anneau[i], anneau[(i + 1) % n]
+        ax, ay = p0[0] - p[0], p0[1] - p[1]
+        bx, by = p1[0] - p[0], p1[1] - p[1]
+        la, lb = math.hypot(ax, ay), math.hypot(bx, by)
+        if la < 1e-9 or lb < 1e-9:
+            continue
+        cos = max(-1.0, min(1.0, (ax * bx + ay * by) / (la * lb)))
+        pire = min(pire, math.degrees(math.acos(cos)))
+    return pire
+
+
+def _gauchissement(plan, y_egout):
+    """De combien le pire pan de toit sort-il de son propre plan, en mètres.
+
+    Un pan est un quadrilatère : deux sommets sur l'égout, deux sur le faîtage.
+    Rien ne garantit que ses quatre coins soient coplanaires — et quand ils ne
+    le sont pas, la surface se plie. `_decouper_quad` sait rattraper un pli de
+    quelques centimètres en éclatant le quad en éventail ; au-delà, le pli se
+    VOIT, et c'est un toit plat qu'il faut.
+
+    Un pignon ne compte pas : ses deux sommets se projettent au même point du
+    faîtage, le quad s'écrase en triangle, et un triangle est toujours plan.
+    """
+    anneau, faites = plan["anneau"], plan["faite"]
+    y_fait = plan["y_fait"]
+    pire = 0.0
+    n = len(anneau)
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        ra, rb = faites[i], faites[(i + 1) % n]
+        pire = max(pire, _hors_plan(
+            (a[0], a[1], y_egout), (b[0], b[1], y_egout),
+            (rb[0], rb[1], y_fait), (ra[0], ra[1], y_fait)))
+    return pire
+
+
+def _hors_plan(p0, p1, p2, p3):
+    """Le PLI d'un quadrilatère : la distance entre ses deux diagonales.
+
+    🔴 Première mesure essayée, et fausse : « la distance du quatrième sommet
+    au plan des trois autres ». Sur un pignon, les deux sommets du faîtage se
+    confondent presque, le plan de base est une lame, et la mesure part en
+    vrille alors que le pan, lui, est un triangle parfaitement plat. 574
+    bâtiments sur 702 se déclaraient vrillés.
+
+    Deux diagonales se coupent si et seulement si les quatre points sont
+    coplanaires. Leur écart est donc le pli, il vaut zéro sur un triangle, et il
+    ne dépend d'aucune base bien conditionnée."""
+    ux, uy, uz = (p2[k] - p0[k] for k in range(3))
+    vx, vy, vz = (p3[k] - p1[k] for k in range(3))
+    nx = uy * vz - uz * vy
+    ny = uz * vx - ux * vz
+    nz = ux * vy - uy * vx
+    L = math.sqrt(nx * nx + ny * ny + nz * nz)
+    if L < 1e-9:                       # diagonales parallèles : pas de pli
+        return 0.0
+    wx, wy, wz = (p1[k] - p0[k] for k in range(3))
+    return abs(wx * nx + wy * ny + wz * nz) / L
 
 
 def _vers_dehors(tri, coeur):
@@ -1131,20 +1471,205 @@ def _sur_rue(parcelle, idx_bord):
     return out
 
 
+def _ecorner(anneau):
+    """Couper les pointes : `\\_/` au lieu de `\\/`.
+
+    Un sommet CONVEXE dont l'angle intérieur passe sous ANGLE_MIN_DEG est
+    remplacé par deux sommets et une petite arête franche. Ces pointes ne
+    viennent pas du parcellaire mais du rétrécissement : sur un angle rentrant
+    de l'emprise, deux arêtes décalées se rejoignent très loin et fabriquent
+    une lame de couteau — un mur de trois centimètres vu de face.
+
+    Ce que ça ne casse pas : chanfreiner un sommet convexe laisse une
+    empreinte convexe convexe, donc les toits à deux pentes ne se perdent pas
+    en route. Et un sommet concave n'est jamais touché."""
+    n = len(anneau)
+    if n < 3:
+        return anneau
+    cos_seuil = math.cos(math.radians(ANGLE_MIN_DEG))
+    out = []
+    coupes = 0
+    for i in range(n):
+        p0 = anneau[(i - 1) % n]
+        p = anneau[i]
+        p1 = anneau[(i + 1) % n]
+        ax, ay = p0[0] - p[0], p0[1] - p[1]
+        bx, by = p1[0] - p[0], p1[1] - p[1]
+        la = math.hypot(ax, ay)
+        lb = math.hypot(bx, by)
+        if la < 1e-9 or lb < 1e-9:
+            out.append(p)
+            continue
+        # Anneau trigonométrique : le sommet est CONVEXE quand le produit
+        # vectoriel des deux arêtes est positif.
+        cr = ((p[0] - p0[0]) * (p1[1] - p[1])
+              - (p[1] - p0[1]) * (p1[0] - p[0]))
+        cosang = (ax * bx + ay * by) / (la * lb)   # cos de l'angle intérieur
+        if cr <= 0.0 or cosang < cos_seuil:
+            out.append(p)
+            continue
+        # Le pan coupé mesure 2·d·sin(θ/2) : on inverse pour viser PAN_COUPE_M.
+        demi = math.acos(max(-1.0, min(1.0, cosang))) / 2.0
+        vise = PAN_COUPE_M / (2.0 * max(math.sin(demi), 1e-3))
+        d = min(vise, PART_COTE_MAX * la, PART_COTE_MAX * lb)
+        if d < 0.15:
+            out.append(p)
+            continue
+        out.append((p[0] + ax / la * d, p[1] + ay / la * d))
+        out.append((p[0] + bx / lb * d, p[1] + by / lb * d))
+        coupes += 1
+    if not coupes:
+        return anneau
+    net = D4C.nettoyer(out)
+    if len(net) < 3 or abs(D4C.aire_signee(net)) < 6.0:
+        return anneau                 # la coupe mangeait tout : on renonce
+    pointes[0] += coupes
+    pointes[1] += 1
+    return net
+
+
+def _largeur_min(anneau):
+    """La plus petite largeur de l'empreinte : la distance entre les deux
+    droites parallèles les plus serrées qui l'enferment.
+
+    Un bâtiment n'est pas jugé sur son aire — un coin de 40 m de long et 2 m de
+    large en fait 40, ce qui passe tous les seuils d'aire, et se voit comme une
+    lame posée à plat. C'est la LARGEUR qui dit si on croirait y habiter."""
+    n = len(anneau)
+    best = None
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy)
+        if L < 1e-9:
+            continue
+        nx, ny = -dy / L, dx / L
+        ds = [(p[0] - a[0]) * nx + (p[1] - a[1]) * ny for p in anneau]
+        w = max(ds) - min(ds)
+        if best is None or w < best:
+            best = w
+    return best if best is not None else 0.0
+
+
+def _garder(volumes, parcelle):
+    """Le filtre des lames. Ce qui ne survit pas rend sa parcelle au jardin —
+    un cœur d'îlot un peu plus grand vaut mieux qu'un bâtiment qui ment."""
+    out = []
+    for emp, faite in volumes:
+        if len(emp) >= 3 and _largeur_min(emp) >= LARGEUR_MIN_BATI:
+            out.append((emp, faite))
+        else:
+            minces[0] += 1
+    if not out:
+        return [], [D4C.ouvrir(parcelle)]
+    return out, None
+
+
+def _rectangle(emp, u, w, w_max):
+    """L'empreinte ramenée à une BOÎTE alignée sur la rue.
+
+    Une barre de 1974, un hangar, une halle : ce sont des rectangles, et les
+    faire suivre le découpage parcellaire leur donne des biais qu'ils n'ont
+    jamais eus.
+
+    🔴 LE PIÈGE, mesuré et corrigé le 2026-08-12 : prendre le RECTANGLE
+    ENGLOBANT de l'empreinte est immédiat à écrire et faux. Une parcelle en L
+    ou en biais a un englobant qui déborde très loin d'elle — 44,5 m mesurés,
+    contre 4,8 m de débordement maximal avant. On cherche donc le plus grand
+    rectangle qui TIENT DEDANS : on rastérise l'empreinte par balayage de
+    lignes, puis on prend le plus grand rectangle de cellules pleines. C'est
+    l'emprise au sol, pas une taille inventée, et ça ne peut pas sortir de la
+    parcelle."""
+    ux, uy = u
+    wx, wy = w
+    pts = [(p[0] * ux + p[1] * uy, p[0] * wx + p[1] * wy) for p in emp]
+    u0 = min(p[0] for p in pts)
+    u1 = max(p[0] for p in pts)
+    v0 = min(p[1] for p in pts)
+    v1 = min(max(p[1] for p in pts), w_max)
+    if u1 - u0 < 2.0 or v1 - v0 < 2.0:
+        return None
+
+    pas = max(0.5, min(u1 - u0, v1 - v0) / 60.0)
+    nu = max(1, int((u1 - u0) / pas))
+    nv = max(1, int((v1 - v0) / pas))
+    du = (u1 - u0) / nu
+    dv = (v1 - v0) / nv
+
+    # Rastérisation par balayage : pour chaque ligne, les abscisses où le bord
+    # est traversé, deux à deux, donnent les segments pleins.
+    n = len(pts)
+    grille = []
+    for j in range(nv):
+        yc = v0 + (j + 0.5) * dv
+        xs = []
+        for i in range(n):
+            a, b = pts[i], pts[(i + 1) % n]
+            if (a[1] <= yc) != (b[1] <= yc):
+                t = (yc - a[1]) / (b[1] - a[1])
+                xs.append(a[0] + t * (b[0] - a[0]))
+        xs.sort()
+        ligne = [False] * nu
+        for k in range(0, len(xs) - 1, 2):
+            ka = max(0, int(math.ceil((xs[k] - u0) / du - 0.5)))
+            kb = min(nu - 1, int(math.floor((xs[k + 1] - u0) / du - 0.5)))
+            for c in range(ka, kb + 1):
+                ligne[c] = True
+        grille.append(ligne)
+
+    # Le plus grand rectangle de cellules pleines — méthode de l'histogramme,
+    # une pile par ligne.
+    haut = [0] * nu
+    best = (0, 0, -1, 0, -1)          # cellules, i0, i1, j0, j1
+    for j in range(nv):
+        for i in range(nu):
+            haut[i] = haut[i] + 1 if grille[j][i] else 0
+        pile = []
+        for i in range(nu + 1):
+            h = haut[i] if i < nu else 0
+            debut = i
+            while pile and pile[-1][1] >= h:
+                d0, h0 = pile.pop()
+                if h0 * (i - d0) > best[0]:
+                    best = (h0 * (i - d0), d0, i - 1, j - h0 + 1, j)
+                debut = d0
+            pile.append((debut, h))
+    if best[0] <= 0:
+        return None
+
+    a0 = u0 + best[1] * du
+    a1 = u0 + (best[2] + 1) * du
+    b0 = v0 + best[3] * dv
+    b1 = v0 + (best[4] + 1) * dv
+    if a1 - a0 < 2.0 or b1 - b0 < 2.0:
+        return None
+
+    def pt(a, b):
+        return (a * ux + b * wx, a * uy + b * wy)
+
+    rect = D4C.ouvrir([pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)])
+    rectangles[0] += 1
+    return rect
+
+
 def _empreinte_batie(parcelle, st, idx_bord):
-    """La parcelle devient une empreinte de bâtiment.
+    """La parcelle devient une empreinte de bâtiment ET un fond de parcelle.
 
     Trois gestes, dans cet ordre, et chacun répond à un des trois nombres de
     `BATI` : on recule de la rue, on s'écarte (ou pas) de la voisine, puis on
-    coupe ce qui dépasse en profondeur — le reste est la cour ou le jardin.
+    coupe ce qui dépasse en profondeur.
 
-    Renvoie [] quand il ne reste rien : une parcelle enclavée, sans aucune
-    arête sur rue, n'est pas bâtie. C'est comme ça que les cœurs d'îlot se
-    creusent, sans qu'on ait à les dessiner."""
+    Renvoie DEUX listes : les volumes, et ce qui reste derrière eux — la cour
+    ou le jardin. C'est ce deuxième retour qui est neuf : le fond de parcelle
+    était calculé puis jeté, donc les cœurs d'îlot étaient du terrain nu. Une
+    parcelle enclavée, sans aucune arête sur rue, n'est pas bâtie du tout : elle
+    part entière au jardin."""
     recul, jeu, prof, _pente = BATI.get(st, BATI_DEFAUT)
     rues = _sur_rue(parcelle, idx_bord)
     if not any(rues):
-        return []                     # enclavée : cour, jardin, pas de maison
+        # enclavée : cour ou jardin, pas de maison. Elle était déjà creusée,
+        # elle est maintenant DESSINÉE.
+        return [], [D4C.ouvrir(parcelle)]
 
     retraits = [recul if r else jeu for r in rues]
     emp = D4B.retracter(parcelle, retraits)
@@ -1153,11 +1678,11 @@ def _empreinte_batie(parcelle, st, idx_bord):
     # plafond) — seul le premier nous intéresse ici.
     emp = D4B.reparer(emp)[0] if len(emp) >= 3 else []
     if len(emp) < 3 or abs(D4C.aire_signee(emp)) < 6.0:
-        return []
+        return [], [D4C.ouvrir(parcelle)]
     emp = D4C.ouvrir(emp)
     emp = D4C.nettoyer(emp)
     if len(emp) < 3:
-        return []
+        return [], [D4C.ouvrir(parcelle)]
 
     # La coupe en profondeur, depuis la plus longue arête sur rue. Sans elle,
     # deux rangées dos à dos donnent un bloc plein de 32 m et le cœur d'îlot
@@ -1172,18 +1697,47 @@ def _empreinte_batie(parcelle, st, idx_bord):
         if L > best_L:
             best_L, meilleur = L, (a, b)
     if meilleur is None:
-        return [(emp, None)]
+        v, j = _garder([(_ecorner(emp), None)], parcelle)
+        return v, (j if j is not None else [])
     a, b = meilleur
     dx, dy = b[0] - a[0], b[1] - a[1]
     L = math.hypot(dx, dy)
     if L < 1e-9:
-        return [(emp, None)]
+        v, j = _garder([(_ecorner(emp), None)], parcelle)
+        return v, (j if j is not None else [])
     rue_dir = (dx / L, dy / L)         # la direction du faîtage
     # Anneau trigonométrique : l'intérieur est à GAUCHE du parcours, donc la
     # normale rentrante vaut (−dy, dx). On garde le côté rue, c'est-à-dire le
     # côté négatif de cette normale.
     nx, ny = -dy / L, dx / L
-    p0 = (a[0] + nx * prof, a[1] + ny * prof)
+    # `recul + prof` et pas `prof` : la façade est déjà en retrait de `recul`,
+    # donc c'est de là qu'il faut compter la profondeur du bâtiment.
+    fond = recul + prof
+    p0 = (a[0] + nx * fond, a[1] + ny * fond)
+
+    # Ce qui est DERRIÈRE la ligne de profondeur, découpé dans la parcelle
+    # elle-même et non dans l'emprise rétrécie : les bandes latérales du jeu au
+    # voisin y restent, et la partition (61) tient toujours — deux jardins
+    # voisins partagent l'arête exacte de leur coupe commune.
+    jardins = []
+    for m in D4C.couper(parcelle, p0, (nx, ny)):
+        if len(m) < 3:
+            continue
+        cx = sum(p[0] for p in m) / len(m)
+        cy = sum(p[1] for p in m) / len(m)
+        if (cx - p0[0]) * nx + (cy - p0[1]) * ny > 0.01 \
+                and abs(D4C.aire_signee(m)) > AIRE_JARDIN_MIN:
+            jardins.append(D4C.ouvrir(m))
+
+    # Les boîtes : barre, hangar, halle. Elles sautent la coupe polygonale et
+    # l'écornage — un rectangle n'a pas de pointe.
+    if st in RECTANGULAIRE:
+        rect = _rectangle(emp, rue_dir, (nx, ny),
+                          (p0[0] * nx + p0[1] * ny))
+        if rect is not None:
+            v, j = _garder([(rect, rue_dir)], parcelle)
+            return v, (j if j is not None else jardins)
+
     morceaux = D4C.couper(emp, p0, (-nx, -ny))
     garde = []
     for m in morceaux:
@@ -1193,15 +1747,56 @@ def _empreinte_batie(parcelle, st, idx_bord):
         cy = sum(p[1] for p in m) / len(m)
         if (cx - p0[0]) * (-nx) + (cy - p0[1]) * (-ny) > -0.01 \
                 and abs(D4C.aire_signee(m)) > 6.0:
-            garde.append((D4C.ouvrir(m), rue_dir))
-    return garde if garde else [(emp, rue_dir)]
+            garde.append((_ecorner(D4C.ouvrir(m)), rue_dir))
+    if not garde:
+        garde = [(_ecorner(emp), rue_dir)]
+    v, j = _garder(garde, parcelle)
+    return v, (j if j is not None else jardins)
 
 
-def _ruban(m, a, b, larg, terrain, coul, G):
-    """La chaussée, drapée. Prolongée d'une demi-largeur à chaque bout pour
-    que les carrefours se remplissent au lieu d'afficher une croix pâle — on
-    assume le recouvrement, tout est dans un seul plan et d'une seule couleur,
-    donc il est invisible par construction."""
+def _graine_lieu(anneau):
+    """Une graine tirée de la POSITION, pas d'un rang — décision 35. Déplacer
+    une ligne de la table `BATI` ne doit pas rebattre toute la ville."""
+    cx = sum(p[0] for p in anneau) / len(anneau)
+    cy = sum(p[1] for p in anneau) / len(anneau)
+    return abs((int(round(cx * 100.0)) * 73856093)
+               ^ (int(round(cy * 100.0)) * 19349663))
+
+
+def _semer_jardin(anneau, aire):
+    """Les arbres d'un jardin. Tous les jardins verts n'en ont pas : c'est le
+    « pas tous » de la consigne, et c'est ce qui empêche le cœur d'îlot de
+    ressembler à un tapis."""
+    r = random.Random(_graine_lieu(anneau) ^ 0x5EED)
+    if r.random() > PART_JARDINS_ARBORES:
+        return []
+    n = max(1, int(aire / M2_PAR_ARBRE_JARDIN))
+    xs = [p[0] for p in anneau]
+    ys = [p[1] for p in anneau]
+    ferme = list(anneau) + [anneau[0]]
+    out = []
+    essais = 0
+    while len(out) < n and essais < n * 40:
+        essais += 1
+        x = r.uniform(min(xs), max(xs))
+        y = r.uniform(min(ys), max(ys))
+        if not dedans(ferme, (x, y)):
+            continue
+        out.append([x, y, 0.0,
+                    r.uniform(0.55, 0.95), r.uniform(0.0, 6.2832)])
+    return out
+
+
+def _ruban(m, a, b, larg, coul, G):
+    """La chaussée : UN quadrilatère par segment. Prolongée d'une demi-largeur
+    à chaque bout pour que les carrefours se remplissent au lieu d'afficher une
+    croix pâle — on assume le recouvrement, tout est dans un seul plan et d'une
+    seule couleur, donc il est invisible par construction.
+
+    🔄 Elle était découpée tous les 20 m pour suivre la pente. La carte étant
+    plate, elle reste à 0 sur toute sa longueur — et au-dessus du chenal, elle
+    passe donc au-dessus du vide. C'est ça, le pont : aucune ligne de code du
+    projet ne parle de tablier."""
     dx, dy = b[0] - a[0], b[1] - a[1]
     L = math.hypot(dx, dy)
     if L < 1e-9:
@@ -1209,23 +1804,16 @@ def _ruban(m, a, b, larg, terrain, coul, G):
     ux, uy = dx / L, dy / L
     px, py = -uy * larg / 2.0, ux * larg / 2.0
     ax, ay = a[0] - ux * larg / 2.0, a[1] - uy * larg / 2.0
-    total = L + larg
-    n = max(1, int(total / SUBDIV_RUBAN) + 1)
-    prev = None
-    for k in range(n + 1):
-        t = total * k / n
-        mx, my = ax + ux * t, ay + uy * t
-        g = (mx - px, my - py)
-        dt = (mx + px, my + py)
-        pg = G(g[0], g[1], terrain.alt(g[0], g[1]) + Y_CHAUSSEE)
-        pd = G(dt[0], dt[1], terrain.alt(dt[0], dt[1]) + Y_CHAUSSEE)
-        if prev is not None:
-            m.triangle(prev[0], prev[1], pd, coul)
-            m.triangle(prev[0], pd, pg, coul)
-        prev = (pg, pd)
+    bx, by = b[0] + ux * larg / 2.0, b[1] + uy * larg / 2.0
+    pg = G(ax - px, ay - py, Y_CHAUSSEE)
+    pd = G(ax + px, ay + py, Y_CHAUSSEE)
+    qg = G(bx - px, by - py, Y_CHAUSSEE)
+    qd = G(bx + px, by + py, Y_CHAUSSEE)
+    m.triangle(pg, pd, qd, coul)
+    m.triangle(pg, qd, qg, coul)
 
 
-def _semer(anneau, d, terrain, rng):
+def _semer(anneau, d, rng):
     """Le semis d'arbres d'un îlot de sol. Densité dérivée de `canopee`,
     graine fixe : le même export donne toujours la même forêt."""
     surf = abs(aire_signee(anneau))
@@ -1243,12 +1831,12 @@ def _semer(anneau, d, terrain, rng):
         y = rng.uniform(min(ys), max(ys))
         if not dedans(ferme, (x, y)):
             continue
-        out.append([x, y, terrain.alt(x, y),
+        out.append([x, y, 0.0,
                     rng.uniform(0.75, 1.35), rng.uniform(0.0, 6.2832)])
     return out
 
 
-def _alignement(d, terrain, rng):
+def _alignement(d, rng):
     """TOUS les emplacements d'alignement d'un tronçon — ceux qui existeraient
     si on plantait — chacun avec le **seuil de canopée** à partir duquel il est
     occupé. Sortie : [x, y, alt, échelle, lacet, seuil].
@@ -1290,7 +1878,7 @@ def _alignement(d, terrain, rng):
                 x, y = a[0] + ux * t + ox, a[1] + uy * t + oy
                 # Seuil uniforme sur [0, CANOPEE_ALIGNEMENT_MAX] : à canopée
                 # `c`, la part occupée vaut `c / MAX`. À MAX, tout est planté.
-                out.append([x, y, terrain.alt(x, y),
+                out.append([x, y, 0.0,
                             rng.uniform(0.8, 1.2), rng.uniform(0.0, 6.2832),
                             rng.uniform(0.0, CANOPEE_ALIGNEMENT_MAX)])
     return out
@@ -1310,13 +1898,27 @@ def _reperes(ilots, routes, cx, cy):
         pts = [p for d in quai for part in d["parts"] for p in part]
         qp = [round(sum(p[0] for p in pts) / len(pts) - cx, 2),
               round(-(sum(p[1] for p in pts) / len(pts) - cy), 2)]
+
+    # 🌊 Le point de vue sur l'Ilse. C'est là que le chenal se juge : un mètre
+    # de mur au-dessus de l'eau sur toute la longueur, et le tablier des trois
+    # franchissements qui passe au-dessus sans y plonger.
+    eau_pts = [p for x in ilots.values() if x["sous_type"] == "riviere"
+               for p in x["brut"]]
+    ip = [0.0, 0.0]
+    if eau_pts:
+        ip = [round(sum(p[0] for p in eau_pts) / len(eau_pts) - cx, 2),
+              round(-(sum(p[1] for p in eau_pts) / len(eau_pts) - cy), 2)]
     return {
-        "vallee": {"cible": [0.0, 0.0], "taille": 1200.0,
-                   "libelle": "La vallee"},
+        # 🔄 C'était « la vallée ». Il n'y a plus de vallée : la carte est
+        # plate. Le point de vue, lui, sert toujours — c'est la ville entière.
+        "ville": {"cible": [0.0, 0.0], "taille": 1200.0,
+                  "libelle": "Wehrau en entier"},
         "barre": {"cible": centre(32), "taille": 220.0,
                   "libelle": "La barre de 1974 (ilot 32)"},
         "quai": {"cible": qp, "taille": 160.0,
                  "libelle": "Les rues a 20 et 22 m"},
+        "ilse": {"cible": ip, "taille": 260.0,
+                 "libelle": "L'Ilse canalisee et les ponts"},
     }
 
 

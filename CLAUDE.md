@@ -21,10 +21,15 @@ Le design reste devant, mais **le code existe** : `QGIS/scripts/` (la chaîne qu
 ```
 City Builder/
 ├─ CLAUDE.md                  ← ce fichier (règles, stable)
-├─ ETAT.md                    ← avancement + décisions en attente (je le mets à jour)
+├─ ETAT.md                    ← LE signet : où on en est, la prochaine action (je le mets à jour)
+│   ├─ CHANTIERS.md           ← ce qui attend : défauts connus, dette, tables de level design
+│   └─ HISTORIQUE.md          ← les sessions passées, une par entrée
+├─ PLAN_energie.md            ← le prototype en cours, en détail
 ├─ Vault - Jeu urbanisme/     ← le vault Obsidian : LA source de vérité du design
 └─ Ouvrir le vault dans Obsidian.lnk
 ```
+
+`ETAT.md` reste court **par construction** : il pointe vers les trois autres au lieu de les absorber. Si une chose n'est ni « où on en est » ni « quoi faire maintenant », elle va dans `CHANTIERS.md` ou `HISTORIQUE.md`.
 
 Dans le vault, quatre notes commandent toutes les autres :
 
@@ -107,6 +112,6 @@ Le travail se fait **principalement sous Windows**, parfois sur un Mac. Le pont 
 
 **En début de session :** lire ce fichier puis `ETAT.md`. Si le travail touche le design, ouvrir aussi `00 - Index.md` et `Méta/Questions ouvertes.md` — ce sont eux qui disent où en est vraiment le projet.
 
-**En fin de session**, mettre à jour `ETAT.md` : la date, ce qui a bougé, la prochaine action, ce qui attend une décision de l'auteur. Y garder au plus ~10 lignes d'historique — au-delà, on écrase.
+**En fin de session**, mettre à jour `ETAT.md` : la date, ce qui a bougé, la prochaine action, ce qui attend une décision de l'auteur. **Il ne garde que les deux dernières sessions** — la troisième descend dans `HISTORIQUE.md`, en tête, sans être raccourcie. Ce qui devient « à faire plus tard » descend dans `CHANTIERS.md`, avec sa raison d'attendre. **Rien ne s'écrase, tout descend d'un cran.**
 
 **Ce que je ne fais pas tout seul :** écrire dans `Méta/Journal.md`. C'est le fichier de l'auteur, à la première personne, et il consigne ce qu'*il* a appris. Je peux proposer une entrée ; il la valide.
