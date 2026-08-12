@@ -9,6 +9,11 @@ l'effet : sans elle, 64 tronçons resteraient « en chantier » pendant les cinq
 ans de croissance des arbres. Si D07 revient un jour, elle vaut
 3 · 2 · 58 (délai · travaux · maturation) et non 3 · 60.
 
+🔄 2026-08-12, système énergie : la machinerie attend désormais ces clés en
+plus — "travaux": 2.0, "quantite_champ": "longueur_m", "quantite_par": 100.0,
+"unite_quantite": "× 100 m" — et `cout_unitaire` s'applique par fid via ces
+deux dernières (le `longueur_m / 100` n'est plus codé en dur dans `devis`).
+
 ------------------------------------------------------------------------------
 
 	"D07": {

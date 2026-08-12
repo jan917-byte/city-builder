@@ -149,6 +149,8 @@ Ce que disent les deux dernières colonnes : un petit toit pentu, mitoyen, avec 
 
 🎯 **Le potentiel plafonne autour de 30 %.** Wehrau **ne devient pas autonome par ses toits**, et c'est le bon résultat : le jalon « autonome en énergie » reste hors de portée, ce qui laisse une raison d'exister aux décisions d'isolation et de réseau de chaleur qui viendront.
 
+> 🔄 **Mesuré le 2026-08-12 (session 18), sur les vrais toits : le potentiel équipable est ~9,5 %, pas 25–40 %.** La fourchette ci-dessus avait été calibrée sur les 76,5 ha d'*emprise* ; les toits réels exportés par `07` font **11,7 ha**, et même équiper 100 % de chaque m² plafonnerait vers 28 %. La leçon du plafond sort **renforcée**, les blocages croisés tiennent (vérifié en aveugle par `essai_energie.gd`), mais les ordres de grandeur du §5 changent d'échelle : ville équipée **~350 pts** (pas ~1 000), retour plein **~27 pts/an** (pas ~90). Monter le rendement à ~480 kWh/m²/an pour retrouver 30 % serait non physique — **l'arbitrage est à l'auteur** : assumer ~9,5 %, ou regonfler la colonne `equip` de la table. → `ETAT.md`
+
 ---
 
 ## 5. La décision — « Poser des panneaux »

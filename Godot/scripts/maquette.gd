@@ -155,6 +155,49 @@ ESSAI — la ville, sans décision")
 	_repere("ilse")
 	await get_tree().process_frame
 	await _capturer("essai_ilse")
+
+	# ---- L'énergie : les regards du PLAN §8, dans l'ordre. ----
+	_repere("ville")
+
+	# §8.1 — le calque rentabilité au mois 0, avant toute décision. Il doit
+	# faire dire « c'est là » en trois secondes.
+	_sur_calque("i", "_classe_solaire")
+	await get_tree().process_frame
+	await _capturer("essai_rentabilite_m0")
+
+	# §8.2 — le gain d'isolation, sans rien décider entre les deux : la carte
+	# doit être PRESQUE INVERSE de la précédente, sauf la barre de 1974.
+	_sur_calque("i", "_gain_isolation_mwh")
+	await get_tree().process_frame
+	await _capturer("essai_isolation_m0")
+
+	# §8.3 — dix ans sans rien faire, puis la rentabilité à nouveau : la zone
+	# rouge doit avoir visiblement reculé. C'est le « bon moment » rendu visuel.
+	mois = 120.0
+	_sur_calque("i", "_classe_solaire")
+	await get_tree().process_frame
+	await _capturer("essai_rentabilite_m120")
+
+	# §8 étape 5 — panneaux sur la barre et la dalle au mois 0, vingt ans plus
+	# tard : les toits noircis sont la preuve sans menu, le budget est remonté.
+	mois = 0.0
+	var cibles := []
+	for fid in ville.fids_batis():
+		if str(ville.ilots[fid].get("sous_type", "")) in \
+				["barre_1970", "dalle_commerciale"]:
+			cibles.append(fid)
+	var r: Dictionary = chantiers.engager("PAN", cibles, 0.0)
+	print("  panneaux sur barre + dalle (%d îlots) → %s" % [cibles.size(),
+		"%.0f pts, capital %+.0f" % [r.get("cout", 0.0), r.get("capital", 0.0)]
+		if bool(r["ok"]) else str(r.get("message", ""))])
+	mois = 240.0
+	_sur_calque("", "")
+	_repere("barre")
+	await get_tree().process_frame
+	await _capturer("essai_toits_noircis")
+	print("  solde au mois 240 : %.0f pts (doit être plus haut que sans rien faire : 2000)"
+		% chantiers.solde(240.0))
+
 	get_tree().quit()
 
 
@@ -283,13 +326,37 @@ func _rafraichir(force: bool) -> void:
 
 # --------------------------------------------------------------- la couleur
 
+# Les calques dont l'échelle ne se MESURE pas : elle est connue d'avance.
+# `_classe_solaire` peint quatre classes entières sur les quatre couleurs de la
+# rampe, sans interpolation — un min/max sur les données mentirait si une
+# classe est vide à t0, et c'est le recul de la zone rouge qu'on veut voir.
+const ETENDUES_FIXES := {
+	"_classe_solaire": [0.0, 3.0],
+	"part_toit_equipe": [0.0, 1.0],
+}
+
+# Là où la décision est INDISPONIBLE, le calque ne peint rien. Un champ sans
+# toit n'est pas « jamais rentable », il est HORS JEU — le peindre en rouge
+# dirait le contraire de la table (« pas de toit, décision indisponible »).
+# La disponibilité se juge sur l'état de DÉPART : un îlot entièrement isolé
+# reste peint, son gain est simplement tombé au bleu froid.
+const DISPO := {
+	"_classe_solaire": "_toit_equipable_m2",
+	"part_toit_equipe": "_toit_equipable_m2",
+	"_gain_isolation_mwh": "_gain_isolation_mwh",
+}
+
+
 func _sur_calque(couche: String, champ: String) -> void:
 	calque_couche = couche
 	calque_champ = champ
-	if champ != "":
+	if ETENDUES_FIXES.has(champ):
+		_etendue = ETENDUES_FIXES[champ]
+	elif champ != "":
 		# L'échelle est fixée sur l'état de DÉPART, pas sur l'état courant :
 		# sinon chaque pas de temps recalculerait l'extrémum et rien ne
-		# semblerait bouger. C'est la leçon de `parties.html`.
+		# semblerait bouger. C'est la leçon de `parties.html`. La PEINTURE,
+		# elle, reste au mois courant : c'est elle qui bouge sur l'échelle.
 		var lo := INF
 		var hi := -INF
 		for fid in noeuds[couche]:
@@ -302,9 +369,9 @@ func _sur_calque(couche: String, champ: String) -> void:
 
 
 func _val(couche: String, fid: int, t: float) -> float:
-	# Les calques DÉRIVÉS (un `_` en tête) passeront par ici : la surchauffe le
-	# faisait, la rentabilité solaire et le gain d'isolation le feront. Un champ
-	# du `.gpkg` se lit directement, un champ calculé se branche ci-dessus.
+	# Les champs dérivés (un `_` en tête) sont servis par `ville.valeur`, qui
+	# les délègue à l'énergie : la fiche, le ciblage des décisions et les
+	# calques voient LE MÊME nombre par LE MÊME chemin. Rien à brancher ici.
 	return ville.valeur(couche, fid, calque_champ, t)
 
 
@@ -313,11 +380,24 @@ func _peindre() -> void:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
 			var c := Color(1.0, 1.0, 1.0, 0.0)
-			if calque_champ != "" and calque_couche == couche:
+			if calque_champ != "" and calque_couche == couche \
+					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
 				c.a = 0.88
 			mi.set_instance_shader_parameter("calque", c)
 			mi.set_instance_shader_parameter("teinte", _teinte(couche, fid))
+			if couche == "i":
+				# La preuve que quelque chose s'est passé, sans ouvrir un
+				# menu : les toits noircissent au fil de la pose (le shader
+				# ne touche que les faces hautes tournées vers le ciel).
+				mi.set_instance_shader_parameter("equipe",
+					ville.valeur("i", fid, "part_toit_equipe", mois))
+
+
+func _disponible(couche: String, fid: int) -> bool:
+	if not DISPO.has(calque_champ):
+		return true
+	return ville.valeur(couche, fid, DISPO[calque_champ], 0.0) > 0.0
 
 
 func _teinte(couche: String, fid: int) -> Color:
@@ -356,11 +436,15 @@ func _sur_decision(id: String, fids: Array) -> void:
 	if not r["ok"]:
 		interface.dire(r["message"])
 		return
-	var cible := "1 tronçon" if fids.size() == 1 else "%d tronçons" % fids.size()
+	var D: Dictionary = chantiers.DECISIONS[id]
+	var nom_objet: String = "îlot" if D["couche"] == "i" else "tronçon"
+	var cible := "1 %s" % nom_objet if fids.size() == 1 \
+		else "%d %ss" % [fids.size(), nom_objet]
 	interface.dire("%s sur %s : %.0f pts, capital %+.0f"
-		% [chantiers.DECISIONS[id]["nom"], cible, r["cout"], r["capital"]])
-	print("mois %.1f — %s ×%d : %.0f pts, capital %+.1f, %.0f m"
-		% [mois, id, fids.size(), r["cout"], r["capital"], r["quantite"] * 100.0])
+		% [D["nom"], cible, r["cout"], r["capital"]])
+	print("mois %.1f — %s ×%d : %.0f pts, capital %+.1f, quantité %.1f %s"
+		% [mois, id, fids.size(), r["cout"], r["capital"], r["quantite"],
+		str(D.get("unite_quantite", ""))])
 	_dernier_peint = -1.0
 	_rafraichir(true)
 

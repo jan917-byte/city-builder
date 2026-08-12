@@ -10,6 +10,8 @@ extends RefCounted
 # éprouvée dans `08_jouer.py`. Les deux moteurs doivent donner le même chiffre :
 # c'est le contrôle de recoupement, et il est dans le README de Godot.
 
+const Energie := preload("res://scripts/energie.gd")
+
 const HORIZON_MOIS := 240                  # 20 ans. Le classeur s'arrête à 60.
 const BUDGET_MENSUEL := 100.0 / 12.0       # 100 pts par an — Classeur §2
 const CAPITAL_DEPART := 50.0               # décision 16b
@@ -26,7 +28,8 @@ var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 # elle qui fait l'OMBRAGE des toits — le rendement d'un panneau est multiplié
 # par `1 − 0,4 × canopee`. Une donnée n'est pas un indicateur.
 const CHAMPS_MOBILES := {
-	"i": ["canopee", "impermeabilise", "riverain", "logements"],
+	"i": ["canopee", "impermeabilise", "riverain", "logements",
+		"part_toit_equipe", "part_isolee"],
 	"r": ["canopee", "emprise_libre_m", "stationnement", "charge"],
 }
 
@@ -56,9 +59,18 @@ func base(couche: String, fid: int, champ: String) -> float:
 
 ## La valeur d'un champ au mois `t` : la base plus les rampes en cours.
 ##
+## Un champ préfixé `_` n'est pas stocké, il se CALCULE — c'est l'énergie qui
+## le sait. La fiche, les calques et le ciblage des décisions passent tous par
+## ici, donc tous voient les mêmes nombres. C'est l'interface du toit
+## (décision 41) : personne en aval ne sait qui a fabriqué le chiffre.
+##
 ## Les bornes ne sont pas cosmétiques : une part reste une part. Sans elles une
-## canopée grimpe au-dessus de 1 et l'indicateur de ville ment.
+## canopée grimpe au-dessus de 1 et l'indicateur de ville ment. La production,
+## elle, n'est jamais bornée : champ calculé, elle ne passe pas par `_borner`
+## — la friche et la dalle EXPORTENT, et l'écrêter fausserait le total.
 func valeur(couche: String, fid: int, champ: String, t: float) -> float:
+	if champ.begins_with("_"):
+		return Energie.derive(self, fid, champ, t) if couche == "i" else 0.0
 	var v := base(couche, fid, champ)
 	for r in _rampes[couche].get(fid, []):
 		if r["champ"] == champ:
@@ -68,7 +80,8 @@ func valeur(couche: String, fid: int, champ: String, t: float) -> float:
 
 static func _borner(champ: String, v: float) -> float:
 	match champ:
-		"canopee", "impermeabilise", "riverain", "alea", "charge", "desserte_tc":
+		"canopee", "impermeabilise", "riverain", "alea", "charge", "desserte_tc", \
+		"part_toit_equipe", "part_isolee":
 			return clampf(v, 0.0, 1.0)
 		"emprise_libre_m", "stationnement", "logements", "emplois":
 			return maxf(v, 0.0)
@@ -106,15 +119,23 @@ func fids_batis() -> Array:
 	return out
 
 
-## Les indicateurs de ville.
+## Les indicateurs de ville : les quatre nombres de l'énergie (PLAN §3).
 ##
-## VIDE pour l'instant, et c'est voulu : les cinq indicateurs de l'ancien
-## prototype sont partis dans `Godot/archive/` le 2026-08-12, et les quatre de
-## l'énergie ne sont pas encore arrivés. La ville est là, elle est muette.
+## Des SOMMES, pas des moyennes — rien à pondérer, la décision 63 est
+## satisfaite par construction. Les volumes sont en MWh (c'est sur eux que
+## l'invariant achat + production = conso se vérifie) ; la facture est le
+## volume × le prix qui monte de 2 % par an — c'est elle que le bandeau
+## affiche, indexée sur t0, parce que ne rien faire doit coûter.
 ##
-## ⚠️ Quand ils reviendront, ils reviendront PONDÉRÉS — décision 63 : un taux se
-## pondère par ce dont il est le taux, par la surface s'il parle du sol, par la
-## population s'il parle des gens. Les anciennes moyennes étaient simples par
-## îlot, donc un champ de 50 ha y pesait autant qu'un parc de 0,4 ha.
-func indicateurs(_t: float) -> Dictionary:
-	return {}
+## ⚠️ Le CO2 est celui de l'énergie ACHETÉE, sans le carbone gris des
+## chantiers : le gris vit dans le journal, que la ville ne connaît pas —
+## l'interface et l'essai ajoutent `chantiers.co2_gris_an(t)` à cette case.
+func indicateurs(t: float) -> Dictionary:
+	var m := Energie.ville_mwh(self, t)
+	return {
+		"conso_mwh": m["conso"],
+		"production_mwh": m["production"],
+		"achat_mwh": m["achat"],
+		"facture": m["achat"] * Energie.derive_an(Energie.DERIVE_PRIX_ENERGIE_AN, t),
+		"co2_kt": m["achat"] * Energie.CO2_KG_KWH / 1000.0,
+	}

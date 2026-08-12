@@ -5,24 +5,28 @@ est faite de **702 bâtiments sur 1 003 parcelles**, avec ses cours, ses rangs d
 maisons mitoyennes et ses toits à deux pentes. Elle est posée sur une **carte
 plate**, coupée en deux par le **chenal de l'Ilse**.
 
-⚠️ **Il n'y a plus de décision à prendre, et c'est voulu.** Le 2026-08-12,
-l'auteur a réduit le prototype à *« la ville en 3D et le système énergie »*
-(décision **66**). D07 « planter l'alignement », la surchauffe, les quatre
-moyennes de ville et les six calques sont partis dans **`archive/`** —
-supprimés pour de bon, pas masqués, avec une note qui dit ce que coûterait le
-retour. Les deux décisions de l'énergie — poser des panneaux, isoler — ne sont
-pas encore arrivées.
+🔋 **Le système énergie est là** (2026-08-12, session 18). Deux décisions de
+nature opposée dans `chantiers.gd` — **poser des panneaux** (rentable, coûte du
+capital politique) et **isoler** (jamais rentable, en rend) — visées à l'îlot
+par un curseur de seuil. Le bandeau porte quatre nombres en écart à t0
+(consommation, production, achat en facture, CO2), trois calques (rentabilité
+solaire en quatre classes sans chiffre, gain d'isolation, toits qui
+produisent), et les toits **virent à l'ardoise sombre** au fil de la pose. Les
+treize lignes de la table sont dans `scripts/energie.gd` — c'est là, et pas
+dans les formules, que l'auteur règle le jeu. D07, la surchauffe et les anciens
+calques restent dans **`archive/`** (décision 66).
 
-Ce qui reste à l'écran : la ville, le temps, le budget, le capital. La
-machinerie de décision (rampe, coût étalé, capital comptant) est intacte dans
-`chantiers.gd`, avec un dictionnaire `DECISIONS` **vide** — c'est elle le
-gabarit, et elle ne parle d'aucun thème.
+🔴 **Le recoupement des deux moteurs n'existe toujours pas** : il a disparu
+avec D07 (`PLAN_energie.md` §9 c). Ce qui le remplace en partie :
+`outils/essai_energie.gd`, le contrôle imprimé en français — les quatre
+nombres du mois 0, la table du potentiel, trois invariants à cinq dates, le
+remboursement, et **deux parties jouées en aveugle** (panneaux seuls doit
+bloquer sur le capital, isolation seule sur le budget). Il ne compare le noyau
+**qu'à lui-même** — une formule fausse recopiée des deux côtés passera.
 
-🔴 **Ce que la coupe a coûté** : le contrôle de recoupement entre Godot et
-`08_jouer.py` a disparu avec D07. C'était la seule façon de savoir tout de
-suite si les deux moteurs divergeaient. `PLAN_energie.md` §9 c l'avait déjà
-accepté ; à ce jour **rien ne le remplace**, et les trois invariants prévus
-pour le prototype énergie ne compareront qu'un moteur à lui-même.
+```bash
+Godot_v4.7.1-stable_win64_console.exe --headless --path Godot --script res://outils/essai_energie.gd
+```
 
 Ce qui n'a pas changé : **toute la géométrie reste calculée en Python**. Godot
 empaquette des tableaux et ne décide rien — l'« interface propre » de
@@ -146,16 +150,18 @@ scripts/
   donnees.gd           lecture + validation. Échoue en NOMMANT ce qui manque
   constructeur.gd      tableaux → ArrayMesh. Aucun accès aux nœuds   ← isolé
   ville.gd             l'état, les rampes, les indicateurs. Aucun nœud  ← LE NOYAU
-  chantiers.gd         les décisions : cible, coût, capital, budget
+  energie.gd           la table des 13 lignes et les formules. Tout statique
+  chantiers.gd         les décisions : cible, devis, capital, budget, retours
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
-  interface.gd         la fiche, la décision, le temps, les calques
+  interface.gd         le bandeau, la fiche, les décisions, les calques
   materiaux.gd         6 matériaux, zéro texture
   camera_axo.gd        orthographique, angle fixe
 outils/
   sonde_api.gd         interroge ClassDB — à lancer avant de déboguer autre chose
+  essai_energie.gd     le contrôle imprimé du noyau énergie (--headless)
 ```
 
-`ville.gd` et `chantiers.gd` **ne touchent aucun nœud** — même discipline que
+`ville.gd`, `energie.gd` et `chantiers.gd` **ne touchent aucun nœud** — même discipline que
 `constructeur.gd`, et pour la même raison : c'est ce qui les rend relisibles,
 testables, et portables ailleurs le jour venu.
 

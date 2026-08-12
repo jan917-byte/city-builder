@@ -40,13 +40,30 @@ static func objet() -> ShaderMaterial:
 		+ "render_mode cull_back, specular_disabled;\n" \
 		+ "instance uniform vec4 teinte = vec4(1.0, 1.0, 1.0, 1.0);\n" \
 		+ "instance uniform vec4 calque = vec4(1.0, 1.0, 1.0, 0.0);\n" \
+		+ "instance uniform float equipe = 0.0;\n" \
+		+ "varying vec3 pos_monde;\n" \
+		+ "void vertex() {\n" \
+		+ "\tpos_monde = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n" \
+		+ "}\n" \
 		+ "void fragment() {\n" \
 		+ "\t// COLOR.rgb : la teinte de l'objet, déjà multipliée par l'AO.\n" \
 		+ "\t// COLOR.a   : l'AO seule. C'est elle qui pose le volume au sol,\n" \
 		+ "\t//             et qui doit survivre au repeint thématique.\n" \
 		+ "\tvec3 base = mix(COLOR.rgb, calque.rgb * COLOR.a, calque.a);\n" \
+		+ "\t// Les toits NOIRCISSENT au fil de la pose des panneaux : une\n" \
+		+ "\t// recette, pas un asset (règle 52). NORMAL est en espace VUE ;\n" \
+		+ "\t// on le ramène au monde pour tester « tourné vers le ciel »,\n" \
+		+ "\t// et la hauteur écarte cours et jardins, qui sont dans le même\n" \
+		+ "\t// maillage que le bâti de l'îlot.\n" \
+		+ "\tfloat vers_le_ciel = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;\n" \
+		+ "\tfloat rugosite = 0.95;\n" \
+		+ "\tif (equipe > 0.0 && vers_le_ciel > 0.55 && pos_monde.y > 1.0) {\n" \
+		+ "\t\t// Ardoise sombre et un peu de verre : un panneau, pas une ombre.\n" \
+		+ "\t\tbase *= mix(vec3(1.0), vec3(0.13, 0.15, 0.20), equipe);\n" \
+		+ "\t\trugosite = mix(0.95, 0.35, equipe);\n" \
+		+ "\t}\n" \
 		+ "\tALBEDO = base * teinte.rgb;\n" \
-		+ "\tROUGHNESS = 0.95;\n" \
+		+ "\tROUGHNESS = rugosite;\n" \
 		+ "\tMETALLIC = 0.0;\n" \
 		+ "}\n"
 	var m := ShaderMaterial.new()

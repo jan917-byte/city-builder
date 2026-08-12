@@ -24,35 +24,54 @@ const ACCENT := Color(0.910, 0.769, 0.416)
 const MONTE := Color(0.435, 0.682, 0.369)
 const BAISSE := Color(0.757, 0.267, 0.235)
 
-# Les champs de la fiche : (champ, libellé, unité, décimales).
+# Les champs de la fiche : (champ, libellé, unité, décimales, inversé).
 #
-# ⚠️ Réduite au strict identitaire le 2026-08-12 : canopée, imperméabilisé,
-# surchauffe, places, fragilité et aléa sont partis dans `Godot/archive/`. Ce
-# qui reste décrit l'objet, pas son état.
+# Le cinquième drapeau dit que le vert va vers le BAS — la consommation qui
+# tombe est une bonne nouvelle. Il vit ici ET dans le bandeau : sinon la fiche
+# contredit le bandeau.
 #
-# Quand les quatre nombres de l'énergie arriveront, ils entreront ici DANS
-# L'ORDRE DU BANDEAU — décision 63b, le joueur apprend un seul vocabulaire.
+# Les champs préfixés `_` sont CALCULÉS (servis par `ville.valeur` via
+# l'énergie) : ils n'existent pas dans le dictionnaire de l'objet, la fiche ne
+# doit donc pas les chercher dedans. L'énergie entre DANS L'ORDRE DU BANDEAU —
+# décision 63b, le joueur apprend un seul vocabulaire.
 const FICHE := {
 	"i": [
-		["logements", "Logements", "", 0],
-		["emplois", "Emplois", "", 0],
-		["hauteur", "Hauteur", " niv.", 0],
-		["surface_m2", "Surface", " m²", 0],
+		["logements", "Logements", "", 0, false],
+		["emplois", "Emplois", "", 0, false],
+		["hauteur", "Hauteur", " niv.", 0, false],
+		["surface_m2", "Surface", " m²", 0, false],
+		["_conso_mwh", "Consommation", " MWh", 0, true],
+		["_production_mwh", "Production", " MWh", 0, false],
+		["_toit_equipable_m2", "Toit équipable", " m²", 0, false],
+		["_gain_isolation_mwh", "Gain d'isolation", " MWh", 0, true],
 	],
 	"r": [
-		["largeur_m", "Largeur", " m", 1],
-		["longueur_m", "Longueur", " m", 0],
-		["charge", "Charge", "", 2],
+		["largeur_m", "Largeur", " m", 1, false],
+		["longueur_m", "Longueur", " m", 0, false],
+		["charge", "Charge", "", 2, false],
 	],
 }
 
-# Vide, et c'est voulu : les six calques de l'ancien prototype sont archivés,
-# les trois de l'énergie ne sont pas encore là. Le panneau ne se construit pas
-# tant qu'il n'y a rien dedans — un panneau vide est pire qu'absent.
-#
-# 🔒 Règle 53, sans exception : aucun chiffre global sans son calque. Ajouter un
-# indicateur au bandeau sans ajouter sa ligne ici est un bug de design.
-const CALQUES := []
+# Les trois calques de l'énergie (règle 53 : aucun chiffre global sans son
+# calque). La rentabilité est peinte en QUATRE CLASSES, sans un chiffre sur la
+# carte (décision 60 : un état non chiffré ne s'optimise pas) — la précision se
+# paie d'un clic, sur la fiche. Pas de calque visibilité : refusé (66c).
+const CALQUES := [
+	["", "", "Aucun"],
+	["i", "_classe_solaire", "Rentabilité solaire"],
+	["i", "_gain_isolation_mwh", "Gain d'isolation"],
+	["i", "part_toit_equipe", "Toits qui produisent"],
+]
+
+# Les quatre nombres du bandeau : (clé, libellé). Leur calcul est dans `maj` —
+# consommation et achat en INDICE 100 sur le mois 0, l'achat est la FACTURE
+# (le volume × le prix qui monte de 2 % par an : ne rien faire coûte).
+const INDICATEURS := [
+	["conso", "Consommation"],
+	["production", "Production locale"],
+	["achat", "Achat d'énergie"],
+	["co2", "CO2"],
+]
 
 var ville: Ville
 var chantiers
@@ -60,7 +79,11 @@ var chantiers
 var _stats := {}          # clé -> Label
 var _fiche_titre: Label
 var _fiche_grille: GridContainer
+var _fiche_energie: Label
 var _fiche_vide: Label
+var _seuils := {}         # id décision -> HSlider
+var _seuil_libelles := {} # id décision -> Label
+var _devis_libelles := {} # id décision -> Label
 var _lecture: Button
 var _curseur: HSlider
 var _date: Label
@@ -116,10 +139,10 @@ func _bandeau() -> void:
 	p.add_child(h)
 	_date = _label("", 20, ACCENT)
 	h.add_child(_date)
-	# Les deux RESSOURCES seulement. Ce ne sont pas des indicateurs : elles
-	# disent ce qu'on peut faire, pas ce qu'on a fait. Les quatre nombres de
-	# l'énergie viendront se ranger à leur droite.
-	for c in [["budget", "Budget"], ["capital", "Capital"]]:
+	# Les deux RESSOURCES d'abord (ce qu'on peut faire), puis les quatre
+	# INDICATEURS de l'énergie (ce qu'on a fait) — deux familles, un seul
+	# bandeau, l'écart au mois 0 partout.
+	for c in [["budget", "Budget"], ["capital", "Capital"]] + INDICATEURS:
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 0)
 		v.add_child(_label(c[1], 11, GRIS))
@@ -160,12 +183,49 @@ func _panneau_droite() -> void:
 	_fiche_grille.add_theme_constant_override("v_separation", 2)
 	v.add_child(_fiche_grille)
 
-	# ⚠️ LE PANNEAU DE DÉCISION N'EST PLUS CONSTRUIT. Il tenait sur D07, partie
-	# dans `Godot/archive/`. Il revient à l'identique avec les deux décisions
-	# de l'énergie, à un détail près qui n'est pas un détail : il devra afficher
-	# DEUX décisions et non une, donc une boucle sur `chantiers.DECISIONS` au
-	# lieu d'un accès direct par clé. C'est ce qui prouvera que la machinerie
-	# n'a pas été codée en dur autour d'un seul cas.
+	# La ligne de synthèse de l'énergie : la couverture décomposée (« dont X
+	# produits, Y économisés » — sans elle, isoler ressemble à une triche,
+	# PLAN §5 bis) et l'année du remboursement, la SEULE précision chiffrée
+	# du jeu, payée d'un clic.
+	_fiche_energie = _label("", 11, GRIS)
+	_fiche_energie.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_fiche_energie)
+
+	# Le panneau de décision : une BOUCLE sur `chantiers.DECISIONS`, jamais un
+	# accès par clé — c'est ce qui prouve que la machinerie n'est pas codée en
+	# dur autour d'un seul cas. Deux décisions de nature opposée : l'une
+	# rapporte de l'argent, l'autre de la légitimité.
+	for id in chantiers.DECISIONS:
+		var D: Dictionary = chantiers.DECISIONS[id]
+		v.add_child(HSeparator.new())
+		v.add_child(_label(D["nom"], 13, ACCENT))
+		var resume := _label(D["resume"], 11, GRIS)
+		resume.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(resume)
+
+		var seuil_l := _label("", 11, GRIS)
+		v.add_child(seuil_l)
+		var curseur := HSlider.new()
+		curseur.min_value = D["seuil_min"]
+		curseur.max_value = D["seuil_max"]
+		curseur.value = D["seuil_defaut"]
+		curseur.step = 1.0
+		_seuils[id] = curseur
+		_seuil_libelles[id] = seuil_l
+		v.add_child(curseur)
+
+		var devis_l := _label("", 12, TEXTE)
+		devis_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_devis_libelles[id] = devis_l
+		v.add_child(devis_l)
+
+		var b := Button.new()
+		b.text = "Décider"
+		var id_fige: String = id   # capturé pour la lambda
+		b.pressed.connect(func() -> void:
+			decide.emit(id_fige, chantiers.eligibles(id_fige,
+				_seuils[id_fige].value, _t)))
+		v.add_child(b)
 
 	_message = _label("", 12, BAISSE)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -260,6 +320,36 @@ func maj(t: float, en_lecture: bool, indic: Dictionary) -> void:
 	_stats["budget_ecart"].text = ""
 	_stat("capital", chantiers.capital(t), 0, "", Ville.CAPITAL_DEPART, false)
 
+	# Les quatre nombres, en écart à t0 (PLAN §3). Consommation et achat en
+	# indice 100 ; l'achat est la FACTURE, elle grimpe toute seule de 2 % par
+	# an — c'est voulu, ne rien faire a un coût. Le CO2 additionne le carbone
+	# gris des chantiers en cours : il doit MONTER pendant les travaux.
+	if not _i0.is_empty():
+		_stat("conso", 100.0 * indic["conso_mwh"] / _i0["conso_mwh"],
+			0, "", 100.0, true)
+		_stat("production", 100.0 * indic["production_mwh"] / indic["conso_mwh"],
+			0, " %", 0.0, false)
+		_stat("achat", 100.0 * indic["facture"] / _i0["facture"],
+			0, "", 100.0, true)
+		_stat("co2", indic["co2_kt"] + chantiers.co2_gris_an(t),
+			1, " kt", _i0["co2_kt"], true)
+
+	# Le devis de chaque décision suit le curseur et le temps : n cibles, le
+	# coût, le capital — signé, parce que l'isolation en REND.
+	for id in _seuils:
+		var D: Dictionary = chantiers.DECISIONS[id]
+		var seuil: float = _seuils[id].value
+		_seuil_libelles[id].text = "%s %s%s" \
+			% [D["libelle_seuil"], _nb(seuil, 0), D["unite_seuil"]]
+		var fids: Array = chantiers.eligibles(id, seuil, t)
+		if fids.is_empty():
+			_devis_libelles[id].text = "Aucune cible à ce seuil."
+		else:
+			var dv: Dictionary = chantiers.devis(id, fids, t)
+			_devis_libelles[id].text = "%d îlots · %s pts · capital %s%s" \
+				% [fids.size(), _nb(dv["cout"], 0),
+				"+" if dv["capital"] > 0.0 else "", _nb(dv["capital"], 0)]
+
 	if _msg_delai > 0.0:
 		_msg_delai -= get_process_delta_time()
 		if _msg_delai <= 0.0:
@@ -321,7 +411,19 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_lignes.clear()
 	for ligne in FICHE[couche]:
 		var champ: String = ligne[0]
-		if not o.has(champ):
+		# Un champ calculé (`_`) n'est pas dans le dictionnaire de l'objet : on
+		# le garde s'il a quelque chose à dire — maintenant ou au départ. Le
+		# parc n'affiche pas un toit de 0 m² ; l'îlot entièrement isolé garde
+		# sa ligne de gain, tombée à zéro ; la production s'affiche dès qu'un
+		# toit PEUT produire, pour que la ligne soit déjà là quand ça décolle.
+		if champ.begins_with("_"):
+			var pertinent: bool = ville.valeur(couche, fid, champ, _t) != 0.0 \
+				or ville.valeur(couche, fid, champ, 0.0) != 0.0
+			if champ == "_production_mwh":
+				pertinent = ville.valeur(couche, fid, "_toit_equipable_m2", _t) > 0.0
+			if not pertinent:
+				continue
+		elif not o.has(champ):
 			continue
 		_fiche_grille.add_child(_label(ligne[1], 12, GRIS))
 		var lv := _label("", 12, TEXTE)
@@ -340,7 +442,10 @@ func _maj_fiche() -> void:
 		var ligne: Array = l["def"]
 		var champ: String = ligne[0]
 		var v := ville.valeur(_fiche_couche, _fiche_fid, champ, _t)
-		var v0 := ville.base(_fiche_couche, _fiche_fid, champ)
+		# La référence est la VALEUR au mois 0, pas la base : un champ calculé
+		# n'a pas de base (elle vaudrait 0 et l'écart afficherait la valeur
+		# entière). À t = 0 aucune rampe n'agit, les deux coïncident.
+		var v0 := ville.valeur(_fiche_couche, _fiche_fid, champ, 0.0)
 		(l["v"] as Label).text = _nb(v, ligne[3]) + ligne[2]
 		var d := v - v0
 		var e: Label = l["e"]
@@ -349,11 +454,41 @@ func _maj_fiche() -> void:
 			e.add_theme_color_override("font_color", GRIS)
 		else:
 			e.text = ("+" if d > 0.0 else "") + _nb(d, ligne[3])
-			# ⚠️ Un indicateur peut être INVERSÉ — le vert va alors vers le bas.
-			# La surchauffe l'était ; l'énergie en aura deux, la consommation et
-			# l'achat. Le drapeau se remettra ici ET dans `_stat`, sinon la
-			# fiche contredit le bandeau.
-			e.add_theme_color_override("font_color", MONTE if d > 0.0 else BAISSE)
+			# Un indicateur INVERSÉ voit son vert aller vers le bas — même
+			# drapeau que dans `_stat`, sinon la fiche contredit le bandeau.
+			var bon := (d < 0.0) if bool(ligne[4]) else (d > 0.0)
+			e.add_theme_color_override("font_color", MONTE if bon else BAISSE)
+	_maj_fiche_energie()
+
+
+## La synthèse d'énergie de l'îlot : la couverture décomposée, puis l'année du
+## remboursement — la date de péremption de la décision se lit ici (PLAN §6 :
+## après le mois 120, un chantier ne se rembourse plus dans la partie).
+func _maj_fiche_energie() -> void:
+	_fiche_energie.text = ""
+	if _fiche_couche != "i":
+		return
+	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _t)
+	var toit := ville.valeur("i", _fiche_fid, "_toit_equipable_m2", _t)
+	if conso <= 0.0 and toit <= 0.0:
+		return
+	var lignes := []
+	var prod := ville.valeur("i", _fiche_fid, "_production_mwh", _t)
+	if prod > 0.0 and conso > 0.0:
+		var conso0 := ville.valeur("i", _fiche_fid, "_conso_mwh", 0.0)
+		var couvert := 100.0 * prod / conso
+		var produits := 100.0 * prod / conso0
+		var economises := couvert - produits
+		if absf(economises) >= 0.5:
+			lignes.append("Couverture %s %% : %s produits, %s économisés."
+				% [_nb(couvert, 0), _nb(produits, 0), _nb(economises, 0)])
+		else:
+			lignes.append("Couverture %s %% de la consommation." % _nb(couvert, 0))
+	var annees := ville.valeur("i", _fiche_fid, "_rentabilite_annees", _t)
+	if toit > 0.0 and not is_inf(annees):
+		lignes.append("Panneaux décidés ce mois-ci : remboursés en %s ans."
+			% _nb(annees, 0))
+	_fiche_energie.text = " ".join(lignes)
 
 
 func dire(txt: String, secondes := 5.0) -> void:
