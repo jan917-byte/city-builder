@@ -1,6 +1,6 @@
 ---
 tags: [technique, procédural, 3d, actif]
-statut: 🎯 phase active — la subdivision en parcelles y entre le 2026-08-12, et ses deux verrous sont levés (61 le mitoyen, 62 le trafic)
+statut: ✅ la subdivision en parcelles et les toits sont FAITS le 2026-08-12 — 968 parcelles, 690 bâtiments, 624 toits à deux pentes
 maj: 2026-08-12
 ---
 
@@ -8,7 +8,47 @@ maj: 2026-08-12
 
 C'est le **moteur de la beauté** du jeu, pas un raccourci. Le joueur écrit la structure, le système écrit le grain. → [[Vision et prémisses]]
 
-## 🎯 La phase actuelle : une ville crédible et belle
+## ✅ Ce qui est fait — le 2026-08-12
+
+> **63 pâtés pleins sont devenus 690 bâtiments.**
+
+| | |
+|---|---|
+| `04c_parcelles.py` | découpe l'emprise de chaque îlot — couche `parcelles`, **968 lignes** |
+| table `BATI`, en haut de `07_exporter_godot.py` | parcelle → bâtiment : recul de rue, **jeu au voisin (0 = mitoyen exact)**, profondeur bâtie, pente de toit |
+| → | **690 volumes**, **278 parcelles enclavées** devenues cours et jardins, **624 toits à deux pentes** |
+
+**La décision 61 n'est pas seulement tenue, elle est prouvée** : la somme des aires
+des parcelles vaut **100,00 %** de l'aire de l'emprise sur chacun des 53 îlots,
+écart maximal 8,7·10⁻⁷. Le contrôle est imprimé à chaque exécution.
+
+**La décision 35 aussi** : la graine d'une parcelle se dérive de sa **géométrie**,
+pas de son rang — une parcelle qui n'a pas bougé garde sa graine même si sa
+voisine est redécoupée. Et la partition est calculée **une fois** puis écrite dans
+le `.gpkg` : ⚠️ elle ne se rejoue jamais à l'affichage, ce qui est exactement le
+piège que 61 signalait.
+
+🐞 **L'erreur qui a coûté la soirée, à garder** : couper au milieu **géométrique**
+du rectangle englobant paraissait naturel et donnait n'importe quoi. L'îlot 34 ne
+remplit que 67 % de son rectangle ; la coupe médiane le partageait en 927 et
+1 685 m², le gros morceau se redécoupait une fois de trop, et le tissu sortait
+**deux à trois fois trop fin**. On coupe désormais par l'**aire**.
+
+🏔️ **Le joint en toiture n'a demandé aucun travail.** Le faîtage court
+parallèlement à la rue et chaque sommet d'égout est relié à sa projection dessus :
+les arêtes de bout donnent des pignons **verticaux**, donc deux maisons mitoyennes
+ont leurs pignons dans le même plan et le décrochement entre deux hauteurs se fait
+franc. C'était le seul reste de 61.
+
+### ⚠️ Trois défauts connus, imprimés à chaque export
+
+| | |
+|---|---|
+| **18 bâtiments sur 690 mordent sur la rue**, jusqu'à 4,8 m | pic de mitre sur angle rentrant, borné par le recul du tissu. Sans commune mesure avec les 258 m de la session 9, mais à reprendre |
+| **47 empreintes concaves sur 671 prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens |
+| **748 pans de toit réorientés à l'émission (7 %)** | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau — un pignon n'est pas un versant. ⚠️ Donc le contrôle « faces vers l'extérieur » est vrai **par construction** pour les toits et ne prouve plus rien de ce côté |
+
+## La phase précédente : une ville crédible et belle
 
 La maquette de masses existe et se joue. Ce qu'elle montre reste **63 pâtés pleins** : un îlot extrudé n'est pas un ensemble de bâtiments. La phase ne s'arrête donc plus là — le seuil devient *« avoir envie de la regarder, et croire qu'on y habite »*. → [[Décisions arrêtées]] 51
 
@@ -51,10 +91,10 @@ Corollaire à tenir dès la maquette de masses : **aucun état visuel n'est pos�
 
 | Étape | Difficulté | Où on en est |
 |---|---|---|
-| 1. Subdivision de l'îlot en parcelles | 🔴 **2–4 semaines d'itération — le point dur** | 🎯 **c'est la phase** — et ses deux verrous sont levés : **partition** (61) et **parcelle persistante** (35) |
+| 1. Subdivision de l'îlot en parcelles | 🔴 ~~2–4 semaines — le point dur~~ | ✅ **fait le 2026-08-12** — `04c_parcelles.py`, 968 parcelles, partition à 100,00 % |
 | 2. Parcelle → emprise (offset) | 🟢 | 🟢 le geste existe : `04b` fait déjà reculer l'îlot de la demi-largeur de rue |
 | 3. Extrusion en volume | 🟢 | ✅ fait à l'échelle de l'îlot |
-| 4. Détail — toits, gabarits, matériau de sol | 🟡 | 🎯 en phase |
+| 4. Détail — toits, gabarits, matériau de sol | 🟡 | 🟡 **toits faits** (624 à deux pentes, le joint en toiture compris). Le matériau de sol reste à faire |
 | 5. Scatter au sol (arbres, mobilier) | 🟡 | 🟢 les arbres d'alignement poussent avec `canopee` |
 | 6. **Carrefours** | 🔴 ~~le plus dur de tous~~ | 🟡 **largement dissous par 32f** — plus de rubans à raccorder, un vide qui se referme |
 | 7. **Le trafic visible** | 🟡 | 🎯 en phase — **un flux, pas des agents** (62) |
@@ -77,7 +117,7 @@ Ce que ça écarte : *assumer le non-raccord* (compatible avec une maquette de m
 
 **Ce qui reste à faire, et qui n'est pas un travail en plus** : le **joint en toiture** entre deux parcelles de hauteurs différentes. Il tombe sur l'étape 4 du pipeline, déjà en phase.
 
-🔴 **Le piège, et c'est le premier point à vérifier dans le code** : la partition ne doit **pas se rejouer** quand une seule parcelle change. Sinon on ré-effondre le voisinage à chaque clic — exactement ce qu'on reproche à Townscaper (42b) — et la contrainte architecturale ci-dessous tombe avec.
+✅ **Le piège a été évité, et c'est vérifiable** : la partition est calculée par `04c` et écrite dans le `.gpkg`, donc elle ne se rejoue jamais à l'affichage. Formulé à l'époque ainsi — la partition ne doit **pas se rejouer** quand une seule parcelle change. Sinon on ré-effondre le voisinage à chaque clic — exactement ce qu'on reproche à Townscaper (42b) — et la contrainte architecturale ci-dessous tombe avec.
 
 **Réversible dans un seul sens** : écarter les parcelles de quelques centimètres redonne le non-raccord ; l'inverse demanderait de réécrire le générateur.
 

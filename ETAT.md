@@ -3,13 +3,32 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-12 (session 14)**
+**Dernière mise à jour : 2026-08-12 (session 15)**
 
 ---
 
 ## Position dans le plan
 
-🎯 **Le prototype énergie est la colonne vertébrale.** L'ordre a changé une **troisième** fois le 2026-08-12, tranché par l'auteur → `Décisions arrêtées` **64**. Un thème mené de bout en bout — données, décisions, indicateurs, écran — et tout le reste s'y branche ensuite. La 3D et l'UI avancent **en parallèle, tirées par lui**.
+⚠️ **Le prototype a été RÉDUIT le 2026-08-12** — *« je veux le prototype simple
+avec la ville en 3D et le système énergie »* → `Décisions arrêtées` **66**. D07,
+la surchauffe, les quatre moyennes de ville et les six calques sont **supprimés**
+(pas masqués) et archivés dans `Godot/archive/`, avec ce que coûterait le retour.
+
+🏘️ **Et la ville n'est plus 63 pâtés pleins** : **968 parcelles, 690 bâtiments,
+624 toits à deux pentes.** Les cours et les jardins existent, le mitoyen sort de
+la géométrie. → `Godot/README.md` § « Les parcelles et les toits »
+
+🔓 **Deux règles ont changé en cours de session, à la demande de l'auteur :**
+**65** — *« je ne veux plus repasser par QGIS, tu fais tout toi maintenant »* :
+Claude écrit **et exécute** les scripts de données, y compris sur le vrai
+`.gpkg`. **66b** — les parcelles passent **devant** l'énergie, ce qui suspend le
+garde-fou 64b (*l'énergie n'attend jamais la 3D*).
+
+🔴 **Ce que la coupe a coûté, à ne pas perdre de vue** : le **contrôle de
+recoupement** entre Godot et `08_jouer.py` a disparu avec D07. Une formule fausse
+dans le noyau ne sera plus attrapée par personne avant qu'on la voie à l'écran.
+
+🎯 **Le prototype énergie reste la colonne vertébrale.** L'ordre a changé une **troisième** fois le 2026-08-12, tranché par l'auteur → `Décisions arrêtées` **64**. Un thème mené de bout en bout — données, décisions, indicateurs, écran — et tout le reste s'y branche ensuite. La 3D et l'UI avancent **en parallèle, tirées par lui**.
 
 Le raisonnement, gardé tel quel : *« ça me donne un aperçu du jeu sans être trop complexe au début, et c'est facilement scalable — je peux rajouter des systèmes petit à petit. »* Une **tranche verticale** : un thème complet vaut mieux que sept thèmes à moitié.
 
@@ -46,21 +65,50 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## Prochaine action concrète
 
-### 🔋 Piste 1 — le prototype énergie *(prioritaire)*
+### 🔋 La prochaine session — le système énergie
 
-0. 🎯 **`PLAN_energie.md`, sous Windows.** Six étapes, de l'export de la surface de toit jusqu'aux contrôles imprimés. **Il n'écrit rien dans le `.gpkg`** — seul `07` est relancé, en lecture — donc il ne concurrence pas le point 1 ci-dessous.
-   ⚠️ **Trois points attendent une décision de l'auteur avant que le code parte** : la régie municipale, l'ajout du capital politique au périmètre, et le nom des quartiers de Wehrau.
+0. 🎯 **`PLAN_energie.md` §3 à §8, moins le calque visibilité.** Tout est prêt
+   côté données : `toit_m2`, `toit_pente`, `toit_plat` sont dans le JSON, et
+   `canopee` (l'ombrage) n'a jamais bougé. Quatre morceaux, dans cet ordre :
+   · `Godot/scripts/energie.gd`, fichier neuf — la table des treize lignes et les
+   deux dérives du temps (panneau −6 %/an, énergie achetée +2 %/an)
+   · les **deux décisions** dans `chantiers.gd`, qui visent l'**îlot** alors qu'il
+   ne sait viser que la rue — c'est la seule vraie plomberie
+   · les **trois calques** : rentabilité solaire (quatre classes, aucun chiffre),
+   gain d'isolation, toits qui produisent
+   · le **bandeau** à quatre nombres, en écart à t0
+   ⚠️ **Deux pièges nommés dans le plan** : le capital politique doit pouvoir
+   être **positif** (l'isolation en rend), et le contrôle de refus budgétaire ne
+   doit **pas** compter le retour du chantier qu'on accepte — sinon un chantier
+   se finance lui-même.
 
-### 🎨 Piste 2 — la ville crédible et belle *(tirée par la piste 1)*
+🔴 **Ce que le prototype mesurera, et qu'il faut assumer** : l'auteur a refusé
+le contrepoids du capital politique par la visibilité (**66c**). Sans lui, le
+test répond à *« choisir où investir fait-il un jeu ? »* en mesurant **un tri par
+colonne**, pas un choix de lieu. Ce qui reste pour faire bouger la carte : les
+quatre classes sans chiffre, et la dérive de −6 %/an qui fait reculer la zone
+rouge.
 
-Chaque tâche doit nommer **quel écran du prototype elle améliore** → 64b. Les parcelles passent le test : le solaire a besoin de vrais toits.
+### 🎨 La ville — trois défauts connus, imprimés à chaque export de `07`
 
-1. 🔴 **Un passage QGIS, sous Windows, AVANT le générateur de parcelles** — `02` écrase le `.gpkg`, donc toute retouche de carte se fait maintenant ou coûte une chaîne complète plus tard. Une seule tâche : **supprimer deux des cinq franchissements** (tronçons 136, 145, 168, 169, 171 → `Décisions arrêtées` **30c**). Trois contrôles après : le réseau routier reste d'un seul tenant (`03`), le faubourg de rive gauche garde un accès qui n'est pas le quai, et **l'axe de transit peut s'être déplacé** — `--calque=charge` se regarde
-2. 🎯 **La subdivision de l'îlot en parcelles.** Le point dur du pipeline, **2 à 4 semaines** annoncées, et ce qui sépare 63 pâtés d'une ville. ✅ **Ses deux verrous sont levés** : la parcelle est une **partition** de l'emprise, donc le mitoyen sort de la géométrie (**61**), et la parcelle reste l'entité persistante (**35**). 🔴 **Le premier point à vérifier dans le code** : la partition ne doit pas se rejouer quand une seule parcelle change — sinon on ré-effondre le voisinage à chaque clic, comme Townscaper, et 35 tombe avec. → `Technique/Génération procédurale.md`
-3. ☐ **Les toits et les gabarits**, une fois les parcelles là. Une recette, pas des assets. Y compris le **joint en toiture** entre deux parcelles de hauteurs différentes — c'est tout ce que 61 laisse à faire
-4. ☐ **Le trafic.** ✅ **Tranché : un flux agrégé, plus quelques véhicules figurés qui ne calculent rien** (**62**). Jamais de graphe navigable ni de file d'attente au carrefour. Le critère se juge à l'écran : *une rue à `charge = 1,00` doit être désagréable à regarder* — si le flux est trop propre, on ajoute de l'encombrement à l'arrêt, pas de la navigation
-5. ☐ **Le sol** — un matériau paramétré par `impermeabilise`, `canopee` et l'usure. Trois curseurs qui sont déjà des attributs.
-6. ☐ **La lumière.** ⚠️ **La vallée ne se lit à aucune des quatre exagérations** (constaté le 2026-08-12). 9 m sur 898 m en axonométrie à angle fixe : le facteur n'y peut rien, c'est l'ombre ou la caméra.
+Ils ne sont pas cachés : ils sortent dans la console. Aucun n'empêche de jouer.
+
+1. ⚠️ **18 bâtiments sur 690 mordent sur la rue**, jusqu'à 4,8 m. Pic de mitre
+   sur angle rentrant, borné par le recul du tissu — sans commune mesure avec
+   les 258 m de la session 9, mais un bâtiment sur la chaussée ment.
+2. ☐ **47 empreintes concaves sur 671 prennent un toit plat.** La recette du
+   faîtage suppose qu'un versant avance dans un seul sens.
+3. ☐ **748 pans de toit (7 %) sont réorientés à l'émission.** ⚠️ Conséquence à
+   connaître : la colonne « toits dehors » du contrôle est désormais vraie **par
+   construction** et ne prouve plus rien. Le chiffre qui informe est celui des
+   réorientations.
+4. ☐ **Les deux tables à regarder à l'œil** : `TISSU` dans `04c_parcelles.py`
+   (grain du parcellaire) et `BATI` dans `07_exporter_godot.py` (recul, jeu,
+   profondeur, pente). Le contrôle n'est pas « est-ce juste » mais **« est-ce
+   qu'on croirait y habiter »**.
+5. ☐ **Le trafic**, **le sol**, **la lumière** — inchangés. ⚠️ La vallée ne se
+   lit à aucune des quatre exagérations : c'est l'ombre ou la caméra, pas le
+   facteur.
 
 ### 📋 Le reste — les thèmes suivants, un par un
 
@@ -102,7 +150,7 @@ Il laisse **trois décisions à l'auteur** : la régie municipale (à qui appart
 
 ### Reste à faire, sans urgence
 
-14. ☐ **Regarder `emprises` dans QGIS par-dessus `ilots`** — les écritures dans le `.gpkg` sont faites (`emplois` = 878, `emprises` = 69 lignes, vérifiées en lecture seule), mais le contrôle à l'œil ne l'est pas. `04b` signale quatre réparations de boucle : îlots **55, 13, 16, 21**.
+14. ☐ **Les réparations de boucle de `04b`** — elles sont passées de 4 à **7 îlots** avec la carte à trois ponts. Les quatre signalées « à regarder » sont les mêmes qu'avant (**55, 13, 16, 21** — deux cœurs anciens, deux fronts commerçants ; le 16 tombe de 2 132 à 560 m²). Les trois neuves (9, 11, 62) ne sont pas signalées.
 15. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
@@ -116,16 +164,17 @@ Il laisse **trois décisions à l'auteur** : la régie municipale (à qui appart
 `python "QGIS/scripts/06_etat_zero.py"` → **la ville entière dans une page** : 22 calques cliquables, les stocks à côté, un seul fichier HTML sans dépendance. C'est la boucle « je vois donc je corrige ».
 
 `python "QGIS/scripts/04b_emprises_baties.py" --blanc` → le retrait de voirie sans rien écrire : contrôles, tableau des réparations, part de voirie.
+`python "QGIS/scripts/04c_parcelles.py" --blanc` → **la découpe en parcelles sans rien écrire** : nombre et aire moyenne par tissu, les éclats, et surtout le contrôle de **partition** — la somme des aires doit valoir 100,00 % de l'emprise sur chacun des 53 îlots (décision 61).
 `python "QGIS/scripts/palette.py"` → la palette : 13 sous-types, 9 familles, et la règle du sol vérifiée sur la plaie 19.
 
 `python "QGIS/scripts/08_jouer.py" --toutes` → **les parties jouées** : les 60 mois de chaque fichier de `Classeur/parties/`, un `_resultat.csv` par partie, et `QGIS/rendus/parties.html` — la carte à n'importe quel mois, le mode **écart au mois 0**, et les courbes superposées. Le contrôle de fin vérifie que le mois 0 calculé retrouve `partie.csv`.
 
 **Les outils** (dans `QGIS/scripts/`) :
-`apercu_carte.py` la vue en PNG · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `04b_emprises_baties.py` **le retrait de voirie, écrit la couche `emprises`** · `05_exporter_classeur.py` la carte en CSV · `06_etat_zero.py` la vue interactive · `07_exporter_godot.py` **la maquette 3D** · `08_jouer.py` **le moteur du classeur** · `palette.py` les couleurs · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
+`apercu_carte.py` la vue en PNG · `02_qualifier.py` le level design en listes de `fid` · `03_adjacences.py` le graphe · `04_deriver_attributs.py` la table de correspondance · `04b_emprises_baties.py` **le retrait de voirie, écrit la couche `emprises`** · `04c_parcelles.py` **la subdivision en parcelles, écrit la couche `parcelles`** · `05_exporter_classeur.py` la carte en CSV · `06_etat_zero.py` la vue interactive · `07_exporter_godot.py` **la maquette 3D** · `08_jouer.py` **le moteur du classeur** · `palette.py` les couleurs · `01_champs_et_valuemaps.py` pour qualifier à la souris dans QGIS.
 
-Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un chemin en argument — pour essayer un changement sur une copie avant de l'écrire.
+Seuls `02`, `03`, `04`, `04b` et `04c` écrivent dans le `.gpkg`. Tous acceptent un chemin en argument. 🔓 **Depuis la décision 65, Claude les exécute lui-même**, y compris sur le vrai `.gpkg` — sous trois garde-fous : arbre git propre avant d'écrire, passe `--blanc` d'abord, contrôles imprimés en français.
 
-⚠️ **Chaîne à relancer dans l'ordre** : 02 → 03 → **04 → 04b**. Le 02 repart de `Vallmar2.gpkg` et écrase `Prototype_qualifie.gpkg` — **y compris la couche `emprises`**.
+⚠️ **Chaîne à relancer dans l'ordre** : 02 → 03 → **04 → 04b → 04c**, puis `07` pour la 3D. Le 02 repart de `Vallmar2.gpkg` et écrase `Prototype_qualifie.gpkg` — **y compris `emprises` et `parcelles`**.
 
 **La maquette 3D** : `Godot/` — voir `Godot/README.md`. Touches `V` la vallée · `B` la barre de 1974 · `R` les rues à 20 et 22 m · `1..4` l'exagération verticale · `P` capture. Une touche par critère de réussite : on ne juge pas de mémoire.
 
@@ -135,7 +184,9 @@ Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un che
 
 **Rien pour le code.** Le prototype énergie peut s'écrire dès maintenant.
 
-🟠 **Trois arbitrages attendent l'auteur, aucun ne bloque le démarrage** : la régie municipale · le capital politique dans le périmètre · le nom des quartiers de Wehrau. Le premier rend le mécanisme défendable, le deuxième décide si le prototype teste un arbitrage ou un tri, le troisième est du vault pur.
+🟠 **Deux arbitrages attendent encore l'auteur, aucun ne bloque** : la **régie municipale** (à qui appartiennent les panneaux — sans réponse, le retour au budget est un raccourci comptable qu'on ne saura plus justifier) et le **nom des quartiers de Wehrau** (sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase).
+
+🔴 **Le troisième a été tranché, et par la négative** : le capital politique regagné par la visibilité est **refusé** (66c). Ce n'est pas neutre — c'est écrit dans `Décisions arrêtées` et ça devra être écrit dans le compte rendu du test.
 
 ⏸️ La durée d'une partie est **mise de côté volontairement** : pas de fin imposée, on joue jusqu'à l'ennui puis on recommence dans une autre direction. Hypothèse de travail non fixée : ~20 ans en ~2 h. → `Décisions arrêtées` 14b · 14c
 
@@ -148,17 +199,20 @@ Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un che
 ## En attente d'une décision de l'auteur
 
 - [ ] **L'exagération verticale.** 9 m de relief sur 898 m de large, contre 27 m pour la barre. Touches `1..4` dans la maquette. Se tranche devant l'image, pas dans le vide — et une fois tranchée, se consigne
-- [ ] **Lesquels des cinq ponts sautent** (30c tranche le nombre, pas les fid). Se choisit sur la carte, sous trois contraintes → point n°1
 
 - [x] ✅ **Le raccord des bâtiments** (n°16) — **la parcelle est une partition de l'emprise**, le mitoyen sort de la géométrie → `Décisions arrêtées` 61
 - [x] ✅ **Le trafic** (n°18) — **un flux, plus quelques véhicules figurés** → 62
 - [x] ✅ **Wehrau est un dortoir** (n°17) — assumé, aucun sol d'activité dessiné → 50b
-- [x] ✅ **Trois franchissements, pas cinq** (n°12) → 30c
+- [x] ✅ **Trois franchissements, pas cinq** (n°12) → 30c. ✅ **Et les deux fid sont choisis** : 136 et 171, le 2026-08-12. ⚠️ L'axe de transit n'a pas bougé pour autant
 - [x] ✅ **La barre de 1974 reste sur l'îlot 32** (n°14) — la phrase du vault était fausse, pas la carte → 13e
 - [x] ✅ **Le nom** — **Wehrau** et l'**Ilse** sont arrêtés → 13f
 - [x] ✅ **Wehrau porte ~5 350 habitants** (2026-08-11, prototype seulement — Vallmar garde ses 112 000) → `Décisions arrêtées` 13d
 - [x] ✅ **Le jeu s'ouvre sur une crue, sur la rive gauche** (2026-08-11) → `Décisions arrêtées` 23b
-- [ ] **Relire deux fichiers de level design** : les listes de `fid` en haut de `QGIS/scripts/02_qualifier.py`, et la table de correspondance `TISSU` en haut de `QGIS/scripts/04_deriver_attributs.py` — treize lignes qui décident du comportement de toute la carte. Une ligne changée, on relance, on regarde.
+- [ ] **Quatre tables de level design à regarder** — ce sont elles, et pas le code, qui décident de ce qu'on voit. Une ligne changée, on relance, on regarde.
+  · les listes de `fid` en haut de `02_qualifier.py`, dont **`PONTS_SUPPRIMES`** désormais
+  · `TISSU` dans `04_deriver_attributs.py` — le comportement de la carte
+  · 🆕 **`TISSU` dans `04c_parcelles.py`** — la largeur de façade et la profondeur visées : **le grain de toute la ville**
+  · 🆕 **`BATI` dans `07_exporter_godot.py`** — recul de rue, jeu au voisin, profondeur bâtie, pente du toit. 🔴 Le `jeu` à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (61)
 - [ ] **Le tag `jeu/brightvale`** du brainstorm importé — nom de travail abandonné, autre projet, ou candidat à verser dans `Marketing et Steam` ?
 - [ ] **Les conséquences de 5 350 habitants** sur trois équipements : le lycée devient une Realschule, la galerie de 1971 un supermarché, la barre de 1974 un petit Neubau. Acté dans la décision, pas encore écrit dans `Ville/Wehrau.md`.
 
@@ -175,6 +229,21 @@ Le brainstorm du 2026-08-10 (`Brainstorming/…inondation-rive-droite.md`) a ser
 Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / adapter / rendre à l'eau), qui sont la semaine 2.
 
 ## Historique des sessions Claude
+
+### 2026-08-12 (session 15) — le prototype se réduit, et la ville se bâtit
+- 🔓 **Deux règles levées par l'auteur en cours de session.** **65** : *« je ne veux plus repasser par QGIS, tu fais tout toi maintenant »* — Claude écrit **et exécute** les scripts de données, y compris sur le vrai `.gpkg`. Ce qui rendait l'ancienne règle vide : **la chaîne ne passe plus par QGIS depuis longtemps** — onze scripts en Python pur avec `sqlite3`, aucun GDAL, aucun PyQGIS, l'en-tête GeoPackage de `04b` encodée à la main. Trois garde-fous la remplacent : arbre git propre avant toute écriture, passe `--blanc` d'abord, contrôles imprimés en français. **66b** : les parcelles passent devant l'énergie, ce qui suspend 64b.
+- ✂️ **Le prototype est réduit** (**66**) : D07, les arbres d'alignement, la surchauffe, les quatre moyennes de ville et les six calques sortent du code actif. **Supprimés, pas masqués** — `PLAN_energie.md` §2 proposait l'inverse. Tout est dans `Godot/archive/`, commenté, avec ce que coûterait le retour (une demi-journée). 🟢 `canopee` reste calculée : c'est elle qui fait l'ombrage des toits. *Une donnée n'est pas un indicateur.*
+- 🔴 **Ce que ça coûte pour de bon** : le **contrôle de recoupement** entre Godot et `08_jouer.py` disparaît avec D07. C'était la seule façon de savoir tout de suite si les deux moteurs divergeaient — il avait déjà attrapé un vrai bug (le décalage d'un mois du budget). Rien ne le remplace à ce jour.
+- 🌉 **Trois franchissements, pas cinq** (30c). 136 et 171 sautent : 136 était un boulevard de 20 m à **20 m de 145**, atterrissant sur le même îlot — le même pont compté deux fois, et le moins chargé de tous (0,04). Les dix paires possibles ont été testées avant : aucune ne coupait le réseau. ⚠️ **L'axe de transit n'a pas bougé** — rues saturées identiques avant et après (11, 13, 21, 54, 55). Les deux ponts retirés portaient 0,04 et 0,07 : ils ne pouvaient rien déplacer. On a gagné la structure, pas la secousse.
+- 🏘️ **`04c_parcelles.py` — 968 parcelles, et la décision 61 tenue ET prouvée.** La somme des aires vaut **100,00 %** de l'emprise sur les 53 îlots, écart max 8,7e-07. Deux voisines partagent une arête exactement parce qu'elles sont les deux moitiés d'une même coupe — le mitoyen n'est pas un raccord, c'est la méthode. **35** tenue aussi : la graine se dérive de la **géométrie**, pas d'un rang, et la partition est calculée une fois et écrite dans le `.gpkg` — elle ne se rejoue jamais à l'affichage.
+- 🐞 **La correction qui a fait tenir le compte** : couper au milieu **géométrique** du rectangle englobant donnait n'importe quoi. L'îlot 34 ne remplit que 67 % de son rectangle ; la coupe médiane le partageait en 927 et 1 685 m², le gros morceau se redécoupait une fois de trop, et le tissu sortait **2 à 3 fois trop fin** (49 m² au cœur ancien pour une cible de 112). On coupe désormais par l'**aire**, par dichotomie. Les cibles tombent juste : 160 m² aux maisons de ville, 112 au cœur ancien, 449 en pavillonnaire.
+- 🏠 **690 volumes bâtis, 624 toits à deux pentes.** Table `BATI` en haut de `07` : recul de rue, **jeu au voisin (0 = mitoyen exact)**, profondeur bâtie, pente. Les **278 parcelles enclavées** deviennent des cours et des jardins sans qu'on ait eu à les dessiner. 🟢 **Le clic n'a pas changé de niveau** : toutes les parcelles d'un îlot tombent dans le même groupe de maillage, donc toujours ~237 nœuds cliquables et rien de l'interface à refaire.
+- 🏔️ **Le joint en toiture sort tout seul.** Le faîtage court **parallèlement à la rue**, chaque sommet d'égout est relié à sa projection dessus : les arêtes de bout donnent des pignons **verticaux**, donc deux maisons mitoyennes ont leurs pignons dans le même plan et le décrochement entre deux hauteurs se fait franc. C'est exactement ce que 61 laissait à faire, et ça n'a demandé aucune ligne de plus.
+- 🐞 **Trois recettes ont échoué avant la bonne**, et la leçon vaut d'être gardée : pour un **mur**, le sens de l'extérieur vient du parcours de l'anneau et se vérifie ; pour un **toit**, non — un pignon n'est pas un versant, une arête presque perpendiculaire au faîtage a un sens de parcours arbitraire. **L'orientation est désormais calculée, pas déduite.** ⚠️ Conséquence : la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve plus rien ; le chiffre qui informe est **748 pans réorientés (7 %)**.
+- 🔗 **L'interface du toit est posée** (41 · 64) : chaque îlot expose `toit_m2` (**11,6 ha** de surface réelle, pente comprise), `toit_pente`, `toit_plat`. L'ombrage était déjà là. C'est ce qui neutralise 66b : l'énergie lira ces nombres sans savoir si c'est le générateur ou une table qui parle.
+- ⚠️ **Trois défauts connus, imprimés à chaque export** plutôt que laissés à deviner : 18 bâtiments mordent sur la rue (jusqu'à 4,8 m, pic de mitre sur angle rentrant), 47 empreintes concaves prennent un toit plat, 748 pans réorientés.
+- 🔴 **L'auteur a refusé le contrepoids** du capital politique par la visibilité (**66c**). À écrire dans le compte rendu du test : sans lui, le prototype mesurera **un tri par colonne**, pas un choix de lieu — donc il répondra *oui* à la question du §1 pour une mauvaise raison.
+- ⏸️ **Le système énergie n'a pas été commencé**, à la demande de l'auteur en fin de session : *« va que jusqu'à la phase 3 »*. Tout est prêt pour lui.
 
 ### 2026-08-12 (session 14) — un indicateur vit à deux échelles
 - 🔗 **Ce que l'auteur a apporté et qui n'était nulle part** : les indicateurs existent **globalement et localement** (îlot, tronçon), et les deux sont liés. Le vault avait la règle 53 (« aucun chiffre global sans son calque ») mais **pas la règle de composition** — comment on passe d'un niveau à l'autre. Formulation retenue : **l'indicateur local et le calque sont le même objet vu de deux côtés**, comme le bandeau et les milestones (57). → **63**

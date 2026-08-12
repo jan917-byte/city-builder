@@ -1,22 +1,31 @@
-# Godot — Wehrau, jouable
+# Godot — Wehrau, une ville
 
-On clique un îlot ou une rue, on lit sa fiche, on décide de planter un
-alignement, et on traverse vingt ans : les arbres poussent, la canopée monte,
-la surchauffe baisse, le budget encaisse au début et se refait ensuite.
+On clique un îlot ou une rue, on lit sa fiche, et vingt ans passent. La ville
+est faite de **690 bâtiments sur 968 parcelles**, avec ses cours, ses rangs de
+maisons mitoyennes et ses toits à deux pentes.
 
-🔄 **Ce n'est plus « de l'affichage, pas de la simulation ».** La décision 39b
-disait ça d'une maquette qui montrait un état sans en calculer aucun. Depuis le
-2026-08-12, la boucle est ici : le noyau est dans `ville.gd` et `chantiers.gd`,
-et c'est la levée de la décision 40 (→ **40b**) qui l'a permis.
+⚠️ **Il n'y a plus de décision à prendre, et c'est voulu.** Le 2026-08-12,
+l'auteur a réduit le prototype à *« la ville en 3D et le système énergie »*
+(décision **66**). D07 « planter l'alignement », la surchauffe, les quatre
+moyennes de ville et les six calques sont partis dans **`archive/`** —
+supprimés pour de bon, pas masqués, avec une note qui dit ce que coûterait le
+retour. Les deux décisions de l'énergie — poser des panneaux, isoler — ne sont
+pas encore arrivées.
 
-Ce qui n'a pas changé : **toute la géométrie reste calculée en Python**, et la
-subdivision en parcelles reste hors phase — `Génération procédurale.md:66`.
+Ce qui reste à l'écran : la ville, le temps, le budget, le capital. La
+machinerie de décision (rampe, coût étalé, capital comptant) est intacte dans
+`chantiers.gd`, avec un dictionnaire `DECISIONS` **vide** — c'est elle le
+gabarit, et elle ne parle d'aucun thème.
 
-⚠️ **Le classeur n'est pas abandonné.** `Classeur/` et `08_jouer.py` restent le
-banc d'essai : l'endroit où changer d'avis coûte une soirée au lieu de trois
-semaines, ce qui reste le principe qui gouverne `Plan 3 mois`. Deux
-implémentations des mêmes règles, donc deux occasions de diverger — d'où le
-contrôle de recoupement plus bas, qui n'est pas optionnel.
+🔴 **Ce que la coupe a coûté** : le contrôle de recoupement entre Godot et
+`08_jouer.py` a disparu avec D07. C'était la seule façon de savoir tout de
+suite si les deux moteurs divergeaient. `PLAN_energie.md` §9 c l'avait déjà
+accepté ; à ce jour **rien ne le remplace**, et les trois invariants prévus
+pour le prototype énergie ne compareront qu'un moteur à lui-même.
+
+Ce qui n'a pas changé : **toute la géométrie reste calculée en Python**. Godot
+empaquette des tableaux et ne décide rien — l'« interface propre » de
+`Moteur et architecture:18` est le contrat JSON, pas une hiérarchie de classes.
 
 Godot **4.7.1**. Aucun plugin, aucune dépendance.
 
@@ -134,7 +143,6 @@ scripts/
   chantiers.gd         les décisions : cible, coût, capital, budget
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la fiche, la décision, le temps, les calques
-  alignements.gd       le MultiMesh des arbres, et leur croissance
   materiaux.gd         6 matériaux, zéro texture
   camera_axo.gd        orthographique, angle fixe
 outils/
@@ -212,65 +220,105 @@ Chaque famille imprime son nombre de sommets et son étendue au démarrage —
 même habitude que les scripts QGIS : un maillage vide se voit dans la console,
 il ne se devine pas à l'écran.
 
-## 🔴 Le contrôle de recoupement
+## 🔴 Le contrôle de recoupement — il n'existe plus
 
-Deux moteurs appliquent les mêmes règles : `08_jouer.py` en Python et
-`ville.gd` + `chantiers.gd` en GDScript. **Ils doivent tomber sur le même
-chiffre**, sinon la duplication a commencé à mentir et personne ne le sait.
+**À lire avant de faire confiance à un chiffre de ce projet.**
 
-```bash
-"C:/Users/janha/Desktop/Godot_v4.7.1-stable_win64.exe/Godot_v4.7.1-stable_win64_console.exe" --path Godot -- --essai
-```
+Jusqu'au 2026-08-12, deux moteurs appliquaient les mêmes règles — `08_jouer.py`
+en Python, `ville.gd` + `chantiers.gd` en GDScript — et devaient tomber sur le
+même résultat. Le contrôle tenait sur D07, la seule décision jouée. **D07 est
+partie dans `archive/`, et le contrôle avec.**
 
-```bash
-python QGIS/scripts/08_jouer.py --partie=4_recoupement
-```
+Le dernier résultat connu, et il passait : 0,2732 de canopée au mois 60 côté
+Godot, 0,273 côté classeur, 64 tronçons · 6 217 m · 114,9 pts des deux côtés.
+Le détail est dans `archive/essai_d07.gd.txt`.
 
-Les deux plantent D07 à 6,0 m d'emprise libre au mois 0. Attendu, au 2026-08-12 :
+Ce qui reste : `-- --essai` sort deux captures et vérifie que **le clic au
+centre de la vue « barre » rend l'îlot 32** — donc que les volumes restent
+cliquables après le découpage. C'est un contrôle d'interface, pas de
+simulation.
 
-| | Godot | `08_jouer.py` |
-|---|---|---|
-| tronçons · linéaire · coût | 64 · 6 217 m · 114,9 pts | idem — et la table du `Classeur/README.md` §3 dit **64 · 6 217 · 115** |
-| canopée au mois 0 | 0,1978 | 0,198 |
-| canopée au mois 60 | **0,2732** | **0,273** |
-| solde budgétaire au mois 60 | 397,1 | 397 |
+⚠️ **Ce que ça veut dire concrètement** : à partir de maintenant, une formule
+fausse dans le noyau ne sera plus attrapée par personne avant qu'on la voie à
+l'écran. Quand le thème énergie arrivera, ses trois invariants imprimés ne
+compareront **qu'un moteur à lui-même** : ils attrapent une formule qui dérive,
+pas deux implémentations qui divergent. Si le classeur doit rester le banc
+d'essai, c'est lui qu'il faudra étendre — sinon il devient une archive, et il
+faut le dire.
 
-L'essai vérifie aussi que **le clic au centre de la vue « barre » rend l'îlot
-32**, et sort quatre captures dans `QGIS/rendus/`.
+## 🏘️ Les parcelles et les toits
 
-⚠️ Le décalage du budget a déjà mordu une fois : `08_jouer.py` paie sur les mois
-`d` à `d + étale − 1` INCLUS, donc une première mensualité tombe au moment même
-où l'on décide. Sans le `+ 1` dans `chantiers.paye()`, les deux moteurs
-sortaient 397 et 399 — assez peu pour qu'on l'ignore, ce qui est exactement le
-danger.
+Depuis le 2026-08-12, la ville n'est plus 63 pâtés pleins.
 
-## 🟠 Trois chiffres qui attendent ton œil
+| | |
+|---|---|
+| `04c_parcelles.py` | découpe l'emprise de chaque îlot en **parcelles** — couche `parcelles` du `.gpkg`, 968 lignes |
+| table `BATI`, en haut de `07` | transforme une parcelle en bâtiment : recul de rue, jeu au voisin (**0 = mitoyen exact**), profondeur bâtie, pente du toit |
+| → | **690 volumes**, 278 parcelles enclavées devenues cours et jardins |
+
+🟢 **Le clic n'a pas changé de niveau.** Toutes les parcelles d'un îlot
+tombent dans **le même groupe de maillage** : la géométrie descend à la
+parcelle, la sélection reste à l'îlot. Toujours ~237 nœuds cliquables. La
+parcelle est l'entité persistante des **données** (35), pas celle du clic.
+
+### Les trois défauts connus, imprimés à chaque export
+
+Ils sont dans la console de `07`, pas dans un coin de tête :
+
+| Le défaut | Aujourd'hui |
+|---|---|
+| **47 empreintes concaves** prennent un toit plat | la recette du faîtage suppose qu'un versant avance dans un seul sens ; sur une empreinte concave il se retourne |
+| **748 pans réorientés** à l'émission (7 %) | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau. ⚠️ Donc la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve rien — c'est le nombre de réorientations qui informe |
+| **18 bâtiments mordent sur la rue**, jusqu'à 4,8 m | pic de mitre sur angle rentrant. Borné par le recul du tissu, sans commune mesure avec les 258 m de la session 9, mais à reprendre |
+
+🔗 **L'interface du toit** (41 · 64) est posée : chaque îlot expose
+`toit_m2` (surface réelle, pente comprise — **11,6 ha**), `toit_pente` et
+`toit_plat`. L'ombrage était déjà là, c'est `canopee`. Le code d'énergie lira
+ces quatre nombres **sans savoir** si c'est le générateur ou une table de
+coefficients qui les produit — c'est ce qui fait qu'il ne l'attend pas.
+
+## 🟠 Les chiffres qui attendent ton œil
 
 Aucun n'est tranché. Ils sont dans le code avec ce commentaire, pas cachés.
 
-1. **La surchauffe** — `ville.gd` : `3,5 × imperméabilisé − 2,5 × canopée`, en
-   °C. Elle n'existe dans aucune colonne du `.gpkg` ; elle se dérive du sol,
-   ici et nulle part ailleurs. À t0 elle donne **+1,59 °C** sur Wehrau, l'ordre
-   de grandeur d'un îlot de chaleur de petite ville. C'est aussi ce qui donne
-   enfin un corps à `confort_ete`, la variable que `effets.csv` réclame et que
-   le GeoPackage n'a pas.
-2. **Le +0,25 de canopée de D07** (`Classeur/effets.csv`). Dans les données, la
-   canopée d'une rue plafonne à **0,18** et sa médiane est **0,10** — aucun
-   tronçon ne dépasse 0,20. Planter fait donc passer une rue au-dessus de tout
-   ce qui existe à Wehrau. C'est peut-être juste ; ça se regarde.
-3. **`CANOPEE_ALIGNEMENT_MAX = 0,40`** (`07_exporter_godot.py`) — la canopée
-   d'une rue plantée de bout en bout, un arbre tous les 8 m. C'est une
-   constante de **rendu** : elle ne change aucun chiffre de la simulation,
-   seulement le nombre d'arbres qu'on voit pour une canopée donnée.
+**La table `TISSU`** (`04c_parcelles.py`) — la largeur de façade et la
+profondeur visées par tissu. C'est elle qui décide du grain de toute la ville :
+7 m au cœur ancien fait un peigne de maisons étroites, 18 m en pavillonnaire
+fait des objets détachés. Le contrôle n'est pas « est-ce que le nombre est
+juste » mais **« est-ce que le cœur ancien ressemble à un cœur ancien »**.
+
+**La table `BATI`** (`07_exporter_godot.py`) — recul de rue, jeu au voisin,
+profondeur bâtie, pente du toit. 🔴 Le `jeu` est le seul réglage qui fait
+basculer tout un tissu, et il est **réversible dans un seul sens** : écarter des
+maisons mitoyennes est facile, les recoller demanderait de réécrire le
+générateur (61).
+
+**`CANOPEE_ALIGNEMENT_MAX = 0,40`** (`07_exporter_godot.py`) — la canopée d'une
+rue plantée de bout en bout. Constante de **rendu** : elle ne change aucun
+chiffre de simulation. ⚠️ Elle ne sert plus à rien depuis que D07 est archivée,
+mais les 1 269 emplacements d'alignement sont toujours exportés dans le JSON.
+
+*Deux chiffres de cette liste sont partis avec leur système* : la **surchauffe**
+(`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0) et le **+0,25 de canopée
+de D07**, alors que la canopée d'une rue plafonne à 0,18 dans les données. Les
+deux sont consignés dans `archive/`, avec ce qu'il y avait à en dire.
 
 ## Ce que la maquette ne montre pas, et ne montrera pas
 
-- **La canopée des îlots bâtis** — 9,5 ha. Un îlot extrudé est un pâté plein :
-  il n'y a pas de sol visible dessous. 07 l'imprime au lieu de le taire.
+- **La canopée des îlots bâtis** — 9,5 ha. Elle se compte, elle ne se dessine
+  pas : les cours et les jardins existent maintenant, mais rien n'y pousse.
+  07 l'imprime au lieu de le taire.
 - **Les carrefours.** Les chaussées se recouvrent ; comme elles sont toutes
   dans un seul plan et d'une seule couleur, ça ne se voit pas. Le vrai
-  problème est hors phase (`Génération procédurale.md:58`).
-- **Le raccord entre bâtiments voisins.** La maquette assume le non-raccord —
-  c'est elle l'instrument de la question ouverte n°16, qui ne se tranche pas
-  avant de l'avoir regardée (`Questions ouvertes.md:55`).
-- **Des toits, des façades, des parcelles.** Hors phase, et le rester.
+  problème est largement dissous par 32f.
+- **Le trafic.** ✅ Tranché (62) : ce sera un **flux agrégé** plus quelques
+  véhicules figurés qui ne calculent rien. Jamais de graphe navigable. Pas
+  encore commencé.
+- **Les façades, les fenêtres, les intérieurs.** Le détail ira dans la texture
+  et la normal map, jamais dans la géométrie : le budget polygonal appartient
+  à la silhouette.
+- ✅ ~~**Le raccord entre bâtiments voisins**~~ — **résolu**. La question n°16
+  est fermée par 61 : la parcelle est une partition, donc deux voisines
+  partagent une arête exactement, et un `jeu` de 0 pose les deux murs dessus au
+  millimètre. Le joint en toiture sort du même mouvement.
+- ✅ ~~**Des toits, des parcelles**~~ — **faits le 2026-08-12**.
