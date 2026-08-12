@@ -1,0 +1,54 @@
+Retiré de `Godot/scripts/chantiers.gd` le 2026-08-12.
+
+C'était l'unique entrée du dictionnaire `DECISIONS`, reprise ligne à ligne de
+`Classeur/decisions.csv` et `Classeur/effets.csv`.
+
+⚠️ Elle ne porte que DEUX durées — délai et montée. Le prototype énergie en
+introduit une troisième, la durée des TRAVAUX, distincte de la montée de
+l'effet : sans elle, 64 tronçons resteraient « en chantier » pendant les cinq
+ans de croissance des arbres. Si D07 revient un jour, elle vaut
+3 · 2 · 58 (délai · travaux · maturation) et non 3 · 60.
+
+------------------------------------------------------------------------------
+
+	"D07": {
+		"nom": "Planter l'alignement",
+		"resume": "On plante les deux rives de la rue. L'arbre met cinq ans à"
+			+ " faire de l'ombre : c'est la décision dont on ne voit rien"
+			+ " avant la fin du mandat.",
+		"couche": "r",
+		"champ_cible": "emprise_libre_m",   # cible : emprise_libre_m > S
+		"seuil_defaut": 6.0,
+		"seuil_min": 2.0,
+		"seuil_max": 11.0,
+		"libelle_seuil": "emprise libre au-delà de",
+		"unite_seuil": " m",
+		"cout_base": 3.0,          # par CHANTIER, pas par tronçon
+		"cout_unitaire": 1.8,      # par 100 m linéaires
+		"capital_base": -1.0,
+		"capital_unitaire": 0.0,
+		"delai": 3.0,
+		"montee": 60.0,
+		"effets": [
+			{"portee": "cible", "couche": "r", "champ": "canopee", "valeur": 0.25},
+			{"portee": "riverains", "couche": "i", "champ": "canopee", "valeur": 0.10},
+			{"portee": "cible", "couche": "r", "champ": "emprise_libre_m", "valeur": -1.5},
+		],
+	},
+
+------------------------------------------------------------------------------
+
+TROIS CHIFFRES QUI N'ONT JAMAIS ÉTÉ VALIDÉS PAR L'AUTEUR
+
+  · le +0,25 de canopée sur la rue cible — alors que la canopée d'une rue
+    plafonne à 0,18 dans les données du `.gpkg`
+  · CANOPEE_ALIGNEMENT_MAX, côté 07_exporter_godot.py (rendu seulement)
+  · la montée de 60 mois : sur l'horizon d'une partie, l'arbre ne reprend
+    jamais ses mètres à la noue, donc la concurrence arbre/noue qui est le
+    sujet de D07 et D08 ne se joue pas
+
+ET UN DÉFAUT DE CIBLAGE MESURÉ PAR LE CLASSEUR, sur D05 mais qui vaut ici
+
+  `largeur_m >= 20` rate quatre des cinq rues les plus chargées : les tronçons
+  13, 21, 54 et 55 font 18 m et portent 0,87 à 1,00 de charge. Deux mètres de
+  seuil décident si une décision existe.

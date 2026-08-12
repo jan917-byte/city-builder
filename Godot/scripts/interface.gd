@@ -25,37 +25,34 @@ const MONTE := Color(0.435, 0.682, 0.369)
 const BAISSE := Color(0.757, 0.267, 0.235)
 
 # Les champs de la fiche : (champ, libellé, unité, décimales).
+#
+# ⚠️ Réduite au strict identitaire le 2026-08-12 : canopée, imperméabilisé,
+# surchauffe, places, fragilité et aléa sont partis dans `Godot/archive/`. Ce
+# qui reste décrit l'objet, pas son état.
+#
+# Quand les quatre nombres de l'énergie arriveront, ils entreront ici DANS
+# L'ORDRE DU BANDEAU — décision 63b, le joueur apprend un seul vocabulaire.
 const FICHE := {
 	"i": [
 		["logements", "Logements", "", 0],
 		["emplois", "Emplois", "", 0],
 		["hauteur", "Hauteur", " niv.", 0],
-		["canopee", "Canopée", "", 2],
-		["impermeabilise", "Imperméabilisé", "", 2],
-		["_surchauffe", "Surchauffe", " °C", 2],
-		["stationnement", "Places", "", 0],
-		["riverain", "Fragilité", "", 2],
-		["alea", "Aléa", "", 2],
 		["surface_m2", "Surface", " m²", 0],
 	],
 	"r": [
 		["largeur_m", "Largeur", " m", 1],
-		["emprise_libre_m", "Emprise libre", " m", 1],
 		["longueur_m", "Longueur", " m", 0],
-		["canopee", "Canopée", "", 2],
 		["charge", "Charge", "", 2],
-		["stationnement", "Places", "", 0],
 	],
 }
 
-const CALQUES := [
-	["", "", "Aucun"],
-	["i", "canopee", "Canopée"],
-	["i", "_surchauffe", "Surchauffe"],
-	["i", "impermeabilise", "Imperméabilisé"],
-	["r", "canopee", "Canopée des rues"],
-	["r", "emprise_libre_m", "Emprise libre"],
-]
+# Vide, et c'est voulu : les six calques de l'ancien prototype sont archivés,
+# les trois de l'énergie ne sont pas encore là. Le panneau ne se construit pas
+# tant qu'il n'y a rien dedans — un panneau vide est pire qu'absent.
+#
+# 🔒 Règle 53, sans exception : aucun chiffre global sans son calque. Ajouter un
+# indicateur au bandeau sans ajouter sa ligne ici est un bug de design.
+const CALQUES := []
 
 var ville: Ville
 var chantiers
@@ -64,17 +61,12 @@ var _stats := {}          # clé -> Label
 var _fiche_titre: Label
 var _fiche_grille: GridContainer
 var _fiche_vide: Label
-var _bouton_ici: Button
-var _bouton_tout: Button
-var _seuil: HSlider
-var _seuil_txt: Label
 var _lecture: Button
 var _curseur: HSlider
 var _date: Label
 var _message: Label
 var _msg_delai := 0.0
 
-var seuil: float = 6.0
 var _fiche_couche := ""
 var _fiche_fid := -1
 var _lignes := []
@@ -124,9 +116,10 @@ func _bandeau() -> void:
 	p.add_child(h)
 	_date = _label("", 20, ACCENT)
 	h.add_child(_date)
-	for c in [["budget", "Budget"], ["capital", "Capital"],
-			["canopee_moy", "Canopée"], ["surchauffe_moy", "Surchauffe"],
-			["arbres", "Arbres"]]:
+	# Les deux RESSOURCES seulement. Ce ne sont pas des indicateurs : elles
+	# disent ce qu'on peut faire, pas ce qu'on a fait. Les quatre nombres de
+	# l'énergie viendront se ranger à leur droite.
+	for c in [["budget", "Budget"], ["capital", "Capital"]]:
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 0)
 		v.add_child(_label(c[1], 11, GRIS))
@@ -167,35 +160,12 @@ func _panneau_droite() -> void:
 	_fiche_grille.add_theme_constant_override("v_separation", 2)
 	v.add_child(_fiche_grille)
 
-	_bouton_ici = Button.new()
-	_bouton_ici.visible = false
-	_bouton_ici.pressed.connect(func() -> void:
-		if _fiche_couche == "r" and _fiche_fid >= 0:
-			decide.emit("D07", [_fiche_fid]))
-	v.add_child(_bouton_ici)
-
-	v.add_child(HSeparator.new())
-	v.add_child(_label(chantiers.DECISIONS["D07"]["nom"], 13, ACCENT))
-	var d := _label(chantiers.DECISIONS["D07"]["resume"], 12, GRIS)
-	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(d)
-
-	_seuil_txt = _label("", 12, TEXTE)
-	v.add_child(_seuil_txt)
-	_seuil = HSlider.new()
-	_seuil.min_value = chantiers.DECISIONS["D07"]["seuil_min"]
-	_seuil.max_value = chantiers.DECISIONS["D07"]["seuil_max"]
-	_seuil.step = 0.5
-	_seuil.value = seuil
-	_seuil.value_changed.connect(func(x: float) -> void:
-		seuil = x
-		rafraichir_decision())
-	v.add_child(_seuil)
-
-	_bouton_tout = Button.new()
-	_bouton_tout.pressed.connect(func() -> void:
-		decide.emit("D07", chantiers.eligibles("D07", seuil, _t)))
-	v.add_child(_bouton_tout)
+	# ⚠️ LE PANNEAU DE DÉCISION N'EST PLUS CONSTRUIT. Il tenait sur D07, partie
+	# dans `Godot/archive/`. Il revient à l'identique avec les deux décisions
+	# de l'énergie, à un détail près qui n'est pas un détail : il devra afficher
+	# DEUX décisions et non une, donc une boucle sur `chantiers.DECISIONS` au
+	# lieu d'un accès direct par clé. C'est ce qui prouvera que la machinerie
+	# n'a pas été codée en dur autour d'un seul cas.
 
 	_message = _label("", 12, BAISSE)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -242,6 +212,8 @@ func _barre_temps() -> void:
 
 
 func _calques() -> void:
+	if CALQUES.is_empty():
+		return
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", _boite())
 	p.anchor_top = 1.0
@@ -268,7 +240,7 @@ func _calques() -> void:
 
 var _t := 0.0
 
-func maj(t: float, en_lecture: bool, indic: Dictionary, arbres: int) -> void:
+func maj(t: float, en_lecture: bool, indic: Dictionary) -> void:
 	_t = t
 	_curseur.set_value_no_signal(t)
 	_lecture.text = "⏸" if en_lecture else "▶"
@@ -278,21 +250,15 @@ func maj(t: float, en_lecture: bool, indic: Dictionary, arbres: int) -> void:
 	_date.text = "an %d · mois %d" % [an + 1, mo + 1]
 
 	# Le mois 0 ne bouge jamais : le calculer à chaque image coûterait plus
-	# cher que tout le reste de l'interface.
-	if _i0.is_empty():
+	# cher que tout le reste de l'interface. `indic` est vide tant que les
+	# quatre nombres de l'énergie ne sont pas là ; le geste reste en place.
+	if _i0.is_empty() and not indic.is_empty():
 		_i0 = ville.indicateurs(0.0)
 	# Pas d'écart sur le budget : il n'a pas de valeur de référence, il monte
 	# tout seul de 8,3 pts par mois. Ce qui compte est son NIVEAU.
 	_stats["budget"].text = _nb(chantiers.solde(t), 0) + " pts"
 	_stats["budget_ecart"].text = ""
 	_stat("capital", chantiers.capital(t), 0, "", Ville.CAPITAL_DEPART, false)
-	_stat("canopee_moy", indic["canopee_moy"], 3, "", _i0["canopee_moy"], false)
-	# Une surchauffe qui BAISSE est une bonne nouvelle : le vert doit aller
-	# vers le bas. C'est le seul indicateur inversé, d'où le drapeau.
-	_stat("surchauffe_moy", indic["surchauffe_moy"], 2, " °C",
-		_i0["surchauffe_moy"], true)
-	_stats["arbres"].text = str(arbres)
-	_stats["arbres_ecart"].text = ""
 
 	if _msg_delai > 0.0:
 		_msg_delai -= get_process_delta_time()
@@ -301,7 +267,6 @@ func maj(t: float, en_lecture: bool, indic: Dictionary, arbres: int) -> void:
 
 	if _fiche_fid >= 0:
 		montrer(_fiche_couche, _fiche_fid, false)
-	rafraichir_decision()
 
 
 func _stat(cle: String, v: float, dec: int, unite: String, ref: float,
@@ -356,7 +321,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_lignes.clear()
 	for ligne in FICHE[couche]:
 		var champ: String = ligne[0]
-		if champ != "_surchauffe" and not o.has(champ):
+		if not o.has(champ):
 			continue
 		_fiche_grille.add_child(_label(ligne[1], 12, GRIS))
 		var lv := _label("", 12, TEXTE)
@@ -374,14 +339,8 @@ func _maj_fiche() -> void:
 	for l in _lignes:
 		var ligne: Array = l["def"]
 		var champ: String = ligne[0]
-		var v: float
-		var v0: float
-		if champ == "_surchauffe":
-			v = ville.surchauffe(_fiche_fid, _t)
-			v0 = ville.surchauffe(_fiche_fid, 0.0)
-		else:
-			v = ville.valeur(_fiche_couche, _fiche_fid, champ, _t)
-			v0 = ville.base(_fiche_couche, _fiche_fid, champ)
+		var v := ville.valeur(_fiche_couche, _fiche_fid, champ, _t)
+		var v0 := ville.base(_fiche_couche, _fiche_fid, champ)
 		(l["v"] as Label).text = _nb(v, ligne[3]) + ligne[2]
 		var d := v - v0
 		var e: Label = l["e"]
@@ -390,33 +349,11 @@ func _maj_fiche() -> void:
 			e.add_theme_color_override("font_color", GRIS)
 		else:
 			e.text = ("+" if d > 0.0 else "") + _nb(d, ligne[3])
-			# Une surchauffe qui BAISSE est une bonne nouvelle. C'est le seul
-			# champ où le vert va vers le bas — le rappeler ici, sinon la
+			# ⚠️ Un indicateur peut être INVERSÉ — le vert va alors vers le bas.
+			# La surchauffe l'était ; l'énergie en aura deux, la consommation et
+			# l'achat. Le drapeau se remettra ici ET dans `_stat`, sinon la
 			# fiche contredit le bandeau.
-			var bon := (d < 0.0) if champ == "_surchauffe" else (d > 0.0)
-			e.add_theme_color_override("font_color", MONTE if bon else BAISSE)
-
-
-func rafraichir_decision() -> void:
-	var elig: Array = chantiers.eligibles("D07", seuil, _t)
-	var dv: Dictionary = chantiers.devis("D07", elig, _t)
-	_seuil_txt.text = "Au-delà de %s m d'emprise libre : %d tronçons, %s m" \
-		% [_nb(seuil, 1), elig.size(), _nb(dv["quantite"] * 100.0, 0)]
-	if elig.is_empty():
-		_bouton_tout.text = "Rien à planter à ce seuil"
-	elif elig.size() == 1:
-		_bouton_tout.text = "Planter le tronçon (%s pts)" % _nb(dv["cout"], 0)
-	else:
-		_bouton_tout.text = "Planter les %d tronçons (%s pts)" % [elig.size(),
-			_nb(dv["cout"], 0)]
-	_bouton_tout.disabled = elig.is_empty()
-
-	var ici := (_fiche_couche == "r" and _fiche_fid >= 0
-		and elig.has(_fiche_fid))
-	_bouton_ici.visible = ici
-	if ici:
-		var d1: Dictionary = chantiers.devis("D07", [_fiche_fid], _t)
-		_bouton_ici.text = "Planter ce tronçon (%s pts)" % _nb(d1["cout"], 0)
+			e.add_theme_color_override("font_color", MONTE if d > 0.0 else BAISSE)
 
 
 func dire(txt: String, secondes := 5.0) -> void:

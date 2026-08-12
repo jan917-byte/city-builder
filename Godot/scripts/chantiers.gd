@@ -1,9 +1,11 @@
 extends RefCounted
 # Les décisions, et les chantiers qu'on en lance.
 #
-# Une seule décision pour l'instant — D07, reprise ligne à ligne de
-# `Classeur/decisions.csv` et `Classeur/effets.csv`. Le circuit complet doit
-# marcher avant qu'on en ajoute une deuxième.
+# ⚠️ AUCUNE DÉCISION POUR L'INSTANT. D07 « planter l'alignement » est partie
+# dans `Godot/archive/` le 2026-08-12 ; les deux décisions de l'énergie —
+# poser des panneaux, isoler — arrivent ensuite. La machinerie ci-dessous, elle,
+# ne parle d'aucun thème : c'est exactement ce qui la rend réutilisable
+# (décision 64, « le prototype énergie n'est pas un exemple, c'est le gabarit »).
 #
 # Ce qui structure le jeu, et qu'il ne faut pas perdre en route
 # (`Classeur/README.md` §4) :
@@ -15,32 +17,7 @@ extends RefCounted
 
 const Ville := preload("res://scripts/ville.gd")
 
-const DECISIONS := {
-	"D07": {
-		"nom": "Planter l'alignement",
-		"resume": "On plante les deux rives de la rue. L'arbre met cinq ans à"
-			+ " faire de l'ombre : c'est la décision dont on ne voit rien"
-			+ " avant la fin du mandat.",
-		"couche": "r",
-		"champ_cible": "emprise_libre_m",   # cible : emprise_libre_m > S
-		"seuil_defaut": 6.0,
-		"seuil_min": 2.0,
-		"seuil_max": 11.0,
-		"libelle_seuil": "emprise libre au-delà de",
-		"unite_seuil": " m",
-		"cout_base": 3.0,          # par CHANTIER, pas par tronçon
-		"cout_unitaire": 1.8,      # par 100 m linéaires
-		"capital_base": -1.0,
-		"capital_unitaire": 0.0,
-		"delai": 3.0,
-		"montee": 60.0,
-		"effets": [
-			{"portee": "cible", "couche": "r", "champ": "canopee", "valeur": 0.25},
-			{"portee": "riverains", "couche": "i", "champ": "canopee", "valeur": 0.10},
-			{"portee": "cible", "couche": "r", "champ": "emprise_libre_m", "valeur": -1.5},
-		],
-	},
-}
+const DECISIONS := {}
 
 var ville: Ville
 var journal := []           # [{id, mois, fids, quantite, cout, capital}]

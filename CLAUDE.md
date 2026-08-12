@@ -42,7 +42,13 @@ Les autres dossiers : `Vision/` (fondations), `Systèmes/` (mécaniques), `Ville
 Ces règles viennent du vault lui-même, pas de moi. Elles ne se négocient pas sans que l'auteur les change dans le vault.
 
 **Délégué :**
-- **PyQGIS** : j'écris les scripts. L'auteur les relit, puis les exécute lui-même dans la console QGIS **sur une copie** du GeoPackage. Je n'exécute rien sur les données réelles. → `Technique/Pipeline QGIS.md`
+- **Les scripts de données : je les écris ET je les exécute**, y compris sur le vrai `.gpkg`. 🔄 *Révisé le 2026-08-12 — l'ancienne règle réservait l'exécution à l'auteur, dans la console QGIS, sur une copie.* → `Méta/Décisions arrêtées.md` **65**
+  - Ce qui a rendu l'ancienne règle vide : **la chaîne ne passe plus par QGIS**. Les onze scripts de `QGIS/scripts/` sont du Python pur avec `sqlite3` — aucun PyQGIS, aucun GDAL, et l'en-tête GeoPackage de `04b` est encodée à la main. Le dossier garde son nom, pas sa dépendance.
+  - **Trois garde-fous qui remplacent la relecture, et qui ne sont pas optionnels :**
+    1. le dépôt est le filet — `git status` propre et commit **avant** toute écriture dans un `.gpkg`, qui est un binaire que git ne fusionne pas ;
+    2. tout script qui écrit garde son mode `--blanc`, et **la passe à blanc tourne toujours d'abord** ;
+    3. les **contrôles imprimés en français** sont le compte rendu — §3 bis ne bouge pas.
+  - Ce qui reste à l'auteur : le **level design** (les listes de `fid` de `02`, la table `TISSU` de `04`). C'est l'exécution qui est déléguée, pas les choix de carte.
 - Tableurs, tables de correspondance, outillage, structuration de notes, relecture.
 - **Le code Godot, noyau de simulation et architecture compris.** L'auteur teste, itère et revient sur mes décisions. 🔄 *Révisé le 2026-08-11 — l'ancienne règle réservait le noyau à l'auteur.* → `Méta/Décisions arrêtées.md` 40b · `Technique/Moteur et architecture.md`
   - Corollaire : ce que l'ancienne règle protégeait était la **compréhension**. Donc j'explique ce que je code au moment où je le code, et je signale les endroits où l'auteur doit revenir — mais **jamais en montrant le code** (§3 bis).
@@ -66,7 +72,7 @@ Ce que ça change concrètement :
   4. **Deux phrases en français** — en dernier recours, et seulement si ça tient en deux phrases.
 - **Après une modification, dire ce que l'auteur doit regarder** : quoi lancer, où cliquer, ce qui doit avoir changé à l'écran, et ce qui prouverait que c'est cassé. Pas « c'est fait » tout court.
 - **Décrire les effets, pas l'implémentation.** « Les toits sont maintenant inclinés selon l'époque du bâtiment » — pas le nom de la fonction qui le calcule.
-- **Corollaire pour QGIS** : « l'auteur relit les scripts » (§3) veut dire qu'il vérifie **ce qu'ils vont faire à la carte**, décrit en français et en tableaux, pas qu'il en audite le Python. Je lui donne ce résumé avant qu'il exécute quoi que ce soit sur une copie.
+- **Corollaire pour les scripts de données** : depuis la décision 65 je les exécute moi-même, donc l'auteur ne voit plus passer le script — il ne voit que **ce qu'il a fait à la carte**. Le contrôle imprimé en français et en tableaux n'est plus un préalable poli, c'est **le seul endroit où une erreur peut encore se voir**. Une passe à blanc avant chaque écriture, et le tableau des écarts après.
 
 Ce n'est pas une dispense de rigueur, c'est l'inverse : le code n'étant relu par personne, **c'est à moi de le rendre vérifiable à l'œil**.
 

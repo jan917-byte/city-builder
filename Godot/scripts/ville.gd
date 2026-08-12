@@ -14,18 +14,6 @@ const HORIZON_MOIS := 240                  # 20 ans. Le classeur s'arrête à 60
 const BUDGET_MENSUEL := 100.0 / 12.0       # 100 pts par an — Classeur §2
 const CAPITAL_DEPART := 50.0               # décision 16b
 
-# La SURCHAUFFE urbaine, en °C au-dessus de la campagne autour. Elle n'existe
-# dans aucune colonne du `.gpkg` : elle se dérive du sol, ici et nulle part
-# ailleurs.
-#
-# ⚠️ Les deux coefficients sont une PROPOSITION, à corriger devant l'écran.
-# À t0 ils donnent ≈ +1,6 °C sur Wehrau (28 % de sol imperméable, 20 % de
-# canopée), ce qui est l'ordre de grandeur d'un îlot de chaleur de petite
-# ville. C'est aussi ce qui donne enfin un corps à `confort_ete`, la variable
-# que `effets.csv` réclame et que le GeoPackage n'a pas.
-const SURCHAUFFE_IMPERM := 3.5
-const SURCHAUFFE_CANOPEE := 2.5
-
 var ilots := {}            # fid:int -> {champ: float|String}
 var routes := {}
 var riverains := {}        # fid tronçon -> [fid îlot]
@@ -33,6 +21,10 @@ var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 
 # Ce qui change dans le temps. Tout le reste est figé, et c'est volontaire :
 # une variable qui bouge sans qu'on sache pourquoi coûte une soirée.
+#
+# ⚠️ `canopee` reste de la partie alors que son indicateur a été retiré : c'est
+# elle qui fait l'OMBRAGE des toits — le rendement d'un panneau est multiplié
+# par `1 − 0,4 × canopee`. Une donnée n'est pas un indicateur.
 const CHAMPS_MOBILES := {
 	"i": ["canopee", "impermeabilise", "riverain", "logements"],
 	"r": ["canopee", "emprise_libre_m", "stationnement", "charge"],
@@ -106,13 +98,6 @@ func vider_rampes() -> void:
 	_rampes = {"i": {}, "r": {}}
 
 
-## Les °C de surchauffe d'un îlot. Du sol nu et minéral chauffe ; des arbres
-## rafraîchissent. C'est tout, et c'est déjà une décision de design.
-func surchauffe(fid: int, t: float) -> float:
-	return SURCHAUFFE_IMPERM * valeur("i", fid, "impermeabilise", t) \
-		- SURCHAUFFE_CANOPEE * valeur("i", fid, "canopee", t)
-
-
 func fids_batis() -> Array:
 	var out := []
 	for fid in ilots:
@@ -123,32 +108,13 @@ func fids_batis() -> Array:
 
 ## Les indicateurs de ville.
 ##
-## ⚠️ Ce sont des MOYENNES SIMPLES par îlot, pas pondérées par la surface — et
-## c'est le contrôle du mois 0 de `08_jouer.py` qui l'a établi, pas une
-## préférence. Un champ de 50 ha y pèse autant qu'un parc de 0,4 ha. C'est
-## discutable, c'est consigné, et surtout c'est la SEULE définition qui permet
-## de recouper les deux moteurs.
-func indicateurs(t: float) -> Dictionary:
-	var batis := fids_batis()
-	var can := 0.0
-	var imp := 0.0
-	var chaud := 0.0
-	for fid in batis:
-		can += valeur("i", fid, "canopee", t)
-		imp += valeur("i", fid, "impermeabilise", t)
-		chaud += surchauffe(fid, t)
-	var n := float(maxi(batis.size(), 1))
-
-	var can_rue := 0.0
-	var places := 0.0
-	for fid in routes:
-		can_rue += valeur("r", fid, "canopee", t)
-		places += valeur("r", fid, "stationnement", t)
-
-	return {
-		"canopee_moy": can / n,
-		"impermeabilise_moy": imp / n,
-		"surchauffe_moy": chaud / n,
-		"canopee_rue_moy": can_rue / float(maxi(routes.size(), 1)),
-		"stationnement": places,
-	}
+## VIDE pour l'instant, et c'est voulu : les cinq indicateurs de l'ancien
+## prototype sont partis dans `Godot/archive/` le 2026-08-12, et les quatre de
+## l'énergie ne sont pas encore arrivés. La ville est là, elle est muette.
+##
+## ⚠️ Quand ils reviendront, ils reviendront PONDÉRÉS — décision 63 : un taux se
+## pondère par ce dont il est le taux, par la surface s'il parle du sol, par la
+## population s'il parle des gens. Les anciennes moyennes étaient simples par
+## îlot, donc un champ de 50 ha y pesait autant qu'un parc de 0,4 ha.
+func indicateurs(_t: float) -> Dictionary:
+	return {}

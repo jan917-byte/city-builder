@@ -26,7 +26,6 @@ const Ville := preload("res://scripts/ville.gd")
 const Chantiers := preload("res://scripts/chantiers.gd")
 const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
-const Alignements := preload("res://scripts/alignements.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
 const EXAGERATIONS := [1.0, 1.5, 2.0, 3.0]
@@ -50,7 +49,6 @@ var ville: Ville
 var chantiers: Chantiers
 var selection: Selection
 var interface: Interface
-var alignements: Alignements
 var mat_objet: ShaderMaterial
 
 var noeuds := {"i": {}, "r": {}}
@@ -117,39 +115,24 @@ func _ready() -> void:
 		await _essai()
 
 
-## Le contrôle de recoupement, joué sans souris.
+## Une passe sans souris, pour juger sur des captures plutôt que de mémoire.
 ##
-## Il refait exactement ce que `Classeur/parties/4_recoupement.csv` demande à
-## `08_jouer.py` : planter tout ce qui dépasse 6 m d'emprise libre, au mois 0.
-## Les deux moteurs doivent tomber sur la MÊME canopée moyenne au mois 60.
-## C'est le prix à payer pour avoir deux implémentations des mêmes règles, et
-## la seule façon de savoir tout de suite si elles divergent.
+## ⚠️ Ce n'était pas ça avant le 2026-08-12 : c'était le CONTRÔLE DE
+## RECOUPEMENT entre Godot et `08_jouer.py`, et il est parti avec D07 dans
+## `Godot/archive/essai_d07.gd.txt`. Ce qui reste ici ne compare plus deux
+## moteurs — ça regarde la ville, et ça vérifie qu'elle est toujours cliquable.
 ##
 ##   Godot_console.exe --path Godot -- --essai
 func _essai() -> void:
-	var fids: Array = chantiers.eligibles("D07", 6.0, 0.0)
-	var r: Dictionary = chantiers.engager("D07", fids, 0.0)
-	print("\nESSAI — D07, seuil 6,0 m, au mois 0")
-	if not r["ok"]:
-		print("  refusé : %s" % r["message"])
-		get_tree().quit(1)
-		return
-	print("  %d tronçons · %.0f m · %.1f pts · capital %+.1f"
-		% [fids.size(), float(r["quantite"]) * 100.0, r["cout"], r["capital"]])
-	print("  mois   canopée   surchauffe    budget   arbres")
-	for t in [0.0, 3.0, 33.0, 60.0, 240.0]:
-		mois = t
-		_rafraichir(true)
-		await get_tree().process_frame
-		var i: Dictionary = ville.indicateurs(t)
-		print("  %4d   %7.4f   %+8.3f °C  %7.1f   %4d"
-			% [int(t), i["canopee_moy"], i["surchauffe_moy"],
-			chantiers.solde(t), alignements.visibles if alignements else 0])
-		if t == 0.0 or t == 240.0:
-			await _capturer("essai_%03d" % int(t))
-	# Et de près, sur la barre de 1974 : c'est là qu'on vérifie que les
-	# volumes sont toujours des volumes après le découpage en 237 nœuds — et
-	# que le clic retrouve bien l'objet sous le curseur.
+	print("
+ESSAI — la ville, sans décision")
+	_repere("vallee")
+	await get_tree().process_frame
+	await _capturer("essai_vallee")
+
+	# De près, sur la barre de 1974 : c'est là qu'on vérifie que les volumes
+	# sont toujours des volumes après le découpage en nœuds — et que le clic
+	# retrouve bien l'objet sous le curseur.
 	_repere("barre")
 	await get_tree().process_frame
 	await get_tree().physics_frame
@@ -165,16 +148,6 @@ func _essai() -> void:
 		_rafraichir(true)
 	await get_tree().process_frame
 	await _capturer("essai_barre")
-
-	# Et le calque thématique, qui passe par l'autre branche du shader.
-	_repere("vallee")
-	_sur_calque("i", "_surchauffe")
-	await get_tree().process_frame
-	print("  calque surchauffe : étendue %.2f → %.2f °C" % [_etendue[0], _etendue[1]])
-	await _capturer("essai_calque")
-
-	print("\n  → comparer le mois 60 à :")
-	print("    python QGIS/scripts/08_jouer.py --partie=4_recoupement")
 	get_tree().quit()
 
 
@@ -204,14 +177,6 @@ func _construire() -> void:
 			Donnees.teinte(donnees, "_feuillage").srgb_to_linear())
 		mmi.material_override = Materiaux.feuillage()
 		monde.add_child(mmi)
-
-	if not _ignore("Alignements"):
-		alignements = Alignements.new()
-		alignements.name = "Alignements"
-		alignements.material_override = Materiaux.feuillage()
-		monde.add_child(alignements)
-		alignements.batir(donnees["alignements"],
-			Donnees.teinte(donnees, "_feuillage").srgb_to_linear())
 
 
 func _ignore(nom: String) -> bool:
@@ -300,15 +265,11 @@ func _process(delta: float) -> void:
 
 func _rafraichir(force: bool) -> void:
 	if not force and absf(mois - _dernier_peint) < 0.002:
-		interface.maj(mois, en_lecture, ville.indicateurs(mois),
-			alignements.visibles if alignements else 0)
+		interface.maj(mois, en_lecture, ville.indicateurs(mois))
 		return
 	_dernier_peint = mois
-	if alignements:
-		alignements.rafraichir(ville, mois)
 	_peindre()
-	interface.maj(mois, en_lecture, ville.indicateurs(mois),
-		alignements.visibles if alignements else 0)
+	interface.maj(mois, en_lecture, ville.indicateurs(mois))
 
 
 # --------------------------------------------------------------- la couleur
@@ -332,8 +293,9 @@ func _sur_calque(couche: String, champ: String) -> void:
 
 
 func _val(couche: String, fid: int, t: float) -> float:
-	if calque_champ == "_surchauffe":
-		return ville.surchauffe(fid, t)
+	# Les calques DÉRIVÉS (un `_` en tête) passeront par ici : la surchauffe le
+	# faisait, la rentabilité solaire et le gain d'isolation le feront. Un champ
+	# du `.gpkg` se lit directement, un champ calculé se branche ci-dessus.
 	return ville.valeur(couche, fid, calque_champ, t)
 
 

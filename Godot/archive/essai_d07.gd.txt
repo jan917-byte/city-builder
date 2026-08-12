@@ -1,0 +1,71 @@
+Retiré de `Godot/scripts/maquette.gd` le 2026-08-12.
+
+C'ÉTAIT LE CONTRÔLE DE RECOUPEMENT ENTRE LES DEUX MOTEURS, et c'est la vraie
+perte de la coupe. Il rejouait sans souris ce que `Classeur/parties/
+4_recoupement.csv` demandait à `08_jouer.py` — planter tout ce qui dépasse 6 m
+d'emprise libre, au mois 0 — et les deux implémentations devaient tomber sur la
+MÊME canopée moyenne au mois 60.
+
+Le dernier résultat connu, session 11, et il passait :
+
+    Godot            0,2732 de canopée au mois 60
+    08_jouer.py      0,273
+    les deux         64 tronçons · 6 217 m · 114,9 pts
+
+Il avait déjà sorti un vrai bug : le budget décalait d'un mois parce que
+`08_jouer.py` paie sur les mois `d` à `d + étale − 1` INCLUS. 397 d'un côté,
+399 de l'autre — assez peu pour qu'on l'ignore, ce qui était exactement le
+danger. La correction (le `+ 1.0` dans `chantiers.paye`) est restée dans le
+code actif ; elle vaut pour toutes les décisions, pas seulement D07.
+
+Les lignes se lançaient par :   Godot_console.exe --path Godot -- --essai
+
+------------------------------------------------------------------------------
+
+func _essai() -> void:
+	var fids: Array = chantiers.eligibles("D07", 6.0, 0.0)
+	var r: Dictionary = chantiers.engager("D07", fids, 0.0)
+	print("\nESSAI — D07, seuil 6,0 m, au mois 0")
+	if not r["ok"]:
+		print("  refusé : %s" % r["message"])
+		get_tree().quit(1)
+		return
+	print("  %d tronçons · %.0f m · %.1f pts · capital %+.1f"
+		% [fids.size(), float(r["quantite"]) * 100.0, r["cout"], r["capital"]])
+	print("  mois   canopée   surchauffe    budget   arbres")
+	for t in [0.0, 3.0, 33.0, 60.0, 240.0]:
+		mois = t
+		_rafraichir(true)
+		await get_tree().process_frame
+		var i: Dictionary = ville.indicateurs(t)
+		print("  %4d   %7.4f   %+8.3f °C  %7.1f   %4d"
+			% [int(t), i["canopee_moy"], i["surchauffe_moy"],
+			chantiers.solde(t), alignements.visibles if alignements else 0])
+		if t == 0.0 or t == 240.0:
+			await _capturer("essai_%03d" % int(t))
+
+	# ... puis la sonde de clic sur la barre de 1974, et le calque surchauffe.
+
+	print("\n  → comparer le mois 60 à :")
+	print("    python QGIS/scripts/08_jouer.py --partie=4_recoupement")
+	get_tree().quit()
+
+------------------------------------------------------------------------------
+
+CE QUI LE REMPLACE, et pourquoi ce n'est pas équivalent
+
+Le prototype énergie imprime trois invariants aux mois 0, 12, 60, 120 et 240 :
+
+  1. achat + production = consommation, à l'échelle de la ville
+  2. la production ne dépasse jamais le potentiel total
+  3. un îlot équipé au mois 0 à 10 ans de retour a remboursé au mois 132
+
+Ces trois-là comparent UN moteur À LUI-MÊME. Ils attrapent une formule qui
+dérive, pas deux implémentations qui divergent. `PLAN_energie.md` §9 c
+l'assume : « si le thème énergie est retenu après le test, le classeur devra
+rattraper — sinon la duplication ment sans qu'on le sache. »
+
+DEUX MORCEAUX DE L'ESSAI ONT ÉTÉ GARDÉS dans le code actif, parce qu'ils ne
+parlent pas de D07 : la sonde de clic au centre de la vue « barre » (elle
+vérifie que les volumes restent cliquables après le découpage en nœuds) et la
+capture PNG automatique.

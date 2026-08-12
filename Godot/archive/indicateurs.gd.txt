@@ -1,0 +1,97 @@
+Retiré de `Godot/scripts/ville.gd` et `Godot/scripts/interface.gd`
+le 2026-08-12.
+
+⚠️ Les moyennes ci-dessous sont SIMPLES par îlot, pas pondérées par la surface.
+Ce n'était pas une préférence : c'est le contrôle du mois 0 de `08_jouer.py`
+qui l'avait établi, et c'était la seule définition qui permettait de recouper
+les deux moteurs. Un champ de 50 ha y pèse autant qu'un parc de 0,4 ha.
+
+La décision 63 les condamne : un taux se pondère par ce dont il est le taux —
+par la surface s'il parle du sol, par la population s'il parle des gens. Si un
+de ces indicateurs revient, il revient pondéré.
+
+==================================================== ville.gd — la surchauffe
+
+# La SURCHAUFFE urbaine, en °C au-dessus de la campagne autour. Elle n'existe
+# dans aucune colonne du `.gpkg` : elle se dérive du sol, ici et nulle part
+# ailleurs.
+#
+# ⚠️ Les deux coefficients sont une PROPOSITION, à corriger devant l'écran.
+# À t0 ils donnent ≈ +1,6 °C sur Wehrau (28 % de sol imperméable, 20 % de
+# canopée), ce qui est l'ordre de grandeur d'un îlot de chaleur de petite
+# ville. C'est aussi ce qui donne enfin un corps à `confort_ete`, la variable
+# que `effets.csv` réclame et que le GeoPackage n'a pas.
+const SURCHAUFFE_IMPERM := 3.5
+const SURCHAUFFE_CANOPEE := 2.5
+
+
+## Les °C de surchauffe d'un îlot. Du sol nu et minéral chauffe ; des arbres
+## rafraîchissent. C'est tout, et c'est déjà une décision de design.
+func surchauffe(fid: int, t: float) -> float:
+	return SURCHAUFFE_IMPERM * valeur("i", fid, "impermeabilise", t) \
+		- SURCHAUFFE_CANOPEE * valeur("i", fid, "canopee", t)
+
+=============================================== ville.gd — les quatre stocks
+
+func indicateurs(t: float) -> Dictionary:
+	var batis := fids_batis()
+	var can := 0.0
+	var imp := 0.0
+	var chaud := 0.0
+	for fid in batis:
+		can += valeur("i", fid, "canopee", t)
+		imp += valeur("i", fid, "impermeabilise", t)
+		chaud += surchauffe(fid, t)
+	var n := float(maxi(batis.size(), 1))
+
+	var can_rue := 0.0
+	var places := 0.0
+	for fid in routes:
+		can_rue += valeur("r", fid, "canopee", t)
+		places += valeur("r", fid, "stationnement", t)
+
+	return {
+		"canopee_moy": can / n,
+		"impermeabilise_moy": imp / n,
+		"surchauffe_moy": chaud / n,
+		"canopee_rue_moy": can_rue / float(maxi(routes.size(), 1)),
+		"stationnement": places,
+	}
+
+============================================== interface.gd — les six calques
+
+const CALQUES := [
+	["", "", "Aucun"],
+	["i", "canopee", "Canopée"],
+	["i", "_surchauffe", "Surchauffe"],
+	["i", "impermeabilise", "Imperméabilisé"],
+	["r", "canopee", "Canopée des rues"],
+	["r", "emprise_libre_m", "Emprise libre"],
+]
+
+========================================= interface.gd — les cases du bandeau
+
+	for c in [["budget", "Budget"], ["capital", "Capital"],
+			["canopee_moy", "Canopée"], ["surchauffe_moy", "Surchauffe"],
+			["arbres", "Arbres"]]:
+
+	_stat("canopee_moy", indic["canopee_moy"], 3, "", _i0["canopee_moy"], false)
+	# Une surchauffe qui BAISSE est une bonne nouvelle : le vert doit aller
+	# vers le bas. C'est le seul indicateur inversé, d'où le drapeau.
+	_stat("surchauffe_moy", indic["surchauffe_moy"], 2, " °C",
+		_i0["surchauffe_moy"], true)
+	_stats["arbres"].text = str(arbres)
+	_stats["arbres_ecart"].text = ""
+
+============================ interface.gd — les lignes de fiche supprimées
+
+	"i" :  ["canopee", "Canopée", "", 2]
+	       ["impermeabilise", "Imperméabilisé", "", 2]
+	       ["_surchauffe", "Surchauffe", " °C", 2]
+	       ["stationnement", "Places", "", 0]
+	       ["riverain", "Fragilité", "", 2]
+	       ["alea", "Aléa", "", 2]
+
+	"r" :  ["emprise_libre_m", "Emprise libre", " m", 1]
+	       ["canopee", "Canopée", "", 2]
+	       ["stationnement", "Places", "", 0]
