@@ -110,6 +110,26 @@ def exceptions():
 
 
 # --- les rues -------------------------------------------------------------
+# Les franchissements de l'Ilse qu'on RETIRE de la carte. Décision 30c : trois
+# ponts, pas cinq — « à cinq ponts la rivière ne coupe plus rien, et ajouter
+# une passerelle cesse d'être une décision ».
+#
+# Le choix des deux, tranché par l'auteur le 2026-08-12 devant le tableau :
+#   · 136 — un boulevard de 20 m à 20 m de 145, qui atterrit sur le même îlot.
+#           Le même franchissement compté deux fois, et le moins chargé de tous
+#           (0,04). C'est lui qui faisait que la rivière ne coupait rien au nord
+#   · 171 — la petite rue de 12 m du nord (charge 0,07), qui ne dessert que des
+#           champs et dix logements déjà servis par 145
+#
+# Les trois qui restent tombent un par tiers de rivière : 145 au nord (0,69),
+# 168 au milieu (0,42), 169 au sud (0,24). ⚠️ 168 est intouchable — c'est le
+# seul accès des 279 logements du cœur du faubourg de rive gauche, celui que la
+# crue d'ouverture frappe (23b).
+#
+# Les dix paires possibles ont été testées : AUCUNE ne coupe le réseau routier
+# en deux. Le contrôle de connexité de `03` doit donc toujours passer après.
+PONTS_SUPPRIMES = [136, 171]
+
 # Largeur par défaut, en mètres, par hiérarchie. Base du profil en travers.
 LARGEUR = {"boulevard": 18.0, "rue": 12.0, "ruelle": 7.0,
            "rive": 0.0, "voie ferree": 8.0, "autoroute": 25.0}
@@ -236,6 +256,22 @@ def main():
     con = sqlite3.connect(CIBLE)
     brancher_fonctions_spatiales(con)
     cur = con.cursor()
+
+    # ---------------- les deux ponts qu'on retire (décision 30c)
+    # Avant toute lecture, pour que tout l'aval — le comptage, `03`, `04`,
+    # `04b`, l'export — travaille sur la carte réduite et jamais sur l'ancienne.
+    # Le GeoPackage porte ses propres déclencheurs de suppression : l'index
+    # spatial et le compteur de la couche se remettent à jour tout seuls.
+    if PONTS_SUPPRIMES:
+        avant = cur.execute("SELECT count(*) FROM routes").fetchone()[0]
+        cur.execute("DELETE FROM routes WHERE fid IN (%s)"
+                    % ",".join("?" * len(PONTS_SUPPRIMES)), PONTS_SUPPRIMES)
+        apres = cur.execute("SELECT count(*) FROM routes").fetchone()[0]
+        con.commit()
+        print("franchissements retirés : %s — %d tronçons, puis %d"
+              % (sorted(PONTS_SUPPRIMES), avant, apres))
+        if avant - apres != len(PONTS_SUPPRIMES):
+            raise SystemExit("un des fid à supprimer n'existait pas dans `routes`")
 
     # ---------------- lecture des géométries
     ilots = {}

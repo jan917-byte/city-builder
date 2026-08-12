@@ -11,7 +11,7 @@ const CHEMIN := "res://data/wehrau.json"
 # Les comptes sont connus, donc vérifiables. S'ils changent, c'est que la
 # carte a changé — et on veut le savoir tout de suite.
 const N_ILOTS := 69
-const N_ROUTES := 178
+const N_ROUTES := 176      # 178 avant le 2026-08-12 — décision 30c, trois ponts
 
 
 static func charger(chemin: String = CHEMIN) -> Dictionary:

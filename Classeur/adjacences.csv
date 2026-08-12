@@ -26,7 +26,7 @@ id_a;id_b;hierarchie_separatrice;longueur_m;permeabilite
 6;63;rue;198.7;0.8
 6;64;rue;140.8;0.8
 7;8;rive;243.6;0.1
-7;51;rue;39.5;0.8
+7;51;sans_rue;39.5;0.9
 8;9;boulevard;134.4;0.4
 8;10;rue;74.9;0.8
 8;50;rue;74.8;0.8
@@ -142,7 +142,7 @@ id_a;id_b;hierarchie_separatrice;longueur_m;permeabilite
 47;48;rue;101.4;0.8
 50;51;rive;87.9;0.1
 50;52;rive;51;0.1
-51;52;boulevard;40.1;0.2
+51;52;sans_rue;40.1;0.9
 51;59;rive;30.3;0.1
 51;60;rive;64.5;0.1
 52;54;boulevard;40.4;0.2
