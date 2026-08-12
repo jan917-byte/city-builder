@@ -48,6 +48,8 @@ import palette as PAL                                      # noqa: E402
 # conséquence — on ne lui prend que des constantes — mais autant le savoir.
 from importlib import import_module                        # noqa: E402
 D4 = import_module("04_deriver_attributs")
+D4B = import_module("04b_emprises_baties")   # `retracter`, le décalage d'arêtes
+D4C = import_module("04c_parcelles")         # `couper`, la coupe par une droite
 
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
@@ -107,6 +109,44 @@ FICHE_ROUTES = [c for c in COLS_ROUTES if c != "fid"] + ["longueur_m"]
 # la même rue après D07 (+0,25) en montre un tous les 9 m — un vrai alignement.
 # Le chiffre qui mérite l'œil de l'auteur, lui, est le +0,25 de `effets.csv`.
 CANOPEE_ALIGNEMENT_MAX = 0.40
+
+
+# --- LE BÂTI SUR LA PARCELLE ----------------------------------------------
+# Ce qui transforme une parcelle (un morceau de sol) en bâtiment (un volume).
+# Trois nombres par tissu, et ce sont eux qui font qu'un cœur ancien ressemble
+# à un cœur ancien et un lotissement à un lotissement.
+#
+#   recul       distance entre la façade et la rue, en mètres. 0 = la maison
+#               est SUR l'alignement, ce qui est la forme des tissus anciens.
+#   jeu         distance entre la maison et sa voisine. 🔴 0 = MITOYEN, et le
+#               mitoyen est alors exact : les deux parcelles partagent déjà
+#               l'arête (décision 61), donc les deux murs tombent dessus au
+#               millimètre. C'est le seul réglage qui fait basculer tout le
+#               tissu, et c'est aussi celui qui est réversible dans un seul
+#               sens — écarter est facile, recoller demanderait de tout
+#               réécrire.
+#   profondeur  au-delà, ce n'est plus la maison, c'est la cour ou le jardin.
+#               C'est ce nombre qui creuse les cœurs d'îlot.
+#
+# ⚠️ PROPOSITION, à corriger devant l'image. Le contrôle n'est pas « est-ce que
+# le nombre est juste » mais « est-ce qu'on croirait y habiter ».
+BATI = {
+    #  sous_type              recul   jeu  profondeur
+    "coeur_ancien":            (0.0,  0.0,   11.0),   # sur rue, mitoyen, cour derrière
+    "maisons_de_ville":        (1.5,  0.0,   11.0),   # mitoyen, petit jardin
+    "front_commercant":        (0.0,  0.0,   13.0),   # sur rue, vitrines
+    "pavillonnaire":           (5.0,  2.8,   10.0),   # détaché, jardin devant et derrière
+    "barre_1970":              (6.0,  5.0,   13.0),   # posée dans son espace libre
+    "equipement":              (4.0,  3.0,   26.0),
+    "dalle_commerciale":       (2.0,  2.0,   55.0),   # un hangar, pas une maison
+    "friche_industrielle":     (3.0,  2.5,   38.0),   # des halles
+}
+BATI_DEFAUT = (2.0, 1.0, 14.0)
+
+# Une arête de parcelle dont le milieu est à moins de ça du bord de l'emprise
+# donne sur la rue. Tout le reste est partagé avec une parcelle voisine — la
+# partition (61) garantit qu'il n'y a pas de troisième cas.
+TOL_RUE = 0.40
 
 
 def verifier_colonnes(con, table, cols):
@@ -424,6 +464,22 @@ def lire(con):
         raise SystemExit("îlots sans emprise : %s — relancer 04b"
                          % ", ".join(str(f) for f in orphelins))
 
+    # Les PARCELLES. Facultatives : sans elles, chaque îlot bâti ressort en un
+    # seul pâté plein, comme avant le 2026-08-12. C'est le repli, pas une
+    # erreur — mais il doit se dire dans la console, pas se deviner à l'écran.
+    for d in ilots.values():
+        d["parcelles"] = []
+    a_parcelles = con.execute(
+        "SELECT count(*) FROM sqlite_master WHERE type='table'"
+        " AND name='parcelles'").fetchone()[0] > 0
+    if a_parcelles:
+        for fid_i, niv, geom in con.execute(
+            "SELECT fid_ilot, niveaux, geom FROM parcelles ORDER BY fid"
+        ):
+            if fid_i in ilots:
+                ilots[fid_i]["parcelles"].append(
+                    {"anneau": anneau_ouvert(geom), "niveaux": niv or 0.0})
+
     routes = []
     for r in con.execute("SELECT %s, geom FROM routes ORDER BY fid"
                          % ",".join(COLS_ROUTES)):
@@ -507,6 +563,7 @@ def main():
     rng = random.Random(GRAINE)
     arbres = []
     n_masse = n_sol = n_eau = 0
+    n_parc = n_vol = n_pate = 0
     canopee_perdue = 0.0
     murs_ok = murs_tot = toits_ok = toits_tot = 0
 
@@ -532,11 +589,28 @@ def main():
         if haut > 0.0:
             n_masse += 1
             masses.marque(fid)
-            a, b, c, e = _masse(masses, an, d, terrain, coul, G)
-            murs_ok += a
-            murs_tot += b
-            toits_ok += c
-            toits_tot += e
+            # ⚠️ TOUTES les parcelles d'un îlot tombent dans LE MÊME groupe.
+            # C'est ce qui permet d'avoir mille bâtiments sans passer de 237 à
+            # 1 200 nœuds cliquables : la géométrie descend à la parcelle, la
+            # SÉLECTION reste à l'îlot — et la décision aussi. La parcelle est
+            # l'entité persistante des données (35), pas celle du clic.
+            volumes = []
+            if d["parcelles"]:
+                idx = _index_bord(an)
+                for p in d["parcelles"]:
+                    for emp in _empreinte_batie(p["anneau"], st, idx):
+                        volumes.append((emp, p["niveaux"]))
+                n_parc += len(d["parcelles"])
+                n_vol += len(volumes)
+            if not volumes:
+                volumes = [(an, haut)]        # repli : le pâté plein d'avant
+                n_pate += 1
+            for emp, niv in volumes:
+                a, b, c, e = _masse(masses, emp, d, terrain, coul, G, niv)
+                murs_ok += a
+                murs_tot += b
+                toits_ok += c
+                toits_tot += e
             # La canopée d'un îlot bâti n'est pas représentable dans une
             # maquette de masses : le pâté est plein, il n'y a pas de sol
             # visible dessous. On la compte pour le dire, pas pour la cacher.
@@ -548,6 +622,12 @@ def main():
             arbres.extend(_semer(an, d, terrain, rng))
 
     print("  masses %d · sols %d · eau %d" % (n_masse, n_sol, n_eau))
+    if n_parc:
+        print("  parcelles %d → %d volumes bâtis  (%d enclavées : cour ou jardin)"
+              % (n_parc, n_vol, n_parc - n_vol))
+    if n_pate:
+        print("  ⚠️  %d îlots ressortent en pâté plein — pas de parcelle, ou"
+              " aucune n'a produit de volume" % n_pate)
     print("  triangles : masses %d, sols %d, eau %d"
           % (len(masses), len(sols), len(eau)))
     print("  sens des faces : murs vers l'extérieur %d/%d · toits vers le haut %d/%d"
@@ -679,7 +759,23 @@ def _sol(m, anneau, terrain, coul, G):
                    G(pts[ic][0], pts[ic][1], ys[ic]), coul)
 
 
-def _masse(m, anneau, d, terrain, coul, G):
+def _index_bord(anneau, grille=1.0):
+    """Index de grille des arêtes de l'emprise. Sans lui, tester « cette arête
+    donne-t-elle sur la rue » serait quadratique — 968 parcelles contre 53
+    emprises, ça se sent."""
+    idx = {}
+    n = len(anneau)
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        x0, x1 = int(min(a[0], b[0]) // grille), int(max(a[0], b[0]) // grille)
+        y0, y1 = int(min(a[1], b[1]) // grille), int(max(a[1], b[1]) // grille)
+        for cx in range(x0, x1 + 1):
+            for cy in range(y0, y1 + 1):
+                idx.setdefault((cx, cy), []).append((a, b))
+    return idx
+
+
+def _masse(m, anneau, d, terrain, coul, G, niveaux=None):
     """Un prisme à deux plans horizontaux, base enterrée.
 
     `y_haut` réutilise `altitude_relative`, déjà dans la base : le toit est à
@@ -688,8 +784,14 @@ def _masse(m, anneau, d, terrain, coul, G):
     est enterré et le terrain l'occlut. Le flottement serait laid, pas
     l'enfouissement : entre les deux erreurs, on choisit celle qui ne se voit
     pas. Aucune jupe, aucune face inférieure : elles ne sont jamais vues.
+
+    `niveaux` permet de donner à CHAQUE parcelle sa propre hauteur, tirée de
+    sa graine (35). Sans lui, mille bâtiments arasés au même plan ne valent
+    pas mieux qu'un pâté plein.
     """
-    y_haut = (d["altitude_relative"] or 0.0) + (d["hauteur"] or 0.0) * ETAGE_M
+    if niveaux is None:
+        niveaux = d["hauteur"] or 0.0
+    y_haut = (d["altitude_relative"] or 0.0) + niveaux * ETAGE_M
     sous = [terrain.alt(p[0], p[1]) for p in anneau]
     y_bas = min(sous) - ENFOUISSEMENT
 
@@ -734,6 +836,96 @@ def _masse(m, anneau, d, terrain, coul, G):
         if normale(pa, pb, pc)[1] > 0.0:
             haut_ok += 1
     return ok, n, haut_ok, len(tris)
+
+
+def _sur_rue(parcelle, idx_bord):
+    """Pour chaque arête de la parcelle : donne-t-elle sur la rue ?
+
+    Une parcelle est un morceau de l'emprise ; ses arêtes sont donc soit sur
+    le bord de l'emprise (la rue), soit issues d'une coupe et partagées avec
+    une voisine. Ce test décide lesquelles reculent et lesquelles restent
+    collées — c'est lui qui produit le mitoyen."""
+    out = []
+    n = len(parcelle)
+    for i in range(n):
+        a, b = parcelle[i], parcelle[(i + 1) % n]
+        mx, my = (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
+        cx, cy = int(mx // 1.0), int(my // 1.0)
+        rue = False
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for (p, q) in idx_bord.get((cx + dx, cy + dy), ()):
+                    if D4C.dist_pt_seg((mx, my), p, q) <= TOL_RUE:
+                        rue = True
+                        break
+                if rue:
+                    break
+            if rue:
+                break
+        out.append(rue)
+    return out
+
+
+def _empreinte_batie(parcelle, st, idx_bord):
+    """La parcelle devient une empreinte de bâtiment.
+
+    Trois gestes, dans cet ordre, et chacun répond à un des trois nombres de
+    `BATI` : on recule de la rue, on s'écarte (ou pas) de la voisine, puis on
+    coupe ce qui dépasse en profondeur — le reste est la cour ou le jardin.
+
+    Renvoie [] quand il ne reste rien : une parcelle enclavée, sans aucune
+    arête sur rue, n'est pas bâtie. C'est comme ça que les cœurs d'îlot se
+    creusent, sans qu'on ait à les dessiner."""
+    recul, jeu, prof = BATI.get(st, BATI_DEFAUT)
+    rues = _sur_rue(parcelle, idx_bord)
+    if not any(rues):
+        return []                     # enclavée : cour, jardin, pas de maison
+
+    retraits = [recul if r else jeu for r in rues]
+    emp = D4B.retracter(parcelle, retraits)
+    # `reparer` retire les boucles que tout offset à distance variable finit
+    # par fabriquer sur un angle rentrant. Il renvoie (anneau, réparations,
+    # plafond) — seul le premier nous intéresse ici.
+    emp = D4B.reparer(emp)[0] if len(emp) >= 3 else []
+    if len(emp) < 3 or abs(D4C.aire_signee(emp)) < 6.0:
+        return []
+    emp = D4C.ouvrir(emp)
+
+    # La coupe en profondeur, depuis la plus longue arête sur rue. Sans elle,
+    # deux rangées dos à dos donnent un bloc plein de 32 m et le cœur d'îlot
+    # n'existe pas.
+    n = len(parcelle)
+    meilleur, best_L = None, 0.0
+    for i in range(n):
+        if not rues[i]:
+            continue
+        a, b = parcelle[i], parcelle[(i + 1) % n]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L > best_L:
+            best_L, meilleur = L, (a, b)
+    if meilleur is None:
+        return [emp]
+    a, b = meilleur
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    L = math.hypot(dx, dy)
+    if L < 1e-9:
+        return [emp]
+    # Anneau trigonométrique : l'intérieur est à GAUCHE du parcours, donc la
+    # normale rentrante vaut (−dy, dx). On garde le côté rue, c'est-à-dire le
+    # côté négatif de cette normale.
+    nx, ny = -dy / L, dx / L
+    p0 = (a[0] + nx * prof, a[1] + ny * prof)
+    morceaux = D4C.couper(emp, p0, (-nx, -ny))
+    garde = []
+    for m in morceaux:
+        if len(m) < 3:
+            continue
+        cx = sum(p[0] for p in m) / len(m)
+        cy = sum(p[1] for p in m) / len(m)
+        if (cx - p0[0]) * (-nx) + (cy - p0[1]) * (-ny) > -0.01 \
+                and abs(D4C.aire_signee(m)) > 6.0:
+            garde.append(D4C.ouvrir(m))
+    return garde if garde else [emp]
 
 
 def _ruban(m, a, b, larg, terrain, coul, G):
