@@ -12,7 +12,7 @@ maj: 2026-08-12
 **Où j'en suis** : mois 1 bouclé — la carte est **simulable**, la ville a des **stocks**, et **elle se joue** : on clique, on décide, vingt ans passent
 **Phase actuelle** 🎯 : **une ville crédible et belle** — parcelles, toits, trafic, sol. *Ensuite* chaque indicateur, système et décision **un par un** → [[Décisions arrêtées]] 51
 **Périmètre du prototype** : [[Wehrau]], une petite ville entière — **pas** un quartier de [[Vallmar]]
-**Prochaine action concrète** : la subdivision de l'îlot en parcelles — le point dur, 2 à 4 semaines → [[Génération procédurale]] · [[Plan 3 mois]]
+**Prochaine action concrète** : un passage QGIS (supprimer deux ponts), puis la **subdivision de l'îlot en parcelles** — le point dur, 2 à 4 semaines, et ses deux verrous sont levés → [[Génération procédurale]] · [[Plan 3 mois]]
 **Le garde-fou** ⚠️ : ce n'est plus une date, c'est *« si je devais en faire 200, est-ce que je tiendrais ? »* → 52
 
 ---
@@ -26,7 +26,8 @@ maj: 2026-08-12
 
 ## ⚙️ Systèmes
 
-- [[Ressources]] — argent + capital politique
+- [[Indicateurs globaux]] 🆕 — les sept chiffres du bandeau, et la règle *un chiffre, un calque*
+- [[Ressources]] — argent + capital politique. Le budget tient en **deux formules** depuis le 2026-08-12
 - [[Décisions]] — l'anatomie d'une décision, l'exemple de référence
 - [[Chantiers et temps]] — temps continu, délai, montée en charge
 - [[Happenings]] — canicule, crue, révolte : urgence contre vision
@@ -63,27 +64,45 @@ maj: 2026-08-12
 ## 🧾 Méta
 
 - [[Décisions arrêtées]] — le registre, avec ce qui est réversible ou non
-- [[Questions ouvertes]] — ⚠️ dont une bloquante
+- [[Questions ouvertes]] — 🟢 plus aucune ne bloque la phase A depuis le 2026-08-12
 - [[Glossaire]] — vocabulaire du projet, base de l'i18n
 - [[Journal]] — ce que j'apprends à chaque session
 
 ---
 
-## ⚠️ Les 3 trucs à trancher maintenant
+## ⚠️ Les trucs à trancher maintenant
 
+✅ **Tranché le 2026-08-12** : les **sept indicateurs globaux** et la règle *un chiffre, un calque* (53–54), **pas d'économie chiffrée** (55), le CO2 et le renouvelable **dérivés et non simulés** avec le carbone gris (56), **le max d'un indicateur est un milestone** révélé à l'approche (57), compteurs contre barres (58), **d'où vient l'argent — deux formules** (59), et **l'économie en barre sans nombre** avec ses deux garde-fous (60, 60b).
 ✅ **Tranché le 2026-08-11** : la crue d'ouverture (rive gauche), 5 350 habitants, le capital politique en **un chiffre**, les [[Milestones]] cumulables, 2 h de partie, **la ville de t0 avant les décisions** (49) et **Townscaper** comme référence de travail (42b).
 
-1. **D'où vient l'argent ?** Budget fixe ou recettes dépendant de la ville. → [[Ressources]]
-2. **Le deuxième axe des fins** — le vieux problème, avec un candidat neuf : « personne n'a été chassé ». → [[Fins et pluralisme]]
-3. **Le nom** — « Wehrau » et « l'Ilse » sont proposés, pas arrêtés. Se renomment en une commande tant que rien n'est codé. → [[Wehrau]]
+🟢 **La phase A n'est plus bloquée.** Les cinq questions qui la tenaient sont closes le 2026-08-12 : le **mitoyen par construction** (61, ferme n°16), le **trafic en flux** (62, ferme n°18), **le dortoir assumé** (50b, ferme n°17), **trois ponts au lieu de cinq** (30c, ferme n°12), **la barre de 1974 reste sur l'îlot 32** (13e, ferme n°14). Et le nom est arrêté : **Wehrau**, l'**Ilse** (13f).
 
-🔴 **Et deux qui bloquent la phase A**, à trancher **avant** d'écrire le générateur de parcelles :
-- **n°16 — le raccord des bâtiments voisins.** Endormie par la maquette de masses (un pâté plein n'a pas de voisin à coudre), **réveillée par les parcelles** : deux parcelles mitoyennes vont se toucher pour de bon, et dans un tissu de maisons de ville le mitoyen *est* la forme urbaine.
-- **35 — la parcelle est-elle bien l'entité persistante ?** Déjà arrêtée 🔒, mais elle n'a jamais été mise à l'épreuve du code. Irréversible en pratique une fois le générateur écrit.
+Ce qui reste, et qui ne bloque rien tout de suite :
 
-Et deux autres questions ouvertes : **n°17** — Wehrau est un dortoir, on assume ? — et **n°18**, neuve : **le trafic, des voitures ou un flux ?** → [[Questions ouvertes]]
+1. **Le deuxième axe des fins** — le vieux problème, avec un candidat qui s'est renforcé : « personne n'a été chassé » est désormais l'un des sept indicateurs, et **le seul qui ne monte jamais**. → [[Fins et pluralisme]]
+2. **35 — la parcelle est bien l'entité persistante ?** Arrêtée 🔒 et jamais mise à l'épreuve du code. Elle ne se tranche plus, elle se **vérifie** : la partition (61) ne doit pas se rejouer quand une seule parcelle change.
+3. **Trois questions qui se tranchent en dessinant l'écran, pas ici** : **n°19** — onze nombres permanents, est-ce que ça tient ? — **n°21** — comment le joueur comprend-il que l'économie commande son budget, alors que les deux sont loin l'un de l'autre ? — et **n°20**, une contradiction interne : [[Déclin et défaite]] refuse la jauge globale que l'indicateur « ville exposée » vient d'introduire. → [[Questions ouvertes]]
+
+⚠️ **Un travail QGIS attend avant le générateur de parcelles** : supprimer deux ponts, et regarder si l'axe de transit se déplace. `02` écrase le `.gpkg`, donc ça se fait **avant**, pas après.
 
 ## 🔄 Révisions récentes
+
+**2026-08-12 (matin) — la phase A est débloquée, cinq questions closes**
+- 🎯 **Le raccord des bâtiments se règle par la méthode, pas par un travail de couture** : *la parcelle est une **partition** de l'emprise de l'îlot.* Le générateur découpe au lieu de poser des formes dans un vide, donc deux voisines partagent une arête exactement. Ce qui a tranché : 20 îlots de `maisons_de_ville` et 12 de `coeur_ancien` — le mitoyen n'y est pas un détail, **c'est la forme urbaine**. → **61**
+- 🚗 **Le trafic sera un flux, pas des agents** — plus une poignée de véhicules figurés qui ne calculent rien. *Le spectacle est la transformation urbaine, pas la circulation.* Critère nommé et jugeable à l'écran : **une rue à `charge = 1,00` doit être désagréable à regarder** ; si le flux est trop propre, on ajoute de l'encombrement, pas de la navigation. → **62**
+- 🏭 **Wehrau reste un dortoir, assumé** : 0,16 emploi par habitant. Ça rend la ville cohérente avec elle-même — l'axe saturé et les 0,86 place par habitant deviennent des symptômes — et ça donne un levier unique : **les deux friches sont le seul levier d'emploi de la ville**. Coût assumé : le mouvement du matin sort de la carte. → **50b**
+- 🌉 **Trois franchissements au lieu de cinq.** À cinq, la rivière ne coupe plus rien et « ajouter une passerelle » cesse d'être une décision. ⚠️ **Lesquels** se choisit sur la carte, et l'affectation de trafic se rejoue. → **30c**
+- 🏢 **La barre de 1974 reste sur l'îlot 32** — c'était la phrase du vault qui était fausse, pas la carte. Ce qui l'expose n'est pas la proximité de l'eau mais d'être **en bout de chaîne**. → **13e** · et **13f** : les noms Wehrau et Ilse sont arrêtés.
+
+**2026-08-12 (nuit) — les indicateurs globaux**
+- 🎯 **Une règle qui commande tout le bandeau** : *aucun chiffre global sans son calque*. Elle a taillé dix-neuf indicateurs candidats à **sept**, par un critère simple — un chiffre dont on ne saurait pas dessiner la carte est une jauge qu'on optimise, pas une invitation à regarder la ville. → 53 · [[Indicateurs globaux]]
+- 💰 **La plus vieille question structurante tombe : d'où vient l'argent.** Deux formules — recettes ∝ logements, charges ∝ mètres de voirie — au lieu d'une économie simulée. Le déclencheur est un fait mesuré : **le budget ne mordait jamais** (418 pts dépensés sur 500, +152 de solde, aucune décision jamais refusée). Récupère au passage les **charges d'entretien**, orphelines. → 59 · [[Ressources]]
+- 🔗 **Le bandeau et les [[Milestones]] sont le même objet.** En cherchant à borner les indicateurs, on trouve que **cinq des sept maxima sont des jalons qui ont déjà un nom** — zéro voiture, zéro carbone, autonome en énergie, ville-éponge, « personne n'a été chassé ». Ferme au passage deux sous-questions des Milestones. → 57
+- 🧪 **Une manœuvre réutilisable** : *une formule sur des attributs existants n'est pas une sous-simulation.* Elle a sauvé le CO2, le renouvelable et le budget — trois choses qui semblaient exiger une économie. → 56
+- ⚫ **Le carbone gris est assumé**, ce qui rend **« adapter » mécaniquement défendable face à « reconstruire »**. L'indicateur ne mesure pas seulement : il rend chiffrable un dilemme déjà présent dans le vault.
+- 💡 **Puis l'économie revient par une autre porte, et en mieux** : le joueur ne voit qu'une **barre sans nombre** et son **budget annuel**, qui en dépend — le calcul est caché. ***Un état non chiffré ne s'optimise pas*** : tout le piège *Democracy 4* tient au pourcentage. Ça révise 59 — les formules décrivent ce qu'on **maîtrise**, l'économie est le **multiplicateur qu'on ne maîtrise pas**. → **60**
+- 🔴 ***Formule cachée ≠ causalité cachée***, et l'économie cachée ne sert **jamais** à ajuster la difficulté (21). Quand la barre bouge, quelque chose le dit en une phrase. → **60b**
+- 🟠 **Ce que ça laisse ouvert** : onze nombres permanents à l'écran (n°19), une contradiction avec [[Déclin et défaite]] (n°20), et **comment le joueur comprend que l'économie commande son budget** (n°21) — piste la plus forte : *le budget se vote une fois par an*.
 
 **2026-08-12 (soir)**
 - 🔄 **L'ordre change une seconde fois : la ville crédible et belle passe devant les systèmes.** 49 mettait déjà la ville avant les décisions, mais visait une maquette de masses. Le seuil passe de *« sentir le lieu »* à ***« avoir envie de la regarder, et croire qu'on y habite »***. Ensuite seulement, chaque indicateur, système et décision **un par un**, plus en lot de onze. → 51 · [[Plan 3 mois]]

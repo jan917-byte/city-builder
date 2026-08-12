@@ -1,7 +1,7 @@
 ---
 tags: [système, progression, rejouabilité]
 statut: arrêté (liste ouverte)
-maj: 2026-08-11
+maj: 2026-08-12
 ---
 
 # Milestones
@@ -52,7 +52,27 @@ Proposition, **non arrêtée** : un milestone devrait se reconnaître sur **une 
 | **Autonome en énergie** | des toits qui changent de couleur | ⚠️ peu distinct |
 | **Zéro carbone** | rien — l'essentiel est dans les murs | ❓ **objectif, pas forme** |
 
-**Zéro carbone est le but affiché du jeu** (décision 9) et le moins photogénique de tous. Piste : le garder comme **compteur permanent** plutôt que comme jalon à débloquer. À trancher.
+**Zéro carbone est le but affiché du jeu** (décision 9) et le moins photogénique de tous. ~~Piste : le garder comme **compteur permanent** plutôt que comme jalon à débloquer. À trancher.~~
+
+✅ **Tranché le 2026-08-12 : le CO2 est un des sept [[Indicateurs globaux]] permanents.** Il reste donc lisible tout du long sans avoir à être photogénique — ce que le tableau ci-dessus lui reprochait. → [[Décisions arrêtées]] 54 · 56
+
+## 🎯 Le milestone est le bout d'une barre
+
+Découvert le 2026-08-12 en cherchant à borner les indicateurs, par l'autre bout : **le maximum d'un indicateur n'est pas un 100 % abstrait, c'est un jalon qui a déjà un nom.**
+
+| Indicateur | Son max | Le jalon |
+|---|---|---|
+| 🚗 Emprise voiture | 0 voiture | **zéro voiture** |
+| 🏭 CO2 | 0 émission | **zéro carbone** |
+| ☀️ Toits qui produisent | 100 % | **autonome en énergie** |
+| 💧 Ville exposée | 0 exposé | **ville-éponge** |
+| 🏠 Habitants d'origine | 100 % restés | **« personne n'a été chassé »** — proposé |
+| 🌡️ Surchauffe | ❓ | ☐ candidat : *« la ville n'est plus plus chaude que ses champs »* |
+| 🚋 Desserte | ❓ | ☐ candidat : *« tout le monde à moins de 300 m d'un arrêt »* |
+
+**Cinq sur sept finissent sur un jalon déjà écrit ici.** Ce n'est pas un hasard : borner un indicateur, c'est nommer l'état où il sature — la définition même d'un milestone. **Le bandeau et ce système sont le même objet vu de deux côtés.**
+
+Les deux derniers candidats sont proposés et **non tranchés**. Tous deux passent le test de la capture sans interface.
 
 ### Le prix social
 
@@ -60,8 +80,12 @@ Tous ces jalons répondent à *quel domaine tu optimises*. Aucun ne répond à *
 
 Un jalon « **personne n'a été chassé** » pousserait contre tous les autres, ce qui en ferait une mécanique et pas un curseur. C'est aussi un candidat sérieux au **deuxième axe** manquant. Proposé, **non tranché**. → [[Questions ouvertes]] n°4
 
-### Combien, et quand ils s'affichent
+### ~~Combien, et quand ils s'affichent~~ ✅ **le « quand » est tranché le 2026-08-12**
 
-Un jalon annoncé à l'avance devient une liste de tâches — ce que le jeu refuse d'être. Un jalon découvert après coup ne guide plus rien. Non tranché.
+Un jalon annoncé à l'avance devient une liste de tâches — ce que le jeu refuse d'être. Un jalon découvert après coup ne guide plus rien.
 
-**Voir aussi** : [[Fins et pluralisme]] · [[Ressources]] · [[Décisions]] · [[Chantiers et temps]] · [[Questions ouvertes]]
+**La forme de la barre y répond** : le bout reste **en pointillés** tant que le jalon n'est pas plausible, et se révèle à l'approche. La borne existe en logique dès le premier mois, l'objectif ne s'affiche que quand il devient atteignable. → [[Décisions arrêtées]] 57 · [[Indicateurs globaux]]
+
+**Le « combien » reste ouvert.**
+
+**Voir aussi** : [[Indicateurs globaux]] · [[Fins et pluralisme]] · [[Ressources]] · [[Décisions]] · [[Chantiers et temps]] · [[Questions ouvertes]]

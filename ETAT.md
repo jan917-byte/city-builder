@@ -3,7 +3,7 @@
 > Mis à jour par Claude en fin de session. Complément de [CLAUDE.md](CLAUDE.md).
 > Source de vérité du design = le vault. Source de vérité de la carte = `QGIS/data/Prototype_qualifie.gpkg`. Ici, seulement des signets et l'avancement.
 
-**Dernière mise à jour : 2026-08-12 (session 11)**
+**Dernière mise à jour : 2026-08-12 (session 13)**
 
 ---
 
@@ -40,29 +40,35 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ### Phase A — la ville crédible et belle
 
-1. 🔴 **Trancher deux choses AVANT d'écrire le générateur de parcelles.** Les deux sont irréversibles en pratique une fois la première ligne écrite :
-   · **La question n°16 — le raccord des bâtiments voisins.** La maquette de masses l'avait endormie (un pâté plein n'a pas de voisin à coudre) ; les parcelles la réveillent. Dans un tissu de maisons de ville, le mitoyen **est** la forme urbaine. Trois sorties dans `Questions ouvertes`, aucune tranchée
-   · **La décision 35 — la parcelle est l'entité persistante, seedée individuellement.** Arrêtée 🔒 mais jamais mise à l'épreuve du code. C'est elle qui fait que densifier un secteur ne réinitialise pas l'îlot entier — donc que la mémoire visuelle de la transformation survit
-2. 🎯 **La subdivision de l'îlot en parcelles.** Le point dur du pipeline, **2 à 4 semaines** annoncées, et ce qui sépare 63 pâtés d'une ville. → `Technique/Génération procédurale.md`
-3. ☐ **Les toits et les gabarits**, une fois les parcelles là. Une recette, pas des assets.
-4. ☐ **Le trafic.** `charge` existe et l'axe de transit en sort tout seul — mais rien ne bouge à l'écran. ⚠️ **Question n°18 à trancher : des voitures ou un flux ?** Coûteuse à inverser. Ce qui penche : ici le spectacle est la transformation urbaine, pas la circulation
+1. 🔴 **Un passage QGIS, sous Windows, AVANT le générateur de parcelles** — `02` écrase le `.gpkg`, donc toute retouche de carte se fait maintenant ou coûte une chaîne complète plus tard. Une seule tâche : **supprimer deux des cinq franchissements** (tronçons 136, 145, 168, 169, 171 → `Décisions arrêtées` **30c**). Trois contrôles après : le réseau routier reste d'un seul tenant (`03`), le faubourg de rive gauche garde un accès qui n'est pas le quai, et **l'axe de transit peut s'être déplacé** — `--calque=charge` se regarde
+2. 🎯 **La subdivision de l'îlot en parcelles.** Le point dur du pipeline, **2 à 4 semaines** annoncées, et ce qui sépare 63 pâtés d'une ville. ✅ **Ses deux verrous sont levés** : la parcelle est une **partition** de l'emprise, donc le mitoyen sort de la géométrie (**61**), et la parcelle reste l'entité persistante (**35**). 🔴 **Le premier point à vérifier dans le code** : la partition ne doit pas se rejouer quand une seule parcelle change — sinon on ré-effondre le voisinage à chaque clic, comme Townscaper, et 35 tombe avec. → `Technique/Génération procédurale.md`
+3. ☐ **Les toits et les gabarits**, une fois les parcelles là. Une recette, pas des assets. Y compris le **joint en toiture** entre deux parcelles de hauteurs différentes — c'est tout ce que 61 laisse à faire
+4. ☐ **Le trafic.** ✅ **Tranché : un flux agrégé, plus quelques véhicules figurés qui ne calculent rien** (**62**). Jamais de graphe navigable ni de file d'attente au carrefour. Le critère se juge à l'écran : *une rue à `charge = 1,00` doit être désagréable à regarder* — si le flux est trop propre, on ajoute de l'encombrement à l'arrêt, pas de la navigation
 5. ☐ **Le sol** — un matériau paramétré par `impermeabilise`, `canopee` et l'usure. Trois curseurs qui sont déjà des attributs.
 6. ☐ **La lumière.** ⚠️ **La vallée ne se lit à aucune des quatre exagérations** (constaté le 2026-08-12). 9 m sur 898 m en axonométrie à angle fixe : le facteur n'y peut rien, c'est l'ombre ou la caméra.
 
 ### Phase B — un indicateur, un système, une décision à la fois
 
-7. ☐ **Trois corrections que le classeur a sorties**, à reprendre quand on arrivera sur les décisions concernées :
+🆕 **La phase B a maintenant sa liste.** Les indicateurs globaux sont définis : **sept**, plus les deux ressources. → `Systèmes/Indicateurs globaux.md` · `Décisions arrêtées` **53 à 59**
+
+Trois contrôles en découlent, à faire dans le classeur avant d'écrire quoi que ce soit dans Godot :
+
+7. ☐ 🔴 **Calibrer les deux formules de budget** — recettes ∝ `logements`, charges ∝ mètres de voirie. Le contrôle est nommé : *une stratégie de densification pure ne doit pas s'autofinancer*, sinon le piège de l'exponentielle est rouvert pour de bon. C'est aussi ce qui doit faire **mordre** un budget qui ne mord jamais (418 pts sur 500, +152 de solde, aucune décision refusée).
+8. ☐ **Vérifier que chaque indicateur a un antagoniste.** Ceux qui n'en ont pas sont mal conçus — les bornes sont la ceinture, le frein ce sont les antagonismes.
+9. ☐ **Trois valeurs à t0 manquent** : la ville exposée, le CO2, la desserte. Calculables sur les attributs existants, côté Windows.
+
+10. ☐ **Trois corrections que le classeur a sorties**, à reprendre quand on arrivera sur les décisions concernées :
    · 🔴 **`largeur_m >= 20`, la cible de D05, rate quatre des cinq rues les plus chargées.** Les tronçons 13, 21, 54 et 55 font **18 m** et portent 0,87 à 1,00 de charge. « Retirer la voiture de l'axe de transit » n'attrape que le tronçon 11. Deux mètres de seuil décident si la décision existe
    · 🔴 **La montée de D07 est de 60 mois** : sur l'horizon d'une partie, l'arbre ne reprend jamais ses mètres à la noue. La concurrence arbre/noue, qui est le sujet de D07 et D08, ne se joue pas
-   · ⚠️ **Le budget ne mord jamais.** La partie la plus dépensière consomme 418 pts sur 500 et finit à +152 de solde. C'est le **capital** qui arbitre, pas l'argent — à assumer ou à corriger
-8. ☐ **Trois chiffres de D07 attendent ton œil**, tous commentés dans le code et listés dans `Godot/README.md` : la **surchauffe** (`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0), le **+0,25 de canopée** (alors que la canopée d'une rue plafonne à 0,18 dans les données), et **`CANOPEE_ALIGNEMENT_MAX`** (rendu seulement).
-9. ☐ **La deuxième décision dans Godot.** La candidate est **D06 supprimer le stationnement** : c'est elle qui libère l'emprise de D07 et D08, donc c'est elle qui rend la chaîne intéressante. Il ne manque qu'une entrée dans `DECISIONS` de `chantiers.gd` et une portée `voisins` pour le report de charge.
-10. ☐ **`confort_ete` n'existe pas dans le `.gpkg`** et c'est la seule variable de D10, seule décision du thème `energie`. `08_jouer.py` la crée à 0 et le signale ; Godot y répond par la **surchauffe**, dérivée du sol. Soit on la dérive dans `04`, soit D10 s'exprime autrement.
+   · ✅ ~~**Le budget ne mord jamais**~~ — **traité par la décision 59** : deux formules (recettes ∝ `logements`, charges ∝ mètres de voirie). Reste à calibrer, c'est le point 7
+11. ☐ **Trois chiffres de D07 attendent ton œil**, tous commentés dans le code et listés dans `Godot/README.md` : la **surchauffe** (`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0), le **+0,25 de canopée** (alors que la canopée d'une rue plafonne à 0,18 dans les données), et **`CANOPEE_ALIGNEMENT_MAX`** (rendu seulement).
+12. ☐ **La deuxième décision dans Godot.** La candidate est **D06 supprimer le stationnement** : c'est elle qui libère l'emprise de D07 et D08, donc c'est elle qui rend la chaîne intéressante. Il ne manque qu'une entrée dans `DECISIONS` de `chantiers.gd` et une portée `voisins` pour le report de charge.
+13. ☐ **`confort_ete` n'existe pas dans le `.gpkg`** et c'est la seule variable de D10, seule décision du thème `energie`. `08_jouer.py` la crée à 0 et le signale ; Godot y répond par la **surchauffe**, dérivée du sol. Soit on la dérive dans `04`, soit D10 s'exprime autrement.
 
 ### Reste à faire, sans urgence
 
-11. ☐ **Regarder `emprises` dans QGIS par-dessus `ilots`** — les écritures dans le `.gpkg` sont faites (`emplois` = 878, `emprises` = 69 lignes, vérifiées en lecture seule), mais le contrôle à l'œil ne l'est pas. `04b` signale quatre réparations de boucle : îlots **55, 13, 16, 21**.
-12. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
+14. ☐ **Regarder `emprises` dans QGIS par-dessus `ilots`** — les écritures dans le `.gpkg` sont faites (`emplois` = 878, `emprises` = 69 lignes, vérifiées en lecture seule), mais le contrôle à l'œil ne l'est pas. `04b` signale quatre réparations de boucle : îlots **55, 13, 16, 21**.
+15. ☐ Digérer le brainstorm importé du 2026-08-11 (refs / positionnement / UI) — 9 décisions et 7 questions à remonter
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
@@ -96,22 +102,25 @@ Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un che
 
 ⏸️ La durée d'une partie est **mise de côté volontairement** : pas de fin imposée, on joue jusqu'à l'ennui puis on recommence dans une autre direction. Hypothèse de travail non fixée : ~20 ans en ~2 h. → `Décisions arrêtées` 14b · 14c
 
-🟠 À trancher pendant le mois 1 : d'où vient l'argent · le deuxième axe des fins · le premier clic.
-🟢 Détendue : « quand tracer le deuxième quartier » — Wehrau teste déjà l'amont/aval.
+🟢 **Cinq questions closes le 2026-08-12** — n°16 (le mitoyen par construction), n°18 (le trafic en flux), n°17 (le dortoir assumé), n°12 (trois ponts), n°14 (la barre reste). Plus le nom : **Wehrau** et l'**Ilse** sont arrêtés (13f).
+🟠 À trancher pendant le mois 1 : ~~d'où vient l'argent~~ ✅ (n°3 close le 2026-08-12) · le deuxième axe des fins · le premier clic.
+🖥️ **Trois questions qui se tranchent en dessinant l'écran, pas dans le vault** : **n°19** onze nombres permanents, est-ce que ça tient ? · **n°20** `Déclin et défaite` refuse la jauge globale que « la ville exposée » vient d'introduire · **n°21** comment le joueur comprend que l'économie commande son budget, alors que les deux sont loin l'un de l'autre à l'écran.
 
 → `Méta/Questions ouvertes.md`
 
 ## En attente d'une décision de l'auteur
 
-- [ ] **Le raccord des bâtiments voisins** (question n°16). 🟢 **L'instrument existe** : la maquette est construite et assume le non-raccord. À l'échelle de l'îlot la question ne se pose pas — un pâté plein n'a pas de voisin à coudre, et le retrait de voirie lui a donné des faces franches. Elle ne redeviendra vive qu'à la subdivision en parcelles. **Reste à confirmer à l'œil**
 - [ ] **L'exagération verticale.** 9 m de relief sur 898 m de large, contre 27 m pour la barre. Touches `1..4` dans la maquette. Se tranche devant l'image, pas dans le vide — et une fois tranchée, se consigne
-- [ ] **Wehrau est un dortoir** (question n°17). 0,16 emploi par habitant. On assume, ou on dessine du sol d'activité dans QGIS
+- [ ] **Lesquels des cinq ponts sautent** (30c tranche le nombre, pas les fid). Se choisit sur la carte, sous trois contraintes → point n°1
 
+- [x] ✅ **Le raccord des bâtiments** (n°16) — **la parcelle est une partition de l'emprise**, le mitoyen sort de la géométrie → `Décisions arrêtées` 61
+- [x] ✅ **Le trafic** (n°18) — **un flux, plus quelques véhicules figurés** → 62
+- [x] ✅ **Wehrau est un dortoir** (n°17) — assumé, aucun sol d'activité dessiné → 50b
+- [x] ✅ **Trois franchissements, pas cinq** (n°12) → 30c
+- [x] ✅ **La barre de 1974 reste sur l'îlot 32** (n°14) — la phrase du vault était fausse, pas la carte → 13e
+- [x] ✅ **Le nom** — **Wehrau** et l'**Ilse** sont arrêtés → 13f
 - [x] ✅ **Wehrau porte ~5 350 habitants** (2026-08-11, prototype seulement — Vallmar garde ses 112 000) → `Décisions arrêtées` 13d
 - [x] ✅ **Le jeu s'ouvre sur une crue, sur la rive gauche** (2026-08-11) → `Décisions arrêtées` 23b
-- [ ] **Le grand ensemble de 1974 est à 200 m de l'eau**, pas « contre l'eau ». J'ai corrigé la phrase du vault ; l'autre option est de déplacer la barre. → n°14
-- [ ] **Cinq franchissements pour la rivière**, alors que le vault en voulait deux au maximum. Ils sont maintenant typés dans les données. → n°12
-- [ ] **Le nom.** « Wehrau » et la rivière « l'Ilse » sont mes propositions, marquées comme telles dans la note. Se renomment en une commande tant que rien n'est codé.
 - [ ] **Relire deux fichiers de level design** : les listes de `fid` en haut de `QGIS/scripts/02_qualifier.py`, et la table de correspondance `TISSU` en haut de `QGIS/scripts/04_deriver_attributs.py` — treize lignes qui décident du comportement de toute la carte. Une ligne changée, on relance, on regarde.
 - [ ] **Le tag `jeu/brightvale`** du brainstorm importé — nom de travail abandonné, autre projet, ou candidat à verser dans `Marketing et Steam` ?
 - [ ] **Les conséquences de 5 350 habitants** sur trois équipements : le lycée devient une Realschule, la galerie de 1971 un supermarché, la barre de 1974 un petit Neubau. Acté dans la décision, pas encore écrit dans `Ville/Wehrau.md`.
@@ -129,6 +138,31 @@ Le brainstorm du 2026-08-10 (`Brainstorming/…inondation-rive-droite.md`) a ser
 Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / adapter / rendre à l'eau), qui sont la semaine 2.
 
 ## Historique des sessions Claude
+
+### 2026-08-12 (session 13) — la phase A est débloquée en une séance
+- 🟢 **Cinq questions closes, dont les deux qui bloquaient le générateur de parcelles.** Aucune ne demandait de code : elles demandaient un arbitrage.
+- 🎯 **n°16 se règle par la méthode, pas par un travail de couture** — *la parcelle est une **partition** de l'emprise de l'îlot*. Le générateur découpe au lieu de poser des formes dans un vide, donc deux voisines partagent une arête **exactement**. Ce qui a tranché : 20 îlots de `maisons_de_ville` et 12 de `coeur_ancien` — le mitoyen n'y est pas un raccord à faire, c'est **la forme urbaine**. Ce qu'il reste est le **joint en toiture**, et il tombe sur un chantier déjà prévu. Réversible dans un seul sens : écarter les parcelles redonne le non-raccord, l'inverse non. → **61**
+- 🔴 **Le piège nommé avec** : la partition ne doit pas se rejouer quand une seule parcelle change, sinon on ré-effondre le voisinage à chaque clic comme Townscaper — et la décision 35 tombe avec. C'est le premier point à vérifier dans le code.
+- 🚗 **n°18 : un flux, pas des agents** — plus une poignée de véhicules figurés qui ne calculent rien et dont la densité se lit sur `charge`. *Le spectacle est la transformation urbaine, pas la circulation.* **Critère jugeable à l'œil** : une rue à `charge = 1,00` doit être **désagréable à regarder** ; si le flux est trop propre, la marge est l'encombrement à l'arrêt, **pas** la navigation. → **62**
+- 🏭 **n°17 : le dortoir est assumé**, 0,16 emploi par habitant, aucun sol d'activité dessiné. Gain : l'axe saturé et les 0,86 place par habitant deviennent des **symptômes**, pas des anomalies — et les deux friches deviennent **le seul levier d'emploi de la ville**. Coût assumé, écrit : *une ville sans travail est une ville sans matin*, le mouvement du matin sort de la carte — cohérent avec 62. → **50b**
+- 🌉 **n°12 : trois franchissements, pas cinq.** À cinq, la rivière ne coupe plus rien et « ajouter une passerelle » cesse d'être une décision. Opération propre côté données : les îlots ne se touchent jamais par-dessus l'eau. ⚠️ **Lesquels sautent n'est pas tranché** — trois contraintes, dont une non évidente : **l'affectation de trafic se rejoue, l'axe de transit peut se déplacer**. → **30c**
+- 🏢 **n°14 : la barre de 1974 reste sur l'îlot 32.** C'était la phrase du vault qui était fausse, pas la carte. Ce qui l'expose n'est pas la proximité de l'eau mais d'être **en bout de chaîne** — et c'est un meilleur récit. → **13e** · **13f** : les noms Wehrau et Ilse sont arrêtés, la fenêtre du renommage gratuit se fermait avec le code.
+- ⚠️ **Ce que ça met à l'ordre du jour immédiat** : un passage QGIS sous Windows **avant** le générateur, puisque `02` écrase le `.gpkg`. Une seule tâche, deux ponts.
+
+### 2026-08-12 (session 12) — les indicateurs globaux, et l'argent enfin tranché
+- 🎯 **Une règle qui commande tout le bandeau** : ***aucun chiffre global sans son calque***. Le chiffre dit *que* ça bouge, le calque dit *où*. Elle a taillé **dix-neuf indicateurs candidats à sept**, par un critère unique — un chiffre dont on ne saurait pas dessiner la carte est une jauge qu'on optimise, pas une invitation à regarder la ville. Motif de fond : un indicateur global est une **moyenne**, et une moyenne efface l'injustice géographique que Wehrau porte. → `Décisions arrêtées` **53**
+- 🆕 **Note système neuve** : `Systèmes/Indicateurs globaux.md` — les sept, leurs calques, leurs bornes, et le tableau de ce qui pousse contre quoi.
+- 💰 **La plus vieille question structurante tombe : d'où vient l'argent (n°3).** Deux formules — **recettes ∝ `logements`, charges ∝ mètres de voirie** — au lieu d'une économie simulée. Le déclencheur est un fait mesuré en session 10 : **le budget ne mordait jamais**. Récupère au passage les **charges d'entretien du réseau**, orphelines depuis que l'économie a été écartée. ⚠️ Rouvre le piège de l'exponentielle : contrôle nommé, *une densification pure ne doit pas s'autofinancer*. → **59**
+- 🔗 **Le bandeau et les milestones sont le même objet.** En cherchant à borner les indicateurs, on trouve que **cinq des sept maxima sont des jalons qui ont déjà un nom** — zéro voiture, zéro carbone, autonome en énergie, ville-éponge, « personne n'a été chassé ». Borner, c'est nommer l'état où l'indicateur sature. Ferme deux sous-questions de `Milestones.md` : zéro carbone en compteur permanent, et **quand les jalons s'affichent** (en pointillés, révélés à l'approche). → **57**
+- 🧪 **Une manœuvre réutilisable, sortie deux fois** : *une formule sur des attributs existants n'est pas une sous-simulation.* Elle a sauvé le CO2, le renouvelable **et** le budget — trois choses qui semblaient exiger une économie. Le renouvelable devient « la part des toits qui produit », donc de la géométrie, et il tombe sur le chantier des toits déjà prévu. → **56**
+- ⚫ **Le carbone gris est assumé** : démolir-reconstruire émet un gros coup immédiat. Ça rend **« adapter » mécaniquement défendable face à « reconstruire »** — deux des trois postures déjà adossées à `alea`. L'indicateur ne mesure pas seulement, il rend chiffrable un dilemme qui existait déjà. ⚠️ Risque symétrique : trop lourd, il dit « ne touche à rien ».
+- ❌ **Toute l'économie écartée** — chômage, revenu, productivité, imposition, loyer, vacance. Aucune donnée derrière, et mises bout à bout elles font *Cities: Skylines*, contre le but affiché. Le social passe par `riverain`. → **55**
+- 🖥️ **Ressources et indicateurs ne se dessinent pas pareil** : compteurs contre barres. *Les indicateurs regardent en arrière, les ressources en avant.* Le budget passe à **trois nombres** — ce que tu as, **ce qui est engagé**, ce qui est libre — parce que le code paie étalé quand le capital est comptant. → **58**
+- 🟠 **Ce que ça laisse ouvert, deux questions neuves** : **n°19** — onze nombres permanents à l'écran, alors que le seuil défendu en début de séance était de six ; trois élargissements successifs, chacun défendable seul, aucun regardé avec les autres. **n°20** — `Déclin et défaite` refuse explicitement la jauge globale (*« une note de résilience sur 100 ne dit rien »*), que l'indicateur « ville exposée » vient d'introduire. Résolution proposée, non confirmée : la règle 53 la lève, puisque la barre est appariée à la carte.
+- 💡 **Puis l'économie revient par une autre porte, et en mieux — décision 60.** Le joueur ne voit que **deux choses** : une **barre sans nombre** (l'économie va bien ou mal) et son **budget annuel**, qui en dépend. Le calcul est caché. Ce que ça gagne : ***un état non chiffré ne s'optimise pas*** — tout le piège *Democracy 4* tient au pourcentage. Même geste que le capital politique en un chiffre. Ça **révise 59** au lieu de s'y ajouter : les deux formules décrivent ce que le joueur **maîtrise**, l'état de l'économie est le **multiplicateur qu'il ne maîtrise pas**. Moteur **mixte** (cycle exogène lent × part endogène modeste), place dans le **bandeau de contexte**.
+- 🔴 **Deux garde-fous écrits avec — 60b.** ***Formule cachée ≠ causalité cachée*** : que le joueur ne voie pas l'équation, très bien ; qu'il ne puisse pas dire pourquoi son budget a baissé, non. Quand la barre bouge, **quelque chose le dit en une phrase et sans chiffre**. Et l'interdit explicite : **l'économie cachée ne sert jamais à ajuster la difficulté** (21) — un état qui dérive sans être vu est le terrain rêvé de la difficulté adaptative, et ça arrivera par accident si ce n'est pas nommé.
+- ❓ **Question n°21, posée par l'auteur** : la barre est dans le contexte, le budget avec les ressources — **ils sont loin l'un de l'autre**, donc comment le joueur comprend-il le lien ? Trois pistes non tranchées, dont la plus forte : **le budget est voté une fois par an, pas subi** — ce qui donnerait au passage un battement annuel à un jeu qui n'a pas de tours.
+- ✅ **Le brainstorm est digéré le jour même** — neuf décisions remontées, trois questions ouvertes, six notes touchées. Le fichier reste en archive : **les options écartées n'existent nulle part ailleurs.**
 
 ### 2026-08-12 (session 11) — Frostpunk et Democracy 4 sortent du brainstorm
 - 🎮 **Deux jeux entrent comme références durables**, répartis là où ils portent plutôt que listés au même endroit : `Systèmes/Décisions.md` (inertie des effets, échelle du district, capital politique — et ce qu'on **ne** reprend pas : le curseur d'intensité de D4, le conseil qui vote de FP2), `Technique/Direction artistique.md` (la jauge en matière à voler ; ⚠️ l'UI blanche sur neige blanche, risque direct avec une palette pastel), `Vision/Ton et règles d'écriture.md` (Frostpunk = le repoussoir du cynisme, mais son livre des lois est à prendre), `Vision/Pièges connus.md` (D4 en cas d'école des jauges d'humeur).

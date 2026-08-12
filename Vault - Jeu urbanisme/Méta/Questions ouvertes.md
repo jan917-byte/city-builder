@@ -1,6 +1,6 @@
 ---
 tags: [méta, questions, actif]
-statut: ⚠️ à traiter — n°16 redevenue vive, n°18 neuve
+statut: 🟢 la phase A n'est plus bloquée — n°16, 17, 18, 12 et 14 closes le 2026-08-12. Restent n°19, 20, 21 (l'écran) et n°4 (les fins)
 maj: 2026-08-12
 ---
 
@@ -23,13 +23,22 @@ Ce qui reste vrai et qu'il faudra reprendre un jour : ce n'est pas le temps pass
 ### ~~2. Le capital politique : un chiffre ou plusieurs groupes ?~~ ✅ **close le 2026-08-11**
 **Un chiffre.** Le risque des jauges d'humeur est écarté ; ce qu'on perd — le « pour qui on fait la ville » — se récupère en exigeant que chaque décision **nomme qui perd** dans son `effet_de_bord`. → [[Décisions arrêtées]] 16b · [[Ressources]]
 
-### 3. D'où vient l'argent ?
-Budget fixe, ou recettes dépendant de la ville ? Le second est plus riche mais recrée une exponentielle. Contrepartie proposée : les charges d'entretien du réseau montent avec l'étalement. → [[Ressources]]
+### ~~3. D'où vient l'argent ?~~ ✅ **close le 2026-08-12**
+
+**Deux formules, pas une économie** : recettes ∝ `logements`, charges ∝ **mètres de voirie**. Ni dotation plate, ni sous-simulation — le même geste que pour le CO2 et le renouvelable (56), sur des données déjà présentes.
+
+Ce qui a forcé la décision : **le budget ne mordait jamais.** Sur trois parties, la plus dépensière consomme 418 pts sur 500 et finit à +152 de solde, et aucune décision n'a jamais été refusée faute d'argent. Un argent qui ne contraint pas laisse **une seule ressource** au jeu.
+
+Gain de côté : les **charges d'entretien du réseau** reviennent — *« la raison structurelle de préférer la ville compacte à l'étalement »* — alors qu'elles étaient orphelines depuis que l'économie a été écartée (55).
+
+⚠️ **Ce que ça rouvre** : le piège de l'exponentielle. Contrôle nommé, à faire dans le classeur — *une stratégie de densification pure ne doit pas s'autofinancer.* → [[Décisions arrêtées]] 59 · [[Ressources]]
 
 ### 4. Le deuxième axe des fins
 Les trois archétypes s'effondrent sur un seul axe et deux d'entre eux sont photographiquement indiscernables. Il faut un axe orthogonal qui produise des **différences de forme urbaine**. → [[Fins et pluralisme]]
 
 ⚠️ **Les [[Milestones]] ne répondent pas à cette question** — ils sont cumulables, les fins s'excluent. Mais l'un d'eux pourrait faire l'axe : **« personne n'a été chassé »**. Tous les autres jalons disent *quel domaine on optimise* ; celui-là dit *à quel prix*, et il pousse contre tous les autres au lieu de s'ajouter à côté. Proposé le 2026-08-11, non tranché.
+
+🟢 **Le candidat s'est renforcé le 2026-08-12** sans que la question soit tranchée. « Les habitants d'origine » est maintenant l'un des sept indicateurs permanents (54), et c'est **le seul qui ne monte jamais** : toute transformation chasse quelqu'un. Il est déjà, mécaniquement, l'antagoniste de tous les autres — ce qui est exactement ce qu'on demande à un deuxième axe. Reste à décider s'il porte aussi les **fins**, ce qui est un autre engagement. → [[Indicateurs globaux]]
 
 ### 5. Quelle est LA décision la plus satisfaisante ?
 Celle que le joueur montre en disant *« regarde ce que j'ai fait »*. Candidat le plus fort à l'échelle du jeu complet : **que faire de [[La Fonderie]]** — hors périmètre du prototype.
@@ -41,7 +50,17 @@ Toujours sans réponse. Se découvre en jouant, pas en réfléchissant.
 
 ## 🎯 Nées de la phase actuelle — une ville crédible et belle
 
-### 16. Comment les bâtiments voisins se raccordent-ils ?
+### ~~16. Comment les bâtiments voisins se raccordent-ils ?~~ ✅ **close le 2026-08-12**
+
+**Par construction : la parcelle est une partition de l'emprise de l'îlot.** Le générateur **découpe** au lieu de poser des formes dans un vide, donc deux parcelles voisines partagent une arête exactement — le mitoyen sort de la géométrie et ne se coud pas après coup.
+
+Ce qui a tranché : le tissu de Wehrau est fait de 20 îlots de `maisons_de_ville` et 12 de `coeur_ancien`, décrits dans le vault comme « parcellaire fin, **mitoyen**, cours minérales ». Assumer le non-raccord était la seule des trois sorties compatible avec une maquette de masses ; avec des parcelles, ça revenait à effacer la forme urbaine du lieu.
+
+Reste à faire, et ce n'est pas un travail en plus : le **joint en toiture** entre deux hauteurs différentes, qui tombe sur le chantier des toits déjà en phase.
+
+⚠️ **Le piège à surveiller dans le code** : la partition ne doit pas se rejouer quand une seule parcelle change — sinon on ré-effondre le voisinage à chaque clic, comme Townscaper, et la décision 35 tombe avec. → [[Décisions arrêtées]] 61 · [[Génération procédurale]]
+
+*L'énoncé d'origine, gardé — les deux sorties écartées n'existent nulle part ailleurs.*
 
 Ouverte le 2026-08-11 par le choix de Townscaper. → [[Décisions arrêtées]] 42b
 
@@ -60,7 +79,15 @@ Ce que la maquette change à l'énoncé : à l'échelle de l'îlot le raccord **
 
 🔴 **Elle vient de redevenir vive, le 2026-08-12.** La subdivision en parcelles entre en phase (décision 51) : deux parcelles mitoyennes vont se toucher pour de bon. Des trois sorties, la première — *assumer le non-raccord* — était la seule compatible avec la maquette de masses ; elle ne l'est plus avec un tissu de maisons de ville, où le mitoyen **est** la forme urbaine. **Il faut trancher avant d'écrire le générateur de parcelles**, pas après. → [[Génération procédurale]] · [[Plan 3 mois]] phase A
 
-### 17. Wehrau est un dortoir — on assume ou on dessine du sol d'activité ?
+### ~~17. Wehrau est un dortoir — on assume ou on dessine du sol d'activité ?~~ ✅ **close le 2026-08-12**
+
+**On assume les 0,16 emploi par habitant.** Aucun sol d'activité n'est dessiné.
+
+Ce que ça achète : la ville devient cohérente avec elle-même — l'axe de transit saturé et les 0,86 place par habitant cessent d'être des anomalies à expliquer. Et **reconvertir les deux friches devient le seul levier d'emploi de la ville**, donc une décision qui compte au lieu d'un réglage.
+
+Ce que ça coûte, assumé : *une ville sans travail est une ville sans matin.* Si le jeu montre un jour des gens qui vont quelque part, leur destination est hors cadre — ce qui tombe juste avec le trafic en flux (62) : le mouvement du matin **sort** de la ville. → [[Décisions arrêtées]] 50b · [[Wehrau]]
+
+*L'énoncé d'origine :*
 
 Ouverte le 2026-08-11 par l'arrivée des emplois. → [[Décisions arrêtées]] 50
 
@@ -72,7 +99,15 @@ Ouverte le 2026-08-11 par l'arrivée des emplois. → [[Décisions arrêtées]] 
 
 Se tranche en dessinant, dans QGIS, ou pas. → [[Wehrau]] · [[Géométrie et données]]
 
-### 18. Le trafic : des voitures ou un flux ?
+### ~~18. Le trafic : des voitures ou un flux ?~~ ✅ **close le 2026-08-12, le jour même**
+
+**Un flux agrégé, plus une poignée de véhicules figurés aux points chauds.** Jamais de graphe navigable, jamais de file d'attente au carrefour, jamais un nœud par voiture.
+
+Le raisonnement retenu est celui qui « penchait » déjà : **ici le spectacle est la transformation urbaine, pas la circulation.** Les véhicules figurés sont de l'ambiance instanciée — ils ne calculent rien et leur densité se lit sur `charge`.
+
+🎯 **Le critère de réussite est nommé, et il se juge à l'écran** : *une rue à `charge = 1,00` doit être désagréable à regarder.* Si le flux est trop propre pour ça, la marge de manœuvre est d'ajouter des véhicules figurés et de l'encombrement à l'arrêt — **pas** un système de navigation. → [[Décisions arrêtées]] 62 · [[Génération procédurale]]
+
+*L'énoncé d'origine :*
 
 Ouverte le 2026-08-12 par l'entrée du trafic visible en phase. → [[Décisions arrêtées]] 51 · [[Génération procédurale]]
 
@@ -86,6 +121,44 @@ Ouverte le 2026-08-12 par l'entrée du trafic visible en phase. → [[Décisions
 **Ce qui penche** : ici le spectacle est la **transformation urbaine**, pas la circulation. Un jeu dont le spectacle serait le trafic devrait payer les agents individuels ; celui-ci, probablement pas. Mais c'est à regarder à l'écran, pas à décider sur le papier — et une rue à `charge = 1,00` doit devenir désagréable à regarder, ce qu'un flux trop propre ne fera peut-être pas.
 
 ⚠️ Ce qui est déjà sûr et ne dépend pas de la réponse : **jamais un nœud par voiture**, et une réserve d'objets réutilisés plutôt qu'une création/destruction continue.
+
+### 19. Onze nombres permanents à l'écran — est-ce que ça tient ?
+
+Ouverte le 2026-08-12 par la séance sur les [[Indicateurs globaux]].
+
+Le compte final : **7 indicateurs + le capital politique + 3 nombres de budget**. Le seuil défendu en début de séance était de l'ordre de six, au nom d'un piège nommé — *Democracy 4*, où le jeu devient l'optimisation des pourcentages. → [[Pièges connus]]
+
+Trois élargissements successifs y ont mené, **chacun défendable seul, aucun regardé avec les autres** : garder le CO2 et le renouvelable (56), garder la desserte comme 7ᵉ, passer le budget à trois nombres (58).
+
+Ce qui atténue : les indicateurs sont des **barres bornées par des jalons** et les ressources des **compteurs**, donc deux familles visuelles et non onze jauges identiques ; et chacun ouvre un calque plutôt que d'appeler un réglage (53).
+
+**Ne se tranche pas ici. Se tranche en dessinant l'écran.** ⚠️ Et le dessin a son propre piège : l'UI blanche sur neige blanche de Frostpunk est le risque direct avec une palette pastel. → [[Direction artistique]]
+
+### 20. La jauge globale, refusée par [[Déclin et défaite]]
+
+🔴 Ouverte le 2026-08-12, et c'est une **contradiction interne au vault**, pas une préférence.
+
+[[Déclin et défaite]] écrit : *« Une note de résilience sur 100 ne dit rien et ne se joue pas. Ce qu'il faut, c'est une exposition par quartier. »* Or l'indicateur **« la ville exposée »** (54) est exactement une note globale d'exposition.
+
+**Résolution proposée, non confirmée** : ce que la note refusait est une jauge *sans carte derrière*. La règle 53 — aucun chiffre global sans son calque — la lève, puisque la barre est appariée à l'exposition par quartier plutôt que de la remplacer.
+
+Si la résolution ne tient pas, c'est l'indicateur qui saute, pas la règle. → [[Indicateurs globaux]]
+
+### 21. Comment le joueur comprend-il que l'économie commande son budget ?
+
+Ouverte le 2026-08-12 par la décision 60, et posée par l'auteur lui-même.
+
+L'état de l'économie vit dans le **bandeau de contexte** (avec la population et la date), le budget vit avec les **ressources**. Ils sont donc **loin l'un de l'autre à l'écran** : le lien de cause à effet ne peut pas être porté par la proximité, et il doit l'être par autre chose — sans quoi le budget a l'air de varier tout seul, ce que 60b interdit.
+
+Trois pistes, **compatibles entre elles**, aucune tranchée :
+
+| | La piste | Ce qu'elle vaut |
+|---|---|---|
+| 🥇 | **Le budget est voté, pas subi.** Une fois par an, un moment : *« Budget 2031 : 480 pts. L'économie repart — +40 »* | Enseigne le lien une fois par an sans occuper l'écran le reste du temps. Vrai du métier : un budget municipal **se vote et s'annonce**. Cadeau de côté — ça donne un **battement annuel** à un jeu qui n'a pas de tours → [[Chantiers et temps]] |
+| 🥈 | **La barre nomme sa conséquence, pas son état** — pas « économie : faible » mais **« les recettes rentrent mal »** | Le lien devient intrinsèque à l'étiquette, donc il marche où qu'elle soit à l'écran. Et c'est le français du vault : concret, pas du jargon de consultant → [[Ton et règles d'écriture]] |
+| 🥉 | **Le budget se décompose au survol** — ta ville · la conjoncture · le total | La vérification pour qui veut comprendre. Ne fait pas le travail seul, mais rend la chose **auditable sans exposer la formule** |
+
+**Recommandation** : les trois. La deuxième porte le lien en permanence pour rien, la première l'enseigne, la troisième le prouve. Non tranché. → [[Décisions arrêtées]] 60 · 60b · [[Ressources]]
 
 ## 🟡 Contradictions à résoudre
 
@@ -104,7 +177,14 @@ La structure est validée. Les noms sont à moi.
 ### ~~11. Quand tracer le deuxième quartier ?~~ 🟢 **détendue le 2026-08-10**
 La question naissait de ce qu'un quartier seul ne peut pas tester « le lieu change le résultat ». [[Wehrau]] le teste : amont, aval, ville, campagne. Ce qui reste ouvert n'est plus le deuxième quartier mais **le changement d'échelle** : ce qui hésite dans une petite ville hésitera-t-il à 112 000 ? Ça se tranche au mois 3, pas maintenant. → [[Périmètre et coupes]]
 
-### 12. Combien de franchissements pour l'Ilse ?
+### ~~12. Combien de franchissements pour l'Ilse ?~~ ✅ **close le 2026-08-12**
+
+**Trois. Deux ponts sautent au tracé.** Le vault visait deux au maximum ; trois est l'arbitrage. Motif : à cinq, la rivière ne coupe plus rien et « ajouter une passerelle » cesse d'être une décision.
+
+⚠️ **Ce qui n'est pas tranché ici : lesquels des cinq** (tronçons 136, 145, 168, 169, 171). Ça se choisit sur la carte, sous trois contraintes — le réseau routier doit rester **d'un seul tenant**, le **faubourg de rive gauche** doit garder un accès qui ne soit pas le quai (c'est lui qui prend la crue d'ouverture), et **l'affectation de trafic se rejoue** : l'axe de transit qui sortait tout seul des données peut se déplacer. → [[Décisions arrêtées]] 30c
+
+*L'énoncé d'origine :*
+
 Le vault visait « deux ponts au maximum » pour que la rivière soit une vraie coupure. La carte du prototype en a **cinq** — confirmé le 2026-08-10, les cinq sont maintenant typés comme tels dans les données (tronçons 136, 145, 168, 169, 171). Trop de ponts = la rivière ne coupe plus rien, et « ajouter une passerelle » cesse d'être une décision. Soit on en supprime deux au tracé, soit on assume que la coupure se joue ailleurs (la voie rapide de berge). → [[Wehrau]]
 
 **Ce que les données ajoutent** : les îlots ne se touchent **jamais** par-dessus l'eau — la ville privée de sa rivière tombe en deux morceaux. La coupure des îlots est totale ; seules les routes franchissent. Supprimer deux ponts est donc une opération purement routière, sans effet de bord.
@@ -117,7 +197,14 @@ La décision ne concerne **que [[Wehrau]]** : [[Vallmar]] garde ses 112 000 habi
 
 Ce que ça engage, et qui reste à écrire : le lycée devient une Realschule, la galerie de 1971 un supermarché avec parking en toiture, la barre de 1974 un petit Neubau. Aucun des trois n'est absurde à 5 350 habitants, aucun n'est évident non plus. → [[Décisions arrêtées]] 13d
 
-### 14. Le grand ensemble de 1974 est à 200 m de l'eau
+### ~~14. Le grand ensemble de 1974 est à 200 m de l'eau~~ ✅ **close le 2026-08-12**
+
+**On garde l'îlot 32 et on corrige la phrase.** C'était le texte du vault qui était faux, pas la carte.
+
+Ce que ça consolide : l'injustice ne vient **pas de la proximité de l'eau**, elle vient d'être **en bout de chaîne** — fil de l'eau 0,84, le plus en aval de toute la carte. Tout ce que l'amont imperméabilise lui arrive dessus. C'est un meilleur récit que « ils avaient les pieds dans l'eau » : personne n'a construit là par bêtise, la ville a mis les plus faibles là où elle envoie son eau. → [[Décisions arrêtées]] 13e
+
+*L'énoncé d'origine :*
+
 Le vault écrit qu'il est « posé contre l'eau ». Dans les données, l'îlot 32 est à **199 m de l'Ilse**, altitude relative 3,2 m, aléa 0,53. Il est bien le plus en aval de toute la ville (fil de l'eau 0,84) et de loin le plus fragile socialement (0,85) — l'injustice tient. Mais il n'a pas les pieds dans l'eau.
 
 **Recommandation : garder l'îlot 32 et corriger la phrase** — « en aval, dans la plaine élargie » plutôt que « contre l'eau ». Ce qui fait l'injustice ici n'est pas la proximité, c'est d'être en bout de chaîne : tout ce que l'amont imperméabilise lui arrive dessus.
@@ -136,6 +223,6 @@ Ce qui reste à écrire, et qui est le travail de la semaine 2 : quelles décisi
 
 ## 🟢 Peut attendre (réversible)
 
-Style graphique définitif · moteur verrouillé · nom · modèle économique et prix · nombre de langues
+Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · titre du jeu · modèle économique et prix · nombre de langues
 
 **Voir aussi** : [[Décisions arrêtées]] · [[Plan 3 mois]]

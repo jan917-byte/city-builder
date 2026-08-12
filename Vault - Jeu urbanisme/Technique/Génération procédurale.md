@@ -1,6 +1,6 @@
 ---
 tags: [technique, procédural, 3d, actif]
-statut: 🎯 phase active — la subdivision en parcelles y entre le 2026-08-12
+statut: 🎯 phase active — la subdivision en parcelles y entre le 2026-08-12, et ses deux verrous sont levés (61 le mitoyen, 62 le trafic)
 maj: 2026-08-12
 ---
 
@@ -37,7 +37,7 @@ La sortie n'est pas d'interpoler après coup mais de **rejouer la règle qui a p
 ### Ce qui reste hors phase, et le reste
 
 - **Les intérieurs, les façades détaillées, les fenêtres modélisées.** Le détail va dans la texture et la normal map, jamais dans la géométrie : le budget polygonal appartient à la **silhouette**, qui est ce qui se lit à cette distance.
-- **Les agents individuels au-delà de l'ambiance.** Voir « le trafic » plus bas — c'est une décision coûteuse à inverser, et elle n'est pas prise.
+- **Les agents individuels, tout court.** ✅ Tranché le 2026-08-12 : le trafic est un **flux**, et les véhicules figurés sont de l'ambiance qui ne calcule rien. Voir « le trafic » plus bas → 62
 
 ## Le principe de rendu
 
@@ -51,13 +51,13 @@ Corollaire à tenir dès la maquette de masses : **aucun état visuel n'est pos�
 
 | Étape | Difficulté | Où on en est |
 |---|---|---|
-| 1. Subdivision de l'îlot en parcelles | 🔴 **2–4 semaines d'itération — le point dur** | 🎯 **c'est la phase** |
+| 1. Subdivision de l'îlot en parcelles | 🔴 **2–4 semaines d'itération — le point dur** | 🎯 **c'est la phase** — et ses deux verrous sont levés : **partition** (61) et **parcelle persistante** (35) |
 | 2. Parcelle → emprise (offset) | 🟢 | 🟢 le geste existe : `04b` fait déjà reculer l'îlot de la demi-largeur de rue |
 | 3. Extrusion en volume | 🟢 | ✅ fait à l'échelle de l'îlot |
 | 4. Détail — toits, gabarits, matériau de sol | 🟡 | 🎯 en phase |
 | 5. Scatter au sol (arbres, mobilier) | 🟡 | 🟢 les arbres d'alignement poussent avec `canopee` |
 | 6. **Carrefours** | 🔴 ~~le plus dur de tous~~ | 🟡 **largement dissous par 32f** — plus de rubans à raccorder, un vide qui se referme |
-| 7. **Le trafic visible** | 🟡 | 🎯 en phase — voir plus bas |
+| 7. **Le trafic visible** | 🟡 | 🎯 en phase — **un flux, pas des agents** (62) |
 
 ## ⚠️ La contrainte architecturale du projet
 
@@ -67,9 +67,19 @@ Raison : quand le joueur densifie un secteur, **seules les parcelles concernées
 
 C'est à décider **avant** d'écrire la première ligne du générateur de parcelles. Irréversible en pratique. La maquette de masses ne la contredit pas : elle travaille à l'échelle de l'îlot et sera jetée.
 
-## Le raccord des bâtiments voisins — ce que Townscaper offre et qu'on n'aura pas
+## Le raccord des bâtiments voisins — ✅ tranché le 2026-08-12
 
-L'aspect de [[Direction artistique]] repose chez Townscaper sur une **grille de quadrilatères** où les modules se raccordent automatiquement. Sur des parcelles libres issues de la polygonisation, ce raccord est un travail en plus, et personne ne l'a fait à notre place. → [[Questions ouvertes]] n°16
+> **La parcelle est une partition de l'emprise de l'îlot. Le générateur découpe, il ne pose pas des formes dans un vide.**
+
+Conséquence directe : deux parcelles voisines partagent une arête **exactement**, parce qu'elles sont les deux moitiés d'une même découpe. Le mitoyen n'est pas un raccord à faire, c'est une propriété de la méthode. → [[Décisions arrêtées]] 61
+
+Ce que ça écarte : *assumer le non-raccord* (compatible avec une maquette de masses, plus avec un tissu de `maisons_de_ville` et de `coeur_ancien`, où le mitoyen **est** la forme urbaine) et *la grille locale à la Townscaper* (contredit 27 et 29).
+
+**Ce qui reste à faire, et qui n'est pas un travail en plus** : le **joint en toiture** entre deux parcelles de hauteurs différentes. Il tombe sur l'étape 4 du pipeline, déjà en phase.
+
+🔴 **Le piège, et c'est le premier point à vérifier dans le code** : la partition ne doit **pas se rejouer** quand une seule parcelle change. Sinon on ré-effondre le voisinage à chaque clic — exactement ce qu'on reproche à Townscaper (42b) — et la contrainte architecturale ci-dessous tombe avec.
+
+**Réversible dans un seul sens** : écarter les parcelles de quelques centimètres redonne le non-raccord ; l'inverse demanderait de réécrire le générateur.
 
 ## Le trafic — rendre `charge` visible
 
@@ -77,7 +87,11 @@ L'aspect de [[Direction artistique]] repose chez Townscaper sur une **grille de 
 
 Ce que des voitures apportent, et qui n'est pas décoratif : une rue saturée **se voit** avant d'être lue, et « retirer la voiture de l'axe » cesse d'être une ligne de tableur. C'est la règle générale du projet appliquée au mouvement — *qu'est-ce que ça change à l'écran, sans texte ?*
 
-⚠️ **Une décision très coûteuse à inverser attend ici** : agents individuels ou flux agrégés ? → [[Questions ouvertes]] n°18. Elle n'est pas prise. Ce qui est déjà sûr :
+✅ **Tranché le 2026-08-12 : un flux agrégé, plus une poignée de véhicules figurés aux points chauds.** Une densité qui glisse le long du tronçon, proportionnelle à `charge` — cohérent avec la simulation agrégée (34). Les véhicules figurés ne calculent rien : ils ne cherchent pas leur chemin, leur densité se lit sur `charge`. **Jamais de graphe navigable, jamais de file d'attente au carrefour.** → [[Décisions arrêtées]] 62
+
+🎯 **Le critère se juge à l'écran** : *une rue à `charge = 1,00` doit être désagréable à regarder.* Si le flux est trop propre, la marge est d'ajouter des véhicules figurés et de l'encombrement à l'arrêt — pas un système de navigation. C'est une marge bornée, et c'est volontaire.
+
+Ce qui vaut de toute façon :
 
 - **Une instance multiple par famille**, jamais un nœud par voiture.
 - **Une réserve d'objets réutilisés** pour tout ce qui est nombreux et éphémère — voitures, piétons, particules. Le geste se prend au début, pas après : créer et détruire en continu finit par écrouler les performances.

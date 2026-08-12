@@ -1,7 +1,7 @@
 ---
 tags: [ville, prototype, level-design]
 statut: 🎯 périmètre du prototype
-maj: 2026-08-11
+maj: 2026-08-12
 habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 ---
 
@@ -12,7 +12,7 @@ habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 
 **Une rivière : l'Ilse. Une petite ville qu'on tient tout entière dans un écran.**
 
-> Les noms sont proposés, pas arrêtés — c'est la structure qui compte. → [[Questions ouvertes]]
+> ✅ **Les noms sont arrêtés le 2026-08-12 : la ville est Wehrau, la rivière est l'Ilse.** Ils étaient proposés depuis le 2026-08-10 et la fenêtre pour renommer sans frais se refermait — le générateur de parcelles est le moment où les noms entrent dans le code. → [[Décisions arrêtées]] 13f
 
 > ✅ **5 350 habitants, arrêté le 2026-08-11.** Le vault annonçait 18 000 ; la carte, une fois les densités posées, en porte 5 350 sur 38,3 ha bâtis, et c'est la carte qui gagne. Il aurait fallu 470 hab/ha bâti pour tenir 18 000, quand un centre allemand dense plafonne vers 350. Wehrau est une **petite ville de marché** — c'est le cadre le plus lisible pour l'histoire qu'on raconte, puisque la place du marché y est *la* place. → [[Décisions arrêtées]] 13d
 
@@ -22,7 +22,7 @@ habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 2. **La ville a été coupée de sa rivière** par une voie rapide de berge, sur la rive gauche, là où le centre la touchait.
 3. **Une route de transit traverse le cœur du nord au sud** — c'est aussi la rue commerçante, donc la toucher, c'est toucher les commerçants.
 4. **En 1971 on a rasé un îlot de tissu fin pour une galerie commerciale et son parking en toiture** ; il fait trois fois la taille de ses voisins et ça se voit.
-5. **En aval, un grand ensemble de 1974 est posé dans la plaine élargie** — la ville envoie sa crue sur ceux qui n'ont pas voix au chapitre. C'est l'îlot le plus en aval de toute la carte, et de loin le plus fragile. → [[Questions ouvertes]] n°14
+5. **En aval, un grand ensemble de 1974 est posé dans la plaine élargie** — la ville envoie sa crue sur ceux qui n'ont pas voix au chapitre. C'est l'îlot le plus en aval de toute la carte, et de loin le plus fragile. ✅ **Il reste où il est** : à 199 m de l'eau, pas les pieds dedans — ce qui l'expose n'est pas la proximité, c'est d'être en **bout de chaîne** → [[Décisions arrêtées]] 13e
 
 C'est la sortie attendue de la semaine 1. → [[Plan 3 mois]]
 
@@ -41,6 +41,8 @@ La ville est un **noyau ovale d'environ 900 × 1 000 m**, avec cinq routes radia
 
 **L'Ilse traverse la carte du nord au sud en décrivant un grand S** : elle entre au nord-est, mord vers l'ouest à mi-hauteur, ressort au sud-est. Cinq franchissements la découpent en six morceaux. Ce méandre n'est pas un détail de dessin — c'est lui qui fait que **Wehrau est une ville de rive droite avec un petit faubourg en face** : 50 îlots d'un côté, 13 de l'autre.
 
+> 🔄 **On descend à trois franchissements** — arrêté le 2026-08-12, **pas encore fait dans les données**. À cinq ponts la rivière ne coupe plus rien, et « ajouter une passerelle » cesse d'être une décision. **Lesquels des cinq sautent** (tronçons 136, 145, 168, 169, 171) se choisit sur la carte, sous trois contraintes : le réseau routier reste d'un seul tenant, le faubourg de rive gauche garde un accès qui ne soit pas le quai, et l'affectation de trafic se rejoue — l'axe de transit peut se déplacer. → [[Décisions arrêtées]] 30c
+
 Fichier : `QGIS/data/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
 
 ## Ce que la ville pèse
@@ -51,7 +53,7 @@ Fichier : `QGIS/data/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
 | habitants | ~5 350 — arrêté, [[Décisions arrêtées]] 13d |
 | surface bâtie | 38,3 ha (sur 92,8 ha d'emprise) |
 | places de stationnement | 4 587, dont 3 350 sur rue — **1,8 place par logement** |
-| franchissements de l'Ilse | 5 |
+| franchissements de l'Ilse | 5 dans les données — **3 visés** (30c) |
 
 > **1,8 place par logement.** C'est le chiffre qui dit ce qu'est cette ville en 1965 : un stock de voitures rangé partout, dont **1 237 places sur les îlots eux-mêmes** — la place du marché en tient 127, la galerie de 1971 en tient 223 sur son toit. Chaque décision qui touche l'emprise publique se paiera là-dessus. → [[Ressources]]
 
@@ -102,6 +104,8 @@ Ce n'est pas la ville industrielle sinistrée du brainstorm d'origine : c'est **
 **13 sous-types**, pour une cible de ~12 dans [[Géométrie et données]]. Chacun est une ligne de table de correspondance à remplir : si l'étape de dérivation devient pénible, c'est ici qu'il faut couper.
 
 > 🔴 **La voie rapide de berge n'est pas un type d'îlot.** Elle a d'abord été encodée comme tel (`quai_voie_rapide`), à tort : c'est une propriété de la **rue** — 22 m de largeur sur les tronçons de rive de la rive gauche. Les îlots derrière sont du tissu ordinaire. La plaie est entière, elle est juste au bon endroit dans les données.
+
+> ✅ **Wehrau est un dortoir, et on l'assume** — arrêté le 2026-08-12. **878 emplois pour 5 353 habitants, soit 0,16 par habitant**, quand une petite ville allemande comparable tourne entre 0,35 et 0,50. Ce n'est pas un coefficient mal réglé : il n'y a que 10,4 ha d'activité sur 38 ha bâtis. Ce que ça achète, c'est une ville cohérente avec elle-même — l'axe de transit saturé et les 0,86 place par habitant deviennent des **symptômes**, pas des anomalies — et un levier unique : **reconvertir le moulin et la brasserie est le seul levier d'emploi de la ville.** Ce que ça coûte, assumé : *une ville sans travail est une ville sans matin*, et le mouvement du matin **sort** de la carte. → [[Décisions arrêtées]] 50b
 
 > Wehrau n'a **pas d'hôpital** sur la carte. Un choix, pas un oubli : à cette échelle il est hors emprise, voire dans la ville voisine. Il se remet en ajoutant un `fid` dans `EQUIPEMENTS`.
 
