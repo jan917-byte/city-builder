@@ -106,9 +106,14 @@ NAPPE_ILSE = -1.0          # le plan d'eau
 # passent donc au-dessus du chenal sans qu'aucune ligne de code ne parle de
 # pont. C'est le creusement qui fabrique le pont, pas un tablier dessiné.
 
+# ⏸️ `altitude_relative` et `alea` ne sont plus exportés : la carte est plate et
+# la crue sort du prototype (2026-08-12). Les colonnes existent toujours dans le
+# GeoPackage, à 0 — les remettre ici est une ligne. `position_fil_eau` et
+# `rive`, eux, restent : ce sont des positions le long de l'eau, pas des
+# risques, et c'est `position_fil_eau` qui porte la portée « aval ».
 COLS_ILOTS = [
     "fid", "fonction", "sous_type", "surface_m2", "hauteur", "impermeabilise",
-    "canopee", "stationnement", "altitude_relative", "alea",
+    "canopee", "stationnement",
     "position_fil_eau", "rive", "densite", "logements", "emplois", "riverain",
     "desserte_tc",
 ]

@@ -10,7 +10,7 @@
 | le prototype en cours, en détail | [PLAN_energie.md](PLAN_energie.md) |
 | ce qui est tranché | `Méta/Décisions arrêtées.md` (vault) |
 
-**Dernière mise à jour : 2026-08-12 (session 16)**
+**Dernière mise à jour : 2026-08-12 (session 17)**
 
 ---
 
@@ -19,8 +19,8 @@
 | | Où |
 |---|---|
 | **La carte simulable** — 0,93 km², 69 îlots, 178 tronçons, 13 sous-types, 17 exceptions, **3 franchissements** | `QGIS/data/Prototype_qualifie.gpkg` |
-| **La ville bâtie** — 1 003 parcelles, **702 bâtiments**, 634 toits à deux pentes, 667 espaces libres dont **440 plantés** | couches `emprises` et `parcelles` |
-| **La maquette 3D cliquable** — 237 nœuds, fiche à l'îlot et au tronçon, l'Ilse creusée et ses trois ponts | `Godot/` → `Godot/README.md` |
+| **La ville bâtie** — 1 003 parcelles, **702 bâtiments**, **250 toits à deux pentes** (les autres plats, faute d'empreinte), 667 espaces libres dont **440 plantés** | couches `emprises` et `parcelles` |
+| **La maquette 3D cliquable** — 237 nœuds, fiche à l'îlot et au tronçon, **carte plate**, l'Ilse canalisée et ses trois ponts | `Godot/` → `Godot/README.md` |
 | **Le classeur** — 3 parties jouées sur 60 mois, courbes et carte au mois M | `Classeur/` · `QGIS/rendus/parties.html` |
 | **Le système énergie** | ⏳ **pas commencé** → `PLAN_energie.md` |
 | D07, la surchauffe, les quatre moyennes de ville, les six calques | ✂️ **supprimés** (66), archivés dans `Godot/archive/` |
@@ -34,6 +34,9 @@
 - 🔓 **Claude écrit ET exécute les scripts de données** (65), y compris sur le vrai `.gpkg`. Trois garde-fous non optionnels : arbre git propre avant d'écrire · passe `--blanc` d'abord · contrôles imprimés en français. → `CLAUDE.md` §3
 - 🏘️ **Le prototype est Wehrau**, une petite ville qu'on voit en entier (13b · 13d). Vallmar reste la ville du jeu complet, intacte dans le vault. Une ville entière, même petite, a **un amont et un aval** ; un quartier n'en a pas.
 - 🎨 **Townscaper pour le rendu** (42b), et **Wehrau est pastel au sol minéral** (42c) : la grisaille est une **proportion** — 28 % d'imperméabilisé, 14 % de canopée, 4 587 places — pas une teinte.
+- 🗺️ **La carte est plate** (2026-08-12) — dans l'image ET dans la donnée. Le seul relief est le **chenal de l'Ilse** : murs verticaux, fond à −2 m, plan d'eau à −1 m. Ce que ça a supprimé : le champ d'altitude, la vallée, l'exagération verticale, la subdivision des sols et des chaussées. **La voirie reste à 0** : au-dessus du chenal elle passe au-dessus du vide, donc les trois ponts existent sans qu'une ligne de code parle de pont.
+- 💧 **La crue sort du prototype** (2026-08-12, demandé en cours de session) : `alea` et `altitude_relative` restent dans le `.gpkg` **à 0**, ne sont plus exportés vers Godot, et leurs calques et stocks sont retirés de `06`. Ce qui reste de l'eau est ce qui reste vrai sans elle — **deux rives inégales et trois ponts**. ⚠️ À reporter dans le vault : le jeu s'ouvrait sur une crue rive gauche (**23b**).
+- 🏠 **Un toit à deux pentes seulement si l'empreinte sait le porter** — sinon toit plat. Le critère est le **pli d'un pan**, mesuré comme l'écart entre ses deux diagonales, et le seuil est un cadran qu'on tourne en une ligne. → `Godot/README.md`
 - 🔴 **Ce que la coupe a coûté** : le contrôle de recoupement Godot ↔ `08_jouer.py` a disparu avec D07. Une formule fausse dans le noyau ne sera plus attrapée avant qu'on la voie à l'écran. → [CHANTIERS.md](CHANTIERS.md) §4
 
 ## Prochaine action
@@ -59,7 +62,9 @@ Tout est prêt côté données. Quatre morceaux, dans cet ordre :
 
 - [ ] 🟠 **La régie municipale** — à qui appartiennent les panneaux ? Sans réponse, le retour au budget est un raccourci comptable qu'on ne saura plus justifier.
 - [ ] 🟠 **Le nom des quartiers de Wehrau** — sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase.
-- [ ] **L'exagération verticale** — 9 m de relief sur 898 m de large, contre 27 m pour la barre. Touches `1..4` dans la maquette. Se tranche **devant l'image**, et une fois tranchée, se consigne.
+- [x] ✅ ~~**L'exagération verticale**~~ — **close par la mise à plat** le 2026-08-12. Il n'y a plus de relief à exagérer ; les touches `1..4` sont retirées de la maquette.
+- [ ] 🟠 **Le seuil du pli des toits** (`GAUCHISSEMENT_MAX`, en haut de `07`) — à 0,35 m, 250 toits à deux pentes ; à 1,20 m, ~460, mais des toits qui se plient. Distribution continue, **aucun décrochement** : c'est un curseur, pas un seuil à trouver. Se tranche devant l'image.
+- [ ] 🟠 **La crue dans le vault** — la décision **23b** (le jeu s'ouvre sur une crue rive gauche) est en contradiction avec « pas de crue pour ce prototype ». Suspendue ou abandonnée ? À écrire dans `Décisions arrêtées`, pas à laisser implicite.
 - [ ] **Les quatre tables de level design** → [CHANTIERS.md](CHANTIERS.md) §2. Une ligne changée, on relance, on regarde.
 - [ ] **Cinq candidats à `Décisions arrêtées`**, prêts mais non tranchés (`PLAN_energie.md` §9 bis) : dont *la décision spatiale est le jeu* — **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise**.
 
@@ -71,18 +76,20 @@ Tout est prêt côté données. Quatre morceaux, dans cet ordre :
 
 ```
 python "QGIS/scripts/apercu_carte.py" "QGIS/data/Prototype_qualifie.gpkg"        → la carte en PNG
-python "QGIS/scripts/06_etat_zero.py"                                            → la ville entière dans une page HTML, 22 calques
+python "QGIS/scripts/06_etat_zero.py"                                            → la ville entière dans une page HTML, 20 calques
 python "QGIS/scripts/07_exporter_godot.py"                                       → alimenter la maquette 3D
 python "QGIS/scripts/08_jouer.py" --toutes                                       → rejouer les parties du classeur
 ```
 
 ⚠️ **Chaîne à relancer dans l'ordre : 02 → 03 → 04 → 04b → 04c**, puis `07`. Le `02` repart de `Vallmar2.gpkg` et **écrase** `Prototype_qualifie.gpkg`, y compris `emprises` et `parcelles`. Tout script qui écrit a un mode `--blanc` qui calcule et n'écrit rien : **il tourne toujours d'abord**.
 
-Le détail des onze scripts, leurs modes et leurs pièges → **`QGIS/README.md`** (§4 et §9). La maquette et ses touches (`V` `B` `R` `I` `1..4` `P`) → **`Godot/README.md`**.
+Le détail des onze scripts, leurs modes et leurs pièges → **`QGIS/README.md`** (§4 et §9). La maquette et ses touches (`V` `B` `R` `I` `P`) → **`Godot/README.md`**.
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
 ## Les deux dernières sessions
+
+**2026-08-12 (session 17) — la carte devient plate, et les toits se taisent quand ils ne savent pas parler.** Deux demandes de l'auteur, faites devant l'image. (1) Un toit à deux pentes n'est posé que si l'empreinte sait le porter : on mesure le **pli** d'un pan — l'écart entre ses deux diagonales, nul dès qu'il est plan — et au-delà de 0,35 m on pose un toit plat. 250 à deux pentes, 434 plats faute d'empreinte ; les toits froissés et les pics de tente ont disparu. 🐞 La première mesure était fausse et a été gardée en commentaire : sur un pignon, « la distance du 4ᵉ sommet au plan des trois autres » part en vrille et déclarait 574 bâtiments sur 702 vrillés. 🎯 Résultat inattendu : le critère « angle trop aigu » ne se déclenche **jamais** — le plus petit angle de la ville est 70,2°, `_ecorner` avait déjà réglé le problème en amont. (2) **La carte est plate**, l'Ilse est un chenal à murs verticaux, et la crue sort du prototype en cours de session.
 
 **2026-08-12 (session 16) — cinq corrections devant l'image.** Les barres et hangars deviennent des boîtes, les pointes sont coupées, le pavillonnaire fait enfin des maisons individuelles, les cœurs d'îlot sont plantés (440 sur 667), l'Ilse est creusée de 1,6 m et les ponts passent au-dessus. 🐞 Le vrai bug ne se voyait que sur l'image : `profondeur` était comptée depuis la rue et non depuis la façade — **tous** les pavillons de la ville faisaient 3,5 m de creux.
 

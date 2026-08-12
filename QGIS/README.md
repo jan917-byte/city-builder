@@ -123,7 +123,11 @@ Le cœur du fichier est la table `TISSU` : **13 lignes, une par `sous_type`, six
 
 Trois sous-systèmes en dessous :
 
-**L'eau, sans MNT.** Il n'y a pas de modèle de terrain : le relief est du design assumé. `position_fil_eau` se lit **en latitude** (l'Ilse traverse du nord au sud en décrivant un S — un axe droit se tromperait de rive sur les méandres). `rive` est calculée sur la direction **locale** de la berge la plus proche, orientée vers l'aval. `altitude_relative` monte en s'éloignant de l'eau, avec une pente qui **s'adoucit vers l'aval** (3,2 % → 1,3 %) parce qu'une vallée s'élargit en descendant. `alea` décroît avec l'altitude et **augmente vers l'aval à altitude égale** (×0,80 → ×1,20). C'est ce qui met l'injustice géographique dans le terrain lui-même et pas dans un coefficient.
+**L'eau, sans MNT et désormais sans relief.** `position_fil_eau` se lit **en latitude** (l'Ilse traverse du nord au sud en décrivant un S — un axe droit se tromperait de rive sur les méandres). `rive` est calculée sur la direction **locale** de la berge la plus proche, orientée vers l'aval. Ces deux-là sont des **positions**, elles restent.
+
+🔄 **`altitude_relative` et `alea` valent 0 depuis le 2026-08-12.** La carte est plate — dans l'image et dans la donnée — et la crue sort du prototype. Les colonnes restent pour que rien de ce qui les lit ne casse, mais elles ne prétendent plus mesurer quoi que ce soit.
+
+Ce qu'il y avait, et qu'il faudrait réécrire pour revenir : une vallée qui remontait de part et d'autre de l'Ilse avec une pente s'adoucissant vers l'aval (3,2 % → 1,3 %, plafond 9 m), et un aléa décroissant avec l'altitude, majoré vers l'aval (×0,80 → ×1,20). Sur une carte plate, l'aléa tiendrait à la **distance à l'eau** : mesuré avant de renoncer, à 250 m de portée il retombait à **0,74 rive gauche et 0,39 rive droite**, contre 0,75 et 0,43 par l'altitude — la règle changeait, pas la carte du risque.
 
 **Le trafic** (`charge_reseau`, ~110 l.). Une affectation minimale par plus court chemin **en temps**, pas en distance : deux demandes superposées, l'échange entre les sorties de carte (degré 1) et le local entre carrefours (degré ≠ 2), pondérées 55/45. Normalisée sur le 9<sup>e</sup> décile — normaliser sur le maximum écraserait tout, un seul tronçon portant l'essentiel des chemins. Ce n'est pas une simulation : c'est le socle sur lequel « fermer une rue reporte sa charge sur les voisines » devient calculable.
 
@@ -142,7 +146,7 @@ Trois modes :
 ```bash
 python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg
 python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --adjacences
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=alea
+python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=charge
 ```
 
 - **par défaut** : coloriage par `sous_type` (à défaut `fonction`), rues épaissies par hiérarchie, brins morts cerclés de rouge
@@ -179,7 +183,7 @@ Il ne fait **pas** partie de la chaîne 02→03→04 et n'a pas été utilisé d
 | `desserte_tc` | 04 | le seuil que la densité doit atteindre |
 | `riverain` | 04 | fragilité sociale — la boucle de gentrification |
 | `stationnement` | 04 | le coût politique de la place-parking, chiffré |
-| `altitude_relative` · `alea` | 04 | reconstruire / adapter / rendre à l'eau |
+| `altitude_relative` · `alea` | 04 | ⏸️ à 0 — carte plate, crue hors prototype (2026-08-12) |
 | `position_fil_eau` | 04 | la digue protège ici et aggrave en aval |
 | `rive` | 04 | gauche / droite / lit — l'asymétrie des deux rives |
 
@@ -263,7 +267,7 @@ Relevées en relisant le dossier le 2026-08-11. Rien n'empêche de travailler ; 
 # regarder (lecture seule, sans danger, tourne avec QGIS ouvert)
 python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg
 python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --adjacences
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=alea
+python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=charge
 
 # tout recalculer et tout afficher, sans rien écrire
 python3 QGIS/scripts/04_deriver_attributs.py --blanc

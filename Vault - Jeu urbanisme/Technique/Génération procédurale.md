@@ -1,6 +1,6 @@
 ---
 tags: [technique, procédural, 3d, actif]
-statut: ✅ la subdivision en parcelles et les toits sont FAITS le 2026-08-12 — 968 parcelles, 690 bâtiments, 624 toits à deux pentes
+statut: ✅ parcelles et toits FAITS le 2026-08-12 — 1 003 parcelles, 702 bâtiments, 250 toits à deux pentes (les autres plats, faute d'empreinte). Carte plate depuis le 2026-08-12.
 maj: 2026-08-12
 ---
 
@@ -62,17 +62,21 @@ La maquette de masses existe et se joue. Ce qu'elle montre reste **63 pâtés pl
 |---|---|
 | 69 polygones d'îlots | les volumes, par extrusion |
 | `hauteur`, 2 à 9 niveaux | × 3 m — la silhouette |
-| `altitude_relative` | la vallée, sans MNT |
+| ~~`altitude_relative`~~ | ⏸️ **plus rien** — la carte est plate depuis le 2026-08-12 |
 | 178 polylignes + `largeur_m` | les rubans de voirie |
 | `sous_type`, 13 valeurs | la teinte et le grain de chaque volume |
 | `impermeabilise` · `canopee` | le sol : minéral, planté, entre les deux |
 | `charge` | combien de voitures instancier |
 
-### ⚠️ Le piège du terrain
+### ✅ ~~Le piège du terrain~~ — résolu en supprimant le terrain
 
-`altitude_relative` est **une valeur par îlot**. Extruder chaque îlot depuis la sienne donne un terrain en escalier : une marche à chaque limite, des trous entre les rues et les blocs. Invisible en 2D, criant en 3D.
+Il y avait ici un vrai piège et sa sortie : `altitude_relative` étant **une valeur par îlot**, extruder chaque îlot depuis la sienne donnait un terrain en escalier, et la sortie était de **rejouer la règle** qui avait produit l'altitude plutôt que d'interpoler après coup → [[Décisions arrêtées]] 32e.
 
-La sortie n'est pas d'interpoler après coup mais de **rejouer la règle qui a produit l'altitude** — la pente qui s'adoucit vers l'aval, quatre lignes en haut de `04_deriver_attributs.py`. On obtient un champ continu, échantillonnable partout, et les îlots viennent s'y poser. Bonus : le terrain et les données ne peuvent plus diverger. → [[Décisions arrêtées]] 32e
+🔄 **Le 2026-08-12, l'auteur a mis la carte à plat** — dans l'image et dans la donnée. Il n'y a plus de champ d'altitude à échantillonner, donc plus de piège. Ce qui l'a emporté n'est pas la difficulté mais l'**invisibilité** : 9 m de relief sur 898 m de large, vus en axonométrie à angle fixe, ne se lisaient à **aucune** des quatre exagérations verticales. Une donnée qui coûte un champ continu et ne se voit pas est une donnée à retirer.
+
+**Ce qui reste comme relief, et c'est tout** : le **chenal de l'Ilse**, murs verticaux, fond à −2 m, plan d'eau à −1 m. Il fait deux choses que la vallée ne faisait pas — il **coupe** la ville en deux, et il fabrique les trois ponts sans qu'aucune ligne de code parle de pont, la voirie restant à 0 au-dessus du vide.
+
+**La leçon générale, elle, tient toujours** : *rejouer la règle plutôt que d'interpoler le résultat*. Elle s'appliquera au premier champ continu suivant.
 
 ### Ce qui reste hors phase, et le reste
 

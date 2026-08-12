@@ -75,7 +75,7 @@ GRILLE = 25.0
 CLE = 0.25
 
 # Bornes de bon sens. Une part reste une part ; un stock ne devient pas négatif.
-RATIOS = {"impermeabilise", "canopee", "riverain", "alea", "desserte_tc",
+RATIOS = {"impermeabilise", "canopee", "riverain", "desserte_tc",
           "charge", "confort_ete", "position_fil_eau"}
 POSITIFS = {"logements", "emplois", "stationnement", "hauteur", "densite",
             "emprise_libre_m", "largeur_m", "surface_m2"}
@@ -84,7 +84,7 @@ POSITIFS = {"logements", "emplois", "stationnement", "hauteur", "densite",
 COLS_PARTIE = [
     "mois", "annee", "evenement", "budget_verse", "budget_engage",
     "budget_solde", "capital", "logements", "logements_a_reloger",
-    "alea_moy_gauche", "alea_moy_aval", "canopee_moy", "impermeabilise_moy",
+    "canopee_moy", "impermeabilise_moy",
     "charge_max", "stationnement", "riverain_moy", "note",
 ]
 
@@ -537,8 +537,6 @@ class Partie(object):
                 "capital": round(cap, 1),
                 "logements": int(round(log)),
                 "logements_a_reloger": int(round(self.ville["logements_a_reloger"][t])),
-                "alea_moy_gauche": round(moy(g, "alea"), 3),
-                "alea_moy_aval": round(moy(avl, "alea"), 3),
                 "canopee_moy": round(pond("canopee"), 3),
                 "impermeabilise_moy": round(pond("impermeabilise"), 3),
                 "charge_max": round(max(o.get("charge") or 0 for o in ER.values()), 3),
@@ -623,7 +621,7 @@ def svg_carte(geo_i, geo_r):
 
 CALQUES_I = [("canopee", "Canopée", ""), ("impermeabilise", "Imperméabilisé", ""),
              ("riverain", "Fragilité riverain", ""), ("confort_ete", "Confort d'été", ""),
-             ("logements", "Logements", ""), ("alea", "Aléa", ""),
+             ("logements", "Logements", ""),
              ("hauteur", "Hauteur", " niv."), ("densite", "Densité", " log/ha")]
 CALQUES_R = [("canopee", "Canopée d'alignement", ""), ("charge", "Charge de trafic", ""),
              ("stationnement", "Places sur rue", ""), ("emprise_libre_m", "Emprise libre", " m"),

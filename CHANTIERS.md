@@ -13,10 +13,11 @@ Ils ne sont pas cachés : `07_exporter_godot.py` les imprime à chaque export. A
 | | Le défaut | Ce qu'on voit |
 |---|---|---|
 | 1 | ⚠️ **17 bâtiments sur 702 mordent sur la rue**, jusqu'à 5,5 m | pic de mitre sur angle rentrant, borné par le recul du tissu. Sans commune mesure avec les 258 m de la session 9, mais **un bâtiment sur la chaussée ment** |
-| 2 | ☐ **50 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens |
-| 3 | ☐ **794 pans de toit (7 %) sont réorientés à l'émission** | ⚠️ conséquence : la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
-| 4 | ☐ **La vallée ne se lit à aucune des quatre exagérations** | 9 m de relief sur 898 m de large. C'est l'ombre ou la caméra, pas le facteur |
+| 2 | 🟠 **434 bâtiments sur 702 prennent un toit plat faute d'empreinte** | dont **381 pour pli des pans**, 50 concaves, 3 sans profondeur. Ce n'est plus un défaut mais un **réglage** : `GAUCHISSEMENT_MAX` en haut de `07`, à trancher devant l'image → `Godot/README.md` |
+| 3 | ☐ **194 pans de toit (4 %) sont réorientés à l'émission** | c'était 794. ⚠️ conséquence inchangée : la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
+| 4 | ✅ ~~**La vallée ne se lit à aucune des quatre exagérations**~~ | **réglé en supprimant la vallée** le 2026-08-12 : la carte est plate, les touches `1..4` sont retirées |
 | 5 | ☐ **Le trafic, le sol, la lumière** | inchangés depuis la session 9 |
+| 6 | ☐ **Le fond du chenal ne se voit jamais** | l'eau est opaque, donc des deux mètres du chenal on n'en voit qu'**un** — le mur au-dessus de la nappe. Le fond à −2 m coûte 43 triangles et sert d'assurance, pas d'image |
 
 ## 2. Les quatre tables de level design
 
@@ -29,6 +30,8 @@ Le contrôle n'est pas « est-ce juste » mais ***« est-ce qu'on croirait y hab
 | `TISSU` | `04_deriver_attributs.py` | densité, hauteur, imperméabilisation, canopée, fragilité, parking — **le comportement de la carte** |
 | `TISSU` | `04c_parcelles.py` | largeur de façade et profondeur visées — **le grain de toute la ville** |
 | `BATI` | `07_exporter_godot.py` | recul de rue, jeu au voisin, profondeur bâtie, pente du toit |
+
+🆕 **Un cinquième réglage, qui n'est pas une table mais un seuil** : `GAUCHISSEMENT_MAX` en haut de `07` — le pli qu'un pan de toit a le droit d'avoir avant qu'on lui préfère un toit plat. 0,35 m aujourd'hui, soit 250 toits à deux pentes ; 1,20 m en donnerait ~460, mais qui se plient.
 
 🔴 Dans `BATI`, le `jeu` à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (décision 61).
 

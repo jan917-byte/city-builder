@@ -85,11 +85,10 @@ les deux se corrigent à la main sur le Mac — voir `CLAUDE.md` §5 bis :
 |---|---|
 | **clic** | sélectionner un îlot ou une rue — la fiche s'ouvre à droite |
 | **Espace** | lecture / pause · les boutons **×1 ×4 ×12** règlent la vitesse |
-| **V** | la vallée — tout Wehrau d'un coup |
+| **V** | Wehrau en entier |
 | **B** | la barre de 1974 (îlot 32) |
 | **R** | les rues à 20 et 22 m, et le quai |
-| **I** | l'Ilse : le lit creusé et les trois franchissements |
-| **1 2 3 4** | exagération verticale ×1 ×1,5 ×2 ×3 |
+| **I** | l'Ilse canalisée et les trois franchissements |
 | **Q / E** | rotation de 90° · molette : zoom · clic droit : panoramique |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
@@ -97,10 +96,11 @@ les deux se corrigent à la main sur le Mac — voir `CLAUDE.md` §5 bis :
 `V` `B` `R` ne sont pas un confort : ce sont **les trois critères de réussite**
 de `Plan 3 mois.md:48`, une touche chacun. On ne juge pas de mémoire.
 
-⚠️ **La vallée ne se lit à AUCUNE des quatre exagérations** (constaté le
-2026-08-12). 9 m de relief sur 898 m de large, vus en axonométrie à angle fixe :
-le facteur n'y peut rien. Ça se réglera par l'ombre ou par la caméra, pas par
-un multiplicateur.
+🔄 **Les touches `1..4` ont disparu, et la vallée avec.** Elles exagéraient le
+relief ×1 à ×3 ; le relief ne se lisait à aucun des quatre facteurs — 9 m sur
+898 m de large, vus en axonométrie à angle fixe. **La carte est plate depuis le
+2026-08-12** : il n'y a plus rien à exagérer, et la question de l'exagération
+verticale se ferme d'elle-même.
 
 ## La seule règle d'affichage qui compte
 
@@ -115,9 +115,13 @@ suit le changement et l'image reste identique.
 ## Ce que ça doit prouver
 
 > Que Wehrau **existe** comme lieu, et qu'une décision s'y **voit**. On doit
-> sentir la vallée, voir la barre de 1974 comme un objet aberrant de 9 niveaux
-> au milieu de rangées à 3, trouver monstrueuses les rues à 20 et 22 m — et
-> reconnaître une rue qu'on a plantée dix ans plus tôt.
+> ~~sentir la vallée~~, voir la barre de 1974 comme un objet aberrant de 9
+> niveaux au milieu de rangées à 3, trouver monstrueuses les rues à 20 et 22 m
+> — et reconnaître une rue qu'on a plantée dix ans plus tôt.
+
+🔄 **Le premier critère est rayé le 2026-08-12** : la carte est plate, il n'y a
+plus de vallée à sentir. Ce qui donne son lieu à Wehrau, c'est maintenant la
+coupure de l'Ilse — **deux rives inégales et trois ponts** — pas un relief.
 
 ⚠ `Plan 3 mois.md:50` : « Si j'ajoute des toits, j'ai changé de projet. »
 
@@ -302,40 +306,104 @@ Et pour ce qu'un chanfrein ne peut pas sauver — une empreinte qui est une lame
 de bout en bout — `LARGEUR_MIN_BATI = 3 m` : en dessous, le volume n'est pas
 construit et la parcelle repart au jardin.
 
-### 🌊 L'Ilse est creusée de 1,6 m
+### 🌊 La carte est plate, et l'Ilse est un chenal
 
-`04` travaille en altitude **relative à l'eau** : son zéro est le fil de l'eau,
-donc la nappe affleurait exactement le sol de toute la ville. La rivière se
-lisait comme une flaque bleue posée dessus.
+Demandé par l'auteur le 2026-08-12 : *« la carte est plate, juste la rivière
+est −1 à 2 m comme si elle était canalisée »*. Le sol est à **0 partout**, et le
+seul accident du terrain est le chenal :
 
-Le lit descend maintenant de **1,6 m**, la berge remonte sur **12 m**, et la
-grille du terrain est passée de 8 à **4 m** — à 8 m, la berge ne tombait que sur
-un point de grille et la rive ressortait **en escalier**.
+```
+    sol ─────┐              ┌───── sol          0,00 m
+             │██████████████│                  −1,00 m   le plan d'eau
+             └──────────────┘                  −2,00 m   le fond
+```
 
-⚠️ **La voirie garde le terrain naturel** (`alt_nature`), pas le lit creusé.
-Sans ça les trois franchissements plongeraient dans l'eau ; avec, les tabliers
-passent au-dessus. **Un pont, sans une ligne de code qui parle de pont.**
+Deux murs **verticaux**, un fond plat. On voit **un mètre de mur** au-dessus de
+l'eau sur toute la longueur — la berge en pente douce sur 12 m de la veille se
+lisait comme un talus, donc comme rien.
+
+**Ce que la mise à plat a supprimé**, et qu'il faudrait réécrire pour revenir :
+une classe `Terrain` qui rejouait la règle de pente de `04` (3,2 % en amont,
+1,3 % en aval, plafond à 9 m) et l'échantillonnait sur une grille de 4 m · la
+subdivision des caps de sol et des rubans de chaussée, qui ne servait qu'à
+suivre le relief · le champ d'altitude côté Godot, remplacé par un maillage
+comme les autres.
+
+**Ce que ça a coûté en géométrie** : le sol passe d'un champ de 64 736
+altitudes à une **plaque de 8 244 triangles**, trouée à l'exact le long des
+berges — une maille que la berge traverse est coupée par la droite de cette
+berge, et on ne garde que les morceaux hors de l'eau.
+
+⚠️ **La voirie reste à 0, comme tout le reste.** Au-dessus du chenal, elle passe
+donc au-dessus du vide : **un pont, sans une ligne de code qui parle de pont.**
 
 🟢 **Le clic n'a pas changé de niveau.** Toutes les parcelles d'un îlot
 tombent dans **le même groupe de maillage** : la géométrie descend à la
 parcelle, la sélection reste à l'îlot. Toujours ~237 nœuds cliquables. La
 parcelle est l'entité persistante des **données** (35), pas celle du clic.
 
-### Les trois défauts connus, imprimés à chaque export
+### 🏠 Un toit à deux pentes seulement si l'empreinte sait le porter
 
-Ils sont dans la console de `07`, pas dans un coin de tête :
+Demandé par l'auteur le 2026-08-12 : *« quand la surface est trop difficile
+pour avoir un toit propre, fait un toit plat »*. C'est une **règle de repli**,
+pas un échec : un toit plat sur une empreinte tordue se lit comme un
+toit-terrasse, alors qu'un toit à deux pentes sur la même empreinte se lit
+comme une erreur.
+
+**Ce qu'on mesure, et c'est le cœur de l'affaire : le PLI d'un pan.** Un pan de
+toit est un quadrilatère — deux sommets à l'égout, deux au faîtage — et rien ne
+garantit que ses quatre coins soient dans un même plan. Le pli, c'est l'écart
+entre les deux diagonales du quadrilatère : il vaut **zéro** dès que le pan est
+plan, et il ne dépend d'aucun repère bien choisi. Au-delà de **0,35 m**, on
+renonce.
+
+🐞 **Première mesure essayée, et fausse** : « la distance du quatrième sommet au
+plan des trois autres ». Sur un pignon, les deux sommets du faîtage se
+confondent presque, le plan de base est une lame, et la mesure part en vrille
+alors que le pan est un triangle parfaitement plat. **574 bâtiments sur 702 se
+déclaraient vrillés.**
+
+| Pourquoi on renonce | Combien |
+|---|---|
+| **pan vrillé** (pli > 0,35 m) | **381** |
+| **concave** — un versant peut repartir en arrière dans un renfoncement | **50** |
+| **sans profondeur** — moins de 5 m en travers du faîtage | **3** |
+| **pointe** — un angle intérieur sous 40° | **0**, et c'est un résultat : `_ecorner` coupe déjà tout ce qui passe sous 70°, le plus petit angle de la ville est **70,2°**. Le problème des angles aigus était déjà réglé en amont ; celui qui restait était le pli |
+
+**Résultat : 250 toits à deux pentes, 434 plats faute d'empreinte, 18 plats
+parce que le tissu les veut plats.** Le seuil est **un cadran**, et le voici :
+
+| pli toléré | toits à deux pentes |
+|---|---|
+| aucun seuil | 631 — mais des toits froissés, des pics de tente, des surfaces qui se plient |
+| 0,35 m *(retenu)* | **250** |
+| 0,80 m | ~375 |
+| 1,20 m | ~460 |
+
+**Une distribution continue, sans décrochement** : il n'y a pas de seuil
+« juste » à trouver, seulement un curseur entre une ville qui a des toits et
+une ville dont les toits sont propres. Il se change en une ligne
+(`GAUCHISSEMENT_MAX` en haut de `07`), et le contrôle imprime à chaque export la
+médiane, le 9ᵉ décile et le pire pli.
+
+### Les deux défauts connus, imprimés à chaque export
 
 | Le défaut | Aujourd'hui |
 |---|---|
-| **50 empreintes concaves** prennent un toit plat | la recette du faîtage suppose qu'un versant avance dans un seul sens ; sur une empreinte concave il se retourne |
-| **794 pans réorientés** à l'émission (7 %) | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau. ⚠️ Donc la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve rien — c'est le nombre de réorientations qui informe |
+| **194 pans réorientés** à l'émission (4 %, contre 794 avant) | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau. ⚠️ Donc la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve rien — c'est le nombre de réorientations qui informe |
 | **17 bâtiments mordent sur la rue**, jusqu'à 5,5 m | pic de mitre sur angle rentrant. Borné par le recul du tissu, sans commune mesure avec les 258 m de la session 9, mais à reprendre |
 
 🔗 **L'interface du toit** (41 · 64) est posée : chaque îlot expose
-`toit_m2` (surface réelle, pente comprise — **11,9 ha**), `toit_pente` et
+`toit_m2` (surface réelle, pente comprise — **10,5 ha**), `toit_pente` et
 `toit_plat`. L'ombrage était déjà là, c'est `canopee`. Le code d'énergie lira
 ces quatre nombres **sans savoir** si c'est le générateur ou une table de
 coefficients qui les produit — c'est ce qui fait qu'il ne l'attend pas.
+
+⚠️ **`toit_m2` a baissé de 11,9 à 10,5 ha**, et ce n'est pas une perte : la
+surface se compte maintenant **volume par volume**, avec la pente de ce
+volume-là. Un bâtiment tombé au toit plat comptait avant pour l'emprise étirée
+de son tissu. C'est le nombre que l'énergie viendra lire ; il vaut mieux qu'il
+soit juste.
 
 ## 🟠 Les chiffres qui attendent ton œil
 

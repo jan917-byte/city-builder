@@ -56,8 +56,9 @@ CALQUES_ILOTS = [
     ("stationnement", "Stationnement", "num", " places"),
     ("riverain", "Fragilité riverain", "num", ""),
     ("desserte_tc", "Desserte TC", "num", ""),
-    ("alea", "Aléa d'inondation", "num", ""),
-    ("altitude_relative", "Altitude relative", "num", " m"),
+    # 2026-08-12 : plus de calque d'aléa ni d'altitude — la carte est plate et
+    # la crue sort du prototype. Les deux colonnes valent 0 partout ; un calque
+    # d'une seule couleur ne dit rien et fait croire qu'il dit quelque chose.
     ("position_fil_eau", "Fil de l'eau", "num", ""),
     ("surface_m2", "Surface", "num", " m²"),
 ]
@@ -133,7 +134,6 @@ def stocks(ilots, routes):
     ml = sum(r["longueur_m"] for r in routes)
     stat_rue = sum(r["stationnement"] for r in routes)
     stat_ilot = sum(i["stationnement"] for i in bati)
-    expose = sum(i["logements"] for i in bati if i["alea"] > 0.6)
     fragile = sum(i["logements"] * i["riverain"] for i in bati)
     tc = sum(i["logements"] for i in bati if i["desserte_tc"] > 0.7)
     emplois = sum(i["emplois"] for i in bati)
@@ -141,9 +141,6 @@ def stocks(ilots, routes):
     bat = sum(i["surface_m2"] for i in bati if i["sous_type"] != "champ")
     g = [i for i in bati if i["rive"] == "gauche"]
     d = [i for i in bati if i["rive"] == "droite"]
-
-    def moy_alea(sel):
-        return sum(i["alea"] for i in sel) / len(sel) if sel else 0
 
     return [
         ("L'assiette", [
@@ -177,14 +174,15 @@ def stocks(ilots, routes):
             ("Logements bien desservis en TC", "%d" % tc,
              "%.0f %% du parc (desserte > 0,7)" % (100 * tc / log)),
         ]),
+        # ⏸️ La crue sort du prototype (2026-08-12) : plus de logements exposés,
+        # plus d'aléa moyen par rive. Ce qui reste de l'eau est ce qui reste
+        # vrai sans elle — deux rives inégales, et trois ponts.
         ("L'eau", [
-            ("Logements exposés", "%d" % expose,
-             "%.0f %% du parc, à aléa > 0,6" % (100 * expose / log)),
             ("Rive gauche", "%d logements" % sum(i["logements"] for i in g),
-             "%d îlots, aléa moyen %.2f" % (len(g), moy_alea(g))),
+             "%d îlots" % len(g)),
             ("Rive droite", "%d logements" % sum(i["logements"] for i in d),
-             "%d îlots, aléa moyen %.2f" % (len(d), moy_alea(d))),
-            ("Franchissements", "5", "sans eux le réseau tombe en deux morceaux"),
+             "%d îlots" % len(d)),
+            ("Franchissements", "3", "sans eux le réseau tombe en deux morceaux"),
         ]),
         ("Les ressources", [
             ("Budget d'investissement", "100 pts / an", "⚠ posé, pas tranché"),

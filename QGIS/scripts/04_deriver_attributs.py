@@ -16,8 +16,8 @@ décisions**. Chaque colonne répond à « quelle décision devient possible ? �
     desserte_tc                     le seuil que la densité doit atteindre
     riverain                        fragilité sociale — la boucle gentrification
     stationnement                   le coût politique de la place-parking
-    altitude_relative · alea        rendre à l'eau / adapter / reconstruire
-    position_fil_eau                la digue protège ici, aggrave en aval
+    altitude_relative · alea        ⏸️ à 0 : carte plate, crue hors prototype
+    position_fil_eau                la portée « aval » d'une décision
     rive                            l'asymétrie des deux rives
 
   RUES
@@ -119,22 +119,21 @@ HABITANTS_VAULT = 5350          # ce que le vault annonce — contrôlé, pas su
 # qui s'adoucissait vers l'aval (3,2 % → 1,3 %, plafond à 9 m). Elle ne s'est
 # jamais vue à l'écran — 9 m de relief sur 898 m de large.
 #
-# 🔴 CE QUE ÇA OBLIGE À CHANGER, et qui n'est pas un détail : l'ALÉA
-# d'inondation se calculait sur l'altitude. Sans relief, il vaudrait 1 partout
-# — toute la ville également inondable, donc plus d'injustice géographique du
-# tout. Il se calcule maintenant sur la DISTANCE À L'EAU, qui est le seul
-# gradient qui reste. La règle est la même dite autrement : loin de l'eau, on
-# risque moins.
-PORTEE_CRUE = 250.0             # m — au-delà de cette distance, aléa nul
-
-# En aval, à distance égale, l'eau se retire moins vite. C'est ce qui donne du
-# mordant à « la digue aggrave en aval » : protéger l'amont pousse la crue vers
-# ceux qui sont déjà exposés.
-AMONT_AVAL = (0.80, 1.20)       # multiplicateur d'aléa de l'amont vers l'aval
-
-# Jusqu'où une crue pousse, en mètres depuis la berge. Sert au tableau de fin,
-# là où on lisait « +2 m, +3 m, +4 m » d'altitude.
-CRUES = (60.0, 120.0, 200.0)
+# 🔴 LA CRUE SORT DU PROTOTYPE, décidé par l'auteur le 2026-08-12 : *« pas de
+# crue. on oublie la crue pour ce prototype »*. `alea` n'est donc plus dérivé
+# de rien — la colonne reste dans le GeoPackage, à 0, pour que rien de ce qui
+# la lit ne casse, mais elle ne prétend plus mesurer quoi que ce soit.
+#
+# Ce qu'il faudrait pour la rallumer : une règle qui dise jusqu'où l'eau monte.
+# Elle tenait à l'altitude, qui n'existe plus ; sur une carte plate elle
+# tiendrait à la DISTANCE À L'EAU (une portée de crue en mètres, modulée de
+# l'amont vers l'aval). Mesuré avant de renoncer : à 250 m de portée, l'aléa
+# moyen par rive retombait à 0,74 rive gauche et 0,39 rive droite, contre 0,75
+# et 0,43 par l'altitude. La règle changeait, pas la carte du risque.
+#
+# ⚠️ Ce qui RESTE, et qui n'est pas de la crue : `rive` et `position_fil_eau`.
+# Ce sont des positions le long de l'eau, pas des risques — et c'est
+# `position_fil_eau` qui porte la portée « aval » d'une décision (08).
 
 # --- les rues -------------------------------------------------------------
 # Ce qu'il faut réserver à la circulation, par hiérarchie : chaussée + trottoirs.
@@ -473,11 +472,9 @@ def main():
         d["rive"] = "lit" if d["st"] == "riviere" else \
             ("gauche" if cote > 0 else "droite")
 
-        # La carte est plate : plus d'altitude, et l'aléa se lit sur la
-        # distance à l'eau. Un îlot de rivière est à 0 m de l'eau, donc à 1.
+        # Carte plate, crue hors prototype : les deux colonnes restent, à 0.
         d["alt"] = 0.0
-        expo = AMONT_AVAL[0] + (AMONT_AVAL[1] - AMONT_AVAL[0]) * d["fil"]
-        d["alea"] = round(borne((1 - d["dist_eau"] / PORTEE_CRUE) * expo), 3)
+        d["alea"] = 0.0
 
     # ------------------------------------------------------ desserte TC
     # Le bus passe où la rue est large. Une frontière de boulevard trop courte
@@ -623,22 +620,21 @@ def main():
         print("       c'est la géométrie — il faudrait dessiner du sol d'activité.")
         print("       Cohérent avec l'axe de transit saturé : les gens sortent.")
 
-    print("\nL'EAU")
+    print("\nL'EAU  (crue hors prototype — il reste les DEUX RIVES et l'amont/aval)")
     for cote in ("gauche", "droite", "lit"):
         fs = [f for f, d in ilots.items() if d["rive"] == cote]
         if not fs:
             continue
         log = sum(ilots[f]["logements"] for f in fs)
-        al = sum(ilots[f]["alea"] for f in fs) / len(fs)
-        print("  rive %-8s %2d îlots · %5d logements · aléa moyen %.2f"
-              % (cote, len(fs), log, al))
+        print("  rive %-8s %2d îlots · %5d logements · %3.0f m de l'eau en moyenne"
+              % (cote, len(fs), log,
+                 sum(ilots[f]["dist_eau"] for f in fs) / len(fs)))
     amont = [f for f, d in ilots.items() if d["fil"] < 0.34 and d["st"] != "riviere"]
     aval = [f for f, d in ilots.items() if d["fil"] > 0.66 and d["st"] != "riviere"]
     for nom, fs in (("amont", amont), ("aval", aval)):
         if fs:
-            print("  %-6s      %2d îlots · aléa moyen %.2f · fragilité %.2f"
-                  % (nom, len(fs),
-                     sum(ilots[f]["alea"] for f in fs) / len(fs),
+            print("  %-6s      %2d îlots · %4d logements · fragilité %.2f"
+                  % (nom, len(fs), sum(ilots[f]["logements"] for f in fs),
                      sum(ilots[f]["riverain"] for f in fs) / len(fs)))
 
     print("\n  LES QUATRE PLAIES DE 1965, RELUES DANS LES DONNÉES")
@@ -649,23 +645,12 @@ def main():
         d = ilots[fid]
         print("    %-24s îlot %-3d rive %-7s fil %.2f · %3.0f m de l'eau"
               % (nom, fid, d["rive"], d["fil"], d["dist_eau"]))
-        print("    %-24s aléa %.2f · %d places · fragilité %.2f"
-              % ("", d["alea"], d["stationnement"], d["riverain"]))
+        print("    %-24s %d places · fragilité %.2f"
+              % ("", d["stationnement"], d["riverain"]))
 
-    # 🔄 La crue se lisait en HAUTEUR D'EAU (+2, +3, +4 m) sur un terrain qui
-    # montait. La carte est plate : elle se lit maintenant en DISTANCE depuis
-    # la berge — jusqu'où l'eau pousse dans la ville.
-    print("\n  SI LE JEU S'OUVRAIT SUR UNE CRUE (brainstorm §1 — non arrêté) :")
-    for m in CRUES:
-        touches = [f for f, d in ilots.items()
-                   if d["st"] not in ("riviere", "champ") and d["dist_eau"] < m]
-        log = sum(ilots[f]["logements"] for f in touches)
-        frag = ([ilots[f]["riverain"] for f in touches if ilots[f]["logements"]]
-                or [0])
-        print("    %3.0f m de la berge : %2d îlots · %4d logements (%2.0f %%)"
-              " · fragilité %.2f"
-              % (m, len(touches), log, 100.0 * log / max(1, tot_log),
-                 sum(frag) / len(frag)))
+    # 🔄 IL Y AVAIT ICI le tableau « si le jeu s'ouvrait sur une crue » — trois
+    # hauteurs d'eau, les logements et la fragilité touchés. La crue sort du
+    # prototype le 2026-08-12 ; le tableau part avec elle.
 
     print("\nLES RUES")
     print("  %-12s %3s %8s %8s %8s %6s"
