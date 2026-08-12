@@ -238,27 +238,28 @@ PART_JARDINS_ARBORES = 0.55   # parmi les jardins verts, ceux qui ont un arbre
 # écrase tout le reste.
 FAITAGE_MAX = 5.5
 
-# 🏠 QUAND UNE EMPREINTE NE SAIT PAS PORTER UN TOIT PROPRE, ELLE PREND UN TOIT
-# PLAT. C'est une règle de repli assumée, pas un échec : un toit plat sur une
-# empreinte tordue se lit comme un toit-terrasse, alors qu'un toit à deux
-# pentes sur la même empreinte se lit comme une erreur — pans vrillés, arêtes
-# qui se croisent, faîtage qui sort du bâtiment.
+# 🔄 IL Y AVAIT ICI UNE RÈGLE DE REPLI — « quand l'empreinte ne sait pas porter
+# un toit propre, toit plat » — et elle a été RETIRÉE le 2026-08-12, le jour
+# même, après l'avoir regardée à l'écran : l'auteur a préféré l'image d'avant.
 #
-# Quatre défauts, dans l'ordre où on les teste. Chacun est COMPTÉ et imprimé :
-# si l'un d'eux explose, c'est la recette du faîtage qu'il faut revoir, pas le
-# seuil.
-#   concave        un versant peut repartir en arrière dans un renfoncement,
-#                  et le pan qu'il porte se retourne
-#   pointe         un sommet trop aigu donne deux pans qui se croisent près de
-#                  l'arête ; `_ecorner` en coupe la plupart, pas toutes
-#   sans profondeur  l'empreinte est trop mince EN TRAVERS du faîtage : le toit
-#                  n'a pas la place de monter, il ferait une arête posée sur un
-#                  mur
-#   pan vrillé     les quatre coins d'un pan ne sont pas dans un plan. Au-delà
-#                  d'un pli de GAUCHISSEMENT_MAX, ça se voit comme un froissé
-ANGLE_TOIT_MIN = 40.0        # degrés — sous cet angle intérieur, toit plat
-PROFONDEUR_TOIT_MIN = 5.0    # m — largeur de l'empreinte en travers du faîtage
-GAUCHISSEMENT_MAX = 0.35     # m — pli toléré sur un pan avant de renoncer
+# Ce qu'elle faisait, pour qui voudrait la refaire (elle est dans git, commit
+# « Toit plat quand l'empreinte ne sait pas porter deux pentes ») : elle
+# mesurait le PLI d'un pan de toit — l'écart entre les deux diagonales du
+# quadrilatère, nul dès que le pan est plan — et posait un toit plat au-delà
+# d'un seuil. À 0,35 m, 381 bâtiments sur 702 basculaient au toit plat ; la
+# médiane du pli était de 55 cm, le 9e décile de 1,89 m, le pire de 2,59 m.
+# La distribution est CONTINUE, sans décrochement : il n'y avait pas de seuil
+# à trouver, seulement un curseur entre une ville qui a des toits et une ville
+# dont les toits sont propres. L'auteur a choisi la première.
+#
+# Deux choses valent d'être gardées de cet essai :
+#   · la bonne mesure du pli est l'écart entre les DEUX DIAGONALES. « La
+#     distance du 4e sommet au plan des trois autres » est fausse : sur un
+#     pignon, les deux sommets du faîtage se confondent presque, le plan de
+#     base est une lame, et 574 bâtiments sur 702 se déclaraient vrillés ;
+#   · le critère « angle trop aigu » ne se déclenchait JAMAIS. `_ecorner` coupe
+#     déjà tout ce qui passe sous 70°, et le plus petit angle de la ville est
+#     70,2°. Le problème des pointes était réglé en amont.
 
 # Combien de pans de toit ont dû être retournés à l'émission. Ce n'est pas une
 # erreur — c'est la mesure de à quel point la recette du faîtage doit être
@@ -271,14 +272,6 @@ retournes = [0]
 pointes = [0, 0]        # [sommets coupés, empreintes touchées]
 rectangles = [0]        # volumes ramenés à une boîte
 minces = [0]            # empreintes trop fines, rendues au jardin
-# Pourquoi une empreinte a renoncé au toit à deux pentes — un compteur par
-# défaut, dans l'ordre de `RAISONS_PLAT`.
-plats_faute = {}
-RAISONS_PLAT = ["concave", "pointe", "sans profondeur", "pan vrillé"]
-# Le pli du pire pan, empreinte par empreinte, pour celles qui sont allées
-# jusque-là. C'est la distribution qui dit si GAUCHISSEMENT_MAX est un seuil ou
-# un couperet.
-plis = []
 
 # Une arête de parcelle dont le milieu est à moins de ça du bord de l'emprise
 # donne sur la rue. Tout le reste est partagé avec une parcelle voisine — la
@@ -770,21 +763,17 @@ def main():
                 n_pate += 1
                 pente = 0.0
             for emp, niv, faite in volumes:
-                # 🏠 LA DÉCISION DU TOIT, prise ici et une seule fois. Une
-                # empreinte qui ne sait pas porter deux pentes propres prend un
-                # toit plat, et on garde POURQUOI — c'est le seul moyen de
-                # savoir, la fois d'après, si c'est le seuil ou la recette qu'il
-                # faut reprendre.
+                # ⚠️ TOIT À DEUX PENTES SUR EMPREINTE CONVEXE SEULEMENT, et
+                # c'est une limite du procédé, pas une préférence. Sur une
+                # empreinte concave, une arête d'égout peut repartir en arrière
+                # dans un renfoncement et le versant qu'elle porte se retourne.
                 pente_v = 0.0
                 if pente > 0.0:
-                    raison = ("sans faîtage" if faite is None
-                              else _defaut_toit(emp, 0.0, pente, faite))
-                    if raison:
-                        plats_faute[raison] = plats_faute.get(raison, 0) + 1
-                        n_plat_force += 1
-                    else:
+                    if faite is not None and _convexe(emp):
                         pente_v = pente
                         n_pentu += 1
+                    else:
+                        n_plat_force += 1
                 # La surface de toit se compte VOLUME PAR VOLUME, avec la pente
                 # de ce volume-là : un toit plat ne porte pas les 1,4 m² de
                 # couverture par m² d'emprise d'un toit à 45°. C'est ce nombre
@@ -863,21 +852,8 @@ def main():
         print("  toits : %.1f ha de surface réelle (pente comprise)"
               % (toit_total / 1e4))
         print("        %d à deux pentes · %d plats par dessin (le tissu les"
-              " veut plats) · %d plats faute d'empreinte"
+              " veut plats) · %d plats faute d'empreinte convexe"
               % (n_pentu, n_vol - n_pentu - n_plat_force, n_plat_force))
-        # 🏠 POURQUOI on a renoncé, défaut par défaut. Si une ligne enfle, c'est
-        # la recette du faîtage qu'il faut reprendre, pas le seuil.
-        for r in (RAISONS_PLAT
-                  + [x for x in sorted(plats_faute) if x not in RAISONS_PLAT]):
-            if plats_faute.get(r):
-                print("           · %-16s %4d  (%.0f %% des bâtiments)"
-                      % (r, plats_faute[r], 100.0 * plats_faute[r] / n_vol))
-        if plis:
-            q = sorted(plis)
-            print("        pli des pans : médiane %.0f cm · 9e décile %.0f cm"
-                  " · pire %.2f m  (on renonce au-delà de %.2f m)"
-                  % (100 * q[len(q) // 2], 100 * q[int(0.9 * (len(q) - 1))],
-                     q[-1], GAUCHISSEMENT_MAX))
         if n_deborde:
             print("        ⚠️  %d bâtiments sur %d débordent de leur parcelle,"
                   " jusqu'à %.1f m" % (n_deborde, n_vol, deb_max))
@@ -1149,13 +1125,12 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None):
         if L > 1e-9 and (nn[0] * dy + nn[2] * dx) / L > 0.9:
             ok += 1
 
-    # ⚠️ TOIT À DEUX PENTES SEULEMENT SI L'EMPREINTE SAIT LE PORTER, et c'est
-    # une limite du procédé, pas une préférence. Le tri est fait en amont par
-    # `_defaut_toit` : ici, une pente nulle veut dire « on a renoncé », et le
-    # bâtiment prend un toit plat — la triangulation du dessus, ci-dessous.
-    if pente and pente > 0.0 and faitage is not None:
-        h, t = _toit(m, _plan_toit(anneau, y_haut, pente, faitage),
-                     y_haut, coul, G)
+    # ⚠️ TOIT PENTU SUR EMPREINTE CONVEXE SEULEMENT. Mesuré : 93 % des
+    # empreintes le sont, les 7 % restantes prennent un toit plat et le compte
+    # s'imprime. La pente est mise à 0 en amont pour les mêmes empreintes, donc
+    # les deux tests disent la même chose — celui-ci est la ceinture.
+    if pente and pente > 0.0 and faitage is not None and _convexe(anneau):
+        h, t = _toit(m, anneau, y_haut, pente, faitage, coul, G)
         return ok, n, h, t
 
     haut_ok = 0
@@ -1171,8 +1146,8 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None):
     return ok, n, haut_ok, len(tris)
 
 
-def _plan_toit(anneau, y_egout, pente, faitage):
-    """L'OSSATURE du toit, calculée avant d'être émise.
+def _toit(m, anneau, y_egout, pente, faitage, coul, G):
+    """Un toit à deux pentes, sans un seul asset.
 
     LA RECETTE, et c'est tout : on pose une DROITE DE FAÎTAGE au milieu de
     l'empreinte, parallèle à la rue, puis chaque sommet de l'égout est relié à
@@ -1191,10 +1166,6 @@ def _plan_toit(anneau, y_egout, pente, faitage):
     ⚠️ Le faîtage est parallèle à la RUE, pas à l'axe long de l'empreinte. Sur
     une maison de ville plus profonde que large, l'axe long est perpendiculaire
     à la rue : le toit partirait de travers, et toute une rangée avec.
-
-    🔎 Cette fonction ne dessine rien : elle rend de quoi JUGER le toit avant de
-    l'écrire (`_defaut_toit`) et de quoi l'écrire ensuite (`_toit`). C'est ce
-    dédoublement qui permet de renoncer proprement et de poser un toit plat.
     """
     ux, uy = faitage
     vx, vy = -uy, ux                        # perpendiculaire, vers la profondeur
@@ -1228,17 +1199,7 @@ def _plan_toit(anneau, y_egout, pente, faitage):
         if (sa > 1e-9 and sb < -1e-9) or (sa < -1e-9 and sb > 1e-9):
             t = sa / (sa - sb)
             fendu.append((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
-
-    return {"anneau": fendu, "faite": [sur_faitage(p) for p in fendu],
-            "y_fait": y_fait, "centre": (ox, oy), "demi": demi}
-
-
-def _toit(m, plan, y_egout, coul, G):
-    """Le toit à deux pentes, émis. L'ossature vient de `_plan_toit`."""
-    anneau = plan["anneau"]
-    faites = plan["faite"]
-    y_fait = plan["y_fait"]
-    ox, oy = plan["centre"]
+    anneau = fendu
 
     # Le contrôle d'orientation d'un toit ne peut pas se faire par cas — un
     # versant regarde le ciel, un pignon regarde de côté, et entre les deux il
@@ -1251,7 +1212,7 @@ def _toit(m, plan, y_egout, coul, G):
     n = len(anneau)
     for i in range(n):
         a, b = anneau[i], anneau[(i + 1) % n]
-        ra, rb = faites[i], faites[(i + 1) % n]
+        ra, rb = sur_faitage(a), sur_faitage(b)
         pa = G(a[0], a[1], y_egout)
         pb = G(b[0], b[1], y_egout)
         qa = G(ra[0], ra[1], y_fait)
@@ -1272,95 +1233,6 @@ def _toit(m, plan, y_egout, coul, G):
             tot += 1
             ok += 1
     return ok, tot
-
-
-def _defaut_toit(anneau, y_egout, pente, faitage):
-    """Cette empreinte sait-elle porter un toit à deux pentes PROPRE ?
-
-    Renvoie "" si oui, sinon le nom du défaut. C'est LE point d'entrée de la
-    règle de repli : tout ce qui sort d'ici avec un nom prend un toit plat.
-
-    On teste dans l'ordre du moins cher au plus cher, et surtout du plus
-    général au plus fin : la forme vue de dessus d'abord (convexité, pointes),
-    la forme du toit ensuite (profondeur, pli des pans).
-    """
-    if not _convexe(anneau):
-        return "concave"
-    if _angle_min(anneau) < ANGLE_TOIT_MIN:
-        return "pointe"
-    plan = _plan_toit(anneau, y_egout, pente, faitage)
-    if 2.0 * plan["demi"] < PROFONDEUR_TOIT_MIN:
-        return "sans profondeur"
-    pli = _gauchissement(plan, y_egout)
-    plis.append(pli)
-    if pli > GAUCHISSEMENT_MAX:
-        return "pan vrillé"
-    return ""
-
-
-def _angle_min(anneau):
-    """Le plus petit angle intérieur de l'empreinte, en degrés."""
-    n = len(anneau)
-    pire = 180.0
-    for i in range(n):
-        p0, p, p1 = anneau[(i - 1) % n], anneau[i], anneau[(i + 1) % n]
-        ax, ay = p0[0] - p[0], p0[1] - p[1]
-        bx, by = p1[0] - p[0], p1[1] - p[1]
-        la, lb = math.hypot(ax, ay), math.hypot(bx, by)
-        if la < 1e-9 or lb < 1e-9:
-            continue
-        cos = max(-1.0, min(1.0, (ax * bx + ay * by) / (la * lb)))
-        pire = min(pire, math.degrees(math.acos(cos)))
-    return pire
-
-
-def _gauchissement(plan, y_egout):
-    """De combien le pire pan de toit sort-il de son propre plan, en mètres.
-
-    Un pan est un quadrilatère : deux sommets sur l'égout, deux sur le faîtage.
-    Rien ne garantit que ses quatre coins soient coplanaires — et quand ils ne
-    le sont pas, la surface se plie. `_decouper_quad` sait rattraper un pli de
-    quelques centimètres en éclatant le quad en éventail ; au-delà, le pli se
-    VOIT, et c'est un toit plat qu'il faut.
-
-    Un pignon ne compte pas : ses deux sommets se projettent au même point du
-    faîtage, le quad s'écrase en triangle, et un triangle est toujours plan.
-    """
-    anneau, faites = plan["anneau"], plan["faite"]
-    y_fait = plan["y_fait"]
-    pire = 0.0
-    n = len(anneau)
-    for i in range(n):
-        a, b = anneau[i], anneau[(i + 1) % n]
-        ra, rb = faites[i], faites[(i + 1) % n]
-        pire = max(pire, _hors_plan(
-            (a[0], a[1], y_egout), (b[0], b[1], y_egout),
-            (rb[0], rb[1], y_fait), (ra[0], ra[1], y_fait)))
-    return pire
-
-
-def _hors_plan(p0, p1, p2, p3):
-    """Le PLI d'un quadrilatère : la distance entre ses deux diagonales.
-
-    🔴 Première mesure essayée, et fausse : « la distance du quatrième sommet
-    au plan des trois autres ». Sur un pignon, les deux sommets du faîtage se
-    confondent presque, le plan de base est une lame, et la mesure part en
-    vrille alors que le pan, lui, est un triangle parfaitement plat. 574
-    bâtiments sur 702 se déclaraient vrillés.
-
-    Deux diagonales se coupent si et seulement si les quatre points sont
-    coplanaires. Leur écart est donc le pli, il vaut zéro sur un triangle, et il
-    ne dépend d'aucune base bien conditionnée."""
-    ux, uy, uz = (p2[k] - p0[k] for k in range(3))
-    vx, vy, vz = (p3[k] - p1[k] for k in range(3))
-    nx = uy * vz - uz * vy
-    ny = uz * vx - ux * vz
-    nz = ux * vy - uy * vx
-    L = math.sqrt(nx * nx + ny * ny + nz * nz)
-    if L < 1e-9:                       # diagonales parallèles : pas de pli
-        return 0.0
-    wx, wy, wz = (p1[k] - p0[k] for k in range(3))
-    return abs(wx * nx + wy * ny + wz * nz) / L
 
 
 def _vers_dehors(tri, coeur):

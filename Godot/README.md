@@ -1,8 +1,9 @@
 # Godot — Wehrau, une ville
 
 On clique un îlot ou une rue, on lit sa fiche, et vingt ans passent. La ville
-est faite de **690 bâtiments sur 968 parcelles**, avec ses cours, ses rangs de
-maisons mitoyennes et ses toits à deux pentes.
+est faite de **702 bâtiments sur 1 003 parcelles**, avec ses cours, ses rangs de
+maisons mitoyennes et ses toits à deux pentes. Elle est posée sur une **carte
+plate**, coupée en deux par le **chenal de l'Ilse**.
 
 ⚠️ **Il n'y a plus de décision à prendre, et c'est voulu.** Le 2026-08-12,
 l'auteur a réduit le prototype à *« la ville en 3D et le système énergie »*
@@ -342,67 +343,54 @@ tombent dans **le même groupe de maillage** : la géométrie descend à la
 parcelle, la sélection reste à l'îlot. Toujours ~237 nœuds cliquables. La
 parcelle est l'entité persistante des **données** (35), pas celle du clic.
 
-### 🏠 Un toit à deux pentes seulement si l'empreinte sait le porter
+### 🏠 Le toit plat de repli : essayé le 2026-08-12, puis retiré
 
-Demandé par l'auteur le 2026-08-12 : *« quand la surface est trop difficile
-pour avoir un toit propre, fait un toit plat »*. C'est une **règle de repli**,
-pas un échec : un toit plat sur une empreinte tordue se lit comme un
-toit-terrasse, alors qu'un toit à deux pentes sur la même empreinte se lit
-comme une erreur.
+Demandé, écrit, regardé, retiré **le même jour** — et c'est la bonne façon de
+s'en servir. La demande était : *« quand la surface est trop difficile pour
+avoir un toit propre, fait un toit plat »*. Devant l'image, l'auteur a préféré
+**les toits d'avant** : une ville qui a des toits, même froissés, plutôt qu'une
+ville dont les toits sont propres et plats.
 
-**Ce qu'on mesure, et c'est le cœur de l'affaire : le PLI d'un pan.** Un pan de
-toit est un quadrilatère — deux sommets à l'égout, deux au faîtage — et rien ne
-garantit que ses quatre coins soient dans un même plan. Le pli, c'est l'écart
-entre les deux diagonales du quadrilatère : il vaut **zéro** dès que le pan est
-plan, et il ne dépend d'aucun repère bien choisi. Au-delà de **0,35 m**, on
-renonce.
+Ce qui a été mesuré au passage mérite d'être gardé, parce que c'est vrai que la
+règle soit branchée ou non :
 
-🐞 **Première mesure essayée, et fausse** : « la distance du quatrième sommet au
-plan des trois autres ». Sur un pignon, les deux sommets du faîtage se
-confondent presque, le plan de base est une lame, et la mesure part en vrille
-alors que le pan est un triangle parfaitement plat. **574 bâtiments sur 702 se
-déclaraient vrillés.**
+- **Le bon critère est le PLI d'un pan** — l'écart entre les deux diagonales du
+  quadrilatère, nul dès que le pan est plan. Médiane **55 cm**, 9ᵉ décile
+  **1,89 m**, pire **2,59 m**. La distribution est **continue, sans
+  décrochement** : il n'y a pas de seuil à trouver, seulement un curseur.
+- 🐞 **La mesure évidente est fausse.** « La distance du 4ᵉ sommet au plan des
+  trois autres » : sur un pignon, les deux sommets du faîtage se confondent
+  presque, le plan de base est une lame, et **574 bâtiments sur 702** se
+  déclaraient vrillés alors que leur pan était un triangle parfaitement plat.
+- 🎯 **Le critère « angle trop aigu » ne se déclenche jamais.** `_ecorner` coupe
+  déjà tout ce qui passe sous 70°, et le plus petit angle de la ville est
+  **70,2°**. Le problème des pointes était réglé en amont ; celui qui restait
+  était le pli.
 
-| Pourquoi on renonce | Combien |
-|---|---|
-| **pan vrillé** (pli > 0,35 m) | **381** |
-| **concave** — un versant peut repartir en arrière dans un renfoncement | **50** |
-| **sans profondeur** — moins de 5 m en travers du faîtage | **3** |
-| **pointe** — un angle intérieur sous 40° | **0**, et c'est un résultat : `_ecorner` coupe déjà tout ce qui passe sous 70°, le plus petit angle de la ville est **70,2°**. Le problème des angles aigus était déjà réglé en amont ; celui qui restait était le pli |
+Pour la refaire : elle est dans git, commit *« Toit plat quand l'empreinte ne
+sait pas porter deux pentes »*. À 0,35 m de pli toléré, 381 bâtiments
+basculaient au toit plat.
 
-**Résultat : 250 toits à deux pentes, 434 plats faute d'empreinte, 18 plats
-parce que le tissu les veut plats.** Le seuil est **un cadran**, et le voici :
+### Les trois défauts connus, imprimés à chaque export
 
-| pli toléré | toits à deux pentes |
-|---|---|
-| aucun seuil | 631 — mais des toits froissés, des pics de tente, des surfaces qui se plient |
-| 0,35 m *(retenu)* | **250** |
-| 0,80 m | ~375 |
-| 1,20 m | ~460 |
-
-**Une distribution continue, sans décrochement** : il n'y a pas de seuil
-« juste » à trouver, seulement un curseur entre une ville qui a des toits et
-une ville dont les toits sont propres. Il se change en une ligne
-(`GAUCHISSEMENT_MAX` en haut de `07`), et le contrôle imprime à chaque export la
-médiane, le 9ᵉ décile et le pire pli.
-
-### Les deux défauts connus, imprimés à chaque export
+Ils sont dans la console de `07`, pas dans un coin de tête :
 
 | Le défaut | Aujourd'hui |
 |---|---|
-| **194 pans réorientés** à l'émission (4 %, contre 794 avant) | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau. ⚠️ Donc la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve rien — c'est le nombre de réorientations qui informe |
+| **50 empreintes concaves** prennent un toit plat | la recette du faîtage suppose qu'un versant avance dans un seul sens ; sur une empreinte concave il se retourne |
+| **791 pans réorientés** à l'émission (7 %) | l'orientation d'un toit est **calculée**, pas déduite du parcours de l'anneau. ⚠️ Donc la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve rien — c'est le nombre de réorientations qui informe |
 | **17 bâtiments mordent sur la rue**, jusqu'à 5,5 m | pic de mitre sur angle rentrant. Borné par le recul du tissu, sans commune mesure avec les 258 m de la session 9, mais à reprendre |
 
 🔗 **L'interface du toit** (41 · 64) est posée : chaque îlot expose
-`toit_m2` (surface réelle, pente comprise — **10,5 ha**), `toit_pente` et
+`toit_m2` (surface réelle, pente comprise — **11,7 ha**), `toit_pente` et
 `toit_plat`. L'ombrage était déjà là, c'est `canopee`. Le code d'énergie lira
 ces quatre nombres **sans savoir** si c'est le générateur ou une table de
 coefficients qui les produit — c'est ce qui fait qu'il ne l'attend pas.
 
-⚠️ **`toit_m2` a baissé de 11,9 à 10,5 ha**, et ce n'est pas une perte : la
+⚠️ **`toit_m2` est passé de 11,9 à 11,7 ha**, et ce n'est pas une perte : la
 surface se compte maintenant **volume par volume**, avec la pente de ce
-volume-là. Un bâtiment tombé au toit plat comptait avant pour l'emprise étirée
-de son tissu. C'est le nombre que l'énergie viendra lire ; il vaut mieux qu'il
+volume-là. Les 50 bâtiments à toit plat comptaient avant pour l'emprise étirée
+de leur tissu. C'est le nombre que l'énergie viendra lire ; il vaut mieux qu'il
 soit juste.
 
 ## 🟠 Les chiffres qui attendent ton œil
