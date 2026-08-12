@@ -95,6 +95,10 @@ COLS_ROUTES = ["fid", "hierarchie", "largeur_m", "emprise_libre_m", "charge",
 # Ce qui part dans `objets` : la fiche qu'on lit en cliquant, et l'état de
 # départ du noyau. Tout ce qui n'est pas là ne peut ni s'afficher ni évoluer.
 FICHE_ILOTS = [c for c in COLS_ILOTS if c != "fid"]
+# 🔗 L'interface du toit (41 · 64), calculée et non lue dans le `.gpkg` :
+# surface réelle, pente, et le drapeau « toit plat ». L'ombrage, lui, est déjà
+# là — c'est `canopee`.
+TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat"]
 FICHE_ROUTES = [c for c in COLS_ROUTES if c != "fid"] + ["longueur_m"]
 
 # La canopée d'un tronçon PLANTÉ DE BOUT EN BOUT — un arbre tous les
@@ -127,21 +131,37 @@ CANOPEE_ALIGNEMENT_MAX = 0.40
 #               réécrire.
 #   profondeur  au-delà, ce n'est plus la maison, c'est la cour ou le jardin.
 #               C'est ce nombre qui creuse les cœurs d'îlot.
+#   pente       du toit, en montée par mètre d'avancée. 0 = TOIT PLAT.
+#               Le faîtage court PARALLÈLEMENT À LA RUE, jamais selon l'axe
+#               long de l'empreinte : sur une maison de ville plus profonde
+#               que large, l'axe long est perpendiculaire à la rue et le toit
+#               partirait de travers.
 #
 # ⚠️ PROPOSITION, à corriger devant l'image. Le contrôle n'est pas « est-ce que
 # le nombre est juste » mais « est-ce qu'on croirait y habiter ».
 BATI = {
-    #  sous_type              recul   jeu  profondeur
-    "coeur_ancien":            (0.0,  0.0,   11.0),   # sur rue, mitoyen, cour derrière
-    "maisons_de_ville":        (1.5,  0.0,   11.0),   # mitoyen, petit jardin
-    "front_commercant":        (0.0,  0.0,   13.0),   # sur rue, vitrines
-    "pavillonnaire":           (5.0,  2.8,   10.0),   # détaché, jardin devant et derrière
-    "barre_1970":              (6.0,  5.0,   13.0),   # posée dans son espace libre
-    "equipement":              (4.0,  3.0,   26.0),
-    "dalle_commerciale":       (2.0,  2.0,   55.0),   # un hangar, pas une maison
-    "friche_industrielle":     (3.0,  2.5,   38.0),   # des halles
+    #  sous_type              recul   jeu  profondeur  pente
+    "coeur_ancien":            (0.0,  0.0,   11.0,     1.00),  # sur rue, mitoyen, cour derrière
+    "maisons_de_ville":        (1.5,  0.0,   11.0,     0.85),  # mitoyen, petit jardin
+    "front_commercant":        (0.0,  0.0,   13.0,     0.70),  # sur rue, vitrines
+    "pavillonnaire":           (5.0,  2.8,   10.0,     0.60),  # détaché, jardins
+    "barre_1970":              (6.0,  5.0,   13.0,     0.00),  # toit plat, 1974
+    "equipement":              (4.0,  3.0,   26.0,     0.25),
+    "dalle_commerciale":       (2.0,  2.0,   55.0,     0.00),  # un hangar
+    "friche_industrielle":     (3.0,  2.5,   38.0,     0.00),  # des halles
 }
-BATI_DEFAUT = (2.0, 1.0, 14.0)
+BATI_DEFAUT = (2.0, 1.0, 14.0, 0.50)
+
+# Un faîtage ne monte jamais plus haut que ça, quelle que soit la pente. Sans
+# ce plafond, une empreinte profonde se coiffe d'un chapeau de dix mètres qui
+# écrase tout le reste.
+FAITAGE_MAX = 5.5
+
+# Combien de pans de toit ont dû être retournés à l'émission. Ce n'est pas une
+# erreur — c'est la mesure de à quel point la recette du faîtage doit être
+# corrigée après coup. Si ce nombre s'envole, c'est la recette qu'il faut
+# revoir, pas le compteur.
+retournes = [0]
 
 # Une arête de parcelle dont le milieu est à moins de ça du bord de l'emprise
 # donne sur la rue. Tout le reste est partagé avec une parcelle voisine — la
@@ -564,6 +584,10 @@ def main():
     arbres = []
     n_masse = n_sol = n_eau = 0
     n_parc = n_vol = n_pate = 0
+    n_pentu = n_plat_force = 0
+    n_deborde = 0
+    deb_max = 0.0
+    toit_total = 0.0
     canopee_perdue = 0.0
     murs_ok = murs_tot = toits_ok = toits_tot = 0
 
@@ -594,23 +618,51 @@ def main():
             # 1 200 nœuds cliquables : la géométrie descend à la parcelle, la
             # SÉLECTION reste à l'îlot — et la décision aussi. La parcelle est
             # l'entité persistante des données (35), pas celle du clic.
+            pente = BATI.get(st, BATI_DEFAUT)[3]
             volumes = []
             if d["parcelles"]:
                 idx = _index_bord(an)
                 for p in d["parcelles"]:
-                    for emp in _empreinte_batie(p["anneau"], st, idx):
-                        volumes.append((emp, p["niveaux"]))
+                    for emp, faite in _empreinte_batie(p["anneau"], st, idx):
+                        volumes.append((emp, p["niveaux"], faite))
                 n_parc += len(d["parcelles"])
                 n_vol += len(volumes)
             if not volumes:
-                volumes = [(an, haut)]        # repli : le pâté plein d'avant
+                volumes = [(an, haut, None)]   # repli : le pâté plein d'avant
                 n_pate += 1
-            for emp, niv in volumes:
-                a, b, c, e = _masse(masses, emp, d, terrain, coul, G, niv)
+                pente = 0.0
+            for emp, niv, faite in volumes:
+                if pente > 0.0:
+                    if faite is not None and _convexe(emp):
+                        n_pentu += 1
+                    else:
+                        n_plat_force += 1
+                deb = _debordement(emp, d["parcelles"])
+                if deb > 0.5:
+                    n_deborde += 1
+                    deb_max = max(deb_max, deb)
+                a, b, c, e = _masse(masses, emp, d, terrain, coul, G, niv,
+                                    pente, faite)
                 murs_ok += a
                 murs_tot += b
                 toits_ok += c
                 toits_tot += e
+            # 🔗 L'INTERFACE DU TOIT — décisions 41 et 64.
+            # Un objet bâti expose quatre nombres : surface de toit, pente,
+            # orientation, ombrage. Aujourd'hui c'est le générateur de
+            # parcelles qui les produit ; avant lui, une table de coefficients
+            # par `sous_type` en tenait lieu. 🔴 Le code d'énergie ne doit
+            # jamais savoir lequel des deux parle — c'est ce qui fait que
+            # l'énergie n'attend pas la 3D (64b).
+            #   `toit_m2` est la surface RÉELLE, pente comprise : un toit à
+            #   45° porte 1,41 fois l'emprise qu'il couvre, et c'est cette
+            #   surface-là qu'on couvrirait de panneaux.
+            emprise_sol = sum(abs(D4C.aire_signee(e)) for e, _, _ in volumes)
+            etirement = math.hypot(1.0, pente) if pente > 0.0 else 1.0
+            d["toit_m2"] = round(emprise_sol * etirement, 1)
+            d["toit_pente"] = round(pente, 2)
+            d["toit_plat"] = 1 if pente <= 0.0 else 0
+            toit_total += d["toit_m2"]
             # La canopée d'un îlot bâti n'est pas représentable dans une
             # maquette de masses : le pâté est plein, il n'y a pas de sol
             # visible dessous. On la compte pour le dire, pas pour la cacher.
@@ -625,13 +677,39 @@ def main():
     if n_parc:
         print("  parcelles %d → %d volumes bâtis  (%d enclavées : cour ou jardin)"
               % (n_parc, n_vol, n_parc - n_vol))
+        # 🔗 Ce que l'énergie viendra lire. À imprimer maintenant, parce que
+        # c'est le seul moment où on peut encore dire « ce chiffre est faux »
+        # avant qu'une décision de jeu s'appuie dessus.
+        print("  toits : %.1f ha de surface réelle (pente comprise)"
+              % (toit_total / 1e4))
+        print("        %d à deux pentes · %d plats par dessin · %d plats faute"
+              " d'empreinte convexe" % (n_pentu, n_vol - n_pentu - n_plat_force,
+                                        n_plat_force))
+        if n_deborde:
+            print("        ⚠️  %d bâtiments sur %d débordent de leur parcelle,"
+                  " jusqu'à %.1f m" % (n_deborde, n_vol, deb_max))
+            print("           pic de mitre sur angle rentrant — borné par le recul"
+                  " du tissu, à reprendre")
+        plats = [f for f, x in ilots.items() if x.get("toit_plat")]
+        print("        dont %d îlots à toit plat — barre, dalle, friches"
+              % len(plats))
     if n_pate:
         print("  ⚠️  %d îlots ressortent en pâté plein — pas de parcelle, ou"
               " aucune n'a produit de volume" % n_pate)
     print("  triangles : masses %d, sols %d, eau %d"
           % (len(masses), len(sols), len(eau)))
-    print("  sens des faces : murs vers l'extérieur %d/%d · toits vers le haut %d/%d"
+    print("  sens des faces : murs vers l'extérieur %d/%d · toits dehors %d/%d"
           % (murs_ok, murs_tot, toits_ok, toits_tot))
+    # ⚠️ Les deux colonnes ne se lisent PAS de la même façon, et il faut le
+    # savoir pour ne pas se rassurer à bon compte. Pour les MURS, le sens vient
+    # du parcours de l'anneau : le contrôle est réel, et 3 005 sur 3 005 veut
+    # dire quelque chose. Pour les TOITS, l'orientation est calculée à
+    # l'émission, donc la colonne est vraie par construction et ne prouve rien.
+    # Le chiffre qui informe est celui-ci : combien de pans ont dû être
+    # retournés. S'il s'envole, c'est la recette du faîtage qu'il faut revoir.
+    if retournes[0]:
+        print("        %d pans de toit réorientés à l'émission (%.0f %% des toits)"
+              % (retournes[0], 100.0 * retournes[0] / max(toits_tot, 1)))
     if murs_ok != murs_tot or toits_ok != toits_tot:
         raise SystemExit(
             "Faces mal orientées : le culling les ferait disparaître.\n"
@@ -717,7 +795,8 @@ def main():
         },
         # La fiche qu'on lit en cliquant, et l'état de départ du noyau.
         "objets": {
-            "ilots": {str(f): {c: d[c] for c in FICHE_ILOTS}
+            "ilots": {str(f): dict({c: d[c] for c in FICHE_ILOTS},
+                                   **{c: d[c] for c in TOIT_ILOTS if c in d})
                       for f, d in ilots.items()},
             "routes": {str(d["fid"]): {c: d[c] for c in FICHE_ROUTES}
                        for d in routes},
@@ -775,7 +854,8 @@ def _index_bord(anneau, grille=1.0):
     return idx
 
 
-def _masse(m, anneau, d, terrain, coul, G, niveaux=None):
+def _masse(m, anneau, d, terrain, coul, G, niveaux=None, pente=0.0,
+           faitage=None):
     """Un prisme à deux plans horizontaux, base enterrée.
 
     `y_haut` réutilise `altitude_relative`, déjà dans la base : le toit est à
@@ -825,6 +905,17 @@ def _masse(m, anneau, d, terrain, coul, G, niveaux=None):
         if L > 1e-9 and (nn[0] * dy + nn[2] * dx) / L > 0.9:
             ok += 1
 
+    # ⚠️ TOIT PENTU SUR EMPREINTE CONVEXE SEULEMENT, et c'est une limite du
+    # procédé, pas une préférence. La recette du faîtage suppose que chaque
+    # versant est une chaîne d'arêtes qui avance dans un seul sens ; sur une
+    # empreinte concave, une arête d'égout peut repartir en arrière dans un
+    # renfoncement, et le versant qu'elle porte se retourne — il disparaît au
+    # culling. Mesuré : 93 % des empreintes sont convexes, les 7 % restantes
+    # prennent un toit plat et le compte s'imprime.
+    if pente and pente > 0.0 and faitage is not None and _convexe(anneau):
+        h, t = _toit(m, anneau, y_haut, pente, faitage, coul, G)
+        return ok, n, h, t
+
     haut_ok = 0
     tris = trianguler(anneau)
     for ia, ib, ic in tris:
@@ -836,6 +927,180 @@ def _masse(m, anneau, d, terrain, coul, G, niveaux=None):
         if normale(pa, pb, pc)[1] > 0.0:
             haut_ok += 1
     return ok, n, haut_ok, len(tris)
+
+
+def _toit(m, anneau, y_egout, pente, faitage, coul, G):
+    """Un toit à deux pentes, sans un seul asset.
+
+    LA RECETTE, et c'est tout : on pose une DROITE DE FAÎTAGE au milieu de
+    l'empreinte, parallèle à la rue, puis chaque sommet de l'égout est relié à
+    sa propre projection sur cette droite.
+
+    Ce que ça produit tout seul, sans cas particulier :
+      · les deux arêtes le long de la rue donnent les deux versants ;
+      · les deux arêtes de bout donnent des pignons VERTICAUX, parce que leurs
+        deux sommets se projettent au même endroit du faîtage et que le quad
+        s'écrase en triangle ;
+      · deux maisons mitoyennes ont donc deux pignons dans le MÊME plan, celui
+        du mur qu'elles partagent déjà (61) — le joint en toiture entre deux
+        hauteurs différentes se fait tout seul, en décrochement franc. C'est
+        exactement ce que 61 laissait à faire, et ça n'a demandé aucun code.
+
+    ⚠️ Le faîtage est parallèle à la RUE, pas à l'axe long de l'empreinte. Sur
+    une maison de ville plus profonde que large, l'axe long est perpendiculaire
+    à la rue : le toit partirait de travers, et toute une rangée avec.
+    """
+    ux, uy = faitage
+    vx, vy = -uy, ux                        # perpendiculaire, vers la profondeur
+    cx = sum(p[0] for p in anneau) / len(anneau)
+    cy = sum(p[1] for p in anneau) / len(anneau)
+    vs = [(p[0] - cx) * vx + (p[1] - cy) * vy for p in anneau]
+    demi = (max(vs) - min(vs)) / 2.0
+    y_fait = y_egout + min(FAITAGE_MAX, pente * demi)
+    # Le faîtage passe par le milieu de la profondeur, pas par le centroïde :
+    # sur une empreinte de travers le centroïde décentre le toit.
+    mv = (max(vs) + min(vs)) / 2.0
+    ox, oy = cx + vx * mv, cy + vy * mv
+
+    def sur_faitage(p):
+        t = (p[0] - ox) * ux + (p[1] - oy) * uy
+        return (ox + ux * t, oy + uy * t)
+
+    # 🔴 FENDRE L'ANNEAU SUR LA LIGNE DE FAÎTAGE, avant tout le reste.
+    # Une arête d'égout qui TRAVERSE le faîtage donne un quadrilatère plié en
+    # deux : la moitié qui est du bon côté regarde le ciel, l'autre regarde le
+    # sol et disparaît au culling. Mesuré : 519 triangles sur 5 615, soit 9 %
+    # des toits, tous sur des empreintes non rectangulaires. En posant un
+    # sommet à la traversée, plus aucune arête ne chevauche les deux versants.
+    fendu = []
+    n = len(anneau)
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        sa = (a[0] - ox) * vx + (a[1] - oy) * vy
+        sb = (b[0] - ox) * vx + (b[1] - oy) * vy
+        fendu.append(a)
+        if (sa > 1e-9 and sb < -1e-9) or (sa < -1e-9 and sb > 1e-9):
+            t = sa / (sa - sb)
+            fendu.append((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
+    anneau = fendu
+
+    # Le contrôle d'orientation d'un toit ne peut pas se faire par cas — un
+    # versant regarde le ciel, un pignon regarde de côté, et entre les deux il
+    # y a tout le reste. Le seul critère qui vaut pour les trois : la face
+    # tourne-t-elle le dos au CŒUR du bâtiment ? On prend ce cœur au milieu de
+    # la hauteur du toit, et on demande que la normale s'en éloigne.
+    coeur = G(ox, oy, (y_egout + y_fait) / 2.0)
+
+    ok = tot = 0
+    n = len(anneau)
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        ra, rb = sur_faitage(a), sur_faitage(b)
+        pa = G(a[0], a[1], y_egout)
+        pb = G(b[0], b[1], y_egout)
+        qa = G(ra[0], ra[1], y_fait)
+        qb = G(rb[0], rb[1], y_fait)
+        for tri in _decouper_quad(pa, pb, qb, qa, coeur):
+            # 🔴 L'ORIENTATION EST CALCULÉE, PAS DÉDUITE — et c'est la leçon de
+            # la soirée. Pour un MUR, le sens du parcours de l'anneau décide de
+            # l'extérieur, et le vérifier a du sens. Pour un TOIT, non : un
+            # pignon n'est pas un versant, une arête presque perpendiculaire au
+            # faîtage a un sens de parcours arbitraire, et trois recettes
+            # successives ont échoué à le deviner. Le critère « la face tourne
+            # le dos au cœur du bâtiment », lui, est vrai dans tous les cas et
+            # se calcule directement. On l'applique au lieu de l'espérer.
+            if not _vers_dehors(tri, coeur):
+                tri = (tri[0], tri[2], tri[1])
+                retournes[0] += 1
+            m.triangle(tri[0], tri[1], tri[2], coul)
+            tot += 1
+            ok += 1
+    return ok, tot
+
+
+def _vers_dehors(tri, coeur):
+    nn = normale(tri[0], tri[1], tri[2])
+    gx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3.0 - coeur[0]
+    gy = (tri[0][1] + tri[1][1] + tri[2][1]) / 3.0 - coeur[1]
+    gz = (tri[0][2] + tri[1][2] + tri[2][2]) / 3.0 - coeur[2]
+    return nn[0] * gx + nn[1] * gy + nn[2] * gz > 0.0
+
+
+def _decouper_quad(pa, pb, qb, qa, coeur):
+    """Un pan de toit en triangles, sans jamais en retourner un.
+
+    🔴 Le cas qui a coûté la soirée : un pignon dont l'arête n'est pas
+    EXACTEMENT perpendiculaire au faîtage donne un quadrilatère VRILLÉ — ses
+    quatre sommets ne sont pas dans un plan. Coupé en diagonale, une de ses
+    deux moitiés bascule vers le bas et disparaît au culling. Mesuré : 992
+    triangles sur 7 500, et les rectangles n'étaient gauchis que de treize
+    centimètres.
+
+    La sortie : on coupe la diagonale seulement si les deux moitiés tiennent.
+    Sinon on éclate le quadrilatère en quatre triangles autour de son centre —
+    plus cher d'un triangle, mais un éventail autour d'un point ne peut pas se
+    retourner tout seul."""
+    diag = [t for t in ((pa, pb, qb), (pa, qb, qa)) if not _degenere(t)]
+    # Deux moitiés qui ne regardent pas du même côté = le quadrilatère est
+    # VRILLÉ, ses quatre sommets ne sont pas dans un plan. La diagonale
+    # trancherait alors dans le pli ; l'éventail autour du centre, non.
+    if len(diag) == 2 and _vers_dehors(diag[0], coeur) == _vers_dehors(diag[1], coeur):
+        return diag
+    c = tuple(sum(p[k] for p in (pa, pb, qb, qa)) / 4.0 for k in range(3))
+    return [t for t in ((pa, pb, c), (pb, qb, c), (qb, qa, c), (qa, pa, c))
+            if not _degenere(t)]
+
+
+def _debordement(emprise, parcelles):
+    """De combien le bâtiment sort-il de la parcelle qui le porte ?
+
+    🔴 LE DÉFAUT CONNU DU 2026-08-12, et il faut le voir plutôt que le
+    deviner. `retracter` décale chaque arête vers l'intérieur ; sur un angle
+    RENTRANT les deux droites décalées divergent, la limite de mitre remplace
+    le pic par un biseau, et ce biseau peut ressortir du côté de la rue. Le
+    dépassement est borné par le recul du tissu — 5 m en pavillonnaire, 6 m
+    sur la barre — donc sans commune mesure avec les 258 m de la session 9,
+    mais un bâtiment qui mord sur la chaussée reste un bâtiment qui ment.
+
+    On mesure sur la parcelle la PLUS PROCHE : associer chaque empreinte à sa
+    parcelle d'origine demanderait de la traîner dans toute la chaîne, alors
+    que la mesure du pire cas suffit à dire si ça empire."""
+    pire = 0.0
+    for q in emprise:
+        d = min((min(D4C.dist_pt_seg(q, p["anneau"][i],
+                                     p["anneau"][(i + 1) % len(p["anneau"])])
+                     for i in range(len(p["anneau"]))))
+                for p in parcelles) if parcelles else 0.0
+        if d > pire and not any(dedans(p["anneau"], q) for p in parcelles):
+            pire = d
+    return pire
+
+
+def _convexe(anneau, tol=1e-6):
+    """Tous les virages tournent-ils dans le même sens ?"""
+    n = len(anneau)
+    signe = 0
+    for i in range(n):
+        a, b, c = anneau[i], anneau[(i + 1) % n], anneau[(i + 2) % n]
+        cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])
+        if abs(cr) < tol:
+            continue
+        s = 1 if cr > 0 else -1
+        if signe == 0:
+            signe = s
+        elif s != signe:
+            return False
+    return True
+
+
+def _degenere(tri, seuil=1e-7):
+    (ax, ay, az), (bx, by, bz), (cx, cy, cz) = tri
+    ux, uy, uz = bx - ax, by - ay, bz - az
+    vx, vy, vz = cx - ax, cy - ay, cz - az
+    nx = uy * vz - uz * vy
+    ny = uz * vx - ux * vz
+    nz = ux * vy - uy * vx
+    return (nx * nx + ny * ny + nz * nz) < seuil
 
 
 def _sur_rue(parcelle, idx_bord):
@@ -876,7 +1141,7 @@ def _empreinte_batie(parcelle, st, idx_bord):
     Renvoie [] quand il ne reste rien : une parcelle enclavée, sans aucune
     arête sur rue, n'est pas bâtie. C'est comme ça que les cœurs d'îlot se
     creusent, sans qu'on ait à les dessiner."""
-    recul, jeu, prof = BATI.get(st, BATI_DEFAUT)
+    recul, jeu, prof, _pente = BATI.get(st, BATI_DEFAUT)
     rues = _sur_rue(parcelle, idx_bord)
     if not any(rues):
         return []                     # enclavée : cour, jardin, pas de maison
@@ -890,6 +1155,9 @@ def _empreinte_batie(parcelle, st, idx_bord):
     if len(emp) < 3 or abs(D4C.aire_signee(emp)) < 6.0:
         return []
     emp = D4C.ouvrir(emp)
+    emp = D4C.nettoyer(emp)
+    if len(emp) < 3:
+        return []
 
     # La coupe en profondeur, depuis la plus longue arête sur rue. Sans elle,
     # deux rangées dos à dos donnent un bloc plein de 32 m et le cœur d'îlot
@@ -904,12 +1172,13 @@ def _empreinte_batie(parcelle, st, idx_bord):
         if L > best_L:
             best_L, meilleur = L, (a, b)
     if meilleur is None:
-        return [emp]
+        return [(emp, None)]
     a, b = meilleur
     dx, dy = b[0] - a[0], b[1] - a[1]
     L = math.hypot(dx, dy)
     if L < 1e-9:
-        return [emp]
+        return [(emp, None)]
+    rue_dir = (dx / L, dy / L)         # la direction du faîtage
     # Anneau trigonométrique : l'intérieur est à GAUCHE du parcours, donc la
     # normale rentrante vaut (−dy, dx). On garde le côté rue, c'est-à-dire le
     # côté négatif de cette normale.
@@ -924,8 +1193,8 @@ def _empreinte_batie(parcelle, st, idx_bord):
         cy = sum(p[1] for p in m) / len(m)
         if (cx - p0[0]) * (-nx) + (cy - p0[1]) * (-ny) > -0.01 \
                 and abs(D4C.aire_signee(m)) > 6.0:
-            garde.append(D4C.ouvrir(m))
-    return garde if garde else [emp]
+            garde.append((D4C.ouvrir(m), rue_dir))
+    return garde if garde else [(emp, rue_dir)]
 
 
 def _ruban(m, a, b, larg, terrain, coul, G):
