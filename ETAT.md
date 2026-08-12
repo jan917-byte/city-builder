@@ -9,11 +9,19 @@
 
 ## Position dans le plan
 
-🎯 **Phase actuelle : une ville crédible et belle.** L'ordre a changé une seconde fois le 2026-08-12 → `Décisions arrêtées` **51**. D'abord Wehrau qu'on a envie de regarder — **parcelles, toits, trafic, sol**. *Ensuite* chaque indicateur, système et décision repris **un par un**, plus en lot de onze.
+🎯 **Le prototype énergie est la colonne vertébrale.** L'ordre a changé une **troisième** fois le 2026-08-12, tranché par l'auteur → `Décisions arrêtées` **64**. Un thème mené de bout en bout — données, décisions, indicateurs, écran — et tout le reste s'y branche ensuite. La 3D et l'UI avancent **en parallèle, tirées par lui**.
 
-Ce que ça déplace : 49 mettait déjà la ville avant les décisions, mais visait une maquette de masses et posait le seuil à « sentir le lieu ». Le seuil devient **« avoir envie de la regarder, et croire qu'on y habite »**. Ce qu'on regarde aujourd'hui, c'est encore **63 pâtés pleins**.
+Le raisonnement, gardé tel quel : *« ça me donne un aperçu du jeu sans être trop complexe au début, et c'est facilement scalable — je peux rajouter des systèmes petit à petit. »* Une **tranche verticale** : un thème complet vaut mieux que sept thèmes à moitié.
 
-⚠️ **La limite « une semaine, pas de toits » tombe** — 51 fait entrer les toits dans le plan. Le risque qu'elle couvrait, lui, est intact : la 3D avance toujours parce que chaque amélioration se voit. Ce qui la remplace est une règle de production, pas une date → **52** : *si je devais en faire 200, est-ce que je tiendrais ?* Si non, on n'écrit pas l'asset, on écrit le générateur.
+**Ce que ça retire à 51** : son pari avait un critère d'échec nommé — *« perdu si dans six semaines la ville est plus belle et qu'aucune décision de plus n'a été traitée »*. 64 **supprime ce mode d'échec** au lieu de le surveiller. La ville crédible reste au programme, elle cesse d'être un préalable — et ce qu'on regarde aujourd'hui, c'est toujours **63 pâtés pleins**.
+
+**Pourquoi « scalable » est vrai et pas espéré** : la machinerie ne parle pas d'énergie. Un thème suivant, c'est **trois pièces** — une table de coefficients par `sous_type`, une ou deux décisions de nature opposée, un calque par indicateur. **Le prototype énergie n'est pas un exemple, c'est le gabarit.**
+
+🔗 **Les deux pistes ne sont pas parallèles, elles se rejoignent sur le toit.** L'énergie estime aujourd'hui la surface de toit par un coefficient ; le générateur de parcelles la produira pour de vrai. La 3D **alimente** le système, le système **donne au générateur son critère de réussite**. La décision 56 l'avait écrit sans le savoir. L'interface se pose **maintenant** (41) : surface de toit · pente · orientation · ombrage.
+
+🔴 **Trois garde-fous, parce que le parallélisme aggrave le risque de 52 au lieu de l'atténuer** : *si je devais en faire 200, est-ce que je tiendrais ?* (**52**) · **quand les deux pistes se disputent une journée, l'énergie gagne**, et une tâche 3D doit nommer quel écran elle améliore (**64b**) · et surtout **l'énergie n'attend jamais la 3D** — le prototype reste jouable avec les toits estimés quoi qu'il arrive au générateur.
+
+**L'UI n'est pas une troisième piste** : le prototype en est le premier et seul client (**64c**). Il n'y a que deux pistes.
 
 ✅ **La boucle est dans Godot** : on clique un îlot ou une rue, on lit sa fiche, on décide de planter un alignement, et vingt ans passent — les arbres poussent, la canopée monte, la surchauffe baisse, le budget encaisse. → `Godot/README.md` · `Décisions arrêtées` **39c**
 
@@ -38,7 +46,14 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 
 ## Prochaine action concrète
 
-### Phase A — la ville crédible et belle
+### 🔋 Piste 1 — le prototype énergie *(prioritaire)*
+
+0. 🎯 **`PLAN_energie.md`, sous Windows.** Six étapes, de l'export de la surface de toit jusqu'aux contrôles imprimés. **Il n'écrit rien dans le `.gpkg`** — seul `07` est relancé, en lecture — donc il ne concurrence pas le point 1 ci-dessous.
+   ⚠️ **Trois points attendent une décision de l'auteur avant que le code parte** : la régie municipale, l'ajout du capital politique au périmètre, et le nom des quartiers de Wehrau.
+
+### 🎨 Piste 2 — la ville crédible et belle *(tirée par la piste 1)*
+
+Chaque tâche doit nommer **quel écran du prototype elle améliore** → 64b. Les parcelles passent le test : le solaire a besoin de vrais toits.
 
 1. 🔴 **Un passage QGIS, sous Windows, AVANT le générateur de parcelles** — `02` écrase le `.gpkg`, donc toute retouche de carte se fait maintenant ou coûte une chaîne complète plus tard. Une seule tâche : **supprimer deux des cinq franchissements** (tronçons 136, 145, 168, 169, 171 → `Décisions arrêtées` **30c**). Trois contrôles après : le réseau routier reste d'un seul tenant (`03`), le faubourg de rive gauche garde un accès qui n'est pas le quai, et **l'axe de transit peut s'être déplacé** — `--calque=charge` se regarde
 2. 🎯 **La subdivision de l'îlot en parcelles.** Le point dur du pipeline, **2 à 4 semaines** annoncées, et ce qui sépare 63 pâtés d'une ville. ✅ **Ses deux verrous sont levés** : la parcelle est une **partition** de l'emprise, donc le mitoyen sort de la géométrie (**61**), et la parcelle reste l'entité persistante (**35**). 🔴 **Le premier point à vérifier dans le code** : la partition ne doit pas se rejouer quand une seule parcelle change — sinon on ré-effondre le voisinage à chaque clic, comme Townscaper, et 35 tombe avec. → `Technique/Génération procédurale.md`
@@ -47,11 +62,13 @@ Chaque îlot porte 12 attributs, chaque tronçon 4 — et chacun répond à « q
 5. ☐ **Le sol** — un matériau paramétré par `impermeabilise`, `canopee` et l'usure. Trois curseurs qui sont déjà des attributs.
 6. ☐ **La lumière.** ⚠️ **La vallée ne se lit à aucune des quatre exagérations** (constaté le 2026-08-12). 9 m sur 898 m en axonométrie à angle fixe : le facteur n'y peut rien, c'est l'ombre ou la caméra.
 
-### Phase B — un indicateur, un système, une décision à la fois
+### 📋 Le reste — les thèmes suivants, un par un
 
-🆕 **La phase B a maintenant sa liste.** Les indicateurs globaux sont définis : **sept**, plus les deux ressources. → `Systèmes/Indicateurs globaux.md` · `Décisions arrêtées` **53 à 59**
+Les indicateurs globaux sont définis : **sept**, plus les deux ressources. L'énergie est le premier ; les six autres attendent leur tour et reviendront par les trois pièces du gabarit. → `Systèmes/Indicateurs globaux.md` · `Décisions arrêtées` **53 à 59**
 
-Trois contrôles en découlent, à faire dans le classeur avant d'écrire quoi que ce soit dans Godot :
+⚠️ **Le rôle du classeur est à retrancher** : il n'a jamais été étendu à l'énergie, et le recoupement des deux moteurs est suspendu (`PLAN_energie.md` §9 c). Banc d'essai des seuils, ou archive ? Un deuxième moteur à moitié entretenu **ment sans qu'on le sache**.
+
+Les contrôles ci-dessous restent valables, mais **ils ne sont plus le chemin critique** :
 
 7. ☐ 🔴 **Calibrer les deux formules de budget** — recettes ∝ `logements`, charges ∝ mètres de voirie. Le contrôle est nommé : *une stratégie de densification pure ne doit pas s'autofinancer*, sinon le piège de l'exponentielle est rouvert pour de bon. C'est aussi ce qui doit faire **mordre** un budget qui ne mord jamais (418 pts sur 500, +152 de solde, aucune décision refusée).
 8. ☐ **Vérifier que chaque indicateur a un antagoniste.** Ceux qui n'en ont pas sont mal conçus — les bornes sont la ceinture, le frein ce sont les antagonismes.
@@ -67,17 +84,21 @@ Trois contrôles en découlent, à faire dans le classeur avant d'écrire quoi q
 12. ☐ **La deuxième décision dans Godot.** La candidate est **D06 supprimer le stationnement** : c'est elle qui libère l'emprise de D07 et D08, donc c'est elle qui rend la chaîne intéressante. Il ne manque qu'une entrée dans `DECISIONS` de `chantiers.gd` et une portée `voisins` pour le report de charge.
 13. ☐ **`confort_ete` n'existe pas dans le `.gpkg`** et c'est la seule variable de D10, seule décision du thème `energie`. `08_jouer.py` la crée à 0 et le signale ; Godot y répond par la **surchauffe**, dérivée du sol. Soit on la dérive dans `04`, soit D10 s'exprime autrement.
 
-### 🧪 En travers : le test « énergie seule »
+### 🔋 Ce que contient le prototype énergie
 
-🆕 **Un plan de session écrit le 2026-08-12 depuis le Mac, à exécuter sous Windows → [PLAN_energie.md](PLAN_energie.md).** Le jeu réduit à un seul thème : quatre nombres (consommation, production locale, achat, CO2), une décision (poser des panneaux, par îlot), tout le reste masqué mais intact. La question testée : *est-ce qu'une décision qui rapporte de l'argent fait un jeu ?*
+Écrit le 2026-08-12 depuis le Mac → **[PLAN_energie.md](PLAN_energie.md)**. Quatre nombres (consommation, production locale, achat, CO2), **deux décisions de nature opposée**, trois calques, la vue chantiers. Le reste des indicateurs n'est pas éteint : **il n'est pas encore arrivé**.
 
-🎯 **Le plan a changé de centre de gravité en cours d'écriture, sur un apport de l'auteur** : ce qu'on teste n'est pas « une décision qui rapporte de l'argent », c'est ***choisir où investir, et quand*** — *« pour être efficient, il faut investir au bon endroit au bon moment, la base du métier »*. Deux conséquences écrites dans le plan §6 bis : montrer la rentabilité risque de **résoudre** le jeu (on trie du plus vert au plus rouge), donc il faut **deux cartes qui pointent en sens inverse** — l'argent vers les hangars, la légitimité vers le centre — et **le temps qui déplace la carte** (panneau −6 %/an, énergie +2 %/an, donc « pas encore » devient une réponse valide sur les seuls îlots au-delà de ~17 ans).
+🎯 **Le document a changé de nature trois fois en une soirée**, à chaque fois sur un apport de l'auteur : test d'une session → le choix du lieu devient le sujet → **prototype principal** (64).
 
-Deux choses à savoir avant de le lancer : il **n'écrit rien dans le `.gpkg`** (seul `07` est relancé, en lecture) donc il ne concurrence pas le passage QGIS du point 1 ; et il laisse **trois décisions à l'auteur** — la régie municipale (à qui appartiennent les panneaux), l'ajout du capital politique au périmètre (sans lui le test mesure un tri), et **les quartiers de Wehrau n'ont pas de nom**, ce qui empêche la phrase « c'est là qu'il faut commencer ».
+🎯 **Premier apport** : ce qu'on teste n'est pas « une décision qui rapporte de l'argent », c'est ***choisir où investir, et quand*** — *« pour être efficient, il faut investir au bon endroit au bon moment, la base du métier »*. Deux conséquences écrites dans le plan §6 bis : montrer la rentabilité risque de **résoudre** le jeu (on trie du plus vert au plus rouge), donc il faut **deux cartes qui pointent en sens inverse** — l'argent vers les hangars, la légitimité vers le centre — et **le temps qui déplace la carte** (panneau −6 %/an, énergie +2 %/an, donc « pas encore » devient une réponse valide sur les seuls îlots au-delà de ~17 ans).
 
-🚧 **La vue chantiers entre au plan** (§6 ter), également sur un apport de l'auteur : un calque de ce qui est **en train** de se faire, et une barre d'état au clic sur l'objet. Ce que ça règle : *les chantiers en cours n'ont pas leur place dans le bandeau du tout* — **trois temps, trois formes**, le bandeau le passé, les ressources le futur, la carte le présent. Deux conséquences : la barre a **deux segments** (le délai n'est pas la montée, et « il ne se passe rien pendant six mois » est une vérité à enseigner), et une décision porte désormais **trois durées** — délai · travaux · maturation — sans quoi 64 tronçons resteraient « en travaux » pendant les cinq ans de croissance d'un arbre. Garde-fou écrit : **jamais une liste de chantiers**, sinon c'est un écran de gestion de projet.
+Il laisse **trois décisions à l'auteur** : la régie municipale (à qui appartiennent les panneaux), l'ajout du capital politique au périmètre (sans lui le prototype mesure un tri), et **les quartiers de Wehrau n'ont pas de nom**, ce qui empêche la phrase « c'est là qu'il faut commencer ».
 
-🆕 **Quatre candidats à `Décisions arrêtées`, prêts mais non tranchés** (plan §9 bis) : *la décision spatiale est le jeu* — corollaire opérationnel, **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise** — et *le capital politique se regagne par la visibilité du chantier*, qui fermerait un point ouvert de `Indicateurs globaux`.
+🧱 **Deuxième apport — une deuxième décision : isoler les bâtiments** (§5 bis). Elle règle le défaut que le plan s'était signalé à lui-même — avec le solaire seul, trois des quatre nombres étaient le même nombre. 🎯 **Ce qu'elle fait apparaître, et qui n'était nulle part** : les toits plafonnent à 30 % de la consommation, donc **l'autonomie ne s'atteint pas en produisant plus mais en consommant moins** — à −40 % de conso, les *mêmes* panneaux couvrent 51 %. Les deux décisions sont de nature opposée : le solaire est rentable, invisible et **coûte** du capital politique ; l'isolation n'est **jamais** rentable, touche les gens qui habitent là, et en **rend**. *Les panneaux achètent de l'argent, l'isolation achète de la légitimité.* Leurs deux cartes sont presque inverses, sauf sur **la barre de 1974** — grand toit plat et béton de 1974 — qui devient l'objet central du jeu. Contrôle le plus important de la session : une partie « panneaux seuls » doit se bloquer sur le **capital**, une partie « isolation seule » sur le **budget**.
+
+🚧 **Troisième apport — la vue chantiers** (§6 ter) : un calque de ce qui est **en train** de se faire, et une barre d'état au clic sur l'objet. Ce que ça règle : *les chantiers en cours n'ont pas leur place dans le bandeau du tout* — **trois temps, trois formes**, le bandeau le passé, les ressources le futur, la carte le présent. Deux conséquences : la barre a **deux segments** (le délai n'est pas la montée, et « il ne se passe rien pendant six mois » est une vérité à enseigner), et une décision porte désormais **trois durées** — délai · travaux · maturation — sans quoi 64 tronçons resteraient « en travaux » pendant les cinq ans de croissance d'un arbre. Garde-fou écrit : **jamais une liste de chantiers**, sinon c'est un écran de gestion de projet.
+
+🆕 **Cinq candidats à `Décisions arrêtées`, prêts mais non tranchés** (plan §9 bis) : *la décision spatiale est le jeu* — corollaire opérationnel, **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise** — et *le capital politique se regagne par la visibilité du chantier*, qui fermerait un point ouvert de `Indicateurs globaux`.
 
 ### Reste à faire, sans urgence
 
@@ -112,7 +133,9 @@ Seuls `02`, `03`, `04` et `04b` écrivent dans le `.gpkg`. Tous acceptent un che
 
 ## Ce qui bloque
 
-**Rien.** La semaine 2 peut s'écrire.
+**Rien pour le code.** Le prototype énergie peut s'écrire dès maintenant.
+
+🟠 **Trois arbitrages attendent l'auteur, aucun ne bloque le démarrage** : la régie municipale · le capital politique dans le périmètre · le nom des quartiers de Wehrau. Le premier rend le mécanisme défendable, le deuxième décide si le prototype teste un arbitrage ou un tri, le troisième est du vault pur.
 
 ⏸️ La durée d'une partie est **mise de côté volontairement** : pas de fin imposée, on joue jusqu'à l'ennui puis on recommence dans une autre direction. Hypothèse de travail non fixée : ~20 ans en ~2 h. → `Décisions arrêtées` 14b · 14c
 

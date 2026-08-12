@@ -1,7 +1,40 @@
-# Plan de session — le jeu réduit à l'énergie
+# Le prototype énergie — la colonne vertébrale du jeu
 
-> Écrit le 2026-08-12 depuis le Mac, **à exécuter sous Windows**. Plan de travail, pas source de vérité : rien ici n'entre dans `Décisions arrêtées` tant que l'auteur n'a pas vu tourner le résultat.
+> 🎯 **Ce n'est plus une session d'essai.** Tranché par l'auteur le 2026-08-12 : le prototype énergie **devient le prototype principal**, tout le reste s'y branche ensuite, et la 3D et l'UI avancent en parallèle, tirées par lui. → `Décisions arrêtées` **64 · 64b · 64c** · `Plan 3 mois`
+>
+> Écrit depuis le Mac, **à exécuter sous Windows**. Plan de travail, pas source de vérité — le vault reste la source, et rien ici n'entre dans `Décisions arrêtées` tant que l'auteur n'a pas vu tourner le résultat.
 > Cadre : `CLAUDE.md` §3 (Claude écrit le code Godot) et §3 bis (l'auteur juge à l'écran, pas sur le code).
+
+## 0. Ce que ce document est devenu
+
+Il a été écrit comme un test d'une session. Il est maintenant **le gabarit** de tous les thèmes qui suivront.
+
+| | |
+|---|---|
+| **Ce qui reste vrai** | tout ce qui suit — les coefficients, les deux décisions, les contrôles à l'écran |
+| **Ce qui change** | le §2 « périmètre » n'est plus une amputation temporaire, c'est **l'ordre de construction**. Les six autres indicateurs ne sont pas éteints, ils **ne sont pas encore arrivés** |
+| **Ce que ça ajoute** | trois pièces réutilisables, listées ci-dessous |
+
+**Les trois pièces d'un thème** — c'est ça, « scalable », et c'est vérifiable :
+
+| | |
+|---|---|
+| une **table de coefficients** par `sous_type` | même forme que `TISSU`, treize lignes |
+| **une ou deux décisions de nature opposée** | l'une qui rapporte, l'autre qui coûte — sinon il n'y a pas d'arbitrage, seulement un tri |
+| **un calque par indicateur** | règle 53, sans exception |
+
+Rien dans la machinerie (rampe, chantier, coût étalé, capital comptant, calque, fiche, vue chantiers) **ne parle d'énergie**. C'est ce qui rend le gabarit vrai plutôt qu'espéré.
+
+### 🔗 Où ce prototype et la piste 3D se rejoignent : le toit
+
+Le §4 estime la surface de toit par un **coefficient** par `sous_type`. Le générateur de parcelles puis de toits la produira **pour de vrai**. Donc :
+
+- la **3D alimente** ce prototype — le toit cesse d'être estimé ;
+- ce prototype **donne au générateur son critère de réussite** — le potentiel solaire calculé sur les vrais toits remplace le coefficient **sans que le jeu change de forme**.
+
+**L'interface se pose maintenant**, pas après (décision 41) : un objet bâti expose *surface de toit · pente · orientation · ombrage*. Aujourd'hui une table les fabrique, demain le générateur, et **le code d'énergie ne doit pas savoir lequel des deux parle.**
+
+🔴 **Le sens de la dépendance ne se renverse jamais : l'énergie n'attend jamais la 3D.** Ce prototype reste jouable avec les toits estimés quoi qu'il arrive au générateur. C'est ça, et rien d'autre, qui protège le calendrier. → **64b**
 
 ---
 
@@ -9,7 +42,9 @@
 
 Une seule question, et ce n'est pas celle de l'argent : **est-ce que choisir _où_ investir, et _quand_, fait un jeu ?**
 
-L'énergie n'est que le prétexte le plus court pour la poser. Un thème, quatre nombres, une décision, tout le reste éteint. Si le choix du lieu est ennuyeux avec l'énergie seule, il le sera avec sept indicateurs — on l'aura su en une session au lieu de trois mois.
+L'énergie n'est que le prétexte le plus court pour la poser. Un thème, quatre nombres, **deux décisions de nature opposée**, tout le reste éteint. Si le choix du lieu est ennuyeux avec l'énergie seule, il le sera avec sept indicateurs — on l'aura su en une session au lieu de trois mois.
+
+**Pourquoi deux décisions et pas une** : une seule ne teste rien. Poser des panneaux, c'est rentable partout, donc la réponse est toujours oui et le seul choix est l'ordre. Il faut une deuxième décision qui **coûte au lieu de rapporter** — l'isolation (§5 bis) — pour que « où investir » soit un arbitrage et pas un tri.
 
 > **La thèse de l'auteur, posée le 2026-08-12 :** *pour être efficient, il faut investir au bon endroit au bon moment — c'est la base du métier.* La décision spatiale n'est pas une conséquence du système, elle **est** le jeu.
 
@@ -40,7 +75,7 @@ Il faut donc que la carte de la rentabilité **ne suffise pas à répondre**. De
 | Le classeur (`08_jouer.py`) | ⚫ pas touché | voir §9 — exception assumée au recoupement |
 | Le `.gpkg` | 🔒 **pas d'écriture** | seul `07` est relancé, et il ne fait que lire |
 
-⚠️ **Rien n'est supprimé.** Tout se rallume en remettant une entrée dans deux listes. C'est la condition pour que cette réduction soit un essai et pas une amputation.
+⚠️ **Rien n'est supprimé, et depuis la décision 64 ce n'est même plus une réduction : c'est l'ordre de construction.** Les six autres indicateurs ne sont pas éteints, **ils ne sont pas encore arrivés** — chacun reviendra par les trois pièces du §0, un à la fois. Tout se rallume en remettant une entrée dans deux listes.
 
 ---
 
@@ -67,13 +102,21 @@ Aucun n'est inventé pour l'occasion : chacun se dérive d'un attribut existant.
 
 ### La consommation
 
-| | Coefficient | Ce que ça donne |
-|---|---|---|
-| Par logement | 17 MWh/an | 2 548 logements → 43,3 GWh |
-| Par emploi | 9 MWh/an | 878 emplois → 7,9 GWh |
-| | | **≈ 51 GWh/an**, soit 9,6 MWh par habitant |
+Chauffage **compris** — c'est le poste majoritaire, et l'exclure rendrait le solaire trop facile.
 
-Chauffage **compris** — c'est le poste majoritaire, et l'exclure rendrait le solaire trop facile. Contrôle : si le total sort à moins de 40 ou plus de 65 GWh, c'est le nombre de logements qui a bougé, pas le coefficient.
+⚠️ **Elle n'est pas uniforme, et c'est indispensable depuis que l'isolation existe** (§5 bis). Un logement de 1974 et une maison mitoyenne du cœur ancien ne consomment pas la même chose : l'un a du béton sans isolant et des ponts thermiques partout, l'autre des murs épais et **trois façades sur quatre contre le voisin**. Sans cet écart, l'isolation n'aurait aucune raison de se faire ici plutôt que là.
+
+| `sous_type` | MWh/an par logement | Pourquoi |
+|---|---|---|
+| `barre_1970` | **24** | béton d'avant le choc pétrolier, ponts thermiques, aucun isolant |
+| `pavillonnaire` | **22** | détaché : le pire rapport surface/volume de la ville |
+| `coeur_ancien` | **21** | murs pleins et fenêtres médiocres, mais compact et mitoyen |
+| `front_commercant` | **18** | mitoyen, vitrines en rez-de-chaussée |
+| `maisons_de_ville` | **17** | le mitoyen fait le gros du travail |
+| Tertiaire (`equipement`, `dalle_commerciale`, `friche_industrielle`) | **9 par emploi** | 878 emplois → 7,9 GWh |
+
+- **Total attendu ≈ 51 GWh/an**, soit ~9,6 MWh par habitant.
+- **Contrôle** : si le total sort hors de la fourchette 45–58 GWh, c'est la répartition des logements par tissu qui commande, pas les coefficients. On imprime le tableau et on ajuste une ligne, pas six.
 
 ### Le toit disponible
 
@@ -132,6 +175,84 @@ Ordres de grandeur qui tombent de ces réglages :
 | Îlot médian | ~1 800 m² de panneaux → **15 points**, 4 mois de budget |
 | Ville entière équipée | **~1 000 points** — la moitié du budget de vingt ans |
 | Retour à pleine puissance | **~90 points/an**, contre 100 de budget annuel |
+
+---
+
+## 5 bis. La deuxième décision — « Isoler les bâtiments »
+
+> Demandée par l'auteur le 2026-08-12 : *coût élevé, mais réduction de la consommation.*
+
+### 🎯 Ce qu'elle change au jeu entier, en une ligne
+
+Les toits plafonnent à **~30 %** de la consommation : le §4 en concluait que le jalon « autonome en énergie » est hors de portée. L'isolation ne produit **rien** — le toit fait la taille qu'il fait — mais elle fait tomber le dénominateur. À −40 % de consommation, **les mêmes panneaux couvrent 51 %**.
+
+> **On ne va pas vers l'autonomie en produisant plus. On y va en consommant moins.**
+> Le kilowattheure le moins cher est celui qu'on ne consomme pas.
+
+C'est la leçon centrale du métier, et elle sort de l'arithmétique — personne n'a besoin de l'écrire dans un texte de jeu.
+
+### Les deux décisions ont des natures opposées, pas seulement des coûts différents
+
+| | ☀️ **Panneaux** | 🧱 **Isolation** |
+|---|---|---|
+| Rentable ? | **oui**, 6 à 24 ans | **non — jamais**, dans aucun tissu |
+| Ce que ça touche | un toit, personne dessous | **les gens qui habitent là** : la facture, le froid |
+| Capital politique | **il en coûte** (esthétique, patrimoine) | **il en rapporte** |
+| Ce que ça produit | de l'**argent** | de la **légitimité** |
+| Ce que ça déplace | la production | la **consommation** |
+| Durée | 12 mois | **27 mois** |
+
+> **Les panneaux achètent de l'argent, l'isolation achète de la légitimité.**
+> L'argent sans légitimité bute sur le capital politique. La légitimité sans argent ne finance rien. **Jouer une seule des deux cartes ne marche pas** — c'est la contrainte qui remplace une règle qu'on aurait dû écrire.
+
+⚠️ **Que l'isolation ne soit jamais rentable est un fait, pas un réglage à corriger.** En vrai non plus elle ne l'est pas : on la fait pour le confort, la précarité énergétique, le carbone, et pour ne plus dépendre du prix. Un jeu qui la rendrait rentable mentirait sur le métier.
+
+### La table — mêmes treize lignes, deux colonnes de plus
+
+| `sous_type` | Gain d'isolation | Coût × | Ce qui commande |
+|---|---|---|---|
+| `barre_1970` | **−45 %** | 0,7 | façades planes, un seul propriétaire, tout par l'extérieur |
+| `pavillonnaire` | −40 % | 1,5 | gros gain, mais 20 logements/ha : **on ne rénove pas un lotissement par décret** |
+| `maisons_de_ville` | −35 % | 1,0 | mitoyen, façades simples |
+| `front_commercant` | −25 % | 1,3 | vitrines, activité en pied d'immeuble |
+| `coeur_ancien` | **−20 %** | **1,6** | **patrimoine : rien par l'extérieur.** Isolation par l'intérieur seulement — plus cher, moins efficace, et on perd des mètres carrés |
+| Tertiaire, `place_minerale`, `parc`, `champ`… | — | — | pas de logements, décision indisponible |
+
+**Les deux cartes de rentabilité sont presque inverses.** Le solaire va vers les grands toits plats sans habitants — dalle, friche. L'isolation va vers les enveloppes catastrophiques et pleines de gens. Un seul objet où les deux convergent : **la barre de 1974**, grand toit plat *et* béton de 1974. Elle devient l'objet central du jeu — et c'est aussi le plus chargé socialement.
+
+### Les réglages
+
+| | |
+|---|---|
+| **Couche** | l'îlot |
+| **Cible** | les îlots de plus de X **logements** — le curseur de seuil réutilisé, 0 à 200, défaut 20 |
+| **Ce qui bouge** | un champ neuf, `part_isolee`, de 0 à 1 par la rampe habituelle |
+| **Délai** | **9 mois** — études, marché, **et concertation : des gens habitent là** |
+| **Travaux** | **18 mois** (§6 ter) |
+| **Maturation** | aucune : un mur isolé l'est le jour où l'échafaudage part |
+| **Coût** | **1 point par logement rénové**, × le coût relatif du tissu |
+| **Retour** | **aucun en argent** |
+| **Capital politique** | **+3 par chantier, +1 par tranche de 30 logements** |
+| **Carbone gris** | présent mais **modeste** — remboursé en 2 ans environ, contre 3 à 4 pour un panneau |
+
+**Ce que ces réglages produisent, et qui est voulu :**
+
+| | |
+|---|---|
+| Îlot médian (~40 logements) | **~36 points**, contre 15 pour le solaire sur le même îlot |
+| Ville entière isolée | **~2 550 points** — **plus que le budget de vingt ans** |
+| Donc | 🔴 **isoler toute la ville est impossible par construction.** On ne choisit pas quand s'arrêter, on choisit **où** |
+| Capital | un chantier d'isolation finance en capital **deux à trois** chantiers solaires |
+
+### 🔴 Le piège d'affichage à ne pas rater
+
+**Isoler fait monter « production locale % » sans produire un seul kilowattheure de plus.** C'est arithmétiquement juste et c'est même la leçon — mais à l'écran, ça peut passer pour une triche.
+
+**La fiche doit pouvoir dire lequel des deux a bougé** : *« +6 points de couverture, dont 2 produits et 4 économisés »*. Sinon le joueur apprendra la bonne stratégie sans jamais comprendre pourquoi elle marche, ce qui est exactement l'échec visé par la règle 60b — *formule cachée ≠ causalité cachée*.
+
+### ☐ Une question qu'on ouvre et qu'on ne traite pas
+
+Si les panneaux appartiennent à une **régie** (§6), alors **la régie perd des recettes quand les gens isolent**. Le conflit d'intérêt est réel, il est même classique — et il est trop beau pour être improvisé dans une session de test. **Noté, pas construit.**
 
 ---
 
@@ -194,6 +315,20 @@ L'auteur a écrit *« montrer **un peu** la rentabilité »*. On tient le *un pe
 | **Nulle part** | un classement des 63 îlots | ce serait la liste de courses que le vault refuse partout |
 
 Cohérent avec la règle 53 — *le chiffre dit que ça bouge, le calque dit où* — et avec la décision 60 : **un état non chiffré ne s'optimise pas.**
+
+### c bis. Un troisième axe est arrivé avec l'isolation : **le bon ordre**
+
+Le §1 disait *au bon endroit au bon moment*. Avec deux décisions de nature opposée, il faut ajouter **dans quel ordre**.
+
+| Ce qui pousse à | Pourquoi |
+|---|---|
+| **Le solaire d'abord** | c'est la seule des deux qui rapporte de l'argent — elle finance la suite |
+| **Alterner** | le solaire **coûte** du capital politique, l'isolation en **rend**. Un joueur qui n'installe que des panneaux **se bloque sur le capital** avant d'avoir dépensé son budget |
+| **L'isolation d'abord, par endroits** | elle fait tomber la consommation, donc les panneaux posés ensuite couvrent une part plus grande — l'indicateur monte deux fois |
+
+**Aucun des trois n'est faux, et c'est le but.** Le solaire seul stalle sur le capital ; l'isolation seule vide le budget sans rien produire ; il n'y a pas d'ordre optimal, il y a un rythme à tenir. C'est la même leçon que « la rareté est dans le calendrier ».
+
+⚠️ **Contrôle à faire à l'écran** : une partie « panneaux uniquement » doit **se bloquer sur le capital politique**, et une partie « isolation uniquement » doit **se bloquer sur le budget**. Si les deux vont jusqu'au bout sans buter, la paire ne tient pas et les deux décisions sont indépendantes — donc décoratives l'une pour l'autre.
 
 ### d. Le joueur pense en quartiers, et la carte les montrera toute seule
 
@@ -290,13 +425,17 @@ Le même fichier porte les **deux dérives du temps** du §6 bis b — coût du 
 
 - ✅ **Ce qui prouve que c'est fait** : la console imprime les quatre chiffres de ville au mois 0, et ils correspondent au §3. Puis la **rentabilité du cœur ancien aux mois 0, 60 et 120** : elle doit descendre d'environ **24 → 16 → 11 ans**. (Les deux dérives se composent : la rentabilité affichée fond d'environ 7,8 % par an.)
 
-### Étape 3 — la décision
+### Étape 3 — les deux décisions
 
 L'entrée dans `chantiers.gd`, plus la seule vraie plomberie de la session : le bouton « décider » doit accepter un **îlot** et pas seulement une rue.
 
+**Deux entrées, pas une** : poser des panneaux et **isoler** (§5 bis). Les écrire ensemble et pas l'une après l'autre — la deuxième est ce qui prouve que la première n'a pas été codée en dur autour d'un seul cas.
+
 Une décision gagne aussi **un nombre neuf, la durée des travaux** (§6 ter), distincte de la montée de l'effet. Le journal des chantiers doit le porter, sinon la vue chantiers ne saura pas quand un chantier s'arrête. **À renseigner aussi sur D07 pendant qu'on y est** (3 · 2 · 58), même si elle est éteinte — c'est deux minutes maintenant, et une reprise plus tard sinon.
 
-- ✅ **Ce qui prouve que c'est fait** : cliquer la barre de 1974, décider, et voir la production locale de la ville décoller au bout de six mois.
+⚠️ **Le capital politique doit pouvoir être positif** : `chantiers.gd` traite aujourd'hui le capital comme un coût. L'isolation en **rend**. Vérifier qu'un gain ne passe pas dans un contrôle qui refuserait une décision « trop chère » en capital.
+
+- ✅ **Ce qui prouve que c'est fait** : cliquer la barre de 1974, poser des panneaux, voir la production décoller au bout de six mois. Puis **isoler la même barre** et voir la **consommation** tomber — deux courbes, deux formes.
 
 ### Étape 4 — le budget qui encaisse
 
@@ -311,8 +450,9 @@ Ce n'est pas l'habillage du système, **c'est le système**. Le §1 dit que le j
 
 | Priorité | | Ce qu'on ajoute |
 |---|---|---|
-| **1** | 🗺️ **Calque « rentabilité »** | **quatre classes, aucun nombre sur la carte.** C'est l'écran principal du jeu, celui qu'on regarde **avant** de décider. Il doit faire dire « c'est là » en trois secondes |
-| **2** | 🗺️ **Calque « visibilité »** | l'autre carte, celle du capital politique regagné. Sa valeur se juge en la comparant à la première : **si les deux se ressemblent, il n'y a pas de dilemme et le contrepoids est raté** |
+| **1** | 🗺️ **Calque « rentabilité solaire »** | **quatre classes, aucun nombre sur la carte.** L'écran principal du jeu, celui qu'on regarde **avant** de décider. Il doit faire dire « c'est là » en trois secondes |
+| **1 bis** | 🗺️ **Calque « gain d'isolation »** | la carte presque inverse de la précédente : là où l'enveloppe est mauvaise et où il y a des gens. **Ces deux-là se regardent en alternance, c'est le geste central du jeu** |
+| **2** | 🗺️ **Calque « visibilité »** | la troisième carte, celle du capital politique regagné. Sa valeur se juge en la comparant aux deux autres : **si les trois se ressemblent, il n'y a pas de dilemme et le contrepoids est raté** |
 | **3** | 🚧 **Vue chantiers** (§6 ter) | la carte de ce qui est **en train** de se faire, plus la **barre à deux segments** au clic. Sans elle, le joueur ne voit pas son propre pipeline et le « au bon moment » est aveugle |
 | **4** | 🏠 **Les toits** | ils **noircissent** au fur et à mesure de la pose. La preuve que quelque chose s'est passé, sans ouvrir un menu |
 | **5** | 📋 **La fiche** | l'année du remboursement, en une ligne — la seule précision chiffrée du jeu. Plus toit équipable, production, part couverte, dans l'ordre du bandeau (règle 63b) |
@@ -339,7 +479,8 @@ Aux mois 0, 12, 60, 120 et 240 : consommation, production, achat, CO2, solde, ca
 Les trois premiers points sont **le test**. Les trois derniers vérifient que la mécanique ne ment pas.
 
 1. 🎯 **Le calque rentabilité, au mois 0, avant toute décision.** Est-ce que la carte donne envie de cliquer quelque part en particulier, **et est-ce qu'on saurait dire pourquoi à voix haute** ? Si elle est uniforme, la table des treize lignes est trop plate et c'est elle qu'il faut corriger — pas le code.
-2. 🎯 **Basculer sur le calque visibilité, sans rien décider entre les deux.** La question est nue : *est-ce que ça change d'avis ?* Si oui, le jeu existe. Si non, le contrepoids est mal réglé et la rentabilité gouverne seule.
+2. 🎯 **Basculer sur le calque gain d'isolation, puis sur celui de la visibilité, sans rien décider entre les trois.** La question est nue : *est-ce que ça change d'avis ?* Si oui, le jeu existe. Si non, le contrepoids est mal réglé et la rentabilité gouverne seule. Les deux premières cartes doivent être **presque inverses**, avec la barre de 1974 en rouge sur les deux.
+2 bis. 🎯 **Deux parties entières, en aveugle : « panneaux uniquement » et « isolation uniquement ».** La première doit **se bloquer sur le capital politique**, la seconde **sur le budget**. Si les deux vont au bout sans buter, la paire ne tient pas — les deux décisions sont indépendantes, donc décoratives l'une pour l'autre. **C'est le contrôle le plus important de la session.**
 3. 🎯 **Avancer de dix ans sans rien faire, puis regarder le calque rentabilité à nouveau.** La zone rouge doit avoir visiblement reculé. C'est le « bon moment » : s'il ne se voit pas, les −6 % par an sont trop timides.
 4. 🚧 **Décider un chantier, puis avancer mois par mois en restant sur la vue chantiers.** Deux choses à vérifier : pendant les six premiers mois **rien ne bouge sauf la barre** — c'est le délai, et il doit se sentir — puis le chantier **disparaît de la carte au mois 12** alors que la production, elle, reste. Si l'objet reste marqué « en travaux » après la livraison, la durée des travaux n'est pas branchée.
 5. **Équiper la barre de 1974 et la dalle commerciale, rien d'autre.** Passer vingt ans. Le budget doit finir plus haut qu'au départ, la production autour de 8 % — et le capital politique doit avoir **peu bougé**, puisqu'on a joué la carte de l'argent.
@@ -353,8 +494,8 @@ Les trois premiers points sont **le test**. Les trois derniers vérifient que la
 
 **a. 🔴 Le contrepoids du §6 bis n'est pas négociable, il est seulement à valider.** Le capital politique regagné par la visibilité déborde du thème énergie — c'est un ajout au périmètre que l'auteur a le droit de refuser. Mais il faut savoir ce que le refus produit : **sans lui, la session teste un tri par colonne, pas une décision d'urbanisme**, et la réponse à la question du §1 sera fausse dans le sens optimiste. Si on le refuse, on l'écrit dans le compte rendu au lieu de l'oublier.
 
-**b. Avec la seule décision solaire, trois des quatre nombres sont le même nombre.** La consommation ne bouge pas, donc achat = 100 − production, et CO2 = 0,25 × achat. Un seul mouvement, affiché trois fois.
-→ **Ce qui le corrige à moindres frais, et c'est déjà dans le plan : le carbone gris.** Il fait bosser la courbe de CO2 au moment des travaux, donc elle cesse d'être la copie de l'achat. Le vrai décollage viendra d'une deuxième décision qui touche la **consommation** — isoler — mais elle n'est pas dans cette session.
+**b. ✅ Le défaut « trois nombres pour un seul mouvement » est réglé.** Il était réel : avec le solaire seul, la consommation ne bougeait pas, donc achat = 100 − production et CO2 = 0,25 × achat — un mouvement affiché trois fois. **L'isolation (§5 bis) fait bouger la consommation**, le carbone gris fait bosser le CO2 au moment des travaux. Les quatre nombres sont maintenant quatre.
+→ ⚠️ **Ce qu'il faut vérifier en retour** : sur une partie mixte, les quatre courbes doivent avoir des **formes différentes**. Si elles restent parallèles, c'est que le gain d'isolation est trop faible pour peser et il faut monter la table du §5 bis.
 
 **c. Le classeur ne double pas Godot cette fois.** `08_jouer.py` reste au repos et le contrôle de recoupement des deux moteurs n'est pas fait. C'est une **exception assumée** : le sujet tient en une formule et l'étape 6 la vérifie par trois invariants imprimés. Si le thème énergie est retenu après le test, le classeur devra rattraper — sinon la duplication ment sans qu'on le sache.
 
@@ -370,6 +511,7 @@ Les trois premiers points sont **le test**. Les trois derniers vérifient que la
 |---|---|---|
 | 🎯 | **La décision spatiale est le jeu.** *Pour être efficient, il faut investir au bon endroit au bon moment.* Un système qui ne produit pas ce choix-là est une décoration, quel que soit son réalisme. Corollaire opérationnel : **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise** — sinon elle se prend une fois, globalement, et n'appelle jamais la carte | énoncé par l'auteur le 2026-08-12, **à confirmer après le test** |
 | 👁️ | **Le capital politique se regagne par la visibilité du chantier**, donc par le lieu. Ferme un point ouvert de `Indicateurs globaux` (*« un nombre nu ne dit pas ça revient parce que ça s'est vu »*) | proposé, **non tranché** |
+| 🔋 | **On ne va pas vers l'autonomie énergétique en produisant plus, mais en consommant moins.** Les toits de Wehrau plafonnent à 30 % ; c'est l'isolation, pas le solaire, qui met le jalon à portée de vue. Corollaire de conception : **une décision qui réduit un besoin vaut mieux qu'une décision qui augmente une offre**, et le jeu doit le faire sentir plutôt que l'écrire | sort de l'arithmétique du §5 bis, **à confirmer après le test** |
 | 🚧 | **Les chantiers en cours ne vont pas dans le bandeau, ils vont sur la carte.** Trois temps, trois formes : le bandeau le passé, les ressources le futur, **la vue chantiers le présent**. Ferme l'autre point ouvert de `Indicateurs globaux` (*« le temps et les chantiers en cours n'ont pas de place dans le bandeau »*), et donne enfin sa carte au deuxième nombre du budget, « ce qui est engagé » (58) | énoncé par l'auteur le 2026-08-12, **à confirmer après le test** |
 | ⏱️ | **Un chantier fini n'est plus un chantier, même si son effet monte encore.** Une décision porte trois durées et non deux : délai · **travaux** · maturation | conséquence technique de la vue chantiers, **à valider** |
 
@@ -379,6 +521,6 @@ Les trois premiers points sont **le test**. Les trois derniers vérifient que la
 
 ## 10. Ce qui n'est pas dans cette session
 
-Isoler les bâtiments · le réseau de chaleur · l'éolien · la saisonnalité (un bilan annuel équilibré n'est pas une autonomie en janvier — vrai, connu, hors sujet ici) · le rallumage des six autres indicateurs · le générateur de parcelles · les deux ponts à supprimer sous QGIS · toute écriture dans le `.gpkg`.
+Le réseau de chaleur · l'éolien · le conflit d'intérêt de la régie qui perd des recettes quand on isole (§5 bis, noté et non construit) · l'inconfort des habitants pendant dix-huit mois de travaux chez eux · la saisonnalité (un bilan annuel équilibré n'est pas une autonomie en janvier — vrai, connu, hors sujet ici) · le rallumage des six autres indicateurs · le générateur de parcelles · les deux ponts à supprimer sous QGIS · toute écriture dans le `.gpkg`.
 
 **Voir aussi** : `ETAT.md` · `Systèmes/Indicateurs globaux.md` · `Décisions arrêtées` 53 · 56 · 59 · 63 · `Godot/README.md`

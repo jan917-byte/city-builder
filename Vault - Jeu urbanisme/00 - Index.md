@@ -10,10 +10,11 @@ maj: 2026-08-12
 
 **Titre de travail** : aucun · candidats dans [[Marketing et Steam]]
 **Où j'en suis** : mois 1 bouclé — la carte est **simulable**, la ville a des **stocks**, et **elle se joue** : on clique, on décide, vingt ans passent
-**Phase actuelle** 🎯 : **une ville crédible et belle** — parcelles, toits, trafic, sol. *Ensuite* chaque indicateur, système et décision **un par un** → [[Décisions arrêtées]] 51
+**Phase actuelle** 🎯 : **le prototype énergie est la colonne vertébrale** — un thème de bout en bout, et les autres s'y branchent ensuite. La 3D et l'UI avancent **en parallèle, tirées par lui** → [[Décisions arrêtées]] **64**
 **Périmètre du prototype** : [[Wehrau]], une petite ville entière — **pas** un quartier de [[Vallmar]]
-**Prochaine action concrète** : un passage QGIS (supprimer deux ponts), puis la **subdivision de l'îlot en parcelles** — le point dur, 2 à 4 semaines, et ses deux verrous sont levés → [[Génération procédurale]] · [[Plan 3 mois]]
-**Le garde-fou** ⚠️ : ce n'est plus une date, c'est *« si je devais en faire 200, est-ce que je tiendrais ? »* → 52
+**Prochaine action concrète** : le prototype énergie sous Windows — quatre nombres, **deux décisions de nature opposée** (poser des panneaux · isoler), trois calques → `PLAN_energie.md` · [[Plan 3 mois]]
+**Ce que le prototype teste** : *est-ce que choisir **où** investir, et **quand**, fait un jeu ?*
+**Les deux garde-fous** ⚠️ : *« si je devais en faire 200, est-ce que je tiendrais ? »* (52) · et **quand les deux pistes se disputent une journée, l'énergie gagne** (64b)
 
 ---
 
