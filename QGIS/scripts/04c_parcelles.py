@@ -250,6 +250,40 @@ DENT_MIN = 0.60
 #   16,8 m chacune.
 TRAVERSANT = 1.2
 
+# 🔴 LE PLAFOND DE PROFONDEUR VAUT AUSSI POUR LES TISSUS `SANS_COEUR` —
+# 🔄 2026-08-15, défaut n°1 désigné par l'auteur sur l'image : « la direction
+# des parcelles », îlots 63 et 26, tous les deux pavillonnaires.
+#
+# CE QUI SE PASSAIT. `SANS_COEUR` retirait le plafond pour que les deux rangées
+# d'un lotissement se rejoignent au milieu. Mais la profondeur se mesure PAR
+# RAPPORT À L'ARÊTE SERVIE : sur le petit côté d'un îlot allongé, le rayon part
+# dans le sens de la LONGUEUR de l'îlot et ressort 117 m plus loin. La moitié,
+# 58,6 m, devenait la profondeur de la bande — et le bout de l'îlot sortait en
+# trois dalles de 17 × 58 m couchées en travers du tissu, à contresens des deux
+# rangées d'à côté. Mesuré : îlot 63 arête est 58,6 m et 59,7 m, îlot 26 46,7 m
+# et 36,2 m, pour 28 m visés.
+#
+# LA RÈGLE. Le plafond ne se lève que si la rue d'en face est ASSEZ PRÈS pour
+# que les deux rangées se touchent vraiment. Au-delà, la profondeur visée
+# redevient un plafond, même en pavillonnaire — et le petit côté de l'îlot ne
+# sert plus qu'une rangée normale.
+#
+# Balayage du 2026-08-15, sur les 893 parcelles de rue de Wehrau. « Trop
+# profondes » = extension perpendiculaire à la façade au-delà de 1,5 fois la
+# consigne du tissu :
+#
+#   plafond   parcelles de rue   trop profondes   aire > 2× la cible
+#   éteint           893               18                 9
+#     2,0            901               12                 5
+#     1,6            911                9                 5
+#     1,3            914                9                 7
+#     1,0            916               10                 5
+#
+# 1,3 est pris au genou de la courbe : le défaut tombe de moitié, et il reste
+# assez de marge pour qu'un lotissement dont les deux rangées se rejoignent
+# 36 m plus loin que la consigne les rejoigne quand même.
+PROF_MAX = 1.3
+
 # Et elle ne dépasse jamais ce multiple de l'aire visée : au-delà, on ajoute des
 # dents. C'est le garde-fou `Amax` du papier (§4.2.3, deuxième cas).
 DENT_MAX = 2.0
@@ -276,6 +310,41 @@ DENT_MAX = 2.0
 #
 # Le mettre à 30 ou 35 si l'image en 3D donne tort à ce raisonnement.
 ANGLE_MIN_PARCELLE = 0.0
+
+# 🔷 DEUX PARCELLES QUI REFONT UN RECTANGLE SE RÉUNISSENT — 🔄 2026-08-15,
+# défaut n°2 désigné par l'auteur : « deux triangles peuvent former un
+# rectangle », îlot 13, avec la légende « devrait n'être qu'une parcelle ».
+#
+# C'est le remède annoncé et jamais écrit du §6 bis de `Prototype/Parcelles.md` :
+# celui qui ne coûte rien. Le seuil d'angle (`ANGLE_MIN_PARCELLE`) traitait la
+# pointe comme un déchet et la faisait avaler par sa voisine — 132 parcelles de
+# rue perdues, 14 % des maisons. Ici on ne juge plus la pointe toute seule, on
+# juge LA RÉUNION : deux biseaux qui se recollent en rectangle n'étaient qu'une
+# parcelle coupée en deux par une diagonale.
+#
+# Les deux parcelles de l'îlot 13 : 67 m² à 0,52 de rectangularité et 78 m² à
+# 0,55, réunies en 145 m² à 1,00, quatre sommets, angle mini 90°. Ce n'est pas
+# une amélioration de tracé, c'est une coupe qui n'aurait pas dû exister.
+#
+# 🔴 LE CRITÈRE N'EST PAS L'ANGLE, C'EST LE GAIN. Les deux parcelles de l'îlot
+# 13 ont toutes les deux un angle mini de 63,8° : aucun seuil de pointe ne les
+# aurait vues. Balayage du 2026-08-15 sur les 893 parcelles de rue — le compte
+# de paires trouvées est d'une stabilité qui dit que la règle vise juste :
+#
+#   gain ≥      rect. de la réunion ≥ 0,95   ≥ 0,90   ≥ 0,85
+#     0,30                1                     1        1
+#     0,20                1                     1        1
+#     0,15                1                     2        2
+#     0,10                1                     2        2
+#
+# Deux paires en ville, pas deux cents. La règle ne redessine rien : elle
+# ramasse la coupe parasite là où elle est, et nulle part ailleurs.
+GAIN_RECT = 0.15        # ce que la réunion doit gagner en rectangularité
+RECT_REUNION = 0.90     # et où elle doit arriver : franchement rectangulaire
+# Une réunion qui dépasse ce multiple de l'aire visée du tissu est refusée :
+# recoller deux biseaux ne doit pas fabriquer la parcelle géante que
+# `absorber` passe sa vie à éviter.
+AIRE_MAX_REUNION = 2.0
 
 # Variation de hauteur d'une parcelle autour de celle de son îlot, en niveaux.
 # ± 1 suffit à casser le bloc plein sans contredire la donnée.
@@ -1115,6 +1184,72 @@ def absorber(parcelles, aire_min, largeur_min=0.0, angle_min=0.0, rendues=()):
     return parcelles, fusions
 
 
+def rectangularite(anneau):
+    """Aire ÷ aire du rectangle englobant. 1,00 pour un rectangle, 0,50 pour un
+    triangle rectangle, et c'est tout l'intérêt : elle ne se laisse pas berner
+    par un parallélogramme, qui est légitime dès qu'une rue n'est pas
+    perpendiculaire à sa voisine."""
+    _, _, L, d, _ = rectangle_englobant(anneau)
+    return abs(aire_signee(anneau)) / max(1e-9, L * d)
+
+
+def recoller_rectangles(parcelles, aire_max):
+    """Deux voisines dont la RÉUNION refait un rectangle n'en font plus qu'une.
+
+    🔷 2026-08-15, demandé par l'auteur sur l'îlot 13 : « deux triangles peuvent
+    former un rectangle », et sur l'image, « devrait n'être qu'une parcelle ».
+
+    C'est le remède que le §6 bis de `Prototype/Parcelles.md` annonçait sans
+    l'écrire, et il est gratuit là où le seuil de pointe coûtait 14 % des
+    maisons. La différence tient en une phrase : `ANGLE_MIN_PARCELLE` juge une
+    parcelle SEULE et déclare le biseau irrécupérable, donc le fait avaler ;
+    ici on juge LA PAIRE, et on se contente d'effacer la coupe qui n'aurait pas
+    dû exister. Les deux morceaux de l'îlot 13 ont d'ailleurs un angle mini de
+    63,8° chacun — aucun seuil de pointe ne les aurait vus.
+
+    On prend le meilleur gain d'abord, et on recommence : une réunion change le
+    voisinage, donc les gains suivants ne sont plus les mêmes. Les cœurs et les
+    chemins ne participent pas — un cœur d'îlot n'a pas à être rectangulaire
+    (67d), et un couloir n'est pas une parcelle.
+
+    Renvoie (les parcelles, le nombre de réunions).
+    """
+    parcelles = list(parcelles)
+    n_reunions = 0
+    for _ in range(len(parcelles)):
+        candidats = [i for i, (_, o) in enumerate(parcelles)
+                     if o not in HORS_BATI]
+        meilleur = None
+        for a in range(len(candidats)):
+            i = candidats[a]
+            ri = rectangularite(parcelles[i][0])
+            for b in range(a + 1, len(candidats)):
+                j = candidats[b]
+                rj = rectangularite(parcelles[j][0])
+                # Un bord commun trop court n'est pas un côté partagé, c'est
+                # deux parcelles qui se touchent par le coin.
+                if bord_partage(parcelles[i][0], parcelles[j][0]) < 2.0:
+                    continue
+                u = fusionner(parcelles[i][0], parcelles[j][0])
+                if u is None or abs(aire_signee(u)) > aire_max:
+                    continue
+                ru = rectangularite(u)
+                if ru < RECT_REUNION or ru < max(ri, rj) + GAIN_RECT:
+                    continue
+                gain = ru - max(ri, rj)
+                if meilleur is None or gain > meilleur[0]:
+                    meilleur = (gain, i, j, u)
+        if meilleur is None:
+            break
+        _, i, j, u = meilleur
+        grande = i if abs(aire_signee(parcelles[i][0])) \
+            >= abs(aire_signee(parcelles[j][0])) else j
+        parcelles[i] = (u, parcelles[grande][1])
+        del parcelles[j]
+        n_reunions += 1
+    return parcelles, n_reunions
+
+
 def graine_de(pts):
     """Une graine stable, dérivée de la GÉOMÉTRIE et non d'un compteur.
 
@@ -1312,6 +1447,12 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
     rejoignent au milieu et aucun cœur n'apparaît. C'est le lotissement — le
     fond du jardin touche le fond du jardin d'en face.
 
+    🔴 MAIS PAS AU-DELÀ DE `PROF_MAX` FOIS LA CONSIGNE — 🔄 2026-08-15. Sur le
+    PETIT CÔTÉ d'un îlot allongé, le rayon part dans le sens de la longueur et
+    ressort à l'autre bout : la moitié valait 58 m pour 28 visés, et le bout de
+    l'îlot sortait en dalles couchées en travers du tissu. Le plafond levé ne
+    l'est donc que tant que la rue d'en face est vraiment en face.
+
     Les deux rives d'un même îlot mesurent la MÊME distance, puisqu'on la prend
     sur l'anneau d'origine et non sur ce qui reste. Elles tombent donc sur la
     même moitié, et leurs bandes se rejoignent exactement au milieu.
@@ -1323,6 +1464,7 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
     Renvoie (profondeur, mode), le mode étant celui du rayon médian.
     """
     vals = []
+    pmax = PROF_MAX * prof                        # le plafond, même sans cœur
     for k in range(9):
         t = 0.15 + 0.70 * k / 8.0
         p = (a[0] + (b[0] - a[0]) * t + nrm[0] * 1e-6,
@@ -1333,10 +1475,13 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
         en_face_une_rue = longueurs[j] >= LONGUEUR_MIN_RUE
         if en_face_une_rue and d < TRAVERSANT * prof:
             vals.append((d, "traversante"))       # on prend tout le fond
-        elif en_face_une_rue and (sans_coeur or d / 2.0 < prof):
+        elif en_face_une_rue and (d / 2.0 < prof
+                                  or (sans_coeur and d / 2.0 <= pmax)):
             vals.append((d / 2.0, "moitie"))      # on coupe au milieu
+        elif en_face_une_rue:
+            vals.append((prof, "moitie"))         # trop loin : plafond de retour
         elif sans_coeur:
-            vals.append((d, "pleine"))            # personne en face : tout
+            vals.append((min(d, pmax), "pleine")) # personne en face : tout
         else:
             vals.append((min(prof, d), "pleine")) # la profondeur visée suffit
     if not vals:
@@ -1566,6 +1711,9 @@ def decouper_ilot(ext, st, chemins=()):
     sans_coeur = st in SANS_COEUR
     cr_rives = {}
     n_fusions = 0
+    n_reunions = 0          # les réunions de `recoller_rectangles`, à part :
+                            # elles ne réparent pas un éclat, elles effacent
+                            # une coupe parasite
     # 🚶 LE CHEMIN PASSE AVANT TOUT LE RESTE. Le couloir sort de l'emprise,
     # et l'îlot part au peigne en DEUX MORCEAUX au lieu d'un. Chaque
     # morceau est peigné pour son compte — donc les parois du couloir sont
@@ -1706,6 +1854,16 @@ def decouper_ilot(ext, st, chemins=()):
         # un reliquat, pas comme un résultat.
         parcelles = [(p, "coeur" if o == "rendu" else o)
                      for p, o in parcelles]
+
+        # 🔷 TROISIÈME PASSE — LA COUPE QUI N'AURAIT PAS DÛ EXISTER. Deux
+        # biseaux voisins qui se recollent en rectangle redeviennent une seule
+        # parcelle. Elle vient EN DERNIER, après les deux passes d'absorption :
+        # ce qu'elle juge est le tracé final, pas un état intermédiaire que la
+        # suite aurait de toute façon changé.
+        parcelles, n_r = recoller_rectangles(parcelles,
+                                             AIRE_MAX_REUNION * facade * prof)
+        n_reunions += n_r
+
         parcelles_ilot += [(p, o, idx) for p, o in parcelles]
 
     # ← fin du tour par morceau : l'îlot se recompose ici
@@ -1722,7 +1880,7 @@ def decouper_ilot(ext, st, chemins=()):
         "morceaux": morceaux, "couloirs": couloirs, "rives": cr_rives,
         "modes": rive_ilot, "cours": n_cours, "parts_coeur": n_parts_coeur,
         "aire_coeur": aire_coeur, "rendus": n_rendus, "replis": n_replis,
-        "fusions": n_fusions,
+        "fusions": n_fusions, "reunions": n_reunions,
     }
 
 
@@ -1822,6 +1980,7 @@ def main():
     traversants = []
     traces = []                 # 🚶 un par îlot qui porte un chemin
     n_fusions = 0
+    reunions = {}               # 🔷 {fid_ilot: nombre de coupes effacées}
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -1855,6 +2014,8 @@ def main():
             r[1] += v[1]
             r[2] += v[2]
         n_fusions += cr["fusions"]
+        if cr["reunions"]:
+            reunions[fid] = cr["reunions"]
 
         if cr["modes"]:
             traversants.append((fid, st,
@@ -2154,6 +2315,25 @@ def main():
               % (len(eclats), total, len(ou),
                  ", ".join("%d (×%d)" % (f, n)
                            for f, n in sorted(ou.items(), key=lambda x: -x[1])[:8])))
+    print()
+
+    # 🔷 Compté à part des éclats, parce que ce n'est pas la même opération :
+    # un éclat est un déchet qu'on recolle, une réunion de rectangle est une
+    # COUPE PARASITE qu'on efface. Si ce nombre s'emballe — quelques unités en
+    # ville, pas quelques dizaines — c'est le peigne qui coupe de travers en
+    # amont, et c'est là qu'il faut aller voir, pas ici.
+    print("  🔷 LES COUPES EFFACÉES — deux biseaux voisins qui se recollent en"
+          " rectangle,")
+    print("     donc qui n'étaient qu'une parcelle coupée par une diagonale"
+          " (gain ≥ %.2f," % GAIN_RECT)
+    print("     rectangularité de la réunion ≥ %.2f)." % RECT_REUNION)
+    if not reunions:
+        print("     aucune.")
+    else:
+        print("     %d sur %d îlots : %s"
+              % (sum(reunions.values()), len(reunions),
+                 ", ".join("îlot %d (×%d)" % (f, n)
+                           for f, n in sorted(reunions.items()))))
     print()
 
     print("  LE VOISINAGE — part du périmètre partagée avec une autre parcelle")

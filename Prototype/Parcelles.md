@@ -3,7 +3,7 @@
 > **L'étape en cours.** Le point dur du pipeline : ce qui sépare 70 pâtés pleins d'une ville où on croirait habiter.
 > La doctrine — *pourquoi* la parcelle est une partition, ce qu'on ne fera jamais — est dans le vault : `Technique/Génération procédurale.md`. **Ici, le chantier seulement.**
 
-**Dernière mesure : 2026-08-14** (session 21, sur le Mac, en `--blanc` et sur copie dans `bac/`)
+**Dernière mesure : 2026-08-15** (session 22, sur le Mac, en `--blanc` et sur copie dans `bac/`)
 
 🔴 **LA CARTE DU DÉPÔT EST PLUS VIEILLE QUE LE CODE.** `Prototype_qualifie.gpkg` a été écrit au commit `18a6b4c`, c'est-à-dire **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond. Tous les chiffres de la section 2 ci-dessous sont ceux du **code d'aujourd'hui**, mesurés sur une copie dans `bac/` ; la couche `parcelles` du vrai `.gpkg`, elle, montre encore l'ancienne découpe. **Rien n'est acquis tant que `04c` n'a pas été relancé sous Windows.**
 
@@ -24,13 +24,14 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 
 | | code d'aujourd'hui | carte du dépôt (périmée) |
 |---|---|---|
-| parcelles | **908**, dont **893 sur rue** — plus **7 chemins** | 1 096, dont 987 sur rue |
+| parcelles | **927**, dont **912 sur rue** — plus **7 chemins** | 1 096, dont 987 sur rue |
 | cœurs d'îlot | 13 îlots, 0,86 ha, en 15 morceaux **d'un seul tenant** (67c · 67d) | 102 morceaux redécoupés |
 | reliquat de rue sans façade | **0** — il n'y a plus de déchet | 7 |
-| réunions d'éclats | 107, **aucun ne survit** | 48 |
+| réunions d'éclats | 112, **aucun ne survit** | 48 |
+| coupes effacées (deux biseaux → un rectangle) | **2**, îlots 13 et 33 | — |
 | partition | **100,00 %** sur chacun des 54 îlots, écart max 8,1·10⁻⁷ | idem |
 
-🔴 **Le nombre de parcelles a BAISSÉ, et ce n'est pas une régression.** Les 1 105 d'avant comptaient les cœurs d'îlot redécoupés en dizaines de morceaux et les fonds de jardin sans façade. Depuis **67c** un cœur reste entier ; depuis **67d** ce qui reste derrière les parcelles reste un cœur au lieu d'être recollé à une parcelle de rue. Ce qui compte est le **893 sur rue** — inchangé par 67d — et le fait que les **enclavées soient tombées à zéro**. → mémoire : *le nombre de maisons n'est pas un critère*.
+🔴 **Le nombre de parcelles a BAISSÉ, et ce n'est pas une régression.** Les 1 105 d'avant comptaient les cœurs d'îlot redécoupés en dizaines de morceaux et les fonds de jardin sans façade. Depuis **67c** un cœur reste entier ; depuis **67d** ce qui reste derrière les parcelles reste un cœur au lieu d'être recollé à une parcelle de rue. Ce qui compte est le **912 sur rue** — que 67d n'a pas bougé et que le plafond de profondeur du 2026-08-15 a remonté de 893 — et le fait que les **enclavées soient tombées à zéro**. → mémoire : *le nombre de maisons n'est pas un critère*.
 
 **L'élancement, tissu par tissu** — le rapport du grand axe au petit, qui était le vrai défaut avant le peigne :
 
@@ -38,7 +39,7 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 |---|---|---|---|
 | `maisons_de_ville` | 2,24 | 2,32 | ✅ |
 | `coeur_ancien` | 2,08 | 2,29 | ✅ |
-| `pavillonnaire` | 1,95 | 2,07 | ✅ |
+| `pavillonnaire` | 1,87 | 2,07 | ✅ |
 | `front_commercant` | 1,48 | 1,64 | ✅ |
 
 **La rectangularité** — aire ÷ aire du rectangle englobant, le nombre qui juge les chemins (67b) : **0,83 en moyenne** avant venelle, et de 0,84 à 0,91 sur les sept îlots qui en portent une.
@@ -53,6 +54,60 @@ Trois défauts désignés sur l'aperçu, et ils n'ont pas eu la même réponse.
 | 2 | **îlot 32** — « pas de parcelles, les deux barres seront posées au milieu de l'îlot sans considération du tissu urbain bâti (urbanisme des années 70) » | ✅ **fait** — la barre passe du peigne à la **boîte** (§5). L'îlot sort en **2 parcelles de 5 579 m²** au lieu d'un anneau de 7 parcelles de rue autour d'un cœur vide |
 | 3 | **îlot 24** — « parcelles bizarres, triangulaires » | ⚠️ **mesuré, pas corrigé** — deux remèdes essayés, les deux moins bons que le mal (§6 bis) |
 | 4 | **îlots 10, 33, 49, 50, 66** — « les cœurs d'îlots sont fusionnés avec les parcelles » | ✅ **fait** (§2 quater) — la profondeur du tissu redevient un plafond, et ce qui reste derrière est un cœur |
+
+## 2 bis bis. Ce que l'auteur a vu sur l'image, le 2026-08-15
+
+Deux endroits, deux causes différentes, les deux corrigés. Verdict de l'auteur devant l'image : *« c'est bien mieux »*.
+
+| | Ce qu'il a vu | Ce que c'était |
+|---|---|---|
+| 1 | **îlots 63 et 26** — « la direction des parcelles », avec des traits dessinés en travers du bout de l'îlot | le **petit côté** d'un îlot allongé réclamait 58 m de fond pour 28 visés → §2 quinquies |
+| 2 | **îlot 13** — « deux triangles peuvent former un rectangle », légendé *« devrait n'être qu'une parcelle »* | une **coupe parasite** en diagonale dans un rectangle → §2 sexies |
+
+## 2 quinquies. La direction des parcelles — corrigé le 2026-08-15
+
+**Ce que c'était.** Le pavillonnaire est dans `SANS_COEUR` : la profondeur visée n'y est plus un plafond, pour que les deux rangées d'un lotissement se rejoignent au milieu sans rien laisser entre elles. Mais la profondeur se mesure **par rapport à l'arête servie**. Sur le petit côté d'un îlot allongé, le rayon part dans le sens de la **longueur** de l'îlot et ressort 117 m plus loin : la moitié, 58 m, devenait la profondeur de la bande.
+
+Le bout de l'îlot sortait donc en dalles de 17 × 58 m **couchées en travers du tissu**, à contresens des deux rangées d'à côté. Mesuré : îlot 63 arêtes est à 58,6 et 59,7 m, îlot 26 à 46,7 et 36,2 m — pour 28 m visés.
+
+**La règle.** Le plafond ne se lève que si la rue d'en face est assez près pour que les deux rangées se touchent vraiment — au-delà de `PROF_MAX` fois la consigne, la profondeur visée redevient un plafond, même en pavillonnaire.
+
+| plafond | parcelles sur rue | trop profondes | aire > 2× la cible |
+|---|---|---|---|
+| éteint — l'ancien code | 893 | **18** | 9 |
+| 2,0 | 901 | 12 | 5 |
+| 1,6 | 911 | 9 | 5 |
+| **1,3 — retenu** | **914** | **9** | 7 |
+| 1,0 | 916 | 10 | 5 |
+
+*Trop profonde* = extension perpendiculaire à la façade au-delà de 1,5 fois la consigne du tissu. 1,3 est pris au genou de la courbe : le défaut tombe de moitié, et il reste assez de marge pour qu'un lotissement dont les deux rangées se rejoignent un peu plus loin que la consigne les rejoigne quand même.
+
+**Ce que ça donne**, avec la correction suivante par-dessus :
+
+| | avant | après |
+|---|---|---|
+| parcelles sur rue | 893 | **912** |
+| profondeur moyenne des rives pavillonnaires | 30,8 m | **25,7 m** (28 visés) |
+| enclavées | 0 | **0** |
+| cœurs d'îlot | 15 | **15** — inchangés |
+| partition (61) | 100,00 % | **100,00 %**, écart max 8,1·10⁻⁷ |
+
+## 2 sexies. Deux biseaux qui refont un rectangle — corrigé le 2026-08-15
+
+C'est **le remède annoncé et jamais écrit du §6 bis** : celui qui ne coûte rien. Le seuil d'angle jugeait la pointe **toute seule**, la déclarait irrécupérable et la faisait avaler par sa voisine — 132 parcelles de rue perdues, 14 % des maisons. Ici on juge **la paire**, et on se contente d'effacer une coupe qui n'aurait pas dû exister.
+
+Les deux morceaux de l'îlot 13 : 67 m² à 0,52 de rectangularité et 78 m² à 0,55, réunis en **145 m² à 1,00**, quatre sommets, angle mini 90°.
+
+🔴 **Le critère n'est pas l'angle, c'est le gain.** Les deux parcelles de l'îlot 13 ont chacune un angle mini de **63,8°** : aucun seuil de pointe ne les aurait vues. Balayage sur les 893 parcelles de rue — la stabilité du compte dit que la règle vise juste :
+
+| gain ≥ | réunion ≥ 0,95 | ≥ 0,90 | ≥ 0,85 |
+|---|---|---|---|
+| 0,30 | 1 | 1 | 1 |
+| 0,20 | 1 | 1 | 1 |
+| **0,15** | 1 | **2** | 2 |
+| 0,10 | 1 | 2 | 2 |
+
+**Deux paires en ville, pas deux cents** : îlots 13 et 33. La règle ne redessine rien, elle ramasse la coupe parasite là où elle est. Le compte s'imprime à chaque passage — s'il s'emballe un jour, c'est le peigne qui coupe de travers en amont, et c'est là qu'il faudra aller voir.
 
 ## 2 quater. Le cœur d'îlot rendu aux parcelles — corrigé le 2026-08-14
 
@@ -104,7 +159,9 @@ L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux image
    - **les 7 venelles** sur 22, 24, 26, 38, 40, 44, 63 — au pli, courtes, et aucun cœur entamé (§4 bis) ;
    - **les îlots 64 et 69 coupés au milieu** — le défaut n°1 de l'auteur, et il tombe tout seul ;
    - **l'îlot 32 en deux parcelles** au lieu d'un anneau autour d'un cœur vide, et **deux barres posées au milieu** ;
-   - **893 parcelles sur rue et zéro enclavée** là où l'ancienne découpe en donnait 705 ;
+   - **le bout des îlots 63 et 26 découpé dans le sens des rangées**, plus en dalles couchées en travers (§2 quinquies) ;
+   - **l'îlot 13 sans sa coupe en diagonale** — deux biseaux y redeviennent un rectangle (§2 sexies) ;
+   - **912 parcelles sur rue et zéro enclavée** là où l'ancienne découpe en donnait 705 ;
    - **les cœurs d'îlot d'un seul tenant** — plus de damier à l'intérieur d'une cour (67c) ;
    - **les deux défauts ci-dessous devraient reculer sans qu'on les vise** — des parcelles plus rectangulaires font des empreintes plus rectangulaires. À vérifier, pas à promettre.
 2. 👁️ **Juger les parcelles triangulaires en 3D, pas sur la carte** (§6 bis). Le mécanisme qui les supprime existe et il est éteint, parce qu'il coûte 14 % des maisons. La question à trancher devant l'image : est-ce qu'une parcelle en pointe donne une **maison** en pointe, alors que `07` coupe déjà la pointe des bâtiments ?
@@ -175,7 +232,7 @@ C'est **elle, et pas le code**, qui décide du grain de toute la ville. Une lign
 
 🔴 **Pourquoi la barre a changé de méthode.** Le peigne la traitait comme un tissu de rue : il en sortait un anneau de parcelles le long des rues et un grand cœur vide au milieu — **l'inverse exact de ce qu'a fait l'urbanisme de 1970**, où la barre se pose en travers de l'îlot sans égard pour l'alignement. La boîte ne connaît pas les rues, donc elle donne ça. 80 × 70 = 5 600 m², soit la moitié des 11 158 m² de l'**îlot 32** — le seul îlot de barre de Wehrau — donc **deux objets**.
 
-**Les six réglages de bord**, à ne toucher qu'en sachant pourquoi : plancher de parcelle **45 m²** · jeu de coupe **0,25** (l'irrégularité, sans quoi tout est au cordeau) · dent minimale **0,60 × façade** · arête de moins de **6 m** ne porte pas de rue · seuil de pointe **éteint** (§6 bis) · **largeur minimale d'un cœur 8 m** (`COEUR_MIN_LARGE`, §2 quater) — c'est le seul nombre qui sépare une cour d'une lamelle.
+**Les huit réglages de bord**, à ne toucher qu'en sachant pourquoi : plancher de parcelle **45 m²** · jeu de coupe **0,25** (l'irrégularité, sans quoi tout est au cordeau) · dent minimale **0,60 × façade** · arête de moins de **6 m** ne porte pas de rue · seuil de pointe **éteint** (§6 bis) · **largeur minimale d'un cœur 8 m** (`COEUR_MIN_LARGE`, §2 quater) — c'est le seul nombre qui sépare une cour d'une lamelle · **plafond de profondeur 1,3 × la consigne** (`PROF_MAX`, §2 quinquies), qui vaut même en pavillonnaire · **gain de rectangularité 0,15 pour une réunion à 0,90** (`GAIN_RECT`, `RECT_REUNION`, §2 sexies).
 
 ⚠️ `LONGUEUR_MIN_RUE` a été balayé de 6 à 15 m le 2026-08-14 : **aucun effet**, ni sur les triangles ni sur le cœur. Les contours d'emprise de Wehrau n'ont pas d'arêtes courtes parasites — ce n'est donc pas là qu'est le défaut.
 
@@ -207,7 +264,9 @@ La raison de fond, à garder : **une bande est ici une intersection de demi-plan
 
 Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue, soit 14 % des maisons de la ville** — et 14 triangles restent quand même. Or ce sont les toits qui portent la décision solaire en attente (§7).
 
-🎯 **Ce qui reste à faire, et où le juger.** Le mécanisme est en place et éteint : `ANGLE_MIN_PARCELLE = 0.0` dans `04c`. **`07_exporter_godot.py` coupe déjà la pointe du BÂTIMENT** (`ANGLE_MIN_DEG = 70`), donc une parcelle en pointe ne donne pas forcément une maison en pointe. **Le vrai juge est la 3D, pas la carte du parcellaire** — c'est là qu'il faut regarder avant de payer 14 % des maisons. Le remède qui ne coûterait rien reste à écrire : **rogner la pointe et donner le bout à la voisine** au lieu d'avaler la parcelle entière — la partition tient toujours, et le nombre de parcelles ne bouge pas.
+🎯 **Ce qui reste à faire, et où le juger.** Le mécanisme est en place et éteint : `ANGLE_MIN_PARCELLE = 0.0` dans `04c`. **`07_exporter_godot.py` coupe déjà la pointe du BÂTIMENT** (`ANGLE_MIN_DEG = 70`), donc une parcelle en pointe ne donne pas forcément une maison en pointe. **Le vrai juge est la 3D, pas la carte du parcellaire** — c'est là qu'il faut regarder avant de payer 14 % des maisons.
+
+✅ **Le remède gratuit a été écrit le 2026-08-15** → §2 sexies. Il ne rogne pas la pointe : il **efface la coupe** quand deux biseaux voisins se recollent en rectangle. Il coûte 2 parcelles en ville, pas 132. Ce qu'il ne fait pas, et qu'il ne faut pas lui demander : les 22 triangles restants **ne** se recollent **pas** en rectangle — ceux-là attendent toujours le regard en 3D.
 
 ## 6. Ce que la méthode a appris, et qu'il ne faut pas reperdre
 
