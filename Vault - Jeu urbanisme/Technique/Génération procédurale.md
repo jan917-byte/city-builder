@@ -1,7 +1,7 @@
 ---
 tags: [technique, procédural, 3d, actif]
-statut: ✅ parcelles et toits FAITS le 2026-08-12 — 1 003 parcelles, 702 bâtiments, 250 toits à deux pentes (les autres plats, faute d'empreinte). Carte plate depuis le 2026-08-12.
-maj: 2026-08-12
+statut: ✅ parcelles et toits FAITS le 2026-08-12 — parcellaire refait au **peigne sur rue** le 2026-08-13 : 1 164 parcelles, 1 013 sur rue. Carte plate depuis le 2026-08-12.
+maj: 2026-08-13
 ---
 
 # Génération procédurale
@@ -17,6 +17,33 @@ C'est le **moteur de la beauté** du jeu, pas un raccourci. Le joueur écrit la 
 | `04c_parcelles.py` | découpe l'emprise de chaque îlot — couche `parcelles`, **968 lignes** |
 | table `BATI`, en haut de `07_exporter_godot.py` | parcelle → bâtiment : recul de rue, **jeu au voisin (0 = mitoyen exact)**, profondeur bâtie, pente de toit |
 | → | **690 volumes**, **278 parcelles enclavées** devenues cours et jardins, **624 toits à deux pentes** |
+
+## 🔄 Le parcellaire refait — le 2026-08-13, le peigne sur rue
+
+> **La table disait 8 m de façade sur 20 m de fond. Le générateur n'en respectait que le produit.**
+
+D'après **Vanegas, Kelly, Weber, Halatsch, Aliaga et Müller, *Procedural Generation of Parcels in Urban Modeling*, Eurographics 2012**. Le papier montre qu'un îlot réel se découpe de deux façons, et que la découpe récursive par boîte englobante — celle de Parish & Müller 2001, et celle qu'on employait — produit des parcelles implausibles.
+
+**Le défaut n'était pas où on l'attendait : l'aire tombait juste, la forme était fausse.** Un cœur ancien sortait à 111,7 m² pour 112 visés — mais en **carré de 10,6 m de côté** au lieu d'une lanière de 7 × 16. Une parcelle sur deux tournait le dos à la rue, et **30 % n'avaient aucune façade**, donc aucun bâtiment.
+
+| élancement (grand axe ÷ petit) | avant | après | visé |
+|---|---|---|---|
+| `coeur_ancien` | 1,59 | **2,07** | 2,29 |
+| `maisons_de_ville` | 1,46 | **2,39** | 2,50 |
+| `pavillonnaire` | 1,51 | **2,04** | 2,07 |
+| `front_commercant` | 1,59 | **1,48** | 1,64 |
+| parcelles sans façade | 30 % | **1 %** | — |
+
+**Le peigne** (méthode « skeleton » du papier, §4.2) longe chaque rue, prend une bande aussi profonde que le tissu le demande, et la débite en dents larges comme la façade visée. Ce qu'aucune rue n'a réclamé est le **cœur d'îlot**. Deux règles font tenir le reste :
+
+- les arêtes sont servies **de la plus longue à la plus courte**, et la bande **déborde de sa profondeur à chaque bout** : la rue la plus longue prend le coin. C'est le schéma `StreetLength` du papier (§4.2.2) obtenu **sans son squelette droit**, hors de portée en Python pur ;
+- **rien n'est coupé qui ne touche la rue** — sinon les droites de chaque arête viennent tailler le cœur, qui ressortait en confettis (236 morceaux pour 32 îlots avant ce tri, un ou deux après).
+
+**La boîte n'est pas jetée** : elle garde les deux rôles que le papier lui laisse (§4.3) — les tissus à un ou deux gros objets par îlot, et le **remplissage du cœur**. La table `TISSU` gagne une colonne `style` qui choisit entre les deux.
+
+🎯 **Ce que ça change en aval** : **1 013 parcelles porteront une maison contre 705**. Les 151 sans façade se décomposent en **136 de cœur, voulues**, et **15 de rue**, qui sont le vrai reliquat — contre 298 confettis dispersés. ⚠️ **Beaucoup plus de toits, donc le potentiel solaire de ~9,5 % est à recalculer** avant de trancher la question ouverte qui l'attend.
+
+👁️ **Et ça se voit** : `apercu_parcelles.py` sort le parcellaire en PNG (`--avant` compare deux versions côte à côte). Ni `apercu_carte` ni `06_etat_zero` ne dessinaient les parcelles — le découpage ne se jugeait qu'au bout de la chaîne, dans Godot. La lecture tient en deux couleurs : **en couleur de tissu la parcelle portera une maison, en vert elle repart au jardin**. Le vert dispersé au milieu des maisons est le défaut ; le vert rassemblé en cœur d'îlot est le résultat.
 
 **La décision 61 n'est pas seulement tenue, elle est prouvée** : la somme des aires
 des parcelles vaut **100,00 %** de l'aire de l'emprise sur chacun des 53 îlots,

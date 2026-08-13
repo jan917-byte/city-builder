@@ -21,6 +21,12 @@ Reste en `brut` : le tableau `decisions` et les trois postures (reconstruire / a
 
 ---
 
+## 2026-08-12 (session 17) — la carte devient plate, et un toit de repli est essayé puis retiré
+
+(1) **La carte est plate**, dans l'image ET dans la donnée ; l'Ilse devient un chenal à murs verticaux ; **la crue sort du prototype**, décidé en cours de session. (2) Le toit plat de repli — *« quand la surface est trop difficile, fait un toit plat »* — a été **écrit, regardé et retiré le même jour** : devant l'image, l'auteur a préféré les toits d'avant.
+
+🎯 Ce que l'essai a laissé, et qui reste vrai : le bon critère est le **pli d'un pan** (l'écart entre ses deux diagonales), sa distribution est **continue, sans décrochement** — donc c'était un curseur, pas un seuil à trouver ; la mesure évidente est **fausse** (574 bâtiments sur 702 se déclaraient vrillés à tort) ; et le critère « angle trop aigu » **ne se déclenche jamais**, le plus petit angle de la ville étant 70,2°.
+
 ## 2026-08-12 (session 16) — cinq corrections devant l'image
 Cinq demandes de l'auteur, toutes faites en regardant la maquette. Aucune ne
 demandait un système de plus : quatre tables et un champ d'altitude.

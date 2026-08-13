@@ -28,7 +28,7 @@ Le contrôle n'est pas « est-ce juste » mais ***« est-ce qu'on croirait y hab
 |---|---|---|
 | les listes de `fid` | haut de `02_qualifier.py` | quel îlot est quoi — dont **`PONTS_SUPPRIMES`** désormais |
 | `TISSU` | `04_deriver_attributs.py` | densité, hauteur, imperméabilisation, canopée, fragilité, parking — **le comportement de la carte** |
-| `TISSU` | `04c_parcelles.py` | largeur de façade et profondeur visées — **le grain de toute la ville** |
+| `TISSU` | `04c_parcelles.py` | largeur de façade, profondeur, et **`style`** (`peigne` ou `boite`) — **le grain de toute la ville**. 🔄 Depuis le peigne du 2026-08-13, les deux premières colonnes disent enfin ce qu'elles disent : la boîte ne respectait que leur **produit** |
 | `BATI` | `07_exporter_godot.py` | recul de rue, jeu au voisin, profondeur bâtie, pente du toit |
 
 🔴 Dans `BATI`, le `jeu` à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (décision 61).
