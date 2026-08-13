@@ -169,7 +169,28 @@ LONGUEUR_MIN_RUE = 6.0
 # Une dent du peigne ne descend jamais sous cette part de la façade visée. Sans
 # ce plancher, une bande de 9 m avec 8 m de façade se couperait en deux dents
 # de 4,5 m — deux demi-maisons au lieu d'une maison un peu large.
-DENT_MIN = 0.45
+#
+# 🔄 2026-08-13 : 0,45 → 0,60. À 0,45 le plancher ne tenait QUE la moyenne, et
+# le jeu de coupe (`JEU`) rapprochait deux coupes voisines de 0,25 chacune —
+# donc la dent la plus étroite tombait à 0,225 × façade, soit 3 m en
+# pavillonnaire pour 13,5 visés. Le jeu est maintenant borné par ce plancher
+# (voir `_dents`), et le plancher vaut pour CHAQUE dent, plus pour la moyenne.
+DENT_MIN = 0.60
+
+# 🔴 QUAND L'ÎLOT N'EST PAS ASSEZ PROFOND POUR DEUX RANGÉES, ON N'EN FAIT
+# QU'UNE, QUI TRAVERSE. En dessous de ce multiple de la profondeur visée, la
+# première rue servie prend TOUT le fond et les parcelles donnent sur les deux
+# rues à la fois. Au-dessus, les deux rives se partagent la profondeur en deux
+# parts égales — la coupe tombe au milieu.
+#
+# Ce que ça remplace : la première rue servie prenait ses `profondeur` mètres
+# quoi qu'il arrive, et celle d'en face se contentait du reste. Sur l'îlot 64,
+# un côté sortait à 28 m et l'autre à 11.
+#
+#   à 1,2 · profondeur, en pavillonnaire (28 m) : un îlot de moins de 33 m de
+#   fond fait des parcelles traversantes ; au-delà, deux rangées d'au moins
+#   16,8 m chacune.
+TRAVERSANT = 1.2
 
 # Et elle ne dépasse jamais ce multiple de l'aire visée : au-delà, on ajoute des
 # dents. C'est le garde-fou `Amax` du papier (§4.2.3, deuxième cas).
@@ -611,7 +632,29 @@ def fusionner(a, b):
     return ouvrir(fusion)
 
 
-def absorber(parcelles, aire_min):
+def trop_petite(anneau, aire_min, largeur_min):
+    """Ce qui n'est pas une parcelle : trop peu de surface, OU trop étroit.
+
+    🔴 LE DEUXIÈME CRITÈRE A ÉTÉ AJOUTÉ LE 2026-08-13, ET IL MANQUAIT. Le seuil
+    d'aire seul laissait passer les LAMELLES : un reste de bande de 2,2 m de
+    large sur 28 m de fond fait 45 m² pile, donc il franchissait `AIRE_MIN` et
+    survivait. Ce n'est pas une parcelle, c'est le bout de bande qu'aucune dent
+    n'a pu prendre — mesuré, 15 en ville, dont une de 2,2 m.
+
+    La largeur se lit sur le PETIT CÔTÉ de la boîte englobante, et se compare à
+    la plus petite des deux consignes du tissu. Sur le petit côté et pas sur la
+    façade : une barre de 1970 fait 60 m de rue pour 15 m de fond, son petit
+    côté est sa profondeur, et elle est juste.
+    """
+    if abs(aire_signee(anneau)) < aire_min:
+        return True
+    if largeur_min <= 0.0:
+        return False
+    _, _, _, court, _ = rectangle_englobant(anneau)
+    return court < largeur_min
+
+
+def absorber(parcelles, aire_min, largeur_min=0.0):
     """Les parcelles trop petites sont réunies à une voisine, jusqu'à ce qu'il
     n'en reste plus — c'est le troisième cas du papier (§4.2.3).
 
@@ -627,9 +670,10 @@ def absorber(parcelles, aire_min):
     parcelles = list(parcelles)
     renonce = set()
     fusions = 0
-    for _ in range(len(parcelles) + 4):
+    for _ in range(2 * len(parcelles) + 8):
         petites = [i for i, (p, _) in enumerate(parcelles)
-                   if abs(aire_signee(p)) < aire_min and i not in renonce]
+                   if i not in renonce
+                   and trop_petite(p, aire_min, largeur_min)]
         if not petites:
             break
         i = min(petites, key=lambda i: abs(aire_signee(parcelles[i][0])))
@@ -798,6 +842,75 @@ def _bande(reste, a, b, u, nrm, prof, L):
     return bande, loin
 
 
+def _rayon(ring, p, dirn):
+    """Du point `p`, en allant vers `dirn`, la distance au premier bord de
+    l'îlot rencontré et l'indice de l'arête touchée. (None, None) si le rayon
+    ne sort jamais — impossible sur un anneau fermé, mais le flottant a ses
+    jours."""
+    n = len(ring)
+    meilleur, jbest = None, None
+    for j in range(n):
+        c, e = ring[j], ring[(j + 1) % n]
+        ex, ey = e[0] - c[0], e[1] - c[1]
+        den = dirn[0] * ey - dirn[1] * ex
+        if abs(den) < 1e-12:
+            continue                          # rayon parallèle à l'arête
+        wx, wy = c[0] - p[0], c[1] - p[1]
+        t = (wx * ey - wy * ex) / den         # le long du rayon
+        s = (wx * dirn[1] - wy * dirn[0]) / den   # le long de l'arête
+        if t > 1e-6 and -1e-9 <= s <= 1.0 + 1e-9:
+            if meilleur is None or t < meilleur:
+                meilleur, jbest = t, j
+    return meilleur, jbest
+
+
+def profondeur_utile(ring, a, b, u, nrm, prof, longueurs):
+    """De combien de fond cette rue a le droit, sachant ce qu'il y a en face.
+
+    🔴 C'EST LA RÈGLE QUI RÉPARE LES ÎLOTS PEU PROFONDS. On tire une dizaine
+    de rayons vers l'intérieur, depuis l'arête, et on regarde où ils ressortent
+    et sur quoi :
+
+      · en face, une autre rue, et l'îlot fait moins de `TRAVERSANT` fois la
+        profondeur visée → LA PARCELLE TRAVERSE. Cette rue prend tout le fond,
+        celle d'en face ne prendra rien, et les parcelles ont deux façades ;
+      · en face, une autre rue, et l'îlot est plus profond → ON COUPE AU
+        MILIEU : chaque rive prend la moitié, plafonnée à la profondeur visée.
+        Au-delà de deux fois la profondeur, le plafond joue et il reste un cœur
+        d'îlot, comme avant ;
+      · en face, pas de rue (un biseau de coin, une arête trop courte) → cette
+        rue prend tout ce qu'elle peut, jusqu'à la profondeur visée.
+
+    Les deux rives d'un même îlot mesurent la MÊME distance, puisqu'on la prend
+    sur l'anneau d'origine et non sur ce qui reste. Elles tombent donc sur la
+    même moitié, et leurs bandes se rejoignent exactement au milieu.
+
+    On prend la MÉDIANE des rayons : sur un îlot en éventail la profondeur
+    varie d'un bout à l'autre de la rue, et la médiane évite qu'un seul rayon
+    parti de travers commande toute la bande.
+
+    Renvoie (profondeur, mode), le mode étant celui du rayon médian.
+    """
+    vals = []
+    for k in range(9):
+        t = 0.15 + 0.70 * k / 8.0
+        p = (a[0] + (b[0] - a[0]) * t + nrm[0] * 1e-6,
+             a[1] + (b[1] - a[1]) * t + nrm[1] * 1e-6)
+        d, j = _rayon(ring, p, nrm)
+        if d is None or d <= EPS:
+            continue
+        en_face_une_rue = longueurs[j] >= LONGUEUR_MIN_RUE
+        if en_face_une_rue and d < TRAVERSANT * prof:
+            vals.append((d, "traversante"))       # on prend tout le fond
+        elif en_face_une_rue and d / 2.0 < prof:
+            vals.append((d / 2.0, "moitie"))      # on coupe au milieu
+        else:
+            vals.append((min(prof, d), "pleine")) # la profondeur visée suffit
+    if not vals:
+        return prof, "pleine"
+    return sorted(vals)[len(vals) // 2]
+
+
 def _dents(bande, a, u, facade, prof):
     """La bande se débite en dents perpendiculaires à la rue.
 
@@ -822,13 +935,22 @@ def _dents(bande, a, u, facade, prof):
     k = max(1, k)
 
     def debiter(k):
+        # 🔴 LE JEU DE COUPE EST BORNÉ PAR LE PLANCHER DE LARGEUR. Deux coupes
+        # voisines se décalent indépendamment : sans borne, elles peuvent se
+        # rapprocher de deux fois le jeu et fabriquer une dent deux fois trop
+        # étroite. Mesuré avant correction : 2,2 m de large en pavillonnaire
+        # pour 13,5 visés. On limite donc l'amplitude à la moitié de ce qui
+        # dépasse du plancher — chaque dent reste alors au-dessus.
+        pas = span / k
+        plancher = min(pas * 0.999, facade * DENT_MIN)
+        ampl = min(JEU * pas, max(0.0, (pas - plancher) / 2.0))
         pieces = [bande]
         for j in range(1, k):
             t = ds[0] + span * j / k
             # Le décalage se tire de la POSITION de la coupe, pas de son rang :
             # la décision 35, appliquée à la coupe et pas qu'à la parcelle.
             g = graine_de([(a[0] + u[0] * t, a[1] + u[1] * t)])
-            t += ((g % 1000) / 1000.0 - 0.5) * 2.0 * JEU * span / k
+            t += ((g % 1000) / 1000.0 - 0.5) * 2.0 * ampl
             p0 = (a[0] + u[0] * t, a[1] + u[1] * t)
             suite = []
             for m in pieces:
@@ -847,11 +969,14 @@ def _dents(bande, a, u, facade, prof):
 
 
 def peigne(anneau, facade, prof):
-    """Découpe un îlot depuis ses rues. Renvoie (parcelles sur rue, cœur).
+    """Découpe un îlot depuis ses rues. Renvoie (parcelles sur rue, cœur,
+    le compte rendu des bandes).
 
-    Les arêtes sont servies de la plus longue à la plus courte. Chacune prend
-    sa bande dans ce qui reste, et la débite. Ce qu'aucune n'a réclamé est le
-    cœur d'îlot — un seul morceau en général, et c'est le but.
+    Les arêtes sont servies de la plus longue à la plus courte. Chacune
+    demande d'abord DE QUELLE PROFONDEUR ELLE A LE DROIT (`profondeur_utile`,
+    la règle du traversant), prend sa bande dans ce qui reste, et la débite.
+    Ce qu'aucune n'a réclamé est le cœur d'îlot — un seul morceau en général,
+    et c'est le but.
 
     Aucun morceau n'est jeté en route : tout ce qui sort d'une coupe part soit
     dans les dents, soit dans le reste. C'est ce qui fait tenir la décision 61
@@ -861,28 +986,38 @@ def peigne(anneau, facade, prof):
     n = len(ring)
     reste = [ring]
     rue = []
+    bandes = []
 
-    def longueur(i):
-        a, b = ring[i], ring[(i + 1) % n]
-        return math.hypot(b[0] - a[0], b[1] - a[1])
+    longueurs = [math.hypot(ring[(i + 1) % n][0] - ring[i][0],
+                            ring[(i + 1) % n][1] - ring[i][1]) for i in range(n)]
 
     # À longueur égale, l'indice départage : deux arêtes jumelles ne doivent
     # pas changer d'ordre d'une exécution à l'autre.
-    for i in sorted(range(n), key=lambda i: (-longueur(i), i)):
+    for i in sorted(range(n), key=lambda i: (-longueurs[i], i)):
         if not reste:
             break
         a, b = ring[i], ring[(i + 1) % n]
-        L = longueur(i)
+        L = longueurs[i]
         if L < LONGUEUR_MIN_RUE:
             continue
         u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
         nrm = (-u[1], u[0])          # `ouvrir` rend l'anneau trigo : à gauche
-        bande, loin = _bande(reste, a, b, u, nrm, prof, L)
+        pe, mode = profondeur_utile(ring, a, b, u, nrm, prof, longueurs)
+        if pe < AIRE_MIN / max(L, 1.0):
+            continue                 # il ne reste rien de bâtissable en face
+        bande, loin = _bande(reste, a, b, u, nrm, pe, L)
+        nd = 0
         for m in bande:
-            rue += _dents(m, a, u, facade, prof)
+            d = _dents(m, a, u, facade, pe)
+            rue += d
+            nd += len(d)
+        if nd:
+            bandes.append((L, pe, mode, nd))
         reste = loin
 
-    return rue, [m for m in reste if len(m) >= 3 and abs(aire_signee(m)) > 1e-6]
+    return (rue,
+            [m for m in reste if len(m) >= 3 and abs(aire_signee(m)) > 1e-6],
+            bandes)
 
 
 def facade_de(parcelle, bord_idx, grille=1.0, tol=0.35):
@@ -994,6 +1129,8 @@ def main():
     saute = []
     replis = []
     coeurs = []
+    rives = {}
+    traversants = []
     n_fusions = 0
 
     for fid in sorted(ilots):
@@ -1013,7 +1150,17 @@ def main():
         aire0 = abs(aire_signee(ext))
 
         if style == "peigne":
-            rue, coeur = peigne(ext, facade, prof)
+            rue, coeur, bandes = peigne(ext, facade, prof)
+            rive_ilot = {}
+            for L, pe, mode, nd in bandes:
+                r = rives.setdefault(st, {}).setdefault(mode, [0, 0, 0.0])
+                r[0] += 1
+                r[1] += nd
+                r[2] += pe * nd
+                rive_ilot[mode] = rive_ilot.get(mode, 0) + 1
+            if rive_ilot:
+                traversants.append((fid, st,
+                                    max(rive_ilot, key=lambda k: rive_ilot[k])))
             # 🌳 LE CŒUR REPASSE PAR LA BOÎTE. C'est le rôle que le papier lui
             # laisse (§4.3, dernier paragraphe) : la région intérieure se
             # remplit par une découpe récursive. Sans ça le cœur ressort d'un
@@ -1042,7 +1189,11 @@ def main():
         # ✂️ LES TROP PETITES SONT RÉUNIES À UNE VOISINE (papier §4.2.3).
         # Après le peigne comme après la boîte : un éclat de 4 m² n'est pas une
         # parcelle, et il donnerait une maison impossible ou un jardin invisible.
-        parcelles, n_f = absorber(parcelles, AIRE_MIN)
+        # La largeur plancher se lit sur la plus PETITE des deux consignes du
+        # tissu : c'est le côté court de la parcelle voulue, et une parcelle
+        # plus mince que ça est une lamelle, pas un terrain.
+        parcelles, n_f = absorber(parcelles, AIRE_MIN,
+                                  DENT_MIN * min(facade, prof))
         n_fusions += n_f
 
         # 🔴 LE CONTRÔLE QUI COMMANDE TOUT LE FICHIER (décision 61).
@@ -1065,7 +1216,7 @@ def main():
                 "aire": abs(aire_signee(p)), "perim": per, "facade": fac,
                 "mitoyen": max(0.0, per - fac), "graine": g,
                 "niveaux": max(1.0, niv), "origine": origine,
-                "elan": long_axe / max(court_axe, 0.01),
+                "elan": long_axe / max(court_axe, 0.01), "large": court_axe,
             })
         par_st.setdefault(st, []).append((fid, len(parcelles), aire0))
 
@@ -1157,6 +1308,37 @@ def main():
     print("     %d parcelles porteront une maison." % (tous - tous_enc))
     print()
 
+    # ── la règle du traversant ────────────────────────────────────────────
+    if rives:
+        print("  ↔️  LA PROFONDEUR, RIVE PAR RIVE. Chaque rue demande d'abord de")
+        print("     quel fond elle a le droit, selon ce qu'il y a en face :")
+        print("       pleine      la profondeur visée tient, il restera un cœur")
+        print("       moitié      une rue en face et pas la place de deux rangées")
+        print("                   pleines : chacune prend la moitié du fond")
+        print("       traversante l'îlot est trop mince pour deux rangées : une")
+        print("                   seule, qui donne sur les DEUX rues")
+        print()
+        print("  %-20s %-12s %6s %9s %10s %8s" % ("sous_type", "mode", "rives",
+                                                  "parcelles", "prof. moy",
+                                                  "visée"))
+        print("  " + "-" * 70)
+        for st in sorted(rives, key=lambda k: -sum(v[1] for v in rives[k].values())):
+            fc, pr, _ = TISSU[st]
+            for mode in ("pleine", "moitie", "traversante"):
+                if mode not in rives[st]:
+                    continue
+                nb, np_, sp = rives[st][mode]
+                print("  %-20s %-12s %6d %9d %8.1f m %6.1f m"
+                      % (st, mode, nb, np_, sp / max(np_, 1), pr))
+        print("  " + "-" * 70)
+        tr = [f for f, _, m in traversants if m == "traversante"]
+        mo = [f for f, _, m in traversants if m == "moitie"]
+        print("     %d îlot(s) surtout traversant(s)%s"
+              % (len(tr), (" : " + ", ".join(str(f) for f in tr[:14])) if tr else ""))
+        print("     %d îlot(s) surtout coupé(s) au milieu%s"
+              % (len(mo), (" : " + ", ".join(str(f) for f in mo[:14])) if mo else ""))
+        print()
+
     # ── les cœurs d'îlot ──────────────────────────────────────────────────
     n_c = sum(1 for _, _, nc, _, _ in coeurs if nc)
     if coeurs:
@@ -1198,9 +1380,13 @@ def main():
                   % (fid, st, n, a0, s, 100.0 * e))
     print()
 
-    eclats = [r for r in resultats if r["aire"] < AIRE_MIN]
-    print("  ✂️  LES ÉCLATS — parcelles sous %.0f m² (`AIRE_MIN`), qui ne sont"
-          " pas des parcelles" % AIRE_MIN)
+    eclats = [r for r in resultats
+              if r["aire"] < AIRE_MIN or r["large"] < DENT_MIN
+              * min(TISSU[r["st"]][0], TISSU[r["st"]][1])]
+    print("  ✂️  LES ÉCLATS ET LES LAMELLES — sous %.0f m² (`AIRE_MIN`), ou plus"
+          " minces que" % AIRE_MIN)
+    print("     %.0f %% du petit côté voulu (`DENT_MIN`) : ni l'un ni l'autre"
+          " n'est une parcelle." % (100 * DENT_MIN))
     print("     %d ont été réunies à leur voisine de plus long bord, comme le"
           " veut le papier (§4.2.3)." % n_fusions)
     if not eclats:

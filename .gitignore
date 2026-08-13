@@ -5,6 +5,12 @@ __pycache__/
 # Rendu régénérable (apercu_carte.py, 06, captures Godot), pas des sources
 QGIS/rendus/
 
+# Copies de travail des GeoPackages. Les .gpkg sont des binaires que git ne
+# fusionne pas : la vraie carte ne s'écrit que sous Windows, et tout essai se
+# fait sur une copie posée ici. Voir QGIS/data/bac/LISEZ-MOI.md.
+QGIS/data/bac/*
+!QGIS/data/bac/LISEZ-MOI.md
+
 # Godot : cache d'import local, jamais partagé entre deux machines
 Godot/.godot/
 # L'export vers Godot est un DÉRIVÉ : 1,4 Mo régénérés en 3 s par 07. Le

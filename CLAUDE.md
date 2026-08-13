@@ -94,13 +94,27 @@ Ce n'est pas une dispense de rigueur, c'est l'inverse : le code n'étant relu pa
 
 Le travail se fait **principalement sous Windows**, parfois sur un Mac. Le pont entre les deux est le dépôt git [`jan917-byte/city-builder`](https://github.com/jan917-byte/city-builder) (privé). Donc, avant de commencer : `git pull`. Avant de changer de machine : `git push`. Ce n'est pas une formalité — voir le piège du GeoPackage ci-dessous.
 
-**Le clone Mac ne sert pas à coder.** Il sert à travailler le **concept** — le vault, essentiellement : écrire, relire, trancher des questions ouvertes. Ni QGIS ni Godot n'y tournent. Conséquence pratique : sur Mac, on ne touche pas aux `.gpkg` ni à `Godot/`, donc le piège du GeoPackage ne se déclenche pas et `.mcp.json` n'a pas besoin d'être adapté. Le seul conflit possible est du `.md` — que git fusionne très bien.
+**Ce qui tourne sur le Mac, et ce qui n'y tourne pas.** 🔄 *Révisé le 2026-08-13 — l'ancienne règle disait « le clone Mac ne sert pas à coder ». La décision 65 l'a rendue fausse sans qu'on le remarque : les onze scripts de `QGIS/scripts/` sont du Python pur avec `sqlite3`, aucun PyQGIS, aucun GDAL. Ils tournent partout.*
+
+| | Mac |
+|---|---|
+| Le vault — écrire, relire, trancher | ✅ c'est sa raison d'être |
+| Les onze scripts de `QGIS/scripts/` | ✅ rien à installer (`apercu_*` et `06` demandent Pillow) |
+| **Écrire dans `QGIS/data/*.gpkg`** | ❌ **jamais** — voir la règle ci-dessous |
+| QGIS lui-même, Godot | ❌ pas installés, donc `.mcp.json` n'a pas besoin d'être adapté |
+
+🔴 **La règle qui remplace l'ancienne, et qui neutralise le piège du GeoPackage :**
+
+> **Le script voyage entre les deux machines. La carte, non.**
+> `QGIS/data/*.gpkg` ne s'écrit que **sous Windows**.
+
+Sur le Mac on travaille donc en `--blanc`, ou sur une copie posée dans **`QGIS/data/bac/`** — un dossier ignoré par git, fait pour ça, avec sa notice dedans. Et au moment de committer depuis le Mac : **nommer les fichiers, jamais `git add -A`**. Tant que ça tient, le seul conflit possible reste du `.md` et du `.py` — que git fusionne très bien.
 
 **Le dépôt est le filet de sécurité.** Avant une opération de masse (renommage, réécriture), vérifier que l'arbre est propre (`git status`) et committer ce qui traîne — plus besoin de copier le vault en zip.
 
 ## 5 bis. Pièges de cet environnement (vécus, pas théoriques)
 
-- 🔴 **Les GeoPackages ne se fusionnent pas.** `QGIS/data/*.gpkg` sont des binaires : si la carte est modifiée sur les deux machines sans passer par un `push`/`pull`, git ne fusionne rien — il faut **choisir une version et jeter l'autre**. Le travail QGIS se fait sur une machine à la fois — en pratique, sous Windows seulement (§5), ce qui neutralise le piège tant que ça reste vrai.
+- 🔴 **Les GeoPackages ne se fusionnent pas.** `QGIS/data/*.gpkg` sont des binaires : si la carte est modifiée sur les deux machines sans passer par un `push`/`pull`, git ne fusionne rien — il faut **choisir une version et jeter l'autre**. Ce qui neutralise le piège n'est plus « le Mac ne code pas » — il code maintenant (§5) — mais **« la carte ne s'écrit que sous Windows »**, et le dossier `QGIS/data/bac/` qui donne un endroit sûr pour les essais ailleurs.
 - **Encodage des noms de fichiers.** Créés depuis un shell Windows en codepage OEM (CP850), les noms accentués arrivent en mojibake (`Systèmes` → `Syst├¿mes`) et cassent tous les wikilinks d'un coup. Créer et renommer les fichiers accentués **via les outils d'édition ou Python**, jamais par une redirection shell. Côté git c'est sain : les noms sont stockés en **NFC** (ce que Windows attend) et `core.precomposeunicode` tient le Mac aligné. Le contenu des `.md` reste en **UTF-8 sans BOM**.
 - **Fins de ligne.** `.gitattributes` impose **LF** partout dans le dépôt et marque les `.gpkg` comme binaires. Sans lui, un aller-retour Windows↔Mac fait apparaître le vault entier comme modifié. Ne pas le supprimer.
 - **Obsidian ouvert** pendant qu'on renomme des fichiers : le fermer d'abord, et corriger `.obsidian/workspace.json` si des chemins morts y traînent. Ce fichier est gitignoré — l'état de session ne se synchronise pas d'une machine à l'autre, et c'est voulu.
