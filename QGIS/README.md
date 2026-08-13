@@ -21,7 +21,7 @@ Le produit final n'est pas une carte. C'est **un GeoPackage dont chaque colonne 
 QGIS/
 ├─ README.md                     ← ce fichier
 ├─ data/
-│   ├─ Vallmar2.gpkg             🔒 la SOURCE, jamais écrite   (184 Ko)
+│   ├─ Vallmar2.gpkg             🔒 la SOURCE — deux scripts seulement y écrivent (184 Ko)
 │   └─ Prototype_qualifie.gpkg   ⚙️ le fichier de travail, régénérable  (217 Ko)
 ├─ scripts/
 │   ├─ 01_champs_et_valuemaps.py    (console QGIS — optionnel, hors chaîne)
@@ -29,11 +29,15 @@ QGIS/
 │   ├─ 03_adjacences.py             ② le graphe
 │   ├─ 04_deriver_attributs.py      ③ les attributs dérivés
 │   ├─ apercu_carte.py              👁 la boucle de contrôle (lecture seule)
+│   ├─ apercu_parcelles.py          👁 le parcellaire en PNG, avant/après
+│   ├─ tracer_chemins.py            🚶 propose les venelles → écrit dans la SOURCE
 │   └─ classification.json          (vestige — voir §8)
 └─ rendus/                        PNG régénérables, **gitignoré** (absent d'un clone frais)
 ```
 
 Les deux `.gpkg` sont versionnés. Ce sont des **binaires : git ne les fusionne pas.** Le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5 bis
+
+🔴 **Deux scripts écrivent dans la SOURCE**, et il faut les traiter à part : `00_decouper_ilots.py` (il coupe les îlots là où l'auteur a tracé une rue) et `tracer_chemins.py` (il pose la couche `chemins`). C'est voulu : `02` recopie la source par-dessus le fichier de travail, donc **une couche dessinée à la main ne survit que dans la source**. Mêmes précautions pour les deux — committer avant, passe `--blanc` d'abord, et `tracer_chemins` refuse en plus d'écraser une couche existante sans `--refaire`.
 
 ## 3. Le pipeline
 
@@ -70,7 +74,15 @@ Les deux `.gpkg` sont versionnés. Ce sont des **binaires : git ne les fusionne 
 
 **02 → 03 → 04 → 04b, dans cet ordre, sans en sauter.** `02_qualifier.py` fait un `shutil.copy2` de la source : il **écrase** `Prototype_qualifie.gpkg` et détruit tout ce que 03, 04 et 04b y avaient écrit — **y compris la couche `emprises`**. Relancer 02 seul laisse un fichier amputé de la table `adjacences`, et 04 refuse alors de démarrer.
 
-Ce qu'on peut relancer seul, sans risque : **03**, **04**, **04b**, et tous les lecteurs (`apercu_carte`, `05`, `06`, `07` — lecture seule, tournent même avec QGIS ouvert sur le fichier).
+⚠️ **04c vient après 04b**, et la chaîne complète est donc **02 → 03 → 04 → 04b → 04c**.
+
+Ce qu'on peut relancer seul, sans risque : **03**, **04**, **04b**, **04c**, et tous les lecteurs (`apercu_carte`, `05`, `06`, `07` — lecture seule, tournent même avec QGIS ouvert sur le fichier).
+
+### 🚶 La couche `chemins` — les venelles dessinées DANS les îlots
+
+Une couche **facultative** de `Vallmar2.gpkg` : des LINESTRING, chacune avec son `fid_ilot` et sa `largeur_m` (3 à 5 m). `04c_parcelles.py` retire le couloir de l'emprise **avant** le peigne, et l'îlot part en deux morceaux qui gardent le **même numéro** — un seul îlot, une seule décision de jeu. Le couloir ressort en parcelle d'origine `chemin`, que `07` pave au sol. Une venelle **n'est pas un tronçon de route** : elle n'entre ni dans `03`, ni dans le trafic, ni dans la hiérarchie.
+
+`tracer_chemins.py --blanc` propose un tracé par **pli** d'îlot (sommet rentrant) et n'en garde un que s'il fait monter la **rectangularité** des parcelles sans entamer un cœur d'îlot. C'est une proposition : le tracé se corrige à la main dans QGIS. → `Décisions arrêtées` 67 · 67b · 67c
 
 ### L'étape 6 est faite — et ce n'est pas un GeoJSON
 

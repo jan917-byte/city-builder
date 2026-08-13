@@ -3,7 +3,9 @@
 > **L'étape en cours.** Le point dur du pipeline : ce qui sépare 70 pâtés pleins d'une ville où on croirait habiter.
 > La doctrine — *pourquoi* la parcelle est une partition, ce qu'on ne fera jamais — est dans le vault : `Technique/Génération procédurale.md`. **Ici, le chantier seulement.**
 
-**Dernière mesure : 2026-08-13** (session 19, sous Windows)
+**Dernière mesure : 2026-08-14** (session 21, sur le Mac, en `--blanc` et sur copie dans `bac/`)
+
+🔴 **LA CARTE DU DÉPÔT EST PLUS VIEILLE QUE LE CODE.** `Prototype_qualifie.gpkg` a été écrit au commit `18a6b4c`, c'est-à-dire **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond. Tous les chiffres de la section 2 ci-dessous sont ceux du **code d'aujourd'hui**, mesurés sur une copie dans `bac/` ; la couche `parcelles` du vrai `.gpkg`, elle, montre encore l'ancienne découpe. **Rien n'est acquis tant que `04c` n'a pas été relancé sous Windows.**
 
 ---
 
@@ -20,23 +22,70 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 
 ## 2. Où c'en est — les chiffres mesurés
 
+| | code d'aujourd'hui | carte du dépôt (périmée) |
+|---|---|---|
+| parcelles | **908**, dont **893 sur rue** — plus **7 chemins** | 1 096, dont 987 sur rue |
+| cœurs d'îlot | 13 îlots, 0,86 ha, en 15 morceaux **d'un seul tenant** (67c · 67d) | 102 morceaux redécoupés |
+| reliquat de rue sans façade | **0** — il n'y a plus de déchet | 7 |
+| réunions d'éclats | 107, **aucun ne survit** | 48 |
+| partition | **100,00 %** sur chacun des 54 îlots, écart max 8,1·10⁻⁷ | idem |
+
+🔴 **Le nombre de parcelles a BAISSÉ, et ce n'est pas une régression.** Les 1 105 d'avant comptaient les cœurs d'îlot redécoupés en dizaines de morceaux et les fonds de jardin sans façade. Depuis **67c** un cœur reste entier ; depuis **67d** ce qui reste derrière les parcelles reste un cœur au lieu d'être recollé à une parcelle de rue. Ce qui compte est le **893 sur rue** — inchangé par 67d — et le fait que les **enclavées soient tombées à zéro**. → mémoire : *le nombre de maisons n'est pas un critère*.
+
+**L'élancement, tissu par tissu** — le rapport du grand axe au petit, qui était le vrai défaut avant le peigne :
+
+| | mesuré | visé | |
+|---|---|---|---|
+| `maisons_de_ville` | 2,24 | 2,32 | ✅ |
+| `coeur_ancien` | 2,08 | 2,29 | ✅ |
+| `pavillonnaire` | 1,95 | 2,07 | ✅ |
+| `front_commercant` | 1,48 | 1,64 | ✅ |
+
+**La rectangularité** — aire ÷ aire du rectangle englobant, le nombre qui juge les chemins (67b) : **0,83 en moyenne** avant venelle, et de 0,84 à 0,91 sur les sept îlots qui en portent une.
+
+## 2 bis. Ce que l'auteur a vu sur l'image, le 2026-08-14
+
+Trois défauts désignés sur l'aperçu, et ils n'ont pas eu la même réponse.
+
+| | Ce qu'il a vu | Où ça en est |
+|---|---|---|
+| 1 | **îlots 64 et 69** — « la séparation doit se faire au milieu ». Une seule rangée prenait tout le fond (28 m sur 34 en 64), celle d'en face se contentait du reste | ✅ **déjà corrigé dans le code**, par `c409680`. Ce qu'il regardait était la carte périmée. Rien à écrire, tout à relancer |
+| 2 | **îlot 32** — « pas de parcelles, les deux barres seront posées au milieu de l'îlot sans considération du tissu urbain bâti (urbanisme des années 70) » | ✅ **fait** — la barre passe du peigne à la **boîte** (§5). L'îlot sort en **2 parcelles de 5 579 m²** au lieu d'un anneau de 7 parcelles de rue autour d'un cœur vide |
+| 3 | **îlot 24** — « parcelles bizarres, triangulaires » | ⚠️ **mesuré, pas corrigé** — deux remèdes essayés, les deux moins bons que le mal (§6 bis) |
+| 4 | **îlots 10, 33, 49, 50, 66** — « les cœurs d'îlots sont fusionnés avec les parcelles » | ✅ **fait** (§2 quater) — la profondeur du tissu redevient un plafond, et ce qui reste derrière est un cœur |
+
+## 2 quater. Le cœur d'îlot rendu aux parcelles — corrigé le 2026-08-14
+
+**Ce que l'auteur a vu** : sur les îlots 10, 33, 49, 50 et 66, une parcelle deux à trois fois plus grosse que ses voisines, qui remplissait tout le milieu de l'îlot. *« Les cœurs d'îlots sont fusionnés avec les parcelles. »*
+
+**Ce que c'était.** Un morceau de cœur devait être large **et** sans pointe pour compter comme cour ; sinon il repartait aux parcelles de rue voisines. Sur un îlot en éventail le milieu est toujours un peu pointu, donc il repartait presque toujours — et il repartait **en bloc**, parce que la parcelle qui venait d'en avaler un morceau devenait la plus grande voisine du morceau suivant, donc gagnait encore. Effet boule de neige, mesuré : le cœur de l'îlot 33 (741 m²) finissait entier dans **une** parcelle de 651 m².
+
+**La règle de l'auteur, qui remplace tout ça** → `Décisions arrêtées` **67d** :
+
+> *Pour les grands îlots, les parcelles vont seulement une certaine profondeur jusqu'au centre. La surface qui reste est un cœur d'îlot.*
+
+**Ce qui a changé dans le code**, trois choses :
+
 | | |
 |---|---|
-| parcelles | **1 096**, dont **987 sur rue** — qui porteront une maison |
-| cœurs d'îlot | 102, voulus (ce qu'aucune rue n'a réclamé) |
-| reliquat de rue sans façade | **7** — c'est le seul vrai déchet |
-| plus petite parcelle | **45,2 m²** — aucune sous le plancher, 48 éclats réunis à leur voisine |
-| partition | **100,00 %** de l'aire de l'emprise sur chacun des 54 îlots, écart max 9,3·10⁻⁷ |
+| **Un cœur a le droit d'être pointu** | `COEUR_ANGLE_MIN` passe à **0**, éteint. Une pointe au fond d'un îlot en éventail est de la ville |
+| **Le seuil de minceur descend** | `COEUR_MIN_LARGE` **10 → 8 m**. Les restes des îlots 10 (9,8 m), 49 (9,6 et 8,1) et 50 (9,2) tombaient juste sous la barre |
+| **Une parcelle ne reçoit qu'un seul reste** | le garde-fou anti-boule-de-neige, dans `absorber`. Il ne sert plus que pour le pavillonnaire et les vraies lamelles, mais c'était le vrai bug |
 
-**La forme, qui était le vrai défaut.** L'aire tombait juste depuis le début ; c'est l'élancement qui était faux — un cœur ancien sortait en carré de 10,6 m au lieu d'une lanière de 7 × 16. Le **peigne sur rue** (méthode Vanegas et al., Eurographics 2012) l'a corrigé :
+**Ce que ça donne, mesuré sur la copie de `bac/` :**
 
-| élancement (profondeur ÷ façade) | avant | après | visé |
-|---|---|---|---|
-| `coeur_ancien` | 1,59 | **2,19** | 2,29 |
-| `maisons_de_ville` | 1,46 | **2,44** | 2,50 |
-| `pavillonnaire` | 1,51 | **2,09** | 2,07 |
-| `front_commercant` | 1,59 | **1,64** | 1,64 |
-| parcelles sans façade | 30 % | **7 %** | — |
+| | avant | après |
+|---|---|---|
+| parcelles **sur rue** | 893 | **893** — inchangé |
+| cœurs d'îlot | 9, en 9 morceaux | **15**, en 15 morceaux, 0,86 ha |
+| parcelles au-delà de 2× l'aire de leur tissu | **11**, jusqu'à 3,1× | **0** sur les îlots entourés |
+| partition (61) | 100,00 % | **100,00 %**, écart max 8,1·10⁻⁷ |
+
+⚠️ **Une piste essayée et retirée, à ne pas refaire** : repeigner l'îlot **sans plafond de profondeur** quand aucun morceau n'était une cour, pour que les deux rangées se rejoignent au milieu et qu'il ne reste rien. L'image était propre — et c'est l'inverse de 67d. L'avertissement est écrit dans `04c` à l'endroit exact.
+
+## 2 ter. La forme, qui était le vrai défaut avant le peigne
+
+L'aire tombait juste depuis le début ; c'est l'élancement qui était faux — un cœur ancien sortait en carré de 10,6 m au lieu d'une lanière de 7 × 16. Le **peigne sur rue** (méthode Vanegas et al., Eurographics 2012) l'a corrigé, et les **parcelles sans façade sont passées de 30 % à 10 %**.
 
 ## 3. Le critère de réussite — et il ne se juge pas ici
 
@@ -47,10 +96,19 @@ L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux image
 
 **Comment on regarde** : `python "QGIS/scripts/apercu_parcelles.py"` sort le parcellaire en PNG (`--avant` compare deux versions côte à côte). La lecture tient en deux couleurs — **en couleur de tissu, la parcelle portera une maison ; en vert, elle repart au jardin**. Le vert dispersé au milieu des maisons est le défaut ; le vert rassemblé en cœur d'îlot est le résultat.
 
+🔢 **Le numéro d'îlot est écrit sur l'image, par défaut** (`--sans-fids` pour l'enlever). Sans lui, désigner un défaut oblige à le décrire — « le bloc allongé en haut à gauche » — au lieu de le nommer, et deux personnes qui regardent la même image ne parlent pas forcément du même îlot. Une légende des tissus est en bas de chaque panneau.
+
 ## 4. Ce qui reste, dans l'ordre
 
-1. 🔴 **Relancer `07_exporter_godot.py`, sous Windows.** La chaîne s'arrête au `.gpkg` : la maquette Godot affiche encore l'ancienne ville. Ce qu'il faut lire dans ce que `07` imprime — le nombre de volumes bâtis (987 parcelles sur rue là où l'ancienne découpe en donnait 705), des cœurs d'îlot moins nombreux et plus grands, et **les deux défauts ci-dessous qui devraient reculer sans qu'on les vise** (des parcelles plus rectangulaires font des empreintes plus rectangulaires). À vérifier, pas à promettre.
-2. **Regarder le résultat en 3D**, puis les trois défauts imprimés à chaque export :
+1. 🔴 **Sous Windows, dans cet ordre : `tracer_chemins.py`, puis `04c_parcelles.py`, puis `07_exporter_godot.py`.** Passe `--blanc` avant chaque écriture. `tracer_chemins` écrit dans **`Vallmar2.gpkg`** — donc il faut ensuite **relancer la chaîne complète 02 → 03 → 04 → 04b → 04c**, puisque `02` recopie la source. Ce qu'il faut lire ensuite :
+   - **les 7 venelles** sur 22, 24, 26, 38, 40, 44, 63 — au pli, courtes, et aucun cœur entamé (§4 bis) ;
+   - **les îlots 64 et 69 coupés au milieu** — le défaut n°1 de l'auteur, et il tombe tout seul ;
+   - **l'îlot 32 en deux parcelles** au lieu d'un anneau autour d'un cœur vide, et **deux barres posées au milieu** ;
+   - **893 parcelles sur rue et zéro enclavée** là où l'ancienne découpe en donnait 705 ;
+   - **les cœurs d'îlot d'un seul tenant** — plus de damier à l'intérieur d'une cour (67c) ;
+   - **les deux défauts ci-dessous devraient reculer sans qu'on les vise** — des parcelles plus rectangulaires font des empreintes plus rectangulaires. À vérifier, pas à promettre.
+2. 👁️ **Juger les parcelles triangulaires en 3D, pas sur la carte** (§6 bis). Le mécanisme qui les supprime existe et il est éteint, parce qu'il coûte 14 % des maisons. La question à trancher devant l'image : est-ce qu'une parcelle en pointe donne une **maison** en pointe, alors que `07` coupe déjà la pointe des bâtiments ?
+3. **Regarder le résultat en 3D**, puis les trois défauts imprimés à chaque export :
 
    | Le défaut | Ce que c'est |
    |---|---|
@@ -58,8 +116,45 @@ L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux image
    | **47 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large a été essayé le 2026-08-12 et **retiré devant l'image** |
    | **748 pans de toit réorientés à l'émission (7 %)** | conséquence : le contrôle « faces vers l'extérieur » est vrai **par construction** côté toits et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
 
-3. **Régler la table `TISSU` de `04c` devant l'image** — c'est du level design, il appartient à l'auteur (§5).
-4. ⏸️ **Puis trancher le potentiel solaire** — voir « Ce qui attend l'auteur ».
+4. **Régler la table `TISSU` de `04c` devant l'image** — c'est du level design, il appartient à l'auteur (§5).
+5. ⏸️ **Puis trancher le potentiel solaire** — voir « Ce qui attend l'auteur ».
+
+## 4 bis. 🚶 Le chemin dans l'îlot — nouveau le 2026-08-14
+
+Le peigne ne sait pas découper un **îlot en L** : un L n'a pas de fond. Chaque aile est servie par la rue qui la longe, et le coude reste une masse que personne ne réclame — parcelles en biseau, deux fois trop profondes.
+
+**Ce qu'on a fait, et ce qu'on n'a pas fait.** On ne coupe **pas** l'îlot en deux : l'îlot est l'unité de décision du jeu, 70 îlots restent 70. On y dessine une **venelle**, ni rue ni parcelle, retirée de l'emprise **avant** le peigne. Ses deux parois deviennent alors du bord d'emprise, donc le peigne les sert comme une rue — le coude a un devant et un derrière. → `Décisions arrêtées` **67**
+
+| | |
+|---|---|
+| **Où le tracé va** | au **pli** : un sommet rentrant de l'emprise, au-delà de 25°. Nulle part ailleurs |
+| **Quel tracé** | la **plus courte** traversée qui part du pli. Une venelle courte coupe un coude ; une venelle longue traverse un îlot |
+| **Ce qui l'autorise** | la **rectangularité** monte (aire ÷ aire du rectangle englobant, +0,010 au moins) |
+| **Ce qui l'interdit** | elle mange plus de 5 % d'un cœur d'îlot · elle ne coupe pas vraiment l'emprise en deux |
+| **Ce qui n'est PAS un critère** | 🔴 le **nombre de maisons**. Il se mesure et s'imprime, il ne décide pas → **67b** |
+| **La largeur** | **3 à 5 m**, par tissu : 3,0 sente de cœur ancien · 3,5 maisons de ville · 4,0 passage de service · 5,0 desserte de lotissement. La colonne `largeur_m` de la couche prime toujours |
+
+**Les sept chemins de Wehrau, mesurés le 2026-08-14 :**
+
+| îlot | tissu | longueur | largeur | sol pris | rectangularité |
+|---|---|---|---|---|---|
+| 22 | `coeur_ancien` | 21 m | 3,0 | 38 m² | 0,831 → **0,864** |
+| 24 | `front_commercant` | 31 m | 4,0 | 80 m² | 0,822 → **0,856** |
+| 26 | `pavillonnaire` | 57 m | 5,0 | 201 m² | 0,844 → **0,858** |
+| 38 | `coeur_ancien` | 28 m | 3,0 | 42 m² | 0,831 → **0,851** |
+| 40 | `maisons_de_ville` | 45 m | 3,5 | 110 m² | 0,829 → **0,846** |
+| 44 | `maisons_de_ville` | 61 m | 3,5 | 120 m² | 0,829 → **0,844** |
+| 63 | `pavillonnaire` | 44 m | 5,0 | 100 m² | 0,828 → **0,884** |
+
+**690 m² pris à la ville**, soit 0,07 ha de toit en moins pour le solaire.
+
+**Où vivent les chemins.** Dans une couche `chemins` de **`Vallmar2.gpkg`** — la source que l'auteur édite dans QGIS, et le seul endroit où un tracé dessiné à la main survit à `02`, qui recopie la source par-dessus la carte de travail. La couche est **facultative** : sans elle, tout sort exactement comme avant.
+
+**Ce que l'auteur a corrigé, deux fois, et qu'il ne faut pas reperdre :**
+
+1. ❌ **Tracer par le point le plus loin de toute rue** — c'est-à-dire par le **cœur d'îlot**, que la venelle coupait alors systématiquement en deux. *« Les cœurs d'îlots sont à préserver quand c'est possible. »*
+2. ❌ **Une recherche par étranglement** (l'endroit où l'îlot est localement le plus mince) : trois venelles de plus, les trois refusées sur l'image. *Un col n'est pas un coude.*
+3. ❌ **Un garde-fou « ne doit pas perdre de maisons »**, de mon cru : il poussait la venelle sur la diagonale longue du coude au lieu de couper le bras en travers.
 
 ## 5. Les manettes — la table `TISSU` de `04c_parcelles.py`
 
@@ -71,14 +166,48 @@ C'est **elle, et pas le code**, qui décide du grain de toute la ville. Une lign
 | `maisons_de_ville` | 8,0 | 20,0 | peigne | le tissu majoritaire |
 | `front_commercant` | 11,0 | 18,0 | peigne | vitrines en rez-de-chaussée |
 | `pavillonnaire` | 13,5 | 28,0 | peigne | détaché, jardins |
-| `barre_1970` | 60,0 | 15,0 | peigne | la barre couchée le long de la rue |
+| `barre_1970` | 80,0 | 70,0 | **boîte** | 🔄 2026-08-14 — deux objets posés au milieu |
 | `equipement` | 45,0 | 35,0 | boîte | un ou deux objets |
 | `dalle_commerciale` | 80,0 | 60,0 | boîte | un hangar |
 | `friche_industrielle` | 55,0 | 45,0 | boîte | des halles |
 
 `place_minerale`, `parc`, `champ`, `jardins_familiaux` et `riviere` ne se découpent pas : ce sont des sols.
 
-**Les quatre réglages de bord**, à ne toucher qu'en sachant pourquoi : plancher de parcelle **45 m²** · jeu de coupe **0,25** (l'irrégularité, sans quoi tout est au cordeau) · dent minimale **0,60 × façade** · arête de moins de **6 m** ne porte pas de rue.
+🔴 **Pourquoi la barre a changé de méthode.** Le peigne la traitait comme un tissu de rue : il en sortait un anneau de parcelles le long des rues et un grand cœur vide au milieu — **l'inverse exact de ce qu'a fait l'urbanisme de 1970**, où la barre se pose en travers de l'îlot sans égard pour l'alignement. La boîte ne connaît pas les rues, donc elle donne ça. 80 × 70 = 5 600 m², soit la moitié des 11 158 m² de l'**îlot 32** — le seul îlot de barre de Wehrau — donc **deux objets**.
+
+**Les six réglages de bord**, à ne toucher qu'en sachant pourquoi : plancher de parcelle **45 m²** · jeu de coupe **0,25** (l'irrégularité, sans quoi tout est au cordeau) · dent minimale **0,60 × façade** · arête de moins de **6 m** ne porte pas de rue · seuil de pointe **éteint** (§6 bis) · **largeur minimale d'un cœur 8 m** (`COEUR_MIN_LARGE`, §2 quater) — c'est le seul nombre qui sépare une cour d'une lamelle.
+
+⚠️ `LONGUEUR_MIN_RUE` a été balayé de 6 à 15 m le 2026-08-14 : **aucun effet**, ni sur les triangles ni sur le cœur. Les contours d'emprise de Wehrau n'ont pas d'arêtes courtes parasites — ce n'est donc pas là qu'est le défaut.
+
+## 6 bis. Les parcelles triangulaires — ce qui a été essayé, et pourquoi rien n'a été retenu
+
+**Le compte d'abord**, parce qu'il n'existait pas : sur 1 031 parcelles, **41 ont trois côtés** et **56 portent un angle sous 35°**. Environ une sur dix. Les îlots les plus atteints : **40** (7), **13** (5), **22** et **26** (4), **24** et **67** (3).
+
+⚠️ **La première mesure était fausse et il ne faut pas y revenir** : comparer l'aire au rectangle englobant ne bougeait pas d'un pouce quel que soit le réglage, parce qu'elle comptait aussi tous les **parallélogrammes** — qui sont légitimes dès qu'une rue n'est pas perpendiculaire à sa voisine. C'est **l'angle** qui sépare le trapèze honnête du biseau.
+
+**Remède 1 — arrêter la bande au coin rentrant.** L'idée : au coin rentrant, la bande de la grande arête déboule à travers le repli et taille en biseau la région de l'arête suivante. C'est vrai et ça se voit sur l'îlot 24. Mais le remède coûte plus qu'il ne rapporte, et les triangles ne reculent même pas :
+
+| débordement au coin rentrant | triangles | pointues | morceaux de cœur |
+|---|---|---|---|
+| 1,0 — le forfait actuel | **41** | **56** | **72** |
+| 0,5 | 44 | 59 | 86 |
+| 0,0 | 47 | 56 | 119 |
+| la bissectrice exacte `prof / tan(θ/2)` | — | — | **137** |
+
+La raison de fond, à garder : **une bande est ici une intersection de demi-plans, pas une cellule de squelette**, et deux demi-plans ne se rejoignent pas d'eux-mêmes. Réduire le débordement laisse le coin orphelin.
+
+**Remède 2 — réunir la parcelle en pointe à sa voisine**, comme un éclat. Ça marche, et c'est trop cher : une pointe réunie en refabrique souvent une autre.
+
+| seuil d'angle | parcelles | de rue | triangles | pointues |
+|---|---|---|---|---|
+| éteint | 1 031 | **993** | 41 | 56 |
+| 20° | 958 | 923 | 36 | 31 |
+| 30° | 909 | 877 | 23 | 13 |
+| 35° | 892 | **861** | 14 | 3 |
+
+Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue, soit 14 % des maisons de la ville** — et 14 triangles restent quand même. Or ce sont les toits qui portent la décision solaire en attente (§7).
+
+🎯 **Ce qui reste à faire, et où le juger.** Le mécanisme est en place et éteint : `ANGLE_MIN_PARCELLE = 0.0` dans `04c`. **`07_exporter_godot.py` coupe déjà la pointe du BÂTIMENT** (`ANGLE_MIN_DEG = 70`), donc une parcelle en pointe ne donne pas forcément une maison en pointe. **Le vrai juge est la 3D, pas la carte du parcellaire** — c'est là qu'il faut regarder avant de payer 14 % des maisons. Le remède qui ne coûterait rien reste à écrire : **rogner la pointe et donner le bout à la voisine** au lieu d'avaler la parcelle entière — la partition tient toujours, et le nombre de parcelles ne bouge pas.
 
 ## 6. Ce que la méthode a appris, et qu'il ne faut pas reperdre
 
@@ -97,11 +226,15 @@ C'est **elle, et pas le code**, qui décide du grain de toute la ville. Une lign
 ## 8. Les commandes
 
 ```
+python "QGIS/scripts/tracer_chemins.py" --blanc    propose les venelles, n'écrit rien
+python "QGIS/scripts/tracer_chemins.py"            écrit la couche `chemins` dans Vallmar2
 python "QGIS/scripts/04c_parcelles.py" --blanc     calcule et affiche, n'écrit rien
 python "QGIS/scripts/04c_parcelles.py"             écrit la couche `parcelles`
 python "QGIS/scripts/apercu_parcelles.py"          le parcellaire en PNG
 python "QGIS/scripts/07_exporter_godot.py"         alimente la maquette 3D
 ```
+
+⚠️ `tracer_chemins.py` écrit dans **`Vallmar2.gpkg`**, la source — comme `00_decouper_ilots.py`, et avec les mêmes précautions. Il refuse d'écraser une couche `chemins` existante sans `--refaire` : une fois qu'un tracé a été déplacé à la main, le script n'a plus rien à dire.
 
 ⚠️ **Chaîne dans l'ordre : 02 → 03 → 04 → 04b → 04c**, puis `07`. Le `02` repart de `Vallmar2.gpkg` et **écrase** `Prototype_qualifie.gpkg`, `emprises` et `parcelles` comprises.
 

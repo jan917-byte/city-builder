@@ -78,6 +78,11 @@ GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
 
 
 AVANT = _opt("--avant")
+# 🔴 Le numéro d'îlot est écrit PAR DÉFAUT. Sans lui, désigner un défaut vu sur
+# l'image oblige à le décrire — « le bloc allongé en haut à gauche » — au lieu
+# de le nommer, et deux personnes qui regardent la même image ne parlent pas
+# forcément du même îlot. `--sans-fids` pour une image propre à montrer.
+FIDS = "--sans-fids" not in sys.argv
 SORTIE = os.path.join(RACINE, "QGIS", "rendus")
 
 # Une couleur par tissu. Volontairement proches de la palette pastel de la
@@ -98,16 +103,33 @@ FOND = (247, 245, 240)
 TRAIT = (92, 84, 76)
 RUE = (255, 255, 255)
 # Le vert des parcelles sans façade — celles qui repartent au jardin.
-JARDIN = (150, 178, 132)
+# ⚠️ Franchement plus sombre que le vert pâle du `pavillonnaire` : les deux
+# étaient assez proches pour qu'un quartier pavillonnaire entier se lise comme
+# un cœur d'îlot, c'est-à-dire comme le défaut qu'on cherche justement à voir.
+JARDIN = (104, 142, 86)
+# 🚶 LE CHEMIN — la venelle retirée de l'emprise par 04c. Un gris de pavé, ni
+# le blanc de la rue (ce n'est pas une chaussée, aucune voiture n'y passe) ni
+# une couleur de tissu (rien n'y sera bâti). Il doit se lire comme une COUPURE
+# dans l'îlot : c'est exactement ce qu'il est.
+CHEMIN = (162, 156, 146)
 
 
 def police(taille):
     """La police par défaut de PIL est une bitmap ASCII : « îlot » et « après »
-    y sortent en carrés. On prend une police du système, sinon on se rabat."""
+    y sortent en carrés. On prend une police du système, sinon on se rabat.
+    ⚠️ Ne chercher que dans C:/Windows/Fonts revenait à casser tous les
+    accents dès que le script tourne sur le Mac — où il tourne (CLAUDE.md §5)."""
     from PIL import ImageFont
-    for nom in ("segoeui.ttf", "arial.ttf", "calibri.ttf"):
-        chemin = os.path.join(os.environ.get("WINDIR", "C:/Windows"),
-                              "Fonts", nom)
+    candidats = [
+        os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts", n)
+        for n in ("segoeui.ttf", "arial.ttf", "calibri.ttf")
+    ] + [
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    for chemin in candidats:
         if os.path.exists(chemin):
             try:
                 return ImageFont.truetype(chemin, taille)
@@ -147,13 +169,14 @@ def cadre(anneaux, marge=0.04):
     return x0 - dx, x1 + dx, y0 - dy, y1 + dy
 
 
-def dessiner(parcelles, emprises, boite, larg, titre, sous_titre):
+def dessiner(parcelles, emprises, boite, larg, titre, sous_titre, legende=True):
     """Un panneau : les emprises en blanc dessous, les parcelles par-dessus."""
     x0, x1, y0, y1 = boite
     ech = larg / (x1 - x0)
     haut = int((y1 - y0) * ech)
     bandeau = 76
-    img = Image.new("RGB", (larg, haut + bandeau), FOND)
+    pieds = 56 if legende else 0
+    img = Image.new("RGB", (larg, haut + bandeau + pieds), FOND)
     d = ImageDraw.Draw(img)
 
     def pt(p):
@@ -171,23 +194,77 @@ def dessiner(parcelles, emprises, boite, larg, titre, sous_titre):
         forme = [pt(p) for p in an]
         # 🎨 Le seul choix de couleur du fichier, et il dit tout : une parcelle
         # sans façade ne portera pas de maison, elle repart au jardin.
-        coul = JARDIN if fac < 0.5 else COULEUR.get(st, DEFAUT)
+        # ⚠️ Le chemin se teste AVANT la façade : ses deux bouts touchent le
+        # bord de l'emprise, donc il a une façade non nulle et sortirait en
+        # couleur de tissu — une venelle déguisée en rangée de maisons.
+        if origine == "chemin":
+            coul = CHEMIN
+        else:
+            coul = JARDIN if fac < 0.5 else COULEUR.get(st, DEFAUT)
         d.polygon(forme, fill=coul, outline=TRAIT)
         if fin > 1:
             d.line(forme + [forme[0]], fill=TRAIT, width=fin)
 
     d.text((16, 14), titre, fill=(40, 36, 32), font=police(23))
     d.text((16, 46), sous_titre, fill=(110, 100, 92), font=police(16))
+
+    if FIDS:
+        # Le numéro d'îlot au centre de son emprise — sans lui, désigner un
+        # défaut vu sur l'image oblige à le décrire au lieu de le nommer.
+        f = police(17 if larg < 1400 else 20)
+        for fid, an in emprises.items():
+            if len(an) < 3:
+                continue
+            cx = sum(p[0] for p in an) / len(an)
+            cy = sum(p[1] for p in an) / len(an)
+            px, py = pt((cx, cy))
+            mot = str(fid)
+            w = d.textlength(mot, font=f)
+            d.rectangle([px - w / 2 - 4, py - 12, px + w / 2 + 4, py + 12],
+                        fill=(255, 255, 255))
+            d.text((px - w / 2, py - 10), mot, fill=(180, 40, 40), font=f)
+
+    if legende:
+        # Les tissus réellement présents, les plus fournis d'abord — une
+        # légende qui liste des teintes absentes de l'image se relit mal.
+        compte = {}
+        for _, st, origine, _, fac in parcelles:
+            if fac >= 0.5 and origine != "chemin":
+                compte[st] = compte.get(st, 0) + 1
+        ordre = sorted(compte, key=lambda s: -compte[s])
+        queue = ["__jardin__"]
+        if any(o == "chemin" for _, _, o, _, _ in parcelles):
+            queue.append("__chemin__")
+        f = police(15)
+        y = bandeau + haut + 18
+        x = 16
+        for st in ordre + queue:
+            jardin = st == "__jardin__"
+            chemin = st == "__chemin__"
+            coul = (JARDIN if jardin else CHEMIN if chemin
+                    else COULEUR.get(st, DEFAUT))
+            mot = ("sans façade : jardin" if jardin
+                   else "chemin" if chemin else st.replace("_", " "))
+            if x + 26 + 9 * len(mot) > larg - 16:   # on passe à la ligne
+                break
+            d.rectangle([x, y, x + 20, y + 15], fill=coul, outline=TRAIT)
+            d.text((x + 27, y - 1), mot, fill=(88, 80, 74), font=f)
+            x += 27 + int(d.textlength(mot, font=f)) + 22
     return img
 
 
 def stats(parcelles):
-    n = len(parcelles)
+    # Le chemin n'est pas une parcelle : il se compte à part, sinon il gonfle
+    # le total et fait baisser la part de sans-façade sans que rien ait bougé.
+    ch = sum(1 for x in parcelles if x[2] == "chemin")
+    lot = [x for x in parcelles if x[2] != "chemin"]
+    n = len(lot)
     if not n:
         return "aucune parcelle"
-    sans = sum(1 for x in parcelles if x[4] < 0.5)
-    return ("%d parcelles · %d sur rue · %d sans façade (%.0f %%), en vert"
-            % (n, n - sans, sans, 100.0 * sans / n))
+    sans = sum(1 for x in lot if x[4] < 0.5)
+    return ("%d parcelles · %d sur rue · %d sans façade (%.0f %%), en vert%s"
+            % (n, n - sans, sans, 100.0 * sans / n,
+               " · %d chemin(s)" % ch if ch else ""))
 
 
 def main():

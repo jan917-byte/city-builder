@@ -70,12 +70,12 @@ Ces règles viennent du vault lui-même, pas de moi. Elles ne se négocient pas 
 
 **Délégué :**
 - **Les scripts de données : je les écris ET je les exécute**, y compris sur le vrai `.gpkg`. 🔄 *Révisé le 2026-08-12 — l'ancienne règle réservait l'exécution à l'auteur, dans la console QGIS, sur une copie.* → `Méta/Décisions arrêtées.md` **65**
-  - Ce qui a rendu l'ancienne règle vide : **la chaîne ne passe plus par QGIS**. Les onze scripts de `QGIS/scripts/` sont du Python pur avec `sqlite3` — aucun PyQGIS, aucun GDAL, et l'en-tête GeoPackage de `04b` est encodée à la main. Le dossier garde son nom, pas sa dépendance.
+  - Ce qui a rendu l'ancienne règle vide : **la chaîne ne passe plus par QGIS**. Les douze scripts de `QGIS/scripts/` sont du Python pur avec `sqlite3` — aucun PyQGIS, aucun GDAL, et l'en-tête GeoPackage de `04b` est encodée à la main. Le dossier garde son nom, pas sa dépendance.
   - **Trois garde-fous qui remplacent la relecture, et qui ne sont pas optionnels :**
     1. le dépôt est le filet — `git status` propre et commit **avant** toute écriture dans un `.gpkg`, qui est un binaire que git ne fusionne pas ;
     2. tout script qui écrit garde son mode `--blanc`, et **la passe à blanc tourne toujours d'abord** ;
     3. les **contrôles imprimés en français** sont le compte rendu — §3 bis ne bouge pas.
-  - Ce qui reste à l'auteur : le **level design** (les listes de `fid` de `02`, la table `TISSU` de `04`). C'est l'exécution qui est déléguée, pas les choix de carte.
+  - Ce qui reste à l'auteur : le **level design** (les listes de `fid` de `02`, la table `TISSU` de `04`, **le tracé des chemins dans les îlots**). C'est l'exécution qui est déléguée, pas les choix de carte. Un outil peut *proposer* — `tracer_chemins.py` le fait — mais la proposition se corrige à la main et ne s'écrase jamais toute seule.
 - Tableurs, tables de correspondance, outillage, structuration de notes, relecture.
 - **Le code Godot, noyau de simulation et architecture compris.** L'auteur teste, itère et revient sur mes décisions. 🔄 *Révisé le 2026-08-11 — l'ancienne règle réservait le noyau à l'auteur.* → `Méta/Décisions arrêtées.md` 40b · `Technique/Moteur et architecture.md`
   - Corollaire : ce que l'ancienne règle protégeait était la **compréhension**. Donc j'explique ce que je code au moment où je le code, et je signale les endroits où l'auteur doit revenir — mais **jamais en montrant le code** (§3 bis).
@@ -103,6 +103,24 @@ Ce que ça change concrètement :
 
 Ce n'est pas une dispense de rigueur, c'est l'inverse : le code n'étant relu par personne, **c'est à moi de le rendre vérifiable à l'œil**.
 
+## 3 ter. Les commentaires du code s'adressent à moi, pas à l'auteur
+
+Conséquence directe de §3 bis, et elle va à contre-courant de l'intuition : puisque l'auteur n'ouvre pas les fichiers, **alléger les commentaires ne lui fait rien gagner**. Ça ne coûte qu'à moi — je relis ces scripts à froid, sans aucun souvenir de la session qui les a écrits. Les commentaires sont la seule mémoire qui survit entre deux sessions à l'intérieur du code.
+
+| Lecteur | Ce qu'il lit | Ce qui le sert |
+|---|---|---|
+| L'auteur | les contrôles imprimés, les aperçus PNG, la maquette Godot | ce que le script **a fait à la carte** |
+| Moi, la session suivante | le fichier, à froid | ce que le script **a essayé d'éviter** |
+
+**Donc :**
+
+- 🔴 **Aucun commentaire qui redit le code.** « boucle sur les parcelles » au-dessus d'une boucle sur les parcelles est du bruit — à supprimer à vue.
+- ✅ **Commentaire obligatoire** partout où il y a : un **nombre mesuré** (dire d'où il sort et ce qu'il produit), un **piège déjà payé** (sens de parcours, signe d'une aire, dédoublonnage), une **décision du vault appliquée** (avec son numéro), ou un **avertissement de level design**.
+- 🔄 Un retour en arrière se **signale** au lieu de s'effacer : marquer ce qui était fait avant et pourquoi ça ne l'est plus. C'est ce qui m'empêche de réintroduire un bug déjà corrigé.
+- ⚠️ **Le vrai risque n'est pas le volume, c'est la dérive.** Un commentaire devenu faux est pire qu'un commentaire absent : il se corrige **dans la même modification que le code**, jamais plus tard.
+
+Repère mesuré le 2026-08-13 : ~940 lignes de commentaires pour ~6 400 lignes de code dans `QGIS/scripts/`, soit 13 %. Ce n'est pas un quota à tenir — c'est le point de comparaison si un fichier se met à enfler sans raison.
+
 ## 4. Écrire dans le vault
 
 - **Frontmatter obligatoire** : `tags:` en minuscules, `statut:`, et `maj: AAAA-MM-JJ` sur les notes actives.
@@ -116,12 +134,12 @@ Ce n'est pas une dispense de rigueur, c'est l'inverse : le code n'étant relu pa
 
 Le travail se fait **principalement sous Windows**, parfois sur un Mac. Le pont entre les deux est le dépôt git [`jan917-byte/city-builder`](https://github.com/jan917-byte/city-builder) (privé). Donc, avant de commencer : `git pull`. Avant de changer de machine : `git push`. Ce n'est pas une formalité — voir le piège du GeoPackage ci-dessous.
 
-**Ce qui tourne sur le Mac, et ce qui n'y tourne pas.** 🔄 *Révisé le 2026-08-13 — l'ancienne règle disait « le clone Mac ne sert pas à coder ». La décision 65 l'a rendue fausse sans qu'on le remarque : les onze scripts de `QGIS/scripts/` sont du Python pur avec `sqlite3`, aucun PyQGIS, aucun GDAL. Ils tournent partout.*
+**Ce qui tourne sur le Mac, et ce qui n'y tourne pas.** 🔄 *Révisé le 2026-08-13 — l'ancienne règle disait « le clone Mac ne sert pas à coder ». La décision 65 l'a rendue fausse sans qu'on le remarque : les douze scripts de `QGIS/scripts/` sont du Python pur avec `sqlite3`, aucun PyQGIS, aucun GDAL. Ils tournent partout.*
 
 | | Mac |
 |---|---|
 | Le vault — écrire, relire, trancher | ✅ c'est sa raison d'être |
-| Les onze scripts de `QGIS/scripts/` | ✅ rien à installer (`apercu_*` et `06` demandent Pillow) |
+| Les douze scripts de `QGIS/scripts/` | ✅ rien à installer (`apercu_*` et `06` demandent Pillow) |
 | **Écrire dans `QGIS/data/*.gpkg`** | ❌ **jamais** — voir la règle ci-dessous |
 | QGIS lui-même, Godot | ❌ pas installés, donc `.mcp.json` n'a pas besoin d'être adapté |
 

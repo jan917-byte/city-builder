@@ -599,12 +599,20 @@ def lire(con):
         "SELECT count(*) FROM sqlite_master WHERE type='table'"
         " AND name='parcelles'").fetchone()[0] > 0
     if a_parcelles:
-        for fid_i, niv, geom in con.execute(
-            "SELECT fid_ilot, niveaux, geom FROM parcelles ORDER BY fid"
+        # 🚶 `origine` dit ce qu'est la parcelle. Une seule valeur intéresse ce
+        # fichier : `chemin` — la venelle que 04c a retirée de l'emprise. Elle
+        # ne se bâtit pas, elle se pave. Sans cette colonne on lui poserait une
+        # maison de 3 m de large en travers de l'îlot.
+        col_org = "origine" if "origine" in {
+            r[1] for r in con.execute("PRAGMA table_info(parcelles)")} else "NULL"
+        for fid_i, niv, org, geom in con.execute(
+            "SELECT fid_ilot, niveaux, %s, geom FROM parcelles ORDER BY fid"
+            % col_org
         ):
             if fid_i in ilots:
                 ilots[fid_i]["parcelles"].append(
-                    {"anneau": anneau_ouvert(geom), "niveaux": niv or 0.0})
+                    {"anneau": anneau_ouvert(geom), "niveaux": niv or 0.0,
+                     "origine": org})
 
     routes = []
     for r in con.execute("SELECT %s, geom FROM routes ORDER BY fid"
@@ -712,6 +720,14 @@ def main():
     # portée sur le sol.
     coul_jardin = PAL.vers_lineaire(PAL.couleur_sol("jardins_familiaux", 0.10))
     coul_jardin = tuple(c * 0.92 for c in coul_jardin)
+    # 🚶 Le pavé de la venelle : le minéral CLAIR, celui du sol nu, et non le
+    # minéral de la chaussée. Vue d'en haut, la différence dit tout ce qu'il y
+    # a à dire — on passe du noir de l'asphalte au gris du pavé, donc d'une rue
+    # à un passage. Assombri d'un cheveu : une venelle de 3 m entre deux murs
+    # ne voit pas beaucoup de ciel.
+    coul_chemin = tuple(c * 0.94 for c in PAL.vers_lineaire(PAL.MINERAL_CLAIR))
+    n_chemin = 0
+    aire_chemin = 0.0
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -749,15 +765,27 @@ def main():
             toit_ilot = 0.0
             volumes = []
             jardins = []
+            # 🚶 LA VENELLE NE SE BÂTIT PAS, ET ELLE EST UNE ADRESSE. Deux
+            # choses en découlent, et il faut les deux : elle sort de la liste
+            # des parcelles à bâtir — ses deux bouts touchent le bord de
+            # l'îlot, donc elle a une façade et `_empreinte_batie` y poserait
+            # une lame de bâtiment de 3 m en travers — et ses parois entrent
+            # dans l'index du bord, sinon toute la rangée qui donne dessus
+            # sortirait enclavée.
+            chemins_ilot = [p["anneau"] for p in d["parcelles"]
+                            if p.get("origine") == "chemin"]
             if d["parcelles"]:
-                idx = _index_bord(an)
+                idx = _index_bord([an] + chemins_ilot)
                 for p in d["parcelles"]:
+                    if p.get("origine") == "chemin":
+                        continue
                     vols, jard = _empreinte_batie(p["anneau"], st, idx)
                     for emp, faite in vols:
                         volumes.append((emp, p["niveaux"], faite))
                     jardins.extend(jard)
-                n_parc += len(d["parcelles"])
+                n_parc += len(d["parcelles"]) - len(chemins_ilot)
                 n_vol += len(volumes)
+                n_chemin += len(chemins_ilot)
             if not volumes:
                 volumes = [(an, haut, None)]   # repli : le pâté plein d'avant
                 n_pate += 1
@@ -779,7 +807,11 @@ def main():
                 # couverture par m² d'emprise d'un toit à 45°. C'est ce nombre
                 # que l'énergie viendra lire (41 · 64).
                 toit_ilot += abs(D4C.aire_signee(emp)) * math.hypot(1.0, pente_v)
-                deb = _debordement(emp, d["parcelles"])
+                # ⚠️ Les chemins sont ÉCARTÉS de ce contrôle : un bâtiment qui
+                # mord sur la venelle est exactement le défaut qu'on cherche à
+                # voir, et le compter « dans une parcelle » le masquerait.
+                deb = _debordement(emp, [p for p in d["parcelles"]
+                                         if p.get("origine") != "chemin"])
                 if deb > 0.5:
                     n_deborde += 1
                     deb_max = max(deb_max, deb)
@@ -800,6 +832,18 @@ def main():
             # Ils partent dans le maillage des MASSES, dans le groupe de
             # l'îlot : le cœur d'îlot appartient à l'îlot, donc il se clique
             # avec lui et se teinte avec lui quand un calque s'allume.
+            # 🚶 LA VENELLE, AU SOL. Elle passe dans le maillage des MASSES,
+            # donc dans le groupe de son îlot : elle appartient à l'îlot, elle
+            # se clique avec lui et se teinte avec lui quand un calque
+            # s'allume. C'est la traduction en 3D de la seule chose qui compte
+            # ici — le chemin n'a pas fabriqué une deuxième décision.
+            # Elle est PAVÉE et jamais plantée : un tirage cour/jardin lui
+            # mettrait des arbres au milieu d'un passage.
+            for c in chemins_ilot:
+                if len(c) >= 3:
+                    aire_chemin += abs(D4C.aire_signee(c))
+                    _sol(masses, c, coul_chemin, G)
+
             part_verte = VERDURE.get(st, VERDURE_DEFAUT)
             for j in jardins:
                 aire_j = abs(D4C.aire_signee(j))
@@ -846,6 +890,9 @@ def main():
     if n_parc:
         print("  parcelles %d → %d volumes bâtis  (%d enclavées : cour ou jardin)"
               % (n_parc, n_vol, n_parc - n_vol))
+        if n_chemin:
+            print("  chemins %d → %.0f m² de venelle pavée, dans le groupe de"
+                  " leur îlot" % (n_chemin, aire_chemin))
         # 🔗 Ce que l'énergie viendra lire. À imprimer maintenant, parce que
         # c'est le seul moment où on peut encore dire « ce chiffre est faux »
         # avant qu'une décision de jeu s'appuie dessus.
@@ -1061,19 +1108,31 @@ def _sol(m, anneau, coul, G):
                    G(c[0], c[1], Y_SOL), coul)
 
 
-def _index_bord(anneau, grille=1.0):
-    """Index de grille des arêtes de l'emprise. Sans lui, tester « cette arête
-    donne-t-elle sur la rue » serait quadratique — 968 parcelles contre 53
-    emprises, ça se sent."""
+def _index_bord(anneaux, grille=1.0):
+    """Index de grille des arêtes devant lesquelles une parcelle est « sur
+    rue ». Sans lui, tester « cette arête donne-t-elle sur la rue » serait
+    quadratique — 968 parcelles contre 53 emprises, ça se sent.
+
+    🚶 Prend une LISTE d'anneaux depuis le 2026-08-14, et c'est ce qui fait
+    tenir le chemin de bout en bout. Le bord de l'emprise ne suffit plus :
+    les deux parois de la venelle sont aussi une adresse. `04c` le sait déjà
+    — il peigne chaque morceau d'emprise pour son compte, donc pour lui la
+    paroi EST du bord. Si `07` ne l'apprend pas, toutes les parcelles qui
+    donnent sur la venelle sortent enclavées et repartent au jardin : mesuré
+    avant correction, 879 volumes bâtis sans chemin contre 855 avec, alors
+    que la découpe en annonçait soixante de plus."""
     idx = {}
-    n = len(anneau)
-    for i in range(n):
-        a, b = anneau[i], anneau[(i + 1) % n]
-        x0, x1 = int(min(a[0], b[0]) // grille), int(max(a[0], b[0]) // grille)
-        y0, y1 = int(min(a[1], b[1]) // grille), int(max(a[1], b[1]) // grille)
-        for cx in range(x0, x1 + 1):
-            for cy in range(y0, y1 + 1):
-                idx.setdefault((cx, cy), []).append((a, b))
+    for anneau in anneaux:
+        n = len(anneau)
+        for i in range(n):
+            a, b = anneau[i], anneau[(i + 1) % n]
+            x0 = int(min(a[0], b[0]) // grille)
+            x1 = int(max(a[0], b[0]) // grille)
+            y0 = int(min(a[1], b[1]) // grille)
+            y1 = int(max(a[1], b[1]) // grille)
+            for cx in range(x0, x1 + 1):
+                for cy in range(y0, y1 + 1):
+                    idx.setdefault((cx, cy), []).append((a, b))
     return idx
 
 

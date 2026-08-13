@@ -10,7 +10,9 @@
 | ce qui s'est passé, et pourquoi c'est comme ça | [HISTORIQUE.md](HISTORIQUE.md) |
 | ce qui est tranché | `Méta/Décisions arrêtées.md` (vault) |
 
-**Dernière mise à jour : 2026-08-13 (session 20)**
+**Dernière mise à jour : 2026-08-14 (session 22)**
+
+🆕 **Le chemin dans l'îlot** — quand le peigne bute sur un îlot en L, on ne coupe plus l'îlot : on y dessine une **venelle de 3 à 5 m**, retirée de l'emprise avant la découpe. 70 îlots restent 70, et le coude a enfin un devant et un derrière. **7 chemins sur Wehrau, 690 m².** → [Prototype/Parcelles.md](Prototype/Parcelles.md) §4 bis · `Décisions arrêtées` **67 · 67b · 67c**
 
 🆕 **Le prototype a sa catégorie, à côté du vault** : [`Prototype/`](Prototype/00%20-%20Prototype.md) — une note par étape, **une seule ouverte à la fois**. L'étape en cours est [**les parcelles**](Prototype/Parcelles.md). Le vault garde toutes les idées et reste la source de vérité du design ; `Prototype/` porte le chantier. → `CLAUDE.md` §2
 
@@ -21,7 +23,7 @@
 | | Où |
 |---|---|
 | **La carte simulable** — 0,93 km², **70 îlots, 177 tronçons** (ouest redécoupé par l'auteur le 2026-08-13), 13 sous-types, 17 exceptions, **3 franchissements** | `QGIS/data/Prototype_qualifie.gpkg` |
-| **La ville bâtie** — **1 096 parcelles dont 987 sur rue**, aucune sous 45 m² (peigne du 2026-08-13, sur la carte à 70 îlots). ⚠️ Les **702 bâtiments** et les 667 espaces libres datent d'avant : `07` n'a pas été relancé | couches `emprises` et `parcelles` |
+| **La ville bâtie** — **1 105 parcelles dont 998 sur rue** dans le code, aucune sous 45 m². ⚠️ Le `.gpkg` en contient encore 1 096 dont 987 : **il est plus vieux que le code**, et les **702 bâtiments** sont plus vieux encore. Ni `04c` ni `07` n'ont été relancés | couches `emprises` et `parcelles` |
 | **La maquette 3D cliquable** — 237 nœuds, fiche à l'îlot et au tronçon, **carte plate**, l'Ilse canalisée et ses trois ponts | `Godot/` → `Godot/README.md` |
 | **Le classeur** — 3 parties jouées sur 60 mois, courbes et carte au mois M | `Classeur/` · `QGIS/rendus/parties.html` |
 | **Le système énergie** — la table des 13 lignes, 2 décisions à l'îlot, 3 calques, le bandeau à 4 nombres, l'essai imprimé | ✅ **construit, à regarder** → `Godot/scripts/energie.gd` · `Godot/outils/essai_energie.gd` |
@@ -42,21 +44,47 @@
 
 ## Prochaine action
 
-### 🔗 Relancer `07_exporter_godot.py`, et regarder ce que le peigne a changé en 3D
+### 🔗 Sous Windows : `tracer_chemins.py`, puis la chaîne complète, puis `07`
 
-Le parcellaire a été refait le 2026-08-13 (voir la session ci-dessous), mais **la chaîne s'arrête au `.gpkg`** : la maquette Godot affiche encore l'ancienne ville. Une commande :
+🔴 **`04c` d'abord, et c'est nouveau : la carte du dépôt est plus vieille que le code.** `Prototype_qualifie.gpkg` a été écrit au commit `18a6b4c`, donc **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond. La couche `parcelles` du `.gpkg` montre encore l'ancienne découpe, et la maquette Godot montre une ville encore plus ancienne. Deux commandes, dans cet ordre, chacune précédée de sa passe `--blanc` :
+
+```
+python "QGIS/scripts/tracer_chemins.py" --blanc
+```
+
+```
+python "QGIS/scripts/tracer_chemins.py"
+```
+
+⚠️ Celui-là écrit dans **`Vallmar2.gpkg`**, la source — donc il faut ensuite repasser toute la chaîne, puisque `02` recopie la source par-dessus la carte de travail.
+
+```
+python "QGIS/scripts/02_qualifier.py" & 03 & 04 & 04b
+```
+
+```
+python "QGIS/scripts/04c_parcelles.py" --blanc
+```
+
+```
+python "QGIS/scripts/04c_parcelles.py"
+```
 
 ```
 python "QGIS/scripts/07_exporter_godot.py"
 ```
 
-Ce qui doit avoir changé, et qu'il faut lire dans ce que `07` imprime :
+Ce qui doit avoir changé, et qu'il faut lire dans ce qui s'imprime :
 
-1. **le nombre de volumes bâtis** — **987 parcelles sur rue** là où l'ancienne découpe en donnait 705 sur 1 003, donc beaucoup plus de maisons ;
-2. **les cœurs d'îlot** — moins nombreux et plus grands, rassemblés au milieu au lieu d'être dispersés ;
-3. **les deux défauts connus devraient reculer sans qu'on les vise** : les 17 bâtiments qui mordent sur la rue et les 50 empreintes concaves à toit plat — des parcelles plus rectangulaires font des empreintes plus rectangulaires. À vérifier, pas à promettre.
+1. **les 7 venelles** sur les îlots 22, 24, 26, 38, 40, 44 et 63 — au pli, courtes, aucun cœur d'îlot entamé ;
+2. **les cœurs d'îlot d'un seul tenant** — un cœur ne se reparcelle plus (**67c**), donc plus de damier dans une cour ;
+2 bis. **les cœurs d'îlot rendus au centre, pas aux parcelles** (**67d**) — sur les îlots 10, 33, 49, 50 et 66, le vert doit occuper le milieu au lieu d'une parcelle deux à trois fois trop grosse. **15 cœurs pour 0,86 ha** ;
+3. **les îlots 64 et 69 coupés au milieu** — le défaut n°1 désigné sur l'image le 2026-08-14, et il tombe tout seul ;
+4. **l'îlot 32 en deux parcelles** de 5 579 m² au lieu d'un anneau de 7 parcelles de rue autour d'un cœur vide, donc **deux barres posées au milieu** ;
+5. **893 parcelles sur rue et ZÉRO enclavée** là où l'ancienne découpe en donnait 705 ;
+6. **les deux défauts connus devraient reculer sans qu'on les vise** : les 18 bâtiments qui mordent sur la rue et les 47 empreintes concaves à toit plat — des parcelles plus rectangulaires font des empreintes plus rectangulaires. À vérifier, pas à promettre.
 
-🔴 **Et le chiffre qui commande la décision en attente : la surface de toit.** Elle va monter avec le nombre de bâtiments, donc **le potentiel solaire de ~9,5 % sera calculé sur une autre ville**. Ne pas trancher la première case de « ce qui attend l'auteur » avant d'avoir relancé `07`.
+🔴 **Et le chiffre qui commande la décision en attente : la surface de toit.** Elle va monter avec le nombre de bâtiments, donc **le potentiel solaire de ~9,5 % sera calculé sur une autre ville**. Ne pas trancher la première case de « ce qui attend l'auteur » avant d'avoir relancé la chaîne.
 
 ### 👁️ Puis regarder le système énergie tourner — `Prototype/Énergie.md` §8
 
@@ -94,18 +122,20 @@ python "QGIS/scripts/apercu_carte.py" "QGIS/data/Prototype_qualifie.gpkg"       
 python "QGIS/scripts/06_etat_zero.py"                                            → la ville entière dans une page HTML, 20 calques
 python "QGIS/scripts/07_exporter_godot.py"                                       → alimenter la maquette 3D
 python "QGIS/scripts/08_jouer.py" --toutes                                       → rejouer les parties du classeur
+python "QGIS/scripts/tracer_chemins.py" --blanc                                  → proposer les venelles, sans rien écrire
+python "QGIS/scripts/apercu_parcelles.py" --avant ancien.gpkg                    → le parcellaire avant/après
 ```
 
 ⚠️ **Chaîne à relancer dans l'ordre : 02 → 03 → 04 → 04b → 04c**, puis `07`. Le `02` repart de `Vallmar2.gpkg` et **écrase** `Prototype_qualifie.gpkg`, y compris `emprises` et `parcelles`. Tout script qui écrit a un mode `--blanc` qui calcule et n'écrit rien : **il tourne toujours d'abord**.
 
-Le détail des onze scripts, leurs modes et leurs pièges → **`QGIS/README.md`** (§4 et §9). La maquette et ses touches (`V` `B` `R` `I` `P`) → **`Godot/README.md`**.
+Le détail des douze scripts, leurs modes et leurs pièges → **`QGIS/README.md`** (§4 et §9). La maquette et ses touches (`V` `B` `R` `I` `P`) → **`Godot/README.md`**.
 
 **Deux machines** : Windows principal, Mac occasionnel. `git pull` en début de session, `git push` en fin. ⚠️ Les `.gpkg` ne se fusionnent pas — le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5
 
 ## Les deux dernières sessions
 
+**2026-08-14 (session 21) — l'auteur regarde le parcellaire et désigne trois défauts.** Le parcellaire ne se voyait nulle part avant `apercu_parcelles.py` ; cette session est la première où quelqu'un le regarde vraiment. Trois choses en sont sorties, et elles n'ont pas eu la même réponse. **① Les îlots 64 et 69 — « la séparation doit se faire au milieu »** : une rangée prenait tout le fond (28 m sur 34 en 64), celle d'en face se contentait du reste. ✅ **Déjà corrigé dans le code** par `c409680` — ce que l'auteur regardait était **la carte, plus vieille que le code**. C'est la découverte de la session, et elle vaut au-delà du cas : `Prototype_qualifie.gpkg` a été écrit au commit `18a6b4c`, deux commits avant la correction, et rien ne le signalait. **② L'îlot 32, la barre de 1974** — « pas de parcelles, les deux barres seront posées au milieu de l'îlot sans considération du tissu urbain bâti ». ✅ **Fait** : la barre passe du peigne à la boîte, l'îlot sort en **2 parcelles de 5 579 m²** au lieu d'un anneau de 7 parcelles de rue autour d'un cœur vide — le peigne en faisait un tissu de rue, c'est-à-dire l'inverse de ce qu'a fait 1970. **③ L'îlot 24, « parcelles bizarres, triangulaires »** ⚠️ **mesuré, pas corrigé** : 41 parcelles à trois côtés et 56 portant un angle sous 35°, sur 1 031 — le compte n'existait pas. **Deux remèdes essayés, les deux rejetés devant les chiffres** : arrêter la bande au coin rentrant ne fait pas reculer les triangles (41 → 44) et fragmente le cœur (72 → 86 morceaux, 137 avec la bissectrice exacte du squelette) ; réunir la pointe à sa voisine marche mais coûte **14 % des maisons de la ville** pour 53 pointes, et 14 triangles restent. Le mécanisme est en place et **éteint** (`ANGLE_MIN_PARCELLE = 0`), avec les deux tableaux de balayage dans `Prototype/Parcelles.md` §6 bis. 🎯 Ce qu'il faut retenir : **`07` coupe déjà la pointe des bâtiments**, donc le juge est la 3D et pas la carte. 👁️ Et l'aperçu s'est corrigé en route : **les numéros d'îlot sont écrits sur l'image** (demandé en cours de session — sans eux on décrit un défaut au lieu de le nommer), une **légende des tissus** en bas, le vert « jardin » assombri parce qu'il se confondait avec le vert « pavillonnaire », et les polices trouvées sur le Mac — les titres sortaient en carrés. ⚠️ Session faite **sur le Mac** : rien n'a été écrit dans le vrai `.gpkg`, tout est passé par `--blanc` et des copies dans `QGIS/data/bac/`.
+
 **2026-08-13 (session 19) — le parcellaire se débite depuis la rue.** D'après **Vanegas et al., *Procedural Generation of Parcels in Urban Modeling*, Eurographics 2012**, apporté par l'auteur. Le défaut n'était pas où on l'attendait : **l'aire tombait juste, la forme était fausse**. La découpe par boîte englobante ne respectait que le **produit** façade × profondeur — un cœur ancien sortait à 111,7 m² pour 112 visés, mais en carré de 10,6 m au lieu d'une lanière de 7 × 16 ; une parcelle sur deux tournait le dos à la rue ; **30 % n'avaient aucune façade**, donc aucun bâtiment. Le **peigne** (méthode « skeleton » du papier) longe chaque rue, prend une bande profonde comme le tissu le demande, la débite en dents larges comme la façade visée, et laisse au milieu ce qu'aucune rue n'a réclamé : le cœur d'îlot. L'élancement tombe sur sa cible dans les quatre tissus de rue (2,07 / 2,39 / 2,04 / 1,48 pour 2,29 / 2,50 / 2,07 / 1,64), les parcelles sans façade passent de **30 % à 1 %**, et **987 parcelles porteront une maison contre 705**. La boîte n'est pas jetée : elle garde les deux rôles que le papier lui laisse — les gros objets, et le remplissage du cœur. 🎯 Trois trouvailles à garder : **la rue la plus longue doit prendre le coin** (sinon le coin est orphelin et finit en éclats — 82 morceaux de cœur sur le seul îlot 35) · **on ne coupe que ce qui touche la rue** (sinon les droites de chaque arête viennent tailler le cœur à l'autre bout de l'îlot) · et **un seuil serré n'est pas un seuil sûr** : le contrôle d'aire de la réunion d'éclats refusait onze fusions justes parce qu'il était réglé sur le **bruit du flottant** (2,4·10⁻⁴ m², soit exactement 2⁻¹² sur des coordonnées à six chiffres). ✂️ **Les parcelles trop petites sont réunies à leur voisine de plus long bord** (papier §4.2.3) : 48 réunies, **aucune ne survit**, la plus petite parcelle de la ville fait 45,2 m². 👁️ Et le parcellaire **se voit enfin** : `apercu_parcelles.py`, qui n'existait pas — ni `apercu_carte` ni `06` ne dessinaient les parcelles. ⚠️ La session s'est faite pendant que l'auteur redécoupait l'ouest de Wehrau dans QGIS : la carte est passée à **70 îlots et 177 tronçons**, et `02` a effacé `emprises`/`parcelles` en cours de route — elles ont été refaites sur la carte neuve (`04b` puis `04c`).
 
-**2026-08-12 (session 18) — le système énergie, de la table au bandeau.** Tout le périmètre d'un coup : `energie.gd` (la table des treize lignes, les deux dérives), les deux décisions à l'**îlot** avec la troisième durée « travaux », les retours d'argent au **tarif figé au mois de la décision**, le refus qui contrôle le budget **et** le capital, les trois calques (les îlots sans toit ne sont **pas peints**), la fiche décomposée (« couverture 12 % : 8 produits, 4 économisés »), le bandeau à quatre nombres, les toits qui virent à l'ardoise, et `essai_energie.gd` — le contrôle imprimé qui joue **deux parties en aveugle** : panneaux seuls bloque sur le capital, isolation seule sur le budget, remboursement de la barre au mois 111 comme calculé. 🔴 La découverte de la session : **le potentiel réel des toits est ~9,5 %**, la fourchette 25–40 % du plan avait été calibrée sur l'emprise, pas sur les toits. La vue chantiers est **reportée** par l'auteur → [CHANTIERS.md](CHANTIERS.md) §3.
-
-→ **[HISTORIQUE.md](HISTORIQUE.md)** pour les dix-sept premières sessions.
+→ **[HISTORIQUE.md](HISTORIQUE.md)** pour les dix-huit premières sessions.
