@@ -5,12 +5,14 @@
 
 | Si tu cherches | Va voir |
 |---|---|
+| **le prototype, ses étapes, celle qui est ouverte** | [Prototype/00 - Prototype.md](Prototype/00%20-%20Prototype.md) |
 | ce qui attend, les défauts connus, les tables à régler | [CHANTIERS.md](CHANTIERS.md) |
 | ce qui s'est passé, et pourquoi c'est comme ça | [HISTORIQUE.md](HISTORIQUE.md) |
-| le prototype en cours, en détail | [PLAN_energie.md](PLAN_energie.md) |
 | ce qui est tranché | `Méta/Décisions arrêtées.md` (vault) |
 
-**Dernière mise à jour : 2026-08-13 (session 19)**
+**Dernière mise à jour : 2026-08-13 (session 20)**
+
+🆕 **Le prototype a sa catégorie, à côté du vault** : [`Prototype/`](Prototype/00%20-%20Prototype.md) — une note par étape, **une seule ouverte à la fois**. L'étape en cours est [**les parcelles**](Prototype/Parcelles.md). Le vault garde toutes les idées et reste la source de vérité du design ; `Prototype/` porte le chantier. → `CLAUDE.md` §2
 
 ---
 
@@ -56,7 +58,7 @@ Ce qui doit avoir changé, et qu'il faut lire dans ce que `07` imprime :
 
 🔴 **Et le chiffre qui commande la décision en attente : la surface de toit.** Elle va monter avec le nombre de bâtiments, donc **le potentiel solaire de ~9,5 % sera calculé sur une autre ville**. Ne pas trancher la première case de « ce qui attend l'auteur » avant d'avoir relancé `07`.
 
-### 👁️ Puis regarder le système énergie tourner — `PLAN_energie.md` §8
+### 👁️ Puis regarder le système énergie tourner — `Prototype/Énergie.md` §8
 
 Le code est fait et les contrôles imprimés sont au vert. Ce qui manque, c'est le regard de l'auteur. Lancer la maquette, puis dans l'ordre :
 
@@ -73,13 +75,13 @@ Sept captures de référence sont déjà dans `QGIS/rendus/wehrau_essai_*.png` (
 
 ## Ce qui attend l'auteur
 
-- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas 25–40 %.** ⏸️ **Suspendu au 2026-08-13 : le chiffre va bouger.** Le peigne fait passer les parcelles bâtissables de 705 à 987 ; il faut relancer `07` avant de trancher, sinon on arbitre sur les toits d'une ville qui n'existe plus. La fourchette du plan avait été calibrée sur 76,5 ha d'*emprise* ; les vrais toits font 11,7 ha, et même équiper 100 % de chaque m² plafonnerait vers 28 %. Le jeu tient (blocages, rentabilités par îlot, « pas d'autonomie par les toits » renforcé), mais les ordres de grandeur du `PLAN_energie.md` §5 changent d'échelle : ville équipée ~350 pts et non ~1 000, retour plein ~27 pts/an et non ~90. **À trancher : assumer ~9,5 %, ou regonfler la colonne `equip` de la table.** L'essai imprime l'écart à chaque passage.
+- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas 25–40 %.** ⏸️ **Suspendu au 2026-08-13 : le chiffre va bouger.** Le peigne fait passer les parcelles bâtissables de 705 à 987 ; il faut relancer `07` avant de trancher, sinon on arbitre sur les toits d'une ville qui n'existe plus. La fourchette du plan avait été calibrée sur 76,5 ha d'*emprise* ; les vrais toits font 11,7 ha, et même équiper 100 % de chaque m² plafonnerait vers 28 %. Le jeu tient (blocages, rentabilités par îlot, « pas d'autonomie par les toits » renforcé), mais les ordres de grandeur du `Prototype/Énergie.md` §5 changent d'échelle : ville équipée ~350 pts et non ~1 000, retour plein ~27 pts/an et non ~90. **À trancher : assumer ~9,5 %, ou regonfler la colonne `equip` de la table.** L'essai imprime l'écart à chaque passage.
 - [ ] 🟠 **La régie municipale** — à qui appartiennent les panneaux ? Sans réponse, le retour au budget est un raccourci comptable qu'on ne saura plus justifier. Le tarif de rachat **figé au mois de la décision** (ce qui rend le remboursement exact) plaide déjà pour une régie qui signe des contrats.
 - [ ] 🟠 **Le nom des quartiers de Wehrau** — sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase. Les calques sortent bien des **zones**, pas des confettis : la phrase attend son vocabulaire.
 - [x] ✅ ~~**L'exagération verticale**~~ — **close par la mise à plat** le 2026-08-12. Il n'y a plus de relief à exagérer ; les touches `1..4` sont retirées de la maquette.
 - [ ] 🟠 **La crue dans le vault** — la décision **23b** (le jeu s'ouvre sur une crue rive gauche) est en contradiction avec « pas de crue pour ce prototype ». Suspendue ou abandonnée ? À écrire dans `Décisions arrêtées`, pas à laisser implicite.
 - [ ] **Les quatre tables de level design** → [CHANTIERS.md](CHANTIERS.md) §2. Une ligne changée, on relance, on regarde.
-- [ ] **Cinq candidats à `Décisions arrêtées`**, prêts mais non tranchés (`PLAN_energie.md` §9 bis) : dont *la décision spatiale est le jeu* — **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise**.
+- [ ] **Cinq candidats à `Décisions arrêtées`**, prêts mais non tranchés (`Prototype/Énergie.md` §9 bis) : dont *la décision spatiale est le jeu* — **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise**.
 
 🖥️ **Trois questions se tranchent en dessinant l'écran, pas dans le vault** : **n°19** onze nombres permanents, est-ce que ça tient ? · **n°20** `Déclin et défaite` refuse la jauge globale que « la ville exposée » vient d'introduire · **n°21** comment le joueur comprend que l'économie commande son budget, alors que les deux sont loin l'un de l'autre à l'écran. → `Méta/Questions ouvertes.md`
 

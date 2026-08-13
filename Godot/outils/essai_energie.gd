@@ -1,5 +1,5 @@
 extends SceneTree
-# Le contrôle imprimé du système énergie — PLAN_energie.md §7, étapes 1, 2 et 6.
+# Le contrôle imprimé du système énergie — Prototype/Énergie.md §7, étapes 1, 2 et 6.
 #
 # Depuis la décision 65, l'auteur ne voit plus passer le code : ce compte rendu
 # en français est LE SEUL ENDROIT où une erreur peut encore se voir. Il tourne

@@ -11,12 +11,14 @@ City-builder PC de **transformation urbaine**. Le joueur ne construit pas, il **
 
 - **But affiché** : inspirer, pas simuler la bureaucratie.
 - **Règle mère de ton** : *dur mais possible, jamais cynique*.
-- **Prototype en cours** : **Wehrau**, une petite ville entière (~5 350 hab., 0,93 km², 69 îlots) — pas un quartier de Vallmar. → `Décisions arrêtées` 13b · 13d
+- **Prototype en cours** : **Wehrau**, une petite ville entière (~5 350 hab., 0,93 km², 70 îlots) — pas un quartier de Vallmar. → `Décisions arrêtées` 13b · 13d
 - **Cadre** : solo, 3–5 ans, ~15 000 €, Godot 4.
 
-Le design reste devant, mais **le code existe** : `QGIS/scripts/` (la chaîne qui fabrique la carte) et `Godot/` (la maquette 3D de Wehrau à t0). Le vault reste la source de vérité du design ; le `.gpkg` celle de la carte.
+🎯 **Le centre de gravité est le prototype** (2026-08-13). Le vault continue de porter toutes les idées et reste la source de vérité du design — mais le travail se juge désormais sur ce qui tourne : `QGIS/scripts/` (la chaîne qui fabrique la carte), `Godot/` (la maquette 3D de Wehrau à t0), et `Prototype/` (les étapes, une note chacune). Le `.gpkg` est la source de vérité de la carte.
 
 ## 2. Où est quoi
+
+**Deux dossiers vivent côte à côte, et ils ne font pas le même métier.**
 
 ```
 City Builder/
@@ -24,12 +26,32 @@ City Builder/
 ├─ ETAT.md                    ← LE signet : où on en est, la prochaine action (je le mets à jour)
 │   ├─ CHANTIERS.md           ← ce qui attend : défauts connus, dette, tables de level design
 │   └─ HISTORIQUE.md          ← les sessions passées, une par entrée
-├─ PLAN_energie.md            ← le prototype en cours, en détail
-├─ Vault - Jeu urbanisme/     ← le vault Obsidian : LA source de vérité du design
+├─ Vault - Jeu urbanisme/     ← 🧠 LA TÊTE : le vault Obsidian, source de vérité du design
+├─ Prototype/                 ← 🔨 LE CHANTIER : ce qu'on construit, une note par étape
+│   ├─ 00 - Prototype.md      ← l'index : la règle, les étapes dans l'ordre, où on en est
+│   ├─ Parcelles.md           ← 🎯 l'étape en cours
+│   └─ Énergie.md             ← le premier thème complet (ex-`PLAN_energie.md`)
 └─ Ouvrir le vault dans Obsidian.lnk
 ```
 
-`ETAT.md` reste court **par construction** : il pointe vers les trois autres au lieu de les absorber. Si une chose n'est ni « où on en est » ni « quoi faire maintenant », elle va dans `CHANTIERS.md` ou `HISTORIQUE.md`.
+`ETAT.md` reste court **par construction** : il pointe vers les autres au lieu de les absorber. Si une chose n'est ni « où on en est » ni « quoi faire maintenant », elle va dans `CHANTIERS.md` ou `HISTORIQUE.md`.
+
+### Le vault et le prototype — la frontière
+
+| | Le vault | `Prototype/` |
+|---|---|---|
+| **Ce qu'on y met** | les idées, le design, les arbitrages, les références — tout ce qui reste vrai quel que soit le code | ce qu'on construit : où en est l'étape, ses chiffres mesurés, ce qui lui reste, ce qu'on regarde à l'écran |
+| **Ce qui y répond** | *pourquoi* c'est comme ça | *où on en est* |
+| **Durée de vie** | durable | vivant, réécrit à chaque mesure |
+| **Format** | frontmatter + wikilinks `[[Nom]]` (§4) | markdown ordinaire, **pas de frontmatter, pas de wikilinks** — ce n'est pas un vault |
+
+🔴 **Quand les deux disent la même chose, c'est dans `Prototype/` qu'on efface.** Le vault est la source ; une note de chantier **pointe** vers lui au lieu de le recopier. Et une note de chantier ne ferme **jamais** un arbitrage toute seule : ça se fait dans `Questions ouvertes.md` **et** `Décisions arrêtées.md` (§3).
+
+### La règle du prototype : une seule étape ouverte à la fois
+
+Le prototype avance **pas à pas**. Une étape se termine quand **son critère de réussite est vu à l'écran**, pas quand le code compile. Le tableau des étapes et leur ordre sont dans `Prototype/00 - Prototype.md` — c'est lui qui dit laquelle est ouverte, et c'est le premier fichier à ouvrir quand le travail touche le prototype.
+
+Ce que ça protège : le risque nommé en **52**, *que la 3D mange le calendrier*. Deux étapes ouvertes en même temps, c'est ce risque qui revient par la porte de derrière.
 
 Dans le vault, quatre notes commandent toutes les autres :
 
@@ -124,8 +146,14 @@ Sur le Mac on travaille donc en `--blanc`, ou sur une copie posée dans **`QGIS/
 
 ## 6. Protocole de session
 
-**En début de session :** lire ce fichier puis `ETAT.md`. Si le travail touche le design, ouvrir aussi `00 - Index.md` et `Méta/Questions ouvertes.md` — ce sont eux qui disent où en est vraiment le projet.
+**En début de session :** lire ce fichier puis `ETAT.md`.
+- Si le travail touche **le prototype** — c'est le cas par défaut : ouvrir `Prototype/00 - Prototype.md`, puis la note de l'étape ouverte.
+- Si le travail touche **le design** : ouvrir `00 - Index.md` et `Méta/Questions ouvertes.md` — ce sont eux qui disent où en est vraiment le projet.
 
-**En fin de session**, mettre à jour `ETAT.md` : la date, ce qui a bougé, la prochaine action, ce qui attend une décision de l'auteur. **Il ne garde que les deux dernières sessions** — la troisième descend dans `HISTORIQUE.md`, en tête, sans être raccourcie. Ce qui devient « à faire plus tard » descend dans `CHANTIERS.md`, avec sa raison d'attendre. **Rien ne s'écrase, tout descend d'un cran.**
+**En fin de session**, deux mises à jour, et elles ne disent pas la même chose :
+1. **La note de l'étape ouverte**, dans `Prototype/` — les chiffres mesurés, ce qui reste, ce qui attend l'auteur. C'est là que vit le détail.
+2. **`ETAT.md`** — la date, ce qui a bougé, la prochaine action. **Il ne garde que les deux dernières sessions** ; la troisième descend dans `HISTORIQUE.md`, en tête, sans être raccourcie. Ce qui devient « à faire plus tard » descend dans `CHANTIERS.md`, avec sa raison d'attendre. **Rien ne s'écrase, tout descend d'un cran.**
+
+Quand une étape se termine, sa note **reste** : elle passe à ✅ dans le tableau de `00 - Prototype.md`, et l'étape suivante s'ouvre. On n'ouvre pas la suivante avant.
 
 **Ce que je ne fais pas tout seul :** écrire dans `Méta/Journal.md`. C'est le fichier de l'auteur, à la première personne, et il consigne ce qu'*il* a appris. Je peux proposer une entrée ; il la valide.

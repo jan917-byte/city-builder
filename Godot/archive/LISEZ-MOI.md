@@ -2,7 +2,7 @@
 
 > Décision de l'auteur : *« je veux le prototype simple avec la ville en 3D et le système énergie »* — les autres indicateurs et systèmes sortent du code actif.
 >
-> **Supprimé pour de bon, pas masqué.** `PLAN_energie.md` §2 proposait de les masquer par une liste ; l'auteur a tranché l'inverse. Ce dossier est la trace demandée : *« garde en mémoire quelque part »*.
+> **Supprimé pour de bon, pas masqué.** `Prototype/Énergie.md` §2 proposait de les masquer par une liste ; l'auteur a tranché l'inverse. Ce dossier est la trace demandée : *« garde en mémoire quelque part »*.
 
 ## Ce qui est parti
 
@@ -17,7 +17,7 @@
 
 ## Ce que ça coûte, et qu'il faut savoir
 
-🔴 **Le contrôle de recoupement entre les deux moteurs disparaît.** C'était la seule façon de savoir tout de suite si Godot et `08_jouer.py` divergeaient. `PLAN_energie.md` §9c l'avait déjà accepté comme une exception ; ce sont maintenant les trois invariants imprimés du prototype énergie qui tiennent ce rôle, et ils ne comparent qu'un moteur à lui-même.
+🔴 **Le contrôle de recoupement entre les deux moteurs disparaît.** C'était la seule façon de savoir tout de suite si Godot et `08_jouer.py` divergeaient. `Prototype/Énergie.md` §9c l'avait déjà accepté comme une exception ; ce sont maintenant les trois invariants imprimés du prototype énergie qui tiennent ce rôle, et ils ne comparent qu'un moteur à lui-même.
 
 🟢 **Ce qui n'est PAS parti** : `canopee` reste une donnée de la carte et reste calculée. C'est elle qui fait l'ombrage des toits dans le système énergie — le rendement d'un panneau est multiplié par `1 − 0,4 × canopée` de l'îlot. Les 541 arbres semés au sol restent aussi : ils font partie de la ville, pas d'un indicateur.
 
@@ -27,4 +27,4 @@ Ce n'est pas un interrupteur. Remettre D07 demande de reposer une entrée de dé
 
 **Compter une demi-journée**, et le faire seulement quand le thème « chaleur et confort » arrivera pour de bon — parce qu'alors la décision se réécrira de toute façon avec les trois durées (délai · travaux · maturation) que le prototype énergie a introduites, et que D07 n'avait pas.
 
-**Voir aussi** : `../../PLAN_energie.md` · `../README.md` · `Méta/Décisions arrêtées` 64
+**Voir aussi** : `../../Prototype/Énergie.md` · `../README.md` · `Méta/Décisions arrêtées` 64

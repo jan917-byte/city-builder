@@ -47,12 +47,12 @@ Aucune n'est sur le chemin critique du prototype énergie, mais chacune ment tan
 - [ ] **`confort_ete` n'existe pas dans le `.gpkg`** et c'est la seule variable de D10 (l'ancienne décision « énergie » du classeur — le thème a depuis ses deux vraies décisions dans Godot, panneaux et isolation, qui ne s'en servent pas). `08_jouer.py` la crée à 0 et le signale ; Godot y répondait par la **surchauffe**, dérivée du sol. Soit on la dérive dans `04`, soit D10 s'exprime autrement.
 - [ ] **Trois chiffres attendent l'œil de l'auteur**, tous commentés dans le code et listés dans `Godot/README.md` : la **surchauffe** (`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0), le **+0,25 de canopée** de D07 (alors que la canopée d'une rue plafonne à 0,18 dans les données), et **`CANOPEE_ALIGNEMENT_MAX`** (rendu seulement). ⏸️ En sommeil : D07 est archivée (66).
 - [ ] **La deuxième décision dans Godot.** La candidate est **D06 supprimer le stationnement** : c'est elle qui libère l'emprise de D07 et D08, donc c'est elle qui rend la chaîne intéressante. Il ne manque qu'une entrée dans `DECISIONS` de `chantiers.gd` et une portée `voisins` pour le report de charge.
-- [ ] **La vue chantiers** (`PLAN_energie.md` §6 ter) — le calque de « ce qui est en train de se faire », la barre à deux segments (délai | travaux) au clic, la bascule automatique au premier chantier. ⏸️ **Sortie de la session énergie par l'auteur** (2026-08-12). Ce qui est déjà prêt pour elle : la durée des `travaux` est dans chaque décision et chaque entrée du journal (`fin_travaux` comprise), et l'étalement du budget court déjà sur délai + travaux. Il ne manque que l'affichage.
+- [ ] **La vue chantiers** (`Prototype/Énergie.md` §6 ter) — le calque de « ce qui est en train de se faire », la barre à deux segments (délai | travaux) au clic, la bascule automatique au premier chantier. ⏸️ **Sortie de la session énergie par l'auteur** (2026-08-12). Ce qui est déjà prêt pour elle : la durée des `travaux` est dans chaque décision et chaque entrée du journal (`fin_travaux` comprise), et l'étalement du budget court déjà sur délai + travaux. Il ne manque que l'affichage.
 - [ ] **Les réparations de boucle de `04b`** — passées de 4 à **7 îlots** avec la carte à trois ponts. Les quatre signalées « à regarder » sont les mêmes qu'avant (**55, 13, 16, 21** — deux cœurs anciens, deux fronts commerçants ; le 16 tombe de 2 132 à 560 m²). Les trois neuves (9, 11, 62) ne sont pas signalées.
 
 ## 4. Le classeur — à retrancher ou à entretenir
 
-⚠️ **Le rôle du classeur est à trancher.** Il n'a jamais été étendu à l'énergie, et le recoupement des deux moteurs est suspendu (`PLAN_energie.md` §9 c) depuis que D07 est archivée. Banc d'essai des seuils, ou archive ? **Un deuxième moteur à moitié entretenu ment sans qu'on le sache.**
+⚠️ **Le rôle du classeur est à trancher.** Il n'a jamais été étendu à l'énergie, et le recoupement des deux moteurs est suspendu (`Prototype/Énergie.md` §9 c) depuis que D07 est archivée. Banc d'essai des seuils, ou archive ? **Un deuxième moteur à moitié entretenu ment sans qu'on le sache.**
 
 🔴 Rappel de ce que la coupe a coûté : le **contrôle de recoupement** entre Godot et `08_jouer.py` a disparu avec D07. Il avait déjà attrapé un vrai bug (le décalage d'un mois du budget). Une formule fausse dans le noyau ne sera plus attrapée par personne avant qu'on la voie à l'écran.
 
@@ -65,4 +65,4 @@ Aucune n'est sur le chemin critique du prototype énergie, mais chacune ment tan
 
 ---
 
-**Voir aussi** : [ETAT.md](ETAT.md) · [HISTORIQUE.md](HISTORIQUE.md) · [PLAN_energie.md](PLAN_energie.md) · `QGIS/README.md` · `Godot/README.md`
+**Voir aussi** : [ETAT.md](ETAT.md) · [HISTORIQUE.md](HISTORIQUE.md) · [Prototype/Énergie.md](Prototype/Énergie.md) · `QGIS/README.md` · `Godot/README.md`

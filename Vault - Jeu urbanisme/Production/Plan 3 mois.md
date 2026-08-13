@@ -104,7 +104,7 @@ Le critère de sortie de la semaine 3 est répondu par l'usage : **oui, la 3D a 
 
 ## 🎯 Piste 1 — le prototype énergie *(la colonne vertébrale)*
 
-C'est **la piste prioritaire**. Le plan de travail détaillé vit dans `PLAN_energie.md`, à la racine du dépôt — coefficients, réglages, contrôles à l'écran, étapes.
+C'est **la piste prioritaire**. Le plan de travail détaillé vit dans `Prototype/Énergie.md`, à la racine du dépôt — coefficients, réglages, contrôles à l'écran, étapes.
 
 Ce qu'il contient, en une ligne : quatre nombres (consommation · production locale · achat · CO2), **deux décisions de nature opposée** — poser des panneaux, rentable et qui coûte du capital politique ; isoler, jamais rentable et qui en rend — trois calques, et la vue chantiers.
 
@@ -142,7 +142,7 @@ Ce qui manque, dans l'ordre où ça change l'image :
 
 Le classeur `Classeur/` existe : 11 décisions, 37 effets, coûts calculés depuis la carte. Joué pour la première fois le 2026-08-12 — trois parties, et il a immédiatement sorti une erreur de seuil que personne n'avait vue.
 
-🔴 **Mais il n'a jamais été étendu à l'énergie**, et le recoupement des deux moteurs est déjà suspendu dans `PLAN_energie.md` §9 c. Avec 64, la question devient franche : **reste-t-il le banc d'essai des seuils, ou devient-il une archive ?** Non tranché — et à ne pas laisser pourrir, parce qu'un deuxième moteur à moitié entretenu **ment sans qu'on le sache**.
+🔴 **Mais il n'a jamais été étendu à l'énergie**, et le recoupement des deux moteurs est déjà suspendu dans `Prototype/Énergie.md` §9 c. Avec 64, la question devient franche : **reste-t-il le banc d'essai des seuils, ou devient-il une archive ?** Non tranché — et à ne pas laisser pourrir, parce qu'un deuxième moteur à moitié entretenu **ment sans qu'on le sache**.
 
 ## ✅ La grille d'un thème — elle ne change pas, elle s'applique juste un thème à la fois
 

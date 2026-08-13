@@ -17,7 +17,7 @@ dans les formules, que l'auteur règle le jeu. D07, la surchauffe et les anciens
 calques restent dans **`archive/`** (décision 66).
 
 🔴 **Le recoupement des deux moteurs n'existe toujours pas** : il a disparu
-avec D07 (`PLAN_energie.md` §9 c). Ce qui le remplace en partie :
+avec D07 (`Prototype/Énergie.md` §9 c). Ce qui le remplace en partie :
 `outils/essai_energie.gd`, le contrôle imprimé en français — les quatre
 nombres du mois 0, la table du potentiel, trois invariants à cinq dates, le
 remboursement, et **deux parties jouées en aveugle** (panneaux seuls doit
