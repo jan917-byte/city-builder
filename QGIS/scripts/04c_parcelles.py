@@ -33,6 +33,52 @@ carte. Aucun `random` non seedé, et la graine de chaque coupe se dérive des
 coordonnées du morceau qu'on coupe — pas d'un compteur, qui décalerait tout
 dès qu'on change une ligne de la table ci-dessous.
 
+═══════════════════════════════════════════════════════════════════════════
+DEUX MANIÈRES DE DÉCOUPER, ET CELLE QUI COMMANDE
+═══════════════════════════════════════════════════════════════════════════
+
+D'après Vanegas, Kelly, Weber, Halatsch, Aliaga et Müller, *Procedural
+Generation of Parcels in Urban Modeling*, Eurographics 2012. Le papier montre
+qu'un îlot réel se découpe de deux façons, et en donne une par variété.
+
+  LE PEIGNE (§4.2 du papier — « skeleton subdivision »).
+       On longe la rue, on prend une bande aussi profonde que le tissu le
+       demande, et on la débite en dents perpendiculaires à la rue, larges
+       comme la façade visée. Ce qu'aucune rue n'a réclamé est le CŒUR
+       D'ÎLOT. C'est la méthode qui commande les tissus de rue.
+       → Ce qu'elle donne gratuitement : toute parcelle a sa façade sur rue
+         (l'« egress » du papier), et son grand axe lui est perpendiculaire.
+         Une lanière, pas un carré.
+
+  LA BOÎTE (§4.3 — « OBB subdivision »).
+       On coupe le morceau en deux selon sa boîte englobante, et on
+       recommence. C'était la SEULE méthode ici jusqu'au 2026-08-13 ; elle
+       garde deux rôles, exactement ceux que le papier lui laisse : les
+       tissus à un ou deux gros objets par îlot, et le REMPLISSAGE DU CŒUR.
+
+🎯 Ce que le peigne a corrigé, mesuré sur les mêmes 53 emprises. La boîte
+   respectait l'AIRE de la table et rien d'autre : un cœur ancien tombait à
+   111,7 m² pour 112 visés, mais sous la forme d'un carré de 10,6 m de côté
+   au lieu d'une lanière de 7 × 16. Une parcelle sur deux tournait le dos à
+   la rue, et 30 % n'avaient aucune façade.
+
+     élancement (profondeur ÷ façade)   avant   après   visé
+       coeur_ancien                      1,59    2,19   2,29
+       maisons_de_ville                  1,46    2,44   2,50
+       pavillonnaire                     1,51    2,09   2,07
+       front_commercant                  1,59    1,64   1,64
+     parcelles sans façade sur rue        30 %     7 %
+
+⚠️ Ce qu'on n'a PAS repris du papier, et pourquoi :
+  · le squelette droit exact (le papier passe par CGAL) — inutile ici, la
+    bande d'une rue s'obtient par trois coupes en demi-plan que `couper` sait
+    déjà faire. L'arbitrage des coins, que le papier règle par des
+    bissectrices (§4.2.2), se règle ici par **la rue la plus longue passe en
+    premier et prend le coin** — c'est son schéma `StreetLength` ;
+  · la persistance sous édition (§5, coordonnées barycentriques) — sans
+    objet : la découpe est calculée une fois et écrite, et la décision 35 est
+    déjà tenue par la graine géométrique de `graine_de`.
+
 Usage :
     python QGIS/scripts/04c_parcelles.py            écrit dans le .gpkg
     python QGIS/scripts/04c_parcelles.py --blanc    calcule, affiche, n'écrit rien
@@ -66,27 +112,39 @@ SRS = 25832                             # EPSG:25832 — décision 31
 #   facade      largeur de rue visée pour une parcelle, en mètres. C'est ELLE
 #               qui décide du grain du tissu — 7 m fait un peigne de maisons
 #               étroites, 18 m fait des pavillons détachés.
-#   profondeur  profondeur visée. Au-delà de deux fois cette valeur, l'îlot
-#               est d'abord coupé en deux dans sa longueur : c'est le
-#               dos-à-dos, et c'est ce qui fait apparaître les cœurs d'îlot.
+#   profondeur  profondeur de la bande prise le long de la rue. C'est elle qui
+#               décide de ce qu'il reste au milieu : au-delà de deux fois cette
+#               valeur, les bandes des deux rives ne se rejoignent pas et un
+#               CŒUR D'ÎLOT apparaît.
+#   style       `peigne` ou `boite`, les deux méthodes du papier (voir en-tête).
+#               Le peigne pour les tissus de rue ; la boîte pour les tissus à
+#               un ou deux gros objets par îlot, où le peigne n'a rien à dire.
+#
+# 🔴 DEPUIS LE PEIGNE, LES DEUX PREMIÈRES COLONNES DISENT ENFIN CE QU'ELLES
+# DISENT. La boîte ne respectait que leur PRODUIT — 7 × 16 et 11 × 10 lui
+# étaient la même consigne. Maintenant `facade` est la largeur sur rue et
+# `profondeur` est le fond derrière : changer l'une sans l'autre change la
+# forme des parcelles, plus seulement leur nombre.
 #
 # ⚠️ Ces chiffres sont une PROPOSITION, à corriger devant l'image. Le contrôle
 # à faire n'est pas « est-ce que le nombre est juste » mais « est-ce que le
 # cœur ancien ressemble à un cœur ancien ».
 TISSU = {
-    #  sous_type              facade  profondeur
-    "coeur_ancien":            (7.0,   16.0),   # parcellaire fin, très mitoyen
-    "maisons_de_ville":        (8.0,   20.0),   # le tissu majoritaire de Wehrau
-    "front_commercant":       (11.0,   18.0),   # vitrines en rez-de-chaussée
+    #  sous_type              facade  profondeur  style
+    "coeur_ancien":            (7.0,   16.0,   "peigne"),  # fin, très mitoyen
+    "maisons_de_ville":        (8.0,   20.0,   "peigne"),  # le tissu majoritaire
+    "front_commercant":       (11.0,   18.0,   "peigne"),  # vitrines en rez-de-ch.
     # 🔄 2026-08-12 : 18 m de façade donnaient des pavillons trop larges et trop
     # peu nombreux — une rangée de gros blocs, pas un lotissement. À 12,5 m on
     # a une maison par parcelle et le jardin derrière a la place d'exister.
-    "pavillonnaire":          (13.5,   28.0),   # détaché, jardins
-    "barre_1970":             (60.0,   15.0),   # des barres longues et minces
-    "equipement":             (45.0,   35.0),   # un ou deux objets par îlot
-    "dalle_commercial":       (80.0,   60.0),   # (alias, voir plus bas)
-    "dalle_commerciale":      (80.0,   60.0),   # un hangar, pas un lotissement
-    "friche_industrielle":    (55.0,   45.0),   # des halles
+    "pavillonnaire":          (13.5,   28.0,   "peigne"),  # détaché, jardins
+    # La barre se couche le long de la rue : 60 m de façade pour 15 m de fond,
+    # c'est une barre vue de la rue, et le peigne la pose dans le bon sens.
+    "barre_1970":             (60.0,   15.0,   "peigne"),
+    "equipement":             (45.0,   35.0,   "boite"),   # un ou deux objets
+    "dalle_commercial":       (80.0,   60.0,   "boite"),   # (alias, voir plus bas)
+    "dalle_commerciale":      (80.0,   60.0,   "boite"),   # un hangar
+    "friche_industrielle":    (55.0,   45.0,   "boite"),   # des halles
 }
 # Les quatre sous-types SANS bâti ne se découpent pas : ils restent des sols.
 # `riviere` non plus, évidemment.
@@ -100,7 +158,22 @@ AIRE_MIN = 45.0
 # De combien la coupe peut se décaler de sa position idéale, en part de
 # l'écart entre deux coupes. Sans ce jeu, tout le tissu est au cordeau et se
 # voit ; à 0,25 il respire sans qu'aucune parcelle ne devienne aberrante.
+# (C'est l'« irrégularité de coupe » ω du papier, §4.1.)
 JEU = 0.25
+
+# Une arête d'îlot plus courte que ça ne porte pas de rue : c'est un biseau de
+# coin, un reste de la limite de mitre de 04b. Lui donner une bande fabrique
+# des parcelles en pointe pour rien.
+LONGUEUR_MIN_RUE = 6.0
+
+# Une dent du peigne ne descend jamais sous cette part de la façade visée. Sans
+# ce plancher, une bande de 9 m avec 8 m de façade se couperait en deux dents
+# de 4,5 m — deux demi-maisons au lieu d'une maison un peu large.
+DENT_MIN = 0.45
+
+# Et elle ne dépasse jamais ce multiple de l'aire visée : au-delà, on ajoute des
+# dents. C'est le garde-fou `Amax` du papier (§4.2.3, deuxième cas).
+DENT_MAX = 2.0
 
 # Variation de hauteur d'une parcelle autour de celle de son îlot, en niveaux.
 # ± 1 suffit à casser le bloc plein sans contredire la donnée.
@@ -479,6 +552,160 @@ def subdiviser(anneau, facade, prof, n_cible=None, garde=0):
     return out
 
 
+# ------------------------------------------------------------------ le peigne
+
+def _bande(reste, a, b, u, nrm, prof, L):
+    """La bande de rue de l'arête (a→b), prise dans ce qui reste de l'îlot.
+
+    Trois coupes en demi-plan, et rien d'autre : la PROFONDEUR, puis les deux
+    BOUTS de l'arête. Ce qui en sort est borné dans les deux sens, donc une rue
+    ne peut pas réclamer la façade de la rue d'à côté.
+
+    C'est ce qui remplace le squelette droit du papier. Là où il pose une
+    bissectrice au coin, on pose une perpendiculaire — mais DÉBORDANTE.
+
+    🔴 Le débordement n'est pas un ajustement, c'est ce qui fait tenir la
+    méthode. Arrêter la bande pile au bout de l'arête laisse le coin de l'îlot
+    orphelin : ni cette rue ni la suivante ne le réclame, et il finit en éclats
+    au cœur — mesuré, l'îlot 35 sortait 82 morceaux de cœur pour 1 243 m², dont
+    63 sous 20 m². En laissant la bande mordre de `prof` au-delà de chaque bout,
+    LA PREMIÈRE ARÊTE SERVIE — donc la plus longue — PREND LE COIN. C'est le
+    schéma `StreetLength` du papier (§4.2.2), obtenu sans squelette. Et `prof`
+    n'est pas un réglage : à un angle droit, la bissectrice du squelette monte
+    à 45°, donc elle atteint exactement `prof` au fond de la bande.
+
+    Renvoie (les morceaux de la bande, les morceaux rendus au reste).
+    """
+    debord = prof
+    a0 = (a[0] - u[0] * debord, a[1] - u[1] * debord)
+    b0 = (b[0] + u[0] * debord, b[1] + u[1] * debord)
+
+    # 🔴 ON NE COUPE QUE CE QUI TOUCHE LA RUE. Une coupe traverse tout le plan :
+    # sans ce tri, les trois droites de CHAQUE arête viennent tailler le cœur de
+    # l'îlot, qui est pourtant à l'autre bout. Après vingt arêtes le cœur
+    # ressortait en confettis — mesuré, 236 morceaux pour 32 îlots là où il en
+    # faut un par îlot.
+    # Le tri est exact, pas prudent : une parcelle de la bande a forcément un
+    # bout de son bord SUR l'arête, donc un sommet dessus. Un morceau qui n'y
+    # touche pas ne peut pas en faire partie — il n'a pas de façade, il
+    # appartient au cœur. Il traverse sans être coupé, donc rien n'est perdu et
+    # la décision 61 tient toujours.
+    morceaux, intacts = [], []
+    for m in reste:
+        if any(dist_pt_seg(p, a, b) <= 0.05 for p in m):
+            morceaux.append(m)
+        else:
+            intacts.append(m)
+
+    for p0, n in (((a[0] + nrm[0] * prof, a[1] + nrm[1] * prof), nrm),
+                  (a0, u), (b0, u)):
+        suite = []
+        for m in morceaux:
+            suite += couper(m, p0, n)
+        morceaux = suite
+
+    bande, loin = [], list(intacts)
+    for m in morceaux:
+        if len(m) < 3 or abs(aire_signee(m)) <= 1e-6:
+            continue
+        cx = sum(p[0] for p in m) / len(m)
+        cy = sum(p[1] for p in m) / len(m)
+        dn = (cx - a[0]) * nrm[0] + (cy - a[1]) * nrm[1]      # vers l'intérieur
+        dt = (cx - a[0]) * u[0] + (cy - a[1]) * u[1]          # le long de la rue
+        dedans = ((-EPS <= dn <= prof + EPS)
+                  and (-debord - EPS <= dt <= L + debord + EPS))
+        (bande if dedans else loin).append(m)
+    return bande, loin
+
+
+def _dents(bande, a, u, facade, prof):
+    """La bande se débite en dents perpendiculaires à la rue.
+
+    Le nombre de dents vient de la LARGEUR sur rue, pas de l'aire : c'est toute
+    la différence avec `subdiviser`, et c'est ce qui fait que `facade` veut
+    enfin dire façade. Trois bornes l'encadrent, dans cet ordre :
+      · la façade visée décide du nombre ;
+      · une dent trop lourde en fait ajouter une (le `Amax` du papier) ;
+      · une dent trop étroite en fait retirer une (le plancher `DENT_MIN`),
+        ce qui évite de fabriquer un éclat qu'il faudrait recoller après coup.
+    """
+    ds = sorted((p[0] - a[0]) * u[0] + (p[1] - a[1]) * u[1] for p in bande)
+    span = ds[-1] - ds[0]
+    aire = abs(aire_signee(bande))
+    if span < EPS:
+        return [bande]
+
+    k = max(1, int(round(span / facade)))
+    k = max(k, int(math.ceil(aire / (DENT_MAX * facade * prof))))
+    k = min(k, max(1, int(span / (facade * DENT_MIN))),
+               max(1, int(aire / AIRE_MIN)))
+    k = max(1, k)
+
+    def debiter(k):
+        pieces = [bande]
+        for j in range(1, k):
+            t = ds[0] + span * j / k
+            # Le décalage se tire de la POSITION de la coupe, pas de son rang :
+            # la décision 35, appliquée à la coupe et pas qu'à la parcelle.
+            g = graine_de([(a[0] + u[0] * t, a[1] + u[1] * t)])
+            t += ((g % 1000) / 1000.0 - 0.5) * 2.0 * JEU * span / k
+            p0 = (a[0] + u[0] * t, a[1] + u[1] * t)
+            suite = []
+            for m in pieces:
+                suite += couper(m, p0, u)
+            pieces = suite
+        return [p for p in pieces if len(p) >= 3 and abs(aire_signee(p)) > 1e-6]
+
+    # Une dent trop maigre ne se rattrape pas après coup : on refait la bande
+    # avec une dent de moins. C'est le troisième cas du papier (§4.2.3) — il
+    # recolle les éclats à leur voisine, on préfère ne pas les fabriquer, ce
+    # qui revient au même et garde la partition intacte.
+    for essai in range(4):
+        pieces = debiter(max(1, k - essai))
+        if k - essai <= 1 or all(abs(aire_signee(p)) >= AIRE_MIN for p in pieces):
+            return pieces
+    return pieces
+
+
+def peigne(anneau, facade, prof):
+    """Découpe un îlot depuis ses rues. Renvoie (parcelles sur rue, cœur).
+
+    Les arêtes sont servies de la plus longue à la plus courte. Chacune prend
+    sa bande dans ce qui reste, et la débite. Ce qu'aucune n'a réclamé est le
+    cœur d'îlot — un seul morceau en général, et c'est le but.
+
+    Aucun morceau n'est jeté en route : tout ce qui sort d'une coupe part soit
+    dans les dents, soit dans le reste. C'est ce qui fait tenir la décision 61
+    sans avoir à la rattraper.
+    """
+    ring = ouvrir(anneau)
+    n = len(ring)
+    reste = [ring]
+    rue = []
+
+    def longueur(i):
+        a, b = ring[i], ring[(i + 1) % n]
+        return math.hypot(b[0] - a[0], b[1] - a[1])
+
+    # À longueur égale, l'indice départage : deux arêtes jumelles ne doivent
+    # pas changer d'ordre d'une exécution à l'autre.
+    for i in sorted(range(n), key=lambda i: (-longueur(i), i)):
+        if not reste:
+            break
+        a, b = ring[i], ring[(i + 1) % n]
+        L = longueur(i)
+        if L < LONGUEUR_MIN_RUE:
+            continue
+        u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+        nrm = (-u[1], u[0])          # `ouvrir` rend l'anneau trigo : à gauche
+        bande, loin = _bande(reste, a, b, u, nrm, prof, L)
+        for m in bande:
+            rue += _dents(m, a, u, facade, prof)
+        reste = loin
+
+    return rue, [m for m in reste if len(m) >= 3 and abs(aire_signee(m)) > 1e-6]
+
+
 def facade_de(parcelle, bord_idx, grille=1.0, tol=0.35):
     """Les mètres de la parcelle qui donnent sur la rue.
 
@@ -586,6 +813,8 @@ def main():
     ecarts = []
     par_st = {}
     saute = []
+    replis = []
+    coeurs = []
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -599,21 +828,48 @@ def main():
             saute.append((fid, st))
             continue
 
-        facade, prof = TISSU[st]
+        facade, prof, style = TISSU[st]
         ext = d["ext"]
         aire0 = abs(aire_signee(ext))
-        parcelles = subdiviser(ext, facade, prof)
+
+        if style == "peigne":
+            rue, coeur = peigne(ext, facade, prof)
+            # 🌳 LE CŒUR REPASSE PAR LA BOÎTE. C'est le rôle que le papier lui
+            # laisse (§4.3, dernier paragraphe) : la région intérieure se
+            # remplit par une découpe récursive. Sans ça le cœur ressort d'un
+            # seul tenant, et le tirage cour pavée / jardin planté de 07 se
+            # ferait sur trente objets au lieu de plusieurs centaines — la
+            # proportion de gris de la décision 42c y perdrait son grain.
+            parcelles = [(p, "rue") for p in rue]
+            for c in coeur:
+                parcelles += [(p, "coeur") for p in subdiviser(c, facade, prof)]
+            aire_coeur = sum(abs(aire_signee(c)) for c in coeur)
+
+            # Le filet : si le peigne rate sa propre partition, l'îlot repart
+            # ENTIER dans la boîte et le contrôle le nomme. 43 des 69 emprises
+            # sont concaves — le peigne n'en a fait tomber aucune, mais on ne
+            # livre pas une méthode géométrique sans son repli.
+            somme = sum(abs(aire_signee(p)) for p, _ in parcelles)
+            if not parcelles or (aire0 and abs(somme - aire0) > 1e-5 * aire0):
+                replis.append((fid, st, len(parcelles)))
+                parcelles = [(p, "boite") for p in subdiviser(ext, facade, prof)]
+            else:
+                coeurs.append((fid, st, len(coeur), aire_coeur,
+                               sum(1 for _, o in parcelles if o == "coeur")))
+        else:
+            parcelles = [(p, "boite") for p in subdiviser(ext, facade, prof)]
 
         # 🔴 LE CONTRÔLE QUI COMMANDE TOUT LE FICHIER (décision 61).
-        somme = sum(abs(aire_signee(p)) for p in parcelles)
+        somme = sum(abs(aire_signee(p)) for p, _ in parcelles)
         ecarts.append((abs(somme - aire0) / aire0 if aire0 else 0.0, fid, st,
                        len(parcelles), aire0, somme))
 
         idx = indexer_bord(ext)
-        for p in parcelles:
+        for p, origine in parcelles:
             per = perimetre(p)
             fac = facade_de(p, idx)
             g = graine_de(p)
+            _, _, long_axe, court_axe, _ = rectangle_englobant(p)
             # ± JEU_NIVEAUX autour de la hauteur de l'îlot, tiré de la graine
             # de la parcelle : deux parcelles voisines ne montent pas pareil,
             # et une parcelle garde sa hauteur quand sa voisine change.
@@ -622,7 +878,8 @@ def main():
                 "fid_ilot": fid, "st": st, "anneau": p,
                 "aire": abs(aire_signee(p)), "perim": per, "facade": fac,
                 "mitoyen": max(0.0, per - fac), "graine": g,
-                "niveaux": max(1.0, niv),
+                "niveaux": max(1.0, niv), "origine": origine,
+                "elan": long_axe / max(court_axe, 0.01),
             })
         par_st.setdefault(st, []).append((fid, len(parcelles), aire0))
 
@@ -646,6 +903,85 @@ def main():
     print()
     print("  %d îlots laissés entiers (sols, rivière, hauteur nulle)" % len(saute))
     print()
+
+    # ── ce que la table demande, et ce que la carte rend ───────────────────
+    print("  🎯 LA TABLE EST-ELLE HONORÉE ? Façade et élancement, par tissu.")
+    print("     L'élancement est le rapport du grand axe au petit. Sa cible est")
+    print("     profondeur ÷ façade : c'est lui qui dit si on a une lanière")
+    print("     tournée vers la rue, ou un carré. C'est LE nombre à regarder.")
+    print()
+    print("  %-22s %-7s %9s %9s %9s %9s" % ("sous_type", "style", "façade",
+                                            "visée", "élancem.", "visé"))
+    print("  " + "-" * 70)
+    for st in sorted(par_st, key=lambda k: -sum(n for _, n, _ in par_st[k])):
+        lot = [r for r in resultats if r["st"] == st and r["origine"] != "coeur"]
+        if not lot:
+            continue
+        fc, pr, style = TISSU[st]
+        sur_rue = [r for r in lot if r["facade"] > 0.5]
+        fm = (sum(r["facade"] for r in sur_rue) / len(sur_rue)) if sur_rue else 0.0
+        el = sorted(r["elan"] for r in lot)[len(lot) // 2]
+        # L'élancement est un rapport du GRAND au petit axe : il ne descend
+        # jamais sous 1. Sa cible se lit donc dans le même sens, sinon les
+        # tissus plus larges que profonds — la barre, la dalle — seraient
+        # comparés à 0,25 et le contrôle mentirait sur eux.
+        cible = max(fc, pr) / min(fc, pr)
+        marque = "  ✅" if abs(el - cible) <= 0.15 * cible else "  ⚠️"
+        print("  %-22s %-7s %7.1f m %7.1f m %9.2f %9.2f%s"
+              % (st, style, fm, fc, el, cible, marque))
+    print("  " + "-" * 70)
+    print("     ⚠️ La façade mesurée compte TOUS les mètres sur le bord de")
+    print("     l'îlot : une parcelle d'angle en a sur deux rues, donc la")
+    print("     moyenne sort au-dessus de la visée sans que rien soit faux.")
+    print()
+
+    # ── l'accès à la rue : le critère d'egress du papier ───────────────────
+    print("  🚪 L'ACCÈS À LA RUE. Une parcelle sans façade n'est pas bâtie par")
+    print("     `07_exporter_godot.py` : elle repart au jardin. C'est ce qui")
+    print("     décide du nombre de bâtiments de la ville.")
+    print()
+    print("  %-22s %9s %9s %9s" % ("sous_type", "sur rue", "enclavées", "part"))
+    print("  " + "-" * 56)
+    n_rue = n_enc = 0
+    for st in sorted(par_st, key=lambda k: -sum(n for _, n, _ in par_st[k])):
+        lot = [r for r in resultats if r["st"] == st and r["origine"] != "coeur"]
+        if not lot:
+            continue
+        e = sum(1 for r in lot if r["facade"] <= 0.5)
+        n_rue += len(lot) - e
+        n_enc += e
+        marque = "  ✅" if e <= 0.10 * len(lot) else "  ⚠️"
+        print("  %-22s %9d %9d %8.0f %%%s"
+              % (st, len(lot) - e, e, 100.0 * e / len(lot), marque))
+    print("  " + "-" * 56)
+    print("  %-22s %9d %9d %8.0f %%"
+          % ("TOTAL", n_rue, n_enc, 100.0 * n_enc / max(n_rue + n_enc, 1)))
+    print()
+
+    # ── les cœurs d'îlot ──────────────────────────────────────────────────
+    n_c = sum(1 for _, _, nc, _, _ in coeurs if nc)
+    if coeurs:
+        aire_c = sum(a for _, _, _, a, _ in coeurs)
+        parts_c = sum(n for _, _, _, _, n in coeurs)
+        morceaux_c = sum(nc for _, _, nc, _, _ in coeurs)
+        print("  🌳 LES CŒURS D'ÎLOT — ce qu'aucune rue n'a réclamé.")
+        print("     %d îlots sur %d en ont un, %.2f ha en tout, en %d morceau(x)"
+              % (n_c, len(coeurs), aire_c / 1e4, morceaux_c))
+        print("     redécoupés par la boîte en %d parcelles de fond, qui"
+              " deviendront cours et jardins" % parts_c)
+        sans = [f for f, _, nc, _, _ in coeurs if not nc]
+        if sans:
+            print("     %d îlots sans cœur — trop peu profonds, les bandes des"
+                  " deux rives se rejoignent : %s"
+                  % (len(sans), ", ".join(str(f) for f in sans[:12])))
+        print()
+
+    if replis:
+        print("  ⚠️  %d ÎLOT(S) REPASSÉ(S) À LA BOÎTE — le peigne y a perdu de la"
+              " surface, le filet a joué :" % len(replis))
+        for fid, st, n in replis:
+            print("        îlot %-3d %-20s" % (fid, st))
+        print()
 
     print("  🔴 LA PARTITION — décision 61. Chaque îlot doit tomber sur 100,00 %.")
     pires = sorted(ecarts, reverse=True)[:5]
@@ -713,7 +1049,8 @@ def ecrire(resultats):
             facade_m REAL,
             mitoyen_m REAL,
             niveaux REAL,
-            graine INTEGER)""")
+            graine INTEGER,
+            origine TEXT)""")
 
     xs, ys, n = [], [], 0
     for r in resultats:
@@ -724,10 +1061,11 @@ def ecrire(resultats):
             ys.append(p[1])
         cur.execute(
             "INSERT INTO parcelles (geom, fid_ilot, sous_type, surface_m2,"
-            " facade_m, mitoyen_m, niveaux, graine) VALUES (?,?,?,?,?,?,?,?)",
+            " facade_m, mitoyen_m, niveaux, graine, origine)"
+            " VALUES (?,?,?,?,?,?,?,?,?)",
             (blob_gpkg(wkb_polygone([r["anneau"]])), r["fid_ilot"], r["st"],
              round(r["aire"], 1), round(r["facade"], 2),
-             round(r["mitoyen"], 2), r["niveaux"], r["graine"]))
+             round(r["mitoyen"], 2), r["niveaux"], r["graine"], r["origine"]))
         n += 1
 
     cur.execute(
