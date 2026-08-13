@@ -1,6 +1,6 @@
 ---
 tags: [technique, procédural, 3d, actif]
-statut: ✅ parcelles et toits FAITS le 2026-08-12 — parcellaire refait au **peigne sur rue** le 2026-08-13 : 1 164 parcelles, 1 013 sur rue. Carte plate depuis le 2026-08-12.
+statut: ✅ parcelles et toits FAITS le 2026-08-12 — parcellaire refait au **peigne sur rue** le 2026-08-13 : 1 096 parcelles, 987 sur rue. Carte plate depuis le 2026-08-12.
 maj: 2026-08-13
 ---
 
@@ -30,9 +30,9 @@ D'après **Vanegas, Kelly, Weber, Halatsch, Aliaga et Müller, *Procedural Gener
 |---|---|---|---|
 | `coeur_ancien` | 1,59 | **2,07** | 2,29 |
 | `maisons_de_ville` | 1,46 | **2,39** | 2,50 |
-| `pavillonnaire` | 1,51 | **2,04** | 2,07 |
-| `front_commercant` | 1,59 | **1,48** | 1,64 |
-| parcelles sans façade | 30 % | **1 %** | — |
+| `pavillonnaire` | 1,51 | **2,00** | 2,07 |
+| `front_commercant` | 1,59 | **1,47** | 1,64 |
+| parcelles sans façade *(hors cœurs)* | 30 % | **1 %** | — |
 
 **Le peigne** (méthode « skeleton » du papier, §4.2) longe chaque rue, prend une bande aussi profonde que le tissu le demande, et la débite en dents larges comme la façade visée. Ce qu'aucune rue n'a réclamé est le **cœur d'îlot**. Deux règles font tenir le reste :
 
@@ -41,13 +41,26 @@ D'après **Vanegas, Kelly, Weber, Halatsch, Aliaga et Müller, *Procedural Gener
 
 **La boîte n'est pas jetée** : elle garde les deux rôles que le papier lui laisse (§4.3) — les tissus à un ou deux gros objets par îlot, et le **remplissage du cœur**. La table `TISSU` gagne une colonne `style` qui choisit entre les deux.
 
-🎯 **Ce que ça change en aval** : **1 013 parcelles porteront une maison contre 705**. Les 151 sans façade se décomposent en **136 de cœur, voulues**, et **15 de rue**, qui sont le vrai reliquat — contre 298 confettis dispersés. ⚠️ **Beaucoup plus de toits, donc le potentiel solaire de ~9,5 % est à recalculer** avant de trancher la question ouverte qui l'attend.
+🎯 **Ce que ça change en aval** : **987 parcelles porteront une maison contre 705**. Les 109 sans façade se décomposent en **102 de cœur, voulues**, et **7 de rue**, qui sont le vrai reliquat — contre 298 confettis dispersés. ⚠️ **Beaucoup plus de toits, donc le potentiel solaire de ~9,5 % est à recalculer** avant de trancher la question ouverte qui l'attend.
 
 👁️ **Et ça se voit** : `apercu_parcelles.py` sort le parcellaire en PNG (`--avant` compare deux versions côte à côte). Ni `apercu_carte` ni `06_etat_zero` ne dessinaient les parcelles — le découpage ne se jugeait qu'au bout de la chaîne, dans Godot. La lecture tient en deux couleurs : **en couleur de tissu la parcelle portera une maison, en vert elle repart au jardin**. Le vert dispersé au milieu des maisons est le défaut ; le vert rassemblé en cœur d'îlot est le résultat.
 
+### ✂️ Les éclats sont réunis à leur voisine — et aucun ne survit
+
+Le peigne laissait **31 parcelles sous les 45 m² d'`AIRE_MIN`**, jusqu'à 0,06 m². Le papier dit quoi en faire (§4.2.3) : **réunir l'éclat à la voisine avec qui il partage le plus long bord**, et recommencer tant qu'il en reste.
+
+`fusionner` met bout à bout les arêtes orientées des deux anneaux, **annule celles qui vont par paires inverses** — le bord commun, qui disparaît — et recoud le reste. Aucune bibliothèque géométrique : c'est l'idée de `couper` prise à l'envers. Un contrôle d'aire refuse le résultat s'il est faux, donc **la décision 61 ne peut pas tomber là** : au pire un éclat survit, et le contrôle le dit.
+
+🐞 **Deux pièges ont failli faire échouer ça, et méritent d'être retenus.**
+
+1. **Les T.** Deux voisines partagent le même bord mais pas le même nombre de **sommets** dessus — `nettoyer` retire un sommet aligné d'un côté et pas de l'autre, et une coupe peut tomber au milieu de l'arête d'en face. L'arête ne trouve alors pas son inverse et la réunion échoue. Mesuré : **26 éclats survivants, dont 18 avaient pourtant une voisine franche**. On remet les sommets manquants des deux côtés avant de comparer.
+2. **Le bruit du flottant.** Une aire calculée sur des coordonnées à six chiffres (EPSG:25832) porte un bruit d'environ **2,4·10⁻⁴ m² — exactement 2⁻¹²**. Le seuil relatif du contrôle d'aire tombait dessus et **refusait onze réunions parfaitement justes**. Il se lit maintenant en centimètres carrés : un tracé faux se trompe de m², le bruit de cm², deux ordres de grandeur séparent les deux. *Un seuil serré n'est pas un seuil sûr.*
+
+✅ **Résultat : 48 éclats réunis, aucun survivant, la plus petite parcelle de la ville fait 45,2 m².**
+
 **La décision 61 n'est pas seulement tenue, elle est prouvée** : la somme des aires
-des parcelles vaut **100,00 %** de l'aire de l'emprise sur chacun des 53 îlots,
-écart maximal 8,7·10⁻⁷. Le contrôle est imprimé à chaque exécution.
+des parcelles vaut **100,00 %** de l'aire de l'emprise sur chacun des **54 îlots**,
+écart maximal 9,3·10⁻⁷. Le contrôle est imprimé à chaque exécution.
 
 **La décision 35 aussi** : la graine d'une parcelle se dérive de sa **géométrie**,
 pas de son rang — une parcelle qui n'a pas bougé garde sa graine même si sa

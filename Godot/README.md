@@ -264,13 +264,13 @@ Depuis le 2026-08-12, la ville n'est plus 63 pâtés pleins.
 
 | | |
 |---|---|
-| `04c_parcelles.py` | découpe l'emprise de chaque îlot en **parcelles** — couche `parcelles` du `.gpkg`, **1 164 lignes** depuis le peigne du 2026-08-13 |
+| `04c_parcelles.py` | découpe l'emprise de chaque îlot en **parcelles** — couche `parcelles` du `.gpkg`, **1 096 lignes** depuis le peigne du 2026-08-13 |
 | table `BATI`, en haut de `07` | transforme une parcelle en bâtiment : recul de rue, jeu au voisin (**0 = mitoyen exact**), profondeur bâtie, pente du toit |
 | → | **702 volumes**, 301 parcelles enclavées devenues cours et jardins |
 
 🔴 **Les deux chiffres de la dernière ligne datent d'avant le peigne.** Le
 parcellaire a été refait le 2026-08-13 (`Génération procédurale` dans le
-vault) : **1 013 parcelles ont désormais une façade contre 705**. La maquette
+vault) : **987 parcelles ont désormais une façade contre 705**. La maquette
 continuera d'afficher l'ancienne ville tant que `07_exporter_godot.py` n'aura
 pas été relancé. ⚠️ Le relancer changera la surface de toit, donc le potentiel
 solaire de ~9,5 % qui attend un arbitrage.
