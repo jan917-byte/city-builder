@@ -479,6 +479,186 @@ def coupe_par_aire(anneau, nrm, part):
     return (base[0] + nrm[0] * mi, base[1] + nrm[1] * mi)
 
 
+# ------------------------------------------- réunir deux parcelles voisines
+
+def _cle(p, grille=1e-4):
+    """Clé de sommet au dixième de millimètre. Deux parcelles issues d'une même
+    coupe partagent leurs sommets EXACTEMENT (c'est la décision 61) ; la grille
+    n'est là que pour absorber le dernier bit du flottant."""
+    return (round(p[0] / grille), round(p[1] / grille))
+
+
+def _aretes_orientees(anneau):
+    n = len(anneau)
+    return {(_cle(anneau[i]), _cle(anneau[(i + 1) % n])): (anneau[i],
+                                                           anneau[(i + 1) % n])
+            for i in range(n)}
+
+
+def _densifier(a, b, tol=1e-6):
+    """Insère dans `a` les sommets de `b` qui tombent sur une de ses arêtes.
+
+    🔴 SANS ÇA, LA RÉUNION ÉCHOUE UNE FOIS SUR DEUX, et pas pour la raison
+    qu'on croit. Deux voisines partagent bien le même bord, mais pas forcément
+    le même nombre de sommets dessus : `nettoyer` retire un sommet aligné d'un
+    côté et pas de l'autre, et une coupe peut tomber au milieu de l'arête d'en
+    face. Il reste un T — un sommet posé sur une arête sans en être un sommet.
+    L'arête ne trouve alors pas son inverse, le bord commun ne s'annule pas, et
+    `fusionner` refuse. Mesuré : 26 éclats survivants, dont 18 avaient pourtant
+    une voisine franche. On remet donc les sommets manquants des deux côtés
+    avant de comparer.
+    """
+    out = []
+    n = len(a)
+    for i in range(n):
+        p, q = a[i], a[(i + 1) % n]
+        out.append(p)
+        dx, dy = q[0] - p[0], q[1] - p[1]
+        L2 = dx * dx + dy * dy
+        if L2 < EPS:
+            continue
+        sur = []
+        for r in b:
+            t = ((r[0] - p[0]) * dx + (r[1] - p[1]) * dy) / L2
+            if 1e-9 < t < 1.0 - 1e-9 and dist_pt_seg(r, p, q) <= tol:
+                sur.append((t, r))
+        for _, r in sorted(sur, key=lambda x: x[0]):
+            if math.hypot(r[0] - out[-1][0], r[1] - out[-1][1]) > tol:
+                out.append(r)
+    return out
+
+
+def _appariees(a, b):
+    """Les deux anneaux, chacun densifié des sommets de l'autre."""
+    return _densifier(a, b), _densifier(b, a)
+
+
+def bord_partage(a, b):
+    """Longueur du bord que deux parcelles ont en commun.
+
+    Deux voisines le parcourent en sens INVERSE — l'une le descend quand
+    l'autre le monte. C'est ce qui permet de les reconnaître sans test
+    géométrique : une arête de `a` est partagée si son inverse est dans `b`."""
+    a, b = _appariees(a, b)
+    eb = _aretes_orientees(b)
+    total = 0.0
+    for (kp, kq), (p, q) in _aretes_orientees(a).items():
+        if (kq, kp) in eb:
+            total += math.hypot(q[0] - p[0], q[1] - p[1])
+    return total
+
+
+def fusionner(a, b):
+    """Réunit deux parcelles qui partagent un bord. Renvoie None si le résultat
+    n'est pas un anneau simple, ou si l'aire ne se conserve pas.
+
+    La méthode : on met bout à bout les arêtes orientées des deux anneaux, on
+    ANNULE celles qui vont par paires inverses — c'est le bord commun, qui
+    disparaît — et on recoud ce qui reste. Aucune bibliothèque géométrique :
+    c'est la même idée que `couper`, prise à l'envers.
+
+    🔴 Le contrôle d'aire à la fin n'est pas une politesse. Si le bord commun
+    ne s'annule pas — un T que `_densifier` n'aurait pas rattrapé — le tracé
+    ressort faux, l'aire ne tombe pas juste, on renvoie None, et l'appelant
+    garde ses deux parcelles séparées. La décision 61 ne peut donc pas tomber
+    ici : au pire un éclat survit, et le contrôle le dit.
+    """
+    a, b = _appariees(a, b)
+    aretes = {}
+    for anneau in (a, b):
+        aretes.update(_aretes_orientees(anneau))
+
+    sortantes = {}
+    for (kp, kq), (p, q) in aretes.items():
+        if (kq, kp) in aretes:
+            continue                       # bord commun : il s'annule
+        sortantes.setdefault(kp, []).append((kq, p))
+    if not sortantes or any(len(v) != 1 for v in sortantes.values()):
+        return None                        # bord commun non contigu
+
+    depart = min(sortantes)
+    anneau, k = [], depart
+    for _ in range(len(a) + len(b) + 2):
+        suite = sortantes.get(k)
+        if not suite:
+            return None
+        kq, p = suite[0]
+        anneau.append(p)
+        k = kq
+        if k == depart:
+            break
+    else:
+        return None
+    if k != depart or len(anneau) < 3:
+        return None
+    if len(anneau) != len(sortantes):
+        return None                        # un deuxième anneau traîne
+
+    fusion = nettoyer(anneau)
+    if len(fusion) < 3:
+        return None
+    # ⚠️ LE SEUIL SE LIT EN CENTIMÈTRES CARRÉS, ET C'EST VOULU. Une aire
+    # calculée sur des coordonnées à six chiffres (EPSG:25832) porte un bruit
+    # de flottant d'environ 2,4·10⁻⁴ m² — mesuré, et reconnaissable : c'est
+    # exactement 2⁻¹². Un seuil relatif serré tombait dessus et refusait onze
+    # réunions parfaitement justes. Ce qu'on veut attraper ici est un tracé
+    # FAUX, qui se trompe d'au moins l'aire de l'éclat, soit des m². Un
+    # centimètre carré sépare les deux de deux ordres de grandeur de chaque
+    # côté.
+    attendu = abs(aire_signee(a)) + abs(aire_signee(b))
+    if abs(abs(aire_signee(fusion)) - attendu) > max(1e-2, 1e-7 * attendu):
+        return None
+    return ouvrir(fusion)
+
+
+def absorber(parcelles, aire_min):
+    """Les parcelles trop petites sont réunies à une voisine, jusqu'à ce qu'il
+    n'en reste plus — c'est le troisième cas du papier (§4.2.3).
+
+    `parcelles` est une liste de (anneau, origine). On prend la plus petite,
+    on cherche la voisine avec qui elle partage LE PLUS LONG BORD (le critère
+    du papier : c'est celle contre laquelle elle est le plus franchement
+    collée, donc celle avec qui la réunion a la meilleure forme), et on les
+    réunit. La parcelle réunie garde l'origine de la plus grande des deux.
+
+    Une petite qu'on ne sait pas réunir est mise de côté et n'est plus
+    réessayée : sans ça la boucle tourne sans fin sur le même cas.
+    """
+    parcelles = list(parcelles)
+    renonce = set()
+    fusions = 0
+    for _ in range(len(parcelles) + 4):
+        petites = [i for i, (p, _) in enumerate(parcelles)
+                   if abs(aire_signee(p)) < aire_min and i not in renonce]
+        if not petites:
+            break
+        i = min(petites, key=lambda i: abs(aire_signee(parcelles[i][0])))
+        voisine, meilleur = None, 0.0
+        for j, (q, _) in enumerate(parcelles):
+            if j == i:
+                continue
+            L = bord_partage(parcelles[i][0], q)
+            # à bord égal, on préfère une voisine de même origine : une
+            # lanière de rue ne doit pas devenir un bout de jardin.
+            if L > meilleur + 1e-9 or (abs(L - meilleur) <= 1e-9 and voisine
+                                       is not None
+                                       and parcelles[j][1] == parcelles[i][1]):
+                if L > 1e-9:
+                    voisine, meilleur = j, L
+        fusion = fusionner(parcelles[i][0], parcelles[voisine][0]) \
+            if voisine is not None else None
+        if fusion is None:
+            renonce.add(i)
+            continue
+        grande = voisine if abs(aire_signee(parcelles[voisine][0])) \
+            >= abs(aire_signee(parcelles[i][0])) else i
+        parcelles[voisine] = (fusion, parcelles[grande][1])
+        del parcelles[i]
+        renonce = {r - 1 if r > i else r for r in renonce if r != i}
+        fusions += 1
+    return parcelles, fusions
+
+
 def graine_de(pts):
     """Une graine stable, dérivée de la GÉOMÉTRIE et non d'un compteur.
 
@@ -656,10 +836,9 @@ def _dents(bande, a, u, facade, prof):
             pieces = suite
         return [p for p in pieces if len(p) >= 3 and abs(aire_signee(p)) > 1e-6]
 
-    # Une dent trop maigre ne se rattrape pas après coup : on refait la bande
-    # avec une dent de moins. C'est le troisième cas du papier (§4.2.3) — il
-    # recolle les éclats à leur voisine, on préfère ne pas les fabriquer, ce
-    # qui revient au même et garde la partition intacte.
+    # Une dent trop maigre se rattrape en amont quand c'est possible : on
+    # refait la bande avec une dent de moins, ce qui vaut mieux que de la
+    # fabriquer puis de la recoller. Ce qui survit à ça part dans `absorber`.
     for essai in range(4):
         pieces = debiter(max(1, k - essai))
         if k - essai <= 1 or all(abs(aire_signee(p)) >= AIRE_MIN for p in pieces):
@@ -815,6 +994,7 @@ def main():
     saute = []
     replis = []
     coeurs = []
+    n_fusions = 0
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -858,6 +1038,12 @@ def main():
                                sum(1 for _, o in parcelles if o == "coeur")))
         else:
             parcelles = [(p, "boite") for p in subdiviser(ext, facade, prof)]
+
+        # ✂️ LES TROP PETITES SONT RÉUNIES À UNE VOISINE (papier §4.2.3).
+        # Après le peigne comme après la boîte : un éclat de 4 m² n'est pas une
+        # parcelle, et il donnerait une maison impossible ou un jardin invisible.
+        parcelles, n_f = absorber(parcelles, AIRE_MIN)
+        n_fusions += n_f
 
         # 🔴 LE CONTRÔLE QUI COMMANDE TOUT LE FICHIER (décision 61).
         somme = sum(abs(aire_signee(p)) for p, _ in parcelles)
@@ -1012,10 +1198,13 @@ def main():
                   % (fid, st, n, a0, s, 100.0 * e))
     print()
 
-    eclats = [r for r in resultats if r["aire"] < 20.0]
-    print("  LES ÉCLATS — parcelles sous 20 m², qui ne sont pas des parcelles")
+    eclats = [r for r in resultats if r["aire"] < AIRE_MIN]
+    print("  ✂️  LES ÉCLATS — parcelles sous %.0f m² (`AIRE_MIN`), qui ne sont"
+          " pas des parcelles" % AIRE_MIN)
+    print("     %d ont été réunies à leur voisine de plus long bord, comme le"
+          " veut le papier (§4.2.3)." % n_fusions)
     if not eclats:
-        print("     ✅ aucune")
+        print("     ✅ aucune ne survit.")
     else:
         ou = {}
         for r in eclats:
