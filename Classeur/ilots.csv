@@ -1,5 +1,5 @@
 fid;fonction;sous_type;exception;surface_m2;densite;logements;emplois;hauteur;impermeabilise;canopee;desserte_tc;riverain;stationnement;altitude_relative;alea;position_fil_eau;rive
-1;freiraum;champ;0;144279.9;0;0;0;0;0.02;0.04;0.85;0;0;0;0;0.76;droite
+1;freiraum;champ;0;147432.1;0;0;0;0;0.02;0.04;0.85;0;0;0;0;0.759;droite
 2;freiraum;champ;0;69117.1;0;0;0;0;0.02;0.04;0.85;0;0;0;0;0.928;droite
 3;freiraum;champ;0;42837.4;0;0;0;0;0.02;0.04;0.85;0;0;0;0;0.91;droite
 4;riviere;riviere;1;8333.9;0;0;0;0;0;0;0.24;0;0;0;0;0.863;lit
@@ -24,8 +24,7 @@ fid;fonction;sous_type;exception;surface_m2;densite;logements;emplois;hauteur;im
 23;habitation;maisons_de_ville;0;9237.5;100;92;0;3;0.68;0.18;0.85;0.5;18;0;0;0.677;droite
 24;mixte;front_commercant;0;4085.6;150;61;57;4;0.9;0.04;0.85;0.35;16;0;0;0.676;droite
 25;habitation;maisons_de_ville;0;3497.2;100;35;0;3;0.68;0.18;0.85;0.5;7;0;0;0.736;droite
-26;habitation;pavillonnaire;0;22639.8;20;45;0;2;0.42;0.42;0.83;0.25;45;0;0;0.696;droite
-27;habitation;pavillonnaire;0;4697.9;20;9;0;2;0.42;0.42;0.85;0.25;9;0;0;0.768;droite
+26;habitation;pavillonnaire;0;14459.8;20;29;0;2;0.42;0.42;0.85;0.25;29;0;0;0.722;droite
 28;habitation;maisons_de_ville;0;2288.3;100;23;0;3;0.68;0.18;0.57;0.5;5;0;0;0.681;droite
 29;habitation;maisons_de_ville;0;3427.6;100;34;0;3;0.68;0.18;0.57;0.5;7;0;0;0.658;droite
 30;habitation;maisons_de_ville;0;12579.4;100;126;0;3;0.68;0.18;0.85;0.5;25;0;0;0.762;droite
@@ -33,20 +32,20 @@ fid;fonction;sous_type;exception;surface_m2;densite;logements;emplois;hauteur;im
 32;habitation;barre_1970;1;15247;130;198;0;9;0.55;0.32;0.85;0.85;91;0;0;0.841;droite
 33;habitation;maisons_de_ville;0;7940.9;100;79;0;3;0.68;0.18;0.4;0.5;16;0;0;0.612;droite
 34;mixte;coeur_ancien;0;3601.3;170;61;40;4;0.85;0.08;0.4;0.45;7;0;0;0.57;droite
-35;habitation;pavillonnaire;0;12655.7;20;25;0;2;0.42;0.42;0.4;0.25;25;0;0;0.582;droite
+35;habitation;pavillonnaire;0;12752.5;20;26;0;2;0.42;0.42;0.4;0.25;26;0;0;0.582;droite
 36;mixte;equipement;1;11429;0;0;91;3;0.72;0.18;0.4;0;91;0;0;0.506;droite
 37;mixte;coeur_ancien;0;2455.6;170;42;27;4;0.85;0.08;0.18;0.45;5;0;0;0.553;droite
 38;mixte;coeur_ancien;0;3885.2;170;66;43;4;0.85;0.08;0.4;0.45;8;0;0;0.463;droite
 39;habitation;pavillonnaire;0;7808.1;20;16;0;2;0.42;0.42;0.4;0.25;16;0;0;0.501;droite
 40;habitation;maisons_de_ville;0;7463.5;100;75;0;3;0.68;0.18;0.85;0.5;15;0;0;0.444;droite
 41;habitation;maisons_de_ville;0;3758;100;38;0;3;0.68;0.18;0.71;0.5;8;0;0;0.415;droite
-42;habitation;pavillonnaire;0;15594.5;20;31;0;2;0.42;0.42;0.85;0.25;31;0;0;0.327;droite
+42;habitation;pavillonnaire;0;8974;20;18;0;2;0.42;0.42;0.85;0.25;18;0;0;0.329;droite
 43;habitation;maisons_de_ville;0;3979.7;100;40;0;3;0.68;0.18;0.56;0.5;8;0;0;0.396;droite
 44;habitation;maisons_de_ville;1;6022.2;100;60;0;3;0.5;0.55;0.85;0.5;12;0;0;0.362;droite
 45;mixte;dalle_commerciale;1;9301.7;0;0;65;2;0.97;0;0.85;0.2;223;0;0;0.441;droite
 46;freiraum;parc;1;4245.9;0;0;0;0;0.12;0.7;0.4;0;0;0;0;0.3;droite
 47;habitation;pavillonnaire;0;11057.1;20;22;0;2;0.42;0.42;0.4;0.25;22;0;0;0.25;droite
-48;freiraum;jardins_familiaux;1;8586.3;0;0;0;0;0.06;0.3;0.4;0;0;0;0;0.203;droite
+48;freiraum;jardins_familiaux;1;8786.5;0;0;0;0;0.06;0.3;0.4;0;0;0;0;0.205;droite
 49;habitation;maisons_de_ville;1;6707.9;100;67;0;3;0.5;0.55;0.4;0.5;13;0;0;0.312;droite
 50;habitation;maisons_de_ville;0;8365.8;100;84;0;3;0.68;0.18;0.4;0.5;17;0;0;0.232;droite
 51;riviere;riviere;1;3669.9;0;0;0;0;0;0;0;0;0;0;0;0.254;lit
@@ -68,3 +67,5 @@ fid;fonction;sous_type;exception;surface_m2;densite;logements;emplois;hauteur;im
 67;habitation;maisons_de_ville;0;6179;100;62;0;3;0.68;0.18;0.4;0.5;12;0;0;0.525;gauche
 68;habitation;maisons_de_ville;0;3720.4;100;37;0;3;0.68;0.18;0.4;0.5;7;0;0;0.495;gauche
 69;habitation;maisons_de_ville;0;3119.3;100;31;0;3;0.68;0.18;0.4;0.5;6;0;0;0.478;gauche
+70;habitation;pavillonnaire;0;9628.9;20;19;0;2;0.42;0.42;0.83;0.25;19;0;0;0.686;droite
+71;habitation;pavillonnaire;0;6420.3;20;13;0;2;0.42;0.42;0.71;0.25;13;0;0;0.326;droite
