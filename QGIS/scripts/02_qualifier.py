@@ -64,7 +64,9 @@ JARDINS = [48]              # les jardins familiaux, au nord-ouest
 # --- le tissu -------------------------------------------------------------
 FRONT_COMMERCANT = [12, 16, 21, 24]     # les îlots qui bordent l'axe de transit
 COEUR_ANCIEN = [13, 14, 15, 18, 20, 22, 34, 37, 38, 53, 55, 56]
-PAVILLONNAIRE = [11, 26, 27, 35, 39, 42, 47, 60, 61, 63, 64]
+# 70 et 71 sont les moitiés neuves du 26 et du 42, coupées le 2026-08-13 par
+# les rues 179 et 180 ; l'ancien 27 a été fusionné dans le 26 (rue 78 retirée).
+PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 60, 61, 63, 64, 70, 71]
 # tout le reste des îlots bâtis tombe en `maisons_de_ville`
 
 # Cœur d'îlot vert privatisé : invisible depuis la rue, mais c'est le seul
