@@ -956,6 +956,19 @@ def main():
     print("  " + "-" * 56)
     print("  %-22s %9d %9d %8.0f %%"
           % ("TOTAL", n_rue, n_enc, 100.0 * n_enc / max(n_rue + n_enc, 1)))
+    # ⚠️ Ce tableau ne compte QUE les parcelles de rue : les parcelles de cœur
+    # n'ont pas de façade par construction, les compter ici ferait passer un
+    # résultat voulu pour un défaut. Mais l'image, elle, les montre — d'où
+    # cette ligne, qui réconcilie les deux nombres.
+    tous = len(resultats)
+    tous_enc = sum(1 for r in resultats if r["facade"] <= 0.5)
+    print()
+    print("     Sur les %d parcelles de la ville, cœurs compris, %d n'ont pas"
+          " de façade" % (tous, tous_enc))
+    print("     (%.0f %%) : %d de cœur, voulues, et %d de rue, qui sont le"
+          " vrai reliquat." % (100.0 * tous_enc / max(tous, 1),
+                               tous_enc - n_enc, n_enc))
+    print("     %d parcelles porteront une maison." % (tous - tous_enc))
     print()
 
     # ── les cœurs d'îlot ──────────────────────────────────────────────────
