@@ -111,6 +111,20 @@ func vider_rampes() -> void:
 	_rampes = {"i": {}, "r": {}}
 
 
+## Le prototype simplifié écrit directement la part solaire choisie. Elle ne
+## peut que monter : revenir en arrière serait une deuxième décision (déposer
+## des panneaux), qui n'est pas dans le test actuel.
+func augmenter_solaire(fid: int, part: float) -> bool:
+	if not ilots.has(fid):
+		return false
+	var actuelle := base("i", fid, "part_toit_equipe")
+	var cible := clampf(part, 0.0, 1.0)
+	if cible <= actuelle:
+		return false
+	ilots[fid]["part_toit_equipe"] = cible
+	return true
+
+
 func fids_batis() -> Array:
 	var out := []
 	for fid in ilots:

@@ -6,20 +6,9 @@
 
 ---
 
-## 0. 🔴 Deux générateurs de bâtiment vivent en parallèle — nouveau le 2026-08-17
+## 0. ✅ Les deux générateurs de bâtiment sont réunis — réglé le 2026-08-17
 
-**Le défaut le plus coûteux de la liste, parce qu'il fait mentir un chiffre du prototype.** La même chose est calculée deux fois par deux règles différentes :
-
-| | Ce qu'il produit | Qui le regarde | Ce qu'il mesure |
-|---|---|---|---|
-| **`04d_emprises_batiments.py`** | la couche `batiments` — une bande depuis la rue, une cour derrière | les **aperçus PNG** (`apercu_parcelles.py`) | **810 empreintes, 8,86 ha de toit**, zéro hors de sa parcelle |
-| **`07_exporter_godot.py`** | ses volumes, recalculés à chaque export (`BATI` + `04b.retracter`) | la **maquette Godot** | **892 volumes, 12,1 ha de toit**, 44 débordements |
-
-Ce que ça bloque : **le potentiel solaire ne peut pas se trancher** (§7 de `Prototype/Parcelles.md`), parce qu'il se calcule sur une surface de toit dont on a deux valeurs à 27 % d'écart. Et la correction de la session 26 — le bâtiment qui cesse d'être la parcelle — **ne se voit pas en 3D**.
-
-**Ce que le branchement demande**, du côté de `07` : la **direction de façade** par bâtiment (le faîtage la lit), les **jardins** (aujourd'hui `07` les découpe lui-même), puis la mise au rebut de `_empreinte_batie`, `_rectangle`, `_ecorner`, `_garder` et de la table `BATI` sauf sa colonne `pente`. `04d` sait déjà produire les deux premiers — la cour est un sous-produit de `bande_sur_rue`.
-
-⚠️ **À faire là où Godot peut être lancé.** Ces 300 lignes ne portent que de la géométrie de toit, et un toit ne se contrôle qu'à l'œil : le réécrire depuis le Mac, sans pouvoir ouvrir la maquette, c'est écrire du code que personne ne peut juger. → `CLAUDE.md` §3 bis
+`07_exporter_godot.py` lit directement la couche `batiments` de `04d` et ne recalcule plus l'empreinte. Godot montre maintenant **701 volumes sur 693 parcelles bâties**, zéro débordement et **10,4 ha de toiture réelle pente comprise**. Les captures de référence ont été régénérées ; le potentiel solaire peut de nouveau être tranché sur ce chiffre unique. → `Prototype/Parcelles.md` §2 septies
 
 ## 1. Les défauts visibles de la ville
 
@@ -27,9 +16,9 @@ Ils ne sont pas cachés : `07_exporter_godot.py` les imprime à chaque export. A
 
 | | Le défaut | Ce qu'on voit |
 |---|---|---|
-| 1 | ⚠️ **17 bâtiments sur 702 mordent sur la rue**, jusqu'à 5,5 m | pic de mitre sur angle rentrant, borné par le recul du tissu. Sans commune mesure avec les 258 m de la session 9, mais **un bâtiment sur la chaussée ment** |
-| 2 | ☐ **50 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large (toit plat dès qu'un pan se plie trop) a été essayé le 2026-08-12 et **retiré devant l'image** → `Godot/README.md` |
-| 3 | ☐ **791 pans de toit (7 %) sont réorientés à l'émission** | ⚠️ conséquence : la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
+| 1 | ✅ ~~**Des bâtiments mordent sur la rue**~~ | **réglé en lisant les empreintes de `04d`** — zéro hors parcelle ; les 38 dernières alertes venaient d'un anneau ouvert dans le contrôle de `07` |
+| 2 | ☐ **159 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large (toit plat dès qu'un pan se plie trop) a été essayé le 2026-08-12 et **retiré devant l'image** → `Godot/README.md` |
+| 3 | ☐ **158 pans de toit (2 %) sont réorientés à l'émission** | ⚠️ conséquence : la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
 | 4 | ✅ ~~**La vallée ne se lit à aucune des quatre exagérations**~~ | **réglé en supprimant la vallée** le 2026-08-12 : la carte est plate, les touches `1..4` sont retirées |
 | 5 | ☐ **Le trafic, le sol, la lumière** | inchangés depuis la session 9 |
 | 7 | ✅ ~~**Des doigts de cour rentrent dans la masse bâtie**, et de petits ressauts en escalier~~ | **corrigé le 2026-08-17 (2)** — l'empreinte n'a plus droit qu'à **un** décrochement rentrant, et l'aile arrière est vérifiée adossée. 28 → **15** empreintes à deux décrochements, 2 → **0** en C, 52 encoches refermées → `Prototype/Parcelles.md` §2 nonies |
@@ -47,9 +36,10 @@ Le contrôle n'est pas « est-ce juste » mais ***« est-ce qu'on croirait y hab
 | les listes de `fid` | haut de `02_qualifier.py` | quel îlot est quoi — dont **`PONTS_SUPPRIMES`** désormais |
 | `TISSU` | `04_deriver_attributs.py` | densité, hauteur, imperméabilisation, canopée, fragilité, parking — **le comportement de la carte** |
 | `TISSU` | `04c_parcelles.py` | largeur de façade, profondeur, et **`style`** (`peigne` ou `boite`) — **le grain de toute la ville**. 🔄 Depuis le peigne du 2026-08-13, les deux premières colonnes disent enfin ce qu'elles disent : la boîte ne respectait que leur **produit** |
-| `BATI` | `07_exporter_godot.py` | recul de rue, jeu au voisin, profondeur bâtie, pente du toit |
+| `TISSU` | `04d_emprises_batiments.py` | recul, retraits, profondeur, plafond d'emprise et famille de forme — **l'empreinte du bâtiment** |
+| `BATI` | `07_exporter_godot.py` | **la pente du toit seulement** ; ses anciennes colonnes de forme ne sont plus consommées |
 
-🔴 Dans `BATI`, le `jeu` à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (décision 61).
+🔴 Dans `04d.TISSU`, le retrait latéral à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (décision 61).
 
 ## 3. La dette — formules, seuils, définitions
 

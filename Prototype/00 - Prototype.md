@@ -22,12 +22,15 @@ Ce que ça protège : le risque nommé dans `Décisions arrêtées` **52** — *
 |---|---|---|---|
 | 1 | **La carte** — îlots, rues, attributs | ✅ fait | la ville privée de sa rivière tombe en deux morceaux, le réseau routier tient d'un seul tenant, l'axe de transit sort tout seul |
 | 2 | **[Les parcelles](Parcelles.md)** | 🎯 **en cours** | la surface de toit mesurée retombe sur le coefficient de l'énergie · le cœur ancien ressemble à un cœur ancien |
-| 3 | **[L'énergie](Énergie.md)** — le premier thème complet | ✅ construit, **pas encore regardé** | une partie « panneaux seuls » se bloque sur le capital, une partie « isolation seule » sur le budget |
+| 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ simplifié, **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
 | 4 | **Les toits et le sol** | ☐ | croire qu'on y habite |
 | 5 | **Le trafic visible** | ☐ | une rue à `charge = 1,00` est désagréable à regarder |
 | 6 | **Le thème suivant** | ☐ | il s'écrit en trois pièces, sans toucher à la machinerie |
 
-**Pourquoi 2 et 3 sont ouvertes en même temps, et pourquoi ce n'est pas une entorse** : l'énergie est **construite mais pas jugée**. Elle n'attend pas de code, elle attend le regard de l'auteur. → `Décisions arrêtées` **64b** — quand les deux pistes se disputent une journée, l'énergie gagne.
+**Pourquoi 2 et 3 apparaissent ensemble, et pourquoi ce n'est pas une
+entorse** : l'énergie est construite mais attend le regard de l'auteur ; elle
+ne porte plus de chantier de système. L'unique étape ouverte reste donc les
+parcelles. → `Décisions arrêtées` **68**
 
 ## Ce qui relie les deux étapes ouvertes : **le toit**
 

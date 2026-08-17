@@ -10,7 +10,17 @@
 | ce qui s'est passé, et pourquoi c'est comme ça | [HISTORIQUE.md](HISTORIQUE.md) |
 | ce qui est tranché | `Méta/Décisions arrêtées.md` (vault) |
 
-**Dernière mise à jour : 2026-08-17 (session 28)**
+**Dernière mise à jour : 2026-08-17 (session 30)**
+
+🆕 **Le prototype énergie tient maintenant en une décision.** À gauche, quatre
+conséquences pour toute la ville ; à droite, seulement l'îlot cliqué. Le
+curseur augmente sa part solaire de sa valeur actuelle jusqu'à 100 %, sans
+budget, capital, isolation, temps ou calque. Contrôle réel sur l'îlot 32 :
+**0 → 100 %**, production de ville **0,0 → 0,3 GWh/an**, achat **51,1 → 50,9**,
+CO₂ **12,8 → 12,7 kt/an** ; les toits passent visiblement à l'ardoise sombre.
+→ [Prototype/Énergie.md](Prototype/Énergie.md) · `Décisions arrêtées` **68**
+
+🆕 **Godot montre enfin les nouveaux bâtiments.** `07_exporter_godot.py` lit directement la couche `batiments` de `04d` au lieu de recalculer sa propre ville. Résultat vérifié dans les captures : **701 volumes sur 693 parcelles bâties**, cours et jardins visibles sous les volumes, **zéro bâtiment hors parcelle**, **10,4 ha de toiture réelle pente comprise**. Les captures `wehrau_essai_ville.png` et `wehrau_essai_barre.png` ont été régénérées. → [Prototype/Parcelles.md](Prototype/Parcelles.md) §2 septies
 
 🆕 **Le bâtiment n'a plus droit qu'à UNE équerre.** L'auteur a regardé les îlots 40 et 41 : *« l'îlot 40 a encore des parcelles bizarres avec des formes de bâtiment pas réalistes, et l'îlot 41 a des coins encore à corriger »*. C'était la suite annoncée la veille — les doigts de cour et les ressauts en escalier. Le critère n'est pas une largeur mais **le nombre de décrochements rentrants** : mesuré sur les 701 empreintes, 542 n'en ont aucun, **131 en ont un** (l'équerre : immeuble d'angle, maison + aile arrière — les deux voulues), 28 en ont deux ou trois, et **aucune de ces 28 n'a d'excuse**. Deux règles : ① **l'aile arrière est enfin vérifiée adossée** — sa docstring le promettait depuis le premier jour sans que rien ne le contrôle, et sur une parcelle d'angle elle s'adossait à son propre bâtiment, au milieu de la cour ; ② **l'encoche se referme**, après l'aile et pas avant, la plus petite poche d'abord. **28 → 15** empreintes à deux décrochements, **2 → 0** en C, **52 encoches refermées**. R0 (0), R2 bis (16), emprises, cour du cœur ancien et partition inchangés ; toit 9,00 → **9,02 ha**. → [Prototype/Parcelles.md](Prototype/Parcelles.md) §2 nonies
 
@@ -20,7 +30,7 @@
 
 🆕 **Le bâtiment n'est plus la parcelle.** L'auteur a relu `parcelles_ilot_14.png` : *« les bâtiments ressemblent trop aux parcelles »*. La cause était la table de `04d`, où le cœur ancien et les maisons de ville n'avaient **aucune règle de profondeur** — l'empreinte *était* la parcelle, à **0,96** près. Maintenant le bâtiment est une **bande mesurée depuis chaque limite sur rue**, et le reste est cour ou jardin. **Cour en cœur ancien : 4 % → 24 %** · emprises 0,96 → **0,76** (cœur ancien), 0,65 → **0,56** (maisons de ville) · façades reculées 22 → **19** · **0 bâtiment hors de sa parcelle** · **81 ailes arrière**, **18 pointes rendues au jardin**, **37 parcelles traversantes qui portent deux bâtiments**. La surface de toit passe de 10,12 à **8,86 ha**. → [Prototype/Parcelles.md](Prototype/Parcelles.md) §2 septies
 
-🆕 **`04d` manquait à la chaîne, et c'est pour ça que les bâtiments ne se voyaient pas.** Il annonçait dans son propre en-tête « la chaîne devient 02 → … → 04d » sans jamais avoir été ajouté à `chaine.py` : la carte de travail n'avait aucune couche `batiments`. Réparé — **la chaîne est 02 → 03 → 04 → 04b → 04c → 04d, en 3,2 s**. 🔴 **Mais `07_exporter_godot.py` garde son propre générateur**, donc la maquette 3D ne montre encore rien de la correction. → [CHANTIERS.md](CHANTIERS.md)
+🆕 **`04d` est dans la chaîne et alimente maintenant Godot.** La chaîne est **02 → 03 → 04 → 04b → 04c → 04d → 07** avec `--godot` ; l'aperçu 2D et la maquette 3D lisent la même empreinte. → [CHANTIERS.md](CHANTIERS.md) §0
 
 🆕 **Les venelles sont réintégrées dans la chaîne procédurale.** Après la passe à blanc, les six tracés récupérés ont été écrits dans `QGIS/data/source/chemins.geojson`, puis la chaîne complète a tourné jusqu'à Godot. Résultat : **6 venelles sur les îlots 22, 24, 26, 38, 44 et 63 · 588 m² pavés · 927 parcelles dont 912 sur rue · zéro reliquat enclavé · partition 100,00 % · 892 volumes bâtis · 12,1 ha de toit réel**. Le septième tracé annoncé autrefois sur l'îlot 40 n'avait jamais été enregistré et ne passe plus le seuil de rectangularité. → [Prototype/Parcelles.md](Prototype/Parcelles.md) §4 · §4 bis
 
@@ -40,24 +50,28 @@
 |---|---|
 | **La carte simulable** — 0,93 km², **70 îlots, 177 tronçons** (ouest redécoupé par l'auteur le 2026-08-13), 13 sous-types, 17 exceptions, **3 franchissements** | source : `QGIS/data/source/` · travail : `QGIS/data/travail/wehrau.gpkg` |
 | **La ville bâtie** — **809 parcelles dont 794 sur rue**, aucune sous 45 m², **zéro reliquat de rue enclavé**, partition à 100,00 %, 15 cœurs d'îlot et **6 venelles** | source : `chemins.geojson` · dérivés : `emprises`, `parcelles` |
-| **Les bâtiments** — **701 empreintes sur 693 parcelles**, une bande depuis la rue, une cour derrière, **un immeuble d'angle qui tourne la rue** et **au plus une équerre par empreinte**, **9,02 ha de toit**, zéro hors de sa parcelle. ⚠️ La maquette 3D ne les lit pas encore : `07` en recalcule 892 pour 12,1 ha avec son ancienne règle | dérivé : couche `batiments` de `04d` · `Godot/data/wehrau.json` |
+| **Les bâtiments** — **701 empreintes sur 693 parcelles**, une bande depuis la rue, une cour derrière, **un immeuble d'angle qui tourne la rue** et **au plus une équerre par empreinte**, **9,02 ha d'emprise de toit / 10,4 ha de toiture pente comprise**, zéro hors parcelle. **Godot lit cette couche directement** | dérivé : couche `batiments` de `04d` · `Godot/data/wehrau.json` |
 | **La maquette 3D cliquable** — 237 nœuds, fiche à l'îlot et au tronçon, **carte plate**, l'Ilse canalisée et ses trois ponts | `Godot/` → `Godot/README.md` |
 | **Le classeur** — 3 parties jouées sur 60 mois, courbes et carte au mois M | `Classeur/` · `QGIS/rendus/parties.html` |
-| **Le système énergie** — la table des 13 lignes, 2 décisions à l'îlot, 3 calques, le bandeau à 4 nombres, l'essai imprimé | ✅ **construit, à regarder** → `Godot/scripts/energie.gd` · `Godot/outils/essai_energie.gd` |
+| **Le système énergie** — une décision à l'îlot, part solaire 0–100 %, ville à gauche et îlot cliqué à droite, sans ressources | ✅ **simplifié et capturé, à regarder** → [Prototype/Énergie.md](Prototype/Énergie.md) |
 | D07, la surchauffe, les quatre moyennes de ville, les six calques | ✂️ **supprimés** (66), archivés dans `Godot/archive/` |
 
 **Les trois contrôles qui comptent, au vert** : la ville privée de sa rivière tombe en **deux morceaux (45 et 11 îlots)** · le réseau routier est **d'un seul tenant** · l'**axe de transit sort tout seul** de l'affectation de trafic.
 
 ## Ce qui commande le reste
 
-- 🎯 **Le prototype = un thème mené de bout en bout, l'énergie** (64) — données, décisions, indicateurs, écran. Une **tranche verticale** : un thème complet vaut mieux que sept à moitié. Le thème suivant, c'est **trois pièces** (une table de coefficients par `sous_type`, deux décisions opposées, un calque par indicateur) : *le prototype énergie n'est pas un exemple, c'est le gabarit.*
+- 🎯 **Le prototype énergie teste d'abord le lien local → global** (68) : une
+  seule décision, aucun coût. La paire de décisions opposées et les ressources
+  restent une ambition du jeu complet, pas le test actuel.
 - 🔗 **La 3D et l'énergie se rejoignent sur le toit** (41 · 56 · 64) : la 3D produit `toit_m2`, `toit_pente`, `toit_plat` et l'ombrage ; l'énergie les lit sans savoir qui parle. **L'énergie n'attend jamais la 3D.**
 - 🔓 **Claude écrit ET exécute les scripts de données** (65). Les garde-fous ont maigri le 2026-08-17 avec le passage en texte : arbre git propre avant d'écrire **la source** · passe `--blanc` d'abord **pour les trois scripts qui la touchent** (`00`, `00b`, `tracer_chemins` — c'est du level design) · contrôles imprimés en français, qui eux ne bougent pas. Écrire un `.gpkg` ne demande plus rien : il est dérivé. → `CLAUDE.md` §3
 - 🏘️ **Le prototype est Wehrau**, une petite ville qu'on voit en entier (13b · 13d). Vallmar reste la ville du jeu complet, intacte dans le vault. Une ville entière, même petite, a **un amont et un aval** ; un quartier n'en a pas.
 - 🎨 **Townscaper pour le rendu** (42b), et **Wehrau est pastel au sol minéral** (42c) : la grisaille est une **proportion** — 28 % d'imperméabilisé, 14 % de canopée, 4 587 places — pas une teinte.
 - 🗺️ **La carte est plate** (2026-08-12) — dans l'image ET dans la donnée. Le seul relief est le **chenal de l'Ilse** : murs verticaux, fond à −2 m, plan d'eau à −1 m. Ce que ça a supprimé : le champ d'altitude, la vallée, l'exagération verticale, la subdivision des sols et des chaussées. **La voirie reste à 0** : au-dessus du chenal elle passe au-dessus du vide, donc les trois ponts existent sans qu'une ligne de code parle de pont.
 - 💧 **La crue sort du prototype** (2026-08-12, demandé en cours de session) : `alea` et `altitude_relative` restent dans le `.gpkg` **à 0**, ne sont plus exportés vers Godot, et leurs calques et stocks sont retirés de `06`. Ce qui reste de l'eau est ce qui reste vrai sans elle — **deux rives inégales et trois ponts**. ⚠️ À reporter dans le vault : le jeu s'ouvrait sur une crue rive gauche (**23b**).
-- 🔴 **Ce que la coupe a coûté** : le contrôle de recoupement Godot ↔ `08_jouer.py` a disparu avec D07. Depuis la session 18, `essai_energie.gd` vérifie le noyau — invariants, remboursement, deux parties en aveugle — mais **contre lui-même seulement** : une formule fausse des deux côtés d'un même fichier passera. → [CHANTIERS.md](CHANTIERS.md) §4
+- 🔴 **Ce que la coupe a coûté** : le prototype ne teste plus l'économie, le
+  temps ni le dilemme panneaux/isolation. L'ancien noyau et son essai restent
+  isolés comme trace ; ils ne décrivent plus la boucle jouable.
 
 ## Prochaine action
 
@@ -73,36 +87,34 @@ python QGIS/scripts/chaine.py && python QGIS/scripts/apercu_parcelles.py --ilots
 
 Et les deux points de la session 26, toujours ouverts : sur l'**îlot 14** le cœur sort en **couloir sinueux, pas en cour commune** (à trancher : aligner les fonds de bâti d'une rangée, ou garder l'irrégularité) ; sur l'**îlot 59** la pointe gauche est rendue au jardin.
 
-🔴 **Puis, et c'est la vraie limite du jour : la maquette 3D ne montre rien de tout ça.** `07_exporter_godot.py` a son propre générateur (table `BATI` + `04b.retracter`, la cause des 44 débordements). Le brancher sur la couche `batiments` demande Godot sous la main — donc Windows, pas le Mac. Tant que ce n'est pas fait, **8,86 ha de toit ici contre 12,1 ha annoncés par `07`** : c'est le même chiffre calculé deux fois par deux règles différentes.
+✅ **La maquette 3D montre maintenant ces bâtiments.** `07` lit la couche `batiments`, retrouve la façade de chaque parcelle pour le faîtage et dessine la parcelle sous les volumes pour laisser paraître cour ou jardin. La chaîne et les captures sont régénérées.
 
 ### 👁️ Puis, les venelles en 3D
 
-Les six venelles sont dans la source et ressortent comme **588 m² de sol pavé dans le groupe de leur îlot**. À regarder sur les îlots **22, 24, 26, 38, 44 et 63** — courtes, au pli, sans traverser un cœur vert. Les autres défauts encore imprimés par `07` : **70 empreintes concaves** prennent un toit plat.
+Les six venelles sont dans la source et ressortent comme **588 m² de sol pavé dans le groupe de leur îlot**. À regarder sur les îlots **22, 24, 26, 38, 44 et 63** — courtes, au pli, sans traverser un cœur vert. Le défaut encore imprimé par `07` : **159 empreintes concaves** prennent un toit plat.
 
-### 👁️ Puis regarder le système énergie tourner — `Prototype/Énergie.md` §8
+### 👁️ Puis regarder le geste énergie simplifié
 
-Le code est fait et les contrôles imprimés sont au vert. Ce qui manque, c'est le regard de l'auteur. Lancer la maquette, puis dans l'ordre :
+Ouvrir la maquette, cliquer un îlot bâti et déplacer le curseur à droite.
+Regarder trois choses : le panneau de droite ne change pas au survol ; le toit
+s'assombrit après « Augmenter » ; les totaux de gauche réagissent aussitôt.
 
-1. **Le calque rentabilité au mois 0** : est-ce qu'il fait dire « c'est là » en trois secondes ? Les champs et les parcs ne sont pas peints — pas de toit, décision indisponible.
-2. **Basculer sur le gain d'isolation** : les deux cartes doivent être presque inverses, **la barre de 1974 chaude sur les deux**.
-3. **Avancer de dix ans sans rien faire** : la zone rouge doit avoir reculé, et l'achat grimpé tout seul (+2 %/an — c'est voulu, pas un bug).
-4. **Décider** : panneaux sur la barre, puis isoler la même barre. La production décolle après 6 mois ; la consommation tombe après l'isolation ; les toits équipés virent à l'ardoise sombre.
-
-Sept captures de référence sont déjà dans `QGIS/rendus/wehrau_essai_*.png` (régénérables : `Godot_console.exe --path Godot -- --essai`). Le contrôle imprimé complet : `Godot_console.exe --headless --path Godot --script res://outils/essai_energie.gd`.
-
-✅ **Le contrôle le plus important est passé, en aveugle et imprimé** : la partie « panneaux seuls » se bloque sur le **capital** (solde final 2 106 pts, 27 îlots hors de portée), la partie « isolation seule » sur le **budget** (solde final 1 pt, capital monté à 202). Les deux décisions se contraignent l'une l'autre — *les panneaux achètent de l'argent, l'isolation achète de la légitimité*.
-
-🔴 **Ce que le prototype mesurera, et qu'il faut assumer** : l'auteur a refusé le contrepoids du capital politique par la visibilité (**66c**). Sans lui, le test répond à *« choisir où investir fait-il un jeu ? »* en mesurant **un tri par colonne**, pas un choix de lieu. Ce qui reste pour faire bouger la carte : les quatre classes sans chiffre, et la dérive de −6 %/an qui fait reculer la zone rouge.
+Les captures de référence sont
+`QGIS/rendus/wehrau_essai_barre.png` (0 %) et
+`QGIS/rendus/wehrau_essai_solaire_100.png` (100 %).
 
 ## Ce qui attend l'auteur
 
-- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas 25–40 %** — et ⏸️ **il faut de nouveau attendre pour le trancher.** Les deux générateurs ne disent plus la même chose : `04d` mesure **8,86 ha** de toit sur la ville corrigée, `07` en annonce **12,1 ha** avec son ancienne règle. Trancher sur 12,1 serait trancher sur un chiffre qu'on vient de rendre faux. **Brancher `07` sur la couche `batiments` d'abord.** La fourchette du plan avait été calibrée sur 76,5 ha d'*emprise* ; même équiper 100 % des toits reste très loin de l'autonomie. Le jeu tient (blocages, rentabilités par îlot, « pas d'autonomie par les toits » renforcé), mais les ordres de grandeur du `Prototype/Énergie.md` §5 changent d'échelle. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table.**
-- [ ] 🟠 **La régie municipale** — à qui appartiennent les panneaux ? Sans réponse, le retour au budget est un raccourci comptable qu'on ne saura plus justifier. Le tarif de rachat **figé au mois de la décision** (ce qui rend le remboursement exact) plaide déjà pour une régie qui signe des contrats.
+- [ ] 🔴 **Le potentiel solaire réel est bien inférieur aux 25–40 % du plan.** La suspension est levée : la mesure unique est maintenant **10,4 ha de toiture réelle pente comprise** sur les 701 volumes de `04d`. Le jeu tient (blocages, rentabilités par îlot, « pas d'autonomie par les toits » renforcé). **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table.**
+- [ ] ⏸️ **La régie municipale** — hors du prototype tant qu'il n'y a ni budget
+  ni retour financier ; reste une question du jeu complet.
 - [ ] 🟠 **Le nom des quartiers de Wehrau** — sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase. Les calques sortent bien des **zones**, pas des confettis : la phrase attend son vocabulaire.
 - [x] ✅ ~~**L'exagération verticale**~~ — **close par la mise à plat** le 2026-08-12. Il n'y a plus de relief à exagérer ; les touches `1..4` sont retirées de la maquette.
 - [ ] 🟠 **La crue dans le vault** — la décision **23b** (le jeu s'ouvre sur une crue rive gauche) est en contradiction avec « pas de crue pour ce prototype ». Suspendue ou abandonnée ? À écrire dans `Décisions arrêtées`, pas à laisser implicite.
 - [ ] **Les quatre tables de level design** → [CHANTIERS.md](CHANTIERS.md) §2. Une ligne changée, on relance, on regarde.
-- [ ] **Cinq candidats à `Décisions arrêtées`**, prêts mais non tranchés (`Prototype/Énergie.md` §9 bis) : dont *la décision spatiale est le jeu* — **toute décision doit avoir un lieu où elle est bonne et un lieu où elle est mauvaise**.
+- [ ] ⏸️ **La décision spatiale comme dilemme** — l'ancien prototype la
+  testait par la rentabilité et l'isolation ; le prototype actuel ne la teste
+  volontairement plus.
 
 🖥️ **Trois questions se tranchent en dessinant l'écran, pas dans le vault** : **n°19** onze nombres permanents, est-ce que ça tient ? · **n°20** `Déclin et défaite` refuse la jauge globale que « la ville exposée » vient d'introduire · **n°21** comment le joueur comprend que l'économie commande son budget, alors que les deux sont loin l'un de l'autre à l'écran. → `Méta/Questions ouvertes.md`
 
@@ -127,6 +139,8 @@ Le détail des scripts, leurs modes et leurs pièges → **`QGIS/README.md`** (�
 **Deux machines** : Windows principal, Mac occasionnel, **et depuis le 2026-08-17 elles font le même travail**. `git pull` en début de session, `git push` en fin. La carte est du texte que git fusionne ; aucun `.gpkg` n'est suivi. → `CLAUDE.md` §5
 
 ## Les deux dernières sessions
+
+**2026-08-17 (session 29) — la 3D lit enfin les bâtiments.** L'auteur demande à voir les nouveaux bâtiments dans Godot. Le défaut était celui déjà nommé : `04d` écrivait les 701 empreintes corrigées, mais `07` recalculait encore 892 volumes avec son ancienne table, donc l'aperçu et la maquette montraient deux villes. `07` lit maintenant la couche `batiments`, rattache chaque volume à sa parcelle et retrouve sa plus longue façade pour orienter le faîtage. La parcelle est dessinée sous ses volumes : le bâti opaque cache son emprise, et ce qui reste visible est exactement la cour ou le jardin, sans second moteur de différence polygonale. Contrôles : **701 volumes sur 693 parcelles bâties**, **116 parcelles non bâties**, **10,4 ha de toiture réelle pente comprise**, murs 3272/3272 et toits 9464/9464 vers l'extérieur. Les 38 débordements annoncés au premier passage étaient faux : le contrôle passait un anneau ouvert au test d'appartenance et oubliait sa dernière arête ; fermé et associé à la vraie parcelle d'origine, il donne **zéro** comme R0 de `04d`. La chaîne complète passe en 6,6 s. Godot charge 70 îlots, 177 tronçons, 237 objets cliquables et 26 182 triangles ; les captures `wehrau_essai_ville.png` et `wehrau_essai_barre.png` sont régénérées. Ce qui reste : **159 empreintes concaves à toit plat** et 158 pans réorientés (2 %), plus le jugement ciblé des parcelles en pointe.
 
 **2026-08-17 (session 28) — l'encoche du bâtiment.** L'auteur regarde `parcelles_ilot_40/41` : *« l'îlot 40 a encore des parcelles bizarres avec des formes de bâtiment pas réalistes, et l'îlot 41 a des coins encore à corriger »*. C'est la suite que la session 27 avait nommée sans l'écrire — « les doigts de cour et les ressauts en escalier demanderaient une ouverture morphologique, pas un seuil de plus ». 🔴 **Ce qui a débloqué la mesure, c'est de compter les décrochements au lieu de mesurer des largeurs** : sur les 701 empreintes, 542 n'ont aucun sommet rentrant, **131 en ont un** — l'équerre, c'est-à-dire l'immeuble d'angle et la maison prolongée de son aile arrière, les deux voulues et très lisibles — et 28 en ont deux ou trois, dont **aucune n'a d'excuse**. Un seuil de largeur ne sait pas les séparer, et c'est mesuré : rallumer l'aile arrière fait passer les poches à bouche ≤ 8 m de 14 à 57, alors que l'aile est la forme la plus **voulue** du fichier. Deux règles, dans deux fonctions. ① **`aile_arriere` vérifie enfin qu'elle est adossée** — sa docstring promettait « adossée à une limite latérale et jamais posée au milieu » depuis le premier jour, mais rien ne le contrôlait : l'aile se pose à un **bout de la cour** mesuré le long de la façade, et sur une parcelle d'**angle**, dont le bâtiment est déjà la réunion de deux bandes, ce bout-là est le mur de l'autre bande. Elle s'adossait donc à son propre bâtiment. On essaie les deux bouts, le tiré d'abord. ② **`fermer_encoches` referme les poches**, la plus petite d'abord — sur une parcelle d'angle la grande poche est la cour que l'équerre entoure, la petite est la dent qui pend dedans — et **après l'aile, pas avant** : l'aile fabrique volontairement un décrochement, donc juger la forme avant elle ne voit pas l'escalier qu'elle produit. 🔴 **Le piège qui a coûté la moitié de la mise au point** : la corde qui referme une poche a ses deux bouts **sur la limite de parcelle**, puisque le retrait latéral vaut 0 en mitoyen ; testée telle quelle elle tombe du mauvais côté du test de parité, et 12 encoches se refermaient au lieu de 52. On teste des points décalés de 10 cm vers l'intérieur de la poche. Résultat : **28 → 15** empreintes à deux décrochements, **2 → 0** en C, **52 encoches refermées** sur 52 bâtiments, R0 toujours à 0, R2 bis inchangé à 16, emprises (0,76 · 0,56 · 0,81), cour du cœur ancien (24 %) et partition inchangées, toit 9,00 → **9,02 ha**. 🔴 **Et il faut dire ce qui n'est PAS réparé** : le bout sud-est de l'îlot 40, celui que l'auteur a entouré, garde une parcelle en flèche (435), une lanière (443) et deux replis (438) — **118 parcelles de rue sur 809 ont un sommet rentrant**, et éteindre la soudure des coins n'en enlève qu'une (119 → 118). Le défaut est dans le **peigne de `04c`**, pas dans `04d`, et aucune règle de bâtiment ne peut le cacher : une empreinte propre dans une parcelle en dard laisse quand même le dard en beige à l'écran. ⚠️ Session faite **sur le Mac**.
 

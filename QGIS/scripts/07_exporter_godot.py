@@ -11,8 +11,10 @@ la palette. Recentré sur le milieu de l'emprise, prêt à empaqueter.
 
 CE QUE CE FICHIER ASSUME, ET POURQUOI
 
-Toute la géométrie est calculée ICI, en Python, et pas en GDScript. Deux
-raisons, toutes deux dans `Vault/Technique/Moteur et architecture.md` :
+Toute la géométrie du maillage est calculée en Python, pas en GDScript. Les
+empreintes de bâtiments, elles, viennent directement de la couche `batiments`
+écrite par 04d : l'export les extrude et leur pose un toit sans les redessiner.
+Deux raisons, toutes deux dans `Vault/Technique/Moteur et architecture.md` :
 
   « Les boucles géométriques lourdes en GDScript vont goulotter »      (l.16)
   vibe coding ❌ pour « GDScript spécifiquement »                       (l.32)
@@ -143,10 +145,12 @@ FICHE_ROUTES = [c for c in COLS_ROUTES if c != "fid"] + ["longueur_m"]
 CANOPEE_ALIGNEMENT_MAX = 0.40
 
 
-# --- LE BÂTI SUR LA PARCELLE ----------------------------------------------
-# Ce qui transforme une parcelle (un morceau de sol) en bâtiment (un volume).
-# Trois nombres par tissu, et ce sont eux qui font qu'un cœur ancien ressemble
-# à un cœur ancien et un lotissement à un lotissement.
+# --- LA RECETTE HISTORIQUE DU BÂTI ----------------------------------------
+# 🔄 Depuis le 2026-08-17, 04d transforme la parcelle en empreinte et 07 lit
+# cette couche. Cette table ne commande plus la forme : seule sa colonne
+# `pente` reste consommée pour plier le toit. Les anciens auxiliaires sont
+# encore présents plus bas pour rendre le retour en arrière lisible, mais le
+# chemin principal ne les appelle plus.
 #
 #   recul       distance entre la façade et la rue, en mètres. 0 = la maison
 #               est SUR l'alignement, ce qui est la forme des tissus anciens.
@@ -557,6 +561,8 @@ def lire(con):
     verifier_colonnes(con, "ilots", COLS_ILOTS)
     verifier_colonnes(con, "routes", COLS_ROUTES)
     verifier_couche(con, "emprises", "04b_emprises_baties.py")
+    verifier_couche(con, "parcelles", "04c_parcelles.py")
+    verifier_couche(con, "batiments", "04d_emprises_batiments.py")
 
     ilots = {}
     for r in con.execute("SELECT %s FROM ilots ORDER BY fid" % ",".join(COLS_ILOTS)):
@@ -590,29 +596,31 @@ def lire(con):
         raise SystemExit("îlots sans emprise : %s — relancer 04b"
                          % ", ".join(str(f) for f in orphelins))
 
-    # Les PARCELLES. Facultatives : sans elles, chaque îlot bâti ressort en un
-    # seul pâté plein, comme avant le 2026-08-12. C'est le repli, pas une
-    # erreur — mais il doit se dire dans la console, pas se deviner à l'écran.
+    # Les PARCELLES portent le niveau et le fond non bâti ; les BÂTIMENTS sont
+    # désormais lus tels que 04d les a dessinés. Avant le 2026-08-17, 07
+    # recalculait ici une seconde empreinte avec une seconde table de règles :
+    # l'aperçu 2D et Godot montraient donc deux villes différentes.
     for d in ilots.values():
         d["parcelles"] = []
-    a_parcelles = con.execute(
-        "SELECT count(*) FROM sqlite_master WHERE type='table'"
-        " AND name='parcelles'").fetchone()[0] > 0
-    if a_parcelles:
-        # 🚶 `origine` dit ce qu'est la parcelle. Une seule valeur intéresse ce
-        # fichier : `chemin` — la venelle que 04c a retirée de l'emprise. Elle
-        # ne se bâtit pas, elle se pave. Sans cette colonne on lui poserait une
-        # maison de 3 m de large en travers de l'îlot.
-        col_org = "origine" if "origine" in {
-            r[1] for r in con.execute("PRAGMA table_info(parcelles)")} else "NULL"
-        for fid_i, niv, org, geom in con.execute(
-            "SELECT fid_ilot, niveaux, %s, geom FROM parcelles ORDER BY fid"
-            % col_org
-        ):
-            if fid_i in ilots:
-                ilots[fid_i]["parcelles"].append(
-                    {"anneau": anneau_ouvert(geom), "niveaux": niv or 0.0,
-                     "origine": org})
+        d["batiments"] = []
+    parcelles = {}
+    for fid, fid_i, niv, org, geom in con.execute(
+        "SELECT fid, fid_ilot, niveaux, origine, geom"
+        " FROM parcelles ORDER BY fid"
+    ):
+        if fid_i not in ilots:
+            continue
+        p = {"fid": fid, "anneau": anneau_ouvert(geom),
+             "niveaux": niv or 0.0, "origine": org}
+        parcelles[fid] = p
+        ilots[fid_i]["parcelles"].append(p)
+
+    for fid_p, fid_i, geom in con.execute(
+        "SELECT fid_parcelle, fid_ilot, geom FROM batiments ORDER BY fid"
+    ):
+        if fid_i in ilots and fid_p in parcelles:
+            ilots[fid_i]["batiments"].append(
+                {"anneau": anneau_ouvert(geom), "parcelle": parcelles[fid_p]})
 
     routes = []
     for r in con.execute("SELECT %s, geom FROM routes ORDER BY fid"
@@ -702,7 +710,7 @@ def main():
     rng = random.Random(GRAINE)
     arbres = []
     n_masse = n_sol = n_eau = 0
-    n_parc = n_vol = n_pate = 0
+    n_parc = n_parc_batie = n_vol = 0
     n_pentu = n_plat_force = 0
     n_deborde = 0
     deb_max = 0.0
@@ -764,7 +772,7 @@ def main():
             pente = BATI.get(st, BATI_DEFAUT)[3]
             toit_ilot = 0.0
             volumes = []
-            jardins = []
+            batiments_par_parcelle = {}
             # 🚶 LA VENELLE NE SE BÂTIT PAS, ET ELLE EST UNE ADRESSE. Deux
             # choses en découlent, et il faut les deux : elle sort de la liste
             # des parcelles à bâtir — ses deux bouts touchent le bord de
@@ -776,21 +784,17 @@ def main():
                             if p.get("origine") == "chemin"]
             if d["parcelles"]:
                 idx = _index_bord([an] + chemins_ilot)
-                for p in d["parcelles"]:
-                    if p.get("origine") == "chemin":
-                        continue
-                    vols, jard = _empreinte_batie(p["anneau"], st, idx)
-                    for emp, faite in vols:
-                        volumes.append((emp, p["niveaux"], faite))
-                    jardins.extend(jard)
+                for b in d["batiments"]:
+                    p = b["parcelle"]
+                    emp = b["anneau"]
+                    faite = _direction_faitage(p["anneau"], idx)
+                    volumes.append((emp, p["niveaux"], faite, p))
+                    batiments_par_parcelle.setdefault(p["fid"], []).append(emp)
                 n_parc += len(d["parcelles"]) - len(chemins_ilot)
+                n_parc_batie += len(batiments_par_parcelle)
                 n_vol += len(volumes)
                 n_chemin += len(chemins_ilot)
-            if not volumes:
-                volumes = [(an, haut, None)]   # repli : le pâté plein d'avant
-                n_pate += 1
-                pente = 0.0
-            for emp, niv, faite in volumes:
+            for emp, niv, faite, parcelle in volumes:
                 # ⚠️ TOIT À DEUX PENTES SUR EMPREINTE CONVEXE SEULEMENT, et
                 # c'est une limite du procédé, pas une préférence. Sur une
                 # empreinte concave, une arête d'égout peut repartir en arrière
@@ -810,8 +814,7 @@ def main():
                 # ⚠️ Les chemins sont ÉCARTÉS de ce contrôle : un bâtiment qui
                 # mord sur la venelle est exactement le défaut qu'on cherche à
                 # voir, et le compter « dans une parcelle » le masquerait.
-                deb = _debordement(emp, [p for p in d["parcelles"]
-                                         if p.get("origine") != "chemin"])
+                deb = _debordement(emp, parcelle)
                 if deb > 0.5:
                     n_deborde += 1
                     deb_max = max(deb_max, deb)
@@ -845,8 +848,13 @@ def main():
                     _sol(masses, c, coul_chemin, G)
 
             part_verte = VERDURE.get(st, VERDURE_DEFAUT)
-            for j in jardins:
-                aire_j = abs(D4C.aire_signee(j))
+            for p in d["parcelles"]:
+                if p.get("origine") == "chemin":
+                    continue
+                j = p["anneau"]
+                emps = batiments_par_parcelle.get(p["fid"], [])
+                aire_j = max(0.0, abs(D4C.aire_signee(j)) - sum(
+                    abs(D4C.aire_signee(emp)) for emp in emps))
                 if aire_j < AIRE_JARDIN_MIN or len(j) < 3:
                     continue
                 n_jardin += 1
@@ -855,8 +863,12 @@ def main():
                     continue                  # une cour, pas un jardin
                 n_vert += 1
                 aire_verte += aire_j
+                # Le sol vert couvre la parcelle entière, mais les volumes
+                # opaques posés dessus cachent exactement leur empreinte : ce
+                # qui reste visible est donc la différence parcelle − bâti,
+                # sans introduire un second moteur de géométrie dans 07.
                 _sol(masses, j, coul_jardin, G)
-                arbres_jardin = _semer_jardin(j, aire_j)
+                arbres_jardin = _semer_jardin(j, aire_j, emps)
                 arbres.extend(arbres_jardin)
                 n_arbre_jardin += len(arbres_jardin)
 
@@ -888,8 +900,9 @@ def main():
 
     print("  masses %d · sols %d · eau %d" % (n_masse, n_sol, n_eau))
     if n_parc:
-        print("  parcelles %d → %d volumes bâtis  (%d enclavées : cour ou jardin)"
-              % (n_parc, n_vol, n_parc - n_vol))
+        print("  couche `batiments` : %d volumes sur %d parcelles bâties"
+              " (%d parcelles non bâties)"
+              % (n_vol, n_parc_batie, n_parc - n_parc_batie))
         if n_chemin:
             print("  chemins %d → %.0f m² de venelle pavée, dans le groupe de"
                   " leur îlot" % (n_chemin, aire_chemin))
@@ -909,13 +922,8 @@ def main():
         plats = [f for f, x in ilots.items() if x.get("toit_plat")]
         print("        dont %d îlots à toit plat — barre, dalle, friches"
               % len(plats))
-        # 📦 Les boîtes et ✂️ les pointes coupées. Deux chiffres à regarder :
-        # si les rectangles font monter le débordement ci-dessus, c'est que la
-        # boîte sort de la parcelle et il faut la rentrer.
-        print("  simplification : %d volumes ramenés à un rectangle (barre,"
-              " dalle, friche)" % rectangles[0])
-        print("        %d pointes coupées sur %d empreintes — `\\_/` au lieu de"
-              " `\\/`, sous %.0f°" % (pointes[0], pointes[1], ANGLE_MIN_DEG))
+        print("  empreintes : lues directement dans 04d, aucune forme recalculée"
+              " par l'export Godot")
         # 🌳 Les cœurs d'îlot. « pas tous » est le chiffre qui compte : à 100 %
         # de vert, le contraste entre une cour pavée et un jardin disparaît.
         print("  cœurs d'îlot : %d espaces libres (%.1f ha), dont %d plantés"
@@ -923,9 +931,6 @@ def main():
               % (n_jardin, aire_jardin / 1e4, n_vert,
                  100.0 * n_vert / max(n_jardin, 1), aire_verte / 1e4,
                  n_arbre_jardin))
-    if n_pate:
-        print("  ⚠️  %d îlots ressortent en pâté plein — pas de parcelle, ou"
-              " aucune n'a produit de volume" % n_pate)
     print("  chenal : %d murs de quai, tous tournés vers l'eau  %s"
           % (quais_tot, "✅" if quais_ok == quais_tot
              else "❌ %d à l'envers" % (quais_tot - quais_ok)))
@@ -1327,7 +1332,7 @@ def _decouper_quad(pa, pb, qb, qa, coeur):
             if not _degenere(t)]
 
 
-def _debordement(emprise, parcelles):
+def _debordement(emprise, parcelle):
     """De combien le bâtiment sort-il de la parcelle qui le porte ?
 
     🔴 LE DÉFAUT CONNU DU 2026-08-12, et il faut le voir plutôt que le
@@ -1338,16 +1343,19 @@ def _debordement(emprise, parcelles):
     sur la barre — donc sans commune mesure avec les 258 m de la session 9,
     mais un bâtiment qui mord sur la chaussée reste un bâtiment qui ment.
 
-    On mesure sur la parcelle la PLUS PROCHE : associer chaque empreinte à sa
-    parcelle d'origine demanderait de la traîner dans toute la chaîne, alors
-    que la mesure du pire cas suffit à dire si ça empire."""
+    Depuis que 07 lit `batiments`, l'association à la parcelle d'origine est
+    explicite. L'anneau doit être fermé pour `dedans` : l'ancien contrôle
+    oubliait sa dernière arête et annonçait encore 38 faux débordements."""
+    parcelles = [parcelle]
+    parcelle_fermee = dict(parcelle)
+    parcelle_fermee["anneau"] = list(parcelle["anneau"]) + [parcelle["anneau"][0]]
     pire = 0.0
     for q in emprise:
         d = min((min(D4C.dist_pt_seg(q, p["anneau"][i],
                                      p["anneau"][(i + 1) % len(p["anneau"])])
                      for i in range(len(p["anneau"]))))
                 for p in parcelles) if parcelles else 0.0
-        if d > pire and not any(dedans(p["anneau"], q) for p in parcelles):
+        if d > pire and not dedans(parcelle_fermee["anneau"], q):
             pire = d
     return pire
 
@@ -1405,6 +1413,28 @@ def _sur_rue(parcelle, idx_bord):
                 break
         out.append(rue)
     return out
+
+
+def _direction_faitage(parcelle, idx_bord):
+    """La plus longue façade sur rue, même règle R2 que 04d.
+
+    04d produit l'empreinte ; 07 ne choisit plus sa forme. Cette direction ne
+    sert qu'à plier son toit, parallèlement à la rue qui l'adresse. Les boîtes
+    ont un toit plat, donc leur direction de plan-masse n'entre pas ici.
+    """
+    rues = _sur_rue(parcelle, idx_bord)
+    meilleur = None
+    longueur = 0.0
+    for i, rue in enumerate(rues):
+        if not rue:
+            continue
+        a, b = parcelle[i], parcelle[(i + 1) % len(parcelle)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy)
+        if L > longueur:
+            longueur = L
+            meilleur = (dx / L, dy / L)
+    return meilleur
 
 
 def _ecorner(anneau):
@@ -1699,7 +1729,7 @@ def _graine_lieu(anneau):
                ^ (int(round(cy * 100.0)) * 19349663))
 
 
-def _semer_jardin(anneau, aire):
+def _semer_jardin(anneau, aire, batiments=()):
     """Les arbres d'un jardin. Tous les jardins verts n'en ont pas : c'est le
     « pas tous » de la consigne, et c'est ce qui empêche le cœur d'îlot de
     ressembler à un tapis."""
@@ -1717,6 +1747,8 @@ def _semer_jardin(anneau, aire):
         x = r.uniform(min(xs), max(xs))
         y = r.uniform(min(ys), max(ys))
         if not dedans(ferme, (x, y)):
+            continue
+        if any(dedans(list(emp) + [emp[0]], (x, y)) for emp in batiments):
             continue
         out.append([x, y, 0.0,
                     r.uniform(0.55, 0.95), r.uniform(0.0, 6.2832)])

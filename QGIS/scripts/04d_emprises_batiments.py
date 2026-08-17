@@ -39,17 +39,11 @@ bande constructible ci-dessus.
 ✅ LA CHAÎNE EST 02 → 03 → 04 → 04b → 04c → 04d, et `chaine.py` la tient.
    Idempotent : on le relance, il refait la couche.
 
-🔴 CE QUI RESTE FAUX, ET QUI SE VOIT EN 3D ET NULLE PART AILLEURS :
-`07_exporter_godot.py` N'A PAS ÉTÉ BRANCHÉ SUR CETTE COUCHE. Il garde son propre
-générateur — sa table `BATI`, et `04b.retracter` pour l'offset, qui est la cause
-des « 44 bâtiments qui débordent de leur parcelle » du contrôle de `07`. Donc
-deux règles vivent en parallèle : celle-ci décide ce que montrent les aperçus PNG,
-celle de `07` décide ce que montre la maquette Godot. Tant que ce n'est pas
-réglé, les deux chiffres de toit ne peuvent pas coïncider (ici 8,9 ha ; `07`
-en annonce 12,1). Le branchement demande, du côté de `07` : la direction de
-façade par bâtiment (le faîtage la lit), les jardins, et la mise au rebut de
-`_empreinte_batie`, `_rectangle`, `_ecorner`, `_garder` et de `BATI` sauf sa
-colonne `pente`. À faire là où Godot peut être lancé — pas à l'aveugle.
+✅ Depuis le 2026-08-17, `07_exporter_godot.py` lit cette couche directement :
+l'aperçu 2D et Godot montrent les mêmes empreintes. 07 retrouve la plus longue
+façade de la parcelle pour orienter le faîtage, et dessine la parcelle sous les
+volumes pour que sa part non bâtie reste visible en cour ou jardin. Sa vieille
+recette géométrique reste nommée comme retour en arrière, mais n'est plus appelée.
 
 Se lance sans QGIS : sqlite3 seul, et le lecteur WKB d'apercu_carte.
 """

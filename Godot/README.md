@@ -1,32 +1,19 @@
 # Godot — Wehrau, une ville
 
-On clique un îlot ou une rue, on lit sa fiche, et vingt ans passent. La ville
-est faite de **702 bâtiments sur 1 003 parcelles**, avec ses cours, ses rangs de
+On clique un îlot, on lit sa fiche et on augmente sa part de panneaux
+solaires. La ville est faite de **701 volumes sur 809 parcelles**, avec ses cours, ses rangs de
 maisons mitoyennes et ses toits à deux pentes. Elle est posée sur une **carte
 plate**, coupée en deux par le **chenal de l'Ilse**.
 
-🔋 **Le système énergie est là** (2026-08-12, session 18). Deux décisions de
-nature opposée dans `chantiers.gd` — **poser des panneaux** (rentable, coûte du
-capital politique) et **isoler** (jamais rentable, en rend) — visées à l'îlot
-par un curseur de seuil. Le bandeau porte quatre nombres en écart à t0
-(consommation, production, achat en facture, CO2), trois calques (rentabilité
-solaire en quatre classes sans chiffre, gain d'isolation, toits qui
-produisent), et les toits **virent à l'ardoise sombre** au fil de la pose. Les
-treize lignes de la table sont dans `scripts/energie.gd` — c'est là, et pas
-dans les formules, que l'auteur règle le jeu. D07, la surchauffe et les anciens
-calques restent dans **`archive/`** (décision 66).
+🔋 **Le prototype énergie a été simplifié le 2026-08-17** (décision 68).
+À gauche : consommation, production solaire, achat et CO₂ de toute la ville.
+À droite : seulement l'îlot cliqué, avec un curseur qui peut augmenter sa part
+solaire jusqu'à 100 %. La décision est immédiate, sans budget, capital,
+isolation, temps, chantier ou calque. Les toits virent à l'ardoise sombre et
+les totaux de ville se recalculent aussitôt.
 
-🔴 **Le recoupement des deux moteurs n'existe toujours pas** : il a disparu
-avec D07 (`Prototype/Énergie.md` §9 c). Ce qui le remplace en partie :
-`outils/essai_energie.gd`, le contrôle imprimé en français — les quatre
-nombres du mois 0, la table du potentiel, trois invariants à cinq dates, le
-remboursement, et **deux parties jouées en aveugle** (panneaux seuls doit
-bloquer sur le capital, isolation seule sur le budget). Il ne compare le noyau
-**qu'à lui-même** — une formule fausse recopiée des deux côtés passera.
-
-```bash
-Godot_v4.7.1-stable_win64_console.exe --headless --path Godot --script res://outils/essai_energie.gd
-```
+`chantiers.gd` et `outils/essai_energie.gd` gardent l'ancien prototype à
+deux décisions comme trace technique ; ils ne décrivent plus la boucle jouable.
 
 Ce qui n'a pas changé : **toute la géométrie reste calculée en Python**. Godot
 empaquette des tableaux et ne décide rien — l'« interface propre » de
@@ -151,14 +138,14 @@ scripts/
   constructeur.gd      tableaux → ArrayMesh. Aucun accès aux nœuds   ← isolé
   ville.gd             l'état, les rampes, les indicateurs. Aucun nœud  ← LE NOYAU
   energie.gd           la table des 13 lignes et les formules. Tout statique
-  chantiers.gd         les décisions : cible, devis, capital, budget, retours
+  chantiers.gd         ancien prototype à deux décisions, conservé comme trace
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
-  interface.gd         le bandeau, la fiche, les décisions, les calques
+  interface.gd         la ville à gauche, l'îlot et son curseur à droite
   materiaux.gd         6 matériaux, zéro texture
   camera_axo.gd        orthographique, angle fixe
 outils/
   sonde_api.gd         interroge ClassDB — à lancer avant de déboguer autre chose
-  essai_energie.gd     le contrôle imprimé du noyau énergie (--headless)
+  essai_energie.gd     contrôle imprimé de l'ancien prototype
 ```
 
 `ville.gd`, `energie.gd` et `chantiers.gd` **ne touchent aucun nœud** — même discipline que

@@ -1,16 +1,15 @@
 extends Node3D
 # Wehrau — l'orchestrateur.
 #
-# Ce n'est plus une maquette : on clique, on décide, le temps passe. Le noyau
-# est dans `ville.gd` et `chantiers.gd`, qui ne connaissent aucun nœud ; ici on
-# ne fait que brancher les uns aux autres.
+# Le prototype énergie tient provisoirement en un seul geste : cliquer un îlot
+# et augmenter sa part de panneaux. Il n'y a ni temps, ni budget, ni capital.
 #
 # Tout est construit en code : la scène ne contient qu'un nœud et ce script
 # (`Génération procédurale.md:47`).
 #
 # CLAVIER
 #   clic   sélectionner un îlot ou une rue
-#   Espace lecture / pause        V B R I   les quatre points de vue
+#                                  V B R I   les quatre points de vue
 #   Q / E  rotation de 90°          P       capture PNG
 #   Échap  quitter
 #
@@ -26,7 +25,6 @@ const Constructeur := preload("res://scripts/constructeur.gd")
 const Materiaux := preload("res://scripts/materiaux.gd")
 const CameraAxo := preload("res://scripts/camera_axo.gd")
 const Ville := preload("res://scripts/ville.gd")
-const Chantiers := preload("res://scripts/chantiers.gd")
 const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
 
@@ -48,7 +46,6 @@ var donnees: Dictionary
 var monde: Node3D
 var pivot: CameraAxo
 var ville: Ville
-var chantiers: Chantiers
 var selection: Selection
 var interface: Interface
 var mat_objet: ShaderMaterial
@@ -71,8 +68,6 @@ func _ready() -> void:
 
 	ville = Ville.new()
 	ville.charger(donnees)
-	chantiers = Chantiers.new(ville)
-
 	mat_objet = Materiaux.objet()
 	monde = Node3D.new()
 	monde.name = "Monde"
@@ -95,16 +90,9 @@ func _ready() -> void:
 	interface = Interface.new()
 	interface.name = "Interface"
 	interface.ville = ville
-	interface.chantiers = chantiers
 	add_child(interface)
 	interface.batir()
-	interface.decide.connect(_sur_decision)
-	interface.temps_demande.connect(func(t: float) -> void: mois = t)
-	interface.lecture_basculee.connect(func() -> void: en_lecture = not en_lecture)
-	interface.vitesse_demandee.connect(func(v: float) -> void:
-		vitesse = v
-		en_lecture = true)
-	interface.calque_demande.connect(_sur_calque)
+	interface.solaire_demande.connect(_sur_solaire)
 
 	var c: Dictionary = donnees["controles"]
 	print("Wehrau — %d îlots, %d tronçons, %d cliquables, %d triangles"
@@ -156,47 +144,17 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_ilse")
 
-	# ---- L'énergie : les regards du PLAN §8, dans l'ordre. ----
-	_repere("ville")
-
-	# §8.1 — le calque rentabilité au mois 0, avant toute décision. Il doit
-	# faire dire « c'est là » en trois secondes.
-	_sur_calque("i", "_classe_solaire")
-	await get_tree().process_frame
-	await _capturer("essai_rentabilite_m0")
-
-	# §8.2 — le gain d'isolation, sans rien décider entre les deux : la carte
-	# doit être PRESQUE INVERSE de la précédente, sauf la barre de 1974.
-	_sur_calque("i", "_gain_isolation_mwh")
-	await get_tree().process_frame
-	await _capturer("essai_isolation_m0")
-
-	# §8.3 — dix ans sans rien faire, puis la rentabilité à nouveau : la zone
-	# rouge doit avoir visiblement reculé. C'est le « bon moment » rendu visuel.
-	mois = 120.0
-	_sur_calque("i", "_classe_solaire")
-	await get_tree().process_frame
-	await _capturer("essai_rentabilite_m120")
-
-	# §8 étape 5 — panneaux sur la barre et la dalle au mois 0, vingt ans plus
-	# tard : les toits noircis sont la preuve sans menu, le budget est remonté.
-	mois = 0.0
-	var cibles := []
-	for fid in ville.fids_batis():
-		if str(ville.ilots[fid].get("sous_type", "")) in \
-				["barre_1970", "dalle_commerciale"]:
-			cibles.append(fid)
-	var r: Dictionary = chantiers.engager("PAN", cibles, 0.0)
-	print("  panneaux sur barre + dalle (%d îlots) → %s" % [cibles.size(),
-		"%.0f pts, capital %+.0f" % [r.get("cout", 0.0), r.get("capital", 0.0)]
-		if bool(r["ok"]) else str(r.get("message", ""))])
-	mois = 240.0
-	_sur_calque("", "")
+	# Le seul geste du prototype, vérifié sur la barre : 0 → 100 %, puis une
+	# capture où les toits sombres et la production de ville doivent changer.
+	ville.augmenter_solaire(32, 1.0)
+	interface.confirmer_solaire()
+	print("  îlot 32 : panneaux 0 → 100 %% · production ville %.1f GWh/an"
+		% (ville.indicateurs(0.0)["production_mwh"] / 1000.0))
 	_repere("barre")
+	_dernier_peint = -1.0
+	_rafraichir(true)
 	await get_tree().process_frame
-	await _capturer("essai_toits_noircis")
-	print("  solde au mois 240 : %.0f pts (doit être plus haut que sans rien faire : 2000)"
-		% chantiers.solde(240.0))
+	await _capturer("essai_solaire_100")
 
 	get_tree().quit()
 
@@ -307,21 +265,17 @@ func _decor() -> void:
 
 # ------------------------------------------------------------------ le temps
 
-func _process(delta: float) -> void:
-	if en_lecture:
-		mois = minf(mois + delta * vitesse, Ville.HORIZON_MOIS)
-		if mois >= Ville.HORIZON_MOIS:
-			en_lecture = false
+func _process(_delta: float) -> void:
 	_rafraichir(false)
 
 
 func _rafraichir(force: bool) -> void:
 	if not force and absf(mois - _dernier_peint) < 0.002:
-		interface.maj(mois, en_lecture, ville.indicateurs(mois))
+		interface.maj(ville.indicateurs(0.0))
 		return
 	_dernier_peint = mois
 	_peindre()
-	interface.maj(mois, en_lecture, ville.indicateurs(mois))
+	interface.maj(ville.indicateurs(0.0))
 
 
 # --------------------------------------------------------------- la couleur
@@ -420,8 +374,6 @@ func _rampe(v: float) -> Color:
 # ------------------------------------------------------------- les décisions
 
 func _sur_survol(_couche: String, _fid: int) -> void:
-	if selection.survol_fid >= 0:
-		interface.montrer(selection.survol_couche, selection.survol_fid)
 	_dernier_peint = -1.0
 
 
@@ -431,20 +383,11 @@ func _sur_choix(couche: String, fid: int) -> void:
 	_dernier_peint = -1.0
 
 
-func _sur_decision(id: String, fids: Array) -> void:
-	var r: Dictionary = chantiers.engager(id, fids, mois)
-	if not r["ok"]:
-		interface.dire(r["message"])
+func _sur_solaire(fid: int, part: float) -> void:
+	if not ville.augmenter_solaire(fid, part):
 		return
-	var D: Dictionary = chantiers.DECISIONS[id]
-	var nom_objet: String = "îlot" if D["couche"] == "i" else "tronçon"
-	var cible := "1 %s" % nom_objet if fids.size() == 1 \
-		else "%d %ss" % [fids.size(), nom_objet]
-	interface.dire("%s sur %s : %.0f pts, capital %+.0f"
-		% [D["nom"], cible, r["cout"], r["capital"]])
-	print("mois %.1f — %s ×%d : %.0f pts, capital %+.1f, quantité %.1f %s"
-		% [mois, id, fids.size(), r["cout"], r["capital"], r["quantite"],
-		str(D.get("unite_quantite", ""))])
+	print("îlot %d · panneaux solaires → %.0f %%" % [fid, part * 100.0])
+	interface.confirmer_solaire()
 	_dernier_peint = -1.0
 	_rafraichir(true)
 
@@ -466,7 +409,6 @@ func _unhandled_input(e: InputEvent) -> void:
 			or (e as InputEventKey).echo:
 		return
 	match (e as InputEventKey).keycode:
-		KEY_SPACE: en_lecture = not en_lecture
 		KEY_V: _repere("ville")
 		KEY_B: _repere("barre")
 		KEY_R: _repere("quai")

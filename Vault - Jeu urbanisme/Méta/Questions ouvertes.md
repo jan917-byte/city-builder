@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
 statut: 🟢 la phase A n'est plus bloquée — n°16, 17, 18, 12 et 14 closes le 2026-08-12. Restent n°19, 20, 21 (l'écran) et n°4 (les fins)
-maj: 2026-08-12
+maj: 2026-08-17
 ---
 
 # Questions ouvertes
@@ -134,6 +134,11 @@ Ce qui atténue : les indicateurs sont des **barres bornées par des jalons** et
 
 **Ne se tranche pas ici. Se tranche en dessinant l'écran.** ⚠️ Et le dessin a son propre piège : l'UI blanche sur neige blanche de Frostpunk est le risque direct avec une palette pastel. → [[Direction artistique]]
 
+🔄 **Le prototype ne tranche plus cette question depuis le 2026-08-17.** Il
+affiche quatre conséquences de ville à gauche et retire provisoirement budget
+et capital ; la fiche de droite ne porte que l'îlot cliqué. C'est une coupe de
+prototype (68), pas la réponse pour le jeu complet à onze nombres.
+
 ### 20. La jauge globale, refusée par [[Déclin et défaite]]
 
 🔴 Ouverte le 2026-08-12, et c'est une **contradiction interne au vault**, pas une préférence.
@@ -147,6 +152,9 @@ Si la résolution ne tient pas, c'est l'indicateur qui saute, pas la règle. →
 ### 21. Comment le joueur comprend-il que l'économie commande son budget ?
 
 Ouverte le 2026-08-12 par la décision 60, et posée par l'auteur lui-même.
+
+⏸️ **Hors du prototype actuel depuis le 2026-08-17** : ni économie ni budget
+n'y sont affichés (68). La question reste ouverte pour le jeu complet.
 
 L'état de l'économie vit dans le **bandeau de contexte** (avec la population et la date), le budget vit avec les **ressources**. Ils sont donc **loin l'un de l'autre à l'écran** : le lien de cause à effet ne peut pas être porté par la proximité, et il doit l'être par autre chose — sans quoi le budget a l'air de varier tout seul, ce que 60b interdit.
 

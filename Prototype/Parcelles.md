@@ -167,7 +167,7 @@ Cette règle venait d'une demande juste — les maisons de ville ont une profond
 1. **La cour intérieure existe mais elle n'est pas commune.** Chaque parcelle garde sa propre tranche d'arrière, donc le cœur de l'îlot 14 sort en couloir sinueux plutôt qu'en cour unique. Aligner les fonds de bâti d'une même rangée est un travail à part — et il tire dans le sens inverse des ailes arrière, qui existent pour irrégulariser. À trancher devant l'image.
 2. **Le passage étroit de la rue vers la cour n'est pas fait** — c'est une venelle, donc `tracer_chemins.py`, donc du level design qui appartient à l'auteur.
 
-🔴 **ET LE PLUS IMPORTANT : LA 3D NE MONTRE RIEN DE TOUT ÇA.** `04d` manquait à `chaine.py` — il l'annonçait dans son propre en-tête sans y être — donc la carte de travail n'avait aucune couche `batiments` et les aperçus sortaient sans bâtiment. C'est réparé. Mais **`07_exporter_godot.py` garde son propre générateur** : sa table `BATI`, et `04b.retracter` pour l'offset, qui est la cause des « 44 bâtiments qui débordent ». Deux règles vivent donc en parallèle — celle-ci décide des **aperçus PNG**, celle de `07` décide de la **maquette Godot**, et les deux chiffres de toit ne peuvent pas coïncider (8,9 ha ici, 12,1 ha annoncés par `07`). Le branchement est écrit dans l'en-tête de `04d` ; il demande Godot sous la main, donc il ne se fait pas à l'aveugle depuis le Mac.
+✅ **LA 3D MONTRE MAINTENANT CES EMPREINTES.** `07_exporter_godot.py` lit directement la couche `batiments` de `04d` : il ne redessine plus une seconde ville. Contrôle du 2026-08-17 : **701 volumes sur 693 parcelles bâties**, zéro débordement, **10,4 ha de toiture réelle pente comprise**. Les espaces libres sont la parcelle dessinée sous ses volumes — ce qui reste visible est exactement la cour ou le jardin. Les captures `wehrau_essai_ville.png` et `wehrau_essai_barre.png` ont été régénérées dans Godot.
 
 ## 2 bis. Ce que l'auteur a vu sur l'image, le 2026-08-14
 
@@ -269,6 +269,12 @@ L'aire tombait juste depuis le début ; c'est l'élancement qui était faux — 
 
 ## 3. Le critère de réussite — et il ne se juge pas ici
 
+🔄 **Impact de la simplification énergie du 2026-08-17** : aucun chiffre de
+parcelles ne change. Le solaire n'a plus de budget, de capital ou de
+rentabilité, mais il lit toujours les **10,4 ha de toiture réelle** et
+assombrit les toits selon la part choisie. Le lien entre les deux étapes est
+donc plus court, pas supprimé. → [Énergie.md](Énergie.md)
+
 L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux images** :
 
 1. 🔴 **La surface de toit mesurée retombe sur le coefficient de l'énergie** — au-delà de ~15 % d'écart, le potentiel solaire du prototype bouge, et c'est ce chiffre-là qui fait des parcelles autre chose qu'un embellissement. → [Énergie.md](Énergie.md) §4
@@ -283,13 +289,13 @@ L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux image
 ✅ **Les venelles sont dans la source et la chaîne complète a tourné le 2026-08-17.** La passe à blanc a proposé six tracés, l'auteur les a fait réintégrer, puis `chaine.py --godot` a reconstruit la carte et l'export. Contrôles : **6 venelles sur 6 îlots, 588 m²**, 927 parcelles dont **912 sur rue**, zéro reliquat de rue enclavé, partition à 100,00 %, 15 cœurs et 2 coupes parasites effacées.
 
 1. 👁️ **Juger les parcelles triangulaires en 3D, pas sur la carte** (§6 bis). Le mécanisme qui les supprime existe et il est éteint, parce qu'il coûte 14 % des maisons. La question à trancher devant l'image : est-ce qu'une parcelle en pointe donne une **maison** en pointe, alors que `07` coupe déjà la pointe des bâtiments ?
-2. **Regarder le résultat en 3D**, puis les trois défauts imprimés à chaque export :
+2. ✅ **Le résultat 3D charge et les captures sont régénérées.** Les trois contrôles imprimés sont maintenant :
 
    | Le défaut | Ce que c'est |
    |---|---|
-   | **44 bâtiments sur 892 débordent de leur parcelle**, jusqu'à 5,5 m | pic de mitre sur angle rentrant. Sans commune mesure avec les 258 m de la session 9, mais **un bâtiment sur la chaussée ment** |
-   | **70 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large a été essayé le 2026-08-12 et **retiré devant l'image** |
-   | **433 pans de toit réorientés à l'émission (3 %)** | conséquence : le contrôle « faces vers l'extérieur » est vrai **par construction** côté toits et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
+   | ✅ **0 bâtiment déborde de sa parcelle** | le contrôle lit désormais la parcelle d'origine et ferme son anneau ; les 38 alertes restantes étaient des faux positifs du contrôle |
+   | **159 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large a été essayé le 2026-08-12 et **retiré devant l'image** |
+   | **158 pans de toit réorientés à l'émission (2 %)** | conséquence : le contrôle « faces vers l'extérieur » est vrai **par construction** côté toits et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
 
 3. **Régler la table `TISSU` de `04c` devant l'image** — c'est du level design, il appartient à l'auteur (§5).
 4. ⏸️ **Puis trancher le potentiel solaire** — voir « Ce qui attend l'auteur ».
@@ -401,7 +407,7 @@ Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue
 
 ## 7. Ce qui attend l'auteur
 
-- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas les 25–40 % du plan.** ✅ **La suspension est levée** : `07` a été relancé sur la ville avec venelles, soit **892 volumes bâtis et 12,1 ha de toit réel**. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table d'énergie.**
+- [ ] 🔴 **Le potentiel solaire réel est inférieur aux 25–40 % du plan.** ✅ **La suspension est levée** : `07` lit maintenant les **701 volumes** de `04d` et mesure **10,4 ha de toiture réelle pente comprise**. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table d'énergie.**
 - [ ] **La table `TISSU` de `04c`** (§5) — c'est du level design, il n'est pas délégué.
 - [ ] **Les réparations de boucle de `04b`** — passées de 4 à **7 îlots** avec la carte à trois ponts. Les quatre anciennes (55, 13, 16, 21) sont signalées ; les trois neuves (9, 11, 62) ne le sont pas.
 
