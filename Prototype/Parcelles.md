@@ -3,7 +3,7 @@
 > **L'étape en cours.** Le point dur du pipeline : ce qui sépare 70 pâtés pleins d'une ville où on croirait habiter.
 > La doctrine — *pourquoi* la parcelle est une partition, ce qu'on ne fera jamais — est dans le vault : `Technique/Génération procédurale.md`. **Ici, le chantier seulement.**
 
-**Dernière mesure : 2026-08-15** (session 22, sur le Mac, en `--blanc` et sur copie dans `bac/`)
+**Dernière mesure : 2026-08-17** (session 25, chaîne complète jusqu'à l'export Godot)
 
 ✅ **LA CARTE NE PEUT PLUS ÊTRE PLUS VIEILLE QUE LE CODE** (2026-08-17). Elle l'était : `Prototype_qualifie.gpkg` avait été écrit au commit `18a6b4c`, **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond — et une session entière est passée à décrire un défaut déjà corrigé. Ce qui a fermé le piège : le `.gpkg` n'est plus versionné, et `02` le **rebâtit depuis la source** à chaque passage de `chaine.py` (0,7 s). Les chiffres de la section 2 sont mesurés sur la carte relancée le 2026-08-17.
 
@@ -24,10 +24,10 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 
 | | code d'aujourd'hui | carte du dépôt (périmée) |
 |---|---|---|
-| parcelles | **927**, dont **912 sur rue** — plus **7 chemins** | 1 096, dont 987 sur rue |
+| parcelles | **927**, dont **912 sur rue** — plus **6 chemins** | 1 096, dont 987 sur rue |
 | cœurs d'îlot | 13 îlots, 0,86 ha, en 15 morceaux **d'un seul tenant** (67c · 67d) | 102 morceaux redécoupés |
 | reliquat de rue sans façade | **0** — il n'y a plus de déchet | 7 |
-| réunions d'éclats | 112, **aucun ne survit** | 48 |
+| réunions d'éclats | 121, **aucun ne survit** | 48 |
 | coupes effacées (deux biseaux → un rectangle) | **2**, îlots 13 et 33 | — |
 | partition | **100,00 %** sur chacun des 54 îlots, écart max 8,1·10⁻⁷ | idem |
 
@@ -42,7 +42,7 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 | `pavillonnaire` | 1,87 | 2,07 | ✅ |
 | `front_commercant` | 1,48 | 1,64 | ✅ |
 
-**La rectangularité** — aire ÷ aire du rectangle englobant, le nombre qui juge les chemins (67b) : **0,83 en moyenne** avant venelle, et de 0,84 à 0,91 sur les sept îlots qui en portent une.
+**La rectangularité** — aire ÷ aire du rectangle englobant, le nombre qui juge les chemins (67b) : **0,83 en moyenne** avant venelle, et de 0,84 à 0,91 sur les six îlots qui en portent une.
 
 ## 2 bis. Ce que l'auteur a vu sur l'image, le 2026-08-14
 
@@ -155,26 +155,19 @@ L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux image
 
 ## 4. Ce qui reste, dans l'ordre
 
-1. 🎯 **`tracer_chemins.py --blanc`, puis sans `--blanc`, puis `chaine.py --godot`.** Sur n'importe quelle machine. `tracer_chemins` écrit dans la source (`QGIS/data/source/chemins.geojson`) — donc il faut ensuite relancer la chaîne, que `chaine.py` enchaîne toute seule. Ce qu'il faut lire ensuite :
-   - **les 7 venelles** sur 22, 24, 26, 38, 40, 44, 63 — au pli, courtes, et aucun cœur entamé (§4 bis) ;
-   - **les îlots 64 et 69 coupés au milieu** — le défaut n°1 de l'auteur, et il tombe tout seul ;
-   - **l'îlot 32 en deux parcelles** au lieu d'un anneau autour d'un cœur vide, et **deux barres posées au milieu** ;
-   - **le bout des îlots 63 et 26 découpé dans le sens des rangées**, plus en dalles couchées en travers (§2 quinquies) ;
-   - **l'îlot 13 sans sa coupe en diagonale** — deux biseaux y redeviennent un rectangle (§2 sexies) ;
-   - **912 parcelles sur rue et zéro enclavée** là où l'ancienne découpe en donnait 705 ;
-   - **les cœurs d'îlot d'un seul tenant** — plus de damier à l'intérieur d'une cour (67c) ;
-   - **les deux défauts ci-dessous devraient reculer sans qu'on les vise** — des parcelles plus rectangulaires font des empreintes plus rectangulaires. À vérifier, pas à promettre.
-2. 👁️ **Juger les parcelles triangulaires en 3D, pas sur la carte** (§6 bis). Le mécanisme qui les supprime existe et il est éteint, parce qu'il coûte 14 % des maisons. La question à trancher devant l'image : est-ce qu'une parcelle en pointe donne une **maison** en pointe, alors que `07` coupe déjà la pointe des bâtiments ?
-3. **Regarder le résultat en 3D**, puis les trois défauts imprimés à chaque export :
+✅ **Les venelles sont dans la source et la chaîne complète a tourné le 2026-08-17.** La passe à blanc a proposé six tracés, l'auteur les a fait réintégrer, puis `chaine.py --godot` a reconstruit la carte et l'export. Contrôles : **6 venelles sur 6 îlots, 588 m²**, 927 parcelles dont **912 sur rue**, zéro reliquat de rue enclavé, partition à 100,00 %, 15 cœurs et 2 coupes parasites effacées.
+
+1. 👁️ **Juger les parcelles triangulaires en 3D, pas sur la carte** (§6 bis). Le mécanisme qui les supprime existe et il est éteint, parce qu'il coûte 14 % des maisons. La question à trancher devant l'image : est-ce qu'une parcelle en pointe donne une **maison** en pointe, alors que `07` coupe déjà la pointe des bâtiments ?
+2. **Regarder le résultat en 3D**, puis les trois défauts imprimés à chaque export :
 
    | Le défaut | Ce que c'est |
    |---|---|
-   | **18 bâtiments sur 690 mordent sur la rue**, jusqu'à 4,8 m | pic de mitre sur angle rentrant. Sans commune mesure avec les 258 m de la session 9, mais **un bâtiment sur la chaussée ment** |
-   | **47 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large a été essayé le 2026-08-12 et **retiré devant l'image** |
-   | **748 pans de toit réorientés à l'émission (7 %)** | conséquence : le contrôle « faces vers l'extérieur » est vrai **par construction** côté toits et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
+   | **44 bâtiments sur 892 débordent de leur parcelle**, jusqu'à 5,5 m | pic de mitre sur angle rentrant. Sans commune mesure avec les 258 m de la session 9, mais **un bâtiment sur la chaussée ment** |
+   | **70 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large a été essayé le 2026-08-12 et **retiré devant l'image** |
+   | **433 pans de toit réorientés à l'émission (3 %)** | conséquence : le contrôle « faces vers l'extérieur » est vrai **par construction** côté toits et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
 
-4. **Régler la table `TISSU` de `04c` devant l'image** — c'est du level design, il appartient à l'auteur (§5).
-5. ⏸️ **Puis trancher le potentiel solaire** — voir « Ce qui attend l'auteur ».
+3. **Régler la table `TISSU` de `04c` devant l'image** — c'est du level design, il appartient à l'auteur (§5).
+4. ⏸️ **Puis trancher le potentiel solaire** — voir « Ce qui attend l'auteur ».
 
 ## 4 bis. 🚶 Le chemin dans l'îlot — nouveau le 2026-08-14
 
@@ -191,19 +184,18 @@ Le peigne ne sait pas découper un **îlot en L** : un L n'a pas de fond. Chaque
 | **Ce qui n'est PAS un critère** | 🔴 le **nombre de maisons**. Il se mesure et s'imprime, il ne décide pas → **67b** |
 | **La largeur** | **3 à 5 m**, par tissu : 3,0 sente de cœur ancien · 3,5 maisons de ville · 4,0 passage de service · 5,0 desserte de lotissement. La colonne `largeur_m` de la couche prime toujours |
 
-**Les sept chemins de Wehrau, mesurés le 2026-08-14 :**
+**Les six chemins de Wehrau, réintégrés et mesurés dans la chaîne le 2026-08-17 :**
 
 | îlot | tissu | longueur | largeur | sol pris | rectangularité |
 |---|---|---|---|---|---|
 | 22 | `coeur_ancien` | 21 m | 3,0 | 38 m² | 0,831 → **0,864** |
 | 24 | `front_commercant` | 31 m | 4,0 | 80 m² | 0,822 → **0,856** |
-| 26 | `pavillonnaire` | 57 m | 5,0 | 201 m² | 0,844 → **0,858** |
+| 26 | `pavillonnaire` | 57 m | 5,0 | 201 m² | 0,850 → **0,869** |
 | 38 | `coeur_ancien` | 28 m | 3,0 | 42 m² | 0,831 → **0,851** |
-| 40 | `maisons_de_ville` | 45 m | 3,5 | 110 m² | 0,829 → **0,846** |
-| 44 | `maisons_de_ville` | 61 m | 3,5 | 120 m² | 0,829 → **0,844** |
-| 63 | `pavillonnaire` | 44 m | 5,0 | 100 m² | 0,828 → **0,884** |
+| 44 | `maisons_de_ville` | 61 m | 3,5 | 122 m² | 0,829 → **0,844** |
+| 63 | `pavillonnaire` | 44 m | 5,0 | 105 m² | 0,821 → **0,910** |
 
-**690 m² pris à la ville**, soit 0,07 ha de toit en moins pour le solaire.
+**588 m² pris à la ville**, soit 0,06 ha de toit en moins pour le solaire. L'îlot **40** figurait dans une mesure de chantier à sept chemins, mais son tracé n'avait jamais été enregistré ; sur la chaîne reproductible il ne passe plus le seuil de rectangularité. Il n'est donc pas dans la source.
 
 **Où vivent les chemins.** Dans **`QGIS/data/source/chemins.geojson`** — la source, seul endroit où un tracé corrigé à la main survit à `02`, qui rebâtit la carte de travail. La couche est **facultative** : sans elle, tout sort exactement comme avant. 🔄 Depuis le 2026-08-17 c'est du **texte, une venelle par ligne**, avec son numéro d'îlot et sa largeur en clair : supprimer une venelle qui tombe mal, c'est supprimer une ligne. La correction se faisait dans QGIS, qui n'existe plus.
 
@@ -278,7 +270,7 @@ Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue
 
 ## 7. Ce qui attend l'auteur
 
-- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas les 25–40 % du plan.** ⏸️ **Suspendu : le chiffre va bouger.** La fourchette avait été calibrée sur 76,5 ha d'*emprise* ; les vrais toits font 11,7 ha. Le peigne fait passer les parcelles bâtissables de 705 à 987, donc **relancer `07` avant de trancher** — sinon on arbitre sur les toits d'une ville qui n'existe plus. **À trancher ensuite : assumer ~9,5 %, ou regonfler la colonne `equip` de la table d'énergie.**
+- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas les 25–40 % du plan.** ✅ **La suspension est levée** : `07` a été relancé sur la ville avec venelles, soit **892 volumes bâtis et 12,1 ha de toit réel**. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table d'énergie.**
 - [ ] **La table `TISSU` de `04c`** (§5) — c'est du level design, il n'est pas délégué.
 - [ ] **Les réparations de boucle de `04b`** — passées de 4 à **7 îlots** avec la carte à trois ponts. Les quatre anciennes (55, 13, 16, 21) sont signalées ; les trois neuves (9, 11, 62) ne le sont pas.
 
