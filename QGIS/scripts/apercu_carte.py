@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Aperçu PNG de Vallmar2.gpkg — la boucle « je dessine dans QGIS → on regarde ».
+Aperçu PNG de la carte de travail — la boucle « je change une ligne → on regarde ».
 
 Lecture seule. N'écrit jamais dans le GeoPackage : il est ouvert en mode `ro`,
-et le PNG sort à côté. Peut tourner pendant que QGIS est ouvert.
+et le PNG sort à côté.
 
     python apercu_carte.py
+    python apercu_carte.py QGIS/data/travail/essai.gpkg    ← sur une copie
+
+🔄 2026-08-17 — il visait `Vallmar2.gpkg`, du temps où la boucle était « je
+dessine dans QGIS → on regarde ». QGIS est sorti de la chaîne et la source est
+devenue du texte, qui ne porte plus que de la géométrie nue : c'est la carte
+de TRAVAIL qui a les attributs à colorier, et elle est refaite à chaque
+passage de `chaine.py`.
 
 Coloriage des îlots, par ordre de priorité :
   1. le champ `fonction` de la couche `ilots`, s'il existe (source de vérité)
@@ -40,7 +47,8 @@ MODE_ADJ = "--adjacences" in sys.argv
 # Les attributs de rue (charge, emprise_libre_m…) colorent les traits.
 CALQUE = next((a.split("=", 1)[1] for a in sys.argv
                if a.startswith("--calque=")), None)
-GPKG = os.path.abspath(ARGS[0]) if ARGS else os.path.join(DATA, "Vallmar2.gpkg")
+GPKG = os.path.abspath(ARGS[0]) if ARGS \
+    else os.path.join(DATA, "travail", "wehrau.gpkg")
 CLASSIF = os.path.join(ICI, "classification.json")
 SORTIE = os.path.join(RENDUS, "apercu_%s%s.png"
                       % (os.path.splitext(os.path.basename(GPKG))[0].lower(),

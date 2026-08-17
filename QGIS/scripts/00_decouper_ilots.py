@@ -8,11 +8,13 @@ ligne par-dessus. Ce script le fait : tout tronçon de `routes` qui traverse
 un îlot de bord à bord le sépare en deux.
 
     python 00_decouper_ilots.py --blanc     ← calcule et affiche, n'écrit rien
-    python 00_decouper_ilots.py             ← écrit dans Vallmar2.gpkg
+    python 00_decouper_ilots.py             ← écrit dans QGIS/data/source/
 
-⚠️ C'est le SEUL script qui écrit dans la source. La chaîne 02→04c, elle, ne
-la lit que. Committer avant, et faire la passe `--blanc` d'abord : le dépôt
-est le seul retour en arrière possible sur un binaire.
+⚠️ C'est l'un des TROIS scripts qui écrivent dans la source, avec
+`00b_ilots_lisiere.py` et `tracer_chemins.py`. La chaîne 02→04c, elle, ne
+la lit que. Faire la passe `--blanc` d'abord : ce qu'on touche ici est du
+level design. La source étant du texte, `git diff` montre les îlots
+touchés et `git checkout QGIS/data/source` défait la passe.
 
 Trois opérations, dans cet ordre :
   1. les polygones aplatis (surface nulle) sont supprimés — ce sont les
@@ -28,9 +30,9 @@ exactement les lignes à changer.
 
 import math
 import os
-import sqlite3
-import struct
 import sys
+
+import carte
 
 for flux in (sys.stdout, sys.stderr):
     try:
@@ -40,7 +42,7 @@ for flux in (sys.stdout, sys.stderr):
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(ICI), "data")
-SOURCE = os.path.join(DATA, "Vallmar2.gpkg")
+SOURCE = carte.SOURCE          # QGIS/data/source/*.geojson, du texte
 SRS = 25832
 
 # ==========================================================================
@@ -66,107 +68,16 @@ AIRE_FANTOME = 1.0
 # ==========================================================================
 
 
-def gpkg_vers_wkb(blob):
-    return blob[8 + {0: 0, 1: 32, 2: 48, 3: 48, 4: 64}[(blob[3] >> 1) & 0x07]:]
+# 🔄 Retirés le 2026-08-17, quand la source est passée en texte : sept
+# fonctions de lecture et d'écriture GeoPackage — `gpkg_vers_wkb`,
+# `_lire_simple`, `lire_wkb`, `wkb_polygone`, `wkb_lignes`, `blob_gpkg`,
+# `enveloppe` — plus `brancher_fonctions_spatiales`, qui fournissait
+# ST_MinX/ST_MaxX/… aux déclencheurs d'index spatial du GeoPackage.
+# Ce script ne touche plus une seule ligne de binaire : `carte.py` lit et
+# écrit la source, et c'est le seul endroit du dépôt qui connaisse le WKB.
+# ⚠️ Ne pas en recopier une ici « pour dépanner » : deux lecteurs de
+# géométrie qui divergent, c'est le bug qu'on ne verra pas.
 
-
-def _lire_simple(buf, off):
-    """-> (liste d'anneaux/lignes, offset après). Gère Point/Line/Polygon."""
-    o = "<" if buf[off] == 1 else ">"
-    typ = struct.unpack_from(o + "I", buf, off + 1)[0] % 1000
-    off += 5
-
-    def pts(off, n):
-        out = []
-        for _ in range(n):
-            out.append(struct.unpack_from(o + "dd", buf, off))
-            off += 16
-        return out, off
-
-    if typ == 1:
-        p, off = pts(off, 1)
-        return [p], off
-    if typ == 2:
-        n, = struct.unpack_from(o + "I", buf, off)
-        p, off = pts(off + 4, n)
-        return [p], off
-    if typ == 3:
-        nr, = struct.unpack_from(o + "I", buf, off)
-        off += 4
-        anns = []
-        for _ in range(nr):
-            n, = struct.unpack_from(o + "I", buf, off)
-            p, off = pts(off + 4, n)
-            anns.append(p)
-        return anns, off
-    raise ValueError("type WKB simple inattendu : %d" % typ)
-
-
-def lire_wkb(buf):
-    """-> (liste de listes de points, type géométrique)."""
-    o = "<" if buf[0] == 1 else ">"
-    typ = struct.unpack_from(o + "I", buf, 1)[0] % 1000
-    if typ in (1, 2, 3):
-        return _lire_simple(buf, 0)[0], typ
-    if typ in (4, 5, 6):
-        ng, = struct.unpack_from(o + "I", buf, 5)
-        off = 9
-        out = []
-        for _ in range(ng):
-            parts, off = _lire_simple(buf, off)
-            out.extend(parts)
-        return out, typ
-    raise ValueError("type WKB inattendu : %d" % typ)
-
-
-def wkb_polygone(anneaux):
-    out = [struct.pack("<BII", 1, 3, len(anneaux))]
-    for a in anneaux:
-        pts = list(a)
-        if pts[0] != pts[-1]:
-            pts.append(pts[0])
-        out.append(struct.pack("<I", len(pts)))
-        for x, y in pts:
-            out.append(struct.pack("<dd", x, y))
-    return b"".join(out)
-
-
-def wkb_lignes(parties, multi):
-    """MULTILINESTRING si `multi`, LINESTRING sinon — on rend ce qu'on a lu."""
-    def une(pts):
-        out = [struct.pack("<BII", 1, 2, len(pts))]
-        for x, y in pts:
-            out.append(struct.pack("<dd", x, y))
-        return b"".join(out)
-    if not multi:
-        return une(parties[0])
-    return struct.pack("<BII", 1, 5, len(parties)) + b"".join(une(p) for p in parties)
-
-
-def blob_gpkg(wkb):
-    return struct.pack("<2sBBi", b"GP", 0, 0x01, SRS) + wkb
-
-
-def enveloppe(blob):
-    if not blob:
-        return None
-    if (blob[3] >> 1) & 0x07:
-        return struct.unpack_from("<4d", blob, 8)
-    parts, _ = lire_wkb(gpkg_vers_wkb(blob))
-    xs = [p[0] for pa in parts for p in pa]
-    ys = [p[1] for pa in parts for p in pa]
-    return (min(xs), max(xs), min(ys), max(ys))
-
-
-def brancher_fonctions_spatiales(con):
-    """Les déclencheurs d'index spatial du GeoPackage appellent ST_*.
-    SQLite seul ne les a pas : on les fournit. Ici, contrairement aux autres
-    scripts, la géométrie CHANGE — donc ces fonctions recalculent vraiment
-    l'enveloppe, et l'index spatial reste juste."""
-    con.create_function("ST_IsEmpty", 1, lambda b: 0 if b else 1)
-    for i, nom in enumerate(("ST_MinX", "ST_MaxX", "ST_MinY", "ST_MaxY")):
-        con.create_function(
-            nom, 1, (lambda k: lambda b: enveloppe(b)[k] if b else None)(i))
 
 
 # ------------------------------------------------------------------ géométrie
@@ -284,14 +195,16 @@ def traversees(ligne, anneaux):
 
 # ---------------------------------------------------------------------- lire
 
-def lire(con):
+def lire(src):
+    """La source est du TEXTE depuis le 2026-08-17 (`carte.py`). On garde
+    `src` sous la main : les entités lues portent aussi leurs attributs
+    (`hierarchy` sur les rues), et réécrire depuis les seules géométries les
+    perdrait en silence."""
     ilots, routes = {}, {}
-    for fid, geom in con.execute("SELECT fid, geom FROM ilots ORDER BY fid"):
-        parts, typ = lire_wkb(gpkg_vers_wkb(geom))
-        ilots[fid] = {"anneaux": parts, "typ": typ}
-    for fid, geom in con.execute("SELECT fid, geom FROM routes ORDER BY fid"):
-        parts, typ = lire_wkb(gpkg_vers_wkb(geom))
-        routes[fid] = {"parts": parts, "typ": typ}
+    for e in src["ilots"]:
+        ilots[e["fid"]] = {"anneaux": e["parts"], "typ": 3}
+    for e in src["routes"]:
+        routes[e["fid"]] = {"parts": e["parts"], "typ": 5 if e["multi"] else 2}
     return ilots, routes
 
 
@@ -304,12 +217,11 @@ def cadre(titre):
 
 def main():
     blanc = "--blanc" in sys.argv
-    if not os.path.exists(SOURCE):
-        raise SystemExit("introuvable : %s" % SOURCE)
+    if not os.path.isdir(SOURCE):
+        raise SystemExit("source introuvable : %s" % SOURCE)
 
-    con = sqlite3.connect(SOURCE)
-    brancher_fonctions_spatiales(con)
-    ilots, routes = lire(con)
+    src = carte.lire_source(SOURCE)
+    ilots, routes = lire(src)
 
     print("Source : %s" % os.path.basename(SOURCE))
     print("%d îlots, %d tronçons — %s"
@@ -428,24 +340,27 @@ def main():
 
     if blanc:
         print("\n[passe à blanc] rien n'a été écrit.")
-        con.close()
         return
 
-    cur = con.cursor()
-    for f in fantomes:
-        cur.execute("DELETE FROM ilots WHERE fid=?", (f,))
+    # On réécrit `src`, pas des dictionnaires reconstruits : les entités y
+    # portent leurs attributs (`hierarchy` sur les rues), qu'aucun calcul
+    # d'ici ne connaît. Repartir des seules géométries les effacerait.
+    src["ilots"] = [e for e in src["ilots"] if e["fid"] not in fantomes]
+    for e in src["ilots"]:
+        e["parts"] = ilots[e["fid"]]["anneaux"]
     for r, o in raccourcis.items():
-        cur.execute("UPDATE routes SET geom=? WHERE fid=?",
-                    (blob_gpkg(wkb_lignes(o["parts"], o["typ"] in (4, 5))), r))
+        for e in src["routes"]:
+            if e["fid"] == r:
+                e["parts"], e["multi"] = o["parts"], o["typ"] in (4, 5)
     for f, neuf, r, avant, ag, ap in coupes:
-        cur.execute("UPDATE ilots SET geom=? WHERE fid=?",
-                    (blob_gpkg(wkb_polygone(ilots[f]["anneaux"])), f))
-        cur.execute("INSERT INTO ilots (fid, geom) VALUES (?, ?)",
-                    (neuf, blob_gpkg(wkb_polygone(ilots[neuf]["anneaux"]))))
-    con.commit()
-    con.close()
-    print("\n✅ écrit dans %s" % SOURCE)
-    print("   Relancer ensuite : 02 → 03 → 04 → 04b → 04c, puis 07.")
+        src["ilots"].append({"fid": neuf, "parts": ilots[neuf]["anneaux"],
+                             "multi": False})
+
+    ecrits = carte.ecrire_source(src, SOURCE)
+    print("\n✅ écrit dans %s — %s"
+          % (SOURCE, ", ".join("%s %d" % (n, c) for n, c in sorted(ecrits.items()))))
+    print("   C'est du texte : `git diff` montre exactement les îlots touchés.")
+    print("   Relancer ensuite : python QGIS/scripts/chaine.py")
 
 
 if __name__ == "__main__":

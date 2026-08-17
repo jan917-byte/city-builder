@@ -1,4 +1,4 @@
-# CLAUDE.md — contexte permanent du projet
+# AGENTS.md — contexte permanent du projet
 
 > Ce fichier est chargé automatiquement à chaque session. Il contient ce qui **ne change pas** (le projet, mon rôle, les règles).
 > Ce qui change — l'avancement, les décisions en attente — est dans **[ETAT.md](ETAT.md)**, à lire juste après celui-ci.
@@ -22,7 +22,7 @@ City-builder PC de **transformation urbaine**. Le joueur ne construit pas, il **
 
 ```
 City Builder/
-├─ CLAUDE.md                  ← ce fichier (règles, stable)
+├─ AGENTS.md                  ← ce fichier (règles, stable)
 ├─ ETAT.md                    ← LE signet : où on en est, la prochaine action (je le mets à jour)
 │   ├─ CHANTIERS.md           ← ce qui attend : défauts connus, dette, tables de level design
 │   └─ HISTORIQUE.md          ← les sessions passées, une par entrée

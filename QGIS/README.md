@@ -5,7 +5,9 @@
 >
 > Chiffres de ce document **vérifiés le 2026-08-11** en relisant `Prototype_qualifie.gpkg` et en relançant `04 --blanc`.
 
-La ville du prototype est **Wehrau**, pas Vallmar. Le fichier source s'appelle encore `Vallmar2.gpkg` — c'est un nom d'export, pas une ville. Ne pas le renommer tant que rien ne le justifie : c'est la seule chose qui n'a jamais été touchée.
+La ville du prototype est **Wehrau**, pas Vallmar. Le nom `Vallmar2.gpkg` était un nom d'export ; il a disparu le **2026-08-17** avec le passage de la source en texte — la source s'appelle maintenant `data/source/` et la carte de travail `data/travail/wehrau.gpkg`.
+
+> 🔄 **Ce document date du 2026-08-11 et décrit une organisation qui a changé deux fois depuis.** Les sections 2, 3 et 9 sont à jour au **2026-08-17** ; les chiffres des sections 5 et 7 sont ceux du 2026-08-11 et n'ont pas été revérifiés. **QGIS ne fait plus partie de la chaîne** — le dossier garde son nom, pas sa dépendance.
 
 ---
 
@@ -21,35 +23,44 @@ Le produit final n'est pas une carte. C'est **un GeoPackage dont chaque colonne 
 QGIS/
 ├─ README.md                     ← ce fichier
 ├─ data/
-│   ├─ Vallmar2.gpkg             🔒 la SOURCE — deux scripts seulement y écrivent (184 Ko)
-│   └─ Prototype_qualifie.gpkg   ⚙️ le fichier de travail, régénérable  (217 Ko)
+│   ├─ LISEZ-MOI.md              ← la règle des trois dossiers
+│   ├─ source/                   ✅ LA SOURCE, en GeoJSON — le SEUL suivi par git (66 Ko)
+│   │   ├─ ilots.geojson             70 polygones
+│   │   ├─ routes.geojson            179 lignes + `hierarchy`
+│   │   └─ chemins.geojson           les venelles (facultatif)
+│   ├─ travail/                  ❌ gitignoré — `wehrau.gpkg` et les copies d'essai
+│   └─ archive/                  ❌ gitignoré — les .gpkg d'avant le 2026-08-17
 ├─ scripts/
-│   ├─ 01_champs_et_valuemaps.py    (console QGIS — optionnel, hors chaîne)
+│   ├─ carte.py                     📖 lit et écrit la SOURCE — le seul qui connaisse le WKB
+│   ├─ chaine.py                    ▶️ LA COMMANDE : 02 → 03 → 04 → 04b → 04c
+│   ├─ 00_decouper_ilots.py         ✏️ écrit dans la source
+│   ├─ 00b_ilots_lisiere.py         ✏️ écrit dans la source
+│   ├─ 01_champs_et_valuemaps.py    (vestige QGIS — hors chaîne, plus lancé)
 │   ├─ 02_qualifier.py              ① le level design
 │   ├─ 03_adjacences.py             ② le graphe
 │   ├─ 04_deriver_attributs.py      ③ les attributs dérivés
 │   ├─ apercu_carte.py              👁 la boucle de contrôle (lecture seule)
 │   ├─ apercu_parcelles.py          👁 le parcellaire en PNG, avant/après
-│   ├─ tracer_chemins.py            🚶 propose les venelles → écrit dans la SOURCE
+│   ├─ tracer_chemins.py            ✏️ propose les venelles → écrit dans la SOURCE
 │   └─ classification.json          (vestige — voir §8)
 └─ rendus/                        PNG régénérables, **gitignoré** (absent d'un clone frais)
 ```
 
-Les deux `.gpkg` sont versionnés. Ce sont des **binaires : git ne les fusionne pas.** Le travail QGIS se fait sur une machine à la fois. → `CLAUDE.md` §5 bis
+🔴 **Aucun `.gpkg` n'est versionné.** La source est du texte que git fusionne ligne à ligne ; tout GeoPackage est un dérivé que `chaine.py` refait en 0,7 s. C'est ce qui a supprimé la règle « la carte ne s'écrit que sous Windows ». → `data/LISEZ-MOI.md` · `CLAUDE.md` §5
 
-🔴 **Deux scripts écrivent dans la SOURCE**, et il faut les traiter à part : `00_decouper_ilots.py` (il coupe les îlots là où l'auteur a tracé une rue) et `tracer_chemins.py` (il pose la couche `chemins`). C'est voulu : `02` recopie la source par-dessus le fichier de travail, donc **une couche dessinée à la main ne survit que dans la source**. Mêmes précautions pour les deux — committer avant, passe `--blanc` d'abord, et `tracer_chemins` refuse en plus d'écraser une couche existante sans `--refaire`.
+🔴 **Trois scripts écrivent dans la SOURCE**, et il faut les traiter à part : `00_decouper_ilots.py` (il coupe les îlots là où l'auteur a tracé une rue), `00b_ilots_lisiere.py` (il pose les rubans de lisière) et `tracer_chemins.py` (il pose la couche `chemins`). C'est voulu : `02` **rebâtit** la carte de travail depuis la source, donc **un tracé fait à la main ne survit que dans la source**. Passe `--blanc` d'abord pour les trois — ce qu'ils touchent est du level design — et `tracer_chemins` refuse en plus d'écraser une couche existante sans `--refaire`.
 
 ## 3. Le pipeline
 
 ```
-   ┌──────────────────┐
-   │ Vallmar2.gpkg    │  ilots(69) + routes(178), EPSG:25832, aucun attribut
-   │ 🔒 lecture seule │  sauf `hierarchy` (l'export d'origine)
-   └────────┬─────────┘
-            │  02_qualifier.py   ← COPIE le fichier, puis écrit
+   ┌────────────────────────┐
+   │ data/source/*.geojson  │  ilots(70) + routes(179), EPSG:25832
+   │ ✅ TEXTE, suivi par git │  aucun attribut sauf `hierarchy`
+   └────────┬───────────────┘
+            │  02_qualifier.py   ← BÂTIT un GeoPackage neuf, puis écrit
             ▼
    ┌──────────────────────────────────────────────────────┐
-   │ Prototype_qualifie.gpkg                              │
+   │ data/travail/wehrau.gpkg   ❌ gitignoré, jetable      │
    │   ilots   + fonction, sous_type, exception, surface  │
    │   routes  + hierarchie, largeur_m                    │
    └────────┬─────────────────────────────────────────────┘
@@ -70,19 +81,25 @@ Les deux `.gpkg` sont versionnés. Ce sont des **binaires : git ne les fusionne 
  PNG légendé   HTML 22 calq.  Classeur/*.csv   Godot/data/wehrau.json
 ```
 
-### ⚠️ La règle de la chaîne
+### ⚠️ La règle de la chaîne — maintenant tenue par le code
 
-**02 → 03 → 04 → 04b, dans cet ordre, sans en sauter.** `02_qualifier.py` fait un `shutil.copy2` de la source : il **écrase** `Prototype_qualifie.gpkg` et détruit tout ce que 03, 04 et 04b y avaient écrit — **y compris la couche `emprises`**. Relancer 02 seul laisse un fichier amputé de la table `adjacences`, et 04 refuse alors de démarrer.
+```bash
+python QGIS/scripts/chaine.py
+```
 
-⚠️ **04c vient après 04b**, et la chaîne complète est donc **02 → 03 → 04 → 04b → 04c**.
+**02 → 03 → 04 → 04b → 04c, dans cet ordre, sans en sauter.** `02_qualifier.py` **refait la carte de travail de zéro** et détruit tout ce que 03, 04, 04b et 04c y avaient écrit — **y compris les couches `emprises` et `parcelles`**. Relancer 02 seul laisse un fichier amputé de la table `adjacences`, et 04 refuse alors de démarrer.
 
-Ce qu'on peut relancer seul, sans risque : **03**, **04**, **04b**, **04c**, et tous les lecteurs (`apercu_carte`, `05`, `06`, `07` — lecture seule, tournent même avec QGIS ouvert sur le fichier).
+C'est exactement ce que `chaine.py` empêche d'oublier : il lance les cinq étapes dans l'ordre et **s'arrête net** à la première qui échoue, au lieu de laisser les suivantes lire une carte à moitié écrite et sortir des chiffres qui ont l'air bons. `--godot` ajoute `07`, `--depuis 04` reprend au milieu.
+
+Ce qu'on peut relancer seul, sans risque : **03**, **04**, **04b**, **04c**, et tous les lecteurs (`apercu_carte`, `05`, `06`, `07`).
+
+🔄 **La passe `--blanc` n'est plus nécessaire dans la chaîne.** Elle existait parce que ces scripts écrivaient dans un GeoPackage suivi par git, qu'une écriture ratée salissait sans recours. La carte de travail est maintenant dérivée et jetable : la casser ne coûte qu'un relancement de 0,7 s. `--blanc` reste indispensable là où il protège du **level design** — `00`, `00b`, `tracer_chemins`.
 
 ### 🚶 La couche `chemins` — les venelles dessinées DANS les îlots
 
-Une couche **facultative** de `Vallmar2.gpkg` : des LINESTRING, chacune avec son `fid_ilot` et sa `largeur_m` (3 à 5 m). `04c_parcelles.py` retire le couloir de l'emprise **avant** le peigne, et l'îlot part en deux morceaux qui gardent le **même numéro** — un seul îlot, une seule décision de jeu. Le couloir ressort en parcelle d'origine `chemin`, que `07` pave au sol. Une venelle **n'est pas un tronçon de route** : elle n'entre ni dans `03`, ni dans le trafic, ni dans la hiérarchie.
+Une couche **facultative** de la source (`data/source/chemins.geojson`) : des LINESTRING, chacune avec son `fid_ilot` et sa `largeur_m` (3 à 5 m). `04c_parcelles.py` retire le couloir de l'emprise **avant** le peigne, et l'îlot part en deux morceaux qui gardent le **même numéro** — un seul îlot, une seule décision de jeu. Le couloir ressort en parcelle d'origine `chemin`, que `07` pave au sol. Une venelle **n'est pas un tronçon de route** : elle n'entre ni dans `03`, ni dans le trafic, ni dans la hiérarchie.
 
-`tracer_chemins.py --blanc` propose un tracé par **pli** d'îlot (sommet rentrant) et n'en garde un que s'il fait monter la **rectangularité** des parcelles sans entamer un cœur d'îlot. C'est une proposition : le tracé se corrige à la main dans QGIS. → `Décisions arrêtées` 67 · 67b · 67c
+`tracer_chemins.py --blanc` propose un tracé par **pli** d'îlot (sommet rentrant) et n'en garde un que s'il fait monter la **rectangularité** des parcelles sans entamer un cœur d'îlot. C'est une proposition : le tracé se corrige à la main **dans le fichier texte**, une venelle par ligne — supprimer celle qui tombe mal, c'est supprimer une ligne. → `Décisions arrêtées` 67 · 67b · 67c
 
 ### L'étape 6 est faite — et ce n'est pas un GeoJSON
 
@@ -230,7 +247,9 @@ Chaque script est coupé en deux par un commentaire. **Au-dessus** : ce qui se r
 
 Les quatre scripts hors console QGIS **n'importent ni GDAL, ni Shapely, ni QGIS** — seulement `sqlite3` et `struct` de la bibliothèque standard (plus Pillow pour l'aperçu). Ils lisent le WKB à la main. Conséquence directe : **la chaîne tourne sur n'importe quelle machine avec un Python nu**, sans installer QGIS, ce qui est exactement ce qu'il faut pour un dépôt qui vit sur deux machines.
 
-Le prix : ~60 lignes de lecteur WKB (`gpkg_vers_wkb`, `lire_wkb`, `enveloppe`) **dupliquées dans les quatre fichiers**. C'est assumé et ça n'a pas divergé, mais c'est le premier candidat à une factorisation si un cinquième script arrive.
+Le prix était ~60 lignes de lecteur WKB (`gpkg_vers_wkb`, `lire_wkb`, `enveloppe`) **dupliquées dans chaque fichier**, avec cette note : *« le premier candidat à une factorisation si un cinquième script arrive »*.
+
+✅ **Fait le 2026-08-17, et pas pour la raison prévue.** Ce n'est pas le nombre de scripts qui a tranché, c'est le passage de la source en texte : il fallait un endroit qui sache convertir GeoJSON ↔ WKB, et ce fut `carte.py`. Les scripts qui touchent la SOURCE (`00`, `00b`, `tracer_chemins`) n'encodent plus une seule ligne de binaire — six fonctions leur ont été retirées. Ceux qui lisent la carte de TRAVAIL gardent leur lecteur WKB local : ils lisent un GeoPackage, ce que `carte.py` ne leur fournit pas.
 
 Autre astuce partagée, moins évidente : les déclencheurs d'index spatial du GeoPackage appellent `ST_IsEmpty`, `ST_MinX`… que SQLite seul n'a pas. **Écrire le moindre attribut échoue sans elles.** Les scripts les rebranchent en Python (`brancher_fonctions_spatiales`) ; comme aucune géométrie n'est jamais modifiée, ces fonctions ne font que relire ce qui est déjà écrit.
 
@@ -276,26 +295,37 @@ Relevées en relisant le dossier le 2026-08-11. Rien n'empêche de travailler ; 
 ## 9. Mémo — les commandes
 
 ```bash
-# regarder (lecture seule, sans danger, tourne avec QGIS ouvert)
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --adjacences
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=charge
+# LA commande : refaire la carte entière depuis la source (0,7 s)
+python3 QGIS/scripts/chaine.py
+```
 
+```bash
+# la même, plus l'export vers la maquette 3D
+python3 QGIS/scripts/chaine.py --godot
+```
+
+```bash
+# regarder (lecture seule, sans danger)
+python3 QGIS/scripts/apercu_parcelles.py
+python3 QGIS/scripts/apercu_carte.py
+python3 QGIS/scripts/apercu_carte.py --adjacences
+python3 QGIS/scripts/apercu_carte.py --calque=charge
+```
+
+```bash
 # tout recalculer et tout afficher, sans rien écrire
 python3 QGIS/scripts/04_deriver_attributs.py --blanc
-
-# régénérer la carte entière — dans cet ordre, 02 écrase le fichier de travail
-python3 QGIS/scripts/02_qualifier.py && \
-python3 QGIS/scripts/03_adjacences.py && \
-python3 QGIS/scripts/04_deriver_attributs.py && \
-python3 QGIS/scripts/04b_emprises_baties.py
-
-# le retrait de voirie, sans rien écrire (contrôles + tableau des réparations)
 python3 QGIS/scripts/04b_emprises_baties.py --blanc
+```
 
-# alimenter la maquette 3D — puis ouvrir Godot/ dans Godot 4.7
-python3 QGIS/scripts/07_exporter_godot.py
+```bash
+# modifier la SOURCE — passe à blanc d'abord, c'est du level design
+python3 QGIS/scripts/00_decouper_ilots.py --blanc
+python3 QGIS/scripts/00b_ilots_lisiere.py --blanc
+python3 QGIS/scripts/tracer_chemins.py --blanc
+```
 
+```bash
 # la palette : couverture des 13 sous-types, familles, règle du sol
 python3 QGIS/scripts/palette.py
 ```

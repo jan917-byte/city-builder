@@ -30,7 +30,7 @@ décisions**. Chaque colonne répond à « quelle décision devient possible ? �
     python 04_deriver_attributs.py            # écrit
     python 04_deriver_attributs.py --blanc    # n'écrit rien, montre seulement
 
-Travaille sur `Prototype_qualifie.gpkg`. Ne touche pas à `Vallmar2.gpkg`.
+Travaille sur `QGIS/data/travail/wehrau.gpkg`. Ne touche pas à la source.
 Aucune géométrie n'est modifiée. Relançable autant de fois qu'on veut.
 """
 
@@ -54,7 +54,7 @@ BLANC = "--blanc" in sys.argv          # dry-run : calcule et affiche, n'écrit 
 # qu'apercu_carte.py : travailler sur une copie sans toucher au fichier de
 # travail. C'est la façon de relire un changement de TISSU avant de l'écrire.
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
-GPKG = _ARGS[0] if _ARGS else os.path.join(DATA, "Prototype_qualifie.gpkg")
+GPKG = _ARGS[0] if _ARGS else os.path.join(DATA, "travail", "wehrau.gpkg")
 
 # ==========================================================================
 # LE DESIGN — la table de correspondance, 13 lignes

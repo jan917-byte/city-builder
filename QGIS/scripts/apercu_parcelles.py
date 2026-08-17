@@ -74,7 +74,7 @@ def _positionnels():
 
 _ARGS = _positionnels()
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
-                                           "Prototype_qualifie.gpkg")
+                                           "travail", "wehrau.gpkg")
 
 
 AVANT = _opt("--avant")
@@ -112,6 +112,12 @@ JARDIN = (104, 142, 86)
 # une couleur de tissu (rien n'y sera bâti). Il doit se lire comme une COUPURE
 # dans l'îlot : c'est exactement ce qu'il est.
 CHEMIN = (162, 156, 146)
+# 🏠 LE BÂTIMENT — la couche `batiments` de 04d, dessinée PAR-DESSUS sa
+# parcelle. Un seul ton sombre pour tous les tissus : ce qu'on regarde ici,
+# c'est la forme et l'implantation, pas la fonction — le tissu se lit déjà sous
+# le bâtiment, à la couleur de la parcelle.
+BATI = (86, 74, 68)
+BATI_TRAIT = (48, 40, 36)
 
 
 def police(taille):
@@ -157,8 +163,19 @@ def charger(chemin):
     emprises = {}
     for fid, geom in con.execute("SELECT fid_ilot, geom FROM emprises"):
         emprises[fid] = lire_wkb(gpkg_vers_wkb(geom))[0][0]
+    # La couche `batiments` est FACULTATIVE : sans 04d, l'image sort comme
+    # avant. C'est ce qui permet de comparer une carte d'avant à une carte
+    # d'après sans que le panneau « avant » plante.
+    batiments = []
+    if con.execute("SELECT count(*) FROM sqlite_master WHERE type='table'"
+                   " AND name='batiments'").fetchone()[0]:
+        for fid_ilot, st, geom in con.execute(
+            "SELECT fid_ilot, sous_type, geom FROM batiments"
+        ):
+            for anneau in lire_wkb(gpkg_vers_wkb(geom))[0]:
+                batiments.append((fid_ilot, st, anneau))
     con.close()
-    return parcelles, emprises
+    return parcelles, emprises, batiments
 
 
 def cadre(anneaux, marge=0.04):
@@ -169,7 +186,8 @@ def cadre(anneaux, marge=0.04):
     return x0 - dx, x1 + dx, y0 - dy, y1 + dy
 
 
-def dessiner(parcelles, emprises, boite, larg, titre, sous_titre, legende=True):
+def dessiner(parcelles, emprises, batiments, boite, larg, titre, sous_titre,
+             legende=True):
     """Un panneau : les emprises en blanc dessous, les parcelles par-dessus."""
     x0, x1, y0, y1 = boite
     ech = larg / (x1 - x0)
@@ -205,6 +223,15 @@ def dessiner(parcelles, emprises, boite, larg, titre, sous_titre, legende=True):
         if fin > 1:
             d.line(forme + [forme[0]], fill=TRAIT, width=fin)
 
+    # 🏠 Les bâtiments par-dessus : on doit voir en même temps l'empreinte ET
+    # ce qui reste de la parcelle autour d'elle — c'est le couple des deux qui
+    # dit si la règle de retrait donne du tissu ou du fromage.
+    for _, st, an in batiments:
+        if len(an) < 3:
+            continue
+        f = [pt(p) for p in an]
+        d.polygon(f, fill=BATI, outline=BATI_TRAIT)
+
     d.text((16, 14), titre, fill=(40, 36, 32), font=police(23))
     d.text((16, 46), sous_titre, fill=(110, 100, 92), font=police(16))
 
@@ -235,16 +262,20 @@ def dessiner(parcelles, emprises, boite, larg, titre, sous_titre, legende=True):
         queue = ["__jardin__"]
         if any(o == "chemin" for _, _, o, _, _ in parcelles):
             queue.append("__chemin__")
+        if batiments:
+            queue.append("__bati__")
         f = police(15)
         y = bandeau + haut + 18
         x = 16
         for st in ordre + queue:
             jardin = st == "__jardin__"
             chemin = st == "__chemin__"
+            bati = st == "__bati__"
             coul = (JARDIN if jardin else CHEMIN if chemin
-                    else COULEUR.get(st, DEFAUT))
+                    else BATI if bati else COULEUR.get(st, DEFAUT))
             mot = ("sans façade : jardin" if jardin
-                   else "chemin" if chemin else st.replace("_", " "))
+                   else "chemin" if chemin
+                   else "bâtiment" if bati else st.replace("_", " "))
             if x + 26 + 9 * len(mot) > larg - 16:   # on passe à la ligne
                 break
             d.rectangle([x, y, x + 20, y + 15], fill=coul, outline=TRAIT)
@@ -253,7 +284,7 @@ def dessiner(parcelles, emprises, boite, larg, titre, sous_titre, legende=True):
     return img
 
 
-def stats(parcelles):
+def stats(parcelles, batiments=()):
     # Le chemin n'est pas une parcelle : il se compte à part, sinon il gonfle
     # le total et fait baisser la part de sans-façade sans que rien ait bougé.
     ch = sum(1 for x in parcelles if x[2] == "chemin")
@@ -262,9 +293,10 @@ def stats(parcelles):
     if not n:
         return "aucune parcelle"
     sans = sum(1 for x in lot if x[4] < 0.5)
-    return ("%d parcelles · %d sur rue · %d sans façade (%.0f %%), en vert%s"
+    return ("%d parcelles · %d sur rue · %d sans façade (%.0f %%), en vert%s%s"
             % (n, n - sans, sans, 100.0 * sans / n,
-               " · %d chemin(s)" % ch if ch else ""))
+               " · %d chemin(s)" % ch if ch else "",
+               " · %d bâtiments" % len(batiments) if batiments else ""))
 
 
 def main():
@@ -272,20 +304,21 @@ def main():
         raise SystemExit("introuvable : %s" % GPKG)
     os.makedirs(SORTIE, exist_ok=True)
 
-    apres, emprises = charger(GPKG)
-    versions = [("après", apres, emprises)]
+    apres, emprises, batis = charger(GPKG)
+    versions = [("après", apres, emprises, batis)]
     if AVANT:
         if not os.path.exists(AVANT):
             raise SystemExit("introuvable : %s" % AVANT)
-        av, emp_av = charger(AVANT)
-        versions.insert(0, ("avant", av, emp_av))
+        av, emp_av, bat_av = charger(AVANT)
+        versions.insert(0, ("avant", av, emp_av, bat_av))
 
     boite = cadre([an for _, _, _, an, _ in apres])
     ecrits = []
 
     # ---------------------------------------------------- la ville entière
-    panneaux = [dessiner(p, e, boite, 1500, "Wehrau — le parcellaire (%s)" % nom,
-                         stats(p)) for nom, p, e in versions]
+    panneaux = [dessiner(p, e, b, boite, 1500,
+                         "Wehrau — le parcellaire (%s)" % nom, stats(p, b))
+                for nom, p, e, b in versions]
     ecrits.append(coller(panneaux, "parcelles_ville"))
 
     # ------------------------------------------------------- les gros plans
@@ -309,12 +342,13 @@ def main():
             continue
         b = cadre([emprises[fid]], marge=0.08)
         panneaux = []
-        for nom, p, e in versions:
+        for nom, p, e, bat in versions:
             sel = [x for x in p if x[0] == fid]
+            selb = [x for x in bat if x[0] == fid]
             panneaux.append(dessiner(
-                sel, {fid: e[fid]} if fid in e else {}, b, 900,
+                sel, {fid: e[fid]} if fid in e else {}, selb, b, 900,
                 "îlot %d — %s (%s)" % (fid, sel[0][1] if sel else "?", nom),
-                stats(sel)))
+                stats(sel, selb)))
         ecrits.append(coller(panneaux, "parcelles_ilot_%d" % fid))
 
     for c in ecrits:

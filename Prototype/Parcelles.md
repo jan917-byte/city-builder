@@ -3,9 +3,9 @@
 > **L'étape en cours.** Le point dur du pipeline : ce qui sépare 70 pâtés pleins d'une ville où on croirait habiter.
 > La doctrine — *pourquoi* la parcelle est une partition, ce qu'on ne fera jamais — est dans le vault : `Technique/Génération procédurale.md`. **Ici, le chantier seulement.**
 
-**Dernière mesure : 2026-08-15** (session 22, sur le Mac, en `--blanc` et sur copie dans `bac/`)
+**Dernière mesure : 2026-08-17** (session 25, chaîne complète jusqu'à l'export Godot)
 
-🔴 **LA CARTE DU DÉPÔT EST PLUS VIEILLE QUE LE CODE.** `Prototype_qualifie.gpkg` a été écrit au commit `18a6b4c`, c'est-à-dire **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond. Tous les chiffres de la section 2 ci-dessous sont ceux du **code d'aujourd'hui**, mesurés sur une copie dans `bac/` ; la couche `parcelles` du vrai `.gpkg`, elle, montre encore l'ancienne découpe. **Rien n'est acquis tant que `04c` n'a pas été relancé sous Windows.**
+✅ **LA CARTE NE PEUT PLUS ÊTRE PLUS VIEILLE QUE LE CODE** (2026-08-17). Elle l'était : `Prototype_qualifie.gpkg` avait été écrit au commit `18a6b4c`, **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond — et une session entière est passée à décrire un défaut déjà corrigé. Ce qui a fermé le piège : le `.gpkg` n'est plus versionné, et `02` le **rebâtit depuis la source** à chaque passage de `chaine.py` (0,7 s). Les chiffres de la section 2 sont mesurés sur la carte relancée le 2026-08-17.
 
 ---
 
@@ -24,10 +24,10 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 
 | | code d'aujourd'hui | carte du dépôt (périmée) |
 |---|---|---|
-| parcelles | **927**, dont **912 sur rue** — plus **7 chemins** | 1 096, dont 987 sur rue |
+| parcelles | **927**, dont **912 sur rue** — plus **6 chemins** | 1 096, dont 987 sur rue |
 | cœurs d'îlot | 13 îlots, 0,86 ha, en 15 morceaux **d'un seul tenant** (67c · 67d) | 102 morceaux redécoupés |
 | reliquat de rue sans façade | **0** — il n'y a plus de déchet | 7 |
-| réunions d'éclats | 112, **aucun ne survit** | 48 |
+| réunions d'éclats | 121, **aucun ne survit** | 48 |
 | coupes effacées (deux biseaux → un rectangle) | **2**, îlots 13 et 33 | — |
 | partition | **100,00 %** sur chacun des 54 îlots, écart max 8,1·10⁻⁷ | idem |
 
@@ -42,7 +42,132 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 | `pavillonnaire` | 1,87 | 2,07 | ✅ |
 | `front_commercant` | 1,48 | 1,64 | ✅ |
 
-**La rectangularité** — aire ÷ aire du rectangle englobant, le nombre qui juge les chemins (67b) : **0,83 en moyenne** avant venelle, et de 0,84 à 0,91 sur les sept îlots qui en portent une.
+**La rectangularité** — aire ÷ aire du rectangle englobant, le nombre qui juge les chemins (67b) : **0,83 en moyenne** avant venelle, et de 0,84 à 0,91 sur les six îlots qui en portent une.
+
+## 2 nonies. 🕳️ L'encoche du bâtiment — corrigé le 2026-08-17 (2)
+
+**Ce que l'auteur a vu**, sur les mêmes îlots, avec le contour rouge par-dessus l'image : *« l'îlot 40 a encore des parcelles bizarres avec des formes de bâtiment pas réalistes, et l'îlot 41 a des coins encore à corriger »*.
+
+C'est la suite annoncée à la fin du §2 octies — « des doigts de cour qui rentrent dans la masse, et de petits ressauts en escalier ; ça demanderait une **ouverture morphologique**, pas un seuil de plus ». Elle est écrite, du côté du bâtiment.
+
+**Le critère est le NOMBRE de décrochements, pas une largeur.** Mesuré avant d'écrire la règle, sur les 701 empreintes :
+
+| sommets rentrants | empreintes | ce que c'est |
+|---|---|---|
+| 0 | 542 | la barre, le rectangle |
+| **1** | 131 | **l'équerre** : immeuble d'angle, maison + aile arrière — voulues |
+| 2 | 26 | l'escalier, le U |
+| 3 | 2 | le C |
+
+🔴 **Et un seuil de largeur ne sait pas les séparer**, c'est mesuré : rallumer l'aile arrière fait passer les poches à bouche ≤ 8 m de 14 à 57. La bouche d'une équerre juste et celle d'un ressaut font la même largeur ; c'est leur **nombre** qui diffère. Une empreinte a donc droit à **un** décrochement, jamais deux — et on referme **la plus petite poche d'abord**, parce que sur une parcelle d'angle la grande poche est la cour que l'équerre entoure, et la petite est la dent qui pend dedans.
+
+**Deux règles, dans deux fonctions.**
+
+- 🏚️ **L'aile arrière est enfin vérifiée adossée** (`aile_arriere`). Sa docstring promettait « adossée à une limite LATÉRALE et jamais posée au milieu » depuis le premier jour — rien ne le contrôlait. L'aile se pose à un **bout de la cour** mesuré le long de la façade ; sur une parcelle de rangée ce bout est bien la limite mitoyenne, mais sur une parcelle **d'angle**, dont le bâtiment est déjà la réunion de deux bandes, c'est le mur de l'autre bande. On essaie donc les deux bouts, le tiré d'abord, et on ne garde que celui qui pose vraiment une joue sur la limite de la parcelle (`AILE_ADOS` 0,15).
+- 🕳️ **L'encoche se referme** (`fermer_encoches`), **après l'aile et pas avant** — l'aile fabrique volontairement un décrochement, donc juger la forme avant elle ne verrait pas l'escalier qu'elle produit sur une parcelle d'angle.
+
+🔴 **Le piège qui a coûté la moitié de la mise au point** : la corde qui referme une poche a ses deux bouts **sur la limite de parcelle** (le retrait latéral vaut 0 en mitoyen). Testée telle quelle, elle tombe du mauvais côté du test de parité et **toutes** les encoches se refusaient — 12 refermées au lieu de 52. On teste donc des points décalés de 10 cm **vers l'intérieur de la poche**.
+
+**Ce que ça donne, mesuré :**
+
+| | avant | après |
+|---|---|---|
+| empreintes à **deux** décrochements ou plus | 28 | **15** |
+| … dont à trois (le C) | 2 | **0** |
+| encoches refermées | — | **52**, sur 52 bâtiments |
+| bâtiments hors de leur parcelle (R0) | 0 | **0** |
+| façades reculées (R2 bis) | 16 | **16** — inchangé |
+| emprises · cour du cœur ancien | 0,76 · 0,56 · 0,81 · 24 % | **inchangées** |
+| surface de toit | 9,00 ha | **9,02 ha** |
+
+⚠️ **Les 15 qui restent** sont refusées par `ENCOCHE_AIRE_MAX` (45 m²) : leur poche est plus grande que ça, donc on ne sait pas encore dire si c'est une encoche ou la cour. Îlots 13, 28, 29, 30, 40, 43, 50, 58, 62, 66.
+
+🔴 **Et l'îlot 40 n'est réparé qu'à moitié — ce qu'il reste est dans la PARCELLE, pas dans le bâtiment.** Dans le bout sud-est que l'auteur a entouré : la parcelle **435** sort en dard (116 m², une flèche), la **443** en lanière (89 m² pour 2,0 m de façade au bout), et la **438** porte deux petits replis hérités de la découpe. Mesuré : **118 parcelles de rue sur 809 ont au moins un sommet rentrant**, et le compte ne bouge pas quand on éteint la soudure des coins (119 → 118) — **ce n'est donc pas la soudure, c'est le peigne**. → [CHANTIERS.md](CHANTIERS.md)
+
+## 2 octies. 🏢 Le coin d'îlot — corrigé le 2026-08-17
+
+**Ce que l'auteur a vu**, sur les îlots 40, 41 et 59, et il l'a dessiné trois fois par-dessus l'image : *« j'aimerais bien que les coins ressemblent à l'emprise du bâtiment que j'ai dessiné. Limite, tu peux fusionner plusieurs parcelles de coin (quitte à ce qu'elles soient un peu grandes) pour que les bâtiments puissent avoir cette forme. Sinon le reste fonctionne plutôt bien, c'est surtout les coins d'îlots que je trouve encore problématiques. »*
+
+Le tracé rouge disait la même chose aux trois endroits : **une masse continue qui tourne la rue**, au lieu de deux bouts de mur et d'un trou entre eux.
+
+**Deux causes, une par script, et il fallait les deux.**
+
+| | Où | Ce que c'était |
+|---|---|---|
+| ① **le coin n'a qu'un bras** | `04c` | la rue la plus longue est servie la première et prend le coin (le débordement de `_bande`). La parcelle du coin a donc une façade normale sur la rue longue et un simple **flanc** sur la rue courte. Mesuré sur les 163 coins de rue des tissus mitoyens : façade forte 16,2 m en médiane, **façade faible 7,4 m**, et 34 coins sous la moitié de la consigne du tissu |
+| ② **le bâtiment sort en C** | `04d` | la réunion des deux bandes laisse derrière elle un coin dont **la pointe vise le coin de rue**. Le bâtiment en fait le tour : une cour creusée en plein milieu de la masse au lieu d'être derrière elle. C'est exactement la forme que le tracé rouge remplace |
+
+**Les deux règles.**
+
+- 🏢 **La parcelle d'angle** (`souder_les_angles`, quatrième passe de `04c`) — la parcelle du coin absorbe sa voisine **du côté faible**, tant que son bras court n'atteint pas 1,5 façade. Le geste est celui de `recoller_rectangles` — `fusionner`, donc la partition (61) ne peut pas tomber — mais le critère est l'inverse : là on efface une coupe parasite, ici on **assume une parcelle plus grande** parce que le coin en demande une.
+  - 🔴 **Trois garde-fous, et sans eux la règle dérive en « le coin avale la rangée »** : on ne réunit que vers la rue faible (une voisine sans façade sur cette rue-là est écartée d'office) · aucun bras au-delà de 2,6 façades · aucune parcelle au-delà de 2,2 fois l'aire visée du tissu. Mesuré sans le plafond d'aire : l'îlot 41 tombait à 9 parcelles dont deux de 460 et 630 m², un front de rue entier par parcelle.
+  - 🔴 **Un coin n'est pas toujours un sommet**, et c'est la moitié des coins de Wehrau : beaucoup sont **biseautés**, deux sommets séparés par un pan coupé de deux ou trois mètres. Pris sommet par sommet, un biseau donne deux virages de 15°, donc aucun angle, donc aucun coin — la pointe de l'îlot 59 et le nord-ouest de l'îlot 40 passaient à travers. On raisonne donc sur les arêtes assez longues pour porter une rue, et le biseau reste **au milieu** du coin. 163 coins deviennent 173.
+- 🕳️ **Une cour n'est pas un trou** (`bande_sur_rue`, dans `04d`) — une tranche d'arrière **enfermée par le bâtiment** repart au bâtiment. Le partage se lit sur l'**ouverture** : la part du contour de la tranche qui est du bord de parcelle et non du mur. Une cour de fond est bordée par le fond et les deux côtés (0,5 et plus) ; une poche entre deux ailes n'a qu'un côté (0,25 et moins). **152 poches comblées.**
+
+**Ce que ça donne, mesuré :**
+
+| | avant | après |
+|---|---|---|
+| coins dont les **deux** bras tiennent la consigne | 48 sur 163 | **122** |
+| coins sous la moitié de la consigne | 34 | **16** |
+| façade faible d'un coin, médiane | 7,4 m | **12,6 m** |
+| aire de la parcelle d'angle, médiane | 148 m² | **278 m²** |
+| bâtiments à **trois** coins rentrants ou plus (le C) | 7 | **2** |
+| parcelles · dont sur rue | 927 · 912 | **809 · 794** |
+| bâtiments · surface de toit | 810 · 8,86 ha | **701 · 9,00 ha** |
+| emprise cœur ancien · maisons de ville · front commerçant | 0,76 · 0,56 · 0,81 | **0,76 · 0,56 · 0,82** — inchangées |
+| cour en cœur ancien | 24 % | **24 %** |
+| bâtiments hors de leur parcelle (R0) | 0 | **0** |
+| façades reculées de leur rue (R2 bis) | 19 | **16** |
+| partition (61) | 100,00 % | **100,00 %**, écart max 7,9·10⁻⁷ |
+
+🔴 **Le nombre de parcelles baisse de 118, et c'est le prix affiché de la règle** — une réunion par coin soudé, 118 sur 36 îlots. L'auteur l'a autorisé dans la demande (« quitte à ce qu'elles soient un peu grandes ») et la mémoire du projet le redit : *le nombre de maisons n'est jamais un critère*. Le pavillonnaire n'est pas touché — une maison détachée ne tourne pas un coin de rue.
+
+**Trois choses essayées et retirées, à ne pas refaire :**
+
+1. ❌ **Un seuil de largeur de cour seul** (« sous 3 m ce n'est plus une cour »). Mesuré : **434 cours sur 701** tombaient dessous — la cour médiane du cœur ancien fait 22 m² derrière une parcelle de 9,5 m, donc 2,3 m de profondeur. Le seuil annulait la correction de la veille en une ligne. Il ne sert qu'**avec** un critère d'ouverture (le « doigt » : étroit **et** à moitié bordé de mur).
+2. ❌ **Recoller les tranches d'arrière avant de les juger.** C'est pourtant l'unité qui semble juste — sauf qu'une tranche est une région de l'arrangement des demi-plans, donc soit derrière le bâtiment, soit dedans. Recollées, la poche du coin fusionne avec la cour de fond, l'ouverture repasse au-dessus du seuil, et **le C de l'îlot 40 revient tel quel**.
+3. ❌ **Combler une poche sans vérifier qu'elle recolle.** `fusionner` renonce quand le bord commun n'est pas contigu, et le morceau ressortait alors en **second bâtiment posé dans la cour** — cinq parcelles comptées « traversantes » sans l'être.
+
+⚠️ **Ce qui reste, et que l'auteur a entouré sur l'îlot 41 :** des **doigts** de cour qui rentrent encore dans la masse, et de petits ressauts en escalier. Le critère du doigt en attrape une partie ; le reste demanderait une **ouverture morphologique** de la cour, pas un seuil de plus.
+
+## 2 septies. 🏠 Le bâtiment n'est plus la parcelle — corrigé le 2026-08-17
+
+**Ce que l'auteur a vu, sur `parcelles_ilot_14.png` :** *« les bâtiments ressemblent trop aux parcelles »* — des corps très profonds, des trapèzes, aucun jardin, aucune cour, aucun arrière. Et sur les deux emprises supprimées de ce même îlot : *« ce ne sont pas vraiment des cours, ce sont simplement des parcelles soudainement vides »*, une grande brèche en L au lieu d'une respiration.
+
+**La cause était dans la table `TISSU` de `04d`, pas dans la géométrie.** Le cœur ancien et les maisons de ville avaient `profondeur = None` — « aucune règle de profondeur, l'empreinte EST la parcelle ». Résultat mesuré : le cœur ancien couvrait **0,96** de son terrain, le front commerçant **0,86**.
+
+Cette règle venait d'une demande juste — les maisons de ville ont une profondeur variable, et une profondeur comptée depuis **une seule** façade tranchait en biais les parcelles d'angle. Mais le remède avait **supprimé la profondeur au lieu de réparer le coin**.
+
+**La correction, en une phrase :** le bâtiment est une **bande mesurée depuis chaque limite sur rue**, d'une profondeur donnée par le tissu ; tout ce qui reste derrière est cour ou jardin.
+
+| | avant | après | visé (auteur) |
+|---|---|---|---|
+| emprise `coeur_ancien` | 0,96 | **0,76** | 55–80 % |
+| emprise `maisons_de_ville` | 0,65 | **0,56** | 40–65 % |
+| emprise `front_commercant` | 0,86 | **0,81** | 60–85 % |
+| emprise `pavillonnaire` | 0,21 | **0,20** | 20–35 % |
+| **cour** en cœur ancien | **4 %** | **24 %** | 15–30 % |
+| bâtiments sortant de leur parcelle (R0) | 0 | **0** | 0 |
+| façades reculées de leur rue (R2 bis) | 22, jusqu'à 11,7 m | **19, jusqu'à 7,7 m** | 0 |
+| surface de toit | 10,12 ha | **8,86 ha** | — |
+
+**Le coin est réparé sans supprimer la profondeur** : la bande de chaque rue est un demi-plan, le bâtiment est leur **réunion**. Une parcelle d'angle porte donc un immeuble en L qui suit ses deux rues, comme un immeuble d'angle réel. Le calcul ne demande aucune bibliothèque géométrique : la réunion des bandes est le complément de l'**intersection** des arrières, et `04c._soustraire_convexe` — écrit pour les venelles — sait déjà retirer une intersection de demi-plans.
+
+🔴 **Ce qui a été pris pour un défaut et qui était la bonne réponse : une parcelle peut porter DEUX bâtiments.** Sur 37 parcelles la bande sort en deux morceaux qui ne se touchent nulle part (`bord_partage` = 0, vérifié). Ce sont les parcelles **traversantes** — une rue devant, une rue derrière — et deux bâtiments y sont juste : une maison sur chaque rue, le jardin entre les deux. La première version n'en gardait que le plus grand et jetait jusqu'à 87 m², ce qui reculait la façade de l'autre rue de toute la profondeur du jardin. C'était R2 bis, réintroduit par sa propre correction.
+
+**Les trois autres points de la même relecture :**
+
+- ✂️ **La pointe repart au jardin** — *« les pointes et angles aigus sont presque toujours bâtis. Or dans la réalité ces endroits deviennent souvent un jardinet, une cour, un passage. »* Une parcelle dont l'angle le plus aigu passe sous **30°** n'est plus bâtie, sauf une sur six gardée comme exception remarquable : **18 rendues au jardin, 7 gardées**. C'est aussi la réponse au point 4 de l'îlot 59, « traiter la pointe gauche comme un jardin ».
+- 🏚️ **L'aile arrière** — 20 à 35 % demandés, **81 posées**. 🔴 Elle se **paye sur la profondeur de la bande** au lieu de s'y ajouter : posée en plus, elle n'entrait jamais dans la cour (22 m² en médiane) et, quand elle entrait, elle poussait l'emprise au-dessus du plafond que le rabot rendait aussitôt en raccourcissant **tout** le bâtiment. Même surface bâtie, cour en L au lieu de cour en bande — ce qui est exactement la demande, « éviter une cour trop régulière ».
+- 🌿 **Les 15 parcelles sans façade** — mesuré avant d'écrire quoi que ce soit, et ça a annulé le travail prévu : ce sont **exactement les 15 cœurs d'îlot**. Aucune parcelle n'est enclavée par accident. Elles étaient donc déjà une catégorie assumée ; ce qui les faisait *lire* comme un résidu était leur **forme**, et c'est la règle de la pointe qui y répond.
+
+⚠️ **Deux réserves à porter au regard de l'auteur.**
+
+1. **La cour intérieure existe mais elle n'est pas commune.** Chaque parcelle garde sa propre tranche d'arrière, donc le cœur de l'îlot 14 sort en couloir sinueux plutôt qu'en cour unique. Aligner les fonds de bâti d'une même rangée est un travail à part — et il tire dans le sens inverse des ailes arrière, qui existent pour irrégulariser. À trancher devant l'image.
+2. **Le passage étroit de la rue vers la cour n'est pas fait** — c'est une venelle, donc `tracer_chemins.py`, donc du level design qui appartient à l'auteur.
+
+🔴 **ET LE PLUS IMPORTANT : LA 3D NE MONTRE RIEN DE TOUT ÇA.** `04d` manquait à `chaine.py` — il l'annonçait dans son propre en-tête sans y être — donc la carte de travail n'avait aucune couche `batiments` et les aperçus sortaient sans bâtiment. C'est réparé. Mais **`07_exporter_godot.py` garde son propre générateur** : sa table `BATI`, et `04b.retracter` pour l'offset, qui est la cause des « 44 bâtiments qui débordent ». Deux règles vivent donc en parallèle — celle-ci décide des **aperçus PNG**, celle de `07` décide de la **maquette Godot**, et les deux chiffres de toit ne peuvent pas coïncider (8,9 ha ici, 12,1 ha annoncés par `07`). Le branchement est écrit dans l'en-tête de `04d` ; il demande Godot sous la main, donc il ne se fait pas à l'aveugle depuis le Mac.
 
 ## 2 bis. Ce que l'auteur a vu sur l'image, le 2026-08-14
 
@@ -155,26 +280,19 @@ L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux image
 
 ## 4. Ce qui reste, dans l'ordre
 
-1. 🔴 **Sous Windows, dans cet ordre : `tracer_chemins.py`, puis `04c_parcelles.py`, puis `07_exporter_godot.py`.** Passe `--blanc` avant chaque écriture. `tracer_chemins` écrit dans **`Vallmar2.gpkg`** — donc il faut ensuite **relancer la chaîne complète 02 → 03 → 04 → 04b → 04c**, puisque `02` recopie la source. Ce qu'il faut lire ensuite :
-   - **les 7 venelles** sur 22, 24, 26, 38, 40, 44, 63 — au pli, courtes, et aucun cœur entamé (§4 bis) ;
-   - **les îlots 64 et 69 coupés au milieu** — le défaut n°1 de l'auteur, et il tombe tout seul ;
-   - **l'îlot 32 en deux parcelles** au lieu d'un anneau autour d'un cœur vide, et **deux barres posées au milieu** ;
-   - **le bout des îlots 63 et 26 découpé dans le sens des rangées**, plus en dalles couchées en travers (§2 quinquies) ;
-   - **l'îlot 13 sans sa coupe en diagonale** — deux biseaux y redeviennent un rectangle (§2 sexies) ;
-   - **912 parcelles sur rue et zéro enclavée** là où l'ancienne découpe en donnait 705 ;
-   - **les cœurs d'îlot d'un seul tenant** — plus de damier à l'intérieur d'une cour (67c) ;
-   - **les deux défauts ci-dessous devraient reculer sans qu'on les vise** — des parcelles plus rectangulaires font des empreintes plus rectangulaires. À vérifier, pas à promettre.
-2. 👁️ **Juger les parcelles triangulaires en 3D, pas sur la carte** (§6 bis). Le mécanisme qui les supprime existe et il est éteint, parce qu'il coûte 14 % des maisons. La question à trancher devant l'image : est-ce qu'une parcelle en pointe donne une **maison** en pointe, alors que `07` coupe déjà la pointe des bâtiments ?
-3. **Regarder le résultat en 3D**, puis les trois défauts imprimés à chaque export :
+✅ **Les venelles sont dans la source et la chaîne complète a tourné le 2026-08-17.** La passe à blanc a proposé six tracés, l'auteur les a fait réintégrer, puis `chaine.py --godot` a reconstruit la carte et l'export. Contrôles : **6 venelles sur 6 îlots, 588 m²**, 927 parcelles dont **912 sur rue**, zéro reliquat de rue enclavé, partition à 100,00 %, 15 cœurs et 2 coupes parasites effacées.
+
+1. 👁️ **Juger les parcelles triangulaires en 3D, pas sur la carte** (§6 bis). Le mécanisme qui les supprime existe et il est éteint, parce qu'il coûte 14 % des maisons. La question à trancher devant l'image : est-ce qu'une parcelle en pointe donne une **maison** en pointe, alors que `07` coupe déjà la pointe des bâtiments ?
+2. **Regarder le résultat en 3D**, puis les trois défauts imprimés à chaque export :
 
    | Le défaut | Ce que c'est |
    |---|---|
-   | **18 bâtiments sur 690 mordent sur la rue**, jusqu'à 4,8 m | pic de mitre sur angle rentrant. Sans commune mesure avec les 258 m de la session 9, mais **un bâtiment sur la chaussée ment** |
-   | **47 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large a été essayé le 2026-08-12 et **retiré devant l'image** |
-   | **748 pans de toit réorientés à l'émission (7 %)** | conséquence : le contrôle « faces vers l'extérieur » est vrai **par construction** côté toits et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
+   | **44 bâtiments sur 892 débordent de leur parcelle**, jusqu'à 5,5 m | pic de mitre sur angle rentrant. Sans commune mesure avec les 258 m de la session 9, mais **un bâtiment sur la chaussée ment** |
+   | **70 empreintes concaves prennent un toit plat** | la recette du faîtage suppose qu'un versant avance dans un seul sens. ⚠️ Un repli plus large a été essayé le 2026-08-12 et **retiré devant l'image** |
+   | **433 pans de toit réorientés à l'émission (3 %)** | conséquence : le contrôle « faces vers l'extérieur » est vrai **par construction** côté toits et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
 
-4. **Régler la table `TISSU` de `04c` devant l'image** — c'est du level design, il appartient à l'auteur (§5).
-5. ⏸️ **Puis trancher le potentiel solaire** — voir « Ce qui attend l'auteur ».
+3. **Régler la table `TISSU` de `04c` devant l'image** — c'est du level design, il appartient à l'auteur (§5).
+4. ⏸️ **Puis trancher le potentiel solaire** — voir « Ce qui attend l'auteur ».
 
 ## 4 bis. 🚶 Le chemin dans l'îlot — nouveau le 2026-08-14
 
@@ -191,21 +309,20 @@ Le peigne ne sait pas découper un **îlot en L** : un L n'a pas de fond. Chaque
 | **Ce qui n'est PAS un critère** | 🔴 le **nombre de maisons**. Il se mesure et s'imprime, il ne décide pas → **67b** |
 | **La largeur** | **3 à 5 m**, par tissu : 3,0 sente de cœur ancien · 3,5 maisons de ville · 4,0 passage de service · 5,0 desserte de lotissement. La colonne `largeur_m` de la couche prime toujours |
 
-**Les sept chemins de Wehrau, mesurés le 2026-08-14 :**
+**Les six chemins de Wehrau, réintégrés et mesurés dans la chaîne le 2026-08-17 :**
 
 | îlot | tissu | longueur | largeur | sol pris | rectangularité |
 |---|---|---|---|---|---|
 | 22 | `coeur_ancien` | 21 m | 3,0 | 38 m² | 0,831 → **0,864** |
 | 24 | `front_commercant` | 31 m | 4,0 | 80 m² | 0,822 → **0,856** |
-| 26 | `pavillonnaire` | 57 m | 5,0 | 201 m² | 0,844 → **0,858** |
+| 26 | `pavillonnaire` | 57 m | 5,0 | 201 m² | 0,850 → **0,869** |
 | 38 | `coeur_ancien` | 28 m | 3,0 | 42 m² | 0,831 → **0,851** |
-| 40 | `maisons_de_ville` | 45 m | 3,5 | 110 m² | 0,829 → **0,846** |
-| 44 | `maisons_de_ville` | 61 m | 3,5 | 120 m² | 0,829 → **0,844** |
-| 63 | `pavillonnaire` | 44 m | 5,0 | 100 m² | 0,828 → **0,884** |
+| 44 | `maisons_de_ville` | 61 m | 3,5 | 122 m² | 0,829 → **0,844** |
+| 63 | `pavillonnaire` | 44 m | 5,0 | 105 m² | 0,821 → **0,910** |
 
-**690 m² pris à la ville**, soit 0,07 ha de toit en moins pour le solaire.
+**588 m² pris à la ville**, soit 0,06 ha de toit en moins pour le solaire. L'îlot **40** figurait dans une mesure de chantier à sept chemins, mais son tracé n'avait jamais été enregistré ; sur la chaîne reproductible il ne passe plus le seuil de rectangularité. Il n'est donc pas dans la source.
 
-**Où vivent les chemins.** Dans une couche `chemins` de **`Vallmar2.gpkg`** — la source que l'auteur édite dans QGIS, et le seul endroit où un tracé dessiné à la main survit à `02`, qui recopie la source par-dessus la carte de travail. La couche est **facultative** : sans elle, tout sort exactement comme avant.
+**Où vivent les chemins.** Dans **`QGIS/data/source/chemins.geojson`** — la source, seul endroit où un tracé corrigé à la main survit à `02`, qui rebâtit la carte de travail. La couche est **facultative** : sans elle, tout sort exactement comme avant. 🔄 Depuis le 2026-08-17 c'est du **texte, une venelle par ligne**, avec son numéro d'îlot et sa largeur en clair : supprimer une venelle qui tombe mal, c'est supprimer une ligne. La correction se faisait dans QGIS, qui n'existe plus.
 
 **Ce que l'auteur a corrigé, deux fois, et qu'il ne faut pas reperdre :**
 
@@ -231,6 +348,12 @@ C'est **elle, et pas le code**, qui décide du grain de toute la ville. Une lign
 `place_minerale`, `parc`, `champ`, `jardins_familiaux` et `riviere` ne se découpent pas : ce sont des sols.
 
 🔴 **Pourquoi la barre a changé de méthode.** Le peigne la traitait comme un tissu de rue : il en sortait un anneau de parcelles le long des rues et un grand cœur vide au milieu — **l'inverse exact de ce qu'a fait l'urbanisme de 1970**, où la barre se pose en travers de l'îlot sans égard pour l'alignement. La boîte ne connaît pas les rues, donc elle donne ça. 80 × 70 = 5 600 m², soit la moitié des 11 158 m² de l'**îlot 32** — le seul îlot de barre de Wehrau — donc **deux objets**.
+
+**Les cinq manettes du coin** (§2 octies), toutes dans `04c` : `COIN_FACADE` **1,5** (ce que chaque bras doit atteindre, en façades) · `COIN_FACADE_MAX` **2,6** (au-delà ce n'est plus un coin, c'est une rangée) · `COIN_AIRE_MAX` **2,2** (le plafond de la parcelle d'angle) · `COIN_ANGLE` **38–145°** · `COIN_BISEAU_MAX` **12 m**. Et deux dans `04d` : `COUR_OUVERTURE` **0,40** et le doigt (`COUR_LARGEUR_MIN` 3 m, `COUR_DOIGT` 0,50).
+
+**Les trois manettes de l'encoche** (§2 nonies), dans `04d` : `ENCOCHE_RENTRANTS` **1** (le nombre de décrochements tolérés — c'est LA manette) · `ENCOCHE_AIRE_MAX` **45 m²** (au-delà la poche est une cour, pas une encoche) · `AILE_ADOS` **0,15** (ce que l'aile doit poser sur la limite de parcelle).
+
+⚠️ **La table ci-dessus est celle de `04d` et elle n'est pas celle de `04c`** — la vraie table de `04c` dit `maisons_de_ville` **9,5 × 22,0** depuis le 2026-08-14, pas 8,0 × 20,0. Conséquence à connaître avant de toucher au coin : `COIN_AIRE_MAX` plafonne la parcelle d'angle à 2,2 × 209 = **460 m²**, pas 352.
 
 **Les huit réglages de bord**, à ne toucher qu'en sachant pourquoi : plancher de parcelle **45 m²** · jeu de coupe **0,25** (l'irrégularité, sans quoi tout est au cordeau) · dent minimale **0,60 × façade** · arête de moins de **6 m** ne porte pas de rue · seuil de pointe **éteint** (§6 bis) · **largeur minimale d'un cœur 8 m** (`COEUR_MIN_LARGE`, §2 quater) — c'est le seul nombre qui sépare une cour d'une lamelle · **plafond de profondeur 1,3 × la consigne** (`PROF_MAX`, §2 quinquies), qui vaut même en pavillonnaire · **gain de rectangularité 0,15 pour une réunion à 0,90** (`GAIN_RECT`, `RECT_REUNION`, §2 sexies).
 
@@ -278,7 +401,7 @@ Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue
 
 ## 7. Ce qui attend l'auteur
 
-- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas les 25–40 % du plan.** ⏸️ **Suspendu : le chiffre va bouger.** La fourchette avait été calibrée sur 76,5 ha d'*emprise* ; les vrais toits font 11,7 ha. Le peigne fait passer les parcelles bâtissables de 705 à 987, donc **relancer `07` avant de trancher** — sinon on arbitre sur les toits d'une ville qui n'existe plus. **À trancher ensuite : assumer ~9,5 %, ou regonfler la colonne `equip` de la table d'énergie.**
+- [ ] 🔴 **Le potentiel solaire réel est ~9,5 %, pas les 25–40 % du plan.** ✅ **La suspension est levée** : `07` a été relancé sur la ville avec venelles, soit **892 volumes bâtis et 12,1 ha de toit réel**. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table d'énergie.**
 - [ ] **La table `TISSU` de `04c`** (§5) — c'est du level design, il n'est pas délégué.
 - [ ] **Les réparations de boucle de `04b`** — passées de 4 à **7 îlots** avec la carte à trois ponts. Les quatre anciennes (55, 13, 16, 21) sont signalées ; les trois neuves (9, 11, 62) ne le sont pas.
 
@@ -286,18 +409,19 @@ Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue
 
 ```
 python "QGIS/scripts/tracer_chemins.py" --blanc    propose les venelles, n'écrit rien
-python "QGIS/scripts/tracer_chemins.py"            écrit la couche `chemins` dans Vallmar2
+python "QGIS/scripts/tracer_chemins.py"            écrit `QGIS/data/source/chemins.geojson`
 python "QGIS/scripts/04c_parcelles.py" --blanc     calcule et affiche, n'écrit rien
 python "QGIS/scripts/04c_parcelles.py"             écrit la couche `parcelles`
-python "QGIS/scripts/apercu_parcelles.py"          le parcellaire en PNG
+python "QGIS/scripts/04d_emprises_batiments.py"    les emprises des bâtiments
+python "QGIS/scripts/apercu_parcelles.py"          le parcellaire ET les bâtiments en PNG
 python "QGIS/scripts/07_exporter_godot.py"         alimente la maquette 3D
 ```
 
-⚠️ `tracer_chemins.py` écrit dans **`Vallmar2.gpkg`**, la source — comme `00_decouper_ilots.py`, et avec les mêmes précautions. Il refuse d'écraser une couche `chemins` existante sans `--refaire` : une fois qu'un tracé a été déplacé à la main, le script n'a plus rien à dire.
+⚠️ `tracer_chemins.py` écrit dans **la source** — comme `00_decouper_ilots.py` et `00b_ilots_lisiere.py`, et avec les mêmes précautions (passe `--blanc` d'abord : c'est du level design). Il refuse d'écraser une couche `chemins` existante sans `--refaire` : une fois qu'un tracé a été déplacé à la main, le script n'a plus rien à dire.
 
-⚠️ **Chaîne dans l'ordre : 02 → 03 → 04 → 04b → 04c**, puis `07`. Le `02` repart de `Vallmar2.gpkg` et **écrase** `Prototype_qualifie.gpkg`, `emprises` et `parcelles` comprises.
+✅ **L'ordre de la chaîne est tenu par `chaine.py`** : 02 → 03 → 04 → 04b → 04c → **04d**, `--godot` pour ajouter `07`. Le `02` repart de la source et **refait la carte de travail de zéro**, `emprises` et `parcelles` comprises.
 
-🔴 **Depuis le Mac, on n'écrit pas dans le `.gpkg`** — `--blanc`, ou une copie dans `QGIS/data/bac/`.
+✅ **Les deux machines font le même travail** depuis le 2026-08-17 : la source est du texte que git fusionne, et tout `.gpkg` est un dérivé gitignoré.
 
 ---
 

@@ -5,11 +5,14 @@ __pycache__/
 # Rendu régénérable (apercu_carte.py, 06, captures Godot), pas des sources
 QGIS/rendus/
 
-# Copies de travail des GeoPackages. Les .gpkg sont des binaires que git ne
-# fusionne pas : la vraie carte ne s'écrit que sous Windows, et tout essai se
-# fait sur une copie posée ici. Voir QGIS/data/bac/LISEZ-MOI.md.
-QGIS/data/bac/*
-!QGIS/data/bac/LISEZ-MOI.md
+# 🔴 AUCUN GeoPackage n'est suivi, et c'est la règle la plus importante du
+# dépôt depuis le 2026-08-17. La SOURCE de la carte est QGIS/data/source/*.geojson,
+# du texte que git fusionne ligne à ligne ; tout .gpkg est un DÉRIVÉ que
+# `chaine.py` refait en moins d'une seconde. Versionner un binaire que git ne
+# sait pas fusionner obligeait la carte à ne s'écrire que sur une machine.
+# Voir QGIS/data/LISEZ-MOI.md et QGIS/scripts/carte.py.
+QGIS/data/travail/
+QGIS/data/archive/
 
 # Godot : cache d'import local, jamais partagé entre deux machines
 Godot/.godot/

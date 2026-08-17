@@ -56,7 +56,7 @@ sys.path.insert(0, ICI)
 
 from apercu_carte import gpkg_vers_wkb, lire_wkb  # noqa: E402
 
-GPKG = os.path.join(RACINE, "QGIS", "data", "Prototype_qualifie.gpkg")
+GPKG = os.path.join(RACINE, "QGIS", "data", "travail", "wehrau.gpkg")
 CLASSEUR = os.path.join(RACINE, "Classeur")
 PARTIES = os.path.join(CLASSEUR, "parties")
 SORTIE_HTML = os.path.join(RACINE, "QGIS", "rendus", "parties.html")

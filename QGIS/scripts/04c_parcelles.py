@@ -98,7 +98,7 @@ RACINE = os.path.dirname(os.path.dirname(ICI))
 BLANC = "--blanc" in sys.argv           # passe à blanc : calcule et affiche
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
-                                           "Prototype_qualifie.gpkg")
+                                           "travail", "wehrau.gpkg")
 SRS = 25832                             # EPSG:25832 — décision 31
 
 
@@ -288,6 +288,25 @@ PROF_MAX = 1.3
 # dents. C'est le garde-fou `Amax` du papier (§4.2.3, deuxième cas).
 DENT_MAX = 2.0
 
+# 🧵 LE RÉSIDU DE COUPE, en fraction de l'aire du morceau découpé — 🔄
+# 2026-08-17. Quand une bande prend EXACTEMENT toute la profondeur du morceau,
+# la coupe laisse derrière elle un cheveu de largeur nulle. Ce n'est pas un
+# cœur d'îlot, ce n'est pas un éclat à réunir — `absorber` n'y arrive d'ailleurs
+# pas, un polygone d'aire nulle n'a pas de bord à partager avec une voisine —,
+# c'est le bruit de la virgule flottante avec un contour autour.
+#
+# Ça n'arrivait pas avant les îlots de lisière : sur un îlot ordinaire la bande
+# s'arrête toujours avant le bord d'en face. Sur un ruban, le fond n'est plus
+# une rue (voir `aretes_mortes`), la rangée de devant prend tout, et la coupe
+# tombe pile sur le bord. Trois cheveux mesurés sur les trois rubans : 0,000,
+# 0,000 et 0,010 m².
+#
+# Le seuil est RELATIF au morceau, et pas en m², pour qu'il reste toujours cinq
+# fois sous la tolérance du contrôle de partition (1e-5 de l'aire de l'îlot,
+# décision 61) — y compris sur les petits îlots du centre, où deux centièmes de
+# m² pèseraient plus lourd que sur un ruban de 7 000.
+RESTE_NEGLIGEABLE = 2e-6
+
 # 🔺 LA POINTE — sommet de parcelle plus aigu que ça, en degrés. Une parcelle
 # qui en porte un est réunie à sa voisine, comme un éclat ou une lamelle.
 #
@@ -345,6 +364,51 @@ RECT_REUNION = 0.90     # et où elle doit arriver : franchement rectangulaire
 # recoller deux biseaux ne doit pas fabriquer la parcelle géante que
 # `absorber` passe sa vie à éviter.
 AIRE_MAX_REUNION = 2.0
+
+# 🏢 LA PARCELLE D'ANGLE — 🔄 2026-08-17, demandé par l'auteur devant les îlots
+# 40, 41 et 59 : « j'aimerais bien que les coins ressemblent à l'emprise du
+# bâtiment que j'ai dessiné. Limite, tu peux fusionner plusieurs parcelles de
+# coin (quitte à ce qu'elles soient un peu grandes) pour que les bâtiments
+# puissent avoir cette forme. »
+#
+# CE QUE LE PEIGNE FABRIQUE AU COIN, ET POURQUOI ÇA NE SUFFIT PAS. La rue la
+# plus longue est servie la première et prend le coin (`_bande`, le débordement
+# de `prof`). La parcelle du coin a donc une façade normale sur la rue longue et
+# un simple FLANC sur la rue courte — mesuré sur les 160 coins de rue des tissus
+# mitoyens : façade forte 16,2 m en médiane, façade faible 7,4 m, et 34 coins
+# sous la moitié de la consigne du tissu. `04d` y bâtit bien la réunion de deux
+# bandes, mais le bras court est un moignon : le bâtiment ne TOURNE pas le coin,
+# il pose un bout de mur en travers.
+#
+# 🔴 LA CORRECTION SE FAIT ICI, DANS LE PARCELLAIRE, ET PAS DANS `04d`. Un
+# immeuble d'angle réel occupe une parcelle d'angle : agrandir seulement
+# l'empreinte ferait déborder le bâtiment sur la parcelle voisine (R0), et
+# rétrécir la voisine sans la réunir casserait la partition (61). On réunit donc
+# la parcelle du coin à sa voisine du côté FAIBLE, jusqu'à ce que les deux bras
+# aient de quoi porter un bâtiment.
+COIN_TISSUS = {"coeur_ancien", "maisons_de_ville", "front_commercant"}
+# Ce qui compte comme un coin de rue. En dessous c'est une pointe d'îlot — elle
+# se traite par la règle de la pointe de `04d`, pas en y entassant du terrain ;
+# au-dessus c'est un pli de rue, pas un angle, et un bâtiment n'a rien à y
+# tourner.
+COIN_ANGLE = (38.0, 145.0)
+# La longueur totale du biseau toléré entre les deux rues d'un coin. Au-delà,
+# le pan coupé est un troisième côté, pas un coin. 12 m : le plus large pan de
+# Wehrau fait 9,6 m (îlot 16).
+COIN_BISEAU_MAX = 12.0
+# Ce que chaque bras doit atteindre, en façades du tissu. Un bras plus court que
+# la profondeur bâtie de `04d` (11,5 à 16 m) ne se lit pas comme un bras.
+COIN_FACADE = 1.5
+# 🔴 ET UN PLAFOND SUR CHAQUE BRAS, sans quoi la règle dérive en « le coin avale
+# la rangée ». Mesuré sans lui sur l'îlot 41 : la voisine du côté faible était la
+# lanière qui longe TOUT le petit côté de l'îlot, et la parcelle d'angle sortait
+# en bande de 50 m — un front de rue entier, pas un immeuble d'angle.
+COIN_FACADE_MAX = 2.6
+# Le plafond de la parcelle d'angle, en aire visée du tissu. « Quitte à ce
+# qu'elles soient un peu grandes » — mais pas au point de manger la rangée.
+COIN_AIRE_MAX = 2.2
+# Au-delà, on renonce : un coin qui réclame quatre réunions n'est pas un coin.
+COIN_REUNIONS_MAX = 2
 
 # Variation de hauteur d'une parcelle autour de celle de son îlot, en niveaux.
 # ± 1 suffit à casser le bloc plein sans contredire la donnée.
@@ -1250,6 +1314,170 @@ def recoller_rectangles(parcelles, aire_max):
     return parcelles, n_reunions
 
 
+# ------------------------------------------------- la parcelle d'angle
+
+def longueur_sur(anneau, a, b, tol=0.35):
+    """Les mètres de `anneau` posés sur le segment [a, b].
+
+    Même critère que `facade_de` — le MILIEU de l'arête, pas ses bouts : deux
+    parcelles qui se touchent par un sommet posé sur la rue ne comptent pas
+    chacune une façade."""
+    tot = 0.0
+    n = len(anneau)
+    for i in range(n):
+        p, q = anneau[i], anneau[(i + 1) % n]
+        m = ((p[0] + q[0]) / 2.0, (p[1] + q[1]) / 2.0)
+        if dist_pt_seg(m, a, b) <= tol:
+            tot += math.hypot(q[0] - p[0], q[1] - p[1])
+    return tot
+
+
+def coins_de_rue(ring, longueurs, morts):
+    """Les endroits de l'emprise où DEUX RUES se rencontrent en angle.
+
+    Renvoie une liste de (sommets du coin, arête d'avant, arête d'après).
+
+    🔴 UN COIN N'EST PAS TOUJOURS UN SOMMET, ET C'EST LA MOITIÉ DES COINS DE
+    WEHRAU. Beaucoup sont BISEAUTÉS : deux sommets séparés par une arête de deux
+    ou trois mètres — le pan coupé que `04b` laisse en reculant deux rues qui ne
+    sont pas perpendiculaires. Pris sommet par sommet, un biseau donne deux
+    virages de 15° chacun, donc aucun angle, donc aucun coin : la pointe de
+    l'îlot 59 et le nord-ouest de l'îlot 40 passaient à travers.
+    On raisonne donc sur les arêtes ASSEZ LONGUES pour porter une rue, et on
+    laisse le biseau au milieu du coin — le coin est alors le petit paquet de
+    sommets qui les sépare.
+
+    Un virage à droite est écarté : c'est un pli rentrant, l'endroit où l'on
+    trace une venelle (67), pas un angle de rue. L'anneau sort de `ouvrir`, donc
+    trigonométrique, donc un virage à gauche est convexe."""
+    n = len(ring)
+    rues = [i for i in range(n)
+            if longueurs[i] >= LONGUEUR_MIN_RUE and i not in morts]
+    if len(rues) < 2:
+        return []
+    out = []
+    for a in range(len(rues)):
+        i = rues[a]
+        j = rues[(a + 1) % len(rues)]
+        # Ce qui sépare les deux rues : le biseau. Trop long, ce n'est plus un
+        # biseau mais un troisième côté qu'on a refusé de servir.
+        entre = []
+        k = (i + 1) % n
+        while k != j:
+            entre.append(k)
+            k = (k + 1) % n
+        if sum(longueurs[e] for e in entre) > COIN_BISEAU_MAX:
+            continue
+        ui = ((ring[(i + 1) % n][0] - ring[i][0]) / longueurs[i],
+              (ring[(i + 1) % n][1] - ring[i][1]) / longueurs[i])
+        uj = ((ring[(j + 1) % n][0] - ring[j][0]) / longueurs[j],
+              (ring[(j + 1) % n][1] - ring[j][1]) / longueurs[j])
+        vire = math.degrees(math.atan2(ui[0] * uj[1] - ui[1] * uj[0],
+                                       ui[0] * uj[0] + ui[1] * uj[1]))
+        if vire <= 5.0:
+            continue
+        interieur = 180.0 - vire
+        if not (COIN_ANGLE[0] <= interieur <= COIN_ANGLE[1]):
+            continue
+        sommets = [ring[(i + 1) % n]] + [ring[e] for e in entre] + [ring[j]]
+        out.append((sommets,
+                    (ring[i], ring[(i + 1) % n]),
+                    (ring[j], ring[(j + 1) % n])))
+    return out
+
+
+def souder_les_angles(parcelles, ring, facade, prof, morts=()):
+    """La parcelle du coin absorbe sa voisine du côté FAIBLE, tant que son bras
+    court n'a pas de quoi porter un bâtiment.
+
+    🏢 2026-08-17. Le geste est celui de `recoller_rectangles` — réunir deux
+    voisines par `fusionner`, donc sans jamais toucher à la partition (61) — mais
+    le critère est l'inverse : là on efface une coupe parasite, ici on assume une
+    parcelle PLUS GRANDE parce que le coin de rue en demande une.
+
+    Ce qui décide : les deux façades de la parcelle du coin, mesurées sur les
+    deux arêtes de l'emprise qui se rejoignent en ce sommet. Tant que la plus
+    courte est sous `COIN_FACADE × facade`, on cherche la voisine qui l'allonge
+    le plus — donc celle de la rue faible, jamais celle du fond.
+
+    🔴 ON NE RÉUNIT QUE VERS LA RUE FAIBLE, et c'est ce qui empêche la règle de
+    dériver en « le coin avale l'îlot ». Une voisine qui n'a aucune façade sur
+    l'arête faible n'allonge pas le bras court : elle est écartée d'office, même
+    si elle partage un long bord avec le coin.
+
+    Renvoie (les parcelles, le nombre de réunions).
+    """
+    n = len(ring)
+    longueurs = [math.hypot(ring[(i + 1) % n][0] - ring[i][0],
+                            ring[(i + 1) % n][1] - ring[i][1]) for i in range(n)]
+    coins = coins_de_rue(ring, longueurs, set(morts))
+    if not coins:
+        return parcelles, 0
+
+    parcelles = list(parcelles)
+    aire_max = COIN_AIRE_MAX * facade * prof
+    vise = COIN_FACADE * facade
+    n_reunions = 0
+
+    for sommets, (a0, b0), (a1, b1) in coins:
+        # Le propriétaire du coin : la parcelle bâtissable dont le bord passe
+        # par l'un des sommets du coin. Il y en a une et une seule dans 252 cas
+        # sur 365 ; quand il y en a deux, la plus grande est le vrai coin et
+        # l'autre deviendra sa première voisine.
+        def au_coin():
+            cands = [i for i, (p, o) in enumerate(parcelles)
+                     if o not in HORS_BATI
+                     and any(dist_pt_seg(S, p[k], p[(k + 1) % len(p)]) <= 0.6
+                             for S in sommets for k in range(len(p)))]
+            if not cands:
+                return None
+            return max(cands, key=lambda i: abs(aire_signee(parcelles[i][0])))
+
+        for _ in range(COIN_REUNIONS_MAX):
+            ic = au_coin()
+            if ic is None:
+                break
+            coin = parcelles[ic][0]
+            f0 = longueur_sur(coin, a0, b0)
+            f1 = longueur_sur(coin, a1, b1)
+            if min(f0, f1) >= vise:
+                break                      # les deux bras tiennent : c'est fini
+            # La rue faible, et la fonction à faire monter : le bras COURT.
+            faible = (a0, b0) if f0 < f1 else (a1, b1)
+            fort = (a1, b1) if f0 < f1 else (a0, b0)
+            aire_coin = abs(aire_signee(coin))
+
+            meilleur = None
+            for iv, (p, o) in enumerate(parcelles):
+                if iv == ic or o in HORS_BATI:
+                    continue
+                if longueur_sur(p, faible[0], faible[1]) <= 0.5:
+                    continue               # elle n'allonge pas le bras court
+                if aire_coin + abs(aire_signee(p)) > aire_max:
+                    continue
+                if bord_partage(coin, p) < 2.0:
+                    continue
+                u = fusionner(coin, p)
+                if u is None:
+                    continue
+                g0 = longueur_sur(u, faible[0], faible[1])
+                g1 = longueur_sur(u, fort[0], fort[1])
+                gain = min(g0, g1)
+                if gain <= min(f0, f1) + 0.5:
+                    continue               # réunir sans allonger : refusé
+                if max(g0, g1) > COIN_FACADE_MAX * facade:
+                    continue               # ce n'est plus un coin, c'est une rangée
+                if meilleur is None or gain > meilleur[0]:
+                    meilleur = (gain, iv, u)
+            if meilleur is None:
+                break
+            _, iv, u = meilleur
+            parcelles[ic] = (u, parcelles[ic][1])
+            del parcelles[iv]
+            n_reunions += 1
+    return parcelles, n_reunions
+
+
 def graine_de(pts):
     """Une graine stable, dérivée de la GÉOMÉTRIE et non d'un compteur.
 
@@ -1424,7 +1652,8 @@ def _rayon(ring, p, dirn):
     return meilleur, jbest
 
 
-def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
+def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False,
+                     morts=()):
     """De combien de fond cette rue a le droit, sachant ce qu'il y a en face.
 
     🔴 C'EST LA RÈGLE QUI RÉPARE LES ÎLOTS PEU PROFONDS. On tire une dizaine
@@ -1453,6 +1682,13 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
     l'îlot sortait en dalles couchées en travers du tissu. Le plafond levé ne
     l'est donc que tant que la rue d'en face est vraiment en face.
 
+    🌾 ET UNE ARÊTE SANS RUE N'EST PAS UNE RUE D'EN FACE — 🔄 2026-08-17. Le
+    fond d'un îlot de lisière donne sur le champ. Sans cette exception le rayon
+    y voyait « une rue en face » et coupait le ruban au milieu ; la rangée de
+    devant s'arrêtait à mi-profondeur et le fond repartait en seconde rangée.
+    Le fond du ruban revient donc au cas « personne en face » : la rangée de
+    devant prend tout, et le jardin va du derrière de la maison jusqu'au champ.
+
     Les deux rives d'un même îlot mesurent la MÊME distance, puisqu'on la prend
     sur l'anneau d'origine et non sur ce qui reste. Elles tombent donc sur la
     même moitié, et leurs bandes se rejoignent exactement au milieu.
@@ -1472,7 +1708,7 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
         d, j = _rayon(ring, p, nrm)
         if d is None or d <= EPS:
             continue
-        en_face_une_rue = longueurs[j] >= LONGUEUR_MIN_RUE
+        en_face_une_rue = longueurs[j] >= LONGUEUR_MIN_RUE and j not in morts
         if en_face_une_rue and d < TRAVERSANT * prof:
             vals.append((d, "traversante"))       # on prend tout le fond
         elif en_face_une_rue and (d / 2.0 < prof
@@ -1571,9 +1807,9 @@ def _dents(morceaux, a, u, facade, prof):
     return pieces
 
 
-def peigne(anneau, facade, prof, sans_coeur=False):
+def peigne(anneau, facade, prof, sans_coeur=False, bords_morts=()):
     """Découpe un îlot depuis ses rues. Renvoie (parcelles sur rue, cœur,
-    le compte rendu des bandes).
+    le compte rendu des bandes, les arêtes refusées).
 
     Les arêtes sont servies de la plus longue à la plus courte. Chacune
     demande d'abord DE QUELLE PROFONDEUR ELLE A LE DROIT (`profondeur_utile`,
@@ -1594,6 +1830,11 @@ def peigne(anneau, facade, prof, sans_coeur=False):
     longueurs = [math.hypot(ring[(i + 1) % n][0] - ring[i][0],
                             ring[(i + 1) % n][1] - ring[i][1]) for i in range(n)]
 
+    # 🌾 Les arêtes qui ne donnent sur aucune rue : ni servies, ni comptées
+    # comme « la rue d'en face ». Vide partout sauf sur les îlots de lisière.
+    morts = aretes_mortes(ring, bords_morts)
+    refuse = sum(longueurs[i] for i in morts if longueurs[i] >= LONGUEUR_MIN_RUE)
+
     # À longueur égale, l'indice départage : deux arêtes jumelles ne doivent
     # pas changer d'ordre d'une exécution à l'autre.
     for i in sorted(range(n), key=lambda i: (-longueurs[i], i)):
@@ -1601,12 +1842,12 @@ def peigne(anneau, facade, prof, sans_coeur=False):
             break
         a, b = ring[i], ring[(i + 1) % n]
         L = longueurs[i]
-        if L < LONGUEUR_MIN_RUE:
+        if L < LONGUEUR_MIN_RUE or i in morts:
             continue
         u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
         nrm = (-u[1], u[0])          # `ouvrir` rend l'anneau trigo : à gauche
         pe, mode = profondeur_utile(ring, a, b, u, nrm, prof, longueurs,
-                                    sans_coeur)
+                                    sans_coeur, morts)
         if pe < AIRE_MIN / max(L, 1.0):
             continue                 # il ne reste rien de bâtissable en face
         bande, loin = _bande(reste, a, b, u, nrm, pe, L)
@@ -1617,9 +1858,12 @@ def peigne(anneau, facade, prof, sans_coeur=False):
             bandes.append((L, pe, mode, nd))
         reste = loin
 
+    # 🧵 Le cheveu laissé par une bande qui prend toute la profondeur ne
+    # ressort pas en cœur d'îlot : il n'existe pas.
+    plancher = max(1e-6, RESTE_NEGLIGEABLE * abs(aire_signee(ring)))
     return (rue,
-            [m for m in reste if len(m) >= 3 and abs(aire_signee(m)) > 1e-6],
-            bandes)
+            [m for m in reste if len(m) >= 3 and abs(aire_signee(m)) > plancher],
+            bandes, (len(morts), refuse))
 
 
 def facade_de(parcelle, bord_idx, grille=1.0, tol=0.35):
@@ -1659,6 +1903,58 @@ def dist_pt_seg(p, a, b):
     return math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
 
 
+# ------------------------------------------------ les bords qui n'ont pas de rue
+
+# Tolérance de reconnaissance d'une arête morte sur l'emprise. Une arête sans
+# rue reçoit un retrait de 0 dans `04b` : sa DROITE PORTEUSE ne bouge pas, seuls
+# ses bouts glissent là où elle rencontre une arête, elle, reculée. Le milieu de
+# l'arête reste donc sur le segment d'origine à moins d'un rien. 0,6 m laisse de
+# la marge sans jamais atteindre une arête de rue, qui recule d'au moins 5 m.
+TOL_MORT = 0.6
+# Deux arêtes qui se croisent au milieu ne doivent pas se confondre : ~11°.
+SIN_MORT = 0.2
+
+
+def aretes_mortes(ring, segments):
+    """Les indices d'arêtes de `ring` qui longent une frontière SANS RUE.
+
+    🔴 CE QUE ÇA RÉPARE, ET POURQUOI ÇA N'EXISTAIT PAS AVANT — 🔄 2026-08-17.
+    Le peigne sert TOUTE arête d'emprise assez longue, comme si toute limite
+    d'îlot était une rue. Sur les 70 îlots d'origine c'était vrai : `03` y
+    comptait zéro frontière `sans_rue`. Les îlots de lisière de
+    `00b_ilots_lisiere.py` sont les premiers à en porter — leur fond donne sur
+    le champ, sans rue entre les deux — et le peigne s'est mis à servir ce
+    fond comme une rue : au coude des rubans, une DEUXIÈME RANGÉE de parcelles
+    apparaissait derrière la première, sans accès. 10 parcelles sur 61, sur les
+    trois rubans, mesurées le 2026-08-17.
+
+    L'auteur a tranché le jour même : un îlot de lisière porte UNE parcelle en
+    profondeur, la maison près de la route et le jardin derrière. Le remède
+    n'est pas un réglage de plus, c'est l'information qui manquait — une arête
+    sans rue ne se sert pas et ne compte pas comme « la rue d'en face ».
+    """
+    morts = set()
+    if not segments:
+        return morts
+    n = len(ring)
+    for i in range(n):
+        a, b = ring[i], ring[(i + 1) % n]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L < EPS:
+            continue
+        ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+        m = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+        for p, q in segments:
+            Ls = math.hypot(q[0] - p[0], q[1] - p[1])
+            if Ls < EPS or dist_pt_seg(m, p, q) > TOL_MORT:
+                continue
+            vx, vy = (q[0] - p[0]) / Ls, (q[1] - p[1]) / Ls
+            if abs(ux * vy - uy * vx) <= SIN_MORT:
+                morts.add(i)
+                break
+    return morts
+
+
 def indexer_bord(anneau, grille=1.0):
     """Index de grille des arêtes de l'emprise, pour que `facade_de` ne soit
     pas quadratique. 53 emprises × ~1 500 parcelles, ça compte."""
@@ -1694,7 +1990,7 @@ def blob_gpkg(wkb):
 
 # --------------------------------------------------------------------- main
 
-def decouper_ilot(ext, st, chemins=()):
+def decouper_ilot(ext, st, chemins=(), bords_morts=()):
     """L'emprise d'un îlot → ses parcelles. LE CŒUR DU FICHIER.
 
     Renvoie (parcelles, compte rendu). Chaque parcelle est un triplet
@@ -1714,6 +2010,8 @@ def decouper_ilot(ext, st, chemins=()):
     n_reunions = 0          # les réunions de `recoller_rectangles`, à part :
                             # elles ne réparent pas un éclat, elles effacent
                             # une coupe parasite
+    n_angles = 0            # et les soudures de coin, à part elles aussi : ce
+                            # sont les seules qui AGRANDISSENT sciemment
     # 🚶 LE CHEMIN PASSE AVANT TOUT LE RESTE. Le couloir sort de l'emprise,
     # et l'îlot part au peigne en DEUX MORCEAUX au lieu d'un. Chaque
     # morceau est peigné pour son compte — donc les parois du couloir sont
@@ -1726,12 +2024,16 @@ def decouper_ilot(ext, st, chemins=()):
     rive_ilot = {}
     n_cours = n_parts_coeur = n_rendus = n_replis = 0
     aire_coeur = 0.0
+    n_morts, m_morts = 0, 0.0       # les arêtes sans rue, pour le compte rendu
 
   # ↓ un tour par morceau d'emprise — un seul quand l'îlot n'a pas de chemin
     for ext_m in morceaux:
         sans_coeur = st in SANS_COEUR
         if style == "peigne":
-            rue, coeur, bandes = peigne(ext_m, facade, prof, sans_coeur)
+            rue, coeur, bandes, morts = peigne(ext_m, facade, prof, sans_coeur,
+                                               bords_morts)
+            n_morts += morts[0]
+            m_morts += morts[1]
             # ⚠️ 2026-08-14 — CE QUI A ÉTÉ ESSAYÉ ICI ET RETIRÉ, pour ne pas le
             # réintroduire : quand aucun morceau n'était une cour, on
             # repeignait l'îlot SANS plafond de profondeur, comme un
@@ -1864,6 +2166,18 @@ def decouper_ilot(ext, st, chemins=()):
                                              AIRE_MAX_REUNION * facade * prof)
         n_reunions += n_r
 
+        # 🏢 QUATRIÈME PASSE — LA PARCELLE D'ANGLE. Elle vient en dernier, après
+        # que le tracé s'est stabilisé : ce qu'elle réunit est la rangée finale,
+        # et une réunion faite plus tôt aurait été redécoupée par les passes
+        # suivantes. Le pavillonnaire en est exclu — une maison détachée ne
+        # tourne pas un coin de rue, elle se pose au milieu de son terrain.
+        if st in COIN_TISSUS:
+            anneau_m = ouvrir(ext_m)
+            parcelles, n_c = souder_les_angles(
+                parcelles, anneau_m, facade, prof,
+                aretes_mortes(anneau_m, bords_morts))
+            n_angles += n_c
+
         parcelles_ilot += [(p, o, idx) for p, o in parcelles]
 
     # ← fin du tour par morceau : l'îlot se recompose ici
@@ -1880,7 +2194,8 @@ def decouper_ilot(ext, st, chemins=()):
         "morceaux": morceaux, "couloirs": couloirs, "rives": cr_rives,
         "modes": rive_ilot, "cours": n_cours, "parts_coeur": n_parts_coeur,
         "aire_coeur": aire_coeur, "rendus": n_rendus, "replis": n_replis,
-        "fusions": n_fusions, "reunions": n_reunions,
+        "fusions": n_fusions, "reunions": n_reunions, "angles": n_angles,
+        "morts": n_morts, "m_morts": m_morts,
     }
 
 
@@ -1904,13 +2219,78 @@ def lire(con):
     return ilots
 
 
+def lire_bords_morts(con, ilots):
+    """Les arêtes d'îlot qui ne longent aucune rue. -> {fid: [(p, q), …]}.
+
+    La source est `adjacences`, écrite par `03` : une paire d'îlots y porte sa
+    `hierarchie_separatrice`, et `sans_rue` veut dire que les deux se touchent
+    sans chaussée entre eux. On repasse ensuite sur les anneaux de `ilots` pour
+    retrouver QUELLES arêtes forment cette frontière — `adjacences` donne une
+    longueur, pas une géométrie.
+
+    ⚠️ Les arêtes du BORD DE CARTE ne sont pas ici, et c'est délibéré : elles
+    n'ont pas de voisin, donc pas de ligne dans `adjacences`. 9 îlots en
+    portent, 3 862 m. Les traiter comme mortes changerait le découpage de neuf
+    îlots existants d'un coup, ce qui n'est pas ce qu'on répare aujourd'hui.
+    Si un jour la ville s'arrête franchement au bord de la carte, c'est ici que
+    ça s'ajoutera, et il faudra regarder les neuf.
+
+    Les segments sont pris sur `ilots` et non sur `emprises`, parce que c'est
+    `ilots` que `03` a mesuré. Une arête sans rue a un retrait de 0 dans `04b`,
+    donc elle est au même endroit dans les deux couches — c'est ce qui permet à
+    `aretes_mortes` de la reconnaître sur l'emprise.
+    """
+    if con.execute("SELECT count(*) FROM sqlite_master WHERE type='table'"
+                   " AND name='adjacences'").fetchone()[0] == 0:
+        return {}
+    paires = set()
+    for a, b in con.execute("SELECT id_a, id_b FROM adjacences"
+                            " WHERE hierarchie_separatrice='sans_rue'"):
+        paires.add((a, b))
+        paires.add((b, a))
+    if not paires:
+        return {}
+
+    anneaux = {}
+    for fid, geom in con.execute("SELECT fid, geom FROM ilots"):
+        anneaux[fid] = ouvrir(lire_wkb(gpkg_vers_wkb(geom))[0][0])
+
+    # Les arêtes de chaque îlot, indexées par leur clé — la même grille de
+    # 25 cm que `03` et `04b`, pour que « la même arête » veuille dire la même
+    # chose dans les trois scripts.
+    def cle(p):
+        return (round(p[0] / 0.25), round(p[1] / 0.25))
+
+    proprio = {}
+    for fid, an in anneaux.items():
+        n = len(an)
+        for i in range(n):
+            ka, kb = cle(an[i]), cle(an[(i + 1) % n])
+            proprio.setdefault((ka, kb) if ka <= kb else (kb, ka),
+                               []).append(fid)
+
+    out = {}
+    for fid, an in anneaux.items():
+        if fid not in ilots:
+            continue
+        n = len(an)
+        for i in range(n):
+            a, b = an[i], an[(i + 1) % n]
+            ka, kb = cle(a), cle(b)
+            for voisin in proprio.get((ka, kb) if ka <= kb else (kb, ka), ()):
+                if voisin != fid and (fid, voisin) in paires:
+                    out.setdefault(fid, []).append((a, b))
+                    break
+    return out
+
+
 def lire_chemins(con, ilots):
     """Les venelles dessinées dans les îlots. Renvoie {fid_ilot: [(ligne,
     largeur), …]}.
 
     🔴 LA COUCHE EST FACULTATIVE, et ce n'est pas une politesse : elle vit dans
-    `Vallmar2.gpkg`, la source que l'auteur édite dans QGIS, et elle arrive ici
-    par la copie que fait `02`. Une carte sans chemin doit sortir exactement
+    `QGIS/data/source/chemins.geojson`, que l'auteur corrige à la main, et elle
+    arrive ici parce que `02` rebâtit la carte de travail depuis la source. Une carte sans chemin doit sortir exactement
     comme avant le 2026-08-14.
 
     La largeur vient de la couche quand l'auteur l'a fixée ; sinon de
@@ -1962,6 +2342,7 @@ def main():
     con = sqlite3.connect("file:%s?mode=ro" % GPKG.replace("\\", "/"), uri=True)
     ilots = lire(con)
     chemins = lire_chemins(con, ilots)
+    bords_morts = lire_bords_morts(con, ilots)
     con.close()
 
     print("=" * 74)
@@ -1979,8 +2360,10 @@ def main():
     rives = {}
     traversants = []
     traces = []                 # 🚶 un par îlot qui porte un chemin
+    lisieres = []               # 🌾 un par îlot qui a une arête sans rue
     n_fusions = 0
     reunions = {}               # 🔷 {fid_ilot: nombre de coupes effacées}
+    angles = {}                 # 🏢 {fid_ilot: nombre de coins soudés}
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -2004,7 +2387,11 @@ def main():
         # décision pour le joueur. Toute la mécanique est dans
         # `decouper_ilot`, pour que `tracer_chemins.py` la rejoue à
         # l'identique quand il évalue un tracé candidat.
-        parcelles_ilot, cr = decouper_ilot(ext, st, chemins.get(fid, ()))
+        parcelles_ilot, cr = decouper_ilot(ext, st, chemins.get(fid, ()),
+                                           bords_morts.get(fid, ()))
+        if cr["morts"]:
+            lisieres.append((fid, st, cr["morts"], cr["m_morts"],
+                             len(parcelles_ilot)))
         if fid in chemins:
             traces.append((fid, st, chemins[fid], cr["morceaux"],
                            cr["couloirs"]))
@@ -2016,6 +2403,8 @@ def main():
         n_fusions += cr["fusions"]
         if cr["reunions"]:
             reunions[fid] = cr["reunions"]
+        if cr["angles"]:
+            angles[fid] = cr["angles"]
 
         if cr["modes"]:
             traversants.append((fid, st,
@@ -2225,6 +2614,26 @@ def main():
         print()
 
     # ── les chemins ───────────────────────────────────────────────────────
+    if lisieres:
+        print("  🌾 LES BORDS SANS RUE — le fond qui donne sur le champ.")
+        print("     Une arête d'îlot que `03` classe `sans_rue` n'est pas")
+        print("     servie par le peigne et ne compte pas comme « la rue d'en")
+        print("     face ». C'est ce qui tient la règle des îlots de lisière :")
+        print("     UNE parcelle en profondeur, la maison près de la route et")
+        print("     le jardin derrière, jusqu'au champ.")
+        print("     Si ce tableau se met à lister des îlots du centre, c'est")
+        print("     que `03` a changé d'avis sur une frontière — pas ici.")
+        print()
+        print("  %-5s %-20s %7s %10s %10s"
+              % ("îlot", "sous_type", "arêtes", "longueur", "parcelles"))
+        print("  " + "-" * 58)
+        for fid, st, n_m, m_m, n_p in lisieres:
+            print("  %-5d %-20s %7d %8.0f m %10d" % (fid, st, n_m, m_m, n_p))
+        print("  " + "-" * 58)
+        print("     %d îlot(s), %.0f m de bord rendu au champ."
+              % (len(lisieres), sum(x[3] for x in lisieres)))
+        print()
+
     if traces:
         print("  🚶 LES CHEMINS — la venelle dessinée DANS l'îlot.")
         print("     Elle n'est pas un tronçon de route : elle n'entre dans")
@@ -2334,6 +2743,24 @@ def main():
               % (sum(reunions.values()), len(reunions),
                  ", ".join("îlot %d (×%d)" % (f, n)
                            for f, n in sorted(reunions.items()))))
+    print()
+
+    # 🏢 LES COINS SOUDÉS. À lire à l'envers des coupes effacées : ici la
+    # parcelle GROSSIT exprès, pour qu'un immeuble d'angle puisse tourner la rue.
+    # Le nombre à surveiller n'est pas le total mais le MAXIMUM par coin — s'il
+    # atteint COIN_REUNIONS_MAX partout, le seuil COIN_FACADE est trop haut pour
+    # le tissu et le coin est en train d'avaler sa rangée.
+    print("  🏢 LES COINS SOUDÉS — la parcelle d'angle absorbe sa voisine du côté")
+    print("     faible, tant que son bras court n'atteint pas %.1f façade"
+          % COIN_FACADE)
+    print("     (plafond : %.1f × l'aire visée du tissu)." % COIN_AIRE_MAX)
+    if not angles:
+        print("     aucun.")
+    else:
+        print("     %d réunions sur %d îlots : %s"
+              % (sum(angles.values()), len(angles),
+                 ", ".join("îlot %d (×%d)" % (f, n)
+                           for f, n in sorted(angles.items()))))
     print()
 
     print("  LE VOISINAGE — part du périmètre partagée avec une autre parcelle")

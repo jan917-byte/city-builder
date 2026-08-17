@@ -5,8 +5,9 @@ Construit la table `adjacences` : quel type de rue sépare quels îlots.
 C'est l'étape qui rend la carte non décorative. Deux îlots collés séparés
 par une voie rapide ne sont pas voisins. → vault, [[Géométrie et données]]
 
-Travaille sur `Prototype_qualifie.gpkg` (celui que produit 02_qualifier.py).
-Ne touche pas à `Vallmar2.gpkg`. Les géométries ne sont jamais modifiées.
+Travaille sur la carte de travail `QGIS/data/travail/wehrau.gpkg` (celle que
+bâtit 02_qualifier.py). Ne touche pas à la source. Les géométries ne sont
+jamais modifiées.
 
     python 03_adjacences.py
 
@@ -29,7 +30,7 @@ for flux in (sys.stdout, sys.stderr):
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(ICI), "data")
-GPKG = os.path.join(DATA, "Prototype_qualifie.gpkg")
+GPKG = os.path.join(DATA, "travail", "wehrau.gpkg")
 
 TOL = 0.5          # m — distance max entre une frontière et la rue qui la porte
 

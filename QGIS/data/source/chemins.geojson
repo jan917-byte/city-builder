@@ -1,0 +1,13 @@
+{
+"type": "FeatureCollection",
+"name": "chemins",
+"crs": "EPSG:25832",
+"features": [
+{"type":"Feature","id":1,"properties":{"fid_ilot": 22, "largeur_m": 3.0, "note": "reintegre le 2026-08-17 - valide par auteur"},"geometry":{"type":"LineString","coordinates":[[500499.29141386546,5600378.066120172],[500490.0619238427,5600396.989379021]]}},
+{"type":"Feature","id":2,"properties":{"fid_ilot": 24, "largeur_m": 4.0, "note": "reintegre le 2026-08-17 - valide par auteur"},"geometry":{"type":"LineString","coordinates":[[500423.7136438151,5600300.758765624],[500449.44497898046,5600318.114770343]]}},
+{"type":"Feature","id":3,"properties":{"fid_ilot": 26, "largeur_m": 5.0, "note": "reintegre le 2026-08-17 - valide par auteur"},"geometry":{"type":"LineString","coordinates":[[500174.7597741211,5600306.832558127],[500215.76260662335,5600346.4285332095]]}},
+{"type":"Feature","id":4,"properties":{"fid_ilot": 38, "largeur_m": 3.0, "note": "reintegre le 2026-08-17 - valide par auteur"},"geometry":{"type":"LineString","coordinates":[[500322.5675251392,5600545.743719133],[500341.5984688776,5600566.879723418]]}},
+{"type":"Feature","id":5,"properties":{"fid_ilot": 44, "largeur_m": 3.5, "note": "reintegre le 2026-08-17 - valide par auteur"},"geometry":{"type":"LineString","coordinates":[[500336.5917779222,5600627.567302045],[500317.82298469084,5600685.331707986]]}},
+{"type":"Feature","id":6,"properties":{"fid_ilot": 63, "largeur_m": 5.0, "note": "reintegre le 2026-08-17 - valide par auteur"},"geometry":{"type":"LineString","coordinates":[[500733.0580289039,5600475.977003197],[500776.22046935745,5600469.910917788]]}}
+]
+}
