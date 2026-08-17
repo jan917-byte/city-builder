@@ -2,7 +2,7 @@
 """
 LA CHAÎNE — une seule commande pour refaire la carte depuis la source.
 
-    python QGIS/scripts/chaine.py              02 → 03 → 04 → 04b → 04c
+    python QGIS/scripts/chaine.py              02 → 03 → 04 → 04b → 04c → 04d
     python QGIS/scripts/chaine.py --godot      … puis 07, pour la maquette 3D
     python QGIS/scripts/chaine.py --court      seulement le compte rendu final
     python QGIS/scripts/chaine.py --depuis 04  reprendre au milieu
@@ -11,10 +11,17 @@ LA CHAÎNE — une seule commande pour refaire la carte depuis la source.
 POURQUOI CE FICHIER EXISTE
 ═══════════════════════════════════════════════════════════════════════════
 
-L'ordre des étapes est une contrainte réelle — `04c` a besoin des emprises de
-`04b`, qui ont besoin des largeurs de `04`, qui ont besoin des adjacences de
-`03` — mais c'était une contrainte tenue de mémoire, recopiée dans six notes.
-Elle est maintenant tenue par le code.
+L'ordre des étapes est une contrainte réelle — `04d` a besoin des parcelles de
+`04c`, qui ont besoin des emprises de `04b`, qui ont besoin des largeurs de `04`,
+qui ont besoin des adjacences de `03` — mais c'était une contrainte tenue de
+mémoire, recopiée dans six notes. Elle est maintenant tenue par le code.
+
+🔴 `04d` A MANQUÉ À CETTE LISTE, ET ÇA S'EST VU. Écrit le 2026-08-17, il annonçait
+dans son propre en-tête « la chaîne devient 02 → 03 → 04 → 04b → 04c → 04d » —
+sans être ajouté ici. Conséquence : la carte de travail n'avait aucune couche
+`batiments`, les aperçus sortaient sans bâtiment, et la seule empreinte visible
+restait celle que `07` recalcule pour son compte. C'est exactement le piège que
+ce fichier existe pour fermer, arrivé par la porte de la documentation.
 
 🔴 CE QU'IL Y AVAIT AVANT, ET LE PIÈGE QUE ÇA A COÛTÉ. Chaque étape se lançait
 à la main, précédée d'une passe `--blanc`. La passe à blanc existait parce que
@@ -54,6 +61,7 @@ ETAPES = [
     ("04", "04_deriver_attributs.py", "les attributs dérivés"),
     ("04b", "04b_emprises_baties.py", "les emprises bâties"),
     ("04c", "04c_parcelles.py",      "le parcellaire"),
+    ("04d", "04d_emprises_batiments.py", "les emprises des bâtiments"),
 ]
 GODOT = ("07", "07_exporter_godot.py", "l'export vers la maquette 3D")
 

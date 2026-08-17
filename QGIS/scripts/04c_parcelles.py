@@ -365,6 +365,51 @@ RECT_REUNION = 0.90     # et où elle doit arriver : franchement rectangulaire
 # `absorber` passe sa vie à éviter.
 AIRE_MAX_REUNION = 2.0
 
+# 🏢 LA PARCELLE D'ANGLE — 🔄 2026-08-17, demandé par l'auteur devant les îlots
+# 40, 41 et 59 : « j'aimerais bien que les coins ressemblent à l'emprise du
+# bâtiment que j'ai dessiné. Limite, tu peux fusionner plusieurs parcelles de
+# coin (quitte à ce qu'elles soient un peu grandes) pour que les bâtiments
+# puissent avoir cette forme. »
+#
+# CE QUE LE PEIGNE FABRIQUE AU COIN, ET POURQUOI ÇA NE SUFFIT PAS. La rue la
+# plus longue est servie la première et prend le coin (`_bande`, le débordement
+# de `prof`). La parcelle du coin a donc une façade normale sur la rue longue et
+# un simple FLANC sur la rue courte — mesuré sur les 160 coins de rue des tissus
+# mitoyens : façade forte 16,2 m en médiane, façade faible 7,4 m, et 34 coins
+# sous la moitié de la consigne du tissu. `04d` y bâtit bien la réunion de deux
+# bandes, mais le bras court est un moignon : le bâtiment ne TOURNE pas le coin,
+# il pose un bout de mur en travers.
+#
+# 🔴 LA CORRECTION SE FAIT ICI, DANS LE PARCELLAIRE, ET PAS DANS `04d`. Un
+# immeuble d'angle réel occupe une parcelle d'angle : agrandir seulement
+# l'empreinte ferait déborder le bâtiment sur la parcelle voisine (R0), et
+# rétrécir la voisine sans la réunir casserait la partition (61). On réunit donc
+# la parcelle du coin à sa voisine du côté FAIBLE, jusqu'à ce que les deux bras
+# aient de quoi porter un bâtiment.
+COIN_TISSUS = {"coeur_ancien", "maisons_de_ville", "front_commercant"}
+# Ce qui compte comme un coin de rue. En dessous c'est une pointe d'îlot — elle
+# se traite par la règle de la pointe de `04d`, pas en y entassant du terrain ;
+# au-dessus c'est un pli de rue, pas un angle, et un bâtiment n'a rien à y
+# tourner.
+COIN_ANGLE = (38.0, 145.0)
+# La longueur totale du biseau toléré entre les deux rues d'un coin. Au-delà,
+# le pan coupé est un troisième côté, pas un coin. 12 m : le plus large pan de
+# Wehrau fait 9,6 m (îlot 16).
+COIN_BISEAU_MAX = 12.0
+# Ce que chaque bras doit atteindre, en façades du tissu. Un bras plus court que
+# la profondeur bâtie de `04d` (11,5 à 16 m) ne se lit pas comme un bras.
+COIN_FACADE = 1.5
+# 🔴 ET UN PLAFOND SUR CHAQUE BRAS, sans quoi la règle dérive en « le coin avale
+# la rangée ». Mesuré sans lui sur l'îlot 41 : la voisine du côté faible était la
+# lanière qui longe TOUT le petit côté de l'îlot, et la parcelle d'angle sortait
+# en bande de 50 m — un front de rue entier, pas un immeuble d'angle.
+COIN_FACADE_MAX = 2.6
+# Le plafond de la parcelle d'angle, en aire visée du tissu. « Quitte à ce
+# qu'elles soient un peu grandes » — mais pas au point de manger la rangée.
+COIN_AIRE_MAX = 2.2
+# Au-delà, on renonce : un coin qui réclame quatre réunions n'est pas un coin.
+COIN_REUNIONS_MAX = 2
+
 # Variation de hauteur d'une parcelle autour de celle de son îlot, en niveaux.
 # ± 1 suffit à casser le bloc plein sans contredire la donnée.
 JEU_NIVEAUX = 1
@@ -1269,6 +1314,170 @@ def recoller_rectangles(parcelles, aire_max):
     return parcelles, n_reunions
 
 
+# ------------------------------------------------- la parcelle d'angle
+
+def longueur_sur(anneau, a, b, tol=0.35):
+    """Les mètres de `anneau` posés sur le segment [a, b].
+
+    Même critère que `facade_de` — le MILIEU de l'arête, pas ses bouts : deux
+    parcelles qui se touchent par un sommet posé sur la rue ne comptent pas
+    chacune une façade."""
+    tot = 0.0
+    n = len(anneau)
+    for i in range(n):
+        p, q = anneau[i], anneau[(i + 1) % n]
+        m = ((p[0] + q[0]) / 2.0, (p[1] + q[1]) / 2.0)
+        if dist_pt_seg(m, a, b) <= tol:
+            tot += math.hypot(q[0] - p[0], q[1] - p[1])
+    return tot
+
+
+def coins_de_rue(ring, longueurs, morts):
+    """Les endroits de l'emprise où DEUX RUES se rencontrent en angle.
+
+    Renvoie une liste de (sommets du coin, arête d'avant, arête d'après).
+
+    🔴 UN COIN N'EST PAS TOUJOURS UN SOMMET, ET C'EST LA MOITIÉ DES COINS DE
+    WEHRAU. Beaucoup sont BISEAUTÉS : deux sommets séparés par une arête de deux
+    ou trois mètres — le pan coupé que `04b` laisse en reculant deux rues qui ne
+    sont pas perpendiculaires. Pris sommet par sommet, un biseau donne deux
+    virages de 15° chacun, donc aucun angle, donc aucun coin : la pointe de
+    l'îlot 59 et le nord-ouest de l'îlot 40 passaient à travers.
+    On raisonne donc sur les arêtes ASSEZ LONGUES pour porter une rue, et on
+    laisse le biseau au milieu du coin — le coin est alors le petit paquet de
+    sommets qui les sépare.
+
+    Un virage à droite est écarté : c'est un pli rentrant, l'endroit où l'on
+    trace une venelle (67), pas un angle de rue. L'anneau sort de `ouvrir`, donc
+    trigonométrique, donc un virage à gauche est convexe."""
+    n = len(ring)
+    rues = [i for i in range(n)
+            if longueurs[i] >= LONGUEUR_MIN_RUE and i not in morts]
+    if len(rues) < 2:
+        return []
+    out = []
+    for a in range(len(rues)):
+        i = rues[a]
+        j = rues[(a + 1) % len(rues)]
+        # Ce qui sépare les deux rues : le biseau. Trop long, ce n'est plus un
+        # biseau mais un troisième côté qu'on a refusé de servir.
+        entre = []
+        k = (i + 1) % n
+        while k != j:
+            entre.append(k)
+            k = (k + 1) % n
+        if sum(longueurs[e] for e in entre) > COIN_BISEAU_MAX:
+            continue
+        ui = ((ring[(i + 1) % n][0] - ring[i][0]) / longueurs[i],
+              (ring[(i + 1) % n][1] - ring[i][1]) / longueurs[i])
+        uj = ((ring[(j + 1) % n][0] - ring[j][0]) / longueurs[j],
+              (ring[(j + 1) % n][1] - ring[j][1]) / longueurs[j])
+        vire = math.degrees(math.atan2(ui[0] * uj[1] - ui[1] * uj[0],
+                                       ui[0] * uj[0] + ui[1] * uj[1]))
+        if vire <= 5.0:
+            continue
+        interieur = 180.0 - vire
+        if not (COIN_ANGLE[0] <= interieur <= COIN_ANGLE[1]):
+            continue
+        sommets = [ring[(i + 1) % n]] + [ring[e] for e in entre] + [ring[j]]
+        out.append((sommets,
+                    (ring[i], ring[(i + 1) % n]),
+                    (ring[j], ring[(j + 1) % n])))
+    return out
+
+
+def souder_les_angles(parcelles, ring, facade, prof, morts=()):
+    """La parcelle du coin absorbe sa voisine du côté FAIBLE, tant que son bras
+    court n'a pas de quoi porter un bâtiment.
+
+    🏢 2026-08-17. Le geste est celui de `recoller_rectangles` — réunir deux
+    voisines par `fusionner`, donc sans jamais toucher à la partition (61) — mais
+    le critère est l'inverse : là on efface une coupe parasite, ici on assume une
+    parcelle PLUS GRANDE parce que le coin de rue en demande une.
+
+    Ce qui décide : les deux façades de la parcelle du coin, mesurées sur les
+    deux arêtes de l'emprise qui se rejoignent en ce sommet. Tant que la plus
+    courte est sous `COIN_FACADE × facade`, on cherche la voisine qui l'allonge
+    le plus — donc celle de la rue faible, jamais celle du fond.
+
+    🔴 ON NE RÉUNIT QUE VERS LA RUE FAIBLE, et c'est ce qui empêche la règle de
+    dériver en « le coin avale l'îlot ». Une voisine qui n'a aucune façade sur
+    l'arête faible n'allonge pas le bras court : elle est écartée d'office, même
+    si elle partage un long bord avec le coin.
+
+    Renvoie (les parcelles, le nombre de réunions).
+    """
+    n = len(ring)
+    longueurs = [math.hypot(ring[(i + 1) % n][0] - ring[i][0],
+                            ring[(i + 1) % n][1] - ring[i][1]) for i in range(n)]
+    coins = coins_de_rue(ring, longueurs, set(morts))
+    if not coins:
+        return parcelles, 0
+
+    parcelles = list(parcelles)
+    aire_max = COIN_AIRE_MAX * facade * prof
+    vise = COIN_FACADE * facade
+    n_reunions = 0
+
+    for sommets, (a0, b0), (a1, b1) in coins:
+        # Le propriétaire du coin : la parcelle bâtissable dont le bord passe
+        # par l'un des sommets du coin. Il y en a une et une seule dans 252 cas
+        # sur 365 ; quand il y en a deux, la plus grande est le vrai coin et
+        # l'autre deviendra sa première voisine.
+        def au_coin():
+            cands = [i for i, (p, o) in enumerate(parcelles)
+                     if o not in HORS_BATI
+                     and any(dist_pt_seg(S, p[k], p[(k + 1) % len(p)]) <= 0.6
+                             for S in sommets for k in range(len(p)))]
+            if not cands:
+                return None
+            return max(cands, key=lambda i: abs(aire_signee(parcelles[i][0])))
+
+        for _ in range(COIN_REUNIONS_MAX):
+            ic = au_coin()
+            if ic is None:
+                break
+            coin = parcelles[ic][0]
+            f0 = longueur_sur(coin, a0, b0)
+            f1 = longueur_sur(coin, a1, b1)
+            if min(f0, f1) >= vise:
+                break                      # les deux bras tiennent : c'est fini
+            # La rue faible, et la fonction à faire monter : le bras COURT.
+            faible = (a0, b0) if f0 < f1 else (a1, b1)
+            fort = (a1, b1) if f0 < f1 else (a0, b0)
+            aire_coin = abs(aire_signee(coin))
+
+            meilleur = None
+            for iv, (p, o) in enumerate(parcelles):
+                if iv == ic or o in HORS_BATI:
+                    continue
+                if longueur_sur(p, faible[0], faible[1]) <= 0.5:
+                    continue               # elle n'allonge pas le bras court
+                if aire_coin + abs(aire_signee(p)) > aire_max:
+                    continue
+                if bord_partage(coin, p) < 2.0:
+                    continue
+                u = fusionner(coin, p)
+                if u is None:
+                    continue
+                g0 = longueur_sur(u, faible[0], faible[1])
+                g1 = longueur_sur(u, fort[0], fort[1])
+                gain = min(g0, g1)
+                if gain <= min(f0, f1) + 0.5:
+                    continue               # réunir sans allonger : refusé
+                if max(g0, g1) > COIN_FACADE_MAX * facade:
+                    continue               # ce n'est plus un coin, c'est une rangée
+                if meilleur is None or gain > meilleur[0]:
+                    meilleur = (gain, iv, u)
+            if meilleur is None:
+                break
+            _, iv, u = meilleur
+            parcelles[ic] = (u, parcelles[ic][1])
+            del parcelles[iv]
+            n_reunions += 1
+    return parcelles, n_reunions
+
+
 def graine_de(pts):
     """Une graine stable, dérivée de la GÉOMÉTRIE et non d'un compteur.
 
@@ -1801,6 +2010,8 @@ def decouper_ilot(ext, st, chemins=(), bords_morts=()):
     n_reunions = 0          # les réunions de `recoller_rectangles`, à part :
                             # elles ne réparent pas un éclat, elles effacent
                             # une coupe parasite
+    n_angles = 0            # et les soudures de coin, à part elles aussi : ce
+                            # sont les seules qui AGRANDISSENT sciemment
     # 🚶 LE CHEMIN PASSE AVANT TOUT LE RESTE. Le couloir sort de l'emprise,
     # et l'îlot part au peigne en DEUX MORCEAUX au lieu d'un. Chaque
     # morceau est peigné pour son compte — donc les parois du couloir sont
@@ -1955,6 +2166,18 @@ def decouper_ilot(ext, st, chemins=(), bords_morts=()):
                                              AIRE_MAX_REUNION * facade * prof)
         n_reunions += n_r
 
+        # 🏢 QUATRIÈME PASSE — LA PARCELLE D'ANGLE. Elle vient en dernier, après
+        # que le tracé s'est stabilisé : ce qu'elle réunit est la rangée finale,
+        # et une réunion faite plus tôt aurait été redécoupée par les passes
+        # suivantes. Le pavillonnaire en est exclu — une maison détachée ne
+        # tourne pas un coin de rue, elle se pose au milieu de son terrain.
+        if st in COIN_TISSUS:
+            anneau_m = ouvrir(ext_m)
+            parcelles, n_c = souder_les_angles(
+                parcelles, anneau_m, facade, prof,
+                aretes_mortes(anneau_m, bords_morts))
+            n_angles += n_c
+
         parcelles_ilot += [(p, o, idx) for p, o in parcelles]
 
     # ← fin du tour par morceau : l'îlot se recompose ici
@@ -1971,7 +2194,7 @@ def decouper_ilot(ext, st, chemins=(), bords_morts=()):
         "morceaux": morceaux, "couloirs": couloirs, "rives": cr_rives,
         "modes": rive_ilot, "cours": n_cours, "parts_coeur": n_parts_coeur,
         "aire_coeur": aire_coeur, "rendus": n_rendus, "replis": n_replis,
-        "fusions": n_fusions, "reunions": n_reunions,
+        "fusions": n_fusions, "reunions": n_reunions, "angles": n_angles,
         "morts": n_morts, "m_morts": m_morts,
     }
 
@@ -2140,6 +2363,7 @@ def main():
     lisieres = []               # 🌾 un par îlot qui a une arête sans rue
     n_fusions = 0
     reunions = {}               # 🔷 {fid_ilot: nombre de coupes effacées}
+    angles = {}                 # 🏢 {fid_ilot: nombre de coins soudés}
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -2179,6 +2403,8 @@ def main():
         n_fusions += cr["fusions"]
         if cr["reunions"]:
             reunions[fid] = cr["reunions"]
+        if cr["angles"]:
+            angles[fid] = cr["angles"]
 
         if cr["modes"]:
             traversants.append((fid, st,
@@ -2517,6 +2743,24 @@ def main():
               % (sum(reunions.values()), len(reunions),
                  ", ".join("îlot %d (×%d)" % (f, n)
                            for f, n in sorted(reunions.items()))))
+    print()
+
+    # 🏢 LES COINS SOUDÉS. À lire à l'envers des coupes effacées : ici la
+    # parcelle GROSSIT exprès, pour qu'un immeuble d'angle puisse tourner la rue.
+    # Le nombre à surveiller n'est pas le total mais le MAXIMUM par coin — s'il
+    # atteint COIN_REUNIONS_MAX partout, le seuil COIN_FACADE est trop haut pour
+    # le tissu et le coin est en train d'avaler sa rangée.
+    print("  🏢 LES COINS SOUDÉS — la parcelle d'angle absorbe sa voisine du côté")
+    print("     faible, tant que son bras court n'atteint pas %.1f façade"
+          % COIN_FACADE)
+    print("     (plafond : %.1f × l'aire visée du tissu)." % COIN_AIRE_MAX)
+    if not angles:
+        print("     aucun.")
+    else:
+        print("     %d réunions sur %d îlots : %s"
+              % (sum(angles.values()), len(angles),
+                 ", ".join("îlot %d (×%d)" % (f, n)
+                           for f, n in sorted(angles.items()))))
     print()
 
     print("  LE VOISINAGE — part du périmètre partagée avec une autre parcelle")

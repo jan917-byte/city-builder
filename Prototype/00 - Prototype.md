@@ -54,10 +54,9 @@ Une étape ne consigne **rien** dans `Décisions arrêtées` toute seule. Un arb
 
 ## La contrainte de machine
 
-Le travail se fait principalement sous **Windows**. Sur le Mac, le vault et les scripts tournent — mais :
+Le travail se fait principalement sous **Windows**, parfois sur le Mac.
 
-> **Le script voyage entre les deux machines. La carte, non.**
-> `QGIS/data/*.gpkg` ne s'écrit que **sous Windows**.
+> 🔄 **L'ancienne règle a disparu, elle n'a pas été assouplie.** Elle disait : *« Le script voyage entre les deux machines. La carte, non — `QGIS/data/*.gpkg` ne s'écrit que sous Windows. »* Sa seule raison d'être était que la carte était un **binaire suivi par git**, que git ne sait pas fusionner.
 
 Les deux machines font le même travail depuis le 2026-08-17 : la carte est du texte, aucun `.gpkg` n'est suivi. La passe `--blanc` reste obligatoire pour les trois scripts qui écrivent la source — c'est du level design. → `CLAUDE.md` §5
 

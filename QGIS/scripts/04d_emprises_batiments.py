@@ -7,7 +7,16 @@
     python3 QGIS/scripts/04d_emprises_batiments.py           # écrire la couche
     python3 QGIS/scripts/04d_emprises_batiments.py copie.gpkg
 
-Écrit une couche `batiments` : une empreinte au sol par parcelle bâtie.
+Écrit une couche `batiments` : les empreintes au sol des parcelles bâties. Une
+par parcelle en général, DEUX sur une parcelle traversante (voir `bande_sur_rue`).
+
+🔴 LA RÈGLE MÈRE, DEPUIS LE 2026-08-17 : LE BÂTIMENT N'EST PAS LA PARCELLE.
+C'est une BANDE mesurée depuis chaque limite sur rue, d'une profondeur donnée par
+le tissu (10 à 16 m en cœur ancien), et tout ce qui reste derrière est cour ou
+jardin. Avant, l'empreinte d'un tissu mitoyen était la parcelle moins ses
+retraits : le cœur ancien couvrait 96 % de son terrain, et la ville se lisait
+comme une mosaïque de polygones extrudés. Elle en couvre 76 %, et chaque îlot
+dense a maintenant un cœur qui se voit. → `TISSU`, `bande_sur_rue`
 
 POURQUOI CE SCRIPT EXISTE
 
@@ -24,10 +33,23 @@ déplacement :
 
 Ce que ce script AJOUTE aux règles de `07` : une distance aux limites
 latérales ET de fond (`07` ne connaissait qu'un `jeu` au voisin), un plafond
-d'emprise au sol par tissu, et la maison détachée ramenée à un rectangle.
+d'emprise au sol par tissu, la maison détachée ramenée à un rectangle, et la
+bande constructible ci-dessus.
 
-⚠ LA CHAÎNE DEVIENT 02 → 03 → 04 → 04b → 04c → 04d.
+✅ LA CHAÎNE EST 02 → 03 → 04 → 04b → 04c → 04d, et `chaine.py` la tient.
    Idempotent : on le relance, il refait la couche.
+
+🔴 CE QUI RESTE FAUX, ET QUI SE VOIT EN 3D ET NULLE PART AILLEURS :
+`07_exporter_godot.py` N'A PAS ÉTÉ BRANCHÉ SUR CETTE COUCHE. Il garde son propre
+générateur — sa table `BATI`, et `04b.retracter` pour l'offset, qui est la cause
+des « 44 bâtiments qui débordent de leur parcelle » du contrôle de `07`. Donc
+deux règles vivent en parallèle : celle-ci décide ce que montrent les aperçus PNG,
+celle de `07` décide ce que montre la maquette Godot. Tant que ce n'est pas
+réglé, les deux chiffres de toit ne peuvent pas coïncider (ici 8,9 ha ; `07`
+en annonce 12,1). Le branchement demande, du côté de `07` : la direction de
+façade par bâtiment (le faîtage la lit), les jardins, et la mise au rebut de
+`_empreinte_batie`, `_rectangle`, `_ecorner`, `_garder` et de `BATI` sauf sa
+colonne `pente`. À faire là où Godot peut être lancé — pas à l'aveugle.
 
 Se lance sans QGIS : sqlite3 seul, et le lecteur WKB d'apercu_carte.
 """
@@ -83,32 +105,78 @@ MITOYEN, DETACHE, BOITE = "mitoyen", "detache", "boite"
 
 TISSU = {
     # sous_type            recul  lat  fond  facade  prof  emprise  famille
-    "coeur_ancien":        (0.0,  0.0,  0.0,  None,  None,  1.00, MITOYEN),
-    "maisons_de_ville":    (1.5,  0.0,  6.0,  None,  None,  1.00, MITOYEN),
-    "front_commercant":    (0.0,  0.0,  3.0,  None,  None,  0.75, MITOYEN),
+    "coeur_ancien":        (0.5,  0.0,  0.0,  None,  13.0,  0.80, MITOYEN),
+    "maisons_de_ville":    (1.5,  0.0,  5.0,  None,  11.5,  0.65, MITOYEN),
+    "front_commercant":    (0.0,  0.0,  3.0,  None,  16.0,  0.85, MITOYEN),
     "pavillonnaire":       (4.0,  3.0,  3.0,   9.0,  10.0,  0.35, DETACHE),
     "barre_1970":          (6.0,  5.0,  5.0,  None,  13.0,  1.00, BOITE),
-    "equipement":          (4.0,  3.0,  3.0,  20.0,  22.0,  0.45, DETACHE),
+    "equipement":          (4.0,  3.0,  3.0,  20.0,  22.0,  0.60, DETACHE),
     "dalle_commerciale":   (2.0,  2.0,  2.0,  None,  53.0,  0.65, BOITE),
     "friche_industrielle": (3.0,  2.5,  2.5,  None,  35.0,  0.55, BOITE),
 }
 
-# 🔴 `profondeur = None` VEUT DIRE « AUCUNE RÈGLE DE PROFONDEUR » — 2026-08-17,
-# demandé devant l'image. Deux tissus l'ont demandé, pour deux raisons :
+# 🔴 CE QUE CETTE TABLE VIENT DE CHANGER, ET POURQUOI — 2026-08-17, désigné sur
+# `parcelles_ilot_14.png` : « les bâtiments ressemblent trop aux parcelles ».
+# Mesuré sur cette image : le cœur ancien couvrait 0,96 de sa parcelle et le
+# front commerçant 0,86 — donc pas de jardin, pas de cour, pas d'arrière. Une
+# mosaïque de polygones extrudés, pas du tissu urbain.
 #
-#   · `maisons_de_ville` — « profondeur variable, pas de règle de limite à la
-#     profondeur ». Le bâtiment va du recul jusqu'au retrait de fond, donc sa
-#     profondeur est celle que la parcelle lui laisse. C'est aussi ce qui
-#     répare LES COINS : une parcelle d'angle est profonde d'un côté et courte
-#     de l'autre, et une profondeur unique comptée depuis une seule façade y
-#     coupait de travers.
-#   · `coeur_ancien` — « parcelles = bâtiment, avec quelques petites
-#     exceptions ». Tous ses retraits sont nuls, donc l'empreinte EST la
-#     parcelle. Les exceptions sont plus bas (`COUR_*`) : sans elles, un cœur
-#     ancien n'a plus une seule cour, et une ville sans cour n'existe pas.
+# 🔄 CE QU'IL Y AVAIT AVANT, ET IL NE FAUT PAS Y REVENIR : `profondeur = None`
+# pour le cœur ancien et les maisons de ville, c'est-à-dire « aucune règle de
+# profondeur, l'empreinte EST la parcelle ». Ça venait d'une demande juste — les
+# maisons de ville ont une profondeur variable, et une profondeur unique comptée
+# depuis UNE SEULE façade coupait de travers les parcelles d'angle. Mais le
+# remède a supprimé la profondeur au lieu de réparer les coins.
 #
-# Le plafond d'emprise vaut alors 1,00 : un plafond qui rabote la profondeur
-# serait une règle de profondeur déguisée, c'est-à-dire l'inverse du réglage.
+# La profondeur est revenue parce que le coin est réparé ailleurs, dans
+# `bande_sur_rue` : la bande constructible se mesure depuis CHAQUE limite sur
+# rue, et le bâtiment est la RÉUNION de ces bandes. Une parcelle d'angle porte
+# donc un bâtiment en L qui suit les deux rues — ce que fait un immeuble d'angle
+# réel — au lieu d'être tranchée en biais par la profondeur de l'autre rue.
+#
+# Les plages viennent de l'auteur (2026-08-17) et la colonne `emprise` est le
+# HAUT de la plage, parce que c'est un plafond et non une cible :
+#
+#     tissu               recul      profondeur   emprise visée
+#     pavillonnaire       3–7 m        8–12 m       20–35 %
+#     maisons de ville    0–3 m        9–14 m       40–65 %
+#     cœur ancien         0–1 m       10–16 m       55–80 %
+#     front commerçant    0 m         12–20 m       60–85 %
+#     équipement          variable    variable      25–60 %
+#
+# Ce que le plafond garantit en retour : « conserver au minimum 15 à 30 % de la
+# parcelle comme cour ou jardin ». 0,80 sur le cœur ancien, c'est 20 % de cour.
+#
+# ⚠️ LE RECUL DU PAVILLONNAIRE RESTE À 4 m ET IL NE FAUT PAS LE POUSSER. La plage
+# de l'auteur va de 3 à 7 m, mais le milieu de la plage coûte des maisons —
+# mesuré, en faisant varier ce seul nombre :
+#
+#     recul   pavillons bâtis   refusés « aucune forme ne tient »
+#      4,0 m        174                    73
+#      4,5 m        166                    81
+#      5,0 m        163                    84
+#
+# La cause n'est pas le recul mais ce qu'il révèle : `rect_ancre` cherche un
+# rectangle de 9 × 10 m, et sur une parcelle de lotissement de 14 m de façade il
+# n'y a que 8,4 m entre les deux retraits latéraux. Reculer d'un mètre de plus le
+# fait sortir de la partie utile de la parcelle. 🔴 LES 73 REFUS RESTANTS SONT UN
+# DÉFAUT ANTÉRIEUR, pas une conséquence de la bande : des parcelles de 240 à
+# 530 m² avec 9 à 28 m de façade, où un pavillon devrait entrer sans effort.
+# → à traiter séparément, c'est la table `pavillonnaire` et `rect_ancre`.
+
+# La variation demandée sur les plages, ±15 % : sans elle une rangée entière a
+# la même profondeur au centimètre, ce qui ne ressemble à rien de bâti. Tirée de
+# la POSITION comme tout le reste (35), donc stable d'une exécution à l'autre.
+JEU_PROF = 0.15
+
+# 🔴 R8 BIS — UNE PARCELLE ÉTROITE CREUSE AU LIEU DE RENONCER. La profondeur
+# typologique appliquée telle quelle à une parcelle de 5 m de façade donne 60 m²,
+# donc parfois moins que AIRE_MIN, donc un TROU dans le front de rue. Or c'est
+# l'inverse de ce qu'on veut : « conserver une façade bâtie presque continue sur
+# les rues ». Une maison à façade étroite est profonde, dans toutes les villes
+# anciennes. La profondeur a donc le droit de monter jusqu'à ce multiple de la
+# valeur du tissu avant qu'on renonce à bâtir.
+PROF_ETROITE_MAX = 2.0
 
 # ☕ LES EXCEPTIONS DU CŒUR ANCIEN. Une parcelle sur quatre, au-dessus de
 # COUR_AIRE, garde une cour derrière son bâtiment. Le tirage vient de la
@@ -119,9 +187,111 @@ TISSU = {
 # d'angle, « les 12 premiers mètres depuis la façade » laisse le vide le long
 # de l'autre rue. La cour est donc une BANDE ARRIÈRE, comme tous les autres
 # vides du fichier.
+#
+# ⚠️ CETTE EXCEPTION A CHANGÉ DE MÉTIER LE MÊME JOUR. Quand l'empreinte était la
+# parcelle, elle était le SEUL vide du cœur ancien. Maintenant que la profondeur
+# creuse un arrière partout, elle ne sert plus qu'à en creuser un PLUS GRAND sur
+# une parcelle sur quatre — d'où un fond plus profond que le retrait ordinaire,
+# et pas un fond là où il n'y en avait aucun.
 COUR_PART = 0.25
 COUR_AIRE = 110.0          # sous cette taille, une cour ne laisse plus de maison
 COUR_FOND = 5.0
+
+# 🕳️ L'OUVERTURE MINIMALE D'UNE COUR — 2026-08-17. Part de son contour qui doit
+# être du bord de parcelle et non du mur du bâtiment. En dessous, ce n'est plus
+# une cour derrière la maison, c'est une poche creusée dans la masse : le
+# bâtiment en fait le tour et sort en C. Voir `bande_sur_rue`.
+#
+# ⚠️ UN SEUIL DE LARGEUR A ÉTÉ ESSAYÉ EN PLUS, ET RETIRÉ LE JOUR MÊME. L'idée
+# était qu'une cour de moins de trois mètres est une fente, pas une cour. Mesuré :
+# 434 cours sur 701 tombaient dessous et repartaient en bâtiment — la cour
+# médiane du cœur ancien fait 22 m² derrière une parcelle de 9,5 m, donc 2,3 m de
+# profondeur. Le seuil aurait annulé la correction de la veille (« le bâtiment
+# n'est plus la parcelle ») en une ligne. La fente qui se voit encore sur l'îlot
+# 41 est un DOIGT de la cour qui rentre dans la masse, pas une cour séparée :
+# elle se traiterait par une ouverture morphologique, pas par un seuil.
+COUR_OUVERTURE = 0.40
+# Le doigt : une tranche plus étroite que ça et moins ouverte que ça n'est pas
+# une cour, c'est une fente que le bâtiment referme presque.
+COUR_LARGEUR_MIN = 3.0
+COUR_DOIGT = 0.50
+
+# 🏚️ L'AILE ARRIÈRE — « avec une probabilité de 20 à 35 %, ajouter une aile
+# arrière de 4 à 7 m de largeur » (2026-08-17). Ce qu'elle répare est nommé dans
+# la même demande : « ajouter quelques ailes arrière pour éviter une cour trop
+# régulière ». Sans elle, toutes les empreintes s'arrêtent sur la même ligne et
+# le cœur d'îlot sort en rectangle de gestionnaire.
+#
+# L'aile se pose CONTRE une limite latérale, jamais au milieu : une aile
+# arrière réelle longe le mur mitoyen, c'est ce qui la distingue d'un appentis.
+AILE_PART = 0.28           # dans la plage 20–35 % demandée
+# 🔴 L'AILE SE PAYE SUR LA PROFONDEUR DE LA BANDE, ELLE NE S'AJOUTE PAS.
+# Première version : l'aile était posée EN PLUS, dans la cour. Mesuré, ça ne
+# marchait jamais — la cour laissée derrière la bande fait 22 m² en médiane, donc
+# l'aile n'y entrait pas ; et quand elle y entrait, elle poussait l'emprise
+# au-dessus du plafond, que le rabot rendait aussitôt en raccourcissant TOUT le
+# bâtiment. On avait payé une façade pour un ressaut.
+# Le bâtiment à aile a donc une bande plus courte de ce facteur : même surface
+# bâtie, cour en L au lieu de cour en bande — ce qui est exactement la demande,
+# « éviter une cour trop régulière ».
+AILE_ECHANGE = 0.18
+# Le front commerçant en est exclu : son plafond d'emprise est déjà à 0,85, donc
+# une aile y serait aussitôt reprise par le rabot de R8 — l'aile pousserait le
+# bâtiment au-dessus du plafond, et le plafond raboterait la profondeur de TOUT
+# le bâtiment pour la rendre. On aurait payé une façade pour un ressaut.
+AILE_TISSUS = {"coeur_ancien", "maisons_de_ville"}
+AILE_LARGEUR = (4.0, 7.0)
+AILE_PROFONDEUR = (3.0, 6.0)
+AILE_AIRE_MIN = 15.0       # sous ça, ce n'est plus une aile, c'est un ressaut
+# Sous cette cour, pas d'aile : il faut qu'il reste un arrière APRÈS l'aile,
+# sinon on a rendu la parcelle pleine par un autre chemin.
+AILE_COUR_MIN = 30.0
+# 🔴 ADOSSÉE, ET C'EST VÉRIFIÉ DEPUIS LE 2026-08-17 (2). La docstring de
+# `aile_arriere` promettait « adossée à une limite LATÉRALE et jamais posée au
+# milieu » depuis le premier jour — mais rien ne le contrôlait : l'aile se posait
+# à un BOUT DE LA COUR mesuré le long de la façade, et sur une parcelle d'angle
+# ce bout-là est le mur de l'autre bande, pas une limite de parcelle. D'où la
+# dent qui pend dans la cour et l'escalier que l'auteur a entourés sur l'îlot 41.
+#
+# Mesuré, en éteignant l'aile pour isoler sa part : les poches à bouche étroite
+# (≤ 8 m, ≥ 3 m²) passent de 57 à 14, et celles à bouche ≤ 6 m de 18 à 1. L'aile
+# faisait donc les trois quarts des ressauts du fichier.
+#
+# Le contrôle : la part du contour de l'aile posée sur la limite de la PARCELLE.
+# Une aile vraiment adossée y met une de ses deux joues, soit 3 à 6 m sur un
+# contour de 17 à 26 m — le seuil est bas exprès, il ne sépare pas « beaucoup »
+# de « peu » mais « une joue » de « rien du tout ».
+AILE_ADOS = 0.15
+
+# ✂️ LA POINTE N'EST PLUS BÂTIE PAR DÉFAUT — 2026-08-17 : « les pointes et
+# angles aigus sont presque toujours bâtis. Or dans la réalité ces endroits
+# deviennent souvent un jardinet, une cour, un passage. Les bâtiments très
+# pointus sont possibles, mais devraient rester des exceptions remarquables. »
+#
+# `ecorner` ne suffit pas : il coupe la pointe DU BÂTIMENT, donc il transforme
+# un couteau en coin tronqué, mais il bâtit quand même la pointe de l'îlot. Ici
+# c'est la parcelle qui est jugée, avant tout dessin.
+#
+# Le tirage garde une exception sur six — le bâtiment d'angle pointu existe, il
+# doit juste être rare. Et il n'y a pas de règle sans compte : les deux nombres
+# s'impriment.
+ANGLE_POINTE_DEG = 30.0
+POINTE_PART = 0.17
+
+# 🌿 LA PARCELLE SANS RUE EST UNE CATÉGORIE, PAS UN RÉSIDU — 2026-08-17 : « le
+# problème n'est pas leur existence, mais le fait qu'elles semblent être des
+# erreurs résiduelles plutôt qu'une catégorie urbaine assumée ».
+#
+# 🔴 MESURÉ AVANT D'ÉCRIRE QUOI QUE CE SOIT, et ça a annulé le travail prévu :
+# les 15 parcelles sans façade de Wehrau sont EXACTEMENT les 15 cœurs d'îlot,
+# `origine = 'coeur'`. Il n'existe aucune parcelle enclavée par accident — c'est
+# le « zéro reliquat enclavé » du 2026-08-17. Elles sont donc déjà une catégorie
+# assumée, écartées en amont par ORIGINES_NUES et dessinées en vert.
+#
+# Ce qui les faisait LIRE comme un résidu n'était pas leur statut, c'était leur
+# FORME : la pointe verte de l'îlot 59, désignée sur l'image. C'est la règle de
+# la pointe, juste au-dessus, qui y répond — et une remise au fond d'une cour
+# aurait été du code pour un cas qui n'existe pas.
 
 # Les origines de parcelle qui ne portent pas de bâtiment. Un cœur d'îlot est
 # une cour, un chemin est une venelle : ni l'un ni l'autre ne se bâtit.
@@ -188,6 +358,31 @@ LARGEUR_MIN = 3.0          # la largeur du mur qui reste, pas l'aire
 # au toit (−0,07 ha, 0,7 %) — ce qui se perd n'avait pas de surface, il avait
 # une forme. Monter à 60 commencerait à vider des rangées entières.
 AIRE_MIN = 40.0
+
+# 🕳️ L'ENCOCHE — 2026-08-17 (2). Une empreinte a droit à UN décrochement
+# rentrant, pas deux. Voir `fermer_encoches` pour le pourquoi ; ici les nombres.
+#
+# Mesuré avant d'écrire la règle, sur les 701 empreintes de la ville :
+#
+#     sommets rentrants   empreintes   ce que c'est
+#            0                542      la barre, le rectangle
+#            1                131      l'équerre : immeuble d'angle, aile arrière
+#            2                 26      l'escalier, le U
+#            3                  2      le C
+#
+# ⚠️ ET UN SEUIL DE LARGEUR NE SAIT PAS LES SÉPARER, c'est mesuré aussi : les
+# poches à bouche ≤ 8 m passent de 14 à 57 quand on rallume l'aile arrière, qui
+# est pourtant la forme la plus VOULUE du fichier. La bouche d'une équerre juste
+# et celle d'un ressaut font la même largeur ; c'est leur NOMBRE qui diffère.
+ENCOCHE_RENTRANTS = 1
+# Au-delà, la poche n'est plus une encoche : c'est la cour que l'équerre
+# entoure, et la combler rendrait la parcelle pleine. 45 m² = la cour médiane du
+# cœur ancien (22 m²) doublée, donc large.
+ENCOCHE_AIRE_MAX = 45.0
+ENCOCHE_PASSES = 4         # trois décrochements au pire, plus un tour de garde
+# Ce qui compte comme un décrochement plutôt que comme du bruit de découpe.
+RENTRANT_AIRE_MIN = 0.5    # produit vectoriel, donc deux fois l'aire du coin
+RENTRANT_ARETE_MIN = 0.5   # m — sous ça l'arête n'a pas de direction
 
 # 🔴 LA FORME BIZARRE, même demande : « si il contient trop de coins ET a une
 # forme cheloue, alors parcelle vide aussi ». Les deux conditions ENSEMBLE, et
@@ -256,7 +451,12 @@ PAS_RASTER = 0.4           # la maille du rectangle inscrit, en mètres
 # Ce qui se compte en passant et s'imprime à la fin. Une exception qui ne se
 # compte pas devient une règle sans qu'on s'en aperçoive.
 COMPTE = {"cour": 0, "fond_cede": 0, "creux_garde": 0,
-          "pire_coins": 0, "pire_rect": 1.0}
+          "pire_coins": 0, "pire_rect": 1.0,
+          "aile": 0, "aile_ratee": 0, "aile_flottante": 0,
+          "creuse": 0, "rabote": 0,
+          "pointe_nue": 0, "pointe_gardee": 0, "traversante": 0,
+          "morceau_jete": 0, "poche_comblee": 0,
+          "encoche": 0, "encoche_bat": 0}
 
 
 # ------------------------------------------------------------------ géométrie
@@ -338,14 +538,19 @@ def _portee(ring, i):
     return max((p[0] - a[0]) * nx + (p[1] - a[1]) * ny for p in ring)
 
 
-def creux_sur_rue(poly, ring, rues, retraits):
-    """De combien le bâtiment recule-t-il de sa rue, au-delà de son recul ?
+def creux_sur_rue(polys, ring, rues, retraits):
+    """De combien le bâti recule-t-il de sa rue, au-delà de son recul ?
 
     Le contrôle de R2 bis. `touche_les_rues` répond oui ou non et sert à
     décider une coupe ; ici on veut la PROFONDEUR du creux, parce que tous les
     creux ne se valent pas : le pan coupé d'un angle aigu (`ecorner`) en
     fabrique un de la taille du pan, et c'en est un qu'on veut. Un bâtiment
-    reculé de six mètres sur toute sa façade, non."""
+    reculé de six mètres sur toute sa façade, non.
+
+    ⚠️ PREND LA LISTE DES BÂTIMENTS DE LA PARCELLE, pas un seul. Une parcelle
+    traversante en porte deux, un par rue ; mesurer le bâtiment de devant contre
+    la rue de derrière l'accuserait d'un creux de toute la profondeur du jardin,
+    qui est justement ce qu'on veut voir exister."""
     pire = 0.0
     n = len(ring)
     for i in range(n):
@@ -364,7 +569,7 @@ def creux_sur_rue(poly, ring, rues, retraits):
                 q = (base[0] + nx * 0.25 * k, base[1] + ny * 0.25 * k)
                 if not dans(ring, q):
                     break                    # la parcelle s'arrête là
-                if dans(poly, q):
+                if any(dans(poly, q) for poly in polys):
                     pire = max(pire, 0.25 * k - retraits[i])
                     break
     return pire
@@ -447,6 +652,245 @@ def enveloppe(ring, retraits, rues):
     return D4C.nettoyer(poly)
 
 
+# ------------------------------------------------- la bande depuis la façade
+
+def part(g, sel):
+    """Une fraction reproductible dans [0, 1], tirée de la graine de position."""
+    return ((g >> sel) & 1023) / 1023.0
+
+
+def entre(g, sel, plage):
+    bas, haut = plage
+    return bas + (haut - bas) * part(g, sel)
+
+
+def part_sur_bord(morceau, contour, tol=0.15):
+    """La part du périmètre de `morceau` posée sur le contour de `contour`.
+
+    Tout ce qui n'y est pas est une coupe, donc un mur de bâtiment : c'est ce
+    qui distingue une cour ouverte d'une poche creusée dans la masse."""
+    n, m = len(morceau), len(contour)
+    if n < 3 or m < 3:
+        return 1.0
+    total = dessus = 0.0
+    for i in range(n):
+        p, q = morceau[i], morceau[(i + 1) % n]
+        L = math.hypot(q[0] - p[0], q[1] - p[1])
+        if L < 1e-9:
+            continue
+        total += L
+        mid = ((p[0] + q[0]) / 2.0, (p[1] + q[1]) / 2.0)
+        if any(D4C.dist_pt_seg(mid, contour[k], contour[(k + 1) % m]) <= tol
+               for k in range(m)):
+            dessus += L
+    return dessus / total if total > 1e-9 else 1.0
+
+
+def bande_sur_rue(env, ring, rues, retraits, prof):
+    """L'enveloppe réduite à la BANDE CONSTRUCTIBLE. Renvoie (bâtiments, cour).
+
+    🔴 C'EST LA CORRECTION DU 2026-08-17, ET ELLE COMMANDE TOUT LE RESTE DU
+    FICHIER. Avant, l'empreinte d'un tissu mitoyen était la parcelle moins ses
+    retraits — donc « les bâtiments ressemblent trop aux parcelles » : des corps
+    de 30 m de profondeur, aucun jardin, aucune cour, aucun arrière. La règle
+    est maintenant celle d'une ville réelle : le front de rue peut être continu,
+    mais le bâtiment reste une BANDE de 10 à 16 m comptée depuis sa façade, et
+    la parcelle continue derrière lui.
+
+    🔴 ET LA BANDE SE MESURE DEPUIS CHAQUE LIMITE SUR RUE, PAS DEPUIS LA PLUS
+    LONGUE. C'est ce qui répare les parcelles d'angle, et c'est la raison pour
+    laquelle la règle de profondeur avait été SUPPRIMÉE le matin même au lieu
+    d'être réparée : une profondeur comptée depuis une seule façade laisse le
+    vide le long de l'autre rue, et sur un îlot ancien ça se voit à tous les
+    coins. Ici la bande de chaque rue est un demi-plan, le bâtiment est leur
+    RÉUNION, et une parcelle d'angle porte donc un immeuble en L qui suit ses
+    deux rues.
+
+    Le procédé n'a besoin d'aucune bibliothèque géométrique : la réunion des
+    bandes est le complément de l'INTERSECTION des arrières, et `04c` sait déjà
+    retirer une intersection de demi-plans d'un anneau (`_soustraire_convexe`,
+    écrit pour les venelles). La partition tient donc à l'arête près (61) :
+    le mur arrière du bâtiment et le bord de la cour sont la même arête.
+
+    🔴 ET LA PARCELLE A LE DROIT DE PORTER PLUSIEURS BÂTIMENTS. Mesuré ici, et
+    c'était d'abord pris pour un défaut : sur 25 parcelles la bande sort en DEUX
+    morceaux qui ne se touchent nulle part (`bord_partage` = 0, vérifié). Ce sont
+    les parcelles TRAVERSANTES — une rue devant, une rue derrière — et deux
+    morceaux disjoints y sont la bonne réponse : une maison sur chaque rue, le
+    jardin entre les deux. La première version n'en gardait que le plus grand et
+    jetait jusqu'à 87 m², ce qui reculait la façade de l'autre rue de toute la
+    profondeur du jardin — le défaut R2 bis, réintroduit par la correction."""
+    if prof is None:
+        return [env], []
+    hp = []
+    n = len(ring)
+    for i in range(n):
+        if not rues[i]:
+            continue
+        a, b = ring[i], ring[(i + 1) % n]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy)
+        # Même garde-fou que dans `enveloppe` : une arête de quelques
+        # millimètres n'a pas de direction, elle a du bruit, et la bande qu'elle
+        # dicterait traverserait la parcelle n'importe comment.
+        if L < LONGUEUR_ARETE_MIN:
+            continue
+        nx, ny = -dy / L, dx / L            # rentrant : anneau ccw
+        d = retraits[i] + prof              # 🔴 depuis la FAÇADE, pas la rue
+        hp.append(((a[0] + nx * d, a[1] + ny * d), (nx, ny)))
+    if not hp:
+        return [env], []
+    devant, arriere = D4C._soustraire_convexe(env, hp)
+    if not devant:
+        return [env], []                    # la parcelle est moins profonde que
+                                            # la bande : elle est bâtie entière
+
+    # Les morceaux qui SE TOUCHENT se recollent — une parcelle d'angle en donne
+    # deux qui partagent l'arête de la coupe, et c'est un immeuble en L, pas deux
+    # bâtiments. Ceux qui ne se touchent pas restent séparés : voir plus haut.
+    morceaux = D4C.reunir_voisins(devant)
+
+    # 🕳️ UNE COUR N'EST PAS UN TROU — 🔄 2026-08-17, désigné par l'auteur sur les
+    # coins des îlots 40, 41 et 59, avec le tracé de l'emprise voulue par-dessus
+    # l'image : le bâtiment y sortait en C, une cour creusée EN PLEIN MILIEU de
+    # la masse au lieu d'être derrière elle.
+    #
+    # La cause est géométrique et non réglable. Sur une parcelle d'ANGLE, ce qui
+    # reste derrière les deux bandes est un coin dont la pointe vise le coin de
+    # rue : le bâtiment fait le tour de cette pointe, donc un C. Sur un angle
+    # droit ordinaire le même reste est un rectangle collé au fond, et c'est une
+    # cour normale.
+    #
+    # Le partage se lit sur l'OUVERTURE de la cour : la part de son contour qui
+    # est du bord de parcelle et non du mur du bâtiment. Une cour de fond est
+    # bordée par le fond et les deux côtés (0,5 et plus) ; une poche entre deux
+    # ailes n'a qu'un côté (0,25 et moins). Ce qui n'est pas ouvert repart au
+    # bâtiment — donc le vide reste DERRIÈRE, jamais dedans.
+    #
+    # 🔴 SAUF SUR UNE PARCELLE TRAVERSANTE, ET C'EST LA MOITIÉ DE LA RÈGLE. Là,
+    # le vide est pris en sandwich entre les deux maisons — une par rue — donc il
+    # est fermé par du mur des deux côtés et son ouverture est basse elle aussi.
+    # Le combler rendrait la parcelle pleine et reculerait la façade de la rue
+    # d'en face de toute la profondeur du jardin : c'est R2 bis, réintroduit une
+    # troisième fois. Le test est déjà fait juste au-dessus — deux morceaux de
+    # bande qui ne se touchent nulle part —, on s'en sert.
+    if len(morceaux) == 1:
+        # ⚠️ ON JUGE CHAQUE TRANCHE, ET RECOLLER LES TRANCHES D'ABORD A ÉTÉ
+        # ESSAYÉ PUIS RETIRÉ. `_soustraire_convexe` retranche les demi-plans un
+        # par un, donc l'arrière ressort en tranches — et c'est la bonne unité :
+        # une tranche est une région de l'arrangement des demi-plans, donc soit
+        # elle est derrière le bâtiment, soit elle est dedans. Recollées, la
+        # poche du coin fusionne avec la cour de fond, l'ouverture de l'ensemble
+        # repasse au-dessus du seuil, et le C de l'îlot 40 revient tel quel.
+        ouvertes, poches = [], []
+        for m in arriere:
+            # Une poche est CREUSÉE dans la masse, donc elle la touche. Un
+            # morceau qui ne touche pas le bâtiment est un fond de parcelle
+            # séparé : le combler ajouterait un second bâtiment posé dans le
+            # jardin, ce qui est l'inverse du but.
+            ouv = part_sur_bord(m, env)
+            # Deux façons d'être une poche :
+            #   · la tranche est ENFERMÉE par le bâtiment (le C du coin) ;
+            #   · elle est un DOIGT — assez étroite pour qu'on n'y habite pas,
+            #     et à moitié bordée de mur. C'est la fente beige que l'auteur
+            #     a entourée sur l'îlot 41. ⚠️ Le seuil de largeur ne vaut
+            #     JAMAIS seul : la cour de fond du cœur ancien fait 22 m² pour
+            #     9,5 m de façade, donc 2,3 m de profondeur, et un seuil de
+            #     largeur seul en rebâtissait 434 sur 701.
+            poche = ((ouv < COUR_OUVERTURE
+                      or (largeur_min(m) < COUR_LARGEUR_MIN
+                          and ouv < COUR_DOIGT))
+                     and D4C.bord_partage(morceaux[0], m) > 1e-6)
+            (poches if poche else ouvertes).append(m)
+        if poches:
+            # 🔴 ET ON NE GARDE LE COMBLEMENT QUE S'IL RECOLLE VRAIMENT.
+            # `fusionner` renonce quand le bord commun n'est pas contigu, et le
+            # morceau ressortirait alors en SECOND bâtiment posé dans la cour —
+            # exactement le contraire du geste. Mesuré sans ce repli : cinq
+            # parcelles de plus comptées « traversantes » sans l'être.
+            recolle = D4C.reunir_voisins(morceaux + poches)
+            if len(recolle) == 1:
+                COMPTE["poche_comblee"] += 1
+                morceaux = recolle
+                arriere = ouvertes
+
+    morceaux.sort(key=lambda m: -abs(D4C.aire_signee(m)))
+    if len(morceaux) > 1:
+        COMPTE["traversante"] += 1
+    return morceaux, list(arriere)
+
+
+def aile_arriere(bande, cour, a, u, nrm, d_fond, g, ring):
+    """Le bâtiment prolongé d'une aile arrière, ou tel quel. Renvoie (anneau,
+    posée ?).
+
+    L'aile est adossée à une limite LATÉRALE et jamais posée au milieu : une
+    aile arrière réelle longe le mur mitoyen, c'est ce qui la distingue d'un
+    appentis au fond du jardin. Le côté est tiré de la position (35).
+
+    🔴 ET C'EST MAINTENANT VÉRIFIÉ AU LIEU D'ÊTRE ESPÉRÉ — 2026-08-17 (2).
+    L'aile se pose à un BOUT DE LA COUR mesuré le long de la façade. Sur une
+    parcelle de rangée ce bout-là est bien la limite mitoyenne ; sur une
+    parcelle d'ANGLE, dont le bâtiment est déjà la réunion de deux bandes, c'est
+    le mur de l'autre bande. L'aile s'y adossait donc à son propre bâtiment, au
+    milieu de la cour : la dent qui pend et l'escalier que l'auteur a entourés
+    sur l'îlot 41. On essaie donc les deux bouts, le tiré d'abord, et on ne
+    garde que celui qui pose vraiment une joue sur la limite de la parcelle.
+
+    ⚠️ ELLE PEUT ÉCHOUER SANS QUE CE SOIT UNE ERREUR, et l'échec se compte.
+    L'aile et la bande se recollent par leur arête commune ; si la cour a déjà
+    été rongée ailleurs, ou si le recollage ne rend pas un anneau unique, on
+    rend la bande seule. Une aile qui flotte à côté de sa maison serait pire
+    qu'une maison sans aile."""
+    if not cour:
+        return bande, False
+    piece = max(cour, key=lambda m: abs(D4C.aire_signee(m)))
+    if abs(D4C.aire_signee(piece)) < AILE_COUR_MIN:
+        return bande, False
+
+    larg = entre(g, 17, AILE_LARGEUR)
+    prof_a = entre(g, 23, AILE_PROFONDEUR)
+    tus = [(p[0] - a[0]) * u[0] + (p[1] - a[1]) * u[1] for p in piece]
+    # Les deux bouts de la cour, le tiré de la position en premier (35) : le
+    # second n'est essayé que si le premier n'est adossé à rien.
+    bouts = [min(tus), max(tus) - larg]
+    if not (g >> 29) & 1:
+        bouts.reverse()
+
+    flottante = False
+    for t0 in bouts:
+        hp = [
+            # le fond de l'aile : au-delà, on est de nouveau dans la cour
+            ((a[0] + nrm[0] * (d_fond + prof_a),
+              a[1] + nrm[1] * (d_fond + prof_a)), (-nrm[0], -nrm[1])),
+            # les deux joues, mesurées le long de la façade
+            ((a[0] + u[0] * t0, a[1] + u[1] * t0), u),
+            ((a[0] + u[0] * (t0 + larg), a[1] + u[1] * (t0 + larg)),
+             (-u[0], -u[1])),
+        ]
+        _, dedans = D4C._soustraire_convexe(piece, hp)
+        if not dedans:
+            continue
+        aile = max(dedans, key=lambda m: abs(D4C.aire_signee(m)))
+        if abs(D4C.aire_signee(aile)) < AILE_AIRE_MIN:
+            continue
+        # 🔴 LE CONTRÔLE QUI MANQUAIT : une joue sur la limite de la PARCELLE.
+        # `ring` et non l'enveloppe : en mitoyen le retrait latéral vaut 0, donc
+        # les deux se confondent, mais c'est la limite de propriété qui donne
+        # son sens au mot « adossée ».
+        if part_sur_bord(aile, ring) < AILE_ADOS:
+            flottante = True
+            continue
+        fusion = D4C.reunir_voisins([bande, aile])
+        if len(fusion) != 1:
+            COMPTE["aile_ratee"] += 1
+            continue
+        return fusion[0], True
+    if flottante:
+        COMPTE["aile_flottante"] += 1
+    return bande, False
+
+
 def dans(anneau_uv, p):
     """Point dans un anneau OUVERT. `apercu_carte.dedans` veut un anneau fermé
     et saute la dernière arête sinon : ici les anneaux sont ouverts partout."""
@@ -520,6 +964,136 @@ def sur_index(milieu, idx):
                 if D4C.dist_pt_seg((mx, my), p, q) <= TOL_RUE:
                     return True
     return False
+
+
+def _rentrants(anneau):
+    """Les indices des sommets RENTRANTS qui sont de vrais décrochements.
+
+    Le filtre sur les deux arêtes n'est pas de la coquetterie : `04c` laisse des
+    sommets à quelques centimètres l'un de l'autre (l'anneau de la parcelle 238
+    se ferme sur un doublon), et un tel sommet compte pour un décrochement alors
+    qu'il n'est que du bruit de découpe."""
+    n = len(anneau)
+    out = []
+    for i in range(n):
+        p, q, r = anneau[(i - 1) % n], anneau[i], anneau[(i + 1) % n]
+        cr = (q[0] - p[0]) * (r[1] - q[1]) - (q[1] - p[1]) * (r[0] - q[0])
+        if cr >= -RENTRANT_AIRE_MIN:
+            continue
+        if min(math.hypot(q[0] - p[0], q[1] - p[1]),
+               math.hypot(r[0] - q[0], r[1] - q[1])) < RENTRANT_ARETE_MIN:
+            continue
+        out.append(i)
+    return out
+
+
+def _enveloppe_convexe(anneau):
+    """Les indices des sommets de l'anneau qui portent son enveloppe convexe.
+
+    Rendus en indices et non en points : deux sommets d'une empreinte peuvent
+    tomber au même endroit (une arête de longueur nulle), et un test
+    d'appartenance par coordonnées les confondrait."""
+    n = len(anneau)
+    if n < 3:
+        return list(range(n))
+    ordre = sorted(range(n), key=lambda i: (anneau[i][0], anneau[i][1]))
+
+    def demi(seq):
+        h = []
+        for i in seq:
+            while len(h) >= 2:
+                a, b, c = anneau[h[-2]], anneau[h[-1]], anneau[i]
+                if (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) > 0:
+                    break
+                h.pop()
+            h.append(i)
+        return h
+    return sorted(set(demi(ordre)[:-1] + demi(ordre[::-1])[:-1]))
+
+
+def fermer_encoches(anneau, env):
+    """L'empreinte n'a plus qu'UN décrochement rentrant : l'équerre, pas
+    l'escalier. Renvoie (anneau, nombre d'encoches refermées).
+
+    🕳️ 2026-08-17 (2), désigné par l'auteur sur les îlots 40 et 41 : « des
+    formes de bâtiment pas réalistes », « des coins encore à corriger ». La note
+    de la veille annonçait déjà le remède sans l'écrire — « ça demanderait une
+    OUVERTURE MORPHOLOGIQUE de la cour, pas un seuil de plus ». C'est ce que
+    fait cette passe, du côté du bâtiment : elle referme les poches étroites du
+    contour, ce qui revient à ouvrir la cour.
+
+    🔴 LE CRITÈRE EST LE NOMBRE DE DÉCROCHEMENTS, PAS UNE LARGEUR. Mesuré sur
+    les 701 empreintes : 542 n'ont aucun sommet rentrant, 131 en ont UN, 28 en
+    ont deux ou trois. Un sommet rentrant, c'est une équerre — l'immeuble
+    d'angle qui suit ses deux rues, ou la maison prolongée de son aile arrière ;
+    les deux sont voulus et se lisent très bien. DEUX, c'est un escalier ou un
+    U, et aucune de ces 28 empreintes n'a d'excuse. Un seuil de largeur, lui,
+    n'aurait pas su séparer les deux : la poche d'une équerre légitime fait 7 à
+    9 m de bouche, exactement comme celle d'un ressaut.
+
+    On referme la plus PETITE poche d'abord : sur une parcelle d'angle, la
+    grande poche est la cour que l'équerre entoure — celle qu'il faut garder —
+    et la petite est la dent qui pend dedans."""
+    fermees = 0
+    for _ in range(ENCOCHE_PASSES):
+        an = anneau
+        if len(_rentrants(an)) <= ENCOCHE_RENTRANTS:
+            break
+        hull = _enveloppe_convexe(an)
+        if len(hull) < 3:
+            break
+        n = len(an)
+        poches = []
+        for k in range(len(hull)):
+            i, j = hull[k], hull[(k + 1) % len(hull)]
+            sub = an[i:j + 1] if j > i else an[i:] + an[:j + 1]
+            if len(sub) < 3:
+                continue
+            aire = abs(D4C.aire_signee(sub))
+            if aire < 1.0 or aire > ENCOCHE_AIRE_MAX:
+                continue
+            # 🔴 LA POCHE COMBLÉE DOIT RESTER DANS LA PARCELLE. Elle y est
+            # presque toujours — derrière ses parois il y a la cour, donc du
+            # terrain à soi — mais une parcelle en équerre peut refermer une
+            # poche par-dessus la voisine, et R0 ne pardonne pas.
+            if not _tient_dans(an[i], an[j], sub, env):
+                continue
+            poches.append((aire, i, j))
+        if not poches:
+            break
+        _, i, j = min(poches)
+        anneau = (an[:i + 1] + an[j:]) if j > i else an[j:i + 1]
+        anneau = D4C.nettoyer(anneau)
+        if len(anneau) < 3:
+            return an, fermees
+        fermees += 1
+    return anneau, fermees
+
+
+def _tient_dans(p, q, poche, env):
+    """La corde qui referme `poche` reste-t-elle dans `env` ?
+
+    🔴 ON TESTE DES POINTS DÉCALÉS VERS L'INTÉRIEUR DE LA POCHE, ET C'EST
+    OBLIGATOIRE, PAS UNE PRÉCAUTION. Les deux bouts de la corde sont des sommets
+    du bâtiment, donc en tissu mitoyen ils sont posés SUR la limite de parcelle
+    (le retrait latéral y vaut 0) : testés tels quels, ils tombent du mauvais
+    côté du test de parité et toutes les encoches se refusaient — 12 refermées
+    au lieu de 28, mesuré."""
+    cx = sum(r[0] for r in poche) / len(poche)
+    cy = sum(r[1] for r in poche) / len(poche)
+    L = math.hypot(q[0] - p[0], q[1] - p[1])
+    k = max(3, int(L / 1.0) + 1)
+    for t in range(k):
+        f = t / (k - 1.0)
+        x = p[0] + (q[0] - p[0]) * f
+        y = p[1] + (q[1] - p[1]) * f
+        dx, dy = cx - x, cy - y
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            continue
+        if not dans(env, (x + dx / d * 0.10, y + dy / d * 0.10)):
+            return False
+    return True
 
 
 def ecorner(anneau):
@@ -768,7 +1342,7 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None):
     ring = ccw(sans_doublons(D4C.ouvrir(parcelle)))
     n = len(ring)
     if n < 3:
-        return None, "dégénérée", [], []
+        return None, "dégénérée", [], [], {}
 
     # R1 — le rôle de chaque limite. La rue d'abord, la venelle ensuite : une
     # paroi de venelle EST du bord d'emprise pour `04c`, donc les deux tests
@@ -780,7 +1354,11 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None):
         rues.append(sur_index(m, idx_bord))
         venelles.append(sur_index(m, idx_venelle) if idx_venelle else False)
     if not any(rues):
-        return None, "enclavée", rues, []
+        # 🌿 Le motif porte le NOM de la catégorie et pas celui d'un échec : sur
+        # Wehrau ce cas ne se présente jamais (les 15 parcelles sans façade sont
+        # les 15 cœurs d'îlot, écartés en amont), donc c'est un garde-fou pour le
+        # jour où `04c` en laisserait une. Mieux vaut qu'elle sorte nommée.
+        return None, "jardin intérieur (sans rue)", rues, [], {}
 
     # R2 — la façade est la plus longue arête sur rue. C'est elle qui donne
     # l'orientation de tout ce qui suit, y compris du faîtage en 3D.
@@ -793,7 +1371,7 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None):
         if L > best_L:
             best_L, meilleur = L, i
     if meilleur is None or best_L < 1e-9:
-        return None, "sans façade", rues, []
+        return None, "sans façade", rues, [], {}
     a = ring[meilleur]
     b = ring[(meilleur + 1) % n]
     L = math.hypot(b[0] - a[0], b[1] - a[1])
@@ -802,10 +1380,25 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None):
 
     g = graine(ring)
     recul = max(0.0, recul0 + jeu(g, 3, JEU_RECUL))
-    prof = prof0
+    # ±15 % sur la profondeur : « ce sont des plages, pas des valeurs fixes ».
+    prof = None if prof0 is None else prof0 * (1.0 + jeu(g, 21, JEU_PROF))
+    prof0 = prof
     aire_parcelle = abs(D4C.aire_signee(ring))
     if facade is not None:
         facade = max(3.0, facade + jeu(g, 13, JEU_FACADE))
+
+    # ✂️ LA POINTE REPART AU JARDIN, sauf exception. Le test porte sur LA
+    # PARCELLE et non sur l'empreinte : `ecorner` sait tronquer la pointe d'un
+    # bâtiment, mais il bâtit quand même le bout pointu de l'îlot, et c'est le
+    # bout de l'îlot que l'auteur a désigné (« la pointe gauche de l'îlot 59 »).
+    # Le tirage laisse passer une pointe sur six, parce que l'immeuble d'angle
+    # aigu existe — il doit seulement rester une exception remarquable.
+    if famille == MITOYEN \
+            and D4C.angle_le_plus_aigu(ring) < ANGLE_POINTE_DEG:
+        if part(g, 5) >= POINTE_PART:
+            COMPTE["pointe_nue"] += 1
+            return None, "pointe rendue au jardin", rues, [], {}
+        COMPTE["pointe_gardee"] += 1
 
     # ☕ L'exception du cœur ancien : cette parcelle-ci garde une cour derrière.
     cour = (st == "coeur_ancien" and aire_parcelle >= COUR_AIRE
@@ -824,26 +1417,88 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None):
     else:
         cadre = (u, nrm)
 
+    # R8 BIS — LA PARCELLE ÉTROITE CREUSE. D'abord, parce qu'il ne sert à rien
+    # de raboter une empreinte qui n'existe pas encore. Une façade de 5 m sur
+    # 13 m de profondeur fait 65 m² ; la même après retraits peut tomber sous
+    # AIRE_MIN, et le refus ferait un TROU dans le front de rue — l'inverse de
+    # « conserver une façade bâtie presque continue ». Une maison à façade
+    # étroite est profonde : c'est la règle, pas le rattrapage.
+    # 🏚️ L'AILE SE DÉCIDE ICI, AVANT LA BANDE, parce qu'elle se paye sur la
+    # profondeur de celle-ci (voir AILE_ECHANGE). Décidée dans `_poser`, elle
+    # arrivait après que la bande avait déjà pris toute la place.
+    veut_aile = (st in AILE_TISSUS and prof is not None
+                 and part(g, 31) < AILE_PART)
+    if veut_aile:
+        prof *= 1.0 - AILE_ECHANGE
+
+    # ⚠️ CES DEUX COMPTEURS SE PRENNENT DANS LES BOUCLES D'ESSAI, DONC ILS
+    # MENTENT SI ON NE LES PLIE PAS. `enveloppe` et le garde-fou du creux
+    # s'incrémentent à chaque tour ; entre R5 (4 tours), R8 bis (4) et le rabot
+    # (6), une seule parcelle pouvait en compter vingt — mesuré : 837 « retraits
+    # de fond annulés » pour 790 bâtiments, un chiffre que personne ne peut lire.
+    # On les ramène donc à « nombre de PARCELLES concernées », qui est la seule
+    # lecture utile.
+    avant = {"fond_cede": COMPTE["fond_cede"],
+             "creux_garde": COMPTE["creux_garde"]}
+
+    def par_parcelle():
+        for cle, v in avant.items():
+            if COMPTE[cle] > v:
+                COMPTE[cle] = v + 1
+
+    emps = motif = None
+    retraits, note = [], {}
+    creuse = False
+    for _ in range(4):
+        emps, motif, retraits, note = _poser(ring, rues, venelles, u, nrm,
+                                             cadre, a, st, famille, recul,
+                                             lat0, fond0, facade, prof, g,
+                                             veut_aile)
+        if emps or prof is None or motif != MOTIF_PETIT:
+            break
+        if prof >= PROF_ETROITE_MAX * prof0:
+            break
+        prof = min(prof * 1.35, PROF_ETROITE_MAX * prof0)
+        creuse = True
+    if not emps:
+        par_parcelle()
+        return None, motif, rues, retraits, note
+    if creuse:
+        COMPTE["creuse"] += 1
+
     # R8 — le plafond d'emprise au sol se paye en profondeur. On le règle par
     # essais successifs plutôt que par une formule : la profondeur ne commande
     # l'aire de façon proportionnelle que sur un rectangle, et la moitié des
     # tissus n'en sont pas. Sans règle de profondeur, il n'y a rien à raboter.
-    for essai in range(7):
-        emp, motif, retraits = _poser(ring, rues, venelles, u, nrm, cadre, a,
-                                      st, famille, recul, lat0, fond0,
-                                      facade, prof)
-        if emp is None:
-            return None, motif, rues, retraits
-        if prof is None or part_max >= 1.0 or essai == 6:
-            break
-        if abs(D4C.aire_signee(emp)) <= part_max * aire_parcelle:
-            break
-        prof *= 0.88
-    return emp, None, rues, retraits
+    #
+    # 🔴 LE RABOT NE DÉTRUIT JAMAIS UN BÂTIMENT QUI TENAIT. Le plafond et
+    # AIRE_MIN se contredisent sur une petite parcelle (0,80 × 50 m² = 40 m²,
+    # soit AIRE_MIN pile) : si le tour suivant ne rend rien, on garde le tour
+    # d'avant. Un bâtiment un peu trop gras vaut mieux qu'un trou.
+    def couvert(liste):
+        return sum(abs(D4C.aire_signee(m)) for m in liste)
+
+    if prof is not None and part_max < 1.0:
+        rabote = False
+        for _ in range(6):
+            if couvert(emps) <= part_max * aire_parcelle:
+                break
+            prof *= 0.88
+            e2, _m2, r2, n2 = _poser(ring, rues, venelles, u, nrm, cadre, a,
+                                     st, famille, recul, lat0, fond0,
+                                     facade, prof, g, veut_aile)
+            if not e2:
+                break
+            emps, retraits, note = e2, r2, n2
+            rabote = True
+        if rabote:
+            COMPTE["rabote"] += 1
+    par_parcelle()
+    return emps, None, rues, retraits, note
 
 
 def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
-           recul, lat0, fond0, facade, prof):
+           recul, lat0, fond0, facade, prof, g, veut_aile):
     """Un essai de pose, à retraits donnés. Rendu séparé parce que R5 le
     rejoue en réduisant les retraits : c'est la seule boucle du fichier où
     l'échec est une étape normale."""
@@ -878,6 +1533,7 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
                     r = lat
             retraits.append(r)
 
+        note = {"cour": []}
         if famille == MITOYEN:
             env = enveloppe(ring, retraits, rues)
             if len(env) < 3 or abs(D4C.aire_signee(env)) < AIRE_MIN:
@@ -888,44 +1544,55 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
                 # deux fois le même chiffre sous deux noms différents.
                 dernier = MOTIF_PETIT
                 continue
-            emp = _forme(ccw(env), retraits, cadre, a, famille,
-                         facade, prof, recul, nrm)
+            emp = _forme(ccw(env), ring, rues, retraits, cadre, a, famille,
+                         facade, prof, recul, nrm, note)
         else:
             # La forme rectangulaire travaille sur la PARCELLE et ses retraits,
             # pas sur une enveloppe : l'érosion y est exacte, là où découper la
             # parcelle par ses propres droites la réduirait à son noyau.
-            emp = _forme(ring, retraits, cadre, a, famille,
-                         facade, prof, recul, nrm)
-        if emp is None:
+            emp = _forme(ring, ring, rues, retraits, cadre, a, famille,
+                         facade, prof, recul, nrm, note)
+        if not emp:
             dernier = "aucune forme ne tient"
             continue
-        emp = ccw(D4C.nettoyer(emp))
-        if len(emp) < 3:
-            continue
-        if famille == MITOYEN:
-            emp = ecorner(emp)[0]
-        if abs(D4C.aire_signee(emp)) < AIRE_MIN:
-            dernier = MOTIF_PETIT
-            continue
-        if largeur_min(emp) < LARGEUR_MIN:
-            dernier = "plus mince que %.1f m" % LARGEUR_MIN
-            continue
 
-        # 🔴 TROP DE COINS **ET** MAL REMPLI : la parcelle repart au jardin.
-        # Le refus est un `continue` et pas un abandon parce que le tour suivant
-        # de R5 réduit les retraits, donc coupe moins la parcelle — une empreinte
-        # en escalier peut redevenir une équerre franche. Mesuré : sur les 7
-        # empreintes attrapées, aucune ne se rattrape ainsi, mais l'ordre des
-        # essais reste celui du reste du fichier.
-        coins, rect = forme(emp)
-        if coins > SOMMETS_MAX and rect < RECT_MIN:
-            if pire is None or rect < pire[1]:
-                pire = (coins, rect)
-            # Motif à texte FIXE : le tableau des refus compte par motif, donc un
-            # motif qui porte ses chiffres sort en sept lignes de 1. Les chiffres
-            # se lisent dans le bloc de contrôle et dans `--pourquoi`.
-            dernier = MOTIF_FORME
+        # 🔴 CHAQUE MORCEAU SE JUGE SÉPARÉMENT, ET LES RECALÉS REPARTENT AU
+        # JARDIN SANS ENTRAÎNER LES AUTRES. C'est ce que la parcelle traversante
+        # impose : elle porte une maison sur chaque rue, et il arrive que l'une
+        # tienne et l'autre non — la refuser en bloc rouvrirait un trou dans une
+        # des deux rues, ce qui est le défaut qu'on corrige.
+        garde, motif_local = [], None
+        for m in emp:
+            m = ccw(D4C.nettoyer(m))
+            if len(m) < 3:
+                continue
+            if famille == MITOYEN:
+                m = ecorner(m)[0]
+            if abs(D4C.aire_signee(m)) < AIRE_MIN:
+                motif_local = MOTIF_PETIT
+                continue
+            if largeur_min(m) < LARGEUR_MIN:
+                motif_local = "plus mince que %.1f m" % LARGEUR_MIN
+                continue
+
+            # 🔴 TROP DE COINS **ET** MAL REMPLI : le morceau repart au jardin.
+            # Le refus est un `continue` et pas un abandon parce que le tour
+            # suivant de R5 réduit les retraits, donc coupe moins la parcelle —
+            # une empreinte en escalier peut redevenir une équerre franche.
+            coins, rect = forme(m)
+            if coins > SOMMETS_MAX and rect < RECT_MIN:
+                if pire is None or rect < pire[1]:
+                    pire = (coins, rect)
+                # Motif à texte FIXE : le tableau des refus compte par motif,
+                # donc un motif qui porte ses chiffres sort en sept lignes de 1.
+                motif_local = MOTIF_FORME
+                continue
+            garde.append(m)
+        if not garde:
+            dernier = motif_local or "aucune forme ne tient"
             continue
+        if len(garde) < len(emp):
+            COMPTE["morceau_jete"] += 1
 
         # R2 bis, deuxième garde-fou. Annuler une coupe suffit quand une seule
         # arête est en cause ; il reste les parcelles étroites bordées de rue
@@ -933,50 +1600,78 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
         # une rue. Là, c'est le retrait qui plie : on redescend d'un cran et on
         # reprend. Le meilleur essai est gardé au cas où aucun ne serait net.
         if famille == MITOYEN:
-            creux = creux_sur_rue(emp, ring, rues, retraits)
+            creux = creux_sur_rue(garde, ring, rues, retraits)
             if creux > CREUX_TOLERE:
                 if secours is None or creux < secours[0]:
-                    secours = (creux, emp, retraits)
+                    secours = (creux, garde, retraits)
                 dernier = "creux de %.1f m sur rue" % creux
                 continue
-        return emp, None, retraits
+
+        # 🏚️ L'AILE ARRIÈRE SE POSE ICI, ET L'ENDROIT EST LA MOITIÉ DE LA RÈGLE.
+        # Après tous les contrôles de forme, parce qu'une aile fait justement un
+        # bâtiment en L : six à huit coins pour 0,55 de remplissage, c'est-à-dire
+        # exactement ce que « trop de coins, mal rempli » écarte. Ce critère
+        # attrape les escaliers de découpe, qui n'ont pas d'excuse ; une équerre
+        # VOULUE en a une, et elle se compte au lieu de se juger.
+        # L'aile s'accroche au PLUS GRAND morceau : sur une parcelle traversante,
+        # c'est la maison de devant qui a une cour derrière elle ; celle de
+        # derrière a la même cour devant, et une aile y serait sur la rue.
+        if veut_aile:
+            garde.sort(key=lambda m: -abs(D4C.aire_signee(m)))
+            emp2, posee = aile_arriere(garde[0], note["cour"], a, u, nrm,
+                                       recul + prof, g, ring)
+            if posee:
+                garde[0] = ccw(D4C.nettoyer(emp2))
+                note["aile"] = True
+                COMPTE["aile"] += 1
+
+        # 🕳️ ET L'ENCOCHE SE REFERME EN DERNIER, APRÈS L'AILE. L'ordre est la
+        # moitié de la règle : l'aile fabrique volontairement un décrochement,
+        # donc juger la forme avant elle ne verrait pas l'escalier qu'elle
+        # produit sur une parcelle d'angle — un bâtiment qui tourne déjà la rue
+        # en a alors deux. C'est la dent que l'auteur a entourée sur l'îlot 41.
+        for k, m in enumerate(garde):
+            m2, nf = fermer_encoches(m, ring)
+            if nf:
+                garde[k] = ccw(D4C.nettoyer(m2))
+                COMPTE["encoche"] += nf
+                COMPTE["encoche_bat"] += 1
+        return garde, None, retraits, note
 
     if secours is not None:
         COMPTE["creux_garde"] += 1
-        return secours[1], None, secours[2]
+        return secours[1], None, secours[2], {"cour": []}
     if pire is not None and dernier == MOTIF_FORME:
         COMPTE["pire_coins"] = max(COMPTE["pire_coins"], pire[0])
         COMPTE["pire_rect"] = min(COMPTE["pire_rect"], pire[1])
-    return None, dernier, retraits
+    return None, dernier, retraits, {"cour": []}
 
 
-def _forme(env, retraits, cadre, a, famille, facade, prof, recul, nrm):
+def _forme(env, ring, rues, retraits, cadre, a, famille, facade, prof, recul,
+           nrm, note):
     """R3 — les trois familles.
 
-    En mitoyen, `env` est l'enveloppe déjà rétrécie et il ne reste qu'à couper
-    la profondeur — quand il y en a une. Dans les deux autres, `env` est la
+    En mitoyen, `env` est l'enveloppe déjà rétrécie et il ne reste qu'à en
+    garder la bande constructible. Dans les deux autres, `env` est la
     PARCELLE : c'est l'érosion qui tient les distances, et le rectangle se
-    cherche dedans, dans le repère `cadre`."""
+    cherche dedans, dans le repère `cadre`.
+
+    Renvoie une LISTE d'empreintes, ou None. La liste a plus d'un élément sur une
+    parcelle traversante (voir `bande_sur_rue`) ; les deux familles de rectangle
+    n'en rendent jamais qu'une.
+
+    `note` recueille ce que l'appelant ne peut pas recalculer : la cour laissée
+    derrière la bande, dont `_poser` a besoin pour l'aile arrière."""
     if famille == MITOYEN:
-        # 🔴 Pas de règle de profondeur : l'enveloppe EST le bâtiment. C'est le
-        # cas du cœur ancien (parcelle = bâtiment) et des maisons de ville
-        # (profondeur variable), demandé le 2026-08-17.
-        if prof is None:
-            return env
-        # Sinon on coupe ce qui dépasse, et on garde le côté rue.
-        p0 = (a[0] + nrm[0] * (recul + prof), a[1] + nrm[1] * (recul + prof))
-        garde = []
-        for m in D4C.couper(env, p0, (-nrm[0], -nrm[1])):
-            if len(m) < 3:
-                continue
-            cx = sum(p[0] for p in m) / len(m)
-            cy = sum(p[1] for p in m) / len(m)
-            if (cx - p0[0]) * (-nrm[0]) + (cy - p0[1]) * (-nrm[1]) > -0.01 \
-                    and abs(D4C.aire_signee(m)) > 6.0:
-                garde.append(m)
-        if not garde:
-            return env
-        return max(garde, key=lambda m: abs(D4C.aire_signee(m)))
+        # 🔄 IL Y AVAIT ICI UNE COUPE PAR UNE SEULE DROITE — celle de la plus
+        # longue arête sur rue — et c'est elle qui a été remplacée le
+        # 2026-08-17. Elle avait deux défauts qui n'en font qu'un : sur une
+        # parcelle d'angle elle tranchait en biais (d'où la suppression de la
+        # règle de profondeur, le matin même), et elle ne rendait pas la cour,
+        # donc rien n'existait derrière le bâtiment.
+        bandes, cour = bande_sur_rue(env, ring, rues, retraits, prof)
+        note["cour"] = cour
+        return bandes
 
     # Les deux familles de rectangle travaillent dans un repère : U le long de
     # la rue pour la maison détachée, le long de l'ÎLOT pour la boîte.
@@ -1008,7 +1703,7 @@ def _forme(env, retraits, cadre, a, famille, facade, prof, recul, nrm):
     def pt(x, y):
         return (a[0] + x * u[0] + y * w[0], a[1] + x * u[1] + y * w[1])
 
-    return [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)]
+    return [[pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)]]
 
 
 # --------------------------------------------------------------------- lire
@@ -1065,16 +1760,15 @@ def main():
                 else "sol non bâti"
             refus[motif] = refus.get(motif, 0) + 1
             continue
-        emp, motif, rues, retraits = empreinte(p["anneau"], st,
-                                               idx_bord.get(p["ilot"], {}),
-                                               idx_venelle.get(p["ilot"]),
-                                               dirs.get(p["ilot"]))
-        if emp is None:
+        emps, motif, rues, retraits, note = empreinte(
+            p["anneau"], st, idx_bord.get(p["ilot"], {}),
+            idx_venelle.get(p["ilot"]), dirs.get(p["ilot"]))
+        if not emps:
             refus[motif] = refus.get(motif, 0) + 1
             detail.append((p, motif))
             continue
-        resultats.append({"parcelle": p, "emp": emp, "rues": rues,
-                          "retraits": retraits})
+        resultats.append({"parcelle": p, "emps": emps, "rues": rues,
+                          "retraits": retraits, "note": note})
 
     controles(resultats, parcelles, refus)
     if "--pourquoi" in sys.argv:
@@ -1083,9 +1777,9 @@ def main():
     if BLANC:
         print("\nrien écrit (--blanc)")
         return
-    ecrire(resultats)
+    n = ecrire(resultats)
     print("\n→ couche `batiments` (%d) écrite dans %s"
-          % (len(resultats), os.path.basename(GPKG)))
+          % (n, os.path.basename(GPKG)))
 
 
 def controles(resultats, parcelles, refus):
@@ -1096,62 +1790,80 @@ def controles(resultats, parcelles, refus):
     par_st = {}
     for r in resultats:
         st = r["parcelle"]["st"]
-        emp = r["emp"]
+        emps = r["emps"]
         ring = r["parcelle"]["anneau"]
         # ⚠️ `dedans` parcourt len-1 arêtes : il lui faut un anneau FERMÉ, sinon
         # la dernière arête manque et le test répond au hasard près d'elle.
         ferme = list(ring) + [ring[0]]
-        aire = abs(D4C.aire_signee(emp))
         ap = abs(D4C.aire_signee(ring))
-        dmin = min(dist_bord(q, ring) for q in emp)
-        dehors = max((dist_bord(q, ring) for q in emp if not dedans(ferme, q)),
-                     default=0.0)
-        d = par_st.setdefault(st, {"n": 0, "aire": 0.0, "part": 0.0,
-                                   "dmin": 9e9, "dehors": 0.0, "n_dehors": 0,
-                                   "larg": 9e9, "vide_rue": 0,
+        d = par_st.setdefault(st, {"n": 0, "n_parc": 0, "aire": 0.0,
+                                   "part": 0.0, "dmin": 9e9, "dehors": 0.0,
+                                   "n_dehors": 0, "larg": 9e9, "vide_rue": 0,
                                    "creux": 0.0, "aire_min": 9e9,
-                                   "coins": 0, "rect": 1.0, "bizarre": 0})
-        d["n"] += 1
-        coins, rect = forme(emp)
-        d["aire_min"] = min(d["aire_min"], aire)
-        d["coins"] = max(d["coins"], coins)
-        d["rect"] = min(d["rect"], rect)
-        # 🔴 LES DEUX EXTRÊMES NE SUFFISENT PAS À JUGER, et l'oublier fait crier
-        # au loup : le bâtiment qui a le plus de coins n'est presque jamais celui
-        # qui remplit le moins. Le critère porte sur UN bâtiment, donc il se
-        # compte bâtiment par bâtiment.
-        if coins > SOMMETS_MAX and rect < RECT_MIN:
-            d["bizarre"] += 1
-        # Le même anneau nettoyé que celui sur lequel `rues` et `retraits` ont
-        # été calculés — sinon les index ne désignent pas les mêmes arêtes.
+                                   "coins": 0, "rect": 1.0, "bizarre": 0,
+                                   "cour": 0.0, "aile": 0})
+        d["n_parc"] += 1
+        # 🔴 L'EMPRISE SE LIT PAR PARCELLE, LA FORME PAR BÂTIMENT. Depuis qu'une
+        # parcelle traversante en porte deux, les deux ne se comptent plus dans
+        # la même unité : l'emprise est ce que la parcelle a de bâti — donc la
+        # SOMME — et c'est ce nombre que le plafond de la table contraint.
+        couvert = sum(abs(D4C.aire_signee(m)) for m in emps)
+        d["part"] += couvert / ap if ap else 0.0
+        d["cour"] += (1.0 - couvert / ap) if ap else 0.0
+        if r["note"].get("aile"):
+            d["aile"] += 1
         if TISSU[st][6] == MITOYEN:
-            creux = creux_sur_rue(emp, ccw(sans_doublons(ring)), r["rues"],
+            # Le même anneau nettoyé que celui sur lequel `rues` et `retraits`
+            # ont été calculés — sinon les index ne désignent pas les mêmes
+            # arêtes. Et sur la LISTE : voir `creux_sur_rue`.
+            creux = creux_sur_rue(emps, ccw(sans_doublons(ring)), r["rues"],
                                   r["retraits"])
             if creux > CREUX_TOLERE:
                 d["vide_rue"] += 1
                 d["creux"] = max(d["creux"], creux)
-        d["aire"] += aire
-        d["part"] += aire / ap if ap else 0.0
-        d["dmin"] = min(d["dmin"], dmin)
-        d["larg"] = min(d["larg"], largeur_min(emp))
-        if dehors > 0.05:
-            d["dehors"] = max(d["dehors"], dehors)
-            d["n_dehors"] += 1
+        for emp in emps:
+            aire = abs(D4C.aire_signee(emp))
+            d["n"] += 1
+            d["aire"] += aire
+            coins, rect = forme(emp)
+            d["aire_min"] = min(d["aire_min"], aire)
+            d["coins"] = max(d["coins"], coins)
+            d["rect"] = min(d["rect"], rect)
+            # 🔴 LES DEUX EXTRÊMES NE SUFFISENT PAS À JUGER, et l'oublier fait
+            # crier au loup : le bâtiment qui a le plus de coins n'est presque
+            # jamais celui qui remplit le moins. Le critère porte sur UN
+            # bâtiment, donc il se compte bâtiment par bâtiment.
+            if coins > SOMMETS_MAX and rect < RECT_MIN \
+                    and not r["note"].get("aile"):
+                d["bizarre"] += 1
+            d["dmin"] = min(d["dmin"], min(dist_bord(q, ring) for q in emp))
+            d["larg"] = min(d["larg"], largeur_min(emp))
+            dehors = max((dist_bord(q, ring) for q in emp
+                          if not dedans(ferme, q)), default=0.0)
+            if dehors > 0.05:
+                d["dehors"] = max(d["dehors"], dehors)
+                d["n_dehors"] += 1
 
-    print("\n  %-21s %6s %9s %9s %9s %8s"
+    print("\n  %-21s %6s %9s %8s %8s %8s %8s"
           % ("sous_type", "bâtis", "aire moy", "emprise", "plafond",
-             "larg. min"))
-    print("  " + "-" * 68)
-    total, toit = 0, 0.0
+             "cour %", "larg.min"))
+    print("  " + "-" * 74)
+    total, toit, n_parc = 0, 0.0, 0
     for st in sorted(par_st, key=lambda s: -par_st[s]["n"]):
         d = par_st[st]
-        print("  %-21s %6d %9.0f %9.2f %9.2f %8.1f"
-              % (st, d["n"], d["aire"] / d["n"], d["part"] / d["n"],
-                 TISSU[st][5], d["larg"]))
+        print("  %-21s %6d %9.0f %8.2f %8.2f %7.0f%% %8.1f"
+              % (st, d["n"], d["aire"] / d["n"], d["part"] / d["n_parc"],
+                 TISSU[st][5], 100.0 * d["cour"] / d["n_parc"], d["larg"]))
         total += d["n"]
+        n_parc += d["n_parc"]
         toit += d["aire"]
-    print("  " + "-" * 68)
-    print("  %-21s %6d %9.0f" % ("total", total, toit / max(total, 1)))
+    print("  " + "-" * 74)
+    print("  %-21s %6d %9.0f  sur %d parcelles bâties"
+          % ("total", total, toit / max(total, 1), n_parc))
+    print("\n  🌿 LA COLONNE `cour %` EST LA CORRECTION DU 2026-08-17 : c'est la")
+    print("     part de la parcelle qui n'est PAS bâtie. Elle valait 4 % sur le")
+    print("     cœur ancien — d'où « les bâtiments ressemblent trop aux")
+    print("     parcelles ». La consigne demande d'en garder 15 à 30 %.")
 
     print("\n  🔴 BÂTIMENTS SORTANT DE LEUR PARCELLE (R0)")
     hors = [(st, d) for st, d in par_st.items() if d["n_dehors"]]
@@ -1172,8 +1884,43 @@ def controles(resultats, parcelles, refus):
         for st, d in sorted(vides, key=lambda x: -x[1]["vide_rue"]):
             print("     ⚠️ %-21s %d bâtiment(s) reculés, creux jusqu'à %.1f m"
                   % (st, d["vide_rue"], d["creux"]))
-    print("     %d retraits de fond annulés parce qu'ils mangeaient une rue."
-          % COMPTE["fond_cede"])
+    print("     %d parcelles où le retrait de fond a cédé devant la rue, %d où"
+          " le creux a été gardé faute de mieux."
+          % (COMPTE["fond_cede"], COMPTE["creux_garde"]))
+
+    print("\n  🏗️  CE QUE LA RÈGLE DE PROFONDEUR A FABRIQUÉ (2026-08-17)")
+    print("     Le bâtiment n'est plus la parcelle : c'est une bande mesurée")
+    print("     depuis chaque limite sur rue, et le reste est cour ou jardin.")
+    print("     %-44s %5d" % ("parcelles traversantes, deux bâtiments",
+                              COMPTE["traversante"]))
+    # 🕳️ À lire avec le compte des coins soudés de `04c` : les deux règles
+    # visent le même défaut par les deux bouts, la parcelle et l'empreinte.
+    print("     %-44s %5d" % ("poches comblées (cour ouverte < %.0f %%)"
+                              % (100 * COUR_OUVERTURE),
+                              COMPTE["poche_comblee"]))
+    print("     %-44s %5d" % ("ailes arrière posées (%.0f %% visés)"
+                              % (100 * AILE_PART), COMPTE["aile"]))
+    if COMPTE["aile_ratee"]:
+        print("     %-44s %5d" % ("  … dont recollages abandonnés",
+                                  COMPTE["aile_ratee"]))
+    if COMPTE["aile_flottante"]:
+        print("     %-44s %5d" % ("  … refusées, adossées à rien",
+                                  COMPTE["aile_flottante"]))
+    print("     %-44s %5d" % ("encoches refermées (au plus %d rentrant)"
+                              % ENCOCHE_RENTRANTS, COMPTE["encoche"]))
+    print("     %-44s %5d" % ("  … sur combien de bâtiments",
+                              COMPTE["encoche_bat"]))
+    print("     %-44s %5d" % ("parcelles étroites qui ont creusé (R8 bis)",
+                              COMPTE["creuse"]))
+    print("     %-44s %5d" % ("parcelles rabotées par le plafond (R8)",
+                              COMPTE["rabote"]))
+    print("     %-44s %5d" % ("pointes rendues au jardin (< %.0f°)"
+                              % ANGLE_POINTE_DEG, COMPTE["pointe_nue"]))
+    print("     %-44s %5d" % ("  … gardées, exception remarquable",
+                              COMPTE["pointe_gardee"]))
+    if COMPTE["morceau_jete"]:
+        print("     %-44s %5d" % ("parcelles ayant perdu un de leurs morceaux",
+                                  COMPTE["morceau_jete"]))
 
     print("\n  🧱 CE QUI RESTE DEBOUT TIENT LES DEUX SEUILS (2026-08-17)")
     print("     Un bâtiment sous %.0f m², ou qui a plus de %d coins ET moins de"
@@ -1212,9 +1959,11 @@ def controles(resultats, parcelles, refus):
     print("\n  🌞 SURFACE DE TOIT — le chiffre qui rejoint l'énergie")
     print("     %.2f ha sur %d bâtiments." % (toit / 1e4, total))
 
-    n_coeur = par_st.get("coeur_ancien", {}).get("n", 0)
+    n_coeur = par_st.get("coeur_ancien", {}).get("n_parc", 0)
     if n_coeur:
-        print("\n  ☕ LES EXCEPTIONS DU CŒUR ANCIEN — ailleurs, parcelle = bâtiment")
+        print("\n  ☕ LES GRANDES COURS DU CŒUR ANCIEN — en plus de l'arrière que")
+        print("     la profondeur creuse partout, une parcelle sur quatre garde")
+        print("     une cour PLUS PROFONDE.")
         print("     %d cours sur %d parcelles (%.0f %%), au-dessus de %d m²."
               % (COMPTE["cour"], n_coeur, 100.0 * COMPTE["cour"] / n_coeur,
                  COUR_AIRE))
@@ -1281,17 +2030,24 @@ def ecrire(resultats):
     for r in resultats:
         p = r["parcelle"]
         ap = abs(D4C.aire_signee(p["anneau"]))
-        aire = abs(D4C.aire_signee(r["emp"]))
-        cur.execute(
-            "INSERT INTO batiments (geom, fid_parcelle, fid_ilot, sous_type,"
-            " famille, surface_m2, part_parcelle) VALUES (?,?,?,?,?,?,?)",
-            (D4B.blob_gpkg(D4B.wkb_polygone([r["emp"]])), p["fid"], p["ilot"],
-             p["st"], TISSU[p["st"]][6], round(aire, 1),
-             round(aire / ap, 3) if ap else 0.0))
-        for x, y in r["emp"]:
-            xs.append(x)
-            ys.append(y)
-        n += 1
+        # ⚠️ `part_parcelle` EST CELLE DE LA PARCELLE ENTIÈRE, la même sur les
+        # deux lignes d'une parcelle traversante : c'est le nombre que le plafond
+        # de la table contraint, et le lire par bâtiment donnerait deux moitiés
+        # dont aucune ne se compare à quoi que ce soit.
+        couvert = sum(abs(D4C.aire_signee(m)) for m in r["emps"])
+        for emp in r["emps"]:
+            cur.execute(
+                "INSERT INTO batiments (geom, fid_parcelle, fid_ilot,"
+                " sous_type, famille, surface_m2, part_parcelle)"
+                " VALUES (?,?,?,?,?,?,?)",
+                (D4B.blob_gpkg(D4B.wkb_polygone([emp])), p["fid"], p["ilot"],
+                 p["st"], TISSU[p["st"]][6],
+                 round(abs(D4C.aire_signee(emp)), 1),
+                 round(couvert / ap, 3) if ap else 0.0))
+            for x, y in emp:
+                xs.append(x)
+                ys.append(y)
+            n += 1
 
     cur.execute(
         "INSERT INTO gpkg_contents (table_name, data_type, identifier,"
@@ -1310,6 +2066,7 @@ def ecrire(resultats):
                 " VALUES ('batiments',?)", (n,))
     con.commit()
     con.close()
+    return n
 
 
 if __name__ == "__main__":

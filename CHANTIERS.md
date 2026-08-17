@@ -6,6 +6,21 @@
 
 ---
 
+## 0. 🔴 Deux générateurs de bâtiment vivent en parallèle — nouveau le 2026-08-17
+
+**Le défaut le plus coûteux de la liste, parce qu'il fait mentir un chiffre du prototype.** La même chose est calculée deux fois par deux règles différentes :
+
+| | Ce qu'il produit | Qui le regarde | Ce qu'il mesure |
+|---|---|---|---|
+| **`04d_emprises_batiments.py`** | la couche `batiments` — une bande depuis la rue, une cour derrière | les **aperçus PNG** (`apercu_parcelles.py`) | **810 empreintes, 8,86 ha de toit**, zéro hors de sa parcelle |
+| **`07_exporter_godot.py`** | ses volumes, recalculés à chaque export (`BATI` + `04b.retracter`) | la **maquette Godot** | **892 volumes, 12,1 ha de toit**, 44 débordements |
+
+Ce que ça bloque : **le potentiel solaire ne peut pas se trancher** (§7 de `Prototype/Parcelles.md`), parce qu'il se calcule sur une surface de toit dont on a deux valeurs à 27 % d'écart. Et la correction de la session 26 — le bâtiment qui cesse d'être la parcelle — **ne se voit pas en 3D**.
+
+**Ce que le branchement demande**, du côté de `07` : la **direction de façade** par bâtiment (le faîtage la lit), les **jardins** (aujourd'hui `07` les découpe lui-même), puis la mise au rebut de `_empreinte_batie`, `_rectangle`, `_ecorner`, `_garder` et de la table `BATI` sauf sa colonne `pente`. `04d` sait déjà produire les deux premiers — la cour est un sous-produit de `bande_sur_rue`.
+
+⚠️ **À faire là où Godot peut être lancé.** Ces 300 lignes ne portent que de la géométrie de toit, et un toit ne se contrôle qu'à l'œil : le réécrire depuis le Mac, sans pouvoir ouvrir la maquette, c'est écrire du code que personne ne peut juger. → `CLAUDE.md` §3 bis
+
 ## 1. Les défauts visibles de la ville
 
 Ils ne sont pas cachés : `07_exporter_godot.py` les imprime à chaque export. Aucun n'empêche de jouer.
@@ -17,6 +32,9 @@ Ils ne sont pas cachés : `07_exporter_godot.py` les imprime à chaque export. A
 | 3 | ☐ **791 pans de toit (7 %) sont réorientés à l'émission** | ⚠️ conséquence : la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve plus rien. Le chiffre qui informe est celui des réorientations |
 | 4 | ✅ ~~**La vallée ne se lit à aucune des quatre exagérations**~~ | **réglé en supprimant la vallée** le 2026-08-12 : la carte est plate, les touches `1..4` sont retirées |
 | 5 | ☐ **Le trafic, le sol, la lumière** | inchangés depuis la session 9 |
+| 7 | ✅ ~~**Des doigts de cour rentrent dans la masse bâtie**, et de petits ressauts en escalier~~ | **corrigé le 2026-08-17 (2)** — l'empreinte n'a plus droit qu'à **un** décrochement rentrant, et l'aile arrière est vérifiée adossée. 28 → **15** empreintes à deux décrochements, 2 → **0** en C, 52 encoches refermées → `Prototype/Parcelles.md` §2 nonies |
+| 8 | 🔴 ☐ **La PARCELLE en dard, et c'est le peigne qui la fabrique** | **118 parcelles de rue sur 809 ont au moins un sommet rentrant**, les pires à 59–80° : la **435** de l'îlot 40 sort en flèche, la **443** en lanière (89 m² pour 2,0 m de façade au bout), la **438** porte deux replis. C'est ce que l'auteur a entouré le 2026-08-17 sur le bout sud-est de l'îlot 40 — *« des parcelles bizarres avec des formes de bâtiment pas réalistes »*. 🔴 **Ce n'est PAS la soudure des coins** : éteinte, le compte passe de 119 à 118. C'est `04c`, le peigne, là où deux bandes de rues différentes se rencontrent. **Le remède du bâtiment ne peut rien pour celui-là** — une empreinte propre dans une parcelle en dard laisse quand même le dard en beige à l'écran |
+| 9 | ☐ **15 empreintes gardent deux décrochements** | leur poche dépasse `ENCOCHE_AIRE_MAX` (45 m²), donc on ne sait pas encore dire si c'est une encoche ou la cour que l'équerre entoure. Îlots 13, 28, 29, 30, 40, 43, 50, 58, 62, 66 |
 | 6 | ☐ **Le fond du chenal ne se voit jamais** | l'eau est opaque, donc des deux mètres du chenal on n'en voit qu'**un** — le mur au-dessus de la nappe. Le fond à −2 m coûte 43 triangles et sert d'assurance, pas d'image |
 
 ## 2. Les quatre tables de level design
