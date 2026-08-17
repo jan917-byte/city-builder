@@ -52,7 +52,7 @@ BLANC = "--blanc" in sys.argv          # dry-run : calcule et affiche, n'écrit 
 # `python3 04b_emprises_baties.py une_copie.gpkg` pour travailler sur une copie
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
-                                           "Prototype_qualifie.gpkg")
+                                           "travail", "wehrau.gpkg")
 SRS = 25832                            # EPSG:25832 — décision 31
 
 # --- les tolérances -------------------------------------------------------

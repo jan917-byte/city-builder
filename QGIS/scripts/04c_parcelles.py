@@ -98,7 +98,7 @@ RACINE = os.path.dirname(os.path.dirname(ICI))
 BLANC = "--blanc" in sys.argv           # passe à blanc : calcule et affiche
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
-                                           "Prototype_qualifie.gpkg")
+                                           "travail", "wehrau.gpkg")
 SRS = 25832                             # EPSG:25832 — décision 31
 
 
@@ -287,6 +287,25 @@ PROF_MAX = 1.3
 # Et elle ne dépasse jamais ce multiple de l'aire visée : au-delà, on ajoute des
 # dents. C'est le garde-fou `Amax` du papier (§4.2.3, deuxième cas).
 DENT_MAX = 2.0
+
+# 🧵 LE RÉSIDU DE COUPE, en fraction de l'aire du morceau découpé — 🔄
+# 2026-08-17. Quand une bande prend EXACTEMENT toute la profondeur du morceau,
+# la coupe laisse derrière elle un cheveu de largeur nulle. Ce n'est pas un
+# cœur d'îlot, ce n'est pas un éclat à réunir — `absorber` n'y arrive d'ailleurs
+# pas, un polygone d'aire nulle n'a pas de bord à partager avec une voisine —,
+# c'est le bruit de la virgule flottante avec un contour autour.
+#
+# Ça n'arrivait pas avant les îlots de lisière : sur un îlot ordinaire la bande
+# s'arrête toujours avant le bord d'en face. Sur un ruban, le fond n'est plus
+# une rue (voir `aretes_mortes`), la rangée de devant prend tout, et la coupe
+# tombe pile sur le bord. Trois cheveux mesurés sur les trois rubans : 0,000,
+# 0,000 et 0,010 m².
+#
+# Le seuil est RELATIF au morceau, et pas en m², pour qu'il reste toujours cinq
+# fois sous la tolérance du contrôle de partition (1e-5 de l'aire de l'îlot,
+# décision 61) — y compris sur les petits îlots du centre, où deux centièmes de
+# m² pèseraient plus lourd que sur un ruban de 7 000.
+RESTE_NEGLIGEABLE = 2e-6
 
 # 🔺 LA POINTE — sommet de parcelle plus aigu que ça, en degrés. Une parcelle
 # qui en porte un est réunie à sa voisine, comme un éclat ou une lamelle.
@@ -1424,7 +1443,8 @@ def _rayon(ring, p, dirn):
     return meilleur, jbest
 
 
-def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
+def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False,
+                     morts=()):
     """De combien de fond cette rue a le droit, sachant ce qu'il y a en face.
 
     🔴 C'EST LA RÈGLE QUI RÉPARE LES ÎLOTS PEU PROFONDS. On tire une dizaine
@@ -1453,6 +1473,13 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
     l'îlot sortait en dalles couchées en travers du tissu. Le plafond levé ne
     l'est donc que tant que la rue d'en face est vraiment en face.
 
+    🌾 ET UNE ARÊTE SANS RUE N'EST PAS UNE RUE D'EN FACE — 🔄 2026-08-17. Le
+    fond d'un îlot de lisière donne sur le champ. Sans cette exception le rayon
+    y voyait « une rue en face » et coupait le ruban au milieu ; la rangée de
+    devant s'arrêtait à mi-profondeur et le fond repartait en seconde rangée.
+    Le fond du ruban revient donc au cas « personne en face » : la rangée de
+    devant prend tout, et le jardin va du derrière de la maison jusqu'au champ.
+
     Les deux rives d'un même îlot mesurent la MÊME distance, puisqu'on la prend
     sur l'anneau d'origine et non sur ce qui reste. Elles tombent donc sur la
     même moitié, et leurs bandes se rejoignent exactement au milieu.
@@ -1472,7 +1499,7 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False):
         d, j = _rayon(ring, p, nrm)
         if d is None or d <= EPS:
             continue
-        en_face_une_rue = longueurs[j] >= LONGUEUR_MIN_RUE
+        en_face_une_rue = longueurs[j] >= LONGUEUR_MIN_RUE and j not in morts
         if en_face_une_rue and d < TRAVERSANT * prof:
             vals.append((d, "traversante"))       # on prend tout le fond
         elif en_face_une_rue and (d / 2.0 < prof
@@ -1571,9 +1598,9 @@ def _dents(morceaux, a, u, facade, prof):
     return pieces
 
 
-def peigne(anneau, facade, prof, sans_coeur=False):
+def peigne(anneau, facade, prof, sans_coeur=False, bords_morts=()):
     """Découpe un îlot depuis ses rues. Renvoie (parcelles sur rue, cœur,
-    le compte rendu des bandes).
+    le compte rendu des bandes, les arêtes refusées).
 
     Les arêtes sont servies de la plus longue à la plus courte. Chacune
     demande d'abord DE QUELLE PROFONDEUR ELLE A LE DROIT (`profondeur_utile`,
@@ -1594,6 +1621,11 @@ def peigne(anneau, facade, prof, sans_coeur=False):
     longueurs = [math.hypot(ring[(i + 1) % n][0] - ring[i][0],
                             ring[(i + 1) % n][1] - ring[i][1]) for i in range(n)]
 
+    # 🌾 Les arêtes qui ne donnent sur aucune rue : ni servies, ni comptées
+    # comme « la rue d'en face ». Vide partout sauf sur les îlots de lisière.
+    morts = aretes_mortes(ring, bords_morts)
+    refuse = sum(longueurs[i] for i in morts if longueurs[i] >= LONGUEUR_MIN_RUE)
+
     # À longueur égale, l'indice départage : deux arêtes jumelles ne doivent
     # pas changer d'ordre d'une exécution à l'autre.
     for i in sorted(range(n), key=lambda i: (-longueurs[i], i)):
@@ -1601,12 +1633,12 @@ def peigne(anneau, facade, prof, sans_coeur=False):
             break
         a, b = ring[i], ring[(i + 1) % n]
         L = longueurs[i]
-        if L < LONGUEUR_MIN_RUE:
+        if L < LONGUEUR_MIN_RUE or i in morts:
             continue
         u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
         nrm = (-u[1], u[0])          # `ouvrir` rend l'anneau trigo : à gauche
         pe, mode = profondeur_utile(ring, a, b, u, nrm, prof, longueurs,
-                                    sans_coeur)
+                                    sans_coeur, morts)
         if pe < AIRE_MIN / max(L, 1.0):
             continue                 # il ne reste rien de bâtissable en face
         bande, loin = _bande(reste, a, b, u, nrm, pe, L)
@@ -1617,9 +1649,12 @@ def peigne(anneau, facade, prof, sans_coeur=False):
             bandes.append((L, pe, mode, nd))
         reste = loin
 
+    # 🧵 Le cheveu laissé par une bande qui prend toute la profondeur ne
+    # ressort pas en cœur d'îlot : il n'existe pas.
+    plancher = max(1e-6, RESTE_NEGLIGEABLE * abs(aire_signee(ring)))
     return (rue,
-            [m for m in reste if len(m) >= 3 and abs(aire_signee(m)) > 1e-6],
-            bandes)
+            [m for m in reste if len(m) >= 3 and abs(aire_signee(m)) > plancher],
+            bandes, (len(morts), refuse))
 
 
 def facade_de(parcelle, bord_idx, grille=1.0, tol=0.35):
@@ -1659,6 +1694,58 @@ def dist_pt_seg(p, a, b):
     return math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
 
 
+# ------------------------------------------------ les bords qui n'ont pas de rue
+
+# Tolérance de reconnaissance d'une arête morte sur l'emprise. Une arête sans
+# rue reçoit un retrait de 0 dans `04b` : sa DROITE PORTEUSE ne bouge pas, seuls
+# ses bouts glissent là où elle rencontre une arête, elle, reculée. Le milieu de
+# l'arête reste donc sur le segment d'origine à moins d'un rien. 0,6 m laisse de
+# la marge sans jamais atteindre une arête de rue, qui recule d'au moins 5 m.
+TOL_MORT = 0.6
+# Deux arêtes qui se croisent au milieu ne doivent pas se confondre : ~11°.
+SIN_MORT = 0.2
+
+
+def aretes_mortes(ring, segments):
+    """Les indices d'arêtes de `ring` qui longent une frontière SANS RUE.
+
+    🔴 CE QUE ÇA RÉPARE, ET POURQUOI ÇA N'EXISTAIT PAS AVANT — 🔄 2026-08-17.
+    Le peigne sert TOUTE arête d'emprise assez longue, comme si toute limite
+    d'îlot était une rue. Sur les 70 îlots d'origine c'était vrai : `03` y
+    comptait zéro frontière `sans_rue`. Les îlots de lisière de
+    `00b_ilots_lisiere.py` sont les premiers à en porter — leur fond donne sur
+    le champ, sans rue entre les deux — et le peigne s'est mis à servir ce
+    fond comme une rue : au coude des rubans, une DEUXIÈME RANGÉE de parcelles
+    apparaissait derrière la première, sans accès. 10 parcelles sur 61, sur les
+    trois rubans, mesurées le 2026-08-17.
+
+    L'auteur a tranché le jour même : un îlot de lisière porte UNE parcelle en
+    profondeur, la maison près de la route et le jardin derrière. Le remède
+    n'est pas un réglage de plus, c'est l'information qui manquait — une arête
+    sans rue ne se sert pas et ne compte pas comme « la rue d'en face ».
+    """
+    morts = set()
+    if not segments:
+        return morts
+    n = len(ring)
+    for i in range(n):
+        a, b = ring[i], ring[(i + 1) % n]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L < EPS:
+            continue
+        ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+        m = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+        for p, q in segments:
+            Ls = math.hypot(q[0] - p[0], q[1] - p[1])
+            if Ls < EPS or dist_pt_seg(m, p, q) > TOL_MORT:
+                continue
+            vx, vy = (q[0] - p[0]) / Ls, (q[1] - p[1]) / Ls
+            if abs(ux * vy - uy * vx) <= SIN_MORT:
+                morts.add(i)
+                break
+    return morts
+
+
 def indexer_bord(anneau, grille=1.0):
     """Index de grille des arêtes de l'emprise, pour que `facade_de` ne soit
     pas quadratique. 53 emprises × ~1 500 parcelles, ça compte."""
@@ -1694,7 +1781,7 @@ def blob_gpkg(wkb):
 
 # --------------------------------------------------------------------- main
 
-def decouper_ilot(ext, st, chemins=()):
+def decouper_ilot(ext, st, chemins=(), bords_morts=()):
     """L'emprise d'un îlot → ses parcelles. LE CŒUR DU FICHIER.
 
     Renvoie (parcelles, compte rendu). Chaque parcelle est un triplet
@@ -1726,12 +1813,16 @@ def decouper_ilot(ext, st, chemins=()):
     rive_ilot = {}
     n_cours = n_parts_coeur = n_rendus = n_replis = 0
     aire_coeur = 0.0
+    n_morts, m_morts = 0, 0.0       # les arêtes sans rue, pour le compte rendu
 
   # ↓ un tour par morceau d'emprise — un seul quand l'îlot n'a pas de chemin
     for ext_m in morceaux:
         sans_coeur = st in SANS_COEUR
         if style == "peigne":
-            rue, coeur, bandes = peigne(ext_m, facade, prof, sans_coeur)
+            rue, coeur, bandes, morts = peigne(ext_m, facade, prof, sans_coeur,
+                                               bords_morts)
+            n_morts += morts[0]
+            m_morts += morts[1]
             # ⚠️ 2026-08-14 — CE QUI A ÉTÉ ESSAYÉ ICI ET RETIRÉ, pour ne pas le
             # réintroduire : quand aucun morceau n'était une cour, on
             # repeignait l'îlot SANS plafond de profondeur, comme un
@@ -1881,6 +1972,7 @@ def decouper_ilot(ext, st, chemins=()):
         "modes": rive_ilot, "cours": n_cours, "parts_coeur": n_parts_coeur,
         "aire_coeur": aire_coeur, "rendus": n_rendus, "replis": n_replis,
         "fusions": n_fusions, "reunions": n_reunions,
+        "morts": n_morts, "m_morts": m_morts,
     }
 
 
@@ -1904,13 +1996,78 @@ def lire(con):
     return ilots
 
 
+def lire_bords_morts(con, ilots):
+    """Les arêtes d'îlot qui ne longent aucune rue. -> {fid: [(p, q), …]}.
+
+    La source est `adjacences`, écrite par `03` : une paire d'îlots y porte sa
+    `hierarchie_separatrice`, et `sans_rue` veut dire que les deux se touchent
+    sans chaussée entre eux. On repasse ensuite sur les anneaux de `ilots` pour
+    retrouver QUELLES arêtes forment cette frontière — `adjacences` donne une
+    longueur, pas une géométrie.
+
+    ⚠️ Les arêtes du BORD DE CARTE ne sont pas ici, et c'est délibéré : elles
+    n'ont pas de voisin, donc pas de ligne dans `adjacences`. 9 îlots en
+    portent, 3 862 m. Les traiter comme mortes changerait le découpage de neuf
+    îlots existants d'un coup, ce qui n'est pas ce qu'on répare aujourd'hui.
+    Si un jour la ville s'arrête franchement au bord de la carte, c'est ici que
+    ça s'ajoutera, et il faudra regarder les neuf.
+
+    Les segments sont pris sur `ilots` et non sur `emprises`, parce que c'est
+    `ilots` que `03` a mesuré. Une arête sans rue a un retrait de 0 dans `04b`,
+    donc elle est au même endroit dans les deux couches — c'est ce qui permet à
+    `aretes_mortes` de la reconnaître sur l'emprise.
+    """
+    if con.execute("SELECT count(*) FROM sqlite_master WHERE type='table'"
+                   " AND name='adjacences'").fetchone()[0] == 0:
+        return {}
+    paires = set()
+    for a, b in con.execute("SELECT id_a, id_b FROM adjacences"
+                            " WHERE hierarchie_separatrice='sans_rue'"):
+        paires.add((a, b))
+        paires.add((b, a))
+    if not paires:
+        return {}
+
+    anneaux = {}
+    for fid, geom in con.execute("SELECT fid, geom FROM ilots"):
+        anneaux[fid] = ouvrir(lire_wkb(gpkg_vers_wkb(geom))[0][0])
+
+    # Les arêtes de chaque îlot, indexées par leur clé — la même grille de
+    # 25 cm que `03` et `04b`, pour que « la même arête » veuille dire la même
+    # chose dans les trois scripts.
+    def cle(p):
+        return (round(p[0] / 0.25), round(p[1] / 0.25))
+
+    proprio = {}
+    for fid, an in anneaux.items():
+        n = len(an)
+        for i in range(n):
+            ka, kb = cle(an[i]), cle(an[(i + 1) % n])
+            proprio.setdefault((ka, kb) if ka <= kb else (kb, ka),
+                               []).append(fid)
+
+    out = {}
+    for fid, an in anneaux.items():
+        if fid not in ilots:
+            continue
+        n = len(an)
+        for i in range(n):
+            a, b = an[i], an[(i + 1) % n]
+            ka, kb = cle(a), cle(b)
+            for voisin in proprio.get((ka, kb) if ka <= kb else (kb, ka), ()):
+                if voisin != fid and (fid, voisin) in paires:
+                    out.setdefault(fid, []).append((a, b))
+                    break
+    return out
+
+
 def lire_chemins(con, ilots):
     """Les venelles dessinées dans les îlots. Renvoie {fid_ilot: [(ligne,
     largeur), …]}.
 
     🔴 LA COUCHE EST FACULTATIVE, et ce n'est pas une politesse : elle vit dans
-    `Vallmar2.gpkg`, la source que l'auteur édite dans QGIS, et elle arrive ici
-    par la copie que fait `02`. Une carte sans chemin doit sortir exactement
+    `QGIS/data/source/chemins.geojson`, que l'auteur corrige à la main, et elle
+    arrive ici parce que `02` rebâtit la carte de travail depuis la source. Une carte sans chemin doit sortir exactement
     comme avant le 2026-08-14.
 
     La largeur vient de la couche quand l'auteur l'a fixée ; sinon de
@@ -1962,6 +2119,7 @@ def main():
     con = sqlite3.connect("file:%s?mode=ro" % GPKG.replace("\\", "/"), uri=True)
     ilots = lire(con)
     chemins = lire_chemins(con, ilots)
+    bords_morts = lire_bords_morts(con, ilots)
     con.close()
 
     print("=" * 74)
@@ -1979,6 +2137,7 @@ def main():
     rives = {}
     traversants = []
     traces = []                 # 🚶 un par îlot qui porte un chemin
+    lisieres = []               # 🌾 un par îlot qui a une arête sans rue
     n_fusions = 0
     reunions = {}               # 🔷 {fid_ilot: nombre de coupes effacées}
 
@@ -2004,7 +2163,11 @@ def main():
         # décision pour le joueur. Toute la mécanique est dans
         # `decouper_ilot`, pour que `tracer_chemins.py` la rejoue à
         # l'identique quand il évalue un tracé candidat.
-        parcelles_ilot, cr = decouper_ilot(ext, st, chemins.get(fid, ()))
+        parcelles_ilot, cr = decouper_ilot(ext, st, chemins.get(fid, ()),
+                                           bords_morts.get(fid, ()))
+        if cr["morts"]:
+            lisieres.append((fid, st, cr["morts"], cr["m_morts"],
+                             len(parcelles_ilot)))
         if fid in chemins:
             traces.append((fid, st, chemins[fid], cr["morceaux"],
                            cr["couloirs"]))
@@ -2225,6 +2388,26 @@ def main():
         print()
 
     # ── les chemins ───────────────────────────────────────────────────────
+    if lisieres:
+        print("  🌾 LES BORDS SANS RUE — le fond qui donne sur le champ.")
+        print("     Une arête d'îlot que `03` classe `sans_rue` n'est pas")
+        print("     servie par le peigne et ne compte pas comme « la rue d'en")
+        print("     face ». C'est ce qui tient la règle des îlots de lisière :")
+        print("     UNE parcelle en profondeur, la maison près de la route et")
+        print("     le jardin derrière, jusqu'au champ.")
+        print("     Si ce tableau se met à lister des îlots du centre, c'est")
+        print("     que `03` a changé d'avis sur une frontière — pas ici.")
+        print()
+        print("  %-5s %-20s %7s %10s %10s"
+              % ("îlot", "sous_type", "arêtes", "longueur", "parcelles"))
+        print("  " + "-" * 58)
+        for fid, st, n_m, m_m, n_p in lisieres:
+            print("  %-5d %-20s %7d %8.0f m %10d" % (fid, st, n_m, m_m, n_p))
+        print("  " + "-" * 58)
+        print("     %d îlot(s), %.0f m de bord rendu au champ."
+              % (len(lisieres), sum(x[3] for x in lisieres)))
+        print()
+
     if traces:
         print("  🚶 LES CHEMINS — la venelle dessinée DANS l'îlot.")
         print("     Elle n'est pas un tronçon de route : elle n'entre dans")

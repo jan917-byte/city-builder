@@ -25,7 +25,7 @@ sys.path.insert(0, ICI)
 
 from apercu_carte import gpkg_vers_wkb, lire_wkb  # noqa: E402  (même lecteur WKB)
 
-SOURCE = os.path.join(RACINE, "QGIS", "data", "Prototype_qualifie.gpkg")
+SOURCE = os.path.join(RACINE, "QGIS", "data", "travail", "wehrau.gpkg")
 SORTIE = os.path.join(RACINE, "Classeur")
 SEP = ";"
 

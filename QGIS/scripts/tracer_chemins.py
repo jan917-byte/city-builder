@@ -15,12 +15,18 @@ il propose un premier tracé, l'auteur le corrige dans QGIS, et c'est le tracé
 corrigé qui compte. Le level design ne se délègue pas — mais partir d'une page
 blanche sur soixante-dix îlots, si.
 
-🔴 IL ÉCRIT DANS `Vallmar2.gpkg`, LA SOURCE, ET C'EST VOULU. `02_qualifier.py`
-recopie la source par-dessus `Prototype_qualifie.gpkg` : une couche posée dans
-la carte de travail serait effacée au prochain passage de la chaîne, sans
-prévenir. La source est le seul endroit où un tracé dessiné à la main survit.
-C'est donc, avec `00_decouper_ilots.py`, le second script qui touche la source :
-mêmes précautions — committer avant, passe `--blanc` d'abord.
+🔴 IL ÉCRIT DANS LA SOURCE, ET C'EST VOULU. `02_qualifier.py` rebâtit la carte
+de travail depuis la source à chaque passage : une couche posée dans la carte
+de travail serait effacée au prochain passage de la chaîne, sans prévenir. La
+source est le seul endroit où un tracé corrigé à la main survit.
+
+🔄 2026-08-17 — ET C'EST CE SCRIPT QUI GAGNE LE PLUS AU PASSAGE EN TEXTE. La
+correction à la main se faisait dans QGIS, qui vient de sortir de la chaîne ;
+sans le format texte, ce script n'aurait plus eu de main pour le corriger.
+Les venelles vivent maintenant dans `QGIS/data/source/chemins.geojson`, une
+par ligne, avec son `fid_ilot`, sa `largeur_m` et sa note. Supprimer une
+venelle qui tombe mal = supprimer une ligne ; changer sa largeur = changer un
+nombre. Seul le déplacement d'un tracé demande de toucher aux coordonnées.
 
 ⚠️ ET IL NE RÉÉCRIT PAS UNE COUCHE EXISTANTE sans `--refaire`. Une fois que
 l'auteur a déplacé un tracé, ce script n'a plus rien à dire : le relancer
@@ -66,13 +72,14 @@ rues — et le reste se corrige à la main dans QGIS.
 import math
 import os
 import sqlite3
-import struct
 import sys
 from importlib import import_module
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 RACINE = os.path.dirname(os.path.dirname(ICI))
 sys.path.insert(0, ICI)
+
+import carte
 
 D4C = import_module("04c_parcelles")     # la table TISSU, les largeurs, la géométrie
 
@@ -81,9 +88,8 @@ TOUS = "--tous" in sys.argv
 REFAIRE = "--refaire" in sys.argv
 
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
-CARTE = os.path.join(RACINE, "QGIS", "data", "Prototype_qualifie.gpkg")
-SOURCE = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
-                                             "Vallmar2.gpkg")
+CARTE = os.path.join(RACINE, "QGIS", "data", "travail", "wehrau.gpkg")
+SOURCE = _ARGS[0] if _ARGS else carte.SOURCE   # un DOSSIER de .geojson
 SRS = 25832
 
 # ==========================================================================
@@ -306,15 +312,10 @@ def coeur_perdu(coeurs, ligne, largeur):
 
 # ------------------------------------------------------------------ encodage
 
-def wkb_ligne(pts):
-    out = [struct.pack("<BII", 1, 2, len(pts))]
-    for x, y in pts:
-        out.append(struct.pack("<dd", x, y))
-    return b"".join(out)
-
-
-def blob_gpkg(wkb):
-    return struct.pack("<2sBBi", b"GP", 0, 0x01, SRS) + wkb
+# 🔄 Retirés le 2026-08-17 : `wkb_ligne` et `blob_gpkg`, qui encodaient les
+# venelles en binaire GeoPackage. La source est du texte, `carte.py` s'en
+# charge. Ce script lit toujours du GeoPackage — la carte de TRAVAIL, par
+# `D4C` — mais il n'en écrit plus.
 
 
 # ---------------------------------------------------------------------- main
@@ -334,6 +335,12 @@ def lire():
         if fid in ilots:
             ilots[fid]["ext"] = D4C.ouvrir(D4C.lire_wkb(
                 D4C.gpkg_vers_wkb(geom))[0][0])
+    # 🌾 Les bords sans rue, sinon les deux découpes d'essai ne seraient pas
+    # celles que `04c` fera vraiment, et la comparaison ne prouverait rien.
+    morts = D4C.lire_bords_morts(con, ilots)
+    for fid, segs in morts.items():
+        if fid in ilots:
+            ilots[fid]["morts"] = segs
     con.close()
     return ilots
 
@@ -366,7 +373,7 @@ def main():
 
     traces = []
     refuses = {"pas de pli": 0, "cœur entamé": 0, "ne coupe pas": 0,
-               "pas plus rectangulaire": 0}
+               "pas plus rectangulaire": 0, "lisière": 0}
     for fid in sorted(ilots):
         d = ilots[fid]
         st = d["st"]
@@ -374,6 +381,17 @@ def main():
             continue
         if D4C.TISSU[st][2] != "peigne":
             continue                     # la boîte ne connaît pas les rues
+        # 🌾 PAS DE VENELLE DANS UN ÎLOT DE LISIÈRE — 🔄 2026-08-17. Le premier
+        # essai en proposait deux, sur les rubans 72 et 73, et la
+        # rectangularité montait pour de bon. Elle montait parce que la venelle
+        # ouvre une deuxième façade au milieu du ruban : des parcelles s'y
+        # retournent, dos à la route. C'est l'inverse de ce qu'un ruban est —
+        # une rangée qui regarde la route, le jardin derrière, jusqu'au champ
+        # (tranché par l'auteur le 2026-08-17). Le critère de rectangularité ne
+        # peut pas voir ça tout seul : il juge des formes, pas des orientations.
+        if d.get("morts"):
+            refuses["lisière"] += 1
+            continue
         ext = d["ext"]
         an, plis = coudes(ext)
         # Les deux familles de candidats, dans cet ordre : les PLIS d'abord,
@@ -399,7 +417,8 @@ def main():
             continue
 
         # La découpe SANS chemin : la référence à battre.
-        base, cr0 = D4C.decouper_ilot(ext, st)
+        morts = d.get("morts", ())
+        base, cr0 = D4C.decouper_ilot(ext, st, (), morts)
         r0 = rectangularite(base)
         n0 = batissables(base)
         coeurs0 = [p for p, o, _ in base if o == "coeur"]
@@ -412,7 +431,7 @@ def main():
             if coeur_perdu(coeurs0, ligne, larg) > PERTE_COEUR_MAX:
                 motif = "cœur entamé"
                 continue
-            essai, cr = D4C.decouper_ilot(ext, st, [(ligne, larg)])
+            essai, cr = D4C.decouper_ilot(ext, st, [(ligne, larg)], morts)
             if len(cr["morceaux"]) < 2:
                 motif = "ne coupe pas"
                 continue
@@ -488,70 +507,33 @@ def main():
         print("=" * 74)
         return
     ecrire(traces)
-    print("→ couche `chemins` écrite dans %s  (%d lignes)"
-          % (os.path.basename(SOURCE), len(traces)))
     print()
     print("  CE QU'IL FAUT FAIRE MAINTENANT, DANS L'ORDRE :")
-    print("   1. ouvrir %s dans QGIS, afficher `chemins` par-dessus `ilots`"
-          % os.path.basename(SOURCE))
-    print("   2. déplacer les tracés qui tombent mal, en supprimer, en"
-          " ajouter — c'est du level design")
-    print("   3. régler `largeur_m` chemin par chemin, entre 3 et 5 m")
-    print("   4. relancer la chaîne 02 → 03 → 04 → 04b → 04c, puis 07")
+    print("   1. regarder l'aperçu : python QGIS/scripts/apercu_parcelles.py")
+    print("   2. ouvrir `chemins.geojson` dans un éditeur de texte — une")
+    print("      venelle par ligne, avec son numéro d'îlot en clair")
+    print("   3. supprimer les lignes qui tombent mal, régler `largeur_m`")
+    print("      entre 3 et 5 m — c'est du level design")
+    print("   4. relancer : python QGIS/scripts/chaine.py")
     print("=" * 74)
 
 
 def ecrire(traces):
-    con = sqlite3.connect(SOURCE)
-    cur = con.cursor()
-    existe = cur.execute("SELECT count(*) FROM sqlite_master WHERE type='table'"
-                         " AND name='chemins'").fetchone()[0] > 0
-    if existe and not REFAIRE:
-        con.close()
+    # Le garde-fou du `--refaire` compte double maintenant que le fichier est
+    # éditable à la main : ce que ce script écraserait, c'est du level design.
+    if os.path.exists(carte.chemin_couche("chemins", SOURCE)) and not REFAIRE:
         raise SystemExit(
-            "la couche `chemins` existe déjà dans %s — elle contient"
-            " peut-être des tracés déplacés à la main.\n"
-            "   `--refaire` pour l'écraser quand même."
-            % os.path.basename(SOURCE))
+            "`chemins.geojson` existe déjà dans %s — il contient peut-être"
+            " des tracés corrigés à la main.\n"
+            "   `--refaire` pour l'écraser quand même." % SOURCE)
 
-    cur.execute("DROP TABLE IF EXISTS chemins")
-    for t in ("gpkg_contents", "gpkg_geometry_columns", "gpkg_ogr_contents"):
-        cur.execute("DELETE FROM %s WHERE table_name = 'chemins'" % t)
-    cur.execute("""
-        CREATE TABLE "chemins" (
-            "fid" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            "geom" LINESTRING,
-            fid_ilot INTEGER,
-            largeur_m REAL,
-            note TEXT)""")
-
-    xs, ys = [], []
-    for t in traces:
-        for x, y in t["seg"]:
-            xs.append(x)
-            ys.append(y)
-        cur.execute(
-            "INSERT INTO chemins (geom, fid_ilot, largeur_m, note)"
-            " VALUES (?,?,?,?)",
-            (blob_gpkg(wkb_ligne(list(t["seg"]))), t["fid"],
-             round(t["larg"], 1),
-             "propose par tracer_chemins.py - a corriger a la main"))
-
-    cur.execute(
-        "INSERT INTO gpkg_contents (table_name, data_type, identifier,"
-        " description, last_change, min_x, min_y, max_x, max_y, srs_id)"
-        " VALUES ('chemins','features','chemins',?,"
-        " strftime('%Y-%m-%dT%H:%M:%fZ','now'),?,?,?,?,?)",
-        ("Venelles dessinees DANS les ilots - ni routes ni parcelles (04c)",
-         min(xs), min(ys), max(xs), max(ys), SRS))
-    cur.execute(
-        "INSERT INTO gpkg_geometry_columns (table_name, column_name,"
-        " geometry_type_name, srs_id, z, m)"
-        " VALUES ('chemins','geom','LINESTRING',?,0,0)", (SRS,))
-    cur.execute("INSERT INTO gpkg_ogr_contents (table_name, feature_count)"
-                " VALUES ('chemins',?)", (len(traces),))
-    con.commit()
-    con.close()
+    n = carte.ecrire_couche("chemins", [
+        {"fid": i + 1, "parts": [list(t["seg"])], "multi": False,
+         "fid_ilot": t["fid"], "largeur_m": round(t["larg"], 1),
+         "note": "propose par tracer_chemins.py - a corriger a la main"}
+        for i, t in enumerate(traces)], SOURCE)
+    print("→ %d venelles dans %s"
+          % (n, carte.chemin_couche("chemins", SOURCE)))
 
 
 if __name__ == "__main__":

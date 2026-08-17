@@ -3,8 +3,14 @@
 Qualification du prototype : écrit `fonction`, `sous_type`, `exception`,
 `surface_m2` sur les îlots et `hierarchie`, `largeur_m` sur les lignes.
 
-Ne touche JAMAIS Vallmar2.gpkg : lit la source, écrit une copie neuve
-`Prototype_qualifie.gpkg`. Aucune géométrie n'est modifiée.
+Ne touche JAMAIS la source : il la LIT et fabrique une carte de travail
+neuve, `QGIS/data/travail/wehrau.gpkg`. Aucune géométrie n'est modifiée.
+
+🔄 Depuis le 2026-08-17 la source n'est plus `Vallmar2.gpkg` mais
+`QGIS/data/source/*.geojson` — du texte que git fusionne. Ce qui a changé
+ici : `shutil.copy2` d'un binaire est devenu `carte.construire_gpkg`, qui
+bâtit le GeoPackage de zéro. Tout l'aval est inchangé, il lit toujours du
+GeoPackage. → `carte.py`, en-tête
 
     python 02_qualifier.py
 
@@ -15,10 +21,11 @@ changer l'affectation d'un îlot, changer une ligne ici et relancer — puis
 
 import math
 import os
-import shutil
 import sqlite3
 import struct
 import sys
+
+import carte
 
 for flux in (sys.stdout, sys.stderr):
     try:
@@ -28,8 +35,8 @@ for flux in (sys.stdout, sys.stderr):
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(os.path.dirname(ICI), "data")
-SOURCE = os.path.join(DATA, "Vallmar2.gpkg")
-CIBLE = os.path.join(DATA, "Prototype_qualifie.gpkg")
+SOURCE = carte.SOURCE          # QGIS/data/source/*.geojson — suivi par git
+CIBLE = os.path.join(DATA, "travail", "wehrau.gpkg")   # dérivé, gitignoré
 
 # ==========================================================================
 # LE LEVEL DESIGN — c'est ici que ça se joue
@@ -66,7 +73,15 @@ FRONT_COMMERCANT = [12, 16, 21, 24]     # les îlots qui bordent l'axe de transi
 COEUR_ANCIEN = [13, 14, 15, 18, 20, 22, 34, 37, 38, 53, 55, 56]
 # 70 et 71 sont les moitiés neuves du 26 et du 42, coupées le 2026-08-13 par
 # les rues 179 et 180 ; l'ancien 27 a été fusionné dans le 26 (rue 78 retirée).
-PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 60, 61, 63, 64, 70, 71]
+# 72, 73 et 74 sont les ÎLOTS DE LISIÈRE posés le 2026-08-16 par
+# `00b_ilots_lisiere.py` : des rubans d'une seule parcelle de profondeur, de
+# l'autre côté de la rue qui fait le tour de la ville, taillés dans les champs
+# 9 (nord, face au 11), 1 (sud-ouest, face au 26) et 9 encore (ouest, face au
+# 42 — le ruban sud du champ 2 a été retiré le 2026-08-17, il tombait derrière
+# les barres). Pavillonnaire est le seul tissu qui convienne : c'est le seul
+# SANS cœur d'îlot, donc la parcelle va vraiment du trottoir au champ.
+# → `00b_ilots_lisiere.py`, en-tête
+PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 60, 61, 63, 64, 70, 71, 72, 73, 74]
 # tout le reste des îlots bâtis tombe en `maisons_de_ville`
 
 # Cœur d'îlot vert privatisé : invisible depuis la rue, mais c'est le seul
@@ -252,9 +267,15 @@ def cle_seg(a, b):
 
 
 def main():
-    if not os.path.exists(SOURCE):
-        raise SystemExit("introuvable : %s" % SOURCE)
-    shutil.copy2(SOURCE, CIBLE)
+    if not os.path.isdir(SOURCE):
+        raise SystemExit("source introuvable : %s" % SOURCE)
+    # La carte de travail est refaite de zéro à chaque passage. C'est la
+    # garantie qu'elle ne peut pas être plus vieille que la source — le piège
+    # payé le 2026-08-14, une session passée à décrire un défaut déjà corrigé.
+    bati = carte.construire_gpkg(CIBLE)
+    print("carte de travail bâtie depuis %s — %s"
+          % (os.path.relpath(SOURCE, os.path.dirname(DATA)),
+             ", ".join("%s %d" % (n, c) for n, c in sorted(bati.items()))))
     con = sqlite3.connect(CIBLE)
     brancher_fonctions_spatiales(con)
     cur = con.cursor()

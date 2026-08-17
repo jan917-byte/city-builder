@@ -59,7 +59,7 @@ Le travail se fait principalement sous **Windows**. Sur le Mac, le vault et les 
 > **Le script voyage entre les deux machines. La carte, non.**
 > `QGIS/data/*.gpkg` ne s'écrit que **sous Windows**.
 
-Sur le Mac : mode `--blanc`, ou une copie dans `QGIS/data/bac/`. → `CLAUDE.md` §5
+Les deux machines font le même travail depuis le 2026-08-17 : la carte est du texte, aucun `.gpkg` n'est suivi. La passe `--blanc` reste obligatoire pour les trois scripts qui écrivent la source — c'est du level design. → `CLAUDE.md` §5
 
 ---
 

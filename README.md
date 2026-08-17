@@ -26,7 +26,7 @@ city-builder/
 ## Sources de vérité
 
 - **Design** : le vault Obsidian — `00 - Index.md` en entrée, `Méta/Décisions arrêtées.md` pour ce qui est tranché.
-- **Carte** : `QGIS/data/Prototype_qualifie.gpkg` (EPSG:25832), qualifiée à la main.
+- **Carte** : `QGIS/data/source/*.geojson` (EPSG:25832), du texte suivi par git. Tout `.gpkg` est un dérivé refait en 0,7 s par `chaine.py`. → `QGIS/data/LISEZ-MOI.md`
 - **Avancement** : `ETAT.md` à la racine, qui pointe vers le vault.
 
 ## Boucle de contrôle
@@ -34,8 +34,8 @@ city-builder/
 Aucun script n'écrit dans la source. `--blanc` calcule tout et n'écrit rien.
 
 ```
-python QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg
-python QGIS/scripts/04_deriver_attributs.py --blanc
+python QGIS/scripts/chaine.py
+python QGIS/scripts/apercu_parcelles.py
 ```
 
 *(sur macOS, `python3` au lieu de `python`)*
@@ -44,4 +44,4 @@ python QGIS/scripts/04_deriver_attributs.py --blanc
 
 Le développement se fait principalement sous Windows, parfois sur un Mac. `git pull` avant de commencer, `git push` avant de changer de machine.
 
-⚠️ **Les GeoPackages sont binaires : git ne les fusionne pas.** Le travail QGIS se fait sur une machine à la fois, sinon il faut choisir une version et jeter l'autre.
+✅ **La carte est du texte que git fusionne**, et aucun GeoPackage n'est suivi (depuis le 2026-08-17). Les deux machines font le même travail : `git pull` en début de session, `git push` en fin. **QGIS ne fait plus partie de la chaîne** — le dossier garde son nom, pas sa dépendance.

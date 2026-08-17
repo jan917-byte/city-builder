@@ -5,7 +5,7 @@
 
 **Dernière mesure : 2026-08-15** (session 22, sur le Mac, en `--blanc` et sur copie dans `bac/`)
 
-🔴 **LA CARTE DU DÉPÔT EST PLUS VIEILLE QUE LE CODE.** `Prototype_qualifie.gpkg` a été écrit au commit `18a6b4c`, c'est-à-dire **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond. Tous les chiffres de la section 2 ci-dessous sont ceux du **code d'aujourd'hui**, mesurés sur une copie dans `bac/` ; la couche `parcelles` du vrai `.gpkg`, elle, montre encore l'ancienne découpe. **Rien n'est acquis tant que `04c` n'a pas été relancé sous Windows.**
+✅ **LA CARTE NE PEUT PLUS ÊTRE PLUS VIEILLE QUE LE CODE** (2026-08-17). Elle l'était : `Prototype_qualifie.gpkg` avait été écrit au commit `18a6b4c`, **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond — et une session entière est passée à décrire un défaut déjà corrigé. Ce qui a fermé le piège : le `.gpkg` n'est plus versionné, et `02` le **rebâtit depuis la source** à chaque passage de `chaine.py` (0,7 s). Les chiffres de la section 2 sont mesurés sur la carte relancée le 2026-08-17.
 
 ---
 
@@ -155,7 +155,7 @@ L'étape n'est pas finie parce que le script tourne. Elle finit sur **deux image
 
 ## 4. Ce qui reste, dans l'ordre
 
-1. 🔴 **Sous Windows, dans cet ordre : `tracer_chemins.py`, puis `04c_parcelles.py`, puis `07_exporter_godot.py`.** Passe `--blanc` avant chaque écriture. `tracer_chemins` écrit dans **`Vallmar2.gpkg`** — donc il faut ensuite **relancer la chaîne complète 02 → 03 → 04 → 04b → 04c**, puisque `02` recopie la source. Ce qu'il faut lire ensuite :
+1. 🎯 **`tracer_chemins.py --blanc`, puis sans `--blanc`, puis `chaine.py --godot`.** Sur n'importe quelle machine. `tracer_chemins` écrit dans la source (`QGIS/data/source/chemins.geojson`) — donc il faut ensuite relancer la chaîne, que `chaine.py` enchaîne toute seule. Ce qu'il faut lire ensuite :
    - **les 7 venelles** sur 22, 24, 26, 38, 40, 44, 63 — au pli, courtes, et aucun cœur entamé (§4 bis) ;
    - **les îlots 64 et 69 coupés au milieu** — le défaut n°1 de l'auteur, et il tombe tout seul ;
    - **l'îlot 32 en deux parcelles** au lieu d'un anneau autour d'un cœur vide, et **deux barres posées au milieu** ;
@@ -205,7 +205,7 @@ Le peigne ne sait pas découper un **îlot en L** : un L n'a pas de fond. Chaque
 
 **690 m² pris à la ville**, soit 0,07 ha de toit en moins pour le solaire.
 
-**Où vivent les chemins.** Dans une couche `chemins` de **`Vallmar2.gpkg`** — la source que l'auteur édite dans QGIS, et le seul endroit où un tracé dessiné à la main survit à `02`, qui recopie la source par-dessus la carte de travail. La couche est **facultative** : sans elle, tout sort exactement comme avant.
+**Où vivent les chemins.** Dans **`QGIS/data/source/chemins.geojson`** — la source, seul endroit où un tracé corrigé à la main survit à `02`, qui rebâtit la carte de travail. La couche est **facultative** : sans elle, tout sort exactement comme avant. 🔄 Depuis le 2026-08-17 c'est du **texte, une venelle par ligne**, avec son numéro d'îlot et sa largeur en clair : supprimer une venelle qui tombe mal, c'est supprimer une ligne. La correction se faisait dans QGIS, qui n'existe plus.
 
 **Ce que l'auteur a corrigé, deux fois, et qu'il ne faut pas reperdre :**
 
@@ -286,18 +286,18 @@ Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue
 
 ```
 python "QGIS/scripts/tracer_chemins.py" --blanc    propose les venelles, n'écrit rien
-python "QGIS/scripts/tracer_chemins.py"            écrit la couche `chemins` dans Vallmar2
+python "QGIS/scripts/tracer_chemins.py"            écrit `QGIS/data/source/chemins.geojson`
 python "QGIS/scripts/04c_parcelles.py" --blanc     calcule et affiche, n'écrit rien
 python "QGIS/scripts/04c_parcelles.py"             écrit la couche `parcelles`
 python "QGIS/scripts/apercu_parcelles.py"          le parcellaire en PNG
 python "QGIS/scripts/07_exporter_godot.py"         alimente la maquette 3D
 ```
 
-⚠️ `tracer_chemins.py` écrit dans **`Vallmar2.gpkg`**, la source — comme `00_decouper_ilots.py`, et avec les mêmes précautions. Il refuse d'écraser une couche `chemins` existante sans `--refaire` : une fois qu'un tracé a été déplacé à la main, le script n'a plus rien à dire.
+⚠️ `tracer_chemins.py` écrit dans **la source** — comme `00_decouper_ilots.py` et `00b_ilots_lisiere.py`, et avec les mêmes précautions (passe `--blanc` d'abord : c'est du level design). Il refuse d'écraser une couche `chemins` existante sans `--refaire` : une fois qu'un tracé a été déplacé à la main, le script n'a plus rien à dire.
 
-⚠️ **Chaîne dans l'ordre : 02 → 03 → 04 → 04b → 04c**, puis `07`. Le `02` repart de `Vallmar2.gpkg` et **écrase** `Prototype_qualifie.gpkg`, `emprises` et `parcelles` comprises.
+✅ **L'ordre de la chaîne est tenu par `chaine.py`** : 02 → 03 → 04 → 04b → 04c, `--godot` pour ajouter `07`. Le `02` repart de la source et **refait la carte de travail de zéro**, `emprises` et `parcelles` comprises.
 
-🔴 **Depuis le Mac, on n'écrit pas dans le `.gpkg`** — `--blanc`, ou une copie dans `QGIS/data/bac/`.
+✅ **Les deux machines font le même travail** depuis le 2026-08-17 : la source est du texte que git fusionne, et tout `.gpkg` est un dérivé gitignoré.
 
 ---
 

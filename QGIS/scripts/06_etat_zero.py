@@ -33,7 +33,7 @@ from apercu_carte import gpkg_vers_wkb, lire_wkb  # noqa: E402
 # `python3 06_etat_zero.py une_copie.gpkg` pour regarder une autre version
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
-                                           "Prototype_qualifie.gpkg")
+                                           "travail", "wehrau.gpkg")
 SORTIE = os.path.join(RACINE, "QGIS", "rendus", "etat_zero.html")
 
 # Le coefficient qui transforme un stock de bâti en stock d'habitants. Il vit

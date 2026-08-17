@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-À COLLER DANS LA CONSOLE PYTHON DE QGIS. Sur une COPIE du GeoPackage.
+⚰️ VESTIGE — NE PLUS LANCER. Ce script se collait dans la console Python de
+QGIS pour poser des listes déroulantes de saisie. QGIS est sorti du projet le
+2026-08-17 : plus personne ne saisit à la main, et sa liste `SOUS_TYPES` a de
+toute façon divergé de `02` (voir QGIS/README.md §8). Gardé pour mémoire, et
+parce qu'il documente ce que la saisie manuelle demandait avant les scripts.
 
 Ce que ça fait, et rien d'autre :
   1. ajoute les champs manquants sur `ilots` et sur la couche de lignes

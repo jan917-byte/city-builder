@@ -53,7 +53,7 @@ D4C = import_module("04c_parcelles")         # `couper`, la coupe par une droite
 
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
-                                           "Prototype_qualifie.gpkg")
+                                           "travail", "wehrau.gpkg")
 SORTIE = os.path.join(RACINE, "Godot", "data", "wehrau.json")
 
 # --- les constantes de la maquette ---------------------------------------
