@@ -10,9 +10,11 @@ extends Node3D
 #
 # CLAVIER
 #   clic   sélectionner un îlot ou une rue
-#                                  V B R I   les quatre points de vue
+#                                V B R I G   les cinq points de vue
 #   Q / E  quart de tour            P        capture PNG
 #   ← → ↑ ↓  orienter la caméra     T        vue de dessus
+#   C      recolorer par tissu
+#   F3     afficher / masquer les performances
 #   Échap  quitter
 #
 # 🔄 Depuis le 2026-08-17 la caméra tourne librement (clic droit glissé) et son
@@ -33,6 +35,7 @@ const CameraAxo := preload("res://scripts/camera_axo.gd")
 const Ville := preload("res://scripts/ville.gd")
 const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
+const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
 
@@ -54,7 +57,46 @@ const RAMPE := [
 # Des facteurs, pas des couleurs : ils multiplient la teinte de l'objet. Assez
 # forts pour se voir sur un pastel clair, assez faibles pour ne pas le brûler.
 const SURVOL := Color(1.15, 1.15, 1.08)
-const CHOISI := Color(1.42, 1.38, 1.06)
+# 🔄 1,42/1,38/1,06 → 1,34/1,32/1,16 le 2026-08-18. Le surlignage était
+# fortement JAUNE, ce qui se lisait bien sur les pastels rosés d'avant ;
+# sur un enduit gris neutre il vire à l'olive, et l'îlot sélectionné a l'air
+# d'un autre matériau au lieu d'avoir l'air éclairé.
+const CHOISI := Color(1.34, 1.32, 1.16)
+
+# ✏️ LE TRAIT AUTOUR DE L'ÎLOT CHOISI — 2026-08-18.
+#
+# L'éclaircissement ci-dessus ne suffit pas : sur un îlot déjà clair, ou sous
+# un calque thématique qui repeint tout, « un peu plus lumineux » ne se
+# distingue pas d'une variation de matériau. Un trait, lui, ne se confond avec
+# rien — et il dit AUSSI où l'îlot s'arrête.
+#
+# 🔄 RETOUR EN ARRIÈRE SIGNALÉ, le même jour : c'était un ruban de triangles
+# posé au sol le long de l'anneau de l'îlot (`Constructeur.contour`, disparu).
+# Il n'entourait que l'EMPRISE AU SOL : les bâtiments dépassaient du trait, et
+# dans le cœur ancien ils le cachaient. Le trait est maintenant tiré de la
+# SILHOUETTE RENDUE de l'îlot — tout ce qu'il contient, tout ce qui le dépasse,
+# sous l'angle où on le regarde. Voir `_batir_contour` plus bas.
+#
+# 🔄 CORRIGÉ LE SOIR MÊME : la silhouette rendue seule laissait le trait TROUÉ.
+# Un îlot bâti ne dessine pas son sol — sous une barre de 1970 il n'y a que la
+# plaque de terrain — donc le trait collait aux bâtiments et laissait dehors le
+# gris qui les entoure. Le masque a depuis DEUX pièces : la silhouette rendue,
+# et l'emprise au sol exportée par 07. Le trait suit leur union.
+#
+# L'épaisseur est en PIXELS, et le reste quoi qu'il arrive : le trait vit dans
+# l'image, plus dans la scène.
+const CONTOUR_PX := 3.0
+# 🔴 CE QUI FAIT QU'UN TRONÇON EST UN SEUL BLOC, et pas trois bandes
+# parallèles. Une rue est faite de morceaux disjoints — chaussée, deux
+# trottoirs à 10 cm de l'asphalte, un bout de trottoir par îlot riverain — et
+# le trait entourait chacun d'eux. Le masque est donc élargi de 2 pixels avant
+# qu'on y cherche un bord : toute couture plus étroite se referme. Voir
+# `Materiaux.contour`.
+const CONTOUR_BOUCHE_PX := 2.0
+# Légèrement jaune, comme l'éclaircissement — demandé par l'auteur le
+# 2026-08-18. Un blanc pur à côté d'un îlot réchauffé se lisait comme deux
+# retours différents pour une seule sélection.
+const CONTOUR_COULEUR := Color(1.0, 0.95, 0.66)
 
 var donnees: Dictionary
 var monde: Node3D
@@ -62,7 +104,17 @@ var pivot: CameraAxo
 var ville: Ville
 var selection: Selection
 var interface: Interface
+var moniteur_performances: MoniteurPerformances
 var mat_objet: ShaderMaterial
+var masque: SubViewport
+var cam_masque: Camera3D
+var maille_masque: MeshInstance3D
+var maille_emprise: MeshInstance3D
+var rect_contour: ColorRect
+var _contour_fid := -1
+var _contour_couche := ""
+var _couloirs := {}
+var _plaques := {}
 
 var noeuds := {"i": {}, "r": {}}
 var mois := 0.0
@@ -82,7 +134,10 @@ func _ready() -> void:
 
 	ville = Ville.new()
 	ville.charger(donnees)
-	mat_objet = Materiaux.objet()
+	# 🪟 La hauteur d'étage vient des DONNÉES, pas d'une constante recopiée :
+	# c'est elle qui aligne les rangées de fenêtres sur les planchers que 07
+	# a réellement empilés.
+	mat_objet = Materiaux.objet(float(donnees["meta"]["etage_m"]))
 	monde = Node3D.new()
 	monde.name = "Monde"
 	add_child(monde)
@@ -111,6 +166,14 @@ func _ready() -> void:
 	interface.temps_remis.connect(_sur_reset)
 	pivot.vue_changee.connect(interface.maj_camera)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
+
+	moniteur_performances = MoniteurPerformances.new()
+	moniteur_performances.name = "MoniteurPerformances"
+	add_child(moniteur_performances)
+	# Les captures de contrôle jugent la ville, pas l'ordinateur qui les prend.
+	moniteur_performances.batir(not "--essai" in OS.get_cmdline_user_args())
+
+	_batir_contour()
 
 	var c: Dictionary = donnees["controles"]
 	print("Wehrau — %d îlots, %d tronçons, %d cliquables, %d triangles"
@@ -142,8 +205,13 @@ ESSAI — la ville, sans décision")
 	await _capturer("essai_ville")
 
 	# La même ville sous deux autres angles : c'est le contrôle de la caméra
-	# ouverte du 2026-08-17. À 10° on doit voir une SILHOUETTE (et des façades
-	# nues, c'est attendu) ; à 90° un plan, où le grain du parcellaire se lit.
+	# ouverte du 2026-08-17. À 10° on doit voir une SILHOUETTE ; à 90° un
+	# plan, où le grain du parcellaire se lit.
+	# 🔄 « et des façades nues, c'est attendu » : plus depuis le 2026-08-18.
+	# Les murs sont percés, et c'est justement le prix que ce commentaire
+	# annonçait qui vient d'être payé. À 10° les fenêtres sont sous le pixel
+	# et le shader rend la main à l'aplat : ce qu'on juge ici reste la
+	# silhouette. C'est `essai_facades` qui juge le percement.
 	pivot.caler(210.0, 10.0)
 	await get_tree().process_frame
 	await _capturer("essai_silhouette")
@@ -176,6 +244,61 @@ ESSAI — la ville, sans décision")
 	_repere("ilse")
 	await get_tree().process_frame
 	await _capturer("essai_ilse")
+
+	# 🌉 LE FRANCHISSEMENT DE PRES, depuis le 2026-08-18. `ilse` regarde le
+	# chenal a 260 m d'etendue : un tablier de 70 cm et un parapet de 1 m n'y
+	# tiennent pas deux pixels, et le lot « quai + pont » ne se verrait sur
+	# AUCUNE image. Vue basse (12°) : c'est de profil qu'un pont se juge — on
+	# doit voir passer l'eau SOUS le tablier, et la pile s'y poser.
+	_repere("pont")
+	pivot.caler(200.0, 12.0)
+	await get_tree().process_frame
+	await _capturer("essai_pont")
+
+	# Et le quai porte, de profil lui aussi : le mur qui tient la chaussee au
+	# bord de l'eau, et le metre de parapet demande par l'auteur.
+	_repere("quai")
+	pivot.caler(200.0, 10.0)
+	await get_tree().process_frame
+	await _capturer("essai_quai")
+	pivot.caler(30.0, 32.0)
+
+	# La berge des champs : le seul endroit de la carte qui ne soit pas plat.
+	# Les quatre autres reperes sont tous poses sur la ville — sans celui-ci,
+	# le talus demande le 2026-08-18 ne se voit sur aucune capture. Vue basse
+	# (18°) : c'est de profil qu'une pente se juge, pas d'en haut.
+	_repere("berge")
+	pivot.caler(200.0, 18.0)
+	await get_tree().process_frame
+	await _capturer("essai_berge")
+	pivot.caler(30.0, 32.0)
+
+	# 🪟 LES FAÇADES DE PRÈS, depuis le 2026-08-18. C'est la capture qui juge
+	# les fenêtres, et elle a dû être ajoutée : les six autres regardent la
+	# ville de haut, où un percement de 1,15 m tient sur deux pixels et où le
+	# shader a déjà rendu la main à l'aplat. Sans celle-ci, tout le lot ne se
+	# voit sur AUCUNE image — et ce qui ne se voit pas ne compte pas.
+	# 150 m de cadrage et 14° au-dessus : la hauteur d'un piéton au bout de
+	# la rue, la seule d'où un rez-de-chaussée se lit.
+	var q: Array = (donnees["reperes"]["quai"] as Dictionary)["cible"]
+	pivot.viser(Vector2(float(q[0]), float(q[1])), 150.0)
+	pivot.caler(210.0, 14.0)
+	await get_tree().process_frame
+	await _capturer("essai_facades")
+	pivot.caler(30.0, 32.0)
+
+
+	# L'église protégée : la preuve doit être visible dans la fiche, pas seulement
+	# vraie dans le noyau. Son toit reste dessiné, mais le curseur est verrouillé
+	# et la raison patrimoniale est écrite.
+	_repere("ville")
+	selection.sel_couche = "i"
+	selection.sel_fid = 16
+	interface.montrer("i", 16, false)
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_eglise")
 
 	var trop_cher := _essai_economie()
 
@@ -271,6 +394,49 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_reset")
 
+	# 🌞 LA PREUVE DU PAN DE TOIT. La barre ci-dessus est plate : elle prouve
+	# le temps et l'argent, mais pas l'ordre des deux versants. À exactement
+	# 50 %, un toit à deux pentes doit avoir son pan le mieux exposé entièrement
+	# équipé et l'autre encore en tuile — jamais deux demi-pans mouchetés.
+	selection.sel_couche = "i"
+	selection.sel_fid = 22
+	interface.montrer("i", 22, false)
+	if not ville.lancer_solaire(22, 1.0, mois):
+		push_error("l'îlot 22 refuse la pose de contrôle pan par pan")
+		get_tree().quit(1)
+		return
+	mois = Ville.SOLAIRE_MOIS_POUR_100 / 2.0
+	_repere("pans_solaire")
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_solaire_pans")
+	print("  contrôle visuel : îlot 22 à 50 % — premier pan entier, second nu")
+	_sur_reset()
+
+	# 🎨 LE CALQUE « TISSU », capturé plutôt que décrit. C'est la contrepartie
+	# du rendu réaliste : la couleur ne dit plus la typologie, donc il faut
+	# pouvoir prouver qu'on la retrouve d'une touche. Deux captures d'affilée —
+	# la ville en matériaux, puis la même repeinte par tissu — sont le seul
+	# moyen de juger si l'échange vaut le coup.
+	# On DÉSÉLECTIONNE d'abord : l'îlot 32 traîne la teinte de surlignage
+	# depuis la pose solaire, et sur une paire d'images destinée à juger des
+	# MATÉRIAUX, un objet éclairci passerait pour un matériau de plus.
+	selection.sel_fid = -1
+	selection.sel_couche = ""
+	_repere("ville")
+	pivot.caler(30.0, 55.0)
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_materiaux")
+	_sur_tissu()
+	print("  calque tissu (touche C) : %d îlots repeints par sous_type"
+		% _teintes_tissu.size())
+	await get_tree().process_frame
+	await _capturer("essai_tissu")
+	_sur_tissu()
+
 	get_tree().quit()
 
 
@@ -363,14 +529,47 @@ func _construire() -> void:
 	_par_objet("Ilots", [donnees["masses"], donnees["sols"]], "i")
 	_par_objet("Routes", [donnees["voirie"]], "r")
 
-	var liste: Array = donnees["arbres"]
+	var liste: Array = (donnees["arbres"] as Array).duplicate()
+
+	# 🌳 LES ARBRES D'ALIGNEMENT REVIENNENT À L'ÉCRAN. Ils étaient exportés
+	# depuis toujours et n'étaient plus affichés depuis la suppression de D07
+	# (66) — mais ils ne dépendent PAS de D07 : leur seuil se compare à
+	# `routes.canopee`, qui est une donnée de départ. Résultat, une ville dont
+	# les boulevards sont plantés dans la donnée et nus à l'image. On n'affiche
+	# que ceux dont le seuil est atteint à t0 ; les autres restent en réserve,
+	# exactement comme avant.
+	var rts: Dictionary = donnees["objets"]["routes"]
+	for f in (donnees["alignements"] as Dictionary):
+		var cano: float = float(rts[f]["canopee"]) if rts.has(f) else 0.0
+		for a in (donnees["alignements"][f] as Array):
+			if float(a[5]) <= cano:
+				# Un alignement de rue est d'une seule essence, et c'est un
+				# feuillu : personne ne plante une haie d'épicéas en ville.
+				liste.append([a[0], a[1], a[2], a[3], a[4],
+					Constructeur.FEUILLU])
+
 	if liste.size() > 0 and not _ignore("Arbres"):
-		var mmi := MultiMeshInstance3D.new()
-		mmi.name = "Arbres"
-		mmi.multimesh = Constructeur.arbres(liste,
-			Donnees.teinte(donnees, "_feuillage").srgb_to_linear())
-		mmi.material_override = Materiaux.feuillage()
-		monde.add_child(mmi)
+		var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
+		var brun := Donnees.teinte(donnees, "_tronc")
+		for essence in [Constructeur.FEUILLU, Constructeur.CONIFERE]:
+			# Le conifère est plus sombre et plus froid que le feuillu. C'est
+			# une variation de VALEUR sur la même teinte, pas une deuxième
+			# couleur dans la palette (Direction artistique l.67).
+			var t := vert if essence == Constructeur.FEUILLU \
+				else Color(vert.r * 0.70, vert.g * 0.80, vert.b * 0.76)
+			var mm := Constructeur.arbres(liste, essence, t, brun)
+			if mm.instance_count == 0:
+				continue
+			var mmi := MultiMeshInstance3D.new()
+			mmi.name = "Arbres%d" % essence
+			# ⚠️ PAS de `material_override` : l'arbre a deux surfaces, une
+			# pour la couronne et une pour le tronc, et un override les
+			# écraserait toutes les deux — le tronc ressortirait vert.
+			mmi.multimesh = mm
+			monde.add_child(mmi)
+			print("  arbres   %-8s %5d instances"
+				% ["conifère" if essence == Constructeur.CONIFERE
+					else "feuillu", mm.instance_count])
 
 
 func _ignore(nom: String) -> bool:
@@ -441,7 +640,12 @@ func _decor() -> void:
 	# basse pour que les volumes se détachent.
 	l.rotation_degrees = Vector3(-48.0, -125.0, 0.0)
 	l.light_color = Donnees.teinte(donnees, "_soleil")
-	l.light_energy = 1.15
+	# 🔄 1,15 → 1,45 le 2026-08-18, en même temps que l'ambiant baissait.
+	# La somme des deux ne bouge presque pas : ce qui change est le
+	# PARTAGE entre le soleil et le ciel, donc le contraste entre une
+	# façade au soleil et la même à l'ombre. C'est ce contraste qui fait
+	# lire un enduit crème comme crème et non comme gris.
+	l.light_energy = 1.45
 	l.shadow_enabled = true
 	l.directional_shadow_max_distance = 3000.0
 	add_child(l)
@@ -455,6 +659,9 @@ func _process(delta: float) -> void:
 
 
 func _rafraichir(force: bool) -> void:
+	# En tête, et hors du raccourci ci-dessous : le trait doit suivre la
+	# CAMÉRA, qui bouge même quand le temps est en pause.
+	_maj_contour()
 	if not force and absf(mois - _dernier_peint) < 0.002:
 		interface.maj(ville.indicateurs(mois), mois, vitesse)
 		return
@@ -486,7 +693,42 @@ const DISPO := {
 }
 
 
+# 🎨 LE CALQUE « TISSU », touche C — 2026-08-18.
+#
+# Il rend au joueur la lecture qu'on vient de lui retirer. Depuis que les
+# bâtiments sont rendus par MATÉRIAU (tuile, ardoise, étanchéité, bac acier) et
+# non plus par typologie, la couleur ne dit plus « cœur ancien » ou
+# « pavillonnaire » — ça se lit au grain et à l'époque, ce qui est plus juste
+# mais moins immédiat. Cette touche repeint la ville avec la palette d'avant,
+# le temps d'un coup d'œil.
+#
+# Il passe par le MÊME uniforme `calque` que les calques thématiques, donc
+# l'occlusion bakée survit et les deux ne peuvent pas s'afficher ensemble —
+# ce qui est voulu : deux repeints superposés ne se lisent plus.
+var calque_tissu := false
+var _teintes_tissu := {}
+
+
+func _sur_tissu() -> void:
+	calque_tissu = not calque_tissu
+	if calque_tissu:
+		calque_couche = ""
+		calque_champ = ""
+		if _teintes_tissu.is_empty():
+			for f in (donnees["objets"]["ilots"] as Dictionary):
+				var st: String = donnees["objets"]["ilots"][f]["sous_type"]
+				# ⚠ La palette est en sRGB ; les couleurs de sommet et cet
+				# uniforme sont en LINÉAIRE. Sans la conversion, le repeint
+				# ressort délavé — la même erreur que `vers_lineaire` corrige
+				# côté Python.
+				_teintes_tissu[int(f)] = Donnees.teinte(
+					donnees, st, Color.MAGENTA).srgb_to_linear()
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
 func _sur_calque(couche: String, champ: String) -> void:
+	calque_tissu = false
 	calque_couche = couche
 	calque_champ = champ
 	if ETENDUES_FIXES.has(champ):
@@ -519,7 +761,14 @@ func _peindre() -> void:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
 			var c := Color(1.0, 1.0, 1.0, 0.0)
-			if calque_champ != "" and calque_couche == couche \
+			if calque_tissu and couche == "i":
+				c = _teintes_tissu.get(fid, Color.MAGENTA)
+				# 1,0 et pas 0,88 comme les calques thématiques : ceux-là
+				# laissent voir la matière sous la mesure, celui-ci REMPLACE
+				# la matière. À 0,92 le rouge des tuiles transparaît et le
+				# cœur ancien sort orange au lieu de sable.
+				c.a = 1.0
+			elif calque_champ != "" and calque_couche == couche \
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
 				c.a = 0.88
@@ -537,6 +786,168 @@ func _disponible(couche: String, fid: int) -> bool:
 	if not DISPO.has(calque_champ):
 		return true
 	return ville.valeur(couche, fid, DISPO[calque_champ], 0.0) > 0.0
+
+
+## ✏️ LE CONTOUR DE SÉLECTION, en trois pièces.
+##
+## ① une petite vue à part (`masque`) où l'îlot choisi est redessiné SEUL, en
+##   blanc plat sur du vide, avec la même caméra que l'image principale ;
+## ② un rectangle plein écran (`rect_contour`) dont le shader allume les
+##   pixels qui touchent le bord de ce masque — voir `Materiaux.contour` ;
+## ③ la synchronisation de la caméra, faite à chaque image dans `_maj_contour`.
+##
+## ⚠️ La vue a SON PROPRE MONDE (`own_world_3d`), et c'est ce qui rend
+## l'affaire simple : un monde vide n'a ni ciel, ni lumière, ni le reste de la
+## ville — donc le fond est réellement transparent et rien ne masque l'îlot. Le
+## maillage n'est pas copié pour autant : on réutilise la MÊME ressource que
+## le nœud de la ville, avec un matériau qui la peint en blanc.
+##
+## 🔴 Le calque du contour est à 0, sous celui de l'interface (1) : un trait
+## qui passerait par-dessus les fiches se lirait comme un défaut d'affichage.
+func _batir_contour() -> void:
+	masque = SubViewport.new()
+	masque.name = "MasqueSelection"
+	masque.own_world_3d = true
+	masque.transparent_bg = true
+	# Le bord du masque est adouci ici, une fois, plutôt que dans le shader :
+	# sans ça le trait sort en escalier sur les diagonales, et un pignon à 45°
+	# est le cas le plus fréquent de la ville.
+	masque.msaa_3d = Viewport.MSAA_4X
+	# Rien à rendre tant que rien n'est choisi.
+	masque.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(masque)
+
+	cam_masque = Camera3D.new()
+	cam_masque.name = "CameraMasque"
+	cam_masque.projection = Camera3D.PROJECTION_ORTHOGONAL
+	masque.add_child(cam_masque)
+
+	maille_masque = MeshInstance3D.new()
+	maille_masque.name = "Silhouette"
+	maille_masque.material_override = Materiaux.masque()
+	masque.add_child(maille_masque)
+
+	# La deuxième pièce, et elle ne sert qu'aux îlots : leur emprise au sol,
+	# posée à plat. Deux nœuds plutôt qu'un maillage fusionné parce que la
+	# silhouette change à chaque sélection et que la plaque, elle, est gardée.
+	maille_emprise = MeshInstance3D.new()
+	maille_emprise.name = "Emprise"
+	maille_emprise.material_override = maille_masque.material_override
+	masque.add_child(maille_emprise)
+
+	var calque := CanvasLayer.new()
+	calque.name = "Contour"
+	calque.layer = 0
+	add_child(calque)
+
+	rect_contour = ColorRect.new()
+	rect_contour.name = "Trait"
+	rect_contour.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect_contour.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect_contour.visible = false
+	rect_contour.material = Materiaux.contour(masque.get_texture(), CONTOUR_COULEUR)
+	calque.add_child(rect_contour)
+
+
+## De quoi on prend la silhouette. Un îlot se détoure tel qu'il est rendu ;
+## une RUE, non — et c'est la seule exception du fichier.
+##
+## 🔴 POURQUOI UNE RUE NE PEUT PAS SE DÉTOURER TELLE QU'ELLE EST RENDUE.
+## Un tronçon n'est pas une surface : c'est la chaussée, plus les mètres libres
+## (du sol nu, qui n'appartient à personne), plus un bout de trottoir par îlot
+## riverain. Trois choses disjointes, séparées de 2,6 m sur le tronçon 120 —
+## donc le trait entourait chacune et la rue choisie ressortait en bandes
+## parallèles. `07` exporte pour ça le COULOIR : l'axe et la largeur façade à
+## façade. On en fait un ruban plat, jamais affiché, qui n'existe que pour être
+## détouré. Le maillage est gardé : il ne dépend que de la carte.
+##
+## ⚠️ Ce n'est pas non plus un rattrapage à faire dans le shader : l'écart
+## est en MÈTRES et le trait en PIXELS, donc un rebouchage à l'écran tiendrait
+## à un zoom et lâcherait au suivant.
+func _silhouette(couche: String, fid: int) -> Mesh:
+	if couche != "r":
+		return (noeuds[couche][fid] as MeshInstance3D).mesh
+	if _couloirs.has(fid):
+		return _couloirs[fid]
+	var tous: Dictionary = donnees["couloirs"]
+	var cle := str(fid)
+	if not tous.has(cle):
+		# Les quatre tronçons `rive` sont à 0 m de large : pas de couloir, donc
+		# pas de trait. Ils ne sont pas cliquables non plus.
+		return null
+	var c: Array = tous[cle]
+	# Le ruban est posé à 0 : le masque a son propre monde, où il est seul —
+	# aucune profondeur à disputer à quoi que ce soit.
+	var m := Constructeur.couloir(c[1] as Array, float(c[0]), 0.0)
+	_couloirs[fid] = m
+	return m
+
+
+## L'emprise au sol de l'îlot, posée à plat dans le masque À CÔTÉ de sa
+## silhouette rendue. C'est elle qui ferme les trous : le sol d'un îlot bâti
+## n'est dessiné nulle part dans le monde (c'est la plaque de terrain qui
+## passe dessous), donc rien ne le mettait dans le masque, donc le trait
+## laissait dehors le gris autour des bâtiments.
+##
+## Le maillage est gardé : il ne dépend que de la carte.
+func _emprise(fid: int) -> Mesh:
+	if _plaques.has(fid):
+		return _plaques[fid]
+	var tous: Dictionary = donnees["emprises"]
+	var cle := str(fid)
+	# Les îlots d'eau n'en ont pas : ils ne sont ni cliquables ni sélectionnables.
+	var m: Mesh = null if not tous.has(cle) else Constructeur.emprise(tous[cle])
+	_plaques[fid] = m
+	return m
+
+
+## Appelé à chaque image. Ce qui coûte n'est pas ici mais dans la vue à part,
+## d'où l'extinction complète (`UPDATE_DISABLED` + rectangle caché) dès que
+## rien n'est choisi : sans sélection, le contour ne coûte rien du tout.
+##
+## Les rues en ont un aussi — mais pas sur le même maillage : voir
+## `_silhouette` juste au-dessus.
+func _maj_contour() -> void:
+	if rect_contour == null or pivot == null or selection == null:
+		return
+	var couche: String = selection.sel_couche
+	var fid: int = selection.sel_fid
+	if fid < 0 or not noeuds.has(couche) or not noeuds[couche].has(fid):
+		if _contour_fid != -1:
+			_contour_fid = -1
+			_contour_couche = ""
+			maille_masque.mesh = null
+			maille_emprise.mesh = null
+			rect_contour.visible = false
+			masque.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		return
+
+	if fid != _contour_fid or couche != _contour_couche:
+		_contour_fid = fid
+		_contour_couche = couche
+		maille_masque.mesh = _silhouette(couche, fid)
+		# Une rue n'a pas d'emprise : son couloir EST déjà d'un seul tenant.
+		maille_emprise.mesh = _emprise(fid) if couche == "i" else null
+		rect_contour.visible = true
+		masque.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+
+	# La vue à part doit faire exactement la taille de l'image, sinon le trait
+	# se décale du bâtiment dès qu'on redimensionne la fenêtre.
+	var taille: Vector2i = get_viewport().get_visible_rect().size
+	if masque.size != taille:
+		masque.size = taille
+		rect_contour.material.set_shader_parameter("pas",
+			Vector2(1.0 / maxf(float(taille.x), 1.0),
+			1.0 / maxf(float(taille.y), 1.0)))
+		rect_contour.material.set_shader_parameter("rayon", CONTOUR_PX)
+		rect_contour.material.set_shader_parameter("bouche", CONTOUR_BOUCHE_PX)
+
+	# LA caméra, recopiée : même position, même angle, même zoom. C'est ça, et
+	# rien d'autre, qui fait que le trait épouse la vue.
+	cam_masque.global_transform = pivot.camera.global_transform
+	cam_masque.size = pivot.camera.size
+	cam_masque.near = pivot.camera.near
+	cam_masque.far = pivot.camera.far
 
 
 func _teinte(couche: String, fid: int) -> Color:
@@ -619,6 +1030,10 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_B: _repere("barre")
 		KEY_R: _repere("quai")
 		KEY_I: _repere("ilse")
+		KEY_G: _repere("berge")
+		KEY_O: _repere("pont")
+		KEY_C: _sur_tissu()
+		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")
 		KEY_ESCAPE: get_tree().quit()
 

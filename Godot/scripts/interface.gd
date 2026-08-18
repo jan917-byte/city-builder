@@ -319,7 +319,8 @@ func _panneau_camera() -> void:
 		"clic droit glissé : tourner autour de la ville",
 		"clic milieu glissé : déplacer · molette : zoom",
 		"Q E : quart de tour · flèches : ajuster",
-		"T : vue de dessus · V B R I : les quatre repères",
+		"T : vue de dessus · V B R I G : les cinq repères",
+		"C : recolorer par tissu",
 	]:
 		v.add_child(_label(ligne, 11, GRIS))
 
@@ -462,7 +463,8 @@ func _maj_fiche() -> void:
 	var recette := ville.valeur("i", _fiche_fid, "_recette_ke_an", _mois)
 	_alerter_cout(false)
 	if toit <= 0.0:
-		_solaire_valeur.text = "Aucun toit équipable."
+		_solaire_valeur.text = "Église protégée — panneaux solaires interdits." \
+			if int(o.get("solaire_possible", 1)) == 0 else "Aucun toit équipable."
 		_solaire_cout.text = ""
 		_solaire_bouton.text = "Augmenter"
 		_solaire_bouton.disabled = true

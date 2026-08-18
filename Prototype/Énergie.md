@@ -10,7 +10,7 @@
 > qu’il ne se paie pas partout au même prix.
 >
 > Plan de chantier vivant, pas source de vérité du design. Les décisions sont
-> consignées dans `Décisions arrêtées` **68** et **69**.
+> consignées dans `Décisions arrêtées` **68**, **69** et **71**.
 
 ## 1. La boucle actuelle
 
@@ -126,10 +126,10 @@ plus le prototype actuel.
 
 La simplification de l’interface ne change pas la physique déjà branchée :
 
-- consommation de départ de Wehrau : **51,1 GWh/an** ;
+- consommation de départ de Wehrau : **53,9 GWh/an** ;
 - production initiale : **0** ;
 - rendement solaire : **140 kWh/m²/an**, modulé par le tissu et l’ombrage ;
-- potentiel calculé sur les **10,4 ha de toiture réelle**, pas sur une emprise
+- potentiel calculé sur les **11,0 ha de toiture réelle**, pas sur une emprise
   estimée ;
 - achat = consommation − production ;
 - CO₂ = énergie achetée × facteur d’émission.
@@ -140,13 +140,13 @@ Tout le reste s’en déduit — il n’y a pas de troisième nombre à régler.
 
 | | Valeur | D’où ça sort |
 |---|---:|---|
-| coût du m² posé | **260 €** | panneau, structure et pose sur une toiture existante, multiplié par le `cout_x` du tissu (0,7 sur une dalle, 1,8 en cœur ancien) |
+| coût du m² posé | **260 €** | panneau, structure et pose sur une toiture existante, multiplié par le `cout_x` du tissu (0,8 sur la barre, 1,8 en cœur ancien) |
 | valeur du MWh produit | **150 €** | ce que vaut le mégawattheure qu’on ne rachète pas |
 | caisse au mois 0 | **800 k€** | level design — de quoi équiper deux ou trois bons toits |
 | dotation | **30 k€/mois** | level design — 360 k€/an votés pour la transition |
 
 🔴 **La facture d’énergie de la ville ne traverse jamais la caisse**, et c’est
-délibéré : à 51,1 GWh/an, elle vaut **7,7 M€/an**, payés par les occupants, pas
+délibéré : à 53,9 GWh/an, elle vaut **8,1 M€/an**, payés par les occupants, pas
 par la mairie. Les mélanger donnerait une mairie qui paie vingt fois sa dotation
 en électricité, donc un jeu sans décision. La caisse ne connaît que les
 panneaux : ce qu’ils coûtent à poser, ce qu’ils rapportent.
@@ -163,8 +163,9 @@ ferme la question n°22 ouverte la veille.
 leur électricité. C’est cette ligne-là qui tient le paragraphe au-dessus.
 
 Ce qui distingue encore les îlots n’est donc plus la propriété mais le **coût
-d’accès au toit** et son **rendement**, tous deux déjà dans la table : la barre
-et la dalle restent les bons coups pour une raison physique, pas juridique.
+d’accès au toit** et son **rendement**, tous deux déjà dans la table. Une
+exception physique s'ajoute : l'église de l'îlot 16 appartient à la ville mais
+sa protection interdit les panneaux.
 
 🔴 C’est une simplification **de prototype**, pas une thèse sur la ville. Le
 propriétaire qui dit non est une tension que le jeu complet devra porter — à
@@ -174,18 +175,17 @@ rouvrir avant Vallmar.
 
 | Tissu | Îlots | Équiper en entier | Se rembourse en |
 |---|---:|---:|---:|
-| dalle commerciale | 1 | 221 k€ | **8 ans** |
 | barre 1970 | 1 | 389 k€ | **10 ans** |
-| équipement | 2 | 402 k€ | **11 ans** |
+| équipement | 1 équipable + l'église protégée | 339 k€ | **11 ans** |
 | friche industrielle | 2 | 1 272 k€ | **11 ans** |
 | pavillonnaire | 12 | 1 810 k€ | 18 ans |
-| maisons de ville | 20 | 4 752 k€ | 19 ans |
-| front commerçant | 4 | 469 k€ | 20 ans |
-| cœur ancien | 12 | 1 457 k€ | **31 ans** |
-| **toute la ville** | **54** | **10 773 k€** | → **648 k€/an** |
+| maisons de ville | 20 | 4 744 k€ | 19 ans |
+| front commerçant | 5 | 928 k€ | 20 ans |
+| cœur ancien | 13 | 1 652 k€ | **31 ans** |
+| **toute la ville** | **54 équipables** | **11 135 k€** | → **644 k€/an** |
 
-C’est là qu’est la décision, et elle est dure : **six îlots se remboursent dans
-une partie, les quarante-huit autres non.** Continuer après eux, c’est acheter
+C’est là qu’est la décision, et elle est dure : les grands toits restent les
+premiers choix, tandis que l'église est **hors choix**. Continuer ensuite, c’est acheter
 du CO₂ évité, pas faire un placement. Le jeu peut dire ça sans être cynique —
 il ne le dit pas encore, et c’est un des points à regarder à l’écran.
 
@@ -200,8 +200,8 @@ actuel :
 | | avant | après |
 |---|---:|---:|
 | production de la ville | 0,0 GWh/an | **0,3 GWh/an** |
-| achat de la ville | 51,1 GWh/an | **50,9 GWh/an** |
-| CO₂ de la ville | 12,8 kt/an | **12,7 kt/an** |
+| achat de la ville | 53,9 GWh/an | **53,6 GWh/an** |
+| CO₂ de la ville | 13,5 kt/an | **13,4 kt/an** |
 | part solaire de l’îlot 32 | 0 % | **100 %** |
 | caisse | 800 k€ | **442 k€** — 389 k€ payés, 30 k€ de dotation, 1 k€ de recette |
 | recette solaire de la ville | 0 k€/an | **+38 k€/an** |
@@ -209,10 +209,12 @@ actuel :
 ## 5. Ce qui doit se voir
 
 Le contrôle automatisé imprime le tableau d’économie ci-dessus, éprouve le
-refus sur l’îlot le plus cher, puis passe l’îlot **32** de 0 à 100 %. Il produit
-trois images :
+refus sur l’îlot le plus cher, vérifie l'église protégée, puis passe l’îlot
+**32** de 0 à 100 %. Il produit notamment :
 
 - `QGIS/rendus/wehrau_essai_barre.png` — avant ;
+- `QGIS/rendus/wehrau_essai_eglise.png` — îlot 16, **0 m² équipable**, curseur
+  verrouillé et raison écrite ;
 - `QGIS/rendus/wehrau_essai_caisse.png` — **le refus**, îlot 31 : *« Coût
   869 k€ · il manque 69 k€ en caisse »* en rouge, bouton éteint ;
 - `QGIS/rendus/wehrau_essai_solaire_100.png` — après.

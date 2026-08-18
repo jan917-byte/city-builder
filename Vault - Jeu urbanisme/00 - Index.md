@@ -134,5 +134,5 @@ Ce qui reste, et qui ne bloque rien tout de suite :
 - La **rivière est un îlot**, plus une ligne → [[Géométrie et données]]
 - ~~Tracé manuel, extraction abandonnée~~ → **la carte générée est la source de vérité**, le tracé manuel devient un outil de retouche → [[Pipeline QGIS]]
 - ~~Prototype = Altstadt~~ → **prototype = [[Wehrau]], petite ville entière**. Gain : l'amont/aval entre dans le prototype → [[Périmètre et coupes]]
-- **La ville est qualifiée** : 13 sous-types, 17 exceptions, quatre plaies de 1965 → [[Wehrau]]
+- **La ville est qualifiée** : 12 sous-types, 16 exceptions, trois plaies de 1965 → [[Wehrau]]
 - **Les attributs dérivés sont calculés** : 12 par îlot, 4 par tronçon. La carte n'est plus un dessin, elle est **simulable** → [[Pipeline QGIS]]

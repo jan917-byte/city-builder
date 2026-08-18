@@ -105,7 +105,7 @@ func base(couche: String, fid: int, champ: String) -> float:
 ## Les bornes ne sont pas cosmétiques : une part reste une part. Sans elles une
 ## canopée grimpe au-dessus de 1 et l'indicateur de ville ment. La production,
 ## elle, n'est jamais bornée : champ calculé, elle ne passe pas par `_borner`
-## — la friche et la dalle EXPORTENT, et l'écrêter fausserait le total.
+## — une friche peut EXPORTER, et l'écrêter fausserait le total.
 func valeur(couche: String, fid: int, champ: String, t: float) -> float:
 	if champ.begins_with("_"):
 		return Energie.derive(self, fid, champ, t) if couche == "i" else 0.0
@@ -181,6 +181,8 @@ func cout_solaire_ke(fid: int, part: float, t: float) -> float:
 ## le prix à payer pour ça, et il est honnête (les travaux sont commandés).
 func lancer_solaire(fid: int, part: float, t: float) -> bool:
 	if not ilots.has(fid) or etat_solaire(fid, t)["en_cours"]:
+		return false
+	if Energie.toit_equipable_m2(self, fid) <= 0.0:
 		return false
 	var actuelle := valeur("i", fid, "part_toit_equipe", t)
 	var cible := clampf(part, 0.0, 1.0)

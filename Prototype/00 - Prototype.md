@@ -21,16 +21,26 @@ Ce que ça protège : le risque nommé dans `Décisions arrêtées` **52** — *
 | | L'étape | État | Son critère de réussite |
 |---|---|---|---|
 | 1 | **La carte** — îlots, rues, attributs | ✅ fait | la ville privée de sa rivière tombe en deux morceaux, le réseau routier tient d'un seul tenant, l'axe de transit sort tout seul |
-| 2 | **[Les parcelles](Parcelles.md)** | 🎯 **en cours** | la surface de toit mesurée retombe sur le coefficient de l'énergie · le cœur ancien ressemble à un cœur ancien |
+| 2 | **[Les parcelles](Parcelles.md)** | ⏸️ **en pause** | la surface de toit mesurée retombe sur le coefficient de l'énergie · le cœur ancien ressemble à un cœur ancien |
 | 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ simplifié, **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
-| 4 | **Les toits et le sol** | ☐ | croire qu'on y habite |
+| 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | 🎯 **en cours** | croire qu'on y habite |
 | 5 | **Le trafic visible** | ☐ | une rue à `charge = 1,00` est désagréable à regarder |
 | 6 | **Le thème suivant** | ☐ | il s'écrit en trois pièces, sans toucher à la machinerie |
 
-**Pourquoi 2 et 3 apparaissent ensemble, et pourquoi ce n'est pas une
-entorse** : l'énergie est construite mais attend le regard de l'auteur ; elle
-ne porte plus de chantier de système. L'unique étape ouverte reste donc les
-parcelles. → `Décisions arrêtées` **68**
+**Pourquoi l'étape 2 passe en pause au lieu de passer à ✅**, le 2026-08-18 :
+son critère n'est pas atteint. Il lui reste **118 parcelles de rue avec un
+sommet rentrant**, dont le dard de l'îlot 40 que l'auteur a entouré. Ce n'est
+pas fini, c'est **suspendu** — et ce qui reste est décrit dans
+[CHANTIERS.md](../CHANTIERS.md) §1 n°8, avec la piste à essayer.
+
+🔴 **La règle « une seule étape ouverte » tient donc toujours**, et c'est
+important : ouvrir la 4 sans fermer la 2 aurait été exactement le retour du
+risque **52** par la porte de derrière. L'auteur a ouvert la 4 explicitement,
+et la 2 s'est refermée en même temps.
+
+**Pourquoi 3 apparaît quand même** : l'énergie est construite mais attend le
+regard de l'auteur ; elle ne porte plus de chantier de système.
+→ `Décisions arrêtées` **68**
 
 ## Ce qui relie les deux étapes ouvertes : **le toit**
 

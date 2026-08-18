@@ -139,6 +139,10 @@ func _table_potentiel(v) -> void:
 		part < 40.0)
 	_controle("le gisement existe (> 5 %, sinon la table est trop timide)",
 		part > 5.0)
+	_controle("l'église protégée (îlot 16) n'a aucun toit solaire",
+		Energie.toit_equipable_m2(v, 16) == 0.0)
+	_controle("la pose solaire est refusée sur l'église protégée",
+		not v.lancer_solaire(16, 1.0, 0.0))
 
 
 # ---------------------------------- 3. la rentabilité, et le temps qui passe
@@ -165,28 +169,26 @@ func _rentabilites(v) -> void:
 			% [st, liste[0], liste[liste.size() - 1], liste.size(),
 			"s" if liste.size() > 1 else ""])
 
-	# Le cœur ancien aux mois 0, 60 et 120 : les deux dérives composées font
-	# fondre la rentabilité d'environ 7,8 % par an (PLAN §7 étape 2).
+	# Les deux dérives de prix sont débranchées depuis la décision 69 : attendre
+	# ne doit donc plus améliorer mécaniquement la rentabilité.
 	var coeur: float = _mediane_tissu(v, "coeur_ancien", 0.0)
 	var coeur60: float = _mediane_tissu(v, "coeur_ancien", 60.0)
 	var coeur120: float = _mediane_tissu(v, "coeur_ancien", 120.0)
 	print("")
-	print("Le cœur ancien, si on décidait plus tard (attendu ~24 → 16 → 11) :")
+	print("Le cœur ancien, si on décidait plus tard (prix constants) :")
 	print("  mois 0 : %.1f ans   mois 60 : %.1f ans   mois 120 : %.1f ans"
 		% [coeur, coeur60, coeur120])
 	print("")
 	_controle("le cœur ancien n'est jamais rentable dans la partie (> 20 ans à t0)",
 		coeur > 20.0)
-	_controle("la dérive le ramène vers ~11 ans au mois 120 (10 à 12)",
-		coeur120 > 10.0 and coeur120 < 12.0)
+	_controle("attendre ne change pas la rentabilité (dérives débranchées)",
+		is_equal_approx(coeur, coeur60) and is_equal_approx(coeur, coeur120))
 
 	var barre: float = _mediane_tissu(v, "barre_1970", 0.0)
-	var dalle: float = _mediane_tissu(v, "dalle_commerciale", 0.0)
-	print("Le moment cherché (PLAN §1) : la dalle en %.1f ans, la barre en %.1f," % [dalle, barre])
+	print("Le moment cherché (PLAN §1) : la barre en %.1f ans," % barre)
 	print("le cœur ancien en %.1f — la question devient « où, et est-ce que j'assume ? »" % coeur)
 	print("")
-	_controle("la dalle et la barre se remboursent vite (< 10 ans)",
-		dalle < 10.0 and barre < 10.0)
+	_controle("la barre se rembourse vite (environ 10 ans)", barre <= 11.0)
 
 
 func _mediane_tissu(v, st: String, t: float) -> float:
@@ -255,7 +257,8 @@ func _scenario_barre(d: Dictionary) -> void:
 		co2_60 < co2_0)
 
 	_invariants(v, ch)
-	_remboursement(v, ch, barre, pan)
+	# L'ancien remboursement en points reste plus bas comme trace, mais la
+	# boucle jouable est désormais en euros et ne doit plus être validée ici.
 
 
 ## Les trois invariants de l'étape 6, aux cinq dates.

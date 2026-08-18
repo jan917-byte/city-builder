@@ -94,8 +94,6 @@ COULEUR = {
     "pavillonnaire":        (196, 208, 168),
     "barre_1970":           (176, 180, 196),
     "equipement":           (168, 186, 206),
-    "dalle_commerciale":    (188, 176, 188),
-    "dalle_commercial":     (188, 176, 188),
     "friche_industrielle":  (176, 168, 156),
 }
 DEFAUT = (200, 200, 200)

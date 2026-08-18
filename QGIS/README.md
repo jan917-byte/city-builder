@@ -114,8 +114,8 @@ Le plan annonçait « export GeoJSON vers Godot, mois 2 ». C'est `07_exporter_g
 ```python
 RIVIERE = [4, 7, 51, 52, 54, 57]
 PLACE_PARKING = [19]        # la place du marché, la plus centrale, sur l'eau
-DALLE = [45]                # l'îlot rasé en 1971
 FRICHES = [31, 65]          # le moulin et la brasserie, en aval
+FRONT_COMMERCANT = [12, 21, 24, 45, 72]
 BARRE = [32]                # le grand ensemble de 1974
 …
 ```
@@ -124,7 +124,7 @@ On change une ligne, on relance la chaîne, on regarde le PNG. **L'itération es
 
 Deux garde-fous intégrés :
 - un `fid` affecté à deux sous-types fait planter le script avec le numéro fautif — pas de silence
-- `exception = 1` marque les îlots posés à la main, par opposition au tissu dérivé par règle. **17 exceptions**, cible du vault ≈ 20. ✅
+- `exception = 1` marque les îlots posés à la main, par opposition au tissu dérivé par règle. **16 exceptions**, cible du vault ≈ 20. ✅
 
 Ce fichier décide aussi de la **hiérarchie et de la largeur des 178 tronçons**, par un arbre de règles, dans cet ordre : pont → quai à voie rapide → berge → boulevard hérité → route de campagne → ruelle de cœur → rue. Puis il **module** la largeur selon le tissu desservi (ancien −2 m, moderne +2 m, campagne +1 m) et la longueur (+1 m par 60 m, plafonné à +3 m).
 
@@ -148,13 +148,15 @@ Une frontière sans voisin n'est pas une adjacence : elle est comptée à part e
 
 Le plus gros fichier, et **le plus dense en design** : deux champs sont saisis à la main, tout le reste se dérive ici.
 
-Le cœur du fichier est la table `TISSU` : **13 lignes, une par `sous_type`, six colonnes** (densité nette, hauteur, part imperméabilisée, canopée, fragilité du riverain, part en stationnement). Treize lignes qui décident du comportement de la carte entière. Les densités sont calées sur du tissu allemand réel, pas choisies pour atteindre un chiffre de population.
+Le cœur du fichier est la table `TISSU` : **12 lignes, une par `sous_type`, six colonnes** (densité nette, hauteur, part imperméabilisée, canopée, fragilité du riverain, part en stationnement). Douze lignes qui décident du comportement de la carte entière. Les densités sont calées sur du tissu allemand réel, pas choisies pour atteindre un chiffre de population.
 
 Trois sous-systèmes en dessous :
 
 **L'eau, sans MNT et désormais sans relief.** `position_fil_eau` se lit **en latitude** (l'Ilse traverse du nord au sud en décrivant un S — un axe droit se tromperait de rive sur les méandres). `rive` est calculée sur la direction **locale** de la berge la plus proche, orientée vers l'aval. Ces deux-là sont des **positions**, elles restent.
 
-🔄 **`altitude_relative` et `alea` valent 0 depuis le 2026-08-12.** La carte est plate — dans l'image et dans la donnée — et la crue sort du prototype. Les colonnes restent pour que rien de ce qui les lit ne casse, mais elles ne prétendent plus mesurer quoi que ce soit.
+🔄 **`altitude_relative` et `alea` valent 0 depuis le 2026-08-12.** La carte est plate **dans la donnée**, et la crue sort du prototype. Les colonnes restent pour que rien de ce qui les lit ne casse, mais elles ne prétendent plus mesurer quoi que ce soit.
+
+⚠️ **Depuis le 2026-08-18, « plate dans la donnée » ne veut plus dire « plate à l'image ».** L'Ilse coule 2 m sous la ville et les 4 champs riverains y descendent par un talus de 10 m. Ce relief est **entièrement calculé par `07`** — une fonction de la distance à la berge et aux autres bords du champ — et n'existe dans **aucune colonne** : il n'y a donc rien à échantillonner ici, et `04` reste inchangé. → `Godot/README.md`, « La ville est plate, l'Ilse coule 2 m plus bas »
 
 Ce qu'il y avait, et qu'il faudrait réécrire pour revenir : une vallée qui remontait de part et d'autre de l'Ilse avec une pente s'adoucissant vers l'aval (3,2 % → 1,3 %, plafond 9 m), et un aléa décroissant avec l'altitude, majoré vers l'aval (×0,80 → ×1,20). Sur une carte plate, l'aléa tiendrait à la **distance à l'eau** : mesuré avant de renoncer, à 250 m de portée il retombait à **0,74 rive gauche et 0,39 rive droite**, contre 0,75 et 0,43 par l'altitude — la règle changeait, pas la carte du risque.
 
@@ -236,7 +238,7 @@ Chaque script est coupé en deux par un commentaire. **Au-dessus** : ce qui se r
 
 | Où | Quoi | Combien |
 |---|---|---|
-| `04` · `TISSU` | densité, hauteur, imperméabilisation, canopée, fragilité, parking | **13 lignes × 6 colonnes** |
+| `04` · `TISSU` | densité, hauteur, imperméabilisation, canopée, fragilité, parking | **12 lignes × 6 colonnes** |
 | `02` · les listes de `fid` | quel îlot est quoi | ~30 lignes |
 | `03` · `PERMEABILITE` | ce qu'une rue laisse passer | **7 nombres** |
 | `04` · pentes et aléa | le relief, qui n'existe nulle part ailleurs | 5 constantes |
@@ -259,7 +261,7 @@ Autre astuce partagée, moins évidente : les déclencheurs d'index spatial du G
 |---|---|
 | Emprise | 0,93 km² · 898 × 1 036 m |
 | Îlots | **69** — 56 bâtis · 7 champs · 6 morceaux de rivière |
-| Sous-types | **13** · **17 exceptions** (cible ≈ 20) |
+| Sous-types | **12** · **16 exceptions** (cible ≈ 20) |
 | Routes | **178** tronçons · 13,6 km — rue 100 · boulevard 40 · rive 21 · ruelle 17 |
 | Franchissements de l'Ilse | **5** |
 | Adjacences | **179** paires · 13,60 km de frontières partagées, soit **exactement** le linéaire de voirie — aucune frontière en `sans_rue` |
@@ -287,9 +289,9 @@ Relevées en relisant le dossier le 2026-08-11. Rien n'empêche de travailler ; 
 
 1. 🟠 **`apercu_carte.py` plante sur un clone frais.** `QGIS/rendus/` est gitignoré, donc absent après un `git clone` — et le script ne le crée pas : `FileNotFoundError` au moment du `im.save`. Reproduit à l'instant sur ce Mac. Correctif : `os.makedirs(RENDUS, exist_ok=True)` avant l'enregistrement.
 2. 🟠 **`HABITANTS_VAULT = 18000` dans `04`** est périmé. La décision 13d fixe Wehrau à **~5 350 habitants**, et la carte en porte 5 353 — soit la cible à 3 près. Mais le contrôle compare toujours à 18 000 et sort un **⚠️ « la carte n'en porte que 30 % »** à chaque exécution, alors que la réalité est un ✅. Un contrôle qui crie faux finit par ne plus être lu. Passer la constante à `5350`.
-3. 🟡 **`01_champs_et_valuemaps.py` a divergé de `02`.** Sa liste `SOUS_TYPES` date de l'Altstadt (`coeur_medieval`, `faubourg`, `quai`, `friche`…) et ne recoupe presque pas les 13 sous-types réellement écrits (`coeur_ancien`, `maisons_de_ville`, `barre_1970`, `dalle_commerciale`, `jardins_familiaux`, `friche_industrielle`…). Le coller dans QGIS aujourd'hui poserait des listes déroulantes qui ne correspondent plus aux données. Sa docstring parle encore de l'Altstadt. À resynchroniser sur `02` ou à archiver.
+3. 🟡 **`01_champs_et_valuemaps.py` a divergé de `02`.** Sa liste `SOUS_TYPES` date de l'Altstadt (`coeur_medieval`, `faubourg`, `quai`, `friche`…) et ne recoupe presque pas les 12 sous-types réellement écrits (`coeur_ancien`, `maisons_de_ville`, `barre_1970`, `jardins_familiaux`, `friche_industrielle`…). Le coller dans QGIS aujourd'hui poserait des listes déroulantes qui ne correspondent plus aux données. Sa docstring parle encore de l'Altstadt. À resynchroniser sur `02` ou à archiver.
 4. 🟡 **`classification.json` est un vestige** de l'époque sans champ `fonction` : `apercu_carte.py` ne le lit qu'en repli, et `Prototype_qualifie.gpkg` a le champ, donc il n'est **jamais utilisé**. Il contredit d'ailleurs `02` (l'îlot 27 y est un champ, il est pavillonnaire depuis). Le supprimer, ou le garder pour lire un `.gpkg` non qualifié — mais alors le remettre d'accord avec `02`.
-5. ⚪ **Cosmétique dans `04`** : le compte rendu titre « LES QUATRE PLAIES DE 1965 » et en liste cinq, et annonce la crue d'ouverture comme « non arrêté » alors que la décision 23b l'a tranchée le 2026-08-11.
+5. ✅ **Le titre ambigu de `04` est corrigé** : il parle désormais des quatre îlots repères réellement listés, pas des trois plaies urbaines de la décision 71.
 6. ⚪ **La colonne `hierarchy` d'origine survit** dans `routes` à côté de `hierarchie`. Sans effet — plus aucun script ne la lit après `02` — mais c'est un doublon qui piégera quelqu'un un jour.
 
 ## 9. Mémo — les commandes
@@ -326,7 +328,7 @@ python3 QGIS/scripts/tracer_chemins.py --blanc
 ```
 
 ```bash
-# la palette : couverture des 13 sous-types, familles, règle du sol
+# la palette : couverture des 12 sous-types, familles, règle du sol
 python3 QGIS/scripts/palette.py
 ```
 

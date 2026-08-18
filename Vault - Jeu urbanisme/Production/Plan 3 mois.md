@@ -71,7 +71,7 @@ Et son corollaire, déjà en vigueur : *si un rendu ne s'explique pas par une va
 
 ### Semaine 1 — la carte ✅ *bouclée le 2026-08-10*
 **Périmètre : [[Wehrau]]**, une petite ville entière — plus un quartier. → [[Périmètre et coupes]]
-✅ Carte générée puis qualifiée : **69 polygones sur 0,93 km²**, 13 sous-types, 17 exceptions.
+✅ Carte générée puis qualifiée : **71 polygones sur 0,93 km²**, 12 sous-types, 16 exceptions.
 La rivière est un **îlot** (`fonction = 'riviere'`), pas une ligne.
 ✅ Table d'adjacence (179 paires) et 12 attributs dérivés par îlot → [[Pipeline QGIS]]
 

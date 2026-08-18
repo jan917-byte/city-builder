@@ -10,8 +10,8 @@ const CHEMIN := "res://data/wehrau.json"
 
 # Les comptes sont connus, donc vérifiables. S'ils changent, c'est que la
 # carte a changé — et on veut le savoir tout de suite.
-const N_ILOTS := 69
-const N_ROUTES := 176      # 178 avant le 2026-08-12 — décision 30c, trois ponts
+const N_ILOTS := 71
+const N_ROUTES := 178      # source moins les deux ponts supprimés par la décision 30c
 
 
 static func charger(chemin: String = CHEMIN) -> Dictionary:
@@ -34,7 +34,7 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 
 	var d: Dictionary = brut
 	for cle in ["meta", "palette", "terrain", "masses", "sols", "eau",
-			"voirie", "arbres", "alignements", "objets", "riverains",
+			"voirie", "arbres", "alignements", "couloirs", "emprises", "objets", "riverains",
 			"reperes", "controles"]:
 		if not d.has(cle):
 			_fatal("clé absente du JSON : `%s`\n" % cle
@@ -85,6 +85,16 @@ static func _valider_maillage(m: Dictionary, nom: String) -> String:
 	if (m["c"] as Array).size() != nv:
 		return "maillage `%s` : %d couleurs pour %d sommets" % [nom,
 			(m["c"] as Array).size(), nv]
+	if m.has("uv") and (m["uv"] as Array).size() != nv:
+		return "maillage `%s` : %d axes de toit pour %d sommets" % [nom,
+			(m["uv"] as Array).size(), nv]
+	# 🪟 UV2 est facultatif — seul un maillage qui porte des murs percés
+	# l'emporte. Mais s'il est là, il est COMPLET : un tableau plus court
+	# décalerait le genre de façade d'un sommet à l'autre, et la ville
+	# sortirait avec des vitrines au hasard.
+	if m.has("uv2") and (m["uv2"] as Array).size() != nv:
+		return "maillage `%s` : %d façades pour %d sommets" % [nom,
+			(m["uv2"] as Array).size(), nv]
 	var ni: int = (m["i"] as Array).size()
 	if ni % 3 != 0:
 		return "maillage `%s` : %d indices, pas un multiple de 3" % [nom, ni]

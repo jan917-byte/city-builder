@@ -78,7 +78,6 @@ COULEURS = {
     "place_minerale":      (196, 128, 108),   # la plaie : la place-parking
     "coeur_ancien":        (208, 186, 150),
     "front_commercant":    (226, 176, 106),
-    "dalle_commerciale":   (168, 106, 96),    # la plaie : la galerie de 1971
     "quai_voie_rapide":    (188, 124, 112),   # la plaie : la berge en voie rapide
     "equipement":          (170, 158, 196),
     "maisons_de_ville":    (214, 198, 172),

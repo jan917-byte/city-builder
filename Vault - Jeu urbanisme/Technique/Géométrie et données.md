@@ -66,13 +66,13 @@ Réservée aux **champs continus dérivés** : chaleur, ruissellement.
 
 **Techniques** : `exception` (entier) · `surface_m2` (réel)
 
-**Principe** : je saisis deux champs, le script dérive le reste, et je ne modifie à la main que **les exceptions — environ vingt**. Ces vingt exceptions **sont le level design réel**. Sur [[Wehrau]] : **17 exceptions**, la cible tient.
+**Principe** : je saisis deux champs, le script dérive le reste, et je ne modifie à la main que **les exceptions — environ vingt**. Ces vingt exceptions **sont le level design réel**. Sur [[Wehrau]] : **16 exceptions**, la cible tient.
 
 Le flag `exception = 1` protège définitivement une saisie manuelle contre le re-calcul.
 
-### La table de correspondance — 13 lignes
+### La table de correspondance — 12 lignes
 
-Une ligne par `sous_type`, six colonnes : densité nette (log/ha), hauteur (étages), part imperméabilisée, part sous canopée, fragilité du riverain, part de la surface en stationnement. **C'est le fichier le plus dense en design de tout le projet** : treize lignes qui décident du comportement de la carte entière.
+Une ligne par `sous_type`, six colonnes : densité nette (log/ha), hauteur (étages), part imperméabilisée, part sous canopée, fragilité du riverain, part de la surface en stationnement. **C'est le fichier le plus dense en design de tout le projet** : douze lignes qui décident du comportement de la carte entière.
 
 Les densités sont calées sur du tissu allemand réel — emprise au sol × niveaux ÷ surface par logement — et non choisies pour atteindre un chiffre de population. → [[Questions ouvertes]] n°13
 

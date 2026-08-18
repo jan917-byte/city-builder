@@ -7,6 +7,145 @@
 
 ---
 
+**2026-08-18 (session 42) — la performance devient visible.** Le moniteur est
+posé entre les deux fiches, sans ouvrir un nouvel écran : cadence et temps
+d'image, CPU, triangles, appels de rendu, nœuds, mémoire générale et vidéo.
+Il se rafraîchit quatre fois par seconde, se masque avec `F3` et change de
+couleur aux seuils de 55 et 30 ips. La vraie fenêtre Godot a été lancée et
+capturée : **180 ips, 5,6 ms/image, 7,2 ms CPU, 933 501 triangles, 496 appels,
+810 nœuds, 258 Mio dont 252 Mio vidéo** sur la vue entière. Les essais
+automatiques le cachent afin que leurs images continuent de juger la ville,
+pas la machine.
+
+**2026-08-18 (session 40) — le solaire prend le sens du toit.** La grille des
+panneaux était calée sur les axes de la carte : elle traversait les directions
+de bâtiment et équipait les deux versants en même temps. Chaque volume porte
+maintenant jusqu'au matériau l'axe de son faîtage, déjà dérivé de sa façade sur
+rue ; les rangées le suivent et remontent la pente à angle droit. La pose
+avance par pan : le mieux exposé d'abord, le second ensuite, tandis qu'un toit
+plat reste un pan unique. La preuve a imposé une nouvelle capture et pas une
+phrase : `wehrau_essai_solaire_pans.png`, îlot 22 arrêté à 50 %, montre un
+versant bleu entier et son opposé encore en tuile. La chaîne complète conserve
+les **11,0 ha** de toiture et les **10 161 faces** bien orientées ; l'essai
+Godot, l'économie, le reset et toutes les captures passent.
+
+**2026-08-18 (session 39) — la rue prend un bord.** Deux phrases de l'auteur :
+*« séparation chaussée trottoirs, courbes au lieu d'angles (sauf aux
+croisements) »*. Trois réponses commandent le résultat : vraie bordure,
+trottoir contre la façade et arrondi des seuls vrais coudes. 🔴 Le trottoir
+d'avant était un quadrilatère plus large que la chaussée, glissé dessous à
+3 cm ; ce qui dépassait en tenait lieu. Le remède change son propriétaire :
+**le trottoir appartient à l'îlot**, sous forme d'anneau le long des parcelles,
+et tourne donc les coins sans cas particulier de carrefour. Le rayon des
+courbes est plafonné par ce que le corridor accepte ; les coudes serrés restent
+des angles. Deux défauts anciens sont sortis avec la mesure : les **3 060
+normales** de chaussée regardaient vers le bas, et le trottoir avait presque la
+couleur du sol nu. Résultat : **25 coudes arrondis sur 33**, **122 carrefours**
+intacts, **17,78 km de bordure** de 14 cm sur 65 îlots et **338 coins**.
+
+**2026-08-18 (session 37) — le trait autour de l'îlot choisi, et une leçon
+sur la géométrie.** Demande d'une ligne : *« quand on sélectionne un îlot, il
+faut une ligne blanche autour de ce qui est sélectionné »*. 🔴 **Le premier
+essai a été repris, et c'est lui qui apprend quelque chose.** Il posait un
+ruban de triangles **au sol**, le long de l'anneau d'emprise : c'était la
+solution évidente, et elle est fausse pour deux raisons qu'aucun réglage ne
+rattrape — les bâtiments **dépassent** de cet anneau (débord de toit compris),
+et dans le cœur ancien ils sont plantés dessus, donc ils le **cachent** ; vu du
+sud-est à 32°, l'îlot 22 n'en montrait qu'un tiers. La correction de l'auteur a
+été nette : *« je veux que la ligne contourne tout ce que contient l'îlot ou le
+dépasse, pas uniquement l'îlot au sol »*. **Aucune géométrie posée dans la
+scène ne peut entourer un volume : il faut la silhouette, donc il faut la
+vue.** Le contour est maintenant calculé à l'écran — l'objet choisi est
+redessiné seul, en blanc plat, dans une petite vue qui a son propre monde vide
+et la même caméra que l'image ; un shader plein écran allume les pixels vides
+situés à moins de 3 pixels de ce masque. Trois conséquences tombent sans être
+codées : le trait suit les pignons, les débords et les cheminées ; son
+épaisseur ne change pas au zoom, puisqu'elle est en pixels ; et il marche pour
+les rues comme pour les îlots. Ce qui a été **retiré** : le ruban, l'export des
+anneaux par `07`, et le passage « fantôme » qui rattrapait l'occlusion. Couleur
+`1,00 / 0,95 / 0,66`, accordée à l'éclaircissement de l'îlot — un blanc pur à
+côté d'un îlot réchauffé se lisait comme deux retours pour une seule sélection.
+🔴 **Et une rue a dû être traitée à part**, sur une remarque de l'auteur —
+*« un tronçon de route doit être sélectionné en 1 bloc et pas séparé en
+plusieurs blocs »*. Un tronçon n'est pas une surface : c'est la chaussée, plus
+les **mètres libres** (du sol nu, la réserve de stationnement), plus **un bout
+de trottoir par îlot riverain** — 2,6 m d'écart entre les trois sur le tronçon
+120. Détourés tels quels, ça fait trois bandes parallèles. `07` exporte donc le
+**couloir** de chaque tronçon (l'axe, coudes arrondis compris, et la largeur
+façade à façade) dont Godot fait un ruban plat jamais affiché, qui n'existe que
+pour être détouré. ⚠️ Ce n'était pas rattrapable dans le shader : l'écart est
+en mètres, le trait en pixels — un rebouchage à l'écran tiendrait à un zoom et
+lâcherait au suivant. Les cinq contrôles de l'essai restent au vert ; captures
+régénérées.
+
+**2026-08-18 (session 36) — aucun arbre dans l'Ilse.** L'auteur voit des arbres
+dans la rivière. Le semis des îlots excluait déjà les six polygones d'eau ; le
+défaut venait des **arbres d'alignement**, qui suivaient les routes jusque sur
+les trois ponts puis se décalaient latéralement dans le chenal. Le filtre se
+fait maintenant sur le polygone exact de l'Ilse, avant l'export et pour les
+arbres futurs comme pour t0 : **98 emplacements écartés**, dont **11 occupés à
+t0**. Le compte visible passe de **332 à 321 arbres d'alignement** et le contrôle
+bloquant imprime **0 arbre dans l'eau**. La chaîne complète et l'essai Godot
+passent ; `wehrau_essai_ilse.png` confirme à l'écran que la surface bleue est
+vide, tandis que les arbres de rive restent sur le sol.
+
+**2026-08-18 (session 35) — la ville cesse d'être coloriée.** L'auteur arrive
+avec une photo aérienne de petite ville allemande : *« la couleur des bâtiments
+ne doit plus suivre la typologie mais être plus réaliste »*. Quatre questions,
+quatre réponses — détail jusqu'au **sol et aux arbres** mais pas jusqu'aux
+fenêtres, lecture du tissu **par l'époque plus un calque à la touche**, **zéro
+asset**, et **on ouvre l'étape 4**. 🔴 **Ce que la règle d'avant cachait, et
+c'est le cœur de la session** : *« un `sous_type` = une teinte »* n'était pas
+seulement une simplification, c'était la même teinte posée sur **les murs ET le
+toit** — donc aucun bâtiment n'avait de couverture, seulement une couleur. La
+remplacer par « le matériau découle de l'époque » ne trahit pas la règle
+générale du projet (*aucun état visuel posé à la main*), elle la sert : la
+couleur venait d'une **étiquette**, elle vient maintenant de **l'époque et de
+la position**, qui sont deux données. 🔴 **Trois réglages de lumière ont dû
+bouger le même jour, et il a fallu comprendre pourquoi** : un ambiant bleu à
+0,85 ne se voyait pas sur des murs roses et crème saturés, mais il
+**repeignait** des enduits clairs et neutres — toute façade non exposée sortait
+gris-bleu. Même chose pour l'occlusion bakée à 0,62, qui ramenait le bas de
+toutes les façades au même gris et **effaçait la variation entre deux maisons
+voisines**, c'est-à-dire précisément ce qu'on venait d'ajouter. La somme
+soleil + ambiant n'a presque pas bougé ; c'est leur **partage** qui a changé.
+⚠️ Deux pièges payés : un anneau décalé vers l'extérieur doit **mesurer** le
+sens de son parcours, sinon le toit passe sous le mur sur les anneaux horaires ;
+et le toit doit être **monté** de l'épaisseur de sa rive, sinon on voit sous le
+débord dès 10° de caméra — et sous le débord il n'y a rien, les faces arrière
+étant cullées. Mesuré : 570 volumes à deux pentes avec débord, 452 souches,
+174 tronçons sur 178 avec trottoir, 198 bandes de fauche sur 7 champs, 1 161
+feuillus et 170 conifères, plus 332 arbres d'alignement rendus à l'image. Les
+six contrôles de l'énergie et le clic sur l'îlot 32 restent au vert ; deux
+captures neuves, `wehrau_essai_materiaux.png` et `wehrau_essai_tissu.png`, sont
+la paire qui juge l'échange.
+
+**2026-08-18 (session 34) — la galerie disparaît, l'église est protégée.** Le trait dessiné par l'auteur coupe l'îlot 45 en **45 (0,51 ha) + 72 (0,42 ha)** par la nouvelle rue 181, avec un écart de surface nul. Les deux moitiés sont des **fronts commerçants** : la catégorie de l'ancienne galerie disparaît et Wehrau retombe à **12 sous-types**. L'îlot **16** devient l'église — son toit réel mesure **172 m²**, mais la protection laisse **0 m² solaire équipable**, curseur verrouillé et refus du noyau. Décision **71**. Chaîne complète, contrôle énergie et essai visuel au vert ; capture `wehrau_essai_eglise.png`.
+
+**2026-08-18 (session 33) — un seul propriétaire.** L'auteur ferme en une phrase la question ouverte la veille : *« pour simplifier le prototype, disons que tout le logement et tous les panneaux appartiennent à la ville »*. C'est plus court que les trois pistes examinées — il n'y a plus de toit des autres, donc plus de loyer de toiture à mettre dans la table, plus de copropriété qui refuse, plus de deux régimes selon le tissu. 🟢 **Aucune ligne de calcul ne change** : la décision **ratifie** ce que l'économie du 2026-08-17 avait dû supposer pour tourner. Ce qui change, c'est qu'on peut maintenant le dire, et que ce qui distingue les îlots n'est plus la propriété mais le coût d'accès au toit et son rendement — déjà dans la table. ⚠️ **La ligne qui tient tout le reste** : posséder un logement n'est pas payer sa facture. La ville est **propriétaire-bailleur**, ses locataires paient leur électricité ; sans ça la facture de 7,7 M€/an entrerait dans une caisse dotée de 0,36 M€/an et il n'y aurait plus de jeu. Décision **70**, question **n°22** close. Contrôle Godot relancé, six vérifications au vert, caisse à **442 k€** au mois 1 après la pose de l'îlot 32.
+
+**2026-08-17 (session 32) — une petite économie, deux prix.** L'auteur demande
+*« une petite économie simple, avec les coûts et les rendements des panneaux
+solaires »*. Deux prix suffisent — **260 €/m² posé** et **150 €/MWh produit** —
+et tout le reste s'en déduit : le coût d'une pose, sa recette annuelle, son
+amortissement. L'unité passe du « point » à l'euro, parce qu'un point ne se
+compare à rien. La `cout_x` de la table, jusque-là documentaire, devient enfin
+visible : un toit de cœur ancien coûte plus du double d'un toit de barre au
+mètre carré. La caisse municipale — 800 k€, 30 k€/mois — **n'encaisse que les
+panneaux** : faire passer la facture d'énergie de la ville (7,7 M€/an) par la
+mairie aurait donné un jeu sans décision. 🔴 **Le piège du jour, et il était
+dans le noyau, pas dans l'écran** : la recette est l'**intégrale** de la part
+équipée dans le temps, et l'ancienne machinerie de révision d'un chantier
+**réécrivait la base** de cet historique — un joueur qui relève sa cible à
+mi-pose aurait fait croire à la caisse que le toit produisait depuis le premier
+jour. Les rampes s'**additionnent** maintenant au lieu de se remplacer, un
+chantier engagé ne se révise plus, et le dictionnaire qui servait à défaire la
+réécriture a disparu avec elle. L'intégrale est calculée en forme close, donc
+la caisse vaut la même chose à 5 ou à 500 images par seconde. Trois nouveaux
+contrôles imprimés arrêtent la maquette s'ils tombent à faux, et une capture
+montre le refus. Décision **69**, question **n°22** ouverte dans la foulée : la
+ville paie et encaisse sur des toits qui ne sont pas tous à elle.
+
 **2026-08-17 (session 31) — le temps devient visible dans la décision solaire.** La cible ne s'applique plus d'un coup : **0 → 100 % prend 3 mois maximum**, proportionnellement à la part ajoutée. La fiche annonce la durée avant validation, puis montre la part posée, la cible et le temps restant ; une seconde barre avance avec les toits et les quatre totaux. Le panneau du bas donne pause, ×1, ×4 et ×12, et `Espace` alterne lecture et pause. L'essai automatique de l'îlot 32 vérifie **50 % réalisés et 1,5 mois restant** à mi-pose, puis 100 % au mois 3, avec captures des trois états.
 
 **2026-08-17 (session 30) — l'énergie tient en une décision et deux échelles.** L'auteur retire budget, capital, isolation, rentabilité et calques du test : à gauche restent les quatre conséquences pour toute la ville ; à droite, seulement l'îlot cliqué et sa part solaire croissante. Sur l'îlot 32, **0 → 100 %** fait passer la production de ville de **0,0 à 0,3 GWh/an**, l'achat de 51,1 à 50,9 et le CO₂ de 12,8 à 12,7 kt/an ; les toits passent à l'ardoise sombre. Cette simplification est la décision **68**. ⚠️ Le budget en est ressorti **le lendemain matin**, sous une autre forme et à la demande de l'auteur — voir la session 32 et la décision **69**. Ce qui a été retiré ici et n'est pas revenu : le capital politique, l'isolation, les calques et le ciblage collectif.

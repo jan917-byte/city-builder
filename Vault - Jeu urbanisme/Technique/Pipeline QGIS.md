@@ -74,8 +74,8 @@ Deux champs sont saisis à la main, tout le reste se dérive ici. La règle qui 
 
 Le compte rendu sert de contrôle, pas de décoration. Il sort quatre choses qu'on ne voit pas sur la carte :
 
-- **la population que la carte porte réellement** — 2 549 logements, 5 353 habitants sur 38,3 ha bâtis
-- **les quatre plaies relues dans les données** : pour chacune, sa rive, sa position sur le fil de l'eau, sa distance à l'Ilse, son aléa, son stationnement. C'est là qu'on voit si le récit et la géométrie disent la même chose — et deux fois sur cinq, non
+- **la population que la carte porte réellement** — 2 726 logements, 5 725 habitants sur 38,0 ha bâtis
+- **les quatre îlots repères relus dans les données** : la place-parking, la barre et les deux friches, avec leur rive, leur position sur le fil de l'eau, leur distance à l'Ilse et leur stationnement
 - **la courbe de la doctrine à seuil** : combien de rues sont concernées par « je plante au-delà de X m d'emprise libre », pour X de 2 à 9 m
 - **la connexité du réseau routier**, qui est ce qui a révélé l'absence de ponts
 

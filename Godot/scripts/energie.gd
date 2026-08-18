@@ -1,5 +1,5 @@
 extends RefCounted
-# L'énergie de Wehrau : la table des treize lignes, et les formules qui en sortent.
+# L'énergie de Wehrau : la table des douze lignes, et les formules qui en sortent.
 #
 # TOUT EST STATIQUE, et c'est structurel : `ville.gd` précharge ce fichier, donc
 # ce fichier ne doit rien savoir de `ville.gd` (un preload croisé casse au
@@ -16,7 +16,7 @@ extends RefCounted
 # ne bouge. L'énergie n'attend jamais la 3D (64b).
 
 # ==========================================================================
-# LE DESIGN — la table de correspondance, 13 lignes
+# LE DESIGN — la table de correspondance, 12 lignes
 # ==========================================================================
 # Même forme que `TISSU` dans `04_deriver_attributs.py` : une ligne par
 # `sous_type`, et c'est ici que l'auteur règle le jeu, pas dans les formules.
@@ -47,7 +47,6 @@ const ENERGIE := {
 	"maisons_de_ville":   [   17.0,   0.0,  0.55,  0.30,   1.3,  0.95,   0.35,    1.0,  -1.0],
 	"pavillonnaire":      [   22.0,   0.0,  0.20,  0.40,   1.2,  1.00,   0.40,    1.5,  -1.0],
 	"barre_1970":         [   24.0,   0.0,  0.20,  0.70,   0.8,  1.10,   0.45,    0.7,  -1.0],
-	"dalle_commerciale":  [    0.0,   9.0,  0.60,  0.75,   0.7,  1.10,   0.00,    0.0,  -1.0],
 	"equipement":         [    0.0,   9.0,  0.40,  0.55,   0.9,  1.05,   0.00,    0.0,  -1.0],
 	"friche_industrielle":[    0.0,   9.0,  0.45,  0.65,   0.8,  1.00,   0.00,    0.0,  -1.0],
 	"place_minerale":     [    0.0,   0.0,  0.00,  0.00,   0.0,  0.00,   0.00,    0.0,   0.0],
@@ -127,6 +126,8 @@ static func derive_an(annuel: float, t: float) -> float:
 ## comprise), donc pas de part bâtie ici — elle est déjà dans le toit.
 ## Un îlot sans toit (parc, rivière) rend 0 : `base()` ne plante pas.
 static func toit_equipable_m2(v, fid: int) -> float:
+	if v.base("i", fid, "solaire_possible") <= 0.0:
+		return 0.0
 	return v.base("i", fid, "toit_m2") * ligne(v, fid)["equip"]
 
 
@@ -140,7 +141,7 @@ static func potentiel_mwh(v, fid: int, t: float) -> float:
 
 
 ## Ce que le toit produit VRAIMENT : le potentiel × la part équipée.
-## ⚠️ Jamais bornée à la consommation : la friche et la dalle exportent
+## ⚠️ Jamais bornée à la consommation : une friche peut exporter
 ## (PLAN §3, le piège du bornage).
 static func production_mwh(v, fid: int, t: float) -> float:
 	return potentiel_mwh(v, fid, t) * v.valeur("i", fid, "part_toit_equipe", t)

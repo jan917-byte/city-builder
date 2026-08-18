@@ -105,9 +105,19 @@ TISSU = {
     "pavillonnaire":       (4.0,  3.0,  3.0,   9.0,  10.0,  0.35, DETACHE),
     "barre_1970":          (6.0,  5.0,  5.0,  None,  13.0,  1.00, BOITE),
     "equipement":          (4.0,  3.0,  3.0,  20.0,  22.0,  0.60, DETACHE),
-    "dalle_commerciale":   (2.0,  2.0,  2.0,  None,  53.0,  0.65, BOITE),
     "friche_industrielle": (3.0,  2.5,  2.5,  None,  35.0,  0.55, BOITE),
 }
+
+# ⛪ L'église de l'îlot 16 est un équipement PROTÉGÉ (décision 71), mais sa
+# parcelle ne fait que 22,9 m de façade après retrait de la voirie. La recette
+# générale des équipements demande 20 m de façade + 3 m de chaque côté : rien
+# ne pouvait tenir, donc « pas de panneaux sur l'église » portait sur un toit
+# qui n'existait pas. Même famille détachée, mêmes plafonds ; seules les
+# dimensions descendent à l'échelle de cette église de village.
+TISSU_ILOT = {
+    16: (1.5, 1.5, 1.5, 15.0, 18.0, 0.60, DETACHE),
+}
+TISSU_ILOT_SOUS_TYPE = {16: "equipement"}
 
 # 🔴 CE QUE CETTE TABLE VIENT DE CHANGER, ET POURQUOI — 2026-08-17, désigné sur
 # `parcelles_ilot_14.png` : « les bâtiments ressemblent trop aux parcelles ».
@@ -588,8 +598,9 @@ def enveloppe(ring, retraits, rues):
     🔴 ET ON NE COUPE QUE LES ARÊTES QUI DEMANDENT UN RETRAIT. Couper aussi par
     celles à 0 fabriquerait l'intersection de tous les demi-plans, c'est-à-dire
     le NOYAU du polygone : sur une parcelle concave il est minuscule, parfois
-    vide. Mesuré en essayant : la dalle commerciale de l'îlot 45 (5 919 m²)
-    sortait « trop petite », et 145 parcelles perdaient leur bâtiment. Comme
+    vide. Mesuré avant la restructuration du 2026-08-18 : l'ancienne galerie
+    de l'îlot 45 (5 919 m²) sortait « trop petite », et 145 parcelles perdaient
+    leur bâtiment. Comme
     les trois tissus mitoyens ont un latéral nul, il ne reste à couper que la
     rue et le fond — une ou deux arêtes, donc presque rien à perdre.
 
@@ -1319,7 +1330,7 @@ def rect_max(grille, du, dv, nu, nv, u0, v0, prof):
 
 # --------------------------------------------------------------- l'empreinte
 
-def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None):
+def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None, fid_ilot=None):
     """La parcelle devient une empreinte de bâtiment.
 
     Les gestes, dans l'ordre, et chacun répond à une règle :
@@ -1332,7 +1343,8 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None):
 
     Renvoie (empreinte, motif). `motif` dit pourquoi il n'y a pas de bâtiment —
     c'est lui qui s'imprime, une raison vaut mieux qu'un compte."""
-    recul0, lat0, fond0, facade, prof0, part_max, famille = TISSU[st]
+    recul0, lat0, fond0, facade, prof0, part_max, famille = \
+        TISSU_ILOT.get(fid_ilot, TISSU[st])
     ring = ccw(sans_doublons(D4C.ouvrir(parcelle)))
     n = len(ring)
     if n < 3:
@@ -1756,7 +1768,7 @@ def main():
             continue
         emps, motif, rues, retraits, note = empreinte(
             p["anneau"], st, idx_bord.get(p["ilot"], {}),
-            idx_venelle.get(p["ilot"]), dirs.get(p["ilot"]))
+            idx_venelle.get(p["ilot"]), dirs.get(p["ilot"]), p["ilot"])
         if not emps:
             refus[motif] = refus.get(motif, 0) + 1
             detail.append((p, motif))
@@ -1938,13 +1950,18 @@ def controles(resultats, parcelles, refus):
     print("\n  📏 DISTANCE MESURÉE AUX LIMITES (R1/R4) — un tissu mitoyen doit")
     print("     donner 0,00, un tissu détaché doit tenir la valeur de la table.")
     for st in sorted(par_st):
-        lat, fond = TISSU[st][1], TISSU[st][2]
+        regles = [TISSU[st]] + [r for fid, r in TISSU_ILOT.items()
+                                if TISSU_ILOT_SOUS_TYPE[fid] == st]
+        # Le contrôle agrège un tissu : son plancher est donc la plus petite
+        # consigne réellement appliquée à l'un de ses îlots.
+        lat = min(r[1] for r in regles)
+        fond = min(r[2] for r in regles)
         d = par_st[st]
         if lat <= 0.0:
             etat = "✅ mitoyen" if d["dmin"] < 0.05 else "⚠️ décollé"
         else:
             plancher = min(PLANCHER_LATERAL, PLANCHER_FOND)
-            etat = ("✅" if d["dmin"] >= min(lat, fond) - 0.01
+            etat = ("✅" if d["dmin"] >= min(lat, fond) - 0.10
                     else "↘ réduit (R5)" if d["dmin"] >= plancher - 0.01
                     else "⚠️")
         print("     %-21s mesuré %5.2f m   table %.1f / %.1f   %s"

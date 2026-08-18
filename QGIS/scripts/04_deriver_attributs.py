@@ -57,7 +57,7 @@ _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(DATA, "travail", "wehrau.gpkg")
 
 # ==========================================================================
-# LE DESIGN — la table de correspondance, 13 lignes
+# LE DESIGN — la table de correspondance, 12 lignes
 # ==========================================================================
 # Une ligne par `sous_type`. C'est ici que se décide le comportement de toute
 # la carte, et c'est du design, pas de la mesure.
@@ -79,7 +79,6 @@ TISSU = {
     "maisons_de_ville":   (   100,    3.0,   0.68,   0.18,   0.50,   0.05,    0),
     "pavillonnaire":      (    20,    2.0,   0.42,   0.42,   0.25,   0.05,    0),
     "barre_1970":         (   130,    9.0,   0.55,   0.32,   0.85,   0.15,    0),
-    "dalle_commerciale":  (     0,    2.0,   0.97,   0.00,   0.20,   0.60,   70),
     "equipement":         (     0,    3.0,   0.72,   0.18,   0.00,   0.20,   80),
     "friche_industrielle":(     0,    1.0,   0.80,   0.20,   0.00,   0.05,   25),
     "place_minerale":     (     0,    0.0,   1.00,   0.02,   0.00,   0.55,    0),
@@ -168,7 +167,6 @@ FORCE = {
 # que le récit et la géométrie disent la même chose. → [[Wehrau]]
 PLAIES = {
     19: "la place-parking",
-    45: "la galerie de 1971",
     32: "le grand ensemble 1974",
     31: "la friche du moulin",
     65: "la friche de la brasserie",
@@ -637,7 +635,7 @@ def main():
                   % (nom, len(fs), sum(ilots[f]["logements"] for f in fs),
                      sum(ilots[f]["riverain"] for f in fs) / len(fs)))
 
-    print("\n  LES QUATRE PLAIES DE 1965, RELUES DANS LES DONNÉES")
+    print("\n  LES QUATRE ÎLOTS REPÈRES, RELUS DANS LES DONNÉES")
     print("  (le vault les raconte ; voici où elles tombent vraiment)")
     for fid, nom in sorted(PLAIES.items()):
         if fid not in ilots:

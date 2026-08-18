@@ -152,10 +152,8 @@ TISSU = {
     # alignement sur rue. La boîte ne connaît pas les rues, donc elle donne ça.
     # 80 × 70 = 5 600 m², soit la moitié des 11 158 m² de l'îlot 32 — le seul
     # îlot de barre de Wehrau — donc DEUX objets, comme l'auteur les a comptés.
-    "barre_1970":             (80.0,   70.0,   "boite"),
+    "barre_1970":             (50.0,   75.0,   "boite"),
     "equipement":             (45.0,   35.0,   "boite"),   # un ou deux objets
-    "dalle_commercial":       (80.0,   60.0,   "boite"),   # (alias, voir plus bas)
-    "dalle_commerciale":      (80.0,   60.0,   "boite"),   # un hangar
     "friche_industrielle":    (55.0,   45.0,   "boite"),   # des halles
 }
 # Les quatre sous-types SANS bâti ne se découpent pas : ils restent des sols.
@@ -2488,7 +2486,7 @@ def main():
         el = sorted(r["elan"] for r in lot)[len(lot) // 2]
         # L'élancement est un rapport du GRAND au petit axe : il ne descend
         # jamais sous 1. Sa cible se lit donc dans le même sens, sinon les
-        # tissus plus larges que profonds — la barre, la dalle — seraient
+        # tissus plus larges que profonds — la barre — seraient
         # comparés à 0,25 et le contrôle mentirait sur eux.
         cible = max(fc, pr) / min(fc, pr)
         marque = "  ✅" if abs(el - cible) <= 0.15 * cible else "  ⚠️"

@@ -200,14 +200,14 @@ reste la bonne réponse pour le jeu complet :*
 |---|---|---|
 | 🥇 | **La régie municipale, assumée.** La ville crée sa société d'énergie, pose sur ses propres toits et loue les autres | Ce que le code fait déjà. Vrai du métier — c'est ce que font les villes qui y arrivent. Demande un **loyer de toiture** dans la table, donc une colonne, pas un système |
 | 🥈 | **La ville subventionne, les propriétaires encaissent.** La caisse paie une part, la recette ne revient pas | Plus juste, et **beaucoup plus dur** : plus rien ne se rembourse, la caisse ne fait que descendre. Le jeu devient « combien je suis prêt à dépenser en CO₂ évité », ce qui est une autre question — peut-être la bonne |
-| 🥉 | **Deux régimes selon le tissu** : régie sur les toits publics et les grands ensembles, subvention sur le diffus | Le plus réaliste, et **le seul qui explique** pourquoi la barre de 1974 et la dalle sont les bons coups : la ville y est chez elle |
+| 🥉 | **Deux régimes selon le tissu** : régie sur les toits publics et les grands ensembles, subvention sur le diffus | Le plus réaliste ; la barre de 1974 y serait un toit public prioritaire |
 
 *Recommandation d'alors : la troisième, mais pas maintenant.* L'auteur a
 tranché plus court et plus net — **la ville possède tout** —, ce qui supprime la
 colonne supplémentaire au lieu de la reporter. Ce que la troisième piste
-expliquait bien et qui reste vrai sans elle : la barre de 1974 et la dalle sont
-les bons coups parce que la ville y est chez elle. Elle l'est partout,
-maintenant ; ce qui les distingue n'est plus la propriété mais le **coût
+expliquait bien et qui reste vrai sans elle : la barre de 1974 est un bon coup
+par son toit simple. La ville est chez elle partout ; ce qui distingue les
+îlots n'est plus la propriété mais le **coût
 d'accès au toit** — et il est déjà dans la table. → [[Décisions arrêtées]] 69 ·
 70 · `Prototype/Énergie.md`
 
@@ -246,7 +246,7 @@ Le vault visait « deux ponts au maximum » pour que la rivière soit une vraie 
 
 La décision ne concerne **que [[Wehrau]]** : [[Vallmar]] garde ses 112 000 habitants, la question de l'échelle du jeu complet reste entière (n°11).
 
-Ce que ça engage, et qui reste à écrire : le lycée devient une Realschule, la galerie de 1971 un supermarché avec parking en toiture, la barre de 1974 un petit Neubau. Aucun des trois n'est absurde à 5 350 habitants, aucun n'est évident non plus. → [[Décisions arrêtées]] 13d
+Ce que ça engage, et qui reste à écrire : le lycée devient une Realschule et la barre de 1974 un petit Neubau. La galerie prévue alors a disparu avec la restructuration 71. → [[Décisions arrêtées]] 13d · 71
 
 ### ~~14. Le grand ensemble de 1974 est à 200 m de l'eau~~ ✅ **close le 2026-08-12**
 

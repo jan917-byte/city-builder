@@ -2,7 +2,7 @@
 
 | Dossier | Quoi | Git |
 |---|---|---|
-| `source/` | **La carte**, en GeoJSON. 70 îlots, 179 tronçons, et les venelles quand elles existent. | ✅ **suivi** |
+| `source/` | **La carte**, en GeoJSON. 71 îlots, 180 tronçons, et les venelles quand elles existent. | ✅ **suivi** |
 | `travail/` | La carte de travail (`wehrau.gpkg`) et toutes les copies d'essai. | ❌ ignoré |
 | `archive/` | Les anciens GeoPackages, gelés le 2026-08-17. | ❌ ignoré |
 

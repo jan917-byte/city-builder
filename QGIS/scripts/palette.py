@@ -20,11 +20,11 @@ RÈGLES QUI COMMANDENT CE FICHIER — `Vault/Technique/Direction artistique.md`
     dérivée de `impermeabilise`, `canopee`, `stationnement` »    (l.73)
   « aucun état visuel posé à la main, tout dérive d'un attribut »(l.75)
 
-Treize `sous_type` pour une cible de 8–10 teintes : la tension se résout en
+Douze `sous_type` pour une cible de 8–10 teintes : la tension se résout en
 **familles**. Une famille = une teinte. À l'intérieur, les sous-types se
 distinguent par la **valeur** (clair/sombre), pas par la teinte. Neuf familles.
 
-Aucune des quatre plaies ne reçoit de couleur particulière — elles ressortent
+Aucune des trois plaies ne reçoit de couleur particulière — elles ressortent
 par les attributs et la géométrie. Voir `couleur_sol()` pour l'îlot 19.
 """
 
@@ -38,7 +38,7 @@ FAMILLES = {
     "vert_pale": "le pavillonnaire — la seule masse qui tire vers le jardin",
     "ocre":      "l'équipement et la friche — neutre, sans caractère propre",
     "apres_guerre": "gris-bleu FROID. La seule famille froide du bâti : "
-                    "c'est elle qui rend la barre et la galerie étrangères",
+                    "c'est elle qui rend la barre étrangère",
     "vegetal":   "parc et jardins",
     "agricole":  "les champs — vert jauni, pas un gazon",
     "eau":       "l'Ilse",
@@ -57,7 +57,6 @@ MASSES = {
     "equipement":          "#D7D0C4",   # ocre
     "friche_industrielle": "#B5AA9B",   # ocre, désaturé — une friche n'est pas entretenue
     "barre_1970":          "#C2C9D3",   # apres_guerre        ← la plaie 32, par le froid
-    "dalle_commerciale":   "#ABB3BE",   # apres_guerre, valeur −  ← la plaie 45
 }
 
 # -------------------------------------------------------------------- sols
@@ -79,6 +78,164 @@ SOLS = {
 
 EAU = "#7EA7C3"                        # `sous_type = riviere`
 
+# ================================================== LES MATÉRIAUX DU BÂTI
+# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (CLAUDE.md §3 ter), et c'est le plus gros de ce
+# fichier. Jusqu'au 2026-08-18, `MASSES` ci-dessus donnait UNE teinte par
+# `sous_type`, posée à la fois sur les murs ET sur le toit : la ville sortait
+# en blocs de pâte à modeler roses, crème et blancs. L'auteur a demandé un
+# rendu réaliste devant une photo aérienne de petite ville allemande, où la
+# ville se lit exactement à l'inverse — une masse de TOITS ROUGES sur des murs
+# clairs qui passent au second plan.
+#
+# Ce qui remplace la règle « un sous_type = une teinte » :
+#
+#   ① le toit et le mur sont DEUX matériaux distincts ;
+#   ② le matériau découle de l'ÉPOQUE du bâti, pas de sa fonction — tuile sur
+#      l'ancien, étanchéité sombre sur la barre de 1974, bac acier sur la
+#      halle, ardoise sur l'équipement. C'est déjà ce que fait une vraie
+#      ville : le matériau EST une trace de la date de construction ;
+#   ③ chaque bâtiment tire sa teinte de sa POSITION (décision 35), donc deux
+#      maisons mitoyennes ne sont plus jumelles.
+#
+# 🔴 CE QUE `MASSES` DEVIENT, ET POURQUOI IL RESTE. Il n'est plus la couleur
+# par défaut de la maquette, mais il reste la couleur du CALQUE « tissu » —
+# la touche qui rend au joueur la lecture qu'on vient de lui retirer — et il
+# reste la couleur des aperçus 2D (`apercu_carte`, `06`), qui eux lisent une
+# carte et pas une ville. Ne pas le supprimer.
+
+# --- les toitures ---------------------------------------------------------
+# Une famille = un matériau de couverture. Les bases d'une même famille sont
+# les nuances qu'on voit sur une vraie rue : la tuile ne sort pas d'une usine
+# unique et ne vieillit pas au même rythme selon l'exposition.
+#
+# ⚠️ La saturation est bornée à ~0,55 pour tenir le « palette courte et
+# sourde » de la DA. Une tuile photographiée en plein soleil monte à 0,70 et
+# ferait crier toute la ville, ce qui est l'autre erreur — celle qui rendrait
+# Wehrau pittoresque au lieu d'ordinaire.
+TOITURES = {
+    # ⚠️ LA LISTE EST PONDÉRÉE PAR RÉPÉTITION, et il a fallu deux passes pour
+    # trouver le bon dosage. Au premier essai, sept bases également probables
+    # donnaient 28 % de toits sombres (la brune et la rare) — et comme un
+    # versant au nord est déjà assombri par la lumière, un quartier entier
+    # sortait noir. Chaque base sombre ne pèse plus que 1/14.
+    "tuile": [
+        "#AC6148", "#AC6148", "#AC6148", "#AC6148",   # la courante — 29 %
+        "#B96C4D", "#B96C4D", "#B96C4D",              # neuve, orangée — 21 %
+        "#A15845", "#A15845", "#A15845",              # 21 %
+        "#96513F",   # vieillie
+        "#B3745B",   # délavée, rosée
+        "#7C4638",   # brune — 7 %
+        "#6B5A52",   # 🔸 la rare toiture sombre au milieu des rouges — 7 %.
+                     #    C'est elle qui empêche la masse de tuiles de devenir
+                     #    un aplat ; au-delà, elle troue la ville.
+    ],
+    "ardoise": [     # l'équipement et l'église
+        "#575C63", "#4E535A", "#606670",
+    ],
+    "etancheite": [  # le toit plat de 1974 — bitume et gravier
+        "#6E6E6A", "#77766E", "#666660",
+    ],
+    "bac_acier": [   # les halles et la friche
+        "#5F6367", "#6B6A66", "#585B5F",
+        "#726A62",   # une travée rouillée
+    ],
+}
+
+TOIT_TISSU = {
+    "coeur_ancien":        "tuile",
+    "front_commercant":    "tuile",
+    "maisons_de_ville":    "tuile",
+    "pavillonnaire":       "tuile",
+    "equipement":          "ardoise",
+    "barre_1970":          "etancheite",
+    "friche_industrielle": "bac_acier",
+}
+
+# --- les enduits de façade ------------------------------------------------
+# 🔴 CE QUI EST TENU ICI, et qui n'est pas négociable : le mur reste PASTEL et
+# CLAIR. « Les bâtiments sont pastel. Le sol est de l'asphalte » (DA l.59) ne
+# tombe pas avec la couleur par tissu — au contraire, c'est le toit rouge qui
+# le rend enfin visible, parce qu'un mur clair a maintenant quelque chose de
+# sombre à côté de lui.
+ENDUITS = {
+    # Le tissu ancien : chaud et varié, c'est là qu'une rue change de couleur
+    # tous les six mètres.
+    "coeur_ancien": [
+        "#E9E3D6",   # blanc cassé
+        "#E7DCC2",   # crème
+        "#DFCFA8",   # ocre pâle
+        "#E0CFC0",   # beige rosé
+        "#E5D9AE",   # jaune paille
+        "#D7DBC6",   # vert très pâle
+    ],
+    "front_commercant": [
+        "#E7DCC2", "#DFCFA8", "#E9E3D6", "#E5D9AE", "#DFC9C0",
+    ],
+    "maisons_de_ville": [
+        "#E9E3D6", "#DFC9C0", "#DCD9D2", "#E7DCC2", "#D7DBC6",
+    ],
+    # Le pavillonnaire est plus blanc et plus uniforme que le centre : un
+    # lotissement se construit d'un coup, avec le même enduit.
+    "pavillonnaire": [
+        "#EAE5DA", "#E3E0D6", "#E7DFCD", "#DCD9D2",
+    ],
+    # 🔄 La barre perd son gris-bleu FROID (#C2C9D3), qui était le seul endroit
+    # de la palette où une teinte disait « étranger ». Ce que ça enlève est
+    # rendu ailleurs, et mieux : son toit est maintenant plat et SOMBRE quand
+    # tout le reste de la ville est en tuile rouge, et sa silhouette est déjà
+    # la plus longue de Wehrau. Le froid disait la plaie 32 ; le toit la dit
+    # sans avoir à colorier.
+    "barre_1970": [
+        "#C8C6BF", "#C1C2BE", "#CCC8BC",
+        "#D2CBB8",   # un pignon repeint
+    ],
+    "equipement": [
+        "#E2DED3", "#DED7C7", "#D8D9D4",
+    ],
+    "friche_industrielle": [
+        "#BEB8AC", "#C4BFB2", "#B2AEA4",
+        "#B9BBBA",   # du bardage, pas de l'enduit
+    ],
+}
+ENDUITS_DEFAUT = ["#DED9CC"]
+
+# La souche de cheminée : de la brique enduite, plus sombre que le mur et plus
+# chaude que le toit. Une seule teinte — à 0,8 m de côté, une variation ne se
+# verrait pas et coûterait un tirage.
+# 🔄 Assombrie le 2026-08-18 après regard : à #9C8877 les souches sortaient en
+# points BLANCS sur les toits rouges, comme un semis de confettis.
+CHEMINEE = "#7B6659"
+
+# --- le sol ---------------------------------------------------------------
+# Le trottoir : du béton, donc plus CLAIR et plus CHAUD que l'asphalte. C'est
+# ce liseré qui sépare la chaussée du bâti — sans lui, une rue et un parking
+# sont la même tache grise vue d'en haut.
+# 🔄 ÉCLAIRCI le 2026-08-18, de #8D8A82. Il fallait le mesurer pour le voir :
+# l'ancien trottoir était à 2 % de valeur de MINERAL_CLAIR, la teinte du SOL NU
+# — c'est-à-dire du terrain qui l'entoure des deux côtés. Il était donc invisible
+# partout sauf contre l'asphalte, et la « bande claire de part et d'autre de la
+# rue » qu'on croyait voir était en fait le sol nu. Le trottoir doit se
+# distinguer de DEUX voisins, pas d'un.
+TROTTOIR = "#A8A399"
+
+# 🎨 LA PEINTURE DE VOIRIE — axe, rives, passages piétons. Ce n'est PAS un
+# blanc : un blanc pur (#FFFFFF) sur l'asphalte sort plus lumineux que les
+# toits de tuile et attire l'œil au sol, alors que le marquage est censé
+# n'être qu'une trame de lecture. Celui-ci est une peinture usée, à ~78 % de
+# valeur — assez pour trancher nettement sur MINERAL (#67676B, ~42 %) sans
+# devenir le point le plus clair de l'image.
+MARQUAGE = "#C6C3B9"
+
+# Les champs ne sont pas un aplat : un blé n'a pas la couleur d'une prairie ni
+# d'une terre labourée. Une base par îlot de champ, tirée de sa position.
+CHAMPS = [
+    "#C9C39A",   # blé mûr
+    "#BCC192",   # prairie
+    "#D0C7A2",   # chaume
+    "#AEB588",   # herbe grasse
+    "#C3B896",   # terre travaillée
+]
+
 # ----------------------------------------------------------------- minéral
 # Un seul gris pour tout le réseau viaire. La hiérarchie ne s'exprime PAS par
 # la couleur, elle s'exprime par la largeur — ce qui est précisément le sujet
@@ -93,8 +250,15 @@ MINERAL_CLAIR = "#83838A"              # l'emprise excédentaire et le sol nu
 #   pas de ciel gris. »  — Direction artistique l.69
 
 CIEL = "#C8CFD4"                       # un jour couvert clair, sans drame
-SOLEIL = "#FFF4E2"                     # lumière chaude, basse en intensité
-AMBIANT = "#8FA0AE"                    # le bleu du ciel dans les ombres
+SOLEIL = "#FFF2DC"                     # lumière chaude, basse en intensité
+# 🔄 RÉCHAUFFÉ ET AFFAIBLI le 2026-08-18. Il valait #8FA0AE à 0,85 d'énergie,
+# et c'était le réglage d'une ville dont les murs ÉTAIENT la couleur : un
+# ambiant bleu généreux ne se voyait pas sur du rose et du crème saturés.
+# Maintenant que les murs sont des enduits clairs et neutres, ce bleu les
+# repeignait — toute façade non exposée au soleil sortait gris-bleu, et la
+# ville avait l'air d'un jour de pluie. Le ciel garde sa part froide, il ne
+# commande plus l'image.
+AMBIANT = "#A2A29C"                    # le bleu du ciel dans les ombres
 FEUILLAGE = "#8FB177"                  # la canopée instanciée
 TRONC = "#8A7A66"
 
@@ -164,14 +328,65 @@ def couleur_ilot(sous_type, hauteur, impermeabilise):
     return couleur_sol(sous_type, impermeabilise)
 
 
+def _varier(base, r, amp):
+    """Une nuance de `base`, tirée de `r`. Deux dérives et pas une seule :
+
+      · la VALEUR (±amp) — le même enduit prend la lumière autrement selon
+        l'exposition, et c'est elle qui porte l'essentiel de la variété ;
+      · la TEMPÉRATURE (±3,5 %, rouge et bleu en sens opposés) — sans elle,
+        deux bâtiments qui tirent la même base et la même valeur sortent
+        strictement identiques, et ça se voit sur un front mitoyen.
+
+    ⚠️ L'amplitude ne monte pas : à ±0,12 la rue se met à clignoter et on ne
+    lit plus une ville, on lit du bruit. Mesuré à l'écran le 2026-08-18.
+    """
+    rgb = hex_vers_rgb(base)
+    f = 1.0 + r.uniform(-amp, amp)
+    w = r.uniform(-0.035, 0.035)
+    return rgb_vers_hex((rgb[0] * f * (1.0 + w), rgb[1] * f,
+                         rgb[2] * f * (1.0 - w)))
+
+
+def couleur_toit(sous_type, graine):
+    """La couverture d'UN bâtiment. `graine` vient de sa position (35)."""
+    import random
+    r = random.Random(graine ^ 0x7017)
+    bases = TOITURES[TOIT_TISSU.get(sous_type, "tuile")]
+    return _varier(bases[r.randrange(len(bases))], r, 0.07)
+
+
+def couleur_mur(sous_type, graine):
+    """L'enduit d'UN bâtiment. Amplitude plus faible que le toit : un mur
+    clair pardonne moins l'écart, il vire vite au sale ou au surexposé."""
+    import random
+    r = random.Random(graine ^ 0x3D0C)
+    bases = ENDUITS.get(sous_type, ENDUITS_DEFAUT)
+    return _varier(bases[r.randrange(len(bases))], r, 0.05)
+
+
+def couleur_champ(graine, impermeabilise=0.0):
+    """La teinte d'un îlot de champ, tirée de sa position."""
+    import random
+    r = random.Random(graine ^ 0x1C4A)
+    base = _varier(CHAMPS[r.randrange(len(CHAMPS))], r, 0.05)
+    return melanger(base, MINERAL, impermeabilise or 0.0)
+
+
 def pour_json():
     """Le bloc `palette` du JSON lu par Godot. Godot ne code jamais une
-    couleur en dur : il lit celle-ci, et se plaint si un sous_type manque."""
+    couleur en dur : il lit celle-ci, et se plaint si un sous_type manque.
+
+    Les clés `sous_type` y restent, et elles servent maintenant à DEUX
+    choses : les aperçus 2D, et le calque « tissu » de la maquette — celui
+    qui rend au joueur, à la demande, la lecture par typologie que le rendu
+    réaliste lui a retirée."""
     d = dict(MASSES)
     d.update(SOLS)
     d["riviere"] = EAU
     d["_mineral"] = MINERAL
     d["_mineral_clair"] = MINERAL_CLAIR
+    d["_trottoir"] = TROTTOIR
+    d["_marquage"] = MARQUAGE
     d["_ciel"] = CIEL
     d["_soleil"] = SOLEIL
     d["_ambiant"] = AMBIANT
@@ -203,6 +418,23 @@ def controler():
     for s, h in SOLS.items():
         print("    %-22s %s" % (s, h))
     print("    %-22s %s" % ("riviere", EAU))
+
+    print("\n  LE BÂTI RÉEL — toit et mur sont deux matériaux (2026-08-18)")
+    print("    %-20s %-11s %-31s %s"
+          % ("sous_type", "couverture", "quatre toits", "quatre murs"))
+    for s in MASSES:
+        fam = TOIT_TISSU.get(s, "tuile")
+        # Des graines arbitraires : elles ne servent qu'à MONTRER l'étendue de
+        # la variation, elles ne sont pas celles des bâtiments de Wehrau.
+        gr = [1000 + k * 7919 for k in range(4)]
+        print("    %-20s %-11s %-31s %s"
+              % (s, fam,
+                 " ".join(couleur_toit(s, g) for g in gr),
+                 " ".join(couleur_mur(s, g) for g in gr)))
+    print("\n    Ce qu'il faut voir : la colonne `toit` est ROUGE partout sauf")
+    print("    barre (étanchéité), friche (bac acier) et équipement (ardoise).")
+    print("    La colonne des murs reste CLAIRE — c'est la règle « pastel »")
+    print("    de la DA, et le toit sombre est ce qui la rend enfin visible.")
 
     print("\n  la règle du sol, appliquée aux valeurs de TISSU")
     for s, imp in (("champ", 0.02), ("jardins_familiaux", 0.06),

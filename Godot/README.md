@@ -3,7 +3,8 @@
 On clique un îlot, on lit sa fiche et on augmente sa part de panneaux
 solaires. La ville est faite de **701 volumes sur 809 parcelles**, avec ses cours, ses rangs de
 maisons mitoyennes et ses toits à deux pentes. Elle est posée sur une **carte
-plate**, coupée en deux par le **chenal de l'Ilse**.
+plate** — sauf les champs, qui **descendent de 2 m** vers le chenal de l'Ilse,
+lequel coupe la ville en deux.
 
 🔋 **Le prototype énergie a été simplifié le 2026-08-17** (décision 68).
 À gauche : consommation, production solaire, achat et CO₂ de toute la ville.
@@ -59,9 +60,11 @@ python QGIS/scripts/07_exporter_godot.py
 
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 
-`Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé de 1,4 Mo que 07
-régénère en trois secondes. Sur la deuxième machine, on relance 07 — on ne
-transporte pas le fichier.
+`Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé de **18 Mo** que
+07 régénère en **onze secondes**. Sur la deuxième machine, on relance 07 — on ne
+transporte pas le fichier. 🔄 Il pesait 1,4 Mo et se refaisait en trois
+secondes tant que la maquette n'était que des masses ; ce qui l'a fait grossir,
+ce sont le sol, la voirie, le marquage et le percement des murs.
 
 ## Claude lance Godot lui-même (serveur MCP)
 
@@ -95,16 +98,20 @@ les deux se corrigent à la main sur le Mac — voir `CLAUDE.md` §5 bis :
 
 | | |
 |---|---|
-| **clic** | sélectionner un îlot ou une rue — la fiche s'ouvre à droite |
+| **clic** | sélectionner un îlot ou une rue — la fiche s'ouvre à droite, et l'objet choisi est **cerné d'un trait jaune clair** qui épouse sa silhouette |
 | **Espace** | lecture / pause · **×1** = un mois par minute, **×4** et **×12** accélèrent, **Recommencer** ramène au mois 0 |
 | **V** | Wehrau en entier |
 | **B** | la barre de 1974 (îlot 32) |
 | **R** | les rues à 20 et 22 m, et le quai |
 | **I** | l'Ilse canalisée et les trois franchissements |
+| **G** | le talus des champs, au bord de l'eau |
+| **O** | 🆕 le plus long franchissement, de près : le tablier, sa joue et sa pile |
 | **Q / E** | quart de tour, recalé sur les quatre vues cardinales |
 | **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
 | **T** | bascule vue de dessus ⇄ hauteur précédente |
 | **souris** | molette : zoom · clic droit glissé : tourner · clic milieu glissé : déplacer |
+| **C** | 🆕 recolorer la ville **par tissu** — la palette d'avant le rendu réaliste, le temps d'un coup d'œil |
+| **F3** | afficher / masquer le moniteur : images par seconde, temps d'image et CPU, triangles, appels de rendu, nœuds et mémoire |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
 
@@ -128,11 +135,13 @@ dans le cadre — les deux critères de `Plan 3 mois.md:48` tiennent. « S'appro
 reste réduire le cadrage, jamais avancer : ni LOD, ni distance, ni façades à
 détailler. La coupe de `Périmètre et coupes.md:42` n'est pas rouverte.
 
-**Ce qui est payé** : sous ~15°, on regarde la ville par ses **façades**, qui
-sont des murs nus d'une seule teinte. L'angle bas est un point de vue de
-contrôle — bon pour juger une silhouette et des hauteurs, mauvais pour juger un
-quartier. Le plancher à 6° existe pour qu'il reste possible sans devenir la vue
-par défaut.
+**Ce qui était payé** : sous ~15°, on regardait la ville par ses **façades**,
+qui étaient des murs nus d'une seule teinte. 🔄 **Ça a été réglé le
+2026-08-18** — les murs sont percés, et la vue basse montre maintenant des
+étages, des entrées et des pignons pleins (`wehrau_essai_facades.png`). Ce qui
+reste vrai : l'angle bas est un point de vue de **contrôle**, bon pour juger une
+silhouette et des hauteurs, moins bon pour juger un quartier. Le plancher à 6°
+existe pour qu'il reste possible sans devenir la vue par défaut.
 
 🔴 **Le piège, mesuré à la première capture** : en orthographie, la profondeur
 de sol visible vaut `cadrage / sin(hauteur)`. À 10°, la ville de 1 084 m ne
@@ -147,6 +156,65 @@ relief ×1 à ×3 ; le relief ne se lisait à aucun des quatre facteurs — 9 m 
 898 m de large, vus en axonométrie à angle fixe. **La carte est plate depuis le
 2026-08-12** : il n'y a plus rien à exagérer, et la question de l'exagération
 verticale se ferme d'elle-même.
+
+## 🎨 La couleur ne suit plus la typologie — 2026-08-18
+
+C'était la règle la plus ancienne du rendu, et elle est tombée devant une photo
+aérienne : *« un `sous_type` = une teinte, rien à peindre jamais »* posait la
+**même couleur sur les murs et sur le toit**, donc chaque bâtiment était un
+solide d'une seule teinte et la ville sortait en blocs de pâte à modeler.
+
+Ce qui la remplace n'est pas une peinture, c'est une règle de plus :
+
+| | |
+|---|---|
+| **le toit et le mur sont deux matériaux** | et la ville se lit d'en haut comme une masse de toits rouges sur des murs clairs, exactement comme une vraie petite ville |
+| **le matériau découle de l'ÉPOQUE** | tuile sur l'ancien, étanchéité sombre sur la barre de 1974, bac acier sur la halle, ardoise sur l'équipement. Dans une vraie ville, la couverture EST une trace de la date de construction |
+| **chaque bâtiment tire sa teinte de sa POSITION** | décision 35. Deux maisons mitoyennes ne sont plus jumelles, et déplacer une ligne de table ne rebat pas toute la ville |
+
+🔴 **La contrepartie est la touche `C`**, et elle était la condition : la
+couleur ne disant plus la typologie, il faut pouvoir la retrouver d'un geste.
+Le calque « tissu » repeint les 71 îlots avec la palette d'avant. C'est pour ça
+que la table `MASSES` de `palette.py` **reste** alors qu'elle n'est plus la
+couleur par défaut : elle est la couleur de ce calque, et celle des aperçus 2D.
+
+**La paire d'images qui juge l'échange** — même vue, même instant :
+`wehrau_essai_materiaux.png` et `wehrau_essai_tissu.png`.
+
+## 🪟 Et les murs se percent — 2026-08-18
+
+Même famille, même règle : **aucune fenêtre n'est un triangle**. Le percement
+est dessiné par le matériau, comme les rangs de tuile et les panneaux solaires.
+
+Le partage est celui qui vaut partout ici : **`07` décide, Godot dessine.**
+L'export sait ce qu'est une rue, un mur mitoyen, un front commerçant, et il
+n'envoie qu'un **genre de percement** par mur, plus la longueur de ce mur —
+**2 552 murs percés sur 3 547**, soit 23,99 km de façade.
+
+| Genre | Ce qu'on voit | Murs |
+|---|---|---:|
+| aveugle | de l'enduit plein — les pignons mitoyens, qui font la rangée du cœur ancien | 995 |
+| fenêtres | des travées régulières | 1 737 |
+| + porte | une entrée au rez, **une par bâtiment** | 697 |
+| vitrine | un rez commerçant vitré entre deux trumeaux | 82 |
+| bandeau | une bande filante par étage — la barre de 1974, les halles | 36 |
+
+Deux choses tiennent le résultat, et ce sont les deux qui auraient pu rater :
+
+- les travées sont **centrées sur chaque façade**, parce que l'export envoie sa
+  longueur. Une trame de pas fixe laisserait des demi-fenêtres dans les angles ;
+- la **hauteur d'étage vient des données**, pas d'une constante recopiée dans le
+  shader. Les murs montant à un multiple exact de cette hauteur, les rangées
+  tombent sur les planchers réels et aucune n'est coupée par l'égout.
+
+De loin, le percement **s'efface** en un mur un peu plus sombre au lieu de
+grésiller — même geste que les rangs de tuile. La capture qui le juge est
+`wehrau_essai_facades.png` : les autres regardent la ville de trop haut.
+
+Le détail complet — les 14 bases de tuile pondérées, le débord de toit,
+l'acrotère, les souches, les trottoirs, les bandes de fauche, les deux essences
+d'arbre, les cotes de fenêtre et les trois réglages de lumière qui ont dû bouger
+avec — est dans **`Prototype/Toits et sol.md`**.
 
 ## La seule règle d'affichage qui compte
 
@@ -191,10 +259,11 @@ scripts/
   donnees.gd           lecture + validation. Échoue en NOMMANT ce qui manque
   constructeur.gd      tableaux → ArrayMesh. Aucun accès aux nœuds   ← isolé
   ville.gd             l'état, les rampes, les indicateurs, la caisse. Aucun nœud  ← LE NOYAU
-  energie.gd           la table des 13 lignes, les formules, les deux prix. Tout statique
+  energie.gd           la table des 12 lignes, les formules, les deux prix. Tout statique
   chantiers.gd         ancien prototype à deux décisions, conservé comme trace
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la ville à gauche, l'îlot et son curseur à droite
+  moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
   materiaux.gd         6 matériaux, zéro texture
   camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°
 outils/
@@ -232,6 +301,30 @@ transparence : ce canal était libre.
 
 Le surlignage et les calques passent par `instance uniform` : une valeur **par
 MeshInstance3D**, sans dupliquer le matériau 237 fois.
+
+✏️ **Le trait de sélection ne passe pas par là, et n'est pas de la
+géométrie.** L'objet choisi est redessiné **seul**, en blanc plat, dans une
+petite vue à part qui a son propre monde (donc ni ciel, ni lumière, ni le reste
+de la ville) et la **même caméra** que l'image. Un shader plein écran allume
+ensuite les pixels vides situés à moins de 3 pixels de ce masque : c'est le
+bord de la silhouette. Conséquences gratuites — le trait épouse les pignons,
+les débords de toit et les cheminées, et il garde la **même épaisseur à tous
+les zooms**. Sans sélection, la vue à part est éteinte et le rectangle caché :
+le contour ne coûte rien.
+
+🔴 **Une rue ne se détoure pas sur son maillage rendu**, et c'est la seule
+exception : un tronçon est fait de morceaux disjoints — chaussée, mètres
+libres, un bout de trottoir par îlot riverain — séparés de plusieurs mètres.
+Le masque prend alors le **couloir** que `07` exporte dans `couloirs` (axe +
+largeur façade à façade), dont `Constructeur.couloir` fait un ruban plat jamais
+affiché. Ne pas essayer de recoudre ça dans le shader : l'écart est en mètres,
+le trait en pixels.
+
+🔄 **Retour en arrière signalé** : c'était un ruban de triangles posé au sol le
+long de l'anneau de l'îlot, que `07` exportait dans `contours`. Il n'entourait
+que l'emprise AU SOL — les bâtiments en sortaient, et dans le cœur ancien ils
+le cachaient. Ne pas le réintroduire pour « éviter un rendu supplémentaire » :
+un anneau au sol ne peut pas connaître la hauteur des bâtiments.
 
 ## Trois pièges rencontrés, et leur résolution
 
@@ -336,20 +429,20 @@ voyait le terrain nu, donc du gris. Il est maintenant émis — **667 espaces
 libres, 9,4 ha**, dont **440 plantés (66 %)** et 317 arbres.
 
 « Pas tous » est le sujet, pas un détail : la table `VERDURE` en haut de `07`
-donne la part plantée par tissu — **0,05 sur une dalle commerciale, 0,92 en
-pavillonnaire, 0,30 au cœur ancien**. C'est ce contraste-là qui fait lire le
-tissu vu d'en haut, mieux que la couleur des façades. Une cour de cœur ancien
+donne la part plantée par tissu — **0,92 en pavillonnaire, 0,30 au cœur
+ancien**. C'est ce contraste-là qui fait lire le tissu vu d'en haut, mieux que
+la couleur des façades. Une cour de cœur ancien
 est pavée ; un jardin de lotissement est vert.
 
 Les jardins partent dans le maillage des **masses**, dans le groupe de leur
 îlot : le cœur d'îlot appartient à l'îlot, donc il se clique avec lui et se
 teinte avec lui quand un calque s'allume.
 
-### 📦 Les barres, les hangars et les halles sont des boîtes
+### 📦 Les barres et les halles sont des boîtes
 
-`RECTANGULAIRE` (`07`) : `barre_1970`, `dalle_commerciale`,
-`friche_industrielle` ne suivent plus le découpage parcellaire — **18 volumes**
-sont ramenés à un rectangle aligné sur la rue.
+`RECTANGULAIRE` (`07`) : `barre_1970` et `friche_industrielle` ne suivent plus
+le découpage parcellaire ; leurs volumes sont ramenés à un rectangle aligné
+sur la rue.
 
 🔴 **Le piège, mesuré** : prendre le *rectangle englobant* de l'empreinte est
 immédiat à écrire et faux. Une parcelle en L a un englobant qui sort très loin
@@ -374,21 +467,65 @@ Et pour ce qu'un chanfrein ne peut pas sauver — une empreinte qui est une lame
 de bout en bout — `LARGEUR_MIN_BATI = 3 m` : en dessous, le volume n'est pas
 construit et la parcelle repart au jardin.
 
-### 🌊 La carte est plate, et l'Ilse est un chenal
+### 🌊 La ville est plate, l'Ilse coule 2 m plus bas, et les champs y descendent
 
 Demandé par l'auteur le 2026-08-12 : *« la carte est plate, juste la rivière
-est −1 à 2 m comme si elle était canalisée »*. Le sol est à **0 partout**, et le
-seul accident du terrain est le chenal :
+est −1 à 2 m comme si elle était canalisée »*, puis **repris le 2026-08-18**,
+coupe dessinée à l'appui : *« la rivière doit être 2 m en dessous du niveau de
+la ville. La ville reste plate mais les champs adjacents à la rivière peuvent
+obtenir une topographie simple. »*
 
 ```
-    sol ─────┐              ┌───── sol          0,00 m
-             │██████████████│                  −1,00 m   le plan d'eau
-             └──────────────┘                  −2,00 m   le fond
+   champ 0 m ────┐                              ┌──── champ 0 m
+                  \___                      ___/       la pente, sur 10 m
+     ville 0 m ─┐      │██████████████│     /
+      le quai   │      └──────────────┘            −2,00 m   le plan d'eau
+                └──────────────────────            −2,60 m   le lit
 ```
 
-Deux murs **verticaux**, un fond plat. On voit **un mètre de mur** au-dessus de
-l'eau sur toute la longueur — la berge en pente douce sur 12 m de la veille se
-lisait comme un talus, donc comme rien.
+Donc **deux bords d'eau et non plus un seul** — et c'est la même ligne de code
+qui fait les deux. Une seule règle : *le mur de quai monte jusqu'à la surface
+du sol*. Là où la ville tient la rive, le sol est à 0 et le mur fait 2,6 m ; là
+où c'est un champ, le sol est déjà au ras de l'eau et il ne reste du mur qu'une
+lèvre noyée.
+
+Le talus, lui, tient dans **une seule fonction** — `Relief.z(x, y)` — que tout
+ce qui touche le sol interroge : la plaque, le champ, ses bandes de fauche, ses
+arbres, le haut du mur. Aucune de ces surfaces ne peut donc se fendre sur une
+autre : elles partagent la même vérité au lieu d'en recopier une.
+
+```
+z = −2,20 · f(distance à l'eau) · g(distance aux autres bords du champ)
+```
+
+`g` est la moitié qui fait le travail difficile, et elle remplace trois cas
+particuliers : au raccord ville/champ le talus **se relève sur 10 m** et le mur
+de quai sort du sol tout seul, au lieu d'une marche de 2 m · un pont qui
+traverse un champ garde sa terre à 0 de part et d'autre, parce que la route est
+un couloir **dehors** de l'emprise · et rien ne déborde jamais du champ, donc ni
+la voirie ni les trottoirs n'ont à savoir que le relief existe.
+
+| Mesuré à l'export | |
+|---|---:|
+| champs riverains | **4** (3, 5, 6, 8) |
+| rive en pente | **984 m** sur 2 475 m de berge |
+| le reste, en quai droit | **1 462 m** |
+| mailles de talus | **2 019** |
+| le sol descend à | **−2,15 m**, soit 15 cm sous la nappe |
+
+🔄 **Ce que l'argument d'avant disait, et pourquoi il ne tient plus.** La
+version du 2026-08-12 défendait un bord franc partout : *« une berge qui remonte
+en pente douce sur 12 m se lisait comme un talus, donc comme rien »*. C'était
+vrai avec 1 m de creux — 8 % de pente. À 2,2 m sur 10 m on est à **22 %**, et
+surtout la pente ne remplace plus le mur PARTOUT : c'est le **contraste** entre
+le quai droit de la ville et le talus des champs qui fait lire les deux.
+
+🔴 **Un piège payé le jour même, et il se voyait.** Un point posé **sur** la
+ligne de berge n'est ni dedans ni dehors pour un test d'appartenance : il
+ressortait à 0 pendant que ses voisins descendaient à −2,20. Or la plaque et le
+talus sont justement coupés sur cette ligne — la berge se hérissait de **dents
+grises d'un mètre**, une par sommet. Le bord de l'eau appartient au champ,
+point.
 
 **Ce que la mise à plat a supprimé**, et qu'il faudrait réécrire pour revenir :
 une classe `Terrain` qui rejouait la règle de pente de `04` (3,2 % en amont,
@@ -398,8 +535,9 @@ suivre le relief · le champ d'altitude côté Godot, remplacé par un maillage
 comme les autres.
 
 **Ce que ça a coûté en géométrie** : le sol passe d'un champ de 64 736
-altitudes à une **plaque de 8 244 triangles**, trouée à l'exact le long des
-berges — une maille que la berge traverse est coupée par la droite de cette
+altitudes à une **plaque de 16 448 triangles** (8 244 avant le talus, qui la
+fait redébiter au pas de 3 m sur ses seules berges de champ), trouée à l'exact
+le long des berges — une maille que la berge traverse est coupée par la droite de cette
 berge, et on ne garde que les morceaux hors de l'eau.
 
 ⚠️ **La voirie reste à 0, comme tout le reste.** Au-dessus du chenal, elle passe
@@ -487,8 +625,10 @@ générateur (61).
 
 **`CANOPEE_ALIGNEMENT_MAX = 0,40`** (`07_exporter_godot.py`) — la canopée d'une
 rue plantée de bout en bout. Constante de **rendu** : elle ne change aucun
-chiffre de simulation. ⚠️ Elle ne sert plus à rien depuis que D07 est archivée,
-mais les 1 269 emplacements d'alignement sont toujours exportés dans le JSON.
+chiffre de simulation. Les **1 169 emplacements hors de l'eau** sont exportés
+dans le JSON et **321** sont visibles à t0. Les 98 emplacements qui tombaient
+dans le polygone de l'Ilse — sur les franchissements — sont écartés avant
+l'export, y compris pour une plantation future.
 
 *Deux chiffres de cette liste sont partis avec leur système* : la **surchauffe**
 (`3,5 × imperméabilisé − 2,5 × canopée`, +1,59 °C à t0) et le **+0,25 de canopée

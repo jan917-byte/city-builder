@@ -50,9 +50,8 @@ RIVIERE = [4, 7, 51, 52, 54, 57]
 # ce qui l'entoure est vraiment de la campagne.
 CHAMPS = [1, 2, 3, 5, 6, 8, 9]
 
-# --- les quatre plaies de 1965, « fort mais réparable » --------------------
+# --- les trois plaies de 1965, « fort mais réparable » ---------------------
 PLACE_PARKING = [19]        # la place du marché, la plus centrale, sur l'eau
-DALLE = [45]                # l'îlot rasé en 1971, galerie + parking en toiture
 FRICHES = [31, 65]          # le moulin et la brasserie, en aval
 
 # La voie rapide de berge est une propriété de la RUE, pas du type d'îlot :
@@ -61,7 +60,12 @@ FRICHES = [31, 65]          # le moulin et la brasserie, en aval
 BERGE_VOIE_RAPIDE = [15, 55, 58]
 
 # --- les points fixes de la ville -----------------------------------------
-EQUIPEMENTS = [17, 36]      # Rathaus + église · lycée
+EQUIPEMENTS = [16, 36]      # église protégée · lycée
+# 🔄 2026-08-18, demandé par l'auteur : l'îlot 17 était le Rathaus, il repasse
+# en `coeur_ancien`. Wehrau n'a donc plus de mairie sur la carte — c'est un
+# choix, pas un oubli. Pour la remettre, ajouter un fid ici ET le retirer de
+# COEUR_ANCIEN ci-dessous ; 20 ou 22 conviennent (voisins de l'église).
+PATRIMOINE_PROTEGE = [16]   # l'église : aucun panneau solaire en toiture
 # L'hôpital a été retiré : il était sur l'îlot 26. Pour le remettre ailleurs,
 # ajouter un fid ici — 35 (bord ouest) ou 30 (accès par l'axe sud) conviennent.
 BARRE = [32]                # le grand ensemble de 1974, en aval, au bord de l'eau
@@ -69,11 +73,11 @@ PARCS = [46]                # le jardin de ville
 JARDINS = [48]              # les jardins familiaux, au nord-ouest
 
 # --- le tissu -------------------------------------------------------------
-FRONT_COMMERCANT = [12, 16, 21, 24]     # les îlots qui bordent l'axe de transit
-COEUR_ANCIEN = [13, 14, 15, 18, 20, 22, 34, 37, 38, 53, 55, 56]
+FRONT_COMMERCANT = [12, 21, 24, 45, 72] # dont les deux moitiés de l'ancienne dalle
+COEUR_ANCIEN = [13, 14, 15, 17, 18, 20, 22, 34, 37, 38, 53, 55, 56]
 # 70 et 71 sont les moitiés neuves du 26 et du 42, coupées le 2026-08-13 par
 # les rues 179 et 180 ; l'ancien 27 a été fusionné dans le 26 (rue 78 retirée).
-# 72, 73 et 74 sont les ÎLOTS DE LISIÈRE posés le 2026-08-16 par
+# 73 et 74 sont les anciens numéros réservés aux ÎLOTS DE LISIÈRE posés le 2026-08-16 par
 # `00b_ilots_lisiere.py` : des rubans d'une seule parcelle de profondeur, de
 # l'autre côté de la rue qui fait le tour de la ville, taillés dans les champs
 # 9 (nord, face au 11), 1 (sud-ouest, face au 26) et 9 encore (ouest, face au
@@ -81,7 +85,7 @@ COEUR_ANCIEN = [13, 14, 15, 18, 20, 22, 34, 37, 38, 53, 55, 56]
 # les barres). Pavillonnaire est le seul tissu qui convienne : c'est le seul
 # SANS cœur d'îlot, donc la parcelle va vraiment du trottoir au champ.
 # → `00b_ilots_lisiere.py`, en-tête
-PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 60, 61, 63, 64, 70, 71, 72, 73, 74]
+PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 60, 61, 63, 64, 70, 71, 73, 74]
 # tout le reste des îlots bâtis tombe en `maisons_de_ville`
 
 # Cœur d'îlot vert privatisé : invisible depuis la rue, mais c'est le seul
@@ -92,7 +96,7 @@ FONCTION_DE = {
     "riviere": "riviere", "champ": "freiraum", "parc": "freiraum",
     "jardins_familiaux": "freiraum", "place_minerale": "freiraum",
     "coeur_ancien": "mixte", "front_commercant": "mixte",
-    "dalle_commerciale": "mixte", "equipement": "mixte",
+    "equipement": "mixte",
     "maisons_de_ville": "habitation", "pavillonnaire": "habitation",
     "barre_1970": "habitation",
     "friche_industrielle": "industrie",
@@ -102,7 +106,7 @@ FONCTION_DE = {
 def sous_types():
     s = {}
     for lst, st in ((RIVIERE, "riviere"), (CHAMPS, "champ"),
-                    (PLACE_PARKING, "place_minerale"), (DALLE, "dalle_commerciale"),
+                    (PLACE_PARKING, "place_minerale"),
                     (FRICHES, "friche_industrielle"),
                     (EQUIPEMENTS, "equipement"), (BARRE, "barre_1970"),
                     (PARCS, "parc"), (JARDINS, "jardins_familiaux"),
@@ -120,7 +124,7 @@ def sous_types():
 # `exception = 1` : saisie manuelle protégée. Tout ce qui est du level design
 # posé consciemment, par opposition au tissu ordinaire dérivé par règle.
 def exceptions():
-    e = set(RIVIERE) | set(PLACE_PARKING) | set(DALLE) \
+    e = set(RIVIERE) | set(PLACE_PARKING) \
         | set(FRICHES) | set(EQUIPEMENTS) | set(BARRE) | set(PARCS) \
         | set(JARDINS) | set(COEUR_VERT_PRIVE)
     return e
@@ -318,7 +322,8 @@ def main():
         st[f] = "maisons_de_ville"
 
     for col, typ in (("fonction", "TEXT"), ("sous_type", "TEXT"),
-                     ("exception", "INTEGER"), ("surface_m2", "REAL")):
+                     ("exception", "INTEGER"), ("surface_m2", "REAL"),
+                     ("solaire_possible", "INTEGER")):
         try:
             cur.execute('ALTER TABLE ilots ADD COLUMN %s %s' % (col, typ))
         except sqlite3.OperationalError:
@@ -326,9 +331,10 @@ def main():
     for fid, d in ilots.items():
         s = st[fid]
         cur.execute("UPDATE ilots SET fonction=?, sous_type=?, exception=?, "
-                    "surface_m2=? WHERE fid=?",
+                    "surface_m2=?, solaire_possible=? WHERE fid=?",
                     (FONCTION_DE[s], s, 1 if fid in exc else 0,
-                     round(d["aire"], 1), fid))
+                     round(d["aire"], 1), 0 if fid in PATRIMOINE_PROTEGE else 1,
+                     fid))
 
     # ---------------- quels îlots borde chaque tronçon
     proprio = {}
@@ -342,7 +348,7 @@ def main():
     transit = set(FRONT_COMMERCANT)          # l'axe qui longe le front commerçant
     coeur = set(COEUR_ANCIEN) | set(FRONT_COMMERCANT)
     champs = set(CHAMPS)
-    moderne = set(PAVILLONNAIRE) | set(BARRE) | set(DALLE)
+    moderne = set(PAVILLONNAIRE) | set(BARRE)
     bati = set(ilots) - riv - champs
 
     def moduler(base, bordes, longueur):
@@ -426,6 +432,7 @@ def main():
               % (s, len(par_st[s]), ha,
                  sorted(par_st[s])[:12] if len(par_st[s]) <= 12 else "…"))
     print("  exceptions posées : %d" % len(exc & set(ilots)))
+    print("  patrimoine sans solaire : %s" % sorted(set(PATRIMOINE_PROTEGE) & set(ilots)))
     print("\nRUES")
     for h in sorted(comptes, key=lambda k: -len(comptes[k])):
         w = comptes[h]

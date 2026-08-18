@@ -1,9 +1,15 @@
 # Étape 2 — Les parcelles 🎯
 
-> **L'étape en cours.** Le point dur du pipeline : ce qui sépare 70 pâtés pleins d'une ville où on croirait habiter.
+> **L'étape en cours.** Le point dur du pipeline : ce qui sépare 71 pâtés pleins d'une ville où on croirait habiter.
 > La doctrine — *pourquoi* la parcelle est une partition, ce qu'on ne fera jamais — est dans le vault : `Technique/Génération procédurale.md`. **Ici, le chantier seulement.**
 
-**Dernière mesure : 2026-08-17** (session 25, chaîne complète jusqu'à l'export Godot)
+**Dernière mesure : 2026-08-18** (session 34, chaîne complète jusqu'à l'export Godot)
+
+✅ **L'ÎLOT 45 EST DEVENU DEUX FRONTS COMMERÇANTS.** La rue 181 suit
+exactement le trait de l'auteur entre deux sommets existants : **45 garde
+0,51 ha, 72 prend 0,42 ha**, sans perdre un centimètre carré. Les deux sont
+`front_commercant`. La catégorie propre à l'ancienne galerie disparaît de
+toutes les tables ; Wehrau passe à **12 sous-types**. → `Décisions arrêtées` 71
 
 ✅ **LA CARTE NE PEUT PLUS ÊTRE PLUS VIEILLE QUE LE CODE** (2026-08-17). Elle l'était : `Prototype_qualifie.gpkg` avait été écrit au commit `18a6b4c`, **avant** `c409680` — celui qui coupe au milieu quand l'îlot est assez profond — et une session entière est passée à décrire un défaut déjà corrigé. Ce qui a fermé le piège : le `.gpkg` n'est plus versionné, et `02` le **rebâtit depuis la source** à chaque passage de `chaine.py` (0,7 s). Les chiffres de la section 2 sont mesurés sur la carte relancée le 2026-08-17.
 
@@ -24,12 +30,12 @@ Une couche `parcelles` dans le GeoPackage, écrite **une fois**, qui pave l'empr
 
 | | code d'aujourd'hui | carte du dépôt (périmée) |
 |---|---|---|
-| parcelles | **927**, dont **912 sur rue** — plus **6 chemins** | 1 096, dont 987 sur rue |
-| cœurs d'îlot | 13 îlots, 0,86 ha, en 15 morceaux **d'un seul tenant** (67c · 67d) | 102 morceaux redécoupés |
+| parcelles | **870 logiques**, dont **851 sur rue** — la couche contient aussi **6 chemins** | 1 096, dont 987 sur rue |
+| cœurs d'îlot | 16 îlots, 0,91 ha, en 18 morceaux **d'un seul tenant** (67c · 67d) | 102 morceaux redécoupés |
 | reliquat de rue sans façade | **0** — il n'y a plus de déchet | 7 |
-| réunions d'éclats | 121, **aucun ne survit** | 48 |
+| réunions d'éclats | 125, **aucun ne survit** | 48 |
 | coupes effacées (deux biseaux → un rectangle) | **2**, îlots 13 et 33 | — |
-| partition | **100,00 %** sur chacun des 54 îlots, écart max 8,1·10⁻⁷ | idem |
+| partition | **100,00 %** sur chacun des 55 îlots, écart max 7,9·10⁻⁷ | idem |
 
 🔴 **Le nombre de parcelles a BAISSÉ, et ce n'est pas une régression.** Les 1 105 d'avant comptaient les cœurs d'îlot redécoupés en dizaines de morceaux et les fonds de jardin sans façade. Depuis **67c** un cœur reste entier ; depuis **67d** ce qui reste derrière les parcelles reste un cœur au lieu d'être recollé à une parcelle de rue. Ce qui compte est le **912 sur rue** — que 67d n'a pas bougé et que le plafond de profondeur du 2026-08-15 a remonté de 893 — et le fait que les **enclavées soient tombées à zéro**. → mémoire : *le nombre de maisons n'est pas un critère*.
 
@@ -167,7 +173,7 @@ Cette règle venait d'une demande juste — les maisons de ville ont une profond
 1. **La cour intérieure existe mais elle n'est pas commune.** Chaque parcelle garde sa propre tranche d'arrière, donc le cœur de l'îlot 14 sort en couloir sinueux plutôt qu'en cour unique. Aligner les fonds de bâti d'une même rangée est un travail à part — et il tire dans le sens inverse des ailes arrière, qui existent pour irrégulariser. À trancher devant l'image.
 2. **Le passage étroit de la rue vers la cour n'est pas fait** — c'est une venelle, donc `tracer_chemins.py`, donc du level design qui appartient à l'auteur.
 
-✅ **LA 3D MONTRE MAINTENANT CES EMPREINTES.** `07_exporter_godot.py` lit directement la couche `batiments` de `04d` : il ne redessine plus une seconde ville. Contrôle du 2026-08-17 : **701 volumes sur 693 parcelles bâties**, zéro débordement, **10,4 ha de toiture réelle pente comprise**. Les espaces libres sont la parcelle dessinée sous ses volumes — ce qui reste visible est exactement la cour ou le jardin. Les captures `wehrau_essai_ville.png` et `wehrau_essai_barre.png` ont été régénérées dans Godot.
+✅ **LA 3D MONTRE MAINTENANT CES EMPREINTES.** `07_exporter_godot.py` lit directement la couche `batiments` de `04d` : il ne redessine plus une seconde ville. Contrôle du 2026-08-18 : **756 volumes sur 751 parcelles bâties**, zéro débordement, **11,0 ha de toiture réelle pente comprise**. Les espaces libres sont la parcelle dessinée sous ses volumes — ce qui reste visible est exactement la cour ou le jardin. Les captures ont été régénérées dans Godot.
 
 ## 2 bis. Ce que l'auteur a vu sur l'image, le 2026-08-14
 
@@ -271,7 +277,7 @@ L'aire tombait juste depuis le début ; c'est l'élancement qui était faux — 
 
 🔄 **Impact de la simplification énergie du 2026-08-17** : aucun chiffre de
 parcelles ne change. Le solaire n'a plus de budget, de capital ou de
-rentabilité, mais il lit toujours les **10,4 ha de toiture réelle** et
+rentabilité, mais il lit toujours les **11,0 ha de toiture réelle** et
 assombrit les toits selon la part choisie. Le lien entre les deux étapes est
 donc plus court, pas supprimé. → [Énergie.md](Énergie.md)
 
@@ -348,7 +354,6 @@ C'est **elle, et pas le code**, qui décide du grain de toute la ville. Une lign
 | `pavillonnaire` | 13,5 | 28,0 | peigne | détaché, jardins |
 | `barre_1970` | 80,0 | 70,0 | **boîte** | 🔄 2026-08-14 — deux objets posés au milieu |
 | `equipement` | 45,0 | 35,0 | boîte | un ou deux objets |
-| `dalle_commerciale` | 80,0 | 60,0 | boîte | un hangar |
 | `friche_industrielle` | 55,0 | 45,0 | boîte | des halles |
 
 `place_minerale`, `parc`, `champ`, `jardins_familiaux` et `riviere` ne se découpent pas : ce sont des sols.
@@ -407,7 +412,7 @@ Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue
 
 ## 7. Ce qui attend l'auteur
 
-- [ ] 🔴 **Le potentiel solaire réel est inférieur aux 25–40 % du plan.** ✅ **La suspension est levée** : `07` lit maintenant les **701 volumes** de `04d` et mesure **10,4 ha de toiture réelle pente comprise**. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table d'énergie.**
+- [ ] 🔴 **Le potentiel solaire réel est inférieur aux 25–40 % du plan.** ✅ **La suspension est levée** : `07` lit maintenant les **756 volumes** de `04d` et mesure **11,0 ha de toiture réelle pente comprise**. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table d'énergie.**
 - [ ] **La table `TISSU` de `04c`** (§5) — c'est du level design, il n'est pas délégué.
 - [ ] **Les réparations de boucle de `04b`** — passées de 4 à **7 îlots** avec la carte à trois ponts. Les quatre anciennes (55, 13, 16, 21) sont signalées ; les trois neuves (9, 11, 62) ne le sont pas.
 

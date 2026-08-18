@@ -81,7 +81,7 @@ PALETTE = {
     "autoroute": "#c1443c", "boulevard": "#d98b3c", "rue": "#7a7a7a",
     "ruelle": "#adadad", "rive": "#6ba8d9", "voie ferree": "#6b4f8a",
 }
-# Palette de secours pour les 13 sous-types, dans l'ordre d'apparition.
+# Palette de secours pour les 12 sous-types, dans l'ordre d'apparition.
 ROUE = ["#e8c46a", "#8fbf6a", "#d98b6c", "#6c9dd9", "#b08d6a", "#c8a2c8",
         "#9dc6a0", "#d9b86c", "#7fa8b8", "#c1443c", "#6b8f5a", "#bfa06a",
         "#8a7fa8", "#d9d06c"]
