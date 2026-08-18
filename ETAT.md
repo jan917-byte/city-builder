@@ -10,12 +10,45 @@
 | ce qui s'est passé, et pourquoi c'est comme ça | [HISTORIQUE.md](HISTORIQUE.md) |
 | ce qui est tranché | `Méta/Décisions arrêtées.md` (vault) |
 
-**Dernière mise à jour : 2026-08-17 (session 30)**
+**Dernière mise à jour : 2026-08-18 (session 33)**
+
+🏛️ **La ville possède tout — le logement compris.** Tranché pour simplifier :
+il n'y a plus de toit des autres, donc plus de loyer de toiture, plus de
+copropriété qui refuse, plus de deux régimes selon le tissu. **La question
+n°22 est close le lendemain de son ouverture, et aucune ligne de calcul ne
+bouge** : la décision ratifie ce que l'économie de la veille avait dû supposer
+pour tourner. ⚠️ Une seule chose à tenir : **posséder un logement n'est pas
+payer sa facture** — la ville est propriétaire-bailleur, ses locataires paient
+leur électricité. Sans ça, les 7,7 M€/an d'énergie de Wehrau tomberaient dans
+une caisse dotée de 0,36 M€/an. → `Décisions arrêtées` **70**
+
+🆕 **La décision solaire se paie.** Une petite économie est revenue dans le
+prototype : **260 €/m² posé** (× le coefficient de coût du tissu) et **150 €/MWh
+produit**, et rien d'autre. La mairie a une **caisse** — 800 k€ au départ,
+30 k€/mois de dotation — qui n'encaisse que les panneaux, jamais la facture des
+habitants. La fiche annonce le prix avant de valider et **dit combien il manque**
+quand la caisse ne suit pas. Mesuré : équiper Wehrau en entier coûte
+**10,8 M€** pour **648 k€/an**, et l'amortissement classe les tissus — **dalle
+8 ans, barre 10, friche et équipement 11, pavillonnaire 18, maisons de ville 19,
+front commerçant 20, cœur ancien 31**. Six contrôles imprimés au vert, capture
+du refus comprise. → [Prototype/Énergie.md](Prototype/Énergie.md) ·
+`Décisions arrêtées` **69**
+
+🆕 **La décision solaire prend maintenant du temps — et le temps a ralenti
+soixante fois.** La fiche annonce la durée avant validation ; la pose avance
+ensuite vers la cible, en assombrissant les toits et en recalculant les deux
+échelles au même rythme. **0 → 100 % prend 1 mois maximum** ; à mi-pose, l'îlot
+32 affiche **50 % réalisés et 15 jours restants**. L'échelle de base est
+désormais **une minute réelle pour un mois** (c'était une seconde : la pose
+était finie avant qu'on ait relâché la souris). Le bandeau du bas donne pause,
+×1, ×4 et ×12 ; `Espace` alterne lecture et pause. Contrôle Godot et captures à
+0 %, 50 % et 100 % au vert.
+→ [Prototype/Énergie.md](Prototype/Énergie.md)
 
 🆕 **Le prototype énergie tient maintenant en une décision.** À gauche, quatre
 conséquences pour toute la ville ; à droite, seulement l'îlot cliqué. Le
 curseur augmente sa part solaire de sa valeur actuelle jusqu'à 100 %, sans
-budget, capital, isolation, temps ou calque. Contrôle réel sur l'îlot 32 :
+budget, capital, isolation ou calque. Contrôle réel sur l'îlot 32 :
 **0 → 100 %**, production de ville **0,0 → 0,3 GWh/an**, achat **51,1 → 50,9**,
 CO₂ **12,8 → 12,7 kt/an** ; les toits passent visiblement à l'ardoise sombre.
 → [Prototype/Énergie.md](Prototype/Énergie.md) · `Décisions arrêtées` **68**
@@ -53,25 +86,28 @@ CO₂ **12,8 → 12,7 kt/an** ; les toits passent visiblement à l'ardoise sombr
 | **Les bâtiments** — **701 empreintes sur 693 parcelles**, une bande depuis la rue, une cour derrière, **un immeuble d'angle qui tourne la rue** et **au plus une équerre par empreinte**, **9,02 ha d'emprise de toit / 10,4 ha de toiture pente comprise**, zéro hors parcelle. **Godot lit cette couche directement** | dérivé : couche `batiments` de `04d` · `Godot/data/wehrau.json` |
 | **La maquette 3D cliquable** — 237 nœuds, fiche à l'îlot et au tronçon, **carte plate**, l'Ilse canalisée et ses trois ponts | `Godot/` → `Godot/README.md` |
 | **Le classeur** — 3 parties jouées sur 60 mois, courbes et carte au mois M | `Classeur/` · `QGIS/rendus/parties.html` |
-| **Le système énergie** — une décision à l'îlot, part solaire 0–100 %, ville à gauche et îlot cliqué à droite, sans ressources | ✅ **simplifié et capturé, à regarder** → [Prototype/Énergie.md](Prototype/Énergie.md) |
+| **Le système énergie** — une décision à l'îlot, part solaire 0–100 %, ville à gauche et îlot cliqué à droite, **et une caisse qui limite le rythme** | ✅ **économie branchée et capturée, à regarder** → [Prototype/Énergie.md](Prototype/Énergie.md) |
 | D07, la surchauffe, les quatre moyennes de ville, les six calques | ✂️ **supprimés** (66), archivés dans `Godot/archive/` |
 
 **Les trois contrôles qui comptent, au vert** : la ville privée de sa rivière tombe en **deux morceaux (45 et 11 îlots)** · le réseau routier est **d'un seul tenant** · l'**axe de transit sort tout seul** de l'affectation de trafic.
 
 ## Ce qui commande le reste
 
-- 🎯 **Le prototype énergie teste d'abord le lien local → global** (68) : une
-  seule décision, aucun coût. La paire de décisions opposées et les ressources
-  restent une ambition du jeu complet, pas le test actuel.
+- 🎯 **Le prototype énergie teste le lien local → global** (68), **et depuis
+  la 69 il teste aussi « où investir ? »** : une seule décision, mais elle a un
+  prix et un rendement qui dépendent du tissu. La paire de décisions opposées,
+  le capital politique et l'isolation restent une ambition du jeu complet.
 - 🔗 **La 3D et l'énergie se rejoignent sur le toit** (41 · 56 · 64) : la 3D produit `toit_m2`, `toit_pente`, `toit_plat` et l'ombrage ; l'énergie les lit sans savoir qui parle. **L'énergie n'attend jamais la 3D.**
 - 🔓 **Claude écrit ET exécute les scripts de données** (65). Les garde-fous ont maigri le 2026-08-17 avec le passage en texte : arbre git propre avant d'écrire **la source** · passe `--blanc` d'abord **pour les trois scripts qui la touchent** (`00`, `00b`, `tracer_chemins` — c'est du level design) · contrôles imprimés en français, qui eux ne bougent pas. Écrire un `.gpkg` ne demande plus rien : il est dérivé. → `CLAUDE.md` §3
 - 🏘️ **Le prototype est Wehrau**, une petite ville qu'on voit en entier (13b · 13d). Vallmar reste la ville du jeu complet, intacte dans le vault. Une ville entière, même petite, a **un amont et un aval** ; un quartier n'en a pas.
 - 🎨 **Townscaper pour le rendu** (42b), et **Wehrau est pastel au sol minéral** (42c) : la grisaille est une **proportion** — 28 % d'imperméabilisé, 14 % de canopée, 4 587 places — pas une teinte.
 - 🗺️ **La carte est plate** (2026-08-12) — dans l'image ET dans la donnée. Le seul relief est le **chenal de l'Ilse** : murs verticaux, fond à −2 m, plan d'eau à −1 m. Ce que ça a supprimé : le champ d'altitude, la vallée, l'exagération verticale, la subdivision des sols et des chaussées. **La voirie reste à 0** : au-dessus du chenal elle passe au-dessus du vide, donc les trois ponts existent sans qu'une ligne de code parle de pont.
 - 💧 **La crue sort du prototype** (2026-08-12, demandé en cours de session) : `alea` et `altitude_relative` restent dans le `.gpkg` **à 0**, ne sont plus exportés vers Godot, et leurs calques et stocks sont retirés de `06`. Ce qui reste de l'eau est ce qui reste vrai sans elle — **deux rives inégales et trois ponts**. ⚠️ À reporter dans le vault : le jeu s'ouvrait sur une crue rive gauche (**23b**).
-- 🔴 **Ce que la coupe a coûté** : le prototype ne teste plus l'économie, le
-  temps ni le dilemme panneaux/isolation. L'ancien noyau et son essai restent
-  isolés comme trace ; ils ne décrivent plus la boucle jouable.
+- 🔴 **Ce que la coupe a coûté, et ce qui en est revenu** : le dilemme
+  panneaux/isolation n'est toujours pas testé. Le temps est revenu comme durée
+  de pose visible (31), et l'argent comme coût et rendement (32) — mais **en
+  euros, pas en points** : l'ancien noyau à points reste isolé comme trace et
+  ne se réactive pas. Les deux dérives de prix restent écrites et débranchées.
 
 ## Prochaine action
 
@@ -93,21 +129,45 @@ Et les deux points de la session 26, toujours ouverts : sur l'**îlot 14** le c�
 
 Les six venelles sont dans la source et ressortent comme **588 m² de sol pavé dans le groupe de leur îlot**. À regarder sur les îlots **22, 24, 26, 38, 44 et 63** — courtes, au pli, sans traverser un cœur vert. Le défaut encore imprimé par `07` : **159 empreintes concaves** prennent un toit plat.
 
-### 👁️ Puis regarder le geste énergie simplifié
+### 👁️ Puis regarder le geste énergie, son temps et son prix
 
 Ouvrir la maquette, cliquer un îlot bâti et déplacer le curseur à droite.
-Regarder trois choses : le panneau de droite ne change pas au survol ; le toit
-s'assombrit après « Augmenter » ; les totaux de gauche réagissent aussitôt.
+Regarder d'abord le temps : la durée est annoncée avant « Augmenter » — **1 mois
+pour 0 → 100 %**, en jours pour une hausse plus petite ; la barre et le toit
+avancent ensemble vers la cible ; les totaux de gauche suivent ; pause, ×1, ×4
+et ×12 changent le rythme sans changer la durée en mois. À ×1 le compteur gagne
+**un mois par minute de montre**, donc la pose complète dure une minute.
+
+Puis l'argent, qui est neuf. **Cliquer un cœur ancien, puis la barre de 1974**
+et comparer la ligne « Se rembourse en » : **31 ans contre 10**. Pousser le
+curseur d'un gros îlot à 100 % : la ligne sous le curseur dit le prix et ce
+qu'il resterait en caisse. Sur l'**îlot 31** — la friche, 869 k€ — elle passe au
+rouge, dit *« il manque 69 k€ »*, et le bouton refuse. C'est le seul non que le
+prototype sache prononcer.
 
 Les captures de référence sont
-`QGIS/rendus/wehrau_essai_barre.png` (0 %) et
-`QGIS/rendus/wehrau_essai_solaire_100.png` (100 %).
+`QGIS/rendus/wehrau_essai_barre.png` (0 %),
+`QGIS/rendus/wehrau_essai_caisse.png` (**le refus**),
+`QGIS/rendus/wehrau_essai_solaire_pose.png` (50 %, après 15 jours) et
+`QGIS/rendus/wehrau_essai_solaire_100.png` (100 %, caisse à 442 k€).
+
+```bash
+"C:/Users/janha/Desktop/Godot_v4.7.1-stable_win64.exe/Godot_v4.7.1-stable_win64_console.exe" --path Godot -- --essai
+```
 
 ## Ce qui attend l'auteur
 
 - [ ] 🔴 **Le potentiel solaire réel est bien inférieur aux 25–40 % du plan.** La suspension est levée : la mesure unique est maintenant **10,4 ha de toiture réelle pente comprise** sur les 701 volumes de `04d`. Le jeu tient (blocages, rentabilités par îlot, « pas d'autonomie par les toits » renforcé). **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table.**
-- [ ] ⏸️ **La régie municipale** — hors du prototype tant qu'il n'y a ni budget
-  ni retour financier ; reste une question du jeu complet.
+- [x] ✅ ~~**Qui possède les panneaux ?**~~ **Tout appartient à la ville**,
+  logement compris (70). À rouvrir **avant Vallmar**, pas avant : le
+  propriétaire qui dit non est une tension que le jeu complet devra porter —
+  une transformation urbaine où personne ne peut refuser n'est pas une
+  transformation, c'est un plan.
+- [ ] 🟠 **Les quatre nombres de l'économie sont du level design, pas de la
+  physique** : 260 €/m², 150 €/MWh, 800 k€ de caisse, 30 k€/mois de dotation.
+  Ce sont eux qui décident si le jeu est « dur mais possible ». Le tableau
+  mesuré pour les juger est imprimé par `-- --essai` et recopié dans
+  [Prototype/Énergie.md](Prototype/Énergie.md) §4.
 - [ ] 🟠 **Le nom des quartiers de Wehrau** — sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase. Les calques sortent bien des **zones**, pas des confettis : la phrase attend son vocabulaire.
 - [x] ✅ ~~**L'exagération verticale**~~ — **close par la mise à plat** le 2026-08-12. Il n'y a plus de relief à exagérer ; les touches `1..4` sont retirées de la maquette.
 - [ ] 🟠 **La crue dans le vault** — la décision **23b** (le jeu s'ouvre sur une crue rive gauche) est en contradiction avec « pas de crue pour ce prototype ». Suspendue ou abandonnée ? À écrire dans `Décisions arrêtées`, pas à laisser implicite.
@@ -140,11 +200,28 @@ Le détail des scripts, leurs modes et leurs pièges → **`QGIS/README.md`** (�
 
 ## Les deux dernières sessions
 
-**2026-08-17 (session 29) — la 3D lit enfin les bâtiments.** L'auteur demande à voir les nouveaux bâtiments dans Godot. Le défaut était celui déjà nommé : `04d` écrivait les 701 empreintes corrigées, mais `07` recalculait encore 892 volumes avec son ancienne table, donc l'aperçu et la maquette montraient deux villes. `07` lit maintenant la couche `batiments`, rattache chaque volume à sa parcelle et retrouve sa plus longue façade pour orienter le faîtage. La parcelle est dessinée sous ses volumes : le bâti opaque cache son emprise, et ce qui reste visible est exactement la cour ou le jardin, sans second moteur de différence polygonale. Contrôles : **701 volumes sur 693 parcelles bâties**, **116 parcelles non bâties**, **10,4 ha de toiture réelle pente comprise**, murs 3272/3272 et toits 9464/9464 vers l'extérieur. Les 38 débordements annoncés au premier passage étaient faux : le contrôle passait un anneau ouvert au test d'appartenance et oubliait sa dernière arête ; fermé et associé à la vraie parcelle d'origine, il donne **zéro** comme R0 de `04d`. La chaîne complète passe en 6,6 s. Godot charge 70 îlots, 177 tronçons, 237 objets cliquables et 26 182 triangles ; les captures `wehrau_essai_ville.png` et `wehrau_essai_barre.png` sont régénérées. Ce qui reste : **159 empreintes concaves à toit plat** et 158 pans réorientés (2 %), plus le jugement ciblé des parcelles en pointe.
+**2026-08-18 (session 33) — un seul propriétaire.** L'auteur ferme en une phrase la question ouverte la veille : *« pour simplifier le prototype, disons que tout le logement et tous les panneaux appartiennent à la ville »*. C'est plus court que les trois pistes examinées — il n'y a plus de toit des autres, donc plus de loyer de toiture à mettre dans la table, plus de copropriété qui refuse, plus de deux régimes selon le tissu. 🟢 **Aucune ligne de calcul ne change** : la décision **ratifie** ce que l'économie du 2026-08-17 avait dû supposer pour tourner. Ce qui change, c'est qu'on peut maintenant le dire, et que ce qui distingue les îlots n'est plus la propriété mais le coût d'accès au toit et son rendement — déjà dans la table. ⚠️ **La ligne qui tient tout le reste** : posséder un logement n'est pas payer sa facture. La ville est **propriétaire-bailleur**, ses locataires paient leur électricité ; sans ça la facture de 7,7 M€/an entrerait dans une caisse dotée de 0,36 M€/an et il n'y aurait plus de jeu. Décision **70**, question **n°22** close. Contrôle Godot relancé, six vérifications au vert, caisse à **442 k€** au mois 1 après la pose de l'îlot 32.
 
-**2026-08-17 (session 28) — l'encoche du bâtiment.** L'auteur regarde `parcelles_ilot_40/41` : *« l'îlot 40 a encore des parcelles bizarres avec des formes de bâtiment pas réalistes, et l'îlot 41 a des coins encore à corriger »*. C'est la suite que la session 27 avait nommée sans l'écrire — « les doigts de cour et les ressauts en escalier demanderaient une ouverture morphologique, pas un seuil de plus ». 🔴 **Ce qui a débloqué la mesure, c'est de compter les décrochements au lieu de mesurer des largeurs** : sur les 701 empreintes, 542 n'ont aucun sommet rentrant, **131 en ont un** — l'équerre, c'est-à-dire l'immeuble d'angle et la maison prolongée de son aile arrière, les deux voulues et très lisibles — et 28 en ont deux ou trois, dont **aucune n'a d'excuse**. Un seuil de largeur ne sait pas les séparer, et c'est mesuré : rallumer l'aile arrière fait passer les poches à bouche ≤ 8 m de 14 à 57, alors que l'aile est la forme la plus **voulue** du fichier. Deux règles, dans deux fonctions. ① **`aile_arriere` vérifie enfin qu'elle est adossée** — sa docstring promettait « adossée à une limite latérale et jamais posée au milieu » depuis le premier jour, mais rien ne le contrôlait : l'aile se pose à un **bout de la cour** mesuré le long de la façade, et sur une parcelle d'**angle**, dont le bâtiment est déjà la réunion de deux bandes, ce bout-là est le mur de l'autre bande. Elle s'adossait donc à son propre bâtiment. On essaie les deux bouts, le tiré d'abord. ② **`fermer_encoches` referme les poches**, la plus petite d'abord — sur une parcelle d'angle la grande poche est la cour que l'équerre entoure, la petite est la dent qui pend dedans — et **après l'aile, pas avant** : l'aile fabrique volontairement un décrochement, donc juger la forme avant elle ne voit pas l'escalier qu'elle produit. 🔴 **Le piège qui a coûté la moitié de la mise au point** : la corde qui referme une poche a ses deux bouts **sur la limite de parcelle**, puisque le retrait latéral vaut 0 en mitoyen ; testée telle quelle elle tombe du mauvais côté du test de parité, et 12 encoches se refermaient au lieu de 52. On teste des points décalés de 10 cm vers l'intérieur de la poche. Résultat : **28 → 15** empreintes à deux décrochements, **2 → 0** en C, **52 encoches refermées** sur 52 bâtiments, R0 toujours à 0, R2 bis inchangé à 16, emprises (0,76 · 0,56 · 0,81), cour du cœur ancien (24 %) et partition inchangées, toit 9,00 → **9,02 ha**. 🔴 **Et il faut dire ce qui n'est PAS réparé** : le bout sud-est de l'îlot 40, celui que l'auteur a entouré, garde une parcelle en flèche (435), une lanière (443) et deux replis (438) — **118 parcelles de rue sur 809 ont un sommet rentrant**, et éteindre la soudure des coins n'en enlève qu'une (119 → 118). Le défaut est dans le **peigne de `04c`**, pas dans `04d`, et aucune règle de bâtiment ne peut le cacher : une empreinte propre dans une parcelle en dard laisse quand même le dard en beige à l'écran. ⚠️ Session faite **sur le Mac**.
-
-**2026-08-17 (session 27) — le coin d'îlot.** L'auteur regarde `parcelles_ilot_40/41/59` et tranche en une phrase : *« le reste fonctionne plutôt bien, c'est surtout les coins d'îlots que je trouve encore problématiques »*, avec l'emprise voulue **dessinée en rouge par-dessus l'image**, trois fois. Les deux causes étaient dans deux scripts différents et il fallait les deux. ① Dans `04c`, la rue la plus longue prend le coin (le débordement de `_bande`, qui empêche le coin de finir en éclats), donc la parcelle d'angle a une vraie façade sur une rue et un simple **flanc** sur l'autre — mesuré : façade forte 16,2 m, **façade faible 7,4 m**, 34 coins sur 163 sous la moitié de la consigne. `04d` y bâtissait bien la réunion de deux bandes, mais le second bras était un moignon. La parcelle du coin absorbe donc sa voisine **du côté faible** (`souder_les_angles`, même geste que `recoller_rectangles` donc la partition ne peut pas tomber), avec trois garde-fous sans lesquels la règle dérive en « le coin avale la rangée » : jamais vers une voisine sans façade sur la rue faible, aucun bras au-delà de 2,6 façades, aucune parcelle au-delà de 2,2 fois l'aire du tissu. 🔴 Et **un coin n'est pas toujours un sommet** : la moitié sont **biseautés**, deux sommets séparés par un pan coupé de deux mètres, qui pris un par un ne font que deux virages de 15° — la pointe de l'îlot 59 et le nord-ouest de l'îlot 40 passaient à travers. ② Dans `04d`, la réunion des deux bandes laisse derrière elle un coin **dont la pointe vise le coin de rue** : le bâtiment en fait le tour et sort en **C**, une cour creusée en plein milieu de la masse. Une tranche d'arrière **enfermée par le bâtiment** repart maintenant au bâtiment — le partage se lit sur son **ouverture**, la part de son contour qui est du bord de parcelle et non du mur. Résultat : **122 coins sur 163 ont leurs deux bras** (48 avant), façade faible **12,6 m**, parcelle d'angle 148 → **278 m²**, et **7 → 2** bâtiments à trois coins rentrants. Emprises (0,76 · 0,56 · 0,82), cour du cœur ancien (24 %), R0 (0) et partition (100,00 %) sont inchangés ; **927 → 809 parcelles**, toit 8,86 → **9,00 ha**. 🔴 **Trois pistes essayées et retirées le jour même** : un seuil de largeur de cour *seul* (434 cours sur 701 tombaient dessous — la cour médiane du cœur ancien fait 2,3 m de profondeur, le seuil annulait la correction de la veille) ; **recoller les tranches d'arrière avant de les juger** (la poche du coin fusionne avec la cour de fond, l'ouverture repasse le seuil, et le C revient tel quel) ; combler une poche sans vérifier qu'elle recolle (le morceau ressortait en second bâtiment posé dans la cour). ⚠️ Ce qui reste, et l'auteur l'a entouré : des **doigts** de cour qui rentrent dans la masse et de petits ressauts en escalier — ça demande une ouverture morphologique, pas un seuil de plus.
-
+**2026-08-17 (session 32) — une petite économie, deux prix.** L'auteur demande
+*« une petite économie simple, avec les coûts et les rendements des panneaux
+solaires »*. Deux prix suffisent — **260 €/m² posé** et **150 €/MWh produit** —
+et tout le reste s'en déduit : le coût d'une pose, sa recette annuelle, son
+amortissement. L'unité passe du « point » à l'euro, parce qu'un point ne se
+compare à rien. La `cout_x` de la table, jusque-là documentaire, devient enfin
+visible : un toit de cœur ancien coûte plus du double d'un toit de barre au
+mètre carré. La caisse municipale — 800 k€, 30 k€/mois — **n'encaisse que les
+panneaux** : faire passer la facture d'énergie de la ville (7,7 M€/an) par la
+mairie aurait donné un jeu sans décision. 🔴 **Le piège du jour, et il était
+dans le noyau, pas dans l'écran** : la recette est l'**intégrale** de la part
+équipée dans le temps, et l'ancienne machinerie de révision d'un chantier
+**réécrivait la base** de cet historique — un joueur qui relève sa cible à
+mi-pose aurait fait croire à la caisse que le toit produisait depuis le premier
+jour. Les rampes s'**additionnent** maintenant au lieu de se remplacer, un
+chantier engagé ne se révise plus, et le dictionnaire qui servait à défaire la
+réécriture a disparu avec elle. L'intégrale est calculée en forme close, donc
+la caisse vaut la même chose à 5 ou à 500 images par seconde. Trois nouveaux
+contrôles imprimés arrêtent la maquette s'ils tombent à faux, et une capture
+montre le refus. Décision **69**, question **n°22** ouverte dans la foulée : la
+ville paie et encaisse sur des toits qui ne sont pas tous à elle.
 
 → **[HISTORIQUE.md](HISTORIQUE.md)** pour les sessions précédentes.

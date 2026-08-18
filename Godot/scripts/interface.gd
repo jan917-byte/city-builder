@@ -2,12 +2,17 @@ extends CanvasLayer
 # L'interface du prototype énergie simplifié.
 #
 # Deux niveaux, et aucun mélange : la ville entière à gauche, l'îlot choisi à
-# droite. Le survol ne change jamais la fiche. Pour l'instant, le seul geste
-# est d'augmenter immédiatement la part de toit équipée, sans temps, budget ni
-# capital politique. Ce retour en arrière est volontaire : on vérifie d'abord
-# si agir sur un toit se comprend et se voit avant de reconstruire une tension.
+# droite. Le survol ne change jamais la fiche. Le seul geste reste d'augmenter
+# la part de toit équipée, mais la pose prend du temps, se voit avancer — et,
+# depuis le 2026-08-17, elle se paie.
+#
+# 💶 La petite économie tient en quatre nombres à l'écran, pas un de plus : la
+# CAISSE et la RECETTE à gauche (la ville), le COÛT de la pose visée et
+# l'AMORTISSEMENT à droite (l'îlot). Le capital politique reste hors du test.
 
 signal solaire_demande(fid: int, part: float)
+signal vitesse_demandee(vitesse: float)
+signal temps_remis()
 
 const Ville := preload("res://scripts/ville.gd")
 
@@ -16,25 +21,83 @@ const BORD := Color(0.173, 0.192, 0.227)
 const TEXTE := Color(0.902, 0.910, 0.925)
 const GRIS := Color(0.604, 0.635, 0.694)
 const ACCENT := Color(0.910, 0.769, 0.416)
+# Le seul refus que le prototype sache prononcer : la caisse ne suit pas. Une
+# couleur, parce qu'un bouton grisé sans raison écrite est une panne, pas une
+# règle.
+const ALERTE := Color(0.878, 0.451, 0.376)
+
+
+## La jauge de lecture du solaire : ce qui est POSÉ, et vers quoi ça va.
+##
+## Un `ProgressBar` ne sait montrer qu'un nombre ; il en faut deux ici, sinon on
+## ne distingue pas « 40 % posés » de « 40 % posés en route vers 72 % » — et
+## c'est justement cet écart que la pose doit donner à voir avancer.
+## Elle ne se touche pas : le réglage, c'est le curseur d'en dessous.
+class Jauge extends Control:
+	const RESTE := Color(0.153, 0.169, 0.204)   # le toit encore nu
+	const VISEE := Color(0.404, 0.349, 0.212)   # l'objectif demandé, pas encore atteint
+	const POSE := Color(0.957, 0.867, 0.596)    # le jaune clair des panneaux réellement en place
+	const CADRE := Color(0.290, 0.318, 0.373)   # le filet qui dessine la jauge quand elle est vide
+
+	var pose := 0.0   # 0 → 1
+	var cible := 0.0  # 0 → 1, toujours ≥ pose
+
+	func regler(p: float, c: float) -> void:
+		if is_equal_approx(p, pose) and is_equal_approx(c, cible):
+			return  # ⚠️ appelé à chaque image : ne repeindre que sur un vrai changement
+		pose = p
+		cible = c
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), RESTE)
+		if cible > pose:
+			draw_rect(Rect2(0.0, 0.0, size.x * cible, size.y), VISEE)
+		if pose > 0.0:
+			draw_rect(Rect2(0.0, 0.0, size.x * pose, size.y), POSE)
+		# Sans ce filet, une jauge à 0 % n'est qu'un rectangle sombre de plus dans
+		# un panneau sombre : on ne voit pas qu'il y a une quantité à remplir.
+		draw_rect(Rect2(Vector2.ZERO, size), CADRE, false, 1.0)
+
 
 var ville: Ville
 
 var _ville_valeurs := {}
+var _fiche_valeurs := {}
 var _fiche_titre: Label
 var _fiche_vide: Label
 var _fiche_grille: GridContainer
 var _solaire_bloc: VBoxContainer
 var _solaire_valeur: Label
+var _solaire_cout: Label
 var _solaire_curseur: HSlider
+var _solaire_jauge: Jauge
 var _solaire_bouton: Button
 var _message: Label
+var _camera_vue: Label
+var _temps_label: Label
+var _vitesses := {}
 
 var _fiche_fid := -1
+var _mois := 0.0
+var _caisse_ke := Ville.CAISSE_DEPART_KE
+var _cout_en_alerte := false
+
+# La position que l'auteur a donnée au curseur et qui n'est PAS encore validée.
+# -1 = aucun choix en cours, la fiche commande le curseur.
+# ⚠️ Sans ce souvenir, `_maj_fiche()` — qui passe à chaque image — reposait la
+# valeur sous le doigt et la barre était intraînable (défaut du 2026-08-17).
+var _solaire_choix := -1.0
+# Vrai pendant que la fiche écrit dans le curseur : une montée de `min_value`
+# peut déplacer la valeur et émettre le signal, ce qui inventerait un choix.
+var _ecrit_curseur := false
 
 
 func batir() -> void:
 	_panneau_ville()
 	_panneau_ilot()
+	_panneau_camera()
+	_controles_temps()
 
 
 func _boite() -> StyleBoxFlat:
@@ -45,6 +108,39 @@ func _boite() -> StyleBoxFlat:
 	sb.set_corner_radius_all(8)
 	sb.set_content_margin_all(12)
 	return sb
+
+
+## Le curseur par défaut de Godot est un trait gris sans remplissage : on y lit
+## la position d'une pastille, pas une quantité. On lui donne une vraie gouttière,
+## une partie gauche remplie, et une poignée qu'on voit.
+func _habiller_curseur(s: HSlider) -> void:
+	var gouttiere := StyleBoxFlat.new()
+	gouttiere.bg_color = Jauge.RESTE
+	gouttiere.set_corner_radius_all(3)
+	# ⚠️ Chez Slider, c'est la MARGE de la boîte qui fait l'épaisseur du rail —
+	# il n'y a pas de hauteur à régler ailleurs. 3 + 3 = un rail de 6 px.
+	gouttiere.content_margin_top = 3.0
+	gouttiere.content_margin_bottom = 3.0
+	s.add_theme_stylebox_override("slider", gouttiere)
+
+	var rempli := StyleBoxFlat.new()
+	rempli.bg_color = Jauge.VISEE
+	rempli.set_corner_radius_all(3)
+	rempli.content_margin_top = 3.0
+	rempli.content_margin_bottom = 3.0
+	s.add_theme_stylebox_override("grabber_area", rempli)
+	s.add_theme_stylebox_override("grabber_area_highlight", rempli)
+
+	var poignee := _pastille(Jauge.POSE)
+	s.add_theme_icon_override("grabber", poignee)
+	s.add_theme_icon_override("grabber_highlight", poignee)
+	s.add_theme_icon_override("grabber_disabled", _pastille(GRIS.darkened(0.4)))
+
+
+static func _pastille(coul: Color) -> ImageTexture:
+	var img := Image.create_empty(7, 20, false, Image.FORMAT_RGBA8)
+	img.fill(coul)
+	return ImageTexture.create_from_image(img)
 
 
 func _label(txt: String, taille: int, coul: Color) -> Label:
@@ -75,7 +171,14 @@ func _panneau_ville() -> void:
 		["production", "Production solaire"],
 		["achat", "Énergie achetée"],
 		["co2", "CO₂"],
+		# Les deux lignes de la petite économie. Elles viennent après les
+		# quatre autres, et pas avant : c'est l'énergie qu'on transforme,
+		# l'argent n'est que ce qui limite le rythme.
+		["caisse", "Caisse"],
+		["recette", "Recette solaire"],
 	]:
+		if ligne[0] == "caisse":
+			v.add_child(HSeparator.new())
 		var h := HBoxContainer.new()
 		h.add_child(_label(ligne[1], 12, GRIS))
 		var valeur := _label("", 14, TEXTE)
@@ -84,6 +187,10 @@ func _panneau_ville() -> void:
 		h.add_child(valeur)
 		_ville_valeurs[ligne[0]] = valeur
 		v.add_child(h)
+
+	# La caisse est le seul nombre de l'écran qui puisse dire non : elle prend
+	# la couleur d'accent pour qu'on la retrouve sans la chercher.
+	(_ville_valeurs["caisse"] as Label).add_theme_color_override("font_color", ACCENT)
 
 
 func _panneau_ilot() -> void:
@@ -112,6 +219,22 @@ func _panneau_ilot() -> void:
 	_fiche_grille.add_theme_constant_override("h_separation", 14)
 	_fiche_grille.add_theme_constant_override("v_separation", 4)
 	v.add_child(_fiche_grille)
+	for ligne in [
+		["tissu", "Tissu"],
+		["logements", "Logements"],
+		["conso", "Consommation"],
+		["production", "Production"],
+		["toit", "Toit équipable"],
+		# L'amortissement ne dépend pas de la part qu'on vise (voir
+		# `energie.rentabilite_annees`) : c'est une propriété de l'îlot, donc
+		# il a sa place dans la grille, avec le tissu et les logements.
+		["retour", "Se rembourse en"],
+	]:
+		_fiche_grille.add_child(_label(ligne[1], 12, GRIS))
+		var valeur := _label("", 12, TEXTE)
+		valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_fiche_grille.add_child(valeur)
+		_fiche_valeurs[ligne[0]] = valeur
 
 	_solaire_bloc = VBoxContainer.new()
 	_solaire_bloc.add_theme_constant_override("separation", 6)
@@ -122,12 +245,38 @@ func _panneau_ilot() -> void:
 	_solaire_valeur = _label("", 13, TEXTE)
 	_solaire_bloc.add_child(_solaire_valeur)
 
+	# La lecture d'abord, le réglage ensuite : on regarde où on en est avant de
+	# décider où aller. Les deux ne se ressemblent plus — l'une est pleine et
+	# muette, l'autre a une poignée.
+	_solaire_jauge = Jauge.new()
+	_solaire_jauge.custom_minimum_size = Vector2(0, 15)
+	_solaire_jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_solaire_bloc.add_child(_solaire_jauge)
+
+	_solaire_bloc.add_child(_label("Objectif", 11, GRIS))
+
 	_solaire_curseur = HSlider.new()
+	# 🔴 Échelle FIXE 0→100, et elle ne bouge jamais. L'ancienne version montait
+	# `min_value` avec la pose : à 40 % posés toute la largeur valait 40→100, donc
+	# le même pixel changeait de sens en cours de partie. Le plancher se tient
+	# maintenant par un rattrapage dans `_sur_curseur`, pas par l'échelle.
 	_solaire_curseur.min_value = 0.0
 	_solaire_curseur.max_value = 100.0
 	_solaire_curseur.step = 1.0
+	# ⚠️ Sans ça, le curseur garde le focus après un clic et AVALE les flèches
+	# du clavier : la caméra ne tournerait plus tant qu'on n'a pas cliqué
+	# ailleurs. Il se règle à la souris, il n'a rien à gagner au focus.
+	_solaire_curseur.focus_mode = Control.FOCUS_NONE
+	_habiller_curseur(_solaire_curseur)
 	_solaire_curseur.value_changed.connect(_sur_curseur)
 	_solaire_bloc.add_child(_solaire_curseur)
+
+	# La ligne d'argent, juste au-dessus du bouton : ce que la pose visée coûte
+	# et ce qu'elle rapportera. Elle est là plutôt que dans la grille parce
+	# qu'elle suit le curseur — elle parle de la CIBLE, pas de l'îlot.
+	_solaire_cout = _label("", 12, GRIS)
+	_solaire_cout.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_solaire_bloc.add_child(_solaire_cout)
 
 	_solaire_bouton = Button.new()
 	_solaire_bouton.text = "Augmenter"
@@ -140,15 +289,117 @@ func _panneau_ilot() -> void:
 	v.add_child(_message)
 
 
-func maj(indic: Dictionary) -> void:
+# Le lacet 0 place la caméra AU SUD et la fait regarder vers le nord — c'est
+# `07_exporter_godot.py:680` qui fixe ce repère (« Z vers le sud »), pas un choix
+# d'ici. Un quart de tour vers l'est ajoute 90°.
+const AZIMUTS := ["du sud", "du sud-est", "de l'est", "du nord-est",
+	"du nord", "du nord-ouest", "de l'ouest", "du sud-ouest"]
+
+
+func _panneau_camera() -> void:
+	# En bas à gauche : les gestes de caméra ne se devinent pas, et un jeu qui
+	# oblige à ouvrir un fichier pour les connaître n'en est pas un.
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _boite())
+	p.anchor_top = 1.0
+	p.anchor_bottom = 1.0
+	p.offset_left = 16
+	p.offset_bottom = -16
+	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	add_child(p)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	p.add_child(v)
+	v.add_child(_label("Caméra", 12, ACCENT))
+	_camera_vue = _label("", 14, TEXTE)
+	v.add_child(_camera_vue)
+	v.add_child(HSeparator.new())
+	for ligne in [
+		"clic droit glissé : tourner autour de la ville",
+		"clic milieu glissé : déplacer · molette : zoom",
+		"Q E : quart de tour · flèches : ajuster",
+		"T : vue de dessus · V B R I : les quatre repères",
+	]:
+		v.add_child(_label(ligne, 11, GRIS))
+
+
+func maj_camera(lacet: float, hauteur: float) -> void:
+	if _camera_vue == null:
+		return
+	var l := fmod(fmod(lacet, 360.0) + 360.0, 360.0)
+	var i := int(roundf(l / 45.0)) % 8
+	_camera_vue.text = "vue %s, %d° au-dessus" % [AZIMUTS[i], int(roundf(hauteur))]
+
+
+func _controles_temps() -> void:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _boite())
+	p.anchor_left = 0.5
+	p.anchor_right = 0.5
+	p.anchor_top = 1.0
+	p.anchor_bottom = 1.0
+	# 430 de large, pas 380 : le bouton de retour à zéro est venu s'ajouter aux
+	# quatre vitesses le 2026-08-17. Mesuré sur `wehrau_essai_reset.png` — le
+	# contenu occupe 409 px, marges comprises.
+	p.offset_left = -215
+	p.offset_right = 215
+	p.offset_top = -66
+	p.offset_bottom = -16
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	add_child(p)
+
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	p.add_child(h)
+	_temps_label = _label("Mois 0", 13, TEXTE)
+	_temps_label.custom_minimum_size.x = 92
+	h.add_child(_temps_label)
+	for choix in [["Pause", 0.0], ["×1", 1.0], ["×4", 4.0], ["×12", 12.0]]:
+		var b := Button.new()
+		b.text = choix[0]
+		var v: float = choix[1]
+		b.pressed.connect(_demander_vitesse.bind(v))
+		h.add_child(b)
+		_vitesses[v] = b
+
+	# Rejouer le même geste demandait de relancer la maquette : trois secondes de
+	# chargement pour revoir une pose d'un mois. Le bouton remet le temps ET
+	# la ville au départ — un temps qui recule seul laisserait des toits noirs
+	# sous un compteur à « Mois 0 ».
+	var raz := Button.new()
+	raz.text = "Recommencer"
+	raz.tooltip_text = "Remet le temps au mois 0 et annule les poses décidées."
+	raz.pressed.connect(func() -> void: temps_remis.emit())
+	h.add_child(raz)
+
+
+func _demander_vitesse(v: float) -> void:
+	vitesse_demandee.emit(v)
+
+
+func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	if indic.is_empty():
 		return
+	_mois = mois
 	var conso: float = indic["conso_mwh"]
 	var prod: float = indic["production_mwh"]
 	_ville_valeurs["conso"].text = _nb(conso / 1000.0, 1) + " GWh/an"
 	_ville_valeurs["production"].text = _nb(prod / 1000.0, 1) + " GWh/an"
 	_ville_valeurs["achat"].text = _nb(indic["achat_mwh"] / 1000.0, 1) + " GWh/an"
 	_ville_valeurs["co2"].text = _nb(indic["co2_kt"], 1) + " kt/an"
+	# ⚠️ La caisse est relue ICI et mémorisée : `_maj_fiche()` en a besoin à
+	# chaque image pour savoir si le bouton peut dire oui, et la recalculer
+	# parcourrait la ville une deuxième fois par image.
+	_caisse_ke = indic["caisse_ke"]
+	_ville_valeurs["caisse"].text = _milliers(_caisse_ke) + " k€"
+	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
+	_temps_label.text = "Mois %s" % _nb(mois, 1)
+	for v in _vitesses:
+		(_vitesses[v] as Button).disabled = is_equal_approx(float(v), vitesse)
+	if _fiche_fid >= 0:
+		_maj_fiche()
 
 
 func montrer(couche: String, fid: int, _garder := true) -> void:
@@ -157,6 +408,8 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# jamais possession de cette fiche.
 	if couche != "i" or fid < 0:
 		return
+	if fid != _fiche_fid:
+		_solaire_choix = -1.0  # changer d'îlot abandonne le réglage non validé
 	_fiche_fid = fid
 	_fiche_vide.visible = false
 	_solaire_bloc.visible = true
@@ -168,50 +421,163 @@ func _maj_fiche() -> void:
 	if o.is_empty():
 		return
 	_fiche_titre.text = "Îlot %d" % _fiche_fid
-	for n in _fiche_grille.get_children():
-		_fiche_grille.remove_child(n)
-		n.queue_free()
 
-	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", 0.0)
-	var prod := ville.valeur("i", _fiche_fid, "_production_mwh", 0.0)
-	var toit := ville.valeur("i", _fiche_fid, "_toit_equipable_m2", 0.0)
-	var part := ville.valeur("i", _fiche_fid, "part_toit_equipe", 0.0)
-	var lignes := [
-		["Tissu", str(o.get("sous_type", "?")).replace("_", " ")],
-		["Logements", _nb(float(o.get("logements", 0.0)), 0)],
-		["Consommation", _nb(conso, 0) + " MWh/an"],
-		["Production", _nb(prod, 0) + " MWh/an"],
-		["Toit équipable", _nb(toit, 0) + " m²"],
-	]
-	for ligne in lignes:
-		_fiche_grille.add_child(_label(ligne[0], 12, GRIS))
-		var valeur := _label(ligne[1], 12, TEXTE)
-		valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		_fiche_grille.add_child(valeur)
+	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _mois)
+	var prod := ville.valeur("i", _fiche_fid, "_production_mwh", _mois)
+	var toit := ville.valeur("i", _fiche_fid, "_toit_equipable_m2", _mois)
+	var etat := ville.etat_solaire(_fiche_fid, _mois)
+	var pct := float(etat["actuel"]) * 100.0
+	var cible_pct := float(etat["cible"]) * 100.0
+	(_fiche_valeurs["tissu"] as Label).text = str(o.get("sous_type", "?")).replace("_", " ")
+	(_fiche_valeurs["logements"] as Label).text = _nb(float(o.get("logements", 0.0)), 0)
+	(_fiche_valeurs["conso"] as Label).text = _nb(conso, 0) + " MWh/an"
+	(_fiche_valeurs["production"] as Label).text = _nb(prod, 0) + " MWh/an"
+	(_fiche_valeurs["toit"] as Label).text = _nb(toit, 0) + " m²"
+	var ans := ville.valeur("i", _fiche_fid, "_rentabilite_annees", _mois)
+	(_fiche_valeurs["retour"] as Label).text = \
+		"—" if is_inf(ans) else "%d ans" % int(roundf(ans))
 
-	var pct := roundf(part * 100.0)
-	_solaire_curseur.min_value = pct
-	_solaire_curseur.set_value_no_signal(pct)
-	_solaire_curseur.editable = toit > 0.0 and pct < 100.0
-	_solaire_bouton.disabled = true
-	_solaire_valeur.text = ("Aucun toit équipable." if toit <= 0.0
-		else "%d %% du toit équipé" % int(pct))
-	_solaire_bouton.text = "Toit entièrement équipé" if pct >= 100.0 else "Augmenter"
+	# 🔴 On passe ici À CHAQUE IMAGE (`maj()` est appelé depuis `_process`).
+	# Donc le curseur ne se repositionne que s'il n'y a pas de choix en cours ;
+	# sinon on garde la position de l'auteur, simplement remontée au niveau
+	# déjà posé (le plancher monte pendant que la pose avance).
+	#
+	# ⚠️ Le curseur se VERROUILLE pendant les travaux : une pose engagée est
+	# payée, et la réviser en cours de route demanderait de rembourser. Ce
+	# verrou est ce qui permet aux rampes de s'additionner sans jamais réécrire
+	# l'histoire d'un toit (`ville.lancer_solaire`).
+	_ecrit_curseur = true
+	_solaire_curseur.editable = toit > 0.0 and pct < 100.0 and not etat["en_cours"]
+	if _solaire_choix < 0.0:
+		_solaire_curseur.set_value_no_signal(maxf(pct, cible_pct))
+	else:
+		_solaire_choix = maxf(_solaire_choix, pct)
+		_solaire_curseur.set_value_no_signal(_solaire_choix)
+	_ecrit_curseur = false
+	# La jauge lit toujours le RÉEL et l'objectif visé — celui du curseur tant
+	# qu'il n'est pas validé, celui de la pose en cours sinon.
+	_solaire_jauge.regler(pct / 100.0,
+		maxf(pct, _solaire_choix if _solaire_choix >= 0.0 else cible_pct) / 100.0)
+
+	var recette := ville.valeur("i", _fiche_fid, "_recette_ke_an", _mois)
+	_alerter_cout(false)
+	if toit <= 0.0:
+		_solaire_valeur.text = "Aucun toit équipable."
+		_solaire_cout.text = ""
+		_solaire_bouton.text = "Augmenter"
+		_solaire_bouton.disabled = true
+	elif _solaire_choix >= 0.0:
+		_afficher_choix(pct, _solaire_choix)
+	elif etat["en_cours"]:
+		_solaire_valeur.text = "%d %% posés → cible %d %% · encore %s" % [
+			int(roundf(pct)), int(roundf(cible_pct)), _duree(float(etat["reste_mois"]))]
+		_solaire_cout.text = "Travaux engagés : %s k€ payés" % _milliers(float(etat["cout_ke"]))
+		_solaire_bouton.text = "Chantier en cours"
+		_solaire_bouton.disabled = true
+	else:
+		_solaire_valeur.text = "%d %% du toit équipé" % int(roundf(pct))
+		_solaire_cout.text = "Rapporte %s k€/an" % _milliers(recette) if pct > 0.0 \
+			else "Aucun panneau posé."
+		if etat["a_commence"]:
+			_message.text = "Pose terminée. Les toits et les totaux ont atteint leur cible."
+		_solaire_bouton.text = "Toit entièrement équipé" if pct >= 99.95 else "Augmenter"
+		_solaire_bouton.disabled = true
+
+
+## Ce que dit la fiche tant que le réglage n'est pas validé : la durée annoncée,
+## le prix, et le bouton qui rappelle la cible visée.
+##
+## 🔴 C'est le seul endroit où le jeu dit non. Un bouton grisé sans phrase est
+## une panne ; un bouton grisé sous « il manque 214 k€ » est une règle.
+func _afficher_choix(actuel: float, cible: float) -> void:
+	var duree := ville.duree_solaire_mois(actuel / 100.0, cible / 100.0)
+	var cout := ville.cout_solaire_ke(_fiche_fid, cible / 100.0, _mois)
+	_solaire_valeur.text = "%d %% posés → cible %d %% · durée : %s" % [
+		int(roundf(actuel)), int(roundf(cible)), _duree(duree)]
+	_solaire_bouton.text = "Augmenter à %d %%" % int(roundf(cible))
+	_solaire_bouton.disabled = cible <= actuel + 0.01
+
+	var manque := cout - _caisse_ke
+	if manque > 0.001:
+		_solaire_cout.text = "Coût %s k€ · il manque %s k€ en caisse" % [
+			_milliers(cout), _milliers(manque)]
+		_solaire_bouton.disabled = true
+	else:
+		_solaire_cout.text = "Coût %s k€ · reste %s k€ en caisse" % [
+			_milliers(cout), _milliers(_caisse_ke - cout)]
+	_alerter_cout(manque > 0.001)
+
+
+## ⚠️ On passe ici à chaque image : reposer un `theme_color_override` identique
+## soixante fois par seconde fait retraiter le thème du Label pour rien. On ne
+## touche à la couleur que quand elle change vraiment.
+func _alerter_cout(alerte: bool) -> void:
+	if alerte == _cout_en_alerte:
+		return
+	_cout_en_alerte = alerte
+	_solaire_cout.add_theme_color_override("font_color", ALERTE if alerte else GRIS)
+
+
+## Poser un objectif sans souris — le seul point d'entrée de l'essai automatisé
+## dans le curseur. Il passe par `value_changed`, donc exactement par le même
+## chemin qu'un doigt sur la poignée : une capture faite comme ça prouve ce que
+## le joueur verra, pas ce que le code croit.
+func viser(pct: float) -> void:
+	_solaire_curseur.value = pct
 
 
 func _sur_curseur(v: float) -> void:
-	if _fiche_fid < 0:
+	if _fiche_fid < 0 or _ecrit_curseur:
 		return
-	var actuel := ville.valeur("i", _fiche_fid, "part_toit_equipe", 0.0) * 100.0
-	_solaire_valeur.text = "%d %% actuellement → %d %%" % [int(roundf(actuel)), int(roundf(v))]
-	_solaire_bouton.text = "Augmenter à %d %%" % int(roundf(v))
-	_solaire_bouton.disabled = v <= actuel + 0.01
+	var actuel := ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois) * 100.0
+	# Déposer des panneaux n'est pas une décision de ce prototype (`Énergie` §1) :
+	# la poignée refuse de passer à gauche de ce qui est déjà sur les toits. On
+	# rattrape ici plutôt qu'en montant `min_value`, pour garder l'échelle fixe.
+	if v < actuel:
+		v = actuel
+		_ecrit_curseur = true
+		_solaire_curseur.set_value_no_signal(v)
+		_ecrit_curseur = false
+	_solaire_choix = v
+	_solaire_jauge.regler(actuel / 100.0, v / 100.0)
+	_afficher_choix(actuel, v)
 
 
-func confirmer_solaire() -> void:
-	_message.text = "Les toits et les totaux de la ville ont changé."
+## Après un retour au mois 0 : le réglage non validé et le compte rendu de la
+## pose précédente ne veulent plus rien dire.
+func remis_a_zero() -> void:
+	_solaire_choix = -1.0
+	_message.text = "Retour au mois 0. La ville est comme au premier jour, caisse à %s k€." \
+		% _milliers(Ville.CAISSE_DEPART_KE)
+	if _fiche_fid >= 0:
+		_maj_fiche()
+
+
+func confirmer_solaire(cout_ke := 0.0) -> void:
+	_solaire_choix = -1.0  # la demande est partie : la fiche reprend la main
+	_message.text = "La pose a commencé — %s k€ engagés. Accélérez le temps pour la suivre." \
+		% _milliers(cout_ke)
 	_maj_fiche()
+
+
+static func _duree(mois: float) -> String:
+	if mois < 1.0:
+		return "%d jour(s)" % int(ceil(mois * 30.0))
+	return "%s mois" % _nb(mois, 1)
 
 
 static func _nb(v: float, dec: int) -> String:
 	return (("%%.%df" % dec) % v).replace(".", ",")
+
+
+## Un montant en k€, arrondi à l'unité, avec l'espace des milliers. Sans lui
+## « 10240 » se lit de travers, et la caisse passe les 10 000 k€ dès qu'on
+## joue vingt ans.
+static func _milliers(v: float) -> String:
+	var s := "%d" % int(roundf(absf(v)))
+	var out := ""
+	for i in s.length():
+		if i > 0 and (s.length() - i) % 3 == 0:
+			out += " "
+		out += s[i]
+	return ("−" if v < -0.5 else "") + out

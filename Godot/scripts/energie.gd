@@ -68,18 +68,42 @@ const CO2_KG_KWH := 0.25              # mix + chauffage — vaut aussi t/MWh
 const CO2_GRIS_PANNEAU_KG_M2 := 120.0     # payé en une fois, au chantier
 const CO2_GRIS_ISOLATION_KG_LOG := 4000.0 # modeste : remboursé en ~2 ans
 
-# Les deux molettes de la rentabilité — il n'y en a que deux (PLAN §5).
+# ==========================================================================
+# LA PETITE ÉCONOMIE — deux prix, et rien d'autre (demandée le 2026-08-17)
+# ==========================================================================
+# Ces deux nombres suffisent à tout : le coût d'une pose, la recette annuelle
+# qu'elle rapporte, et donc le nombre d'années au bout desquelles elle est
+# remboursée. Aucun troisième prix, aucun taux, aucune subvention.
+#
+# 🔴 L'unité est l'EURO, plus le « point » de l'ancien prototype. Un point de
+# budget ne se compare à rien ; 260 € le mètre carré se discute avec quelqu'un
+# qui a déjà fait poser des panneaux. Les constantes en points sont plus bas,
+# gardées pour `chantiers.gd`, et elles ne servent plus à la boucle jouable.
+const COUT_PANNEAU_EUR_M2 := 260.0    # panneau + structure + pose sur toiture existante
+const PRIX_ENERGIE_EUR_MWH := 150.0   # ce que vaut le MWh produit plutôt qu'acheté
+
+# ⏸️ L'ANCIENNE ÉCONOMIE EN POINTS, et les deux dérives du temps (PLAN §5, §6
+# bis b). Elles ne sont plus appliquées nulle part dans la boucle jouable
+# depuis le 2026-08-17 — `chantiers.gd` et `outils/essai_energie.gd` les lisent
+# encore, et c'est la seule raison pour laquelle elles sont toujours là.
+#
+# ⚠️ Ne pas les rebrancher par réflexe : composées, elles faisaient fondre
+# l'amortissement d'environ 7,8 % par an, donc ATTENDRE était toujours le bon
+# coup. C'est la question « quand investir ? », et l'auteur a demandé d'abord
+# « où investir ? ». Une molette à la fois.
 const PANNEAU_M2_PAR_POINT := 120.0   # 1 point de budget pose 120 m²
 const RETOUR_PTS_PAR_GWH_AN := 6.0    # 6 points par an et par GWh produit
-
-# Les deux dérives du temps (PLAN §6 bis b). Composées : la rentabilité
-# affichée fond d'environ 7,8 % par an, et la zone rouge recule toute seule.
 const DERIVE_COUT_PANNEAU_AN := 0.94  # le panneau coûte −6 % par an
 const DERIVE_PRIX_ENERGIE_AN := 1.02  # l'énergie achetée coûte +2 % par an
 
 # Les quatre classes du calque : se rembourse vite · dans la partie ·
 # tout juste · jamais. Aucun chiffre sur la carte (décision 60) — la précision
 # se paie d'un clic, sur la fiche.
+#
+# 🔄 Depuis le passage à l'euro, ce sont de VRAIES années, pas des années de
+# points : une barre de 1974 s'amortit vers 9 ans, un cœur ancien vers 30. Les
+# trois seuils tombent donc encore juste, mais ils ne veulent plus dire la même
+# chose — ils se relisent sur la mesure imprimée par `-- --essai`.
 const CLASSES_ANNEES := [10.0, 17.0, 24.0]
 
 
@@ -141,20 +165,38 @@ static func gain_isolation_mwh(v, fid: int, t: float) -> float:
 		* (1.0 - v.valeur("i", fid, "part_isolee", t))
 
 
-# ----------------------------------------------------------- la rentabilité
+# ------------------------------------------------------- coût et amortissement
 
-## En combien d'années les panneaux de cet îlot se remboursent, si on décide
-## au mois `t`. Les deux dérives se composent : le coût fond, le tarif monte.
-## INF si l'îlot n'a pas de toit — à ne JAMAIS peindre tel quel.
+## Ce que coûte, en k€, de faire passer la part équipée de `de` à `vers`.
+##
+## `cout_x` est enfin autre chose qu'une colonne documentaire : c'est lui qui
+## fait qu'un toit de cœur ancien coûte plus du double d'un toit de barre au
+## mètre carré — accès, échafaudage, patrimoine.
+static func cout_pose_ke(v, fid: int, de: float, vers: float) -> float:
+	return toit_equipable_m2(v, fid) * maxf(vers - de, 0.0) \
+		* COUT_PANNEAU_EUR_M2 * ligne(v, fid)["cout_x"] / 1000.0
+
+
+## Ce que rapportent chaque année les panneaux DÉJÀ posés, en k€/an.
+static func recette_ke_an(v, fid: int, t: float) -> float:
+	return production_mwh(v, fid, t) * PRIX_ENERGIE_EUR_MWH / 1000.0
+
+
+## En combien d'années les panneaux de cet îlot se remboursent.
+##
+## ⚠️ Le résultat NE DÉPEND PAS de la part équipée : le coût et la recette sont
+## tous deux proportionnels aux mètres carrés posés, donc leur rapport est une
+## propriété du tissu (son `cout_x`, son `rdt_x`) et de son ombrage. Équiper un
+## dixième d'un toit s'amortit exactement aussi vite que l'équiper en entier —
+## c'est ce qui fait de ce nombre un critère de CHOIX D'ÎLOT, et pas un critère
+## de dosage.
+##
+## INF si l'îlot n'a pas de toit — à ne JAMAIS peindre ni afficher tel quel.
 static func rentabilite_annees(v, fid: int, t: float) -> float:
 	var pot := potentiel_mwh(v, fid, t)
 	if pot <= 0.0:
 		return INF
-	var cout: float = toit_equipable_m2(v, fid) / PANNEAU_M2_PAR_POINT \
-		* ligne(v, fid)["cout_x"] * derive_an(DERIVE_COUT_PANNEAU_AN, t)
-	var retour_an: float = pot / 1000.0 * RETOUR_PTS_PAR_GWH_AN \
-		* derive_an(DERIVE_PRIX_ENERGIE_AN, t)
-	return cout / retour_an
+	return cout_pose_ke(v, fid, 0.0, 1.0) / (pot * PRIX_ENERGIE_EUR_MWH / 1000.0)
 
 
 ## La classe du calque : 0 vite · 1 dans la partie · 2 tout juste · 3 jamais.
@@ -180,10 +222,21 @@ static func ville_mwh(v, t: float) -> Dictionary:
 	return {"conso": conso, "production": prod, "achat": conso - prod}
 
 
-## La facture : le volume acheté × le prix qui monte. C'est elle que le bandeau
-## affiche (indexée sur t0) — ne rien faire coûte de plus en plus cher.
-static func facture(v, t: float) -> float:
-	return ville_mwh(v, t)["achat"] * derive_an(DERIVE_PRIX_ENERGIE_AN, t)
+## Ce que la ville paie chaque année pour l'énergie qu'elle achète, en k€/an.
+##
+## 🔴 Ce montant NE PASSE PAS par la caisse municipale, et c'est délibéré : la
+## facture est payée par les OCCUPANTS, pas par la mairie. La caisse ne connaît
+## que les panneaux — ce qu'ils coûtent à poser et ce qu'ils rapportent.
+## Mélanger les deux ferait une mairie qui paie 7,7 M€ d'énergie par an avec
+## une dotation de 0,36 M€, donc un jeu sans décision.
+##
+## ✅ Le corollaire de propriété est tranché depuis le 2026-08-18 (décision 70) :
+## **tout le logement et tous les panneaux appartiennent à la ville.** Elle est
+## donc propriétaire-bailleur — elle possède les murs et les toits, ses
+## locataires paient leur électricité. C'est ce qui permet à cette ligne de
+## rester vraie : posséder un logement n'est pas payer sa facture.
+static func facture_ke(v, t: float) -> float:
+	return ville_mwh(v, t)["achat"] * PRIX_ENERGIE_EUR_MWH / 1000.0
 
 
 ## Le CO2 de l'énergie achetée, en kt/an. SANS le carbone gris des chantiers :
@@ -213,6 +266,12 @@ static func derive(v, fid: int, champ: String, t: float) -> float:
 			return float(classe_rentabilite(v, fid, t))
 		"_rentabilite_annees":
 			return rentabilite_annees(v, fid, t)
+		"_recette_ke_an":
+			return recette_ke_an(v, fid, t)
+		# Ce que coûterait d'équiper ce toit EN ENTIER : le prix qui permet de
+		# comparer deux îlots avant d'avoir touché un curseur.
+		"_cout_total_ke":
+			return cout_pose_ke(v, fid, 0.0, 1.0)
 		# Les trois multiplicateurs que la machinerie des chantiers lit par
 		# NOM DE CHAMP, sans savoir qu'ils parlent d'énergie : c'est ce qui
 		# la garde générique (décision 64, le gabarit).

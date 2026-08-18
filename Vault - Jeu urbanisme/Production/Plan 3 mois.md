@@ -114,7 +114,7 @@ Ce qu'il contient, en une ligne : quatre nombres (consommation · production loc
 | Le contrôle le plus important | une partie « panneaux seuls » doit se bloquer sur le **capital**, une partie « isolation seule » sur le **budget** |
 | Ce qui décide de la suite | si le choix du lieu est ennuyeux avec un thème, il le sera avec sept |
 
-⚠️ **Trois points attendent l'auteur avant que le code parte** : la régie municipale (à qui appartiennent les panneaux), l'ajout du capital politique au périmètre, et le fait que **les quartiers de Wehrau n'ont pas de nom** — ce qui empêche de dire *« c'est là qu'il faut commencer »*.
+⚠️ **Deux points attendent l'auteur avant que le code parte** : l'ajout du capital politique au périmètre, et le fait que **les quartiers de Wehrau n'ont pas de nom** — ce qui empêche de dire *« c'est là qu'il faut commencer »*. ✅ Le troisième, **la régie municipale**, est tranché le 2026-08-18 : tout le logement et tous les panneaux appartiennent à la ville → [[Décisions arrêtées]] 70
 
 **Les thèmes suivants viennent après, un par un**, par les trois pièces du gabarit. Les six autres indicateurs attendent leur tour.
 

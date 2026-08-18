@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — n°16, 17, 18, 12 et 14 closes le 2026-08-12. Restent n°19, 20, 21 (l'écran) et n°4 (les fins)
-maj: 2026-08-17
+statut: 🟢 la phase A n'est plus bloquée — n°16, 17, 18, 12 et 14 closes le 2026-08-12. Restent n°19, 20, 21 (l'écran) et n°4 (les fins) — n°22 close le 2026-08-18
+maj: 2026-08-18
 ---
 
 # Questions ouvertes
@@ -153,8 +153,12 @@ Si la résolution ne tient pas, c'est l'indicateur qui saute, pas la règle. →
 
 Ouverte le 2026-08-12 par la décision 60, et posée par l'auteur lui-même.
 
-⏸️ **Hors du prototype actuel depuis le 2026-08-17** : ni économie ni budget
-n'y sont affichés (68). La question reste ouverte pour le jeu complet.
+⏸️ **Toujours hors du prototype, mais plus pour la même raison.** Le 2026-08-17
+au matin, 68 en retirait budget *et* économie. La décision **69** y a remis un
+budget le même jour — une caisse, un coût, une recette — mais **pas l'économie
+de 60** : rien de caché ne fait varier la dotation, qui est un nombre fixe.
+C'est donc exactement le lien de cause à effet de cette question qui manque
+encore, et il manque désormais **en présence d'un budget à l'écran**.
 
 L'état de l'économie vit dans le **bandeau de contexte** (avec la population et la date), le budget vit avec les **ressources**. Ils sont donc **loin l'un de l'autre à l'écran** : le lien de cause à effet ne peut pas être porté par la proximité, et il doit l'être par autre chose — sans quoi le budget a l'air de varier tout seul, ce que 60b interdit.
 
@@ -167,6 +171,45 @@ Trois pistes, **compatibles entre elles**, aucune tranchée :
 | 🥉 | **Le budget se décompose au survol** — ta ville · la conjoncture · le total | La vérification pour qui veut comprendre. Ne fait pas le travail seul, mais rend la chose **auditable sans exposer la formule** |
 
 **Recommandation** : les trois. La deuxième porte le lien en permanence pour rien, la première l'enseigne, la troisième le prouve. Non tranché. → [[Décisions arrêtées]] 60 · 60b · [[Ressources]]
+
+### ~~22. Qui possède les panneaux — la ville, ou les propriétaires ?~~ ✅ **close le 2026-08-18, le lendemain**
+
+**La ville possède tout — le logement compris.** Tranché par l'auteur le
+2026-08-18 : *« pour simplifier le prototype, disons que tout le logement et
+tous les panneaux appartiennent à la ville »*. C'est plus fort que la piste 🥇
+ci-dessous, qui n'imaginait qu'une régie **louant** les toits des autres : il
+n'y a plus de toit des autres, donc plus de loyer de toiture, plus de refus de
+copropriété, plus de deux régimes à écrire. → [[Décisions arrêtées]] **70**
+
+⚠️ **Ce que ça ne dit PAS, et il faut le tenir** : posséder un logement n'est
+pas payer sa facture. La ville est **propriétaire-bailleur** — elle a les murs
+et les toits, ses locataires paient leur électricité. Sans cette ligne, les
+7,7 M€/an d'énergie de Wehrau tomberaient dans une caisse dotée de 0,36 M€/an,
+et il n'y aurait plus de jeu du tout.
+
+🔴 **C'est une simplification de prototype, pas une thèse sur la ville.** Le
+propriétaire qui dit non est l'une des tensions que le jeu complet devra
+porter — une transformation urbaine où personne ne peut refuser n'est pas une
+transformation, c'est un plan. À rouvrir avant Vallmar, et à ne pas laisser
+filer en décision par défaut. → n°21
+
+*Les trois pistes examinées avant l'arbitrage, gardées parce que la troisième
+reste la bonne réponse pour le jeu complet :*
+
+| | La piste | Ce qu'elle coûte, ce qu'elle rapporte |
+|---|---|---|
+| 🥇 | **La régie municipale, assumée.** La ville crée sa société d'énergie, pose sur ses propres toits et loue les autres | Ce que le code fait déjà. Vrai du métier — c'est ce que font les villes qui y arrivent. Demande un **loyer de toiture** dans la table, donc une colonne, pas un système |
+| 🥈 | **La ville subventionne, les propriétaires encaissent.** La caisse paie une part, la recette ne revient pas | Plus juste, et **beaucoup plus dur** : plus rien ne se rembourse, la caisse ne fait que descendre. Le jeu devient « combien je suis prêt à dépenser en CO₂ évité », ce qui est une autre question — peut-être la bonne |
+| 🥉 | **Deux régimes selon le tissu** : régie sur les toits publics et les grands ensembles, subvention sur le diffus | Le plus réaliste, et **le seul qui explique** pourquoi la barre de 1974 et la dalle sont les bons coups : la ville y est chez elle |
+
+*Recommandation d'alors : la troisième, mais pas maintenant.* L'auteur a
+tranché plus court et plus net — **la ville possède tout** —, ce qui supprime la
+colonne supplémentaire au lieu de la reporter. Ce que la troisième piste
+expliquait bien et qui reste vrai sans elle : la barre de 1974 et la dalle sont
+les bons coups parce que la ville y est chez elle. Elle l'est partout,
+maintenant ; ce qui les distingue n'est plus la propriété mais le **coût
+d'accès au toit** — et il est déjà dans la table. → [[Décisions arrêtées]] 69 ·
+70 · `Prototype/Énergie.md`
 
 ## 🟡 Contradictions à résoudre
 

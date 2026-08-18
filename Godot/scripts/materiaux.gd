@@ -42,6 +42,18 @@ static func objet() -> ShaderMaterial:
 		+ "instance uniform vec4 calque = vec4(1.0, 1.0, 1.0, 0.0);\n" \
 		+ "instance uniform float equipe = 0.0;\n" \
 		+ "varying vec3 pos_monde;\n" \
+		+ "// Un panneau de 3 m de côté, cerné d'un liseré de 5 % de la case\n" \
+		+ "// (~0,3 m de trait entre deux panneaux voisins). Ces deux nombres\n" \
+		+ "// sont des choix de LISIBILITÉ à l'écran, pas des mesures de toiture.\n" \
+		+ "// ⚠ Mesuré le 2026-08-17 : à 0,10 le liseré prend le dessus et le toit\n" \
+		+ "// se lit BLANC semé de losanges bleus, l'inverse de ce qu'on veut.\n" \
+		+ "const float PANNEAU_M = 3.0;\n" \
+		+ "const float LISERE = 0.05;\n" \
+		+ "// ⚠ En espace LINÉAIRE, comme les couleurs de sommet (voir en-tête).\n" \
+		+ "// BLEU = #1F61C7 en sRGB. BLANC n'est pas blanc : 92 % de sRGB, sinon\n" \
+		+ "// le liseré brûle et mange le bleu dès qu'on dézoome.\n" \
+		+ "const vec3 BLEU = vec3(0.013, 0.119, 0.570);\n" \
+		+ "const vec3 BLANC = vec3(0.83);\n" \
 		+ "void vertex() {\n" \
 		+ "\tpos_monde = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n" \
 		+ "}\n" \
@@ -50,7 +62,7 @@ static func objet() -> ShaderMaterial:
 		+ "\t// COLOR.a   : l'AO seule. C'est elle qui pose le volume au sol,\n" \
 		+ "\t//             et qui doit survivre au repeint thématique.\n" \
 		+ "\tvec3 base = mix(COLOR.rgb, calque.rgb * COLOR.a, calque.a);\n" \
-		+ "\t// Les toits NOIRCISSENT au fil de la pose des panneaux : une\n" \
+		+ "\t// Les toits se COUVRENT de panneaux au fil de la pose : une\n" \
 		+ "\t// recette, pas un asset (règle 52). NORMAL est en espace VUE ;\n" \
 		+ "\t// on le ramène au monde pour tester « tourné vers le ciel »,\n" \
 		+ "\t// et la hauteur écarte cours et jardins, qui sont dans le même\n" \
@@ -58,9 +70,35 @@ static func objet() -> ShaderMaterial:
 		+ "\tfloat vers_le_ciel = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;\n" \
 		+ "\tfloat rugosite = 0.95;\n" \
 		+ "\tif (equipe > 0.0 && vers_le_ciel > 0.55 && pos_monde.y > 1.0) {\n" \
-		+ "\t\t// Ardoise sombre et un peu de verre : un panneau, pas une ombre.\n" \
-		+ "\t\tbase *= mix(vec3(1.0), vec3(0.13, 0.15, 0.20), equipe);\n" \
-		+ "\t\trugosite = mix(0.95, 0.35, equipe);\n" \
+		+ "\t\t// 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter). Le panneau était rendu\n" \
+		+ "\t\t// par un ASSOMBRISSEMENT du toit (*= 0.13, 0.15, 0.20), donc\n" \
+		+ "\t\t// indiscernable d'une ombre sur les toits déjà sombres, et\n" \
+		+ "\t\t// invisible au-delà du zoom moyen. L'auteur a demandé le\n" \
+		+ "\t\t// 2026-08-17 : bleu franc + liseré blanc. Ce n'est plus une\n" \
+		+ "\t\t// teinte, c'est un MOTIF — donc une grille, sinon aucun\n" \
+		+ "\t\t// « contour » n'a de sens.\n" \
+		+ "\t\tvec2 g = pos_monde.xz / PANNEAU_M;\n" \
+		+ "\t\t// aa = largeur d'une case en pixels⁻¹. Tout ce qui suit en\n" \
+		+ "\t\t// dépend : à la vue par défaut (1 200 m de large) une case ne\n" \
+		+ "\t\t// fait que ~3 px, et une grille de 3 px scintille au moindre\n" \
+		+ "\t\t// mouvement de caméra. fwidth se prend sur `g` et PAS sur son\n" \
+		+ "\t\t// fract(), dont la dérivée explose au bord de chaque case.\n" \
+		+ "\t\tfloat aa = max(max(fwidth(g.x), fwidth(g.y)), 0.0005);\n" \
+		+ "\t\tvec2 f = abs(fract(g) - 0.5);\n" \
+		+ "\t\tfloat d = max(f.x, f.y);\n" \
+		+ "\t\tfloat bord = smoothstep(0.5 - LISERE - aa, 0.5 - LISERE + aa, d);\n" \
+		+ "\t\t// La pose est DISCRÈTE : une case est équipée ou ne l'est pas,\n" \
+		+ "\t\t// tirée au sort sous le seuil `equipe`. À 30 %, on voit trente\n" \
+		+ "\t\t// panneaux bleus francs et non un toit lavé de bleu à 30 %.\n" \
+		+ "\t\tfloat h = fract(sin(dot(floor(g), vec2(12.9898, 78.233))) * 43758.545);\n" \
+		+ "\t\t// …mais de loin le tirage devient du bruit de pixel. `net` rend\n" \
+		+ "\t\t// la main au fondu continu dès que la case passe sous ~7 px.\n" \
+		+ "\t\tfloat net = clamp(1.15 - 5.0 * aa, 0.0, 1.0);\n" \
+		+ "\t\tfloat posee = mix(equipe, step(h, equipe), net);\n" \
+		+ "\t\t// COLOR.a (l'AO seule) garde le volume sous le motif, comme le\n" \
+		+ "\t\t// fait le repeint thématique juste au-dessus.\n" \
+		+ "\t\tbase = mix(base, mix(BLEU, BLANC, bord) * COLOR.a, posee);\n" \
+		+ "\t\trugosite = mix(0.95, 0.35, posee);\n" \
 		+ "\t}\n" \
 		+ "\tALBEDO = base * teinte.rgb;\n" \
 		+ "\tROUGHNESS = rugosite;\n" \

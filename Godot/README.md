@@ -8,9 +8,29 @@ plate**, coupée en deux par le **chenal de l'Ilse**.
 🔋 **Le prototype énergie a été simplifié le 2026-08-17** (décision 68).
 À gauche : consommation, production solaire, achat et CO₂ de toute la ville.
 À droite : seulement l'îlot cliqué, avec un curseur qui peut augmenter sa part
-solaire jusqu'à 100 %. La décision est immédiate, sans budget, capital,
-isolation, temps, chantier ou calque. Les toits virent à l'ardoise sombre et
-les totaux de ville se recalculent aussitôt.
+solaire jusqu'à 100 %. La fiche annonce la durée, puis la pose progresse jusqu'à
+la cible — **un mois maximum**, proportionnel à la part ajoutée. Les toits
+se couvrent peu à peu de **panneaux bleus au liseré blanc**, posés case par case
+de 3 m, et les totaux de ville suivent. Le temps avance d'**un mois par minute**
+à ×1, se met en pause ou s'accélère en ×4 et ×12, et **Recommencer** le ramène au
+mois 0 en annulant les poses ; capital, isolation et calque restent absents.
+
+💶 **Et le même jour, une petite économie y est revenue** (décision 69). Deux
+prix, pas un de plus : **260 €/m² posé** — multiplié par le coefficient de coût
+du tissu — et **150 €/MWh produit**. Le coût d'une pose, sa recette annuelle et
+son amortissement s'en déduisent tous les trois. La mairie a une **caisse**
+(800 k€, plus 30 k€/mois) qui n'encaisse **que** les panneaux : la facture
+d'énergie de la ville, 7,7 M€/an, est payée par les occupants et ne la traverse
+jamais. Quand la caisse ne suit pas, la fiche dit **combien il manque** et le
+bouton refuse. Un chantier engagé ne se révise plus — voir `ville.gd`, c'est ce
+qui garde la recette juste.
+
+🏛️ **Tout le logement et tous les panneaux appartiennent à la ville** (décision
+70, le 2026-08-18). Il n'y a donc pas de toit des autres : pas de loyer de
+toiture, pas de copropriété qui refuse, pas de deux régimes selon le tissu.
+⚠️ Mais **posséder un logement n'est pas payer sa facture** — la ville est
+propriétaire-bailleur, elle a les toits sans avoir les factures, et c'est ce
+qui garde le paragraphe ci-dessus vrai.
 
 `chantiers.gd` et `outils/essai_energie.gd` gardent l'ancien prototype à
 deux décisions comme trace technique ; ils ne décrivent plus la boucle jouable.
@@ -76,17 +96,51 @@ les deux se corrigent à la main sur le Mac — voir `CLAUDE.md` §5 bis :
 | | |
 |---|---|
 | **clic** | sélectionner un îlot ou une rue — la fiche s'ouvre à droite |
-| **Espace** | lecture / pause · les boutons **×1 ×4 ×12** règlent la vitesse |
+| **Espace** | lecture / pause · **×1** = un mois par minute, **×4** et **×12** accélèrent, **Recommencer** ramène au mois 0 |
 | **V** | Wehrau en entier |
 | **B** | la barre de 1974 (îlot 32) |
 | **R** | les rues à 20 et 22 m, et le quai |
 | **I** | l'Ilse canalisée et les trois franchissements |
-| **Q / E** | rotation de 90° · molette : zoom · clic droit : panoramique |
+| **Q / E** | quart de tour, recalé sur les quatre vues cardinales |
+| **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
+| **T** | bascule vue de dessus ⇄ hauteur précédente |
+| **souris** | molette : zoom · clic droit glissé : tourner · clic milieu glissé : déplacer |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
 
+Les gestes de caméra sont **rappelés en bas à gauche de l'écran**, avec l'angle
+courant (« vue du sud-est, 32° au-dessus ») : ils ne se devinent pas, et un jeu
+qui oblige à ouvrir un fichier pour les connaître n'en est pas un.
+
 `V` `B` `R` ne sont pas un confort : ce sont **les trois critères de réussite**
 de `Plan 3 mois.md:48`, une touche chacun. On ne juge pas de mémoire.
+
+### 🔄 La caméra tourne, depuis le 2026-08-17
+
+Elle avait un **angle fixe** — 32° au-dessus de l'horizon, quatre lacets à 90°
+— et le fichier interdisait explicitement l'orbite. L'auteur a demandé de voir
+la ville sous tous ses angles : le lacet est maintenant libre sur 360° et la
+hauteur du regard se règle **de 6° à 90°**.
+
+**Ce qui est préservé, et c'est l'essentiel : l'orthographie.** Aucune
+perspective, donc 27 m projettent toujours 3× plus que 9 m où que soit l'objet
+dans le cadre — les deux critères de `Plan 3 mois.md:48` tiennent. « S'approcher »
+reste réduire le cadrage, jamais avancer : ni LOD, ni distance, ni façades à
+détailler. La coupe de `Périmètre et coupes.md:42` n'est pas rouverte.
+
+**Ce qui est payé** : sous ~15°, on regarde la ville par ses **façades**, qui
+sont des murs nus d'une seule teinte. L'angle bas est un point de vue de
+contrôle — bon pour juger une silhouette et des hauteurs, mauvais pour juger un
+quartier. Le plancher à 6° existe pour qu'il reste possible sans devenir la vue
+par défaut.
+
+🔴 **Le piège, mesuré à la première capture** : en orthographie, la profondeur
+de sol visible vaut `cadrage / sin(hauteur)`. À 10°, la ville de 1 084 m ne
+projetait plus que 188 m — une bande minuscule au milieu d'un écran vide. Le
+cadrage est donc **multiplié par le sinus de la hauteur** : la quantité de sol
+visible ne dépend plus de l'angle, et la vue par défaut à 32° est restée
+exactement celle d'avant. Les bâtiments, eux, grandissent à l'écran quand le
+regard descend — c'est ce qu'on vient y chercher.
 
 🔄 **Les touches `1..4` ont disparu, et la vallée avec.** Elles exagéraient le
 relief ×1 à ×3 ; le relief ne se lisait à aucun des quatre facteurs — 9 m sur
@@ -136,13 +190,13 @@ scripts/
   maquette.gd          l'orchestrateur : construit, branche, fait passer le temps
   donnees.gd           lecture + validation. Échoue en NOMMANT ce qui manque
   constructeur.gd      tableaux → ArrayMesh. Aucun accès aux nœuds   ← isolé
-  ville.gd             l'état, les rampes, les indicateurs. Aucun nœud  ← LE NOYAU
-  energie.gd           la table des 13 lignes et les formules. Tout statique
+  ville.gd             l'état, les rampes, les indicateurs, la caisse. Aucun nœud  ← LE NOYAU
+  energie.gd           la table des 13 lignes, les formules, les deux prix. Tout statique
   chantiers.gd         ancien prototype à deux décisions, conservé comme trace
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la ville à gauche, l'îlot et son curseur à droite
   materiaux.gd         6 matériaux, zéro texture
-  camera_axo.gd        orthographique, angle fixe
+  camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°
 outils/
   sonde_api.gd         interroge ClassDB — à lancer avant de déboguer autre chose
   essai_energie.gd     contrôle imprimé de l'ancien prototype
@@ -232,10 +286,23 @@ Le dernier résultat connu, et il passait : 0,2732 de canopée au mois 60 côté
 Godot, 0,273 côté classeur, 64 tronçons · 6 217 m · 114,9 pts des deux côtés.
 Le détail est dans `archive/essai_d07.gd.txt`.
 
-Ce qui reste : `-- --essai` sort deux captures et vérifie que **le clic au
+Ce qui reste : `-- --essai` sort ses captures et vérifie que **le clic au
 centre de la vue « barre » rend l'îlot 32** — donc que les volumes restent
 cliquables après le découpage. C'est un contrôle d'interface, pas de
 simulation.
+
+🆕 **Trois contrôles chiffrés se sont ajoutés le 2026-08-17 avec la caisse**, et
+eux arrêtent la maquette en code ≠ 0 : la caisse tombe **exactement** du coût
+annoncé au mois de la décision · l'îlot que la caisse ne peut pas payer reste
+refusé **sans qu'un centime bouge** · un chantier en cours n'accepte pas de
+seconde commande. Ils ne comparent toujours qu'un moteur à lui-même, mais ils
+attrapent une formule qui dérive — et c'est là que le risque est, la recette
+étant une intégrale.
+
+L'essai imprime aussi le **tableau d'économie au mois 0** : ce que coûte chaque
+tissu, en combien d'années il se rembourse, et ce que coûterait la ville
+entière. C'est ce tableau qui sert à régler `CAISSE_DEPART_KE` et
+`DOTATION_KE_MOIS` — sans lui, les deux se règlent à l'aveugle.
 
 ⚠️ **Ce que ça veut dire concrètement** : à partir de maintenant, une formule
 fausse dans le noyau ne sera plus attrapée par personne avant qu'on la voie à
