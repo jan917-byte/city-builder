@@ -7,6 +7,71 @@
 
 ---
 
+**2026-08-18 (session 44) — les murs se percent.** Une phrase de l'auteur :
+*« fais aussi la génération procédurale des fenêtres »*. La note d'étape les
+avait écartées le matin même, avec une raison qui s'est révélée être la clé du
+problème plutôt qu'un obstacle : *« il faudrait que le shader connaisse la
+hauteur d'étage »*. Il la connaît maintenant — elle lui est **passée depuis les
+données**, et pas recopiée dans son code, parce que c'est le seul nombre qu'il
+partage avec la géométrie. Ce que ça achète : les murs montent à un multiple
+exact de la hauteur d'étage, donc les rangées de fenêtres tombent sur les
+planchers réels et **aucune n'est coupée par l'égout**, sans que le matériau ait
+jamais à connaître la hauteur d'un bâtiment. 🔴 Le partage est le même que pour
+les panneaux : l'export sait ce qu'est une rue, un mur mitoyen, un front
+commerçant, et il n'en envoie qu'un **genre de percement** par mur, plus la
+longueur de ce mur ; le matériau dessine et ne décide rien. Cette longueur n'est
+pas un détail — sans elle les travées se poseraient sur une grille mondiale et
+laisseraient des demi-fenêtres dans les angles, la faute exacte que la grille de
+panneaux avait coûté à corriger la veille. Mesuré : **2 552 murs percés sur
+3 547** (23,99 km), dont **995 aveugles**, **697 portes** — une par bâtiment,
+sur sa plus longue façade sur rue —, **82 vitrines** et **36 bandeaux**. 🔴
+Deux pièges payés le jour même : ① le test « la rue est-elle devant ce mur ? »
+mesurait si un pas vers le dehors *rapprochait* de la rue, ce qui est faux dès
+qu'un bâtiment est bâti à l'alignement — la distance vaut alors zéro, tout pas
+l'augmente, et la façade la plus commerçante de la ville sortait « arrière » :
+**2 vitrines pour 49 volumes**. On regarde maintenant le signe et non la
+variation, et il y en a 82. ② à 1,75 m d'entraxe, la barre de 1974 sortait
+criblée de petits carrés — une carte perforée, pas un bandeau ; ce qui fait la
+bande, c'est que l'ouverture soit deux fois plus large que haute. De loin, le
+percement s'efface en un mur un peu plus sombre au lieu de grésiller — même
+geste que les rangs de tuile, et ce qui tombe avec lui, c'est le prix assumé de
+la caméra ouverte du 2026-08-17 : *« sous 15°, on regarde la ville par ses
+façades, qui sont des murs nus »*. Nouvelle capture `wehrau_essai_facades.png`,
+sans quoi rien de tout ça ne se voit. **0 triangle ajouté, 0,2 s d'export** ;
+chaîne complète, contrôle énergie et essai Godot au vert.
+
+**2026-08-18 (session 43) — l'Ilse descend de 2 m, et les champs avec elle.**
+Demandé avec une coupe dessinée : la rivière 2 m sous la ville, la ville plate,
+et une topographie simple pour les champs qui la bordent. 🔴 Ce qui change
+vraiment n'est pas la profondeur, c'est qu'il y a maintenant **deux bords
+d'eau** — et c'est la même ligne de code qui fait les deux : le mur de quai
+monte jusqu'à la **surface du sol**, quelle qu'elle soit. Là où la ville tient
+la rive, le sol est à 0 et le mur fait 2,6 m ; là où c'est un champ, le sol est
+déjà au ras de l'eau et il n'en reste qu'une lèvre noyée. Le relief tient dans
+**une seule fonction**, que la plaque, le champ, ses bandes de fauche, ses
+arbres, ses alignements et le haut du mur interrogent tous — elles partagent la
+même vérité au lieu d'en recopier une, donc aucune ne peut se fendre sur une
+autre. La moitié difficile de cette fonction n'est pas la pente mais le
+**fondu** : le relief se relève à 0 dès qu'on approche d'un autre bord du champ,
+ce qui supprime trois cas particuliers d'un coup — la marche au raccord
+ville/champ devient une remontée sur 10 m, un pont qui traverse un champ garde
+sa terre à 0 sans qu'une ligne parle de pont, et rien ne déborde de l'emprise,
+donc ni la voirie ni les trottoirs n'ont à savoir que le relief existe. Mesuré :
+**4 champs riverains, 984 m de rive en pente à 22 %** sur 2 475 m de berge,
+**2 019 mailles**, sol à **−2,15 m** (15 cm sous la nappe), plaque de sol à
+−2,85 m dessous. 🔴 Un piège payé le jour même et visible à l'écran : un point
+posé **sur** la ligne de berge n'est ni dedans ni dehors pour un test
+d'appartenance, et il ressortait à 0 pendant que ses voisins descendaient — la
+berge se hérissait de **dents grises d'un mètre**, une par sommet. La pente
+douce avait déjà été essayée et rejetée le 2026-08-12 (« se lisait comme un
+talus, donc comme rien ») : ce qui change, c'est que le creux double et surtout
+que la pente ne remplace plus le mur partout — c'est le contraste qui les fait
+lire tous les deux. Nouvelle vue `G` et nouvelle capture
+`wehrau_essai_berge.png`, parce que les quatre autres repères sont tous posés
+sur la ville, où le sol est plat : sans elle le relief ne se voit nulle part,
+donc il n'existe pas. Chaîne complète et essai Godot au vert, **73 359
+triangles**, toutes les captures régénérées.
+
 **2026-08-18 (session 42) — la performance devient visible.** Le moniteur est
 posé entre les deux fiches, sans ouvrir un nouvel écran : cadence et temps
 d'image, CPU, triangles, appels de rendu, nœuds, mémoire générale et vidéo.

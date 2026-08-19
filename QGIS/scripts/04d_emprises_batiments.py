@@ -929,7 +929,7 @@ def convexe(anneau, tol=1e-7):
 def direction_ilot(anneaux):
     """La direction de l'îlot : celle de la plus longue arête de son emprise.
 
-    C'est ce qui met deux barres du même îlot dans la MÊME disposition. Prendre
+    C'est ce qui met les trois barres du même îlot dans la MÊME disposition. Prendre
     l'axe d'inertie donnerait la même chose sur un îlot allongé et n'importe
     quoi sur un îlot carré ; la plus longue arête est toujours une rue, donc
     toujours une direction que le joueur voit."""
@@ -1418,6 +1418,9 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None, fid_ilot=None)
     # Deux barres voisines tirent leur direction de deux parcelles différentes,
     # donc de deux rues différentes : sur l'îlot 32 elles sortaient à 9° l'une
     # de l'autre, ce qu'aucun plan-masse de 1970 n'a jamais dessiné.
+    # ⚠️ Elles sont TROIS depuis le 2026-08-19 (`04c`, table TISSU), et cette
+    # ligne compte d'autant plus : trois lanières en peigne tirent leur
+    # direction de trois parcelles, donc l'écart se voyait au triple.
     if famille == BOITE and dir_ilot is not None:
         cadre = (dir_ilot, (-dir_ilot[1], dir_ilot[0]))
     else:

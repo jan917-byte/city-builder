@@ -150,9 +150,24 @@ TISSU = {
     # c'est-à-dire l'inverse exact de ce qu'a fait l'urbanisme de 1970 : la
     # barre se pose au MILIEU de l'îlot, en travers, sans égard pour l'
     # alignement sur rue. La boîte ne connaît pas les rues, donc elle donne ça.
-    # 80 × 70 = 5 600 m², soit la moitié des 11 158 m² de l'îlot 32 — le seul
-    # îlot de barre de Wehrau — donc DEUX objets, comme l'auteur les a comptés.
-    "barre_1970":             (50.0,   75.0,   "boite"),
+    #
+    # 🔄 2026-08-19 : 80 × 70 → 46 × 80, demandé par l'auteur devant l'image —
+    # « les barres sont surdimensionnées pour une petite ville, moins larges,
+    # et mets-en 3 ». Deux nombres, deux effets distincts, et il faut les tenir
+    # ensemble :
+    #   · le PRODUIT décide le compte. 11 158 m² d'emprise bâtie sur l'îlot 32
+    #     — le seul îlot de barre de Wehrau — divisés par 3 680 m² donnent
+    #     3,03, donc TROIS parcelles là où 5 600 m² en donnaient deux ;
+    #   · la PROFONDEUR décide le SENS de la découpe, et c'est le piège de
+    #     cette ligne. `subdiviser` ne débite en lanières que si le morceau est
+    #     moins profond qu'une fois et demie la consigne ; l'emprise de l'îlot
+    #     32 mesure 136 × 114 m, donc sous 76 m de consigne on repart en
+    #     dos-à-dos et il en sort une lanière de 136 m de long — une barre de
+    #     Großstadt, exactement ce qu'on retire. 80 m passe au-dessus des 114,
+    #     donc les trois parcelles se rangent EN PEIGNE le long de l'îlot.
+    # Mesuré après coup : trois bâtiments de 46, 57 et 58 m sur 12 m de fond,
+    # 2 003 m² d'emprise au total contre 2 674 avant.
+    "barre_1970":             (46.0,   80.0,   "boite"),
     "equipement":             (45.0,   35.0,   "boite"),   # un ou deux objets
     "friche_industrielle":    (55.0,   45.0,   "boite"),   # des halles
 }

@@ -319,7 +319,7 @@ func _panneau_camera() -> void:
 		"clic droit glissé : tourner autour de la ville",
 		"clic milieu glissé : déplacer · molette : zoom",
 		"Q E : quart de tour · flèches : ajuster",
-		"T : vue de dessus · V B R I G : les cinq repères",
+		"T : vue de dessus · V B R I G O M : les repères",
 		"C : recolorer par tissu",
 	]:
 		v.add_child(_label(ligne, 11, GRIS))

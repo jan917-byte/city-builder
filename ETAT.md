@@ -10,7 +10,104 @@
 | ce qui s'est passé, et pourquoi c'est comme ça | [HISTORIQUE.md](HISTORIQUE.md) |
 | ce qui est tranché | `Méta/Décisions arrêtées.md` (vault) |
 
-**Dernière mise à jour : 2026-08-18 (session 45)**
+**Dernière mise à jour : 2026-08-19 (session 48)**
+
+🅿️ **La place du marché montre enfin ses 123 places.** Demandé en une phrase :
+*« dessine des places de parc sur la place centrale. regarde comment faire de
+manière procédurale. »* L'îlot 19 est le seul îlot de **sol** qui porte du
+stationnement — `04` lui compte **127 places** depuis toujours, et ce nombre
+n'existait que dans la fiche : à l'écran, la place la plus centrale de la ville,
+celle qui **est** le sujet du jeu, était un aplat gris de 5 800 m². Cinq règles
+et aucune ne nomme un îlot : la **direction** est celle de la plus longue arête
+de l'emprise (donc la plus longue façade sur rue) ; le **module** est une allée
+de 6 m et deux rangées de 5 m dos à dos, soit 16 m répétés ; la trame **glisse**
+en 80 positions et on garde celle qui range le plus ; une place tient si ses
+**quatre coins** sont dans l'emprise retirée de 3 m ; et elle doit avoir **3 m
+d'allée devant elle**, sinon elle est enclavée. Mesuré : **123 places rangées
+contre 127 annoncées, écart −3 %** — et c'est le **seul contrôle du projet qui
+confronte deux chaînes**, la géométrie répondant à un nombre que `04` a calculé
+sans elle. 78 traits, **156 triangles**, 24,9 m² par place. Le **dos des deux
+rangées est un seul trait** (peint deux fois, il clignoterait sur toute la
+longueur), la peinture est 1 cm au-dessus du **sol** et non de la chaussée
+(reprise telle quelle, elle passait 6 cm dessous, invisible), et les **2 arbres
+de la place tiennent le bord** par un rejet de plus dans le semis — sans quoi un
+sur deux poussait au milieu d'une place peinte. Nouvelle vue `M` et capture
+`wehrau_essai_place.png`. Chaîne complète et essai Godot au vert.
+→ [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) § 3 nonies
+
+🌉 **Les parapets des ponts s'arrêtent au bord de l'eau.** Demandé juste
+après le quai : *« les murs des ponts sont encore dans les routes des berges.
+Ils doivent s'arrêter aux berges. »* Le pont était resté sur son ancienne
+règle : son muret courait sur **toute la plage du tablier, culées comprises**,
+donc 2,5 m au-delà de la berge géométrique — et le bord de l'eau qu'on voit est
+encore ~5 m plus loin, au nu du quai qui porte la voie de berge. Le muret
+finissait **7 m après la rive apparente**, en travers du carrefour, à chaque bout
+de chaque pont. La règle ne mesure plus rien : **le parapet d'un pont ne borde
+que l'eau libre** — ni la terre, ni ce que le quai porte déjà. Le tablier, lui,
+garde ses culées : seul ce qui dépasse du sol s'arrête. Mesuré : **56 m de
+muret retirés de la voie de berge** et 2 m de la terre, **180 m gardés sur l'eau
+en 6 bouts** (un par joue, 6 attendus pour 3 ponts), 8 158 triangles au lieu de
+8 368 ; l'asphalte porté reste à **100,0 %** et le dépassement visible à 0,17 m.
+Les deux parapets se rejoignent **en équerre au coin de la culée**, et le bout
+est coupé par dichotomie et non à la station — 2 m de trop remettaient le mur
+sur la chaussée. Chaîne complète et essai Godot au vert, captures régénérées.
+→ [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) § 3 octies
+
+🧱 **Le mur de quai suit maintenant la berge, plus la route.** Demandé sur
+capture : *« les murs au bord des routes au bord du fleuve ne fonctionnent pas
+bien. Ils doivent seulement longer le fleuve. »* Il était un **décalé de la
+chaussée**, donc il héritait de ses **évasements de carrefour** — d'où des bouts
+de mur en travers du débouché de chaque rue perpendiculaire, **21 morceaux** à
+bouts francs dont un de 3,2 m tout seul dans l'eau, et un tracé qui s'écartait
+jusqu'à **47°** de la direction de la rive. Les arêtes de berge sont désormais
+**recousues en polylignes continues** et le mur y est bâti directement ; il ne
+s'avance sur l'eau que là où l'asphalte y déborde, et **seule une rue qui longe**
+(45° au plus) peut le déplacer — sans quoi le quai partait en festons, essayé et
+vu. Mesuré : **1,37 km de quai en 4 longueurs continues** au lieu de 21
+morceaux, **100,0 %** de l'asphalte porté (98,7 % avant), le seul dépassement
+visible tombe de **4,22 m à 0,17 m**, 8 368 triangles au lieu de 9 338, et
+**150 lignes** de détection à la volée ont disparu — la berge, elle, sait où elle
+est. Le morceau de quai reste dans le **groupe de sa rue** : cliquer un parapet
+ouvre toujours sa fiche. Chaîne complète et essai Godot au vert, captures
+régénérées.
+→ [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) § 3 septies
+
+🏢 **Les barres redescendent à la taille de Wehrau.** Demandé devant la
+capture : *« surdimensionnées pour une petite ville, moins larges et haute, et
+mets-en 3 »*. L'îlot 32 porte maintenant **trois dalles de 46, 57 et 58 m** au
+lieu de deux de 116 et 93, **à 6 niveaux au lieu de 9** — 2 003 m² d'emprise au
+sol contre 2 674, 99 logements contre 198, et Wehrau retombe à **5 517
+habitants, 103 % de la cible du vault** au lieu de 107 %. Trois nombres
+seulement : le produit `façade × profondeur` fait le **compte** (trois parcelles
+au lieu de deux), la profondeur seule fait le **sens de la découpe** — sous 76 m
+il sortait une lanière de 136 m de long, une barre de Großstadt — et la densité
+**suit** la hauteur au lieu de se choisir à part. 🔴 **6 et pas 5, et c'est
+l'image qui a tranché** : à 5 niveaux les barres passaient sous les faîtages du
+cœur ancien et l'îlot 32 cessait d'être le point haut de la ville. ⚠️ **Un
+critère du vault dit toujours « 9 niveaux »** (`Plan 3 mois.md:48`) : à
+réécrire ou à annuler, et ça ne se tranche pas ici. Un contrôle énergie est
+tombé au rouge — son seuil était calé en dur sur les 198 anciens logements ; il
+compare désormais la baisse à ce que la table promet, et les 25 sont au vert.
+Captures refaites : `wehrau_essai_barre.png` (touche `B`) et
+`parcelles_ilot_32.png`.
+→ [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) § 3 sexies
+
+🌉 **Les routes ne volent plus sur l'eau.** Demandé en trois phrases : un
+mur entre l'eau et la route, un parapet qui dépasse d'un mètre, et les
+franchissements transformés en ponts. **7 212 m² d'asphalte flottaient au-dessus
+du chenal**, sur 42 tronçons — mesuré avant de toucher à quoi que ce soit. La
+règle ne nomme aucune rue : on regarde, station par station, si l'eau est sous
+**un** bord de la chaussée (on longe → un **quai porté**) ou sous **les deux** sur
+au moins 8 m (on traverse → un **pont**, avec tablier, joues et pile). Une seule
+ligne de mur suit la route, et sa distance à l'axe est le plus dehors des deux :
+la berge, ou le bord de l'asphalte. Ce qui change, c'est jusqu'où elle descend.
+Mesuré : **3 ponts** (119 m de tablier, 3 piles), **1,51 km de quai porté**,
+**1,74 km de parapet**, 9 338 triangles — et **98,7 % de l'asphalte est
+porté**, le reste étant masqué derrière un parapet sauf **5 m²**. Les quais
+prennent **6 m** à l'Ilse (38 m de large en médiane, 32 m après) : c'est le prix
+de porter la rue là où elle est tracée. Nouvelle vue `O` et deux captures,
+`wehrau_essai_pont.png` et `wehrau_essai_quai.png`.
+→ [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) § 3 quinquies
 
 ⏸️ **Point de sauvegarde, pas fin des travaux.** Trois sujets sont encore en
 chantier au moment de ce commit. La session s'arrête parce que la **limite de
@@ -24,8 +121,8 @@ rangs de tuile et les panneaux. L'export décide, mur par mur, **le genre de
 percement** — **2 552 murs percés sur 3 547**, soit **23,99 km de façade** :
 **995 aveugles** (les pignons mitoyens, qui font la rangée du cœur ancien),
 **1 737 en fenêtres**, **697 avec la porte** (une par bâtiment, jamais deux),
-**82 en vitrine** sur le front commerçant et **36 en bandeau filant** sur la
-barre de 1974. Les travées sont **centrées sur chaque façade** et leur entraxe
+**82 en vitrine** sur le front commerçant et **40 en bandeau filant** sur les
+trois barres de 1974 (36 quand elles n'étaient que deux). Les travées sont **centrées sur chaque façade** et leur entraxe
 est tiré du bâtiment, donc deux mitoyennes n'ont pas le même rythme ; les
 rangées s'alignent sur les planchers réels, donc aucune n'est coupée par
 l'égout. De loin, le percement **s'efface** en un mur un peu plus sombre au
@@ -132,6 +229,16 @@ ressortait en bandes parallèles. `07` exporte donc son **couloir** (axe +
 largeur façade à façade, 14,6 m en moyenne sur 174 tronçons), dont Godot fait
 un ruban plat jamais affiché qui n'existe que pour être détouré. Essai complet
 au vert, captures régénérées.
+🔴 **Deuxième correction, dans la foulée** : *« il y a des trous dans les zones
+grises »*. La silhouette **rendue** ne connaît que ce qui est dessiné, et un
+îlot bâti **ne dessine pas son sol** — sous les barres de l'îlot 32 il n'y a
+que la plaque de terrain, qui n'appartient à personne. Le trait collait donc
+aux bâtiments et laissait le gris dehors. `07` exporte maintenant aussi
+l'**emprise au sol** (**65 îlots, 491 sommets**), dont Godot fait une plaque
+plate jamais affichée, posée dans le masque **à côté** de la silhouette : le
+trait suit l'**union des deux** — le sol de l'îlot *et* ce qui le dépasse en
+hauteur. Ce n'est pas le ruban du premier essai qui revient : celui-là
+remplaçait la silhouette, celle-ci la complète.
 → [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) § 5 bis
 
 🛣️ **La rue a un bord, et elle tourne.** Demandé en deux phrases —
@@ -263,7 +370,7 @@ CO₂ **13,5 → 13,4 kt/an** ; les toits passent visiblement à l'ardoise sombr
 | **La ville bâtie** — **870 parcelles logiques dont 851 sur rue** — plus **6 chemins** dans la couche —, aucune sous 45 m², **zéro reliquat de rue enclavé**, partition à 100,00 %, 16 cœurs d'îlot en 18 morceaux et **6 venelles** | source : `chemins.geojson` · dérivés : `emprises`, `parcelles` |
 | **Les bâtiments** — **756 empreintes sur 751 parcelles**, une bande depuis la rue, une cour derrière, **un immeuble d'angle qui tourne la rue** et **au plus une équerre par empreinte**, **9,50 ha d'emprise de toit / 11,0 ha de toiture pente comprise**, zéro hors parcelle. **Godot lit cette couche directement** | dérivé : couche `batiments` de `04d` · `Godot/data/wehrau.json` |
 | **La maquette 3D cliquable** — 239 objets cliquables, fiche à l'îlot et au tronçon, **ville plate**, l'Ilse **2 m plus bas** avec ses quais droits, **le talus des 4 champs riverains** et ses trois ponts | `Godot/` → `Godot/README.md` |
-| **Le rendu réaliste** — toit ≠ mur, matériau par époque, teinte par bâtiment, débord de toit, cheminées, **trottoirs à bordure qui tournent les coins**, **rues courbes**, **marquage au sol procédural** (axe, rives, 260 passages piétons), champs rayés, arbres à tronc — et la touche `C` qui rend la lecture par tissu | 🎯 **étape ouverte** → [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) |
+| **Le rendu réaliste** — toit ≠ mur, matériau par époque, teinte par bâtiment, débord de toit, cheminées, **trottoirs à bordure qui tournent les coins**, **rues courbes**, **marquage au sol procédural** (axe, rives, 260 passages piétons), **123 places de parc peintes sur la place du marché**, champs rayés, arbres à tronc — et la touche `C` qui rend la lecture par tissu | 🎯 **étape ouverte** → [Prototype/Toits et sol.md](Prototype/Toits%20et%20sol.md) |
 | **Le classeur** — 3 parties jouées sur 60 mois, courbes et carte au mois M | `Classeur/` · `QGIS/rendus/parties.html` |
 | **Le système énergie** — une décision à l'îlot, part solaire 0–100 %, ville à gauche et îlot cliqué à droite, **et une caisse qui limite le rythme** | ✅ **économie branchée et capturée, à regarder** → [Prototype/Énergie.md](Prototype/Énergie.md) |
 | D07, la surchauffe, les quatre moyennes de ville, les six calques | ✂️ **supprimés** (66), archivés dans `Godot/archive/` |
@@ -300,9 +407,22 @@ python QGIS/scripts/chaine.py --godot
 "C:/Users/janha/Desktop/Godot_v4.7.1-stable_win64.exe/Godot_v4.7.1-stable_win64_console.exe" --path Godot -- --essai
 ```
 
-🪟 **Regarde d'abord LES FAÇADES**, c'est ce qui a bougé aujourd'hui — et
-elles ont leur propre vue, `wehrau_essai_facades.png` (cadrage de 150 m, 14°
-au-dessus, la hauteur d'un piéton au bout de la rue) :
+🅿️ **Regarde d'abord LA PLACE-PARKING**, c'est ce qui a bougé aujourd'hui —
+touche `M` dans la maquette, ou `wehrau_essai_place.png` (cadrage de 130 m,
+**68° au-dessus** : un marquage au sol se juge de dessus, et une place de
+2,5 m tient sur un demi-pixel à la vue par défaut) :
+
+| Ce qu'il faut voir | Ce qui prouverait que c'est cassé |
+|---|---|
+| **quatre bandes de places dos à dos**, inclinées comme la plus longue façade | des rangées parallèles au cadre de l'écran, ou à une seule direction du monde |
+| les rangées qui **s'effilochent** contre les bords obliques | une trame coupée au carré, ou qui déborde sur le trottoir |
+| **un seul trait** entre les deux rangées d'une bande | un trait qui **clignote** au zoom — deux peintures au même endroit |
+| les **2 arbres au bord** de la place | un arbre planté au milieu d'une place peinte |
+| le contrôle imprimé par `07` : **123 rangées / 127 annoncées, −3 %** | un écart de plus de 10 % — l'un des deux ment |
+
+🪟 **Puis LES FAÇADES**, qui ont leur propre vue,
+`wehrau_essai_facades.png` (cadrage de 150 m, 14° au-dessus, la hauteur d'un
+piéton au bout de la rue) :
 
 | Ce qu'il faut voir | Ce qui prouverait que c'est cassé |
 |---|---|
@@ -364,11 +484,13 @@ l'asphalte, et deux maisons mitoyennes ne doivent plus avoir la même façade.
 sombre au sud, les champs rayés autour.
 
 ✏️ **Et le trait de sélection** : `wehrau_essai_barre.png` (l'îlot 32, de
-près — le trait monte sur les deux barres au lieu de rester au sol),
+près — le trait fait le tour du **gris autour des barres** et **monte sur les
+toits** là où ils dépassent de l'emprise ; aucun trou, une seule ligne fermée),
 `wehrau_essai_eglise.png` et `wehrau_essai_caisse.png` (à l'échelle de la
 ville : même épaisseur, et c'est le seul élément qui ressort de l'image). Ce
 qui prouverait que c'est cassé : un trait qui ne se referme pas, qui reste au
-sol pendant que les bâtiments en sortent, ou qui change d'épaisseur au zoom.
+sol pendant que les bâtiments en sortent, qui laisse le sol de l'îlot **dehors**,
+ou qui change d'épaisseur au zoom.
 
 ### 🎚️ Ce qui se règle en une ligne, si l'image ne va pas
 
@@ -466,70 +588,70 @@ Le détail des scripts, leurs modes et leurs pièges → **`QGIS/README.md`** (�
 
 ## Les deux dernières sessions
 
-**2026-08-18 (session 44) — les murs se percent.** Une phrase de l'auteur :
-*« fais aussi la génération procédurale des fenêtres »*. La note d'étape les
-avait écartées le matin même, avec une raison qui s'est révélée être la clé du
-problème plutôt qu'un obstacle : *« il faudrait que le shader connaisse la
-hauteur d'étage »*. Il la connaît maintenant — elle lui est **passée depuis les
-données**, et pas recopiée dans son code, parce que c'est le seul nombre qu'il
-partage avec la géométrie. Ce que ça achète : les murs montent à un multiple
-exact de la hauteur d'étage, donc les rangées de fenêtres tombent sur les
-planchers réels et **aucune n'est coupée par l'égout**, sans que le matériau ait
-jamais à connaître la hauteur d'un bâtiment. 🔴 Le partage est le même que pour
-les panneaux : l'export sait ce qu'est une rue, un mur mitoyen, un front
-commerçant, et il n'en envoie qu'un **genre de percement** par mur, plus la
-longueur de ce mur ; le matériau dessine et ne décide rien. Cette longueur n'est
-pas un détail — sans elle les travées se poseraient sur une grille mondiale et
-laisseraient des demi-fenêtres dans les angles, la faute exacte que la grille de
-panneaux avait coûté à corriger la veille. Mesuré : **2 552 murs percés sur
-3 547** (23,99 km), dont **995 aveugles**, **697 portes** — une par bâtiment,
-sur sa plus longue façade sur rue —, **82 vitrines** et **36 bandeaux**. 🔴
-Deux pièges payés le jour même : ① le test « la rue est-elle devant ce mur ? »
-mesurait si un pas vers le dehors *rapprochait* de la rue, ce qui est faux dès
-qu'un bâtiment est bâti à l'alignement — la distance vaut alors zéro, tout pas
-l'augmente, et la façade la plus commerçante de la ville sortait « arrière » :
-**2 vitrines pour 49 volumes**. On regarde maintenant le signe et non la
-variation, et il y en a 82. ② à 1,75 m d'entraxe, la barre de 1974 sortait
-criblée de petits carrés — une carte perforée, pas un bandeau ; ce qui fait la
-bande, c'est que l'ouverture soit deux fois plus large que haute. De loin, le
-percement s'efface en un mur un peu plus sombre au lieu de grésiller — même
-geste que les rangs de tuile, et ce qui tombe avec lui, c'est le prix assumé de
-la caméra ouverte du 2026-08-17 : *« sous 15°, on regarde la ville par ses
-façades, qui sont des murs nus »*. Nouvelle capture `wehrau_essai_facades.png`,
-sans quoi rien de tout ça ne se voit. **0 triangle ajouté, 0,2 s d'export** ;
-chaîne complète, contrôle énergie et essai Godot au vert.
+**2026-08-19 (session 48) — la place du marché montre ses places.** Une phrase
+de l'auteur : *« dessine des places de parc sur la place centrale. regarde
+comment faire de manière procédurale. »* Le point de départ n'était pas une
+page blanche : `04` compte **127 places** sur l'îlot 19 depuis toujours — sa
+surface × la part de parking de son tissu ÷ 25 m² — et ce nombre n'avait jamais
+touché l'image. La question n'était donc pas « comment dessiner un parking »
+mais **« est-ce que la géométrie sait retomber sur le chiffre du tableur ? »**.
+🔴 Cinq règles, et aucune ne nomme un îlot ni un sous-type : le déclencheur est
+*un îlot de SOL qui porte des places*, et il n'y en a qu'un — la barre et
+l'équipement en portent aussi, mais ils ont une hauteur et sont partis dans une
+autre branche bien avant. La **direction** est celle de la plus longue arête de
+l'emprise ; comme une emprise est l'îlot moins la voirie, ses arêtes sont des
+façades sur rue, et la plus longue est la façade principale. ⚠️ **Elle n'est
+PAS choisie sur le compte**, et c'est mesuré : les neuf directions possibles ne
+s'écartent que de **119 à 129 places**, donc le compte les départagerait sur du
+bruit. Le **module** est de la voirie ordinaire — allée de 6 m, deux rangées de
+5 m dos à dos, 16 m répétés — la trame **glisse** en 80 positions et on garde
+celle qui range le plus, une place tient si ses **quatre coins** sont dans
+l'emprise retirée de 3 m, et il lui faut **3 m d'allée devant elle**. Résultat :
+**123 places contre 127 annoncées, −3 %**, deux chaînes qui ne s'étaient jamais
+parlé et qui tombent l'une sur l'autre — c'est le seul contrôle du projet qui
+ne soit pas vrai par construction. Trois pièges payés : le **dos des deux
+rangées** est un seul trait (deux peintures coplanaires clignotent sur toute la
+longueur de la place), la peinture est 1 cm au-dessus du **sol** et non de la
+chaussée (le marquage de rue vit à −0,01 m, la place est un cap à +0,05 : il
+serait passé **6 cm dessous**, invisible, et rien ne l'aurait dit), et le semis
+d'arbres a reçu **un rejet de plus** — sans lui, un arbre sur deux de la place
+poussait au milieu d'une place peinte. Le retrait de 3 m n'est pas une marge de
+dessin : à 0,5 m la trame monte à 153 places et bute sur le trottoir, à 6 m elle
+tombe à 96. **156 triangles**, nouvelle vue `M`, capture
+`wehrau_essai_place.png`, chaîne complète et essai Godot au vert. Reste le
+stationnement **de rue** : 3 310 places, toujours invisibles.
 
-**2026-08-18 (session 43) — l'Ilse descend de 2 m, et les champs avec elle.**
-Demandé avec une coupe dessinée : la rivière 2 m sous la ville, la ville plate,
-et une topographie simple pour les champs qui la bordent. 🔴 Ce qui change
-vraiment n'est pas la profondeur, c'est qu'il y a maintenant **deux bords
-d'eau** — et c'est la même ligne de code qui fait les deux : le mur de quai
-monte jusqu'à la **surface du sol**, quelle qu'elle soit. Là où la ville tient
-la rive, le sol est à 0 et le mur fait 2,6 m ; là où c'est un champ, le sol est
-déjà au ras de l'eau et il n'en reste qu'une lèvre noyée. Le relief tient dans
-**une seule fonction**, que la plaque, le champ, ses bandes de fauche, ses
-arbres, ses alignements et le haut du mur interrogent tous — elles partagent la
-même vérité au lieu d'en recopier une, donc aucune ne peut se fendre sur une
-autre. La moitié difficile de cette fonction n'est pas la pente mais le
-**fondu** : le relief se relève à 0 dès qu'on approche d'un autre bord du champ,
-ce qui supprime trois cas particuliers d'un coup — la marche au raccord
-ville/champ devient une remontée sur 10 m, un pont qui traverse un champ garde
-sa terre à 0 sans qu'une ligne parle de pont, et rien ne déborde de l'emprise,
-donc ni la voirie ni les trottoirs n'ont à savoir que le relief existe. Mesuré :
-**4 champs riverains, 984 m de rive en pente à 22 %** sur 2 475 m de berge,
-**2 019 mailles**, sol à **−2,15 m** (15 cm sous la nappe), plaque de sol à
-−2,85 m dessous. 🔴 Un piège payé le jour même et visible à l'écran : un point
-posé **sur** la ligne de berge n'est ni dedans ni dehors pour un test
-d'appartenance, et il ressortait à 0 pendant que ses voisins descendaient — la
-berge se hérissait de **dents grises d'un mètre**, une par sommet. La pente
-douce avait déjà été essayée et rejetée le 2026-08-12 (« se lisait comme un
-talus, donc comme rien ») : ce qui change, c'est que le creux double et surtout
-que la pente ne remplace plus le mur partout — c'est le contraste qui les fait
-lire tous les deux. Nouvelle vue `G` et nouvelle capture
-`wehrau_essai_berge.png`, parce que les quatre autres repères sont tous posés
-sur la ville, où le sol est plat : sans elle le relief ne se voit nulle part,
-donc il n'existe pas. Chaîne complète et essai Godot au vert, **73 359
-triangles**, toutes les captures régénérées.
-
+**2026-08-19 (session 46) — les routes ne volent plus sur l'eau.** Trois
+phrases de l'auteur : un mur entre l'eau et la route, un parapet d'un mètre, et
+les routes qui passent sur l'eau transformées en ponts. Ce qui volait a été
+mesuré avant de coder — **7 212 m² d'asphalte au-dessus du chenal, 42
+tronçons** — et surtout séparé en deux causes, parce qu'elles ne se réparent pas
+pareil : la voie de berge est **tracée sur la ligne d'eau** et déborde de 3,25 m
+(une voie `rive`) à 7,00 m (le boulevard de quai) sans rien traverser ; trois
+tronçons, eux, **traversent** vraiment sur 35 à 40 m. 🔴 La règle qui les sépare
+ne nomme aucune rue : station par station le long de la chaussée, l'eau sous
+**un** bord veut dire qu'on longe, sous **les deux** sur au moins 8 m qu'on
+traverse. Le seuil de 8 m n'est pas décoratif — sans lui, les ~35 amorces de rue
+qui débouchent sur un quai (la demi-largeur d'asphalte que chaque chaussée
+ajoute pour remplir son carrefour) devenaient chacune un petit pont de 4 m.
+**Une seule ligne de mur suit la route**, et sa distance à l'axe est le plus
+dehors des deux : la berge, ou le bord de l'asphalte plus sa bande. Un seul
+`max`, et il fait les deux cas ; ce qui change, c'est jusqu'où le mur descend —
+au fond du chenal pour un quai, à la sous-face du tablier pour un pont. Le
+parapet est le même muret des deux côtés, avec un chaperon plus clair : vu d'en
+haut, c'est lui qui dit qu'il y a une barrière. Mesuré : **3 ponts**, 119 m de
+tablier, **3 piles**, **1,51 km de quai porté**, **1,74 km de parapet**, 9 338
+triangles. 🔴 Le gros défaut trouvé en chemin : le boulevard de quai a son
+**axe posé sur la ligne d'eau**, donc la berge est à distance **nulle des deux
+côtés**, et la mesure seule concluait « bord de l'eau » du côté des façades
+aussi — un mur de 2,65 m debout au milieu de la ville. Une distance ne dit pas
+de quel côté est la rivière ; la question qui manquait (*y a-t-il de l'eau 30 cm
+au-delà du bord trouvé ?*) a supprimé **la moitié du mur**, 2,98 → 1,51 km. Le
+contrôle imprimé range désormais tout l'asphalte au-dessus du chenal en trois
+familles — **porté 98,7 %**, 87 m² masqués derrière un parapet, **5 m² au-delà**
+(six coins de carrefour d'un mètre carré au plus) : c'est ce qui permet de dire
+« ✅ » sans mentir. Conséquence assumée et chiffrée : les quais prennent **6 m**
+à l'Ilse, 38 m de large en médiane contre 32 après. Nouvelle vue `O`, deux
+captures neuves, chaîne complète et essai Godot au vert.
 
 → **[HISTORIQUE.md](HISTORIQUE.md)** pour les sessions précédentes.

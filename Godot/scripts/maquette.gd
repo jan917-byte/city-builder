@@ -273,6 +273,17 @@ ESSAI — la ville, sans décision")
 	await _capturer("essai_berge")
 	pivot.caler(30.0, 32.0)
 
+	# 🅿️ LA PLACE-PARKING ET SES PLACES. Une place de parc fait 2,5 m de
+	# large : a la vue par defaut (1 200 m de cadrage) elle tient sur un demi
+	# pixel, donc les 123 places ne se voient sur aucune des autres captures.
+	# Vue HAUTE (68°) : un marquage au sol se juge de dessus, c'est le seul
+	# angle ou la trame se lit comme une trame et non comme un moire.
+	_repere("place")
+	pivot.caler(30.0, 68.0)
+	await get_tree().process_frame
+	await _capturer("essai_place")
+	pivot.caler(30.0, 32.0)
+
 	# 🪟 LES FAÇADES DE PRÈS, depuis le 2026-08-18. C'est la capture qui juge
 	# les fenêtres, et elle a dû être ajoutée : les six autres regardent la
 	# ville de haut, où un percement de 1,15 m tient sur deux pixels et où le
@@ -1032,6 +1043,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_I: _repere("ilse")
 		KEY_G: _repere("berge")
 		KEY_O: _repere("pont")
+		KEY_M: _repere("place")
 		KEY_C: _sur_tissu()
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")

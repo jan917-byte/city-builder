@@ -13,6 +13,11 @@ extends Node3D
 #   · « la barre de 1974 comme un objet aberrant de 9 niveaux au milieu de
 #     rangées à 3 » — en ortho, 27 m projettent 3× plus que 9 m OÙ QUE SOIT
 #     l'objet dans le cadre. En perspective, la barre au fond paraîtrait normale.
+#     🔄 2026-08-19 : la barre est descendue à 6 niveaux et il y en a trois
+#     (`04`, `04c`). L'argument sur l'ortho ne bouge pas — il porte sur le
+#     RAPPORT des hauteurs, et 16,2 m contre 8,1 m se lisent encore. Ce qui
+#     bouge est le critère du vault, qui dit toujours 9 : à l'auteur de
+#     trancher s'il le réécrit ou s'il annule la baisse.
 #   · « trouver monstrueuses les rues à 20 et 22 m » — idem pour les largeurs.
 # Et « s'approcher » en orthographie, c'est réduire `size`, pas avancer. La coupe
 # de `Périmètre et coupes.md:42` (« caméra axonométrique fixe → élimine le LOD et

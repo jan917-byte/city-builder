@@ -247,8 +247,17 @@ func _scenario_barre(d: Dictionary) -> void:
 		prod6 == 0.0)
 	_controle("la production décolle puis atteint le potentiel de la barre au mois 12",
 		absf(prod12 - pot) < 0.01)
-	_controle("l'isolation fait TOMBER la consommation (deux courbes, deux formes)",
-		conso60 < conso0 - 1500.0)
+	# 🔄 2026-08-19 : le seuil était « au moins 1 500 MWh de baisse », un nombre
+	# en dur calé sur les 198 logements de l'ancienne barre. L'auteur l'a
+	# rétrécie à 99 logements le même jour et le contrôle est passé au rouge
+	# alors que la mécanique était intacte — l'isolation enlevait bien ses 45 %,
+	# de 2 376 MWh au lieu de 4 752. Un contrôle qui dépend du level design ne
+	# contrôle pas le moteur. Il compare donc maintenant la baisse À CE QUE LA
+	# TABLE PROMET, quel que soit le nombre de logements de l'îlot.
+	var attendu: float = Energie.gain_isolation_mwh(v, barre, 0.0)
+	_controle("l'isolation enlève les %.0f MWh que la table promet (baisse mesurée %.0f)"
+		% [attendu, conso0 - conso60],
+		absf((conso0 - conso60) - attendu) < 1.0)
 	var co2_9: float = Energie.co2_achat_kt(v, 9.0) + ch.co2_gris_an(9.0)
 	var co2_60: float = Energie.co2_achat_kt(v, 60.0) + ch.co2_gris_an(60.0)
 	_controle("le CO2 MONTE pendant les travaux (carbone gris), à %.2f kt" % co2_9,

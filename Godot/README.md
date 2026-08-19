@@ -105,7 +105,8 @@ les deux se corrigent à la main sur le Mac — voir `CLAUDE.md` §5 bis :
 | **R** | les rues à 20 et 22 m, et le quai |
 | **I** | l'Ilse canalisée et les trois franchissements |
 | **G** | le talus des champs, au bord de l'eau |
-| **O** | 🆕 le plus long franchissement, de près : le tablier, sa joue et sa pile |
+| **O** | le plus long franchissement, de près : le tablier, sa joue et sa pile |
+| **M** | 🆕 la place-parking et ses **123 places peintes** — à regarder de haut |
 | **Q / E** | quart de tour, recalé sur les quatre vues cardinales |
 | **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
 | **T** | bascule vue de dessus ⇄ hauteur précédente |
@@ -197,7 +198,7 @@ n'envoie qu'un **genre de percement** par mur, plus la longueur de ce mur —
 | fenêtres | des travées régulières | 1 737 |
 | + porte | une entrée au rez, **une par bâtiment** | 697 |
 | vitrine | un rez commerçant vitré entre deux trumeaux | 82 |
-| bandeau | une bande filante par étage — la barre de 1974, les halles | 36 |
+| bandeau | une bande filante par étage — les trois barres de 1974, les halles | 40 |
 
 Deux choses tiennent le résultat, et ce sont les deux qui auraient pu rater :
 
@@ -236,6 +237,15 @@ suit le changement et l'image reste identique.
 🔄 **Le premier critère est rayé le 2026-08-12** : la carte est plate, il n'y a
 plus de vallée à sentir. Ce qui donne son lieu à Wehrau, c'est maintenant la
 coupure de l'Ilse — **deux rives inégales et trois ponts** — pas un relief.
+
+🔄 **Et le « 9 niveaux » du deuxième est périmé depuis le 2026-08-19** : devant
+l'image, l'auteur a jugé les barres surdimensionnées pour une ville de 5 350
+habitants. Elles sont maintenant **trois, de 46 à 58 m de long, à 6 niveaux** —
+ce que la décision 13d appelait déjà « un petit Neubau ». L'aberration ne tient
+donc plus à la hauteur seule mais à la **forme** : trois dalles parallèles au
+milieu de l'îlot, toit plat, sans aucun égard pour les rues. ⚠️ Le critère du
+vault (`Plan 3 mois.md:48`) dit toujours 9 — il reste à réécrire ou à annuler,
+et c'est l'auteur qui tranche.
 
 ⚠ `Plan 3 mois.md:50` : « Si j'ajoute des toits, j'ai changé de projet. »
 
