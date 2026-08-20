@@ -17,9 +17,11 @@ city-builder/
 ├─ Vault - Jeu urbanisme/       ← LA source de vérité du design (vault Obsidian)
 │   └─ 00 - Index.md            ← l'entrée : l'état affiché, les 3 trucs à trancher
 ├─ QGIS/
-│   ├─ scripts/                 ← le pipeline : 01…04, apercu_carte.py
-│   ├─ data/                    ← les GeoPackages (source + fichier qualifié)
-│   └─ rendus/                  ← préviews PNG/SVG, régénérables (gitignoré)
+│   ├─ scripts/                 ← la chaîne qui fabrique la carte
+│   ├─ data/source/             ← LA carte, en GeoJSON — le seul suivi par git
+│   └─ rendus/                  ← aperçus régénérables (gitignoré)
+├─ Godot/                       ← la maquette 3D
+├─ Classeur/                    ← le système de décisions, en CSV
 └─ .claude/skills/              ← skills de projet
 ```
 

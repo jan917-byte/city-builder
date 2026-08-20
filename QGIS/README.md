@@ -1,339 +1,74 @@
 # QGIS — la carte de Wehrau
 
-> Ce dossier fabrique **la carte simulable du prototype**. Il ne contient pas de design : le design est dans le vault, et ce document y **pointe** au lieu de le recopier.
-> → `Vault - Jeu urbanisme/Technique/Pipeline QGIS.md` et `…/Géométrie et données.md`
->
-> Chiffres de ce document **vérifiés le 2026-08-11** en relisant `Prototype_qualifie.gpkg` et en relançant `04 --blanc`.
+Ce dossier fabrique la carte du prototype. Le design est dans le vault, l'avancement dans `ETAT.md`, les tables que l'auteur règle dans `Prototype/00 - Prototype.md`.
 
-La ville du prototype est **Wehrau**, pas Vallmar. Le nom `Vallmar2.gpkg` était un nom d'export ; il a disparu le **2026-08-17** avec le passage de la source en texte — la source s'appelle maintenant `data/source/` et la carte de travail `data/travail/wehrau.gpkg`.
+🔴 **Aucun chiffre mesuré dans ce fichier.** La chaîne les ressort tous en 0,7 s, et `06_etat_zero.py` sort la ville entière en HTML. Un nombre écrit ici serait faux avant d'être lu.
 
-> 🔄 **Ce document date du 2026-08-11 et décrit une organisation qui a changé deux fois depuis.** Les sections 2, 3 et 9 sont à jour au **2026-08-17** ; les chiffres des sections 5 et 7 sont ceux du 2026-08-11 et n'ont pas été revérifiés. **QGIS ne fait plus partie de la chaîne** — le dossier garde son nom, pas sa dépendance.
+QGIS ne fait plus partie de la chaîne — le dossier garde son nom, pas sa dépendance. Les scripts n'importent ni GDAL, ni Shapely, ni QGIS : `sqlite3` et `struct` de la bibliothèque standard, plus Pillow pour les aperçus. Ils tournent sur un Python nu, sur les deux machines.
 
----
-
-## 1. Ce que fait ce dossier, en une phrase
-
-Une couche de **lignes** dessinée dans QGIS est polygonisée en **îlots** ; quatre scripts Python y écrivent, couche par couche, tout ce dont une décision de jeu aura besoin — le type de tissu, ce qui sépare deux îlots, la hauteur d'eau, la charge de trafic — et un cinquième script permet de **regarder** le résultat au lieu de lire des colonnes.
-
-Le produit final n'est pas une carte. C'est **un GeoPackage dont chaque colonne répond à « quelle décision devient possible ? »**.
-
-## 2. Arborescence
-
-```
-QGIS/
-├─ README.md                     ← ce fichier
-├─ data/
-│   ├─ LISEZ-MOI.md              ← la règle des trois dossiers
-│   ├─ source/                   ✅ LA SOURCE, en GeoJSON — le SEUL suivi par git (66 Ko)
-│   │   ├─ ilots.geojson             70 polygones
-│   │   ├─ routes.geojson            179 lignes + `hierarchy`
-│   │   └─ chemins.geojson           les venelles (facultatif)
-│   ├─ travail/                  ❌ gitignoré — `wehrau.gpkg` et les copies d'essai
-│   └─ archive/                  ❌ gitignoré — les .gpkg d'avant le 2026-08-17
-├─ scripts/
-│   ├─ carte.py                     📖 lit et écrit la SOURCE — le seul qui connaisse le WKB
-│   ├─ chaine.py                    ▶️ LA COMMANDE : 02 → 03 → 04 → 04b → 04c
-│   ├─ 00_decouper_ilots.py         ✏️ écrit dans la source
-│   ├─ 00b_ilots_lisiere.py         ✏️ écrit dans la source
-│   ├─ 01_champs_et_valuemaps.py    (vestige QGIS — hors chaîne, plus lancé)
-│   ├─ 02_qualifier.py              ① le level design
-│   ├─ 03_adjacences.py             ② le graphe
-│   ├─ 04_deriver_attributs.py      ③ les attributs dérivés
-│   ├─ apercu_carte.py              👁 la boucle de contrôle (lecture seule)
-│   ├─ apercu_parcelles.py          👁 le parcellaire en PNG, avant/après
-│   ├─ tracer_chemins.py            ✏️ propose les venelles → écrit dans la SOURCE
-│   └─ classification.json          (vestige — voir §8)
-└─ rendus/                        PNG régénérables, **gitignoré** (absent d'un clone frais)
-```
-
-🔴 **Aucun `.gpkg` n'est versionné.** La source est du texte que git fusionne ligne à ligne ; tout GeoPackage est un dérivé que `chaine.py` refait en 0,7 s. C'est ce qui a supprimé la règle « la carte ne s'écrit que sous Windows ». → `data/LISEZ-MOI.md` · `CLAUDE.md` §5
-
-🔴 **Trois scripts écrivent dans la SOURCE**, et il faut les traiter à part : `00_decouper_ilots.py` (il coupe les îlots là où l'auteur a tracé une rue), `00b_ilots_lisiere.py` (il pose les rubans de lisière) et `tracer_chemins.py` (il pose la couche `chemins`). C'est voulu : `02` **rebâtit** la carte de travail depuis la source, donc **un tracé fait à la main ne survit que dans la source**. Passe `--blanc` d'abord pour les trois — ce qu'ils touchent est du level design — et `tracer_chemins` refuse en plus d'écraser une couche existante sans `--refaire`.
-
-## 3. Le pipeline
-
-```
-   ┌────────────────────────┐
-   │ data/source/*.geojson  │  ilots(70) + routes(179), EPSG:25832
-   │ ✅ TEXTE, suivi par git │  aucun attribut sauf `hierarchy`
-   └────────┬───────────────┘
-            │  02_qualifier.py   ← BÂTIT un GeoPackage neuf, puis écrit
-            ▼
-   ┌──────────────────────────────────────────────────────┐
-   │ data/travail/wehrau.gpkg   ❌ gitignoré, jetable      │
-   │   ilots   + fonction, sous_type, exception, surface  │
-   │   routes  + hierarchie, largeur_m                    │
-   └────────┬─────────────────────────────────────────────┘
-            │  03_adjacences.py  ← écrit en place
-            ▼
-   │   + table `adjacences` (179 lignes)
-   │   + ilots.bord_carte_m
-            │  04_deriver_attributs.py  ← écrit en place
-            ▼
-   │   + 12 colonnes sur ilots · 4 sur routes
-            │  04b_emprises_baties.py  ← écrit en place
-            ▼
-   │   + couche `emprises` (69 polygones) : l'îlot APRÈS retrait de voirie
-            │
-     ┌──────┴──────┬──────────────┬─────────────────┐
-     ▼             ▼              ▼                 ▼
- apercu_carte  06_etat_zero  05_exporter      07_exporter_godot
- PNG légendé   HTML 22 calq.  Classeur/*.csv   Godot/data/wehrau.json
-```
-
-### ⚠️ La règle de la chaîne — maintenant tenue par le code
+## La commande
 
 ```bash
 python QGIS/scripts/chaine.py
 ```
 
-**02 → 03 → 04 → 04b → 04c, dans cet ordre, sans en sauter.** `02_qualifier.py` **refait la carte de travail de zéro** et détruit tout ce que 03, 04, 04b et 04c y avaient écrit — **y compris les couches `emprises` et `parcelles`**. Relancer 02 seul laisse un fichier amputé de la table `adjacences`, et 04 refuse alors de démarrer.
+Elle enchaîne **02 → 03 → 04 → 04b → 04c** et s'arrête net à la première étape qui échoue. `--godot` ajoute `07`, `--depuis 04` reprend au milieu.
 
-C'est exactement ce que `chaine.py` empêche d'oublier : il lance les cinq étapes dans l'ordre et **s'arrête net** à la première qui échoue, au lieu de laisser les suivantes lire une carte à moitié écrite et sortir des chiffres qui ont l'air bons. `--godot` ajoute `07`, `--depuis 04` reprend au milieu.
+🔴 **`02` rebâtit la carte de travail de zéro** et détruit tout ce que les suivants y avaient écrit, `emprises` et `parcelles` comprises. Ne jamais le lancer seul. Les autres — `03`, `04`, `04b`, `04c` et tous les lecteurs — se relancent sans risque.
 
-Ce qu'on peut relancer seul, sans risque : **03**, **04**, **04b**, **04c**, et tous les lecteurs (`apercu_carte`, `05`, `06`, `07`).
+## Les trois dossiers de `data/`
 
-🔄 **La passe `--blanc` n'est plus nécessaire dans la chaîne.** Elle existait parce que ces scripts écrivaient dans un GeoPackage suivi par git, qu'une écriture ratée salissait sans recours. La carte de travail est maintenant dérivée et jetable : la casser ne coûte qu'un relancement de 0,7 s. `--blanc` reste indispensable là où il protège du **level design** — `00`, `00b`, `tracer_chemins`.
-
-### 🚶 La couche `chemins` — les venelles dessinées DANS les îlots
-
-Une couche **facultative** de la source (`data/source/chemins.geojson`) : des LINESTRING, chacune avec son `fid_ilot` et sa `largeur_m` (3 à 5 m). `04c_parcelles.py` retire le couloir de l'emprise **avant** le peigne, et l'îlot part en deux morceaux qui gardent le **même numéro** — un seul îlot, une seule décision de jeu. Le couloir ressort en parcelle d'origine `chemin`, que `07` pave au sol. Une venelle **n'est pas un tronçon de route** : elle n'entre ni dans `03`, ni dans le trafic, ni dans la hiérarchie.
-
-`tracer_chemins.py --blanc` propose un tracé par **pli** d'îlot (sommet rentrant) et n'en garde un que s'il fait monter la **rectangularité** des parcelles sans entamer un cœur d'îlot. C'est une proposition : le tracé se corrige à la main **dans le fichier texte**, une venelle par ligne — supprimer celle qui tombe mal, c'est supprimer une ligne. → `Décisions arrêtées` 67 · 67b · 67c
-
-### L'étape 6 est faite — et ce n'est pas un GeoJSON
-
-Le plan annonçait « export GeoJSON vers Godot, mois 2 ». C'est `07_exporter_godot.py`, et il sort **un JSON dédié**, pas du GeoJSON : un GeoJSON ne peut porter ni le champ d'altitude, ni les caps triangulés, ni les couleurs de sommet — et il obligerait à écrire un parseur GeoJSON en GDScript, exactement ce que le projet cherche à éviter. → `Décisions arrêtées` 33b.
-
-## 4. Les fichiers, un par un
-
-### `02_qualifier.py` — le level design (382 l.)
-
-**C'est le fichier le plus important du dossier avec 04.** Tout le level design tient dans une trentaine de lignes en haut du fichier, sous forme de **listes de `fid`** :
-
-```python
-RIVIERE = [4, 7, 51, 52, 54, 57]
-PLACE_PARKING = [19]        # la place du marché, la plus centrale, sur l'eau
-FRICHES = [31, 65]          # le moulin et la brasserie, en aval
-FRONT_COMMERCANT = [12, 21, 24, 45, 72]
-BARRE = [32]                # le grand ensemble de 1974
-…
-```
-
-On change une ligne, on relance la chaîne, on regarde le PNG. **L'itération est gratuite, et c'est tout l'intérêt du dispositif.** Tout îlot non listé tombe par défaut en `maisons_de_ville`.
-
-Deux garde-fous intégrés :
-- un `fid` affecté à deux sous-types fait planter le script avec le numéro fautif — pas de silence
-- `exception = 1` marque les îlots posés à la main, par opposition au tissu dérivé par règle. **16 exceptions**, cible du vault ≈ 20. ✅
-
-Ce fichier décide aussi de la **hiérarchie et de la largeur des 178 tronçons**, par un arbre de règles, dans cet ordre : pont → quai à voie rapide → berge → boulevard hérité → route de campagne → ruelle de cœur → rue. Puis il **module** la largeur selon le tissu desservi (ancien −2 m, moderne +2 m, campagne +1 m) et la longueur (+1 m par 60 m, plafonné à +3 m).
-
-> 🔴 **Pourquoi cette modulation existe.** Une largeur constante par hiérarchie donne quatre valeurs distinctes sur toute la carte, donc trois réglages possibles pour un seuil, donc **aucun arbitrage**. La variation n'est pas du réalisme décoratif : elle est ce qui rend la « doctrine à seuil » jouable. → `Décisions arrêtées` 31d
-
-> 🔴 **La règle qui a coûté le plus cher.** Un pont longe le polygone rivière exactement comme une berge. La règle naïve « borde la rivière → `rive` » l'avale, et la ville se retrouve avec **deux réseaux routiers étanches sans que rien ne le signale**. Le critère qui les distingue : un franchissement **touche deux morceaux de rivière**, puisque c'est lui qui l'a découpée. Cinq ponts retrouvés par cette règle.
-
-### `03_adjacences.py` — le graphe (314 l.)
-
-L'étape qui rend la carte **non décorative**. Pour chaque paire d'îlots partageant une frontière, elle écrit une ligne : `id_a`, `id_b`, `hierarchie_separatrice`, `longueur_m`, `permeabilite`.
-
-Méthode : chaque segment de frontière est clé-é sur une grille de 25 cm ; un segment porté par deux îlots est une frontière partagée ; son milieu est projeté sur la voirie la plus proche (tolérance 50 cm, recherche indexée en cellules de 25 m) pour savoir **quelle rue le sépare**. Une frontière sans voirie sous elle tombe en `sans_rue` — deux arrières qui se touchent.
-
-La perméabilité d'une paire est la **moyenne pondérée par la longueur** de ses morceaux, avec une pénalité ×0,5 au-delà de 20 m de large. Les sept valeurs de base sont **du design, pas de la mesure** ; elles sont en haut du fichier et tabulées dans le vault. → `Géométrie et données`
-
-Une frontière sans voisin n'est pas une adjacence : elle est comptée à part en `bord_carte_m` sur l'îlot (**9 îlots, 3 862 m**), pour que « pas de voisin » et « donnée manquante » restent distinguables.
-
-**Le contrôle intégré**, et il compte : le script recalcule les composantes connexes de la ville privée de sa rivière et de ses champs. Résultat vérifié aujourd'hui — **deux morceaux, 45 et 11 îlots**. La coupure du fleuve est dans la géométrie, pas dans une convention de code.
-
-### `04_deriver_attributs.py` — les attributs dérivés (676 l.)
-
-Le plus gros fichier, et **le plus dense en design** : deux champs sont saisis à la main, tout le reste se dérive ici.
-
-Le cœur du fichier est la table `TISSU` : **12 lignes, une par `sous_type`, six colonnes** (densité nette, hauteur, part imperméabilisée, canopée, fragilité du riverain, part en stationnement). Douze lignes qui décident du comportement de la carte entière. Les densités sont calées sur du tissu allemand réel, pas choisies pour atteindre un chiffre de population.
-
-Trois sous-systèmes en dessous :
-
-**L'eau, sans MNT et désormais sans relief.** `position_fil_eau` se lit **en latitude** (l'Ilse traverse du nord au sud en décrivant un S — un axe droit se tromperait de rive sur les méandres). `rive` est calculée sur la direction **locale** de la berge la plus proche, orientée vers l'aval. Ces deux-là sont des **positions**, elles restent.
-
-🔄 **`altitude_relative` et `alea` valent 0 depuis le 2026-08-12.** La carte est plate **dans la donnée**, et la crue sort du prototype. Les colonnes restent pour que rien de ce qui les lit ne casse, mais elles ne prétendent plus mesurer quoi que ce soit.
-
-⚠️ **Depuis le 2026-08-18, « plate dans la donnée » ne veut plus dire « plate à l'image ».** L'Ilse coule 2 m sous la ville et les 4 champs riverains y descendent par un talus de 10 m. Ce relief est **entièrement calculé par `07`** — une fonction de la distance à la berge et aux autres bords du champ — et n'existe dans **aucune colonne** : il n'y a donc rien à échantillonner ici, et `04` reste inchangé. → `Godot/README.md`, « La ville est plate, l'Ilse coule 2 m plus bas »
-
-Ce qu'il y avait, et qu'il faudrait réécrire pour revenir : une vallée qui remontait de part et d'autre de l'Ilse avec une pente s'adoucissant vers l'aval (3,2 % → 1,3 %, plafond 9 m), et un aléa décroissant avec l'altitude, majoré vers l'aval (×0,80 → ×1,20). Sur une carte plate, l'aléa tiendrait à la **distance à l'eau** : mesuré avant de renoncer, à 250 m de portée il retombait à **0,74 rive gauche et 0,39 rive droite**, contre 0,75 et 0,43 par l'altitude — la règle changeait, pas la carte du risque.
-
-**Le trafic** (`charge_reseau`, ~110 l.). Une affectation minimale par plus court chemin **en temps**, pas en distance : deux demandes superposées, l'échange entre les sorties de carte (degré 1) et le local entre carrefours (degré ≠ 2), pondérées 55/45. Normalisée sur le 9<sup>e</sup> décile — normaliser sur le maximum écraserait tout, un seul tronçon portant l'essentiel des chemins. Ce n'est pas une simulation : c'est le socle sur lequel « fermer une rue reporte sa charge sur les voisines » devient calculable.
-
-> Deux pièges déjà payés, tous deux corrigés dans le code : les nœuds du graphe sont **tous les sommets**, pas les extrémités de tronçons (sinon un raccord en T casse le réseau en morceaux) ; et une berge à largeur nulle est **hors graphe** (c'est une rive, pas une voie).
-
-**L'emprise libre.** `largeur_m` moins ce que la circulation réclame par hiérarchie. C'est l'entrée de la doctrine à seuil : « je plante au-delà de X m ». Les mètres libres de la voie rapide de berge sont neutralisés — ce sont des files de circulation, pas du stationnement, et c'est précisément ce que sa suppression rendrait.
-
-`--blanc` calcule tout, affiche tout, **n'écrit rien**. C'est le mode par défaut du travail. Le compte rendu n'est pas décoratif : il sort quatre choses invisibles sur la carte — la population réellement portée, les cinq plaies de 1965 relues dans les données, la courbe de la doctrine à seuil pour X de 2 à 9 m, et la connexité du réseau routier (c'est elle qui a révélé l'absence de ponts).
-
-### `apercu_carte.py` — la boucle de contrôle (585 l.)
-
-**Lecture seule**, SQLite ouvert en `mode=ro` : ne peut pas abîmer un fichier, tourne pendant que QGIS est ouvert dessus. Sort un PNG de 2 200 px légendé, avec échelle, et un bilan chiffré en console (îlots, linéaire, ce qui est renseigné, brins morts).
-
-Trois modes :
-
-```bash
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --adjacences
-python3 QGIS/scripts/apercu_carte.py QGIS/data/Prototype_qualifie.gpkg --calque=charge
-```
-
-- **par défaut** : coloriage par `sous_type` (à défaut `fonction`), rues épaissies par hiérarchie, brins morts cerclés de rouge
-- **`--adjacences`** : la carte s'efface à 72 %, le graphe s'affiche par-dessus — **rouge = coupure, vert = on passe**
-- **`--calque=<champ>`** : n'importe quel champ numérique en dégradé froid→chaud, sur les îlots s'il y est, sinon sur les traits de rue. C'est ce qui permet de vérifier un attribut **en le regardant** : `--calque=charge` fait sortir l'axe de transit tout seul, sans qu'on l'ait désigné.
-
-Seule dépendance externe de tout le dossier : **Pillow** (`pip install pillow`).
-
-Les **8 brins morts** signalés sont les radiales qui sortent vers la campagne. Ce ne sont pas des erreurs — le bord de l'emprise n'est pas une rue. Ne pas les « corriger ».
-
-### `01_champs_et_valuemaps.py` — hors chaîne (153 l.)
-
-Le seul script à **coller dans la console Python de QGIS**, sur une copie, si on préfère qualifier à la souris en vue formulaire plutôt que par listes de `fid`. Il ajoute les champs manquants et pose les listes déroulantes. Démarre en `SIMULATION = True` : rien n'est écrit tant qu'on ne l'a pas repassé à `False`.
-
-Il ne fait **pas** partie de la chaîne 02→03→04 et n'a pas été utilisé depuis que la qualification se fait par listes de `fid`. Voir §8 : sa liste de sous-types a divergé.
-
-## 5. Le schéma réel, tel qu'il est dans le fichier aujourd'hui
-
-`Prototype_qualifie.gpkg` · SQLite/GeoPackage · **EPSG:25832** (UTM 32N) · emprise 0,93 km²
-
-**`ilots`** — 69 polygones · *saisi = posé à la main dans 02, dérivé = calculé*
-
-| Colonne | Origine | |
+| | Quoi | git |
 |---|---|---|
-| `fid` · `geom` | source | POLYGON |
-| `fonction` | 02 | freiraum · habitation · industrie · mixte · riviere |
-| `sous_type` | 02 | **13 valeurs** — c'est lui qui porte le level design |
-| `exception` | 02 / 04 | 1 = saisie protégée du recalcul (17 îlots) |
-| `surface_m2` | 02 | |
-| `bord_carte_m` | 03 | frontière sans voisin — ≠ donnée manquante |
-| `densite` `logements` `hauteur` | 04 | densifier · seuil de viabilité TC |
-| `impermeabilise` | 04 | désimperméabiliser · ruissellement |
-| `canopee` | 04 | planter · confort d'été |
-| `desserte_tc` | 04 | le seuil que la densité doit atteindre |
-| `riverain` | 04 | fragilité sociale — la boucle de gentrification |
-| `stationnement` | 04 | le coût politique de la place-parking, chiffré |
-| `altitude_relative` · `alea` | 04 | ⏸️ à 0 — carte plate, crue hors prototype (2026-08-12) |
-| `position_fil_eau` | 04 | la digue protège ici et aggrave en aval |
-| `rive` | 04 | gauche / droite / lit — l'asymétrie des deux rives |
+| `source/` | **la carte**, en GeoJSON : îlots, routes, et les venelles quand elles existent | ✅ suivi |
+| `travail/` | `wehrau.gpkg` et les copies d'essai | ❌ ignoré |
+| `archive/` | les anciens GeoPackages | ❌ ignoré |
 
-**`routes`** — 178 tronçons, MULTILINESTRING · `hierarchy` (source, héritée) · `hierarchie` + `largeur_m` (02) · `emprise_libre_m` + `stationnement` + `charge` + `canopee` (04)
+**Ce qui est écrit à la main va dans `source/`. Tout le reste se refait.** Détail du format → `data/LISEZ-MOI.md`.
 
-**`adjacences`** — 179 lignes, table attributaire sans géométrie, déclarée dans `gpkg_contents` pour que QGIS la voie · `id_a` `id_b` `hierarchie_separatrice` `longueur_m` `permeabilite`
-
-⚠️ La couche de lignes s'appelle **`routes`** dans le fichier, pas `rues` comme dit le vault. Le nom du fichier prime. → `Décisions arrêtées` 31c
-
-### Le contrat entre les scripts
-
-Trois dépendances dures, dont deux sont vérifiées à l'exécution :
-
-1. **02 → 04** : tout `sous_type` écrit par 02 doit avoir sa ligne dans `TISSU`. ✅ vérifié, 04 s'arrête avec la liste des manquants.
-2. **03 → 04** : la table `adjacences` doit exister ; 04 s'en sert pour `desserte_tc`. ✅ vérifié, message explicite.
-3. **02 → 03/04** : les noms de couches `ilots` / `routes` sont **codés en dur** dans les trois scripts. Renommer une couche dans QGIS casse la chaîne sans avertissement.
-
-## 6. Où est le design, où est la mécanique
-
-Chaque script est coupé en deux par un commentaire. **Au-dessus** : ce qui se règle et se relance. **En dessous** : « rien à régler ». Les quatre endroits qui décident du comportement de la carte, par ordre de densité :
-
-| Où | Quoi | Combien |
-|---|---|---|
-| `04` · `TISSU` | densité, hauteur, imperméabilisation, canopée, fragilité, parking | **12 lignes × 6 colonnes** |
-| `02` · les listes de `fid` | quel îlot est quoi | ~30 lignes |
-| `03` · `PERMEABILITE` | ce qu'une rue laisse passer | **7 nombres** |
-| `04` · pentes et aléa | le relief, qui n'existe nulle part ailleurs | 5 constantes |
-
-**Les deux fichiers à relire en priorité** — ils sont d'ailleurs listés comme en attente dans `ETAT.md` : les listes de `fid` de `02` et la table `TISSU` de `04`.
-
-### La plomberie partagée
-
-Les quatre scripts hors console QGIS **n'importent ni GDAL, ni Shapely, ni QGIS** — seulement `sqlite3` et `struct` de la bibliothèque standard (plus Pillow pour l'aperçu). Ils lisent le WKB à la main. Conséquence directe : **la chaîne tourne sur n'importe quelle machine avec un Python nu**, sans installer QGIS, ce qui est exactement ce qu'il faut pour un dépôt qui vit sur deux machines.
-
-Le prix était ~60 lignes de lecteur WKB (`gpkg_vers_wkb`, `lire_wkb`, `enveloppe`) **dupliquées dans chaque fichier**, avec cette note : *« le premier candidat à une factorisation si un cinquième script arrive »*.
-
-✅ **Fait le 2026-08-17, et pas pour la raison prévue.** Ce n'est pas le nombre de scripts qui a tranché, c'est le passage de la source en texte : il fallait un endroit qui sache convertir GeoJSON ↔ WKB, et ce fut `carte.py`. Les scripts qui touchent la SOURCE (`00`, `00b`, `tracer_chemins`) n'encodent plus une seule ligne de binaire — six fonctions leur ont été retirées. Ceux qui lisent la carte de TRAVAIL gardent leur lecteur WKB local : ils lisent un GeoPackage, ce que `carte.py` ne leur fournit pas.
-
-Autre astuce partagée, moins évidente : les déclencheurs d'index spatial du GeoPackage appellent `ST_IsEmpty`, `ST_MinX`… que SQLite seul n'a pas. **Écrire le moindre attribut échoue sans elles.** Les scripts les rebranchent en Python (`brancher_fonctions_spatiales`) ; comme aucune géométrie n'est jamais modifiée, ces fonctions ne font que relire ce qui est déjà écrit.
-
-## 7. L'état, vérifié le 2026-08-11
+## Les scripts
 
 | | |
 |---|---|
-| Emprise | 0,93 km² · 898 × 1 036 m |
-| Îlots | **69** — 56 bâtis · 7 champs · 6 morceaux de rivière |
-| Sous-types | **12** · **16 exceptions** (cible ≈ 20) |
-| Routes | **178** tronçons · 13,6 km — rue 100 · boulevard 40 · rive 21 · ruelle 17 |
-| Franchissements de l'Ilse | **5** |
-| Adjacences | **179** paires · 13,60 km de frontières partagées, soit **exactement** le linéaire de voirie — aucune frontière en `sans_rue` |
-| Population portée | 2 549 logements · **5 353 habitants** sur 38,3 ha bâtis (140 hab/ha) |
-| Stationnement | 3 350 places sur rue + 1 237 sur îlot = **4 587**, soit 1,80 par logement |
+| `chaine.py` | ▶️ LA commande |
+| `carte.py` | 📖 lit et écrit la SOURCE — le seul qui connaisse le WKB |
+| `00_decouper_ilots.py` · `00b_ilots_lisiere.py` · `tracer_chemins.py` | ✏️ **écrivent dans la SOURCE** |
+| `02_qualifier.py` | ① le level design : les listes de `fid`, la hiérarchie et la largeur des rues |
+| `03_adjacences.py` | ② le graphe : qui touche qui, et ce que la rue laisse passer |
+| `04_deriver_attributs.py` | ③ les attributs dérivés, la table `TISSU`, le trafic |
+| `04b_emprises_baties.py` | l'îlot après retrait de voirie |
+| `04c_parcelles.py` | le découpage en parcelles |
+| `04d_emprises_batiments.py` | l'empreinte de chaque bâtiment |
+| `05_exporter_classeur.py` | → `Classeur/*.csv` |
+| `06_etat_zero.py` | 👁 la ville entière en HTML |
+| `07_exporter_godot.py` | → `Godot/data/wehrau.json`, toute la géométrie 3D |
+| `08_jouer.py` | rejoue les parties du classeur |
+| `apercu_carte.py` · `apercu_parcelles.py` | 👁 PNG légendés, lecture seule |
+| `palette.py` | les matériaux du bâti |
+| `01_champs_et_valuemaps.py` · `classification.json` · `00b_mettre_a_echelle.py` | vestiges, hors chaîne — le dernier vise encore `Vallmar2.gpkg`, qui n'existe plus |
 
-**Les trois contrôles qui comptent, tous les trois au vert :**
+🔴 **Trois scripts écrivent dans la SOURCE**, et ce qu'ils touchent est du level design : passer `--blanc` d'abord, toujours. `02` rebâtit la carte de travail depuis la source, donc **un tracé fait à la main ne survit que dans la source**. `tracer_chemins` refuse en plus d'écraser une couche existante sans `--refaire`.
 
-- la ville privée de sa rivière et de ses champs tombe en **deux morceaux (45 et 11 îlots)** — la coupure est dans la géométrie
-- le réseau routier, lui, est **d'un seul tenant** (195 nœuds) — les cinq ponts existent
-- l'**axe de transit sort tout seul** de l'affectation de trafic : le tronçon 55 monte à `charge = 1,00` sans qu'on l'ait désigné
+## Ce qui casse la chaîne sans prévenir
 
-Étapes 1 à 6 faites. Le retrait de voirie ajoute quatre mesures :
+- les noms de couches **`ilots`** et **`routes`** sont codés en dur — les renommer casse tout en silence. La couche s'appelle `routes`, pas `rues` comme dit le vault : le fichier prime.
+- un `sous_type` écrit par `02` sans ligne dans `TISSU` → `04` s'arrête en nommant les manquants.
+- la table `adjacences` absente → `04` refuse de démarrer.
+- les déclencheurs d'index spatial du GeoPackage appellent des fonctions que SQLite seul n'a pas : **écrire le moindre attribut échoue sans elles**. Les scripts les rebranchent en Python.
+- les coordonnées sont en **EPSG:25832** et ne sont **jamais arrondies** — voir l'en-tête de `carte.py`.
 
-| | |
-|---|---|
-| Emprise bâtie après retrait | **76,5 ha** au lieu de 92,8 |
-| Voirie dégagée | **16,3 ha = 17,6 %** de la carte |
-| Anneaux simples après retrait | **69 / 69** |
-| Îlots reculés de 22 m par le quai | **15, 55, 58** — trois îlots de cœur ancien |
-
-## 8. Dérives connues — à corriger, aucune bloquante
-
-Relevées en relisant le dossier le 2026-08-11. Rien n'empêche de travailler ; les deux premières se corrigent en une ligne.
-
-1. 🟠 **`apercu_carte.py` plante sur un clone frais.** `QGIS/rendus/` est gitignoré, donc absent après un `git clone` — et le script ne le crée pas : `FileNotFoundError` au moment du `im.save`. Reproduit à l'instant sur ce Mac. Correctif : `os.makedirs(RENDUS, exist_ok=True)` avant l'enregistrement.
-2. 🟠 **`HABITANTS_VAULT = 18000` dans `04`** est périmé. La décision 13d fixe Wehrau à **~5 350 habitants**, et la carte en porte 5 353 — soit la cible à 3 près. Mais le contrôle compare toujours à 18 000 et sort un **⚠️ « la carte n'en porte que 30 % »** à chaque exécution, alors que la réalité est un ✅. Un contrôle qui crie faux finit par ne plus être lu. Passer la constante à `5350`.
-3. 🟡 **`01_champs_et_valuemaps.py` a divergé de `02`.** Sa liste `SOUS_TYPES` date de l'Altstadt (`coeur_medieval`, `faubourg`, `quai`, `friche`…) et ne recoupe presque pas les 12 sous-types réellement écrits (`coeur_ancien`, `maisons_de_ville`, `barre_1970`, `jardins_familiaux`, `friche_industrielle`…). Le coller dans QGIS aujourd'hui poserait des listes déroulantes qui ne correspondent plus aux données. Sa docstring parle encore de l'Altstadt. À resynchroniser sur `02` ou à archiver.
-4. 🟡 **`classification.json` est un vestige** de l'époque sans champ `fonction` : `apercu_carte.py` ne le lit qu'en repli, et `Prototype_qualifie.gpkg` a le champ, donc il n'est **jamais utilisé**. Il contredit d'ailleurs `02` (l'îlot 27 y est un champ, il est pavillonnaire depuis). Le supprimer, ou le garder pour lire un `.gpkg` non qualifié — mais alors le remettre d'accord avec `02`.
-5. ✅ **Le titre ambigu de `04` est corrigé** : il parle désormais des quatre îlots repères réellement listés, pas des trois plaies urbaines de la décision 71.
-6. ⚪ **La colonne `hierarchy` d'origine survit** dans `routes` à côté de `hierarchie`. Sans effet — plus aucun script ne la lit après `02` — mais c'est un doublon qui piégera quelqu'un un jour.
-
-## 9. Mémo — les commandes
+## Regarder, sans rien écrire
 
 ```bash
-# LA commande : refaire la carte entière depuis la source (0,7 s)
-python3 QGIS/scripts/chaine.py
+python QGIS/scripts/apercu_carte.py --calque=charge
 ```
 
-```bash
-# la même, plus l'export vers la maquette 3D
-python3 QGIS/scripts/chaine.py --godot
-```
+`--adjacences` affiche le graphe par-dessus la carte effacée, `--calque=<champ>` met n'importe quel champ numérique en dégradé. C'est ce qui permet de vérifier un attribut **en le regardant**.
 
-```bash
-# regarder (lecture seule, sans danger)
-python3 QGIS/scripts/apercu_parcelles.py
-python3 QGIS/scripts/apercu_carte.py
-python3 QGIS/scripts/apercu_carte.py --adjacences
-python3 QGIS/scripts/apercu_carte.py --calque=charge
-```
+`--blanc` sur `04` et `04b` calcule tout, affiche tout, n'écrit rien.
 
-```bash
-# tout recalculer et tout afficher, sans rien écrire
-python3 QGIS/scripts/04_deriver_attributs.py --blanc
-python3 QGIS/scripts/04b_emprises_baties.py --blanc
-```
-
-```bash
-# modifier la SOURCE — passe à blanc d'abord, c'est du level design
-python3 QGIS/scripts/00_decouper_ilots.py --blanc
-python3 QGIS/scripts/00b_ilots_lisiere.py --blanc
-python3 QGIS/scripts/tracer_chemins.py --blanc
-```
-
-```bash
-# la palette : couverture des 12 sous-types, familles, règle du sol
-python3 QGIS/scripts/palette.py
-```
-
-*(sous Windows, `python` au lieu de `python3`)*
+`QGIS/rendus/` est gitignoré, donc absent d'un clone frais.
 
 ---
 
-**Voir aussi** — dans le vault : `Technique/Pipeline QGIS.md` · `Technique/Géométrie et données.md` · `Ville/Wehrau.md` · `Méta/Décisions arrêtées.md` (30b, 31b, 31c, 31d, 32). À la racine : `ETAT.md` · `CLAUDE.md` §5 et §5 bis.
+**Voir aussi** — le vault : `Technique/Pipeline QGIS.md` · `Technique/Géométrie et données.md`. À la racine : `CLAUDE.md` · `ETAT.md` · `Prototype/00 - Prototype.md`.

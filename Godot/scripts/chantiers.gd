@@ -7,7 +7,7 @@ extends RefCounted
 # La machinerie ne parle d'aucun thème : elle lit des clés et des noms de
 # champs (décision 64, « le prototype énergie est le gabarit »).
 #
-# 🔴 L'ASYMÉTRIE, à ne pas perdre en route (`Classeur/README.md` §4) : le
+# 🔴 L'ASYMÉTRIE, à ne pas perdre en route (`Classeur/README.md`) : le
 # BUDGET se paie étalé sur délai + travaux, le CAPITAL en entier au mois de la
 # décision, le RETOUR n'arrive qu'à la fin des travaux au tarif du jour. Sans
 # elle, il n'y a plus de jeu.

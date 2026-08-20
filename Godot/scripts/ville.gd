@@ -2,7 +2,7 @@ extends RefCounted
 # L'état de Wehrau, et ce qu'il devient quand le temps passe.
 # Que des nombres : aucun nœud, aucune couleur, aucun signal.
 #
-# La rampe vient du `Classeur/README.md` §4, déjà éprouvée dans `08_jouer.py`.
+# La rampe vient de `Classeur/README.md`, déjà éprouvée dans `08_jouer.py`.
 # ⚠️ Les deux moteurs doivent donner le même chiffre — contrôle de recoupement
 # décrit dans le README de Godot.
 

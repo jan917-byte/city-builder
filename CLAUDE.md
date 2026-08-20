@@ -22,13 +22,15 @@ City-builder PC de **transformation urbaine**. Le joueur ne construit pas, il **
 | `Prototype/00 - Prototype.md` | le tableau des étapes, les tables de level design, la dette | 60 l. |
 | `Prototype/⟨étape ouverte⟩.md` | le chantier vivant : mesures, ce qui reste, quoi regarder | **140 l.** |
 | `Prototype/⟨étapes fermées⟩.md` | figées le jour où l'étape passe à ✅ | — |
+| `⟨dossier⟩/README.md` | **le mode d'emploi du dossier, rien d'autre** : à quoi il sert, quoi lancer, ce qui va me mordre | **120 l.** |
 
-**Cinq règles d'écriture, et c'est elles qui tiennent les plafonds :**
+**Six règles d'écriture, et c'est elles qui tiennent les plafonds :**
 1. **Un fait, un seul endroit.** `ETAT.md` *pointe* vers la note d'étape, il ne la résume pas.
 2. **Ce qui se remesure ne s'archive pas** — la chaîne ressort tous les chiffres en 0,7 s. Même logique que « on ne committe pas un dérivé », appliquée à la prose.
 3. **Les règles s'écrivent au présent.** L'histoire d'une règle — ce qu'elle remplace, pourquoi — va dans `HISTORIQUE.md`.
 4. **Quand le vault et `Prototype/` disent la même chose, c'est dans `Prototype/` qu'on efface.**
 5. `Prototype/` **n'est pas le vault** : markdown ordinaire, pas de frontmatter, pas de wikilinks.
+6. 🔴 **Un README reste simple, et il ne porte aucun chiffre mesuré.** Il dit ce que fait le dossier, quoi lancer, et les pièges permanents qu'aucune relance ne rattraperait. Pas d'état, pas de défauts, pas d'arbitrage, pas d'historique de ce qui a été essayé : ça vit dans `ETAT.md`, `Prototype/`, le vault et `HISTORIQUE.md`. Un README qui raconte la session qui l'a écrit est déjà faux.
 
 **Une seule étape ouverte à la fois.** Une étape se termine quand **son critère de réussite est vu à l'écran**, pas quand le code compile. Ça protège le risque **52** — *que la 3D mange le calendrier*.
 

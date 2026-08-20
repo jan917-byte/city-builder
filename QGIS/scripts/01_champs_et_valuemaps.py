@@ -2,7 +2,7 @@
 """
 ⚰️ VESTIGE — NE PLUS LANCER. Se collait dans la console Python de QGIS pour
 poser des listes déroulantes de saisie. QGIS est sorti du projet le 2026-08-17
-et sa liste `SOUS_TYPES` a divergé de `02` (QGIS/README.md §8). Gardé parce
+et sa liste `SOUS_TYPES` a divergé de `02`. Gardé parce
 qu'il documente ce que la saisie manuelle demandait avant les scripts.
 
 Ajoute les champs manquants, recopie `hierarchy` → `hierarchie` en minuscules,
