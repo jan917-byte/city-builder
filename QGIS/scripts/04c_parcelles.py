@@ -107,8 +107,12 @@ TISSU = {
     # anneau de parcelles autour d'un cœur vide, l'inverse de l'urbanisme de
     # 1970 : la barre se pose au MILIEU, en travers, sans égard pour la rue —
     # ce que donne la boîte, qui ignore les rues.
-    # 80 × 70 = la moitié des 11 158 m² de l'îlot 32, donc DEUX objets.
-    "barre_1970":             (50.0,   75.0,   "boite"),
+    # 🔄 2026-08-19 : 80 × 70 → 46 × 80, demandé devant l'image (« moins larges,
+    # mets-en 3 »). Le PRODUIT décide le compte — 11 158 m² d'emprise sur l'îlot
+    # 32 divisés par 3 680 en donnent trois. La PROFONDEUR décide le SENS, et
+    # c'est le piège : sous 76 m on repart en dos-à-dos et il sort une lanière
+    # de 136 m, une barre de Großstadt. Mesuré : 46, 57 et 58 m, 2 003 m².
+    "barre_1970":             (46.0,   80.0,   "boite"),
     "equipement":             (45.0,   35.0,   "boite"),   # un ou deux objets
     "friche_industrielle":    (55.0,   45.0,   "boite"),   # des halles
 }

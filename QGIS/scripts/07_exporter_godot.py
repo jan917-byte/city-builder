@@ -197,11 +197,16 @@ TALUS_DESSOUS = 0.25
 #   - - - - - - -║  ║ −2,00 nappe          ║  pile  ║      - - - - - -  −2,00
 #   ─────────────╨──╨ −2,60 fond        ─────╨────────╨──
 #
-# 🔴 ET UNE SEULE LIGNE DE MUR SUIT LA ROUTE. Ce qui change d'un cas à l'autre,
-# c'est jusqu'où elle DESCEND : au fond du chenal quand elle porte un quai, à la
-# sous-face du tablier quand elle porte un pont. Le parapet, lui, est le même
-# muret dans les deux cas — c'est ce qui fait qu'un bord de pont et un bord de
-# quai se ressemblent, comme dans une vraie ville.
+# 🔄 LE PARAPET EST LE MÊME MURET DANS LES DEUX CAS — c'est ce qui fait qu'un
+# bord de pont et un bord de quai se ressemblent, comme dans une vraie ville.
+# Ce qui change, c'est ce qu'il surmonte : le tablier du pont, ou le mur de
+# quai qui descend au fond du chenal. Et ils se PARTAGENT la rive : le muret du
+# pont s'arrête au nu du quai, celui du quai s'interrompt sous le tablier. Les
+# deux se rejoignent en équerre au coin de la culée, et aucun ne monte sur la
+# chaussée de l'autre (2026-08-19, voir `_bord_eau`).
+# ⏸️ « UNE SEULE LIGNE DE MUR SUIT LA ROUTE » était la règle du 2026-08-18, et
+# elle ne tient plus : le pont suit la route, le quai suit la BERGE. Voir plus
+# bas, à `QUAI_PENTE`, pourquoi — et à quoi ça ressemblait avant.
 BANDE_QUAI = 1.10          # de l'asphalte au nu extérieur du mur
 PARAPET_H = 1.00           # le mètre demandé par l'auteur
 PARAPET_EP = 0.40
@@ -211,18 +216,38 @@ PARAPET_EP = 0.40
 # d'un trottoir plus sa bande libre.
 QUAI_PORTEE = 4.00
 QUAI_PAS = 2.00            # le débit de la ligne de mur
-# ⚠️ IL FAUT QUE LA RUE LONGE, et ce test est ce qui évite le pire défaut de la
-# première version : à chaque carrefour du quai, la chaussée d'une rue
-# perpendiculaire se rallonge d'une demi-largeur (c'est elle qui remplit les
-# carrefours) et ce bout de 4 m passe au-dessus de l'eau. Sans ce test, chacune
-# de ces ~35 amorces se voyait pousser deux murs en travers de son débouché.
-# Elles restent en l'air, DERRIÈRE le parapet du quai qui passe devant : le
-# contrôle imprimé plus bas est là pour le prouver, pas pour l'espérer.
-QUAI_COS = 0.50            # 60° : au-delà, la rue traverse, elle ne longe pas
-# Jusqu'où on regarde pour DIRE que l'eau était en vue sans qu'on l'ait bordée.
-# Ne fabrique aucune géométrie : sert au compte rendu, pour que « pas de mur
-# ici » soit un chiffre qu'on lit et non un trou qu'on découvre à l'écran.
-QUAI_VUE = 10.0
+# 🔄 LE MUR SUIT LA BERGE, PAS LA ROUTE — refait le 2026-08-19 devant l'image.
+# L'auteur : « les murs au bord des routes au bord du fleuve ne fonctionnent pas
+# bien, ils doivent seulement longer le fleuve. » Jusqu'ici le mur était un
+# DÉCALÉ DE LA CHAUSSÉE : on prenait son axe rallongé, on l'écartait de la
+# demi-largeur plus la bande, et on rabattait sur la berge. Trois défauts, et
+# tous les trois viennent de là, pas d'un réglage :
+#   ① le mur héritait des ÉVASEMENTS de la chaussée aux carrefours, donc un
+#      bout de mur en travers du débouché de chaque rue perpendiculaire — c'est
+#      ce qu'on voit à l'écran au pied des trois ponts ;
+#   ② il se coupait à chaque bout de tronçon : 21 morceaux, 21 paires de bouts
+#      francs, dont un de 3,2 m tout seul au milieu de l'eau ;
+#   ③ il s'écartait jusqu'à 47° de la direction de la berge — il zigzaguait
+#      dans une rivière qui, elle, est droite.
+# La règle d'aujourd'hui tient en une phrase : LE MUR SUIT LA BERGE. Il ne
+# s'avance sur l'eau que là où l'asphalte y déborde, et d'autant — donc il
+# porte toujours la rue, sans jamais quitter le fil du fleuve.
+QUAI_SONDE = 0.35          # le pas de sonde qui cherche le bord de l'asphalte
+# Au-delà, ce n'est plus un débord de quai : c'est un franchissement, et il a
+# déjà son tablier. Sans ce plafond, la sonde traverserait l'Ilse en entier au
+# droit d'un pont et le quai se mettrait à porter le pont.
+QUAI_DEBORD_MAX = 14.0
+# De combien le nu du mur a le droit de s'écarter d'une station à la suivante
+# (2 m). C'est ce qui transforme la marche brutale d'un débouché de rue en un
+# épaulement à 27° : le mur s'écarte, passe le carrefour, revient. Un simple
+# maximum glissant aurait donné la même largeur avec des angles droits.
+QUAI_PENTE = 1.00
+# Le sinus maximal entre la berge et la chaussée pour que celle-ci compte comme
+# LONGEANT le fleuve : 45°. Au-delà, la rue traverse, et une rue qui traverse ne
+# déplace pas le bord de l'eau. C'est le même arbitrage que l'ancien `QUAI_COS`,
+# mais posé au bon endroit : sur ce que la sonde a le droit de trouver, et non
+# sur ce que la rue a le droit d'émettre.
+QUAI_LONGE_SIN = 0.70
 PONT_MIN = 8.0             # plus court que ça, ce n'est pas un ouvrage
 PONT_CULEE = 2.5           # de combien le tablier mord sur la terre
 TABLIER_EP = 0.70
@@ -231,13 +256,13 @@ PILE_COTE = 2.20           # l'épaisseur de la pile dans le sens du courant
 PILE_RETRAIT = 0.80        # de combien elle est plus étroite que le tablier
 Y_TABLIER = Y_SOL - TABLIER_EP
 # ⚠️ LE DESSUS DU QUAI EST UN CENTIMÈTRE SOUS LE SOL, et ce centimètre est du
-# travail en moins ailleurs. Là où le mur se pose sur la berge au lieu de
-# s'avancer sur l'eau, sa bande de couronnement recouvre un ou deux décimètres
-# de plaque de sol — la distance à la berge est mesurée, donc approchée à
-# l'angle près. Deux surfaces au même millimètre se battraient en duel sur tout
-# le linéaire ; un centimètre plus bas, c'est le sol qui gagne, et la bande
-# reste invisible dessous. Elle est toujours 6 cm AU-DESSUS de l'asphalte, qui
-# est le seul voisin qu'elle ne doit pas laisser passer devant.
+# travail en moins ailleurs. Le couronnement va du bord de l'asphalte au nu du
+# mur : entre les deux il recouvre un bout de plaque de sol, et deux surfaces au
+# même millimètre se battraient en duel sur tout le linéaire. Un centimètre plus
+# bas, c'est le sol qui gagne et la bande reste invisible dessous. Elle est
+# toujours 6 cm AU-DESSUS de l'asphalte, qui est le seul voisin qu'elle ne doit
+# pas laisser passer devant — et 1 cm SOUS le tablier d'un pont, ce qui permet
+# au quai de glisser dessous sans ressortir par la chaussée.
 Y_QUAI = Y_SOL - 0.01
 
 # ⏸️ `altitude_relative` et `alea` ne sont plus exportés : la carte est plate et
@@ -565,6 +590,46 @@ PASSAGE_JEU_BORD = 0.30          # la trame ne touche pas le bord de chaussée
 PASSAGE_RECUL = 0.80             # ce qui sépare le passage de la zone d'échange
 ESPACEMENT_TRAVERSEE = 120.0     # au-delà, un piéton traverse n'importe où
 JEU_MARQUAGE = 0.60              # le blanc laissé autour d'une zone interdite
+
+# 🅿️ LA TRAME DE STATIONNEMENT DE LA PLACE-PARKING.
+#
+# 🔴 AUCUNE PLACE N'EST PLACÉE À LA MAIN, et aucune n'est comptée à la main
+# non plus : `04` annonce 127 places sur l'îlot 19 (sa surface × la part de
+# parking du tissu ÷ SURFACE_PAR_PLACE). Jusqu'ici ce nombre n'existait que
+# dans la fiche — la place était un aplat gris. Ce qui suit le DESSINE, et le
+# compte qu'on imprime est celui des places réellement rangées : c'est le
+# premier endroit du projet où le chiffre du tableur peut être contredit par
+# la géométrie.
+#
+#   ① la direction   la plus longue arête de l'emprise. Sur une emprise, une
+#                    arête est une façade sur rue : la plus longue est la
+#                    façade principale, et c'est parallèlement à elle qu'un
+#                    parking se range.
+#   ② le module      allée + deux rangées dos à dos = 16 m, répété en travers
+#   ③ le glissement  la trame glisse (16 crans en travers, 5 le long) et on
+#                    garde la position qui range le plus de voitures — c'est
+#                    ce que fait un géomètre avec son calque
+#   ④ la place tient dans l'emprise retirée du bord, ses quatre coins compris
+#   ⑤ l'accès        3 m d'allée DEVANT elle, sinon elle est enclavée derrière
+#                    une autre rangée et personne n'y accède
+#
+# ⚠️ Le retrait de bord n'est pas une marge de dessin : c'est ce qui reste de
+# sol nu tout autour, par où on entre et on ressort. À 0,5 m la trame monte à
+# 153 places et vient buter contre le trottoir ; à 6 m elle tombe à 96 et la
+# place se vide. 3 m donne 24,9 m² par place — la valeur même que `04` prend
+# pour SURFACE_PAR_PLACE, alors que les deux ne se sont jamais parlé.
+PLACE_LARGEUR = 2.50             # une place : 2,50 m…
+PLACE_LONGUEUR = 5.00            # …sur 5,00 m
+ALLEE_PARKING = 6.00             # l'allée de desserte : ressortir en une manœuvre
+MODULE_PARKING = ALLEE_PARKING + 2 * PLACE_LONGUEUR
+BORD_PARKING = 3.00              # ce que la trame laisse tout autour
+ACCES_PARKING = 3.00             # l'allée exigée devant une place
+GLISSEMENT_V = 16                # les crans d'essai de la trame, en travers…
+GLISSEMENT_U = 5                 # …et le long
+# La peinture de la place est 1 cm au-dessus du SOL de l'îlot, et non au-dessus
+# de la chaussée : Y_MARQUAGE (−0,01) passerait 6 cm SOUS la place, qui est un
+# cap d'îlot à Y_SOL. Le marquage serait invisible et rien ne le dirait.
+Y_MARQUAGE_SOL = Y_SOL + 0.01
 
 # 🌾 LES BANDES DE FAUCHE. Un champ était un aplat de 3 ha ; c'est la plus
 # grande surface unie de l'image et elle sonne faux. On le coupe en bandes
@@ -1376,6 +1441,12 @@ def main():
     # à un passage. Assombri d'un cheveu : une venelle de 3 m entre deux murs
     # ne voit pas beaucoup de ciel.
     coul_chemin = tuple(c * 0.94 for c in PAL.vers_lineaire(PAL.MINERAL_CLAIR))
+    # 🅿️ La même peinture usée que la voirie, et c'est le point : une place de
+    # parc et une ligne d'axe sont le MÊME objet du monde. Deux blancs
+    # différents diraient qu'il s'agit de deux choses.
+    coul_marq_sol = PAL.vers_lineaire(PAL.MARQUAGE)
+    parkings = []
+    n_tri_parc = 0
     n_chemin = 0
     aire_chemin = 0.0
     n_champ = n_bande = n_maille_talus = 0
@@ -1661,7 +1732,39 @@ def main():
                 n_champ += 1
             else:
                 _sol(sols, an, coul, G)
-            arbres.extend(_semer(an, d, rng, relief))
+            # 🅿️ LA PLACE-PARKING SE DESSINE. Le test ne nomme aucun îlot et
+            # aucun sous-type : un îlot de SOL qui porte des places, c'est la
+            # place minérale et rien d'autre — la barre et l'équipement en
+            # portent aussi, mais ils ont une hauteur et sont partis plus haut.
+            # Le jour où le level design pose une deuxième place, elle se
+            # dessinera sans qu'on revienne ici.
+            interdit = None
+            if (d["stationnement"] or 0) > 0:
+                n_pl, traits, trame_pl = _places_de_parc(an)
+                # Les places entrent dans le maillage des SOLS, donc dans le
+                # groupe de leur îlot : cliquer une place ouvre la fiche de la
+                # place. Elles ne sont pas de la voirie — le jeu ne les
+                # sélectionne pas une par une.
+                for p_, q_ in traits:
+                    n_tri_parc += _ruban(sols, [p_, q_], LARGEUR_LIGNE,
+                                         coul_marq_sol, G, y=Y_MARQUAGE_SOL,
+                                         bouts=False)
+                # 🌳 ET LES ARBRES TIENNENT LE BORD. Sans ça, un arbre sur deux
+                # de la place pousse au milieu d'une place peinte : le semis
+                # tire au hasard dans l'anneau et ne sait rien de la trame.
+                # C'est le même mécanisme que le rejet hors de l'anneau, avec
+                # un anneau de plus — pas une position corrigée à la main.
+                if trame_pl is not None:
+                    interdit = list(trame_pl) + [trame_pl[0]]
+            plantes = _semer(an, d, rng, relief, interdit)
+            arbres.extend(plantes)
+            if interdit is not None:
+                # Le compte est MESURÉ sur les arbres rendus, pas déduit du
+                # rejet : c'est ce qui prouve que le rejet a bien tourné.
+                parkings.append((fid, n_pl, len(traits), d["stationnement"],
+                                 len(plantes),
+                                 sum(1 for t in plantes
+                                     if dedans(interdit, (t[0], t[1])))))
 
     print("  masses %d · sols %d · eau %d" % (n_masse, n_sol, n_eau))
     print("        emprises de sélection : %d îlots, %d sommets"
@@ -1798,8 +1901,8 @@ def main():
     # Deux teintes proches se verraient comme un défaut de raccord.
     coul_chap = PAL.vers_lineaire(PAL.TROTTOIR)
     st_bord = {"pont": 0, "pont_m": 0.0, "pile": 0, "quai_m": 0.0,
-               "avance_m": 0.0, "parapet_m": 0.0, "talus": 0, "vue_nue": 0,
-               "tri": 0}
+               "parapet_m": 0.0, "parapet_coupe_m": 0.0, "sur_quai": 0.0,
+               "bouts": 0, "tri": 0}
     plateformes = []
     ponts_vus = []
     murs_eau = []
@@ -1808,6 +1911,29 @@ def main():
         for part in d["parts"]:
             for p in (part[0], part[-1]):
                 noeuds.add((round(p[0] / 0.25), round(p[1] / 0.25)))
+    # 🌊 LE QUAI SE PLANIFIE AVANT D'Être ÉMIS, et il lui faut deux choses
+    # qu'aucun tronçon ne connaît tout seul : l'asphalte de TOUTE la ville
+    # (sinon le débouché d'une rue perpendiculaire passe pour de l'eau) et les
+    # tabliers (sinon un muret pousse sous un pont). Il s'émet ensuite dans la
+    # boucle, tronçon par tronçon, pour tomber dans le bon groupe cliquable.
+    tabliers = []
+    for d in routes:
+        if not (d["largeur_m"] or 0.0) > 0.0:
+            continue
+        ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5),
+                 d["largeur_m"])
+        for ip in range(len(d["parts"])):
+            tabliers.extend(_tabliers(axes_voirie[d["fid"]][ip], ch,
+                                      chenal, relief))
+    plan_quai, st_quai, plat_quai, murs_quai = _quais(
+        chenal, relief, GrilleChaussee(chaussees), tabliers)
+    plateformes.extend(plat_quai)
+    murs_eau.extend(murs_quai)
+    # Le pont a besoin du quai pour savoir ou finir son parapet ; le quai a
+    # besoin des tabliers pour ne pas pousser dessous. L'ordre est donc :
+    # tabliers (geometrie seule) -> quais -> emission des ponts.
+    boites_quai = _boites(plat_quai)
+
     n_seg = 0
     n_tri_tr = 0
     # 🔲 LE COULOIR DE CHAQUE TRONÇON, pour la silhouette de sélection.
@@ -1847,7 +1973,8 @@ def main():
             # son trottoir. Un pont n'est pas un objet du jeu, c'est un état de
             # la route — et c'est déjà ce que dit le creusement du chenal.
             k_, pl_, po_, mu_ = _bord_eau(voirie, axe, ch, chenal, relief,
-                                          coul_quai, coul_chap, G)
+                                          coul_quai, coul_chap, G,
+                                          boites_quai)
             for nom, v_ in k_.items():
                 st_bord[nom] += v_
             plateformes.extend(pl_)
@@ -1859,6 +1986,11 @@ def main():
                 plat.append(round(g[0], 2))
                 plat.append(round(g[2], 2))
             axes.append(plat)
+        # 🌊 Le quai de CE tronçon, dans SON groupe : le parapet se clique et
+        # se repeint comme son trottoir. La ligne, elle, a été taillée d'un
+        # seul tenant le long de la berge — le découpage ne se voit pas.
+        st_bord["tri"] += _emettre_quai(voirie, plan_quai.get(d["fid"], ()),
+                                        coul_quai, coul_chap, G)
         couloirs[str(d["fid"])] = [round(larg + MARGE_COULOIR, 2), axes]
         # 🚶 Le trottoir de ce tronçon a été fabriqué par les ÎLOTS qui le
         # bordent, pas par lui — mais il est rangé sous SON fid, dans son
@@ -1941,18 +2073,39 @@ def main():
     aire_eau, aire_cache, aire_dela, depasse = _asphalte_en_lair(
         routes, coudes, chenal, plateformes, murs_eau)
     print("  bord de l'eau : %d ponts (%.0f m de tablier, %d piles),"
-          " %.2f km de quai porté"
+          " %.2f km de quai porté en %d longueurs"
           % (st_bord["pont"], st_bord["pont_m"], st_bord["pile"],
-             st_bord["quai_m"] / 1000.0))
+             st_quai["quai_m"] / 1000.0, st_quai["runs"]))
     print("        parapet de %.2f m : %.2f km · mur avancé sur l'eau :"
-          " %.2f km"
-          % (PARAPET_H, st_bord["parapet_m"] / 1000.0,
-             st_bord["avance_m"] / 1000.0))
-    print("        refusé : %d stations sur une berge de champ en pente ·"
-          " %d stations (%.0f m) où l'eau est en vue à plus de %.0f m de la"
-          " chaussée, donc sans barrière"
-          % (st_bord["talus"], st_bord["vue_nue"],
-             st_bord["vue_nue"] * QUAI_PAS, QUAI_PORTEE))
+          " %.2f km · %d morceaux cliquables, sans joint visible"
+          % (PARAPET_H,
+             (st_bord["parapet_m"] + st_quai["parapet_m"]) / 1000.0,
+             st_quai["avance_m"] / 1000.0, st_quai["morceaux"]))
+    # 🌉 CE QUI A ÉTÉ COUPÉ AUX PONTS, ET C'EST LE CONTRÔLE DU 2026-08-19 :
+    # le parapet d'un pont ne doit border que l'eau libre. Ce qui est retiré
+    # ici est ce qui montait sur la terre ou sur le quai — donc en travers de
+    # la voie de berge. Le compte de bouts dit qu'il en reste UN par joue :
+    # deux, et le muret se serait coupé au milieu d'une travée.
+    print("        parapet de pont : %.0f m gardés sur l'eau en %d bouts"
+          " (%d attendus) · retirés : %.0f m sur le quai, %.0f m sur la terre"
+          "  %s"
+          % (st_bord["parapet_m"], st_bord["bouts"], 2 * st_bord["pont"],
+             st_bord["sur_quai"],
+             st_bord["parapet_coupe_m"] - st_bord["sur_quai"],
+             "✅" if st_bord["bouts"] == 2 * st_bord["pont"]
+             else "❌ un muret coupé en deux"))
+    # 🔴 LE CHIFFRE QUI PROUVE QUE LE MUR LONGE LE FLEUVE : il est bâti À
+    # PARTIR de la berge, donc son écart à elle EST son avancée sur l'eau, et
+    # rien d'autre. Avant le 2026-08-19 le mur était un décalé de la route et
+    # cet écart dérivait jusqu'à 8,1 m sans que personne puisse le dire.
+    print("        berge : %.0f m de rive suivie · refusé : %d stations"
+          " (%.0f m) de talus de champ, %d (%.0f m) sans chaussée à %.0f m,"
+          " %d (%.0f m) sous un tablier"
+          % (st_quai["quai_m"],
+             st_quai["talus"], st_quai["talus"] * QUAI_PAS,
+             st_quai["campagne"], st_quai["campagne"] * QUAI_PAS,
+             QUAI_PORTEE,
+             st_quai["tablier"], st_quai["tablier"] * QUAI_PAS))
     print("        asphalte au-dessus du chenal : %.0f m², porté à %.1f %% ·"
           " %.0f m² masqués derrière un parapet · %.0f m² au-delà"
           " (dépassement max %.2f m)  %s"
@@ -1975,6 +2128,25 @@ def main():
               % (n_maille_talus, bas_sol, NAPPE_ILSE,
                  "✅" if bas_sol < NAPPE_ILSE else "❌",
                  bas_plaque, "✅" if bas_plaque < bas_sol else "❌"))
+    # 🅿️ LE SEUL CONTRÔLE QUI CONFRONTE DEUX CHAÎNES. Partout ailleurs, ce
+    # qu'on imprime est mesuré sur ce qu'on vient de dessiner. Ici, la
+    # géométrie répond à un nombre calculé par `04` sans elle, et l'écart est
+    # un vrai résultat : au-delà de ~10 %, c'est que l'un des deux ment.
+    for f_, n_pl_, n_tr_, annonce, n_arb, n_dedans in parkings:
+        ecart = 100.0 * (n_pl_ - annonce) / max(annonce, 1)
+        print("  place-parking (îlot %d) : %d places rangées, %d annoncées"
+              " par 04 — écart %+.0f %% %s"
+              % (f_, n_pl_, annonce, ecart,
+                 "✅" if abs(ecart) <= 10.0 else "❌ à regarder"))
+        print("        trame parallèle à la plus longue façade · module"
+              " %.0f m (allée %.0f + deux rangées de %.0f) · place %.2f × %.2f m"
+              % (MODULE_PARKING, ALLEE_PARKING, PLACE_LONGUEUR,
+                 PLACE_LARGEUR, PLACE_LONGUEUR))
+        print("        %d traits peints, %d triangles, %.0f m de retrait au"
+              " bord — le sol nu par où on entre"
+              % (n_tr_, n_tri_parc, BORD_PARKING))
+        print("        %d arbres plantés sur la place, dont %d sur la trame %s"
+              % (n_arb, n_dedans, "✅" if n_dedans == 0 else "❌ à regarder"))
     print("  arbres : %d semés dans les îlots" % len(arbres))
     print("  alignements : %d emplacements sur %d tronçons plantables, "
           "%d occupés à t0"
@@ -3703,154 +3875,27 @@ def _densifier(pts, pas):
     return out
 
 
-def _ray_berge(p, n, chenal, portee):
-    """(distance, direction de la berge) au premier bord d'eau rencontré depuis
-    `p` dans la direction `n`, ou None si l'eau est plus loin que `portee`.
+def _stations_eau(net, dec, h, chenal, relief=None):
+    """Le bord de l'asphalte est-il au-dessus de l'eau, à gauche et à droite ?
 
-    🔴 ON RAYONNE, ON NE PREND PAS LA BERGE LA PLUS PROCHE. Ce qui compte n'est
-    pas « où est l'eau » mais « à combien de mètres est le bord de l'eau DANS LA
-    SECTION de cette rue ». Une berge qui passe deux mètres derrière les façades
-    d'en face est plus proche que celle d'en bas et n'a rien à voir avec cette
-    rue — c'est exactement l'erreur qui, mesurée à la distance, aurait planté un
-    parapet au milieu du cœur ancien.
+    Une seule question, et elle suffit : c'est elle qui dit qui TRAVERSE. Sous
+    les deux bords, la rue franchit et prend un pont ; sous un seul, elle longe
+    — et ce cas-là ne se décide plus ici depuis le 2026-08-19, mais dans
+    `_quais`, à partir de la berge.
 
-    La direction de la berge rentre avec la distance parce qu'elle décide de la
-    suite : parallèle, la rue longe et prend un mur ; en travers, elle traverse
-    et c'est un pont (ou une amorce de carrefour, qui ne prend rien)."""
-    q = (p[0] + n[0] * portee, p[1] + n[1] * portee)
-    best = None
-    for (a, b) in chenal.berges_autour(min(p[0], q[0]) - 0.5, min(p[1], q[1]) - 0.5,
-                                       max(p[0], q[0]) + 0.5, max(p[1], q[1]) + 0.5):
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        # p + t·n = a + u·(b − a). Le déterminant s'annule quand le rayon est
-        # parallèle à l'arête : il ne la rencontre pas, ou il est dessus.
-        det = dx * n[1] - dy * n[0]
-        if abs(det) < 1e-12:
-            continue
-        wx, wy = a[0] - p[0], a[1] - p[1]
-        t = (dx * wy - dy * wx) / det
-        u = (n[0] * wy - n[1] * wx) / det
-        if t < -0.05 or t > portee or u < 0.0 or u > 1.0:
-            continue
-        if best is None or t < best[0]:
-            L = math.hypot(dx, dy)
-            best = (max(0.0, t), (dx / L, dy / L))
-    return best
-
-
-def _berge_proche(p, n, chenal, portee):
-    """(distance, direction) de la berge la plus proche de `p` DU CÔTÉ `n`, ou
-    None. Mesurée au segment, pas dans la section.
-
-    🔴 C'EST LE SECOURS DU RAYON, et il n'est pas décoratif : il a coûté cinq
-    trous dans le mur de quai, vus à l'écran avant d'être expliqués. Deux cas
-    où la section ne répond pas, et le mur doit exister quand même :
-
-      · la voie de berge dérive si loin au-dessus de l'eau que son AXE est dans
-        le chenal. Le rayon tiré vers la rivière ne rencontre plus rien — la
-        berge d'en face est à quarante mètres ;
-      · la berge fait un angle. Son point le plus proche est alors OBLIQUE, et
-        un rayon à 90° passe à côté d'un bord qui est pourtant à trois mètres.
-
-    ⚠️ Le côté sert à PLACER le mur : sans lui, une rue de quai prendrait la
-    berge de l'autre bord de son corridor et poserait son mur du mauvais côté.
-    Il se passe (`n = None`) quand on ne cherche que la DIRECTION du fleuve :
-    elle est la même sur ses deux rives, et une rue dont l'axe est déjà
-    au-dessus de l'eau n'a aucune berge devant elle."""
-    best = None
-    for (a, b) in chenal.berges_autour(p[0] - portee, p[1] - portee,
-                                       p[0] + portee, p[1] + portee):
-        d = D4C.dist_pt_seg(p, a, b)
-        if d > portee or (best is not None and d >= best[0]):
-            continue
-        L = math.hypot(b[0] - a[0], b[1] - a[1])
-        if L < 1e-9:
-            continue
-        # Le point le plus proche doit être devant : le projeté du milieu de
-        # l'arête sur la normale de ce côté, sinon c'est la berge d'en face.
-        if n is not None:
-            pp = _point_proche(p, a, b)
-            if (pp[0] - p[0]) * n[0] + (pp[1] - p[1]) * n[1] < -0.05:
-                continue
-        best = (d, ((b[0] - a[0]) / L, (b[1] - a[1]) / L))
-    return best
-
-
-def _stations_eau(net, dec, h, chenal, relief):
-    """Ce que chaque station de la chaussée voit de l'eau, à gauche et à droite.
-
-    Quatre choses par côté, et elles suffisent à tout décider ensuite :
-
-      `mouille`  le bord de l'asphalte est-il au-dessus de l'eau ;
-      `t`        à combien de mètres, EN LATÉRAL, est le bord de l'eau ;
-      `longe`    la berge est-elle parallèle à la rue (moins de 60°) ;
-      `talus`    la rive est-elle un champ en pente — auquel cas on ne met rien.
-
-    ⚠️ `t` est ramené en distance LATÉRALE, celle qui sert à décaler un ruban :
-    le rayon part le long de l'onglet, qui est plus long que la normale de
-    1/cos(demi-angle). Sans cette division, le mur d'un virage s'écarterait de
-    l'asphalte d'autant — plusieurs dizaines de centimètres dans un coude serré.
-
-    🌾 Le refus du talus n'est pas un cas particulier de plus : une berge de
-    champ descend à 22 % jusqu'à l'eau, et un muret planté au milieu de cette
-    pente ne serait ni une barrière ni un quai. La ville tient la rive avec un
-    mur, la campagne avec un talus — c'est déjà la règle du creusement."""
-    porte = h + QUAI_PORTEE                 # en distance LATÉRALE
-    vue = h + QUAI_VUE
-    st = []
-    for i, p in enumerate(net):
-        u = dec[i]
-        Lu = math.hypot(u[0], u[1]) or 1.0
-        cotes = {}
-        for cote in (1, -1):
-            d = (u[0] * cote / Lu, u[1] * cote / Lu)
-            bord = (p[0] + u[0] * cote * h, p[1] + u[1] * cote * h)
-            c = {"mouille": chenal.dans_eau(bord), "t": None, "d": None,
-                 "eau": False, "longe": False, "talus": False}
-            # `d` — la berge la plus proche de ce côté, cherchée large. Elle sert
-            # à deux choses et à rien d'autre : de secours quand la section ne
-            # répond pas, et à COMPTER les rives vues mais pas bordées.
-            ici = _berge_proche(p, d, chenal, vue * Lu)
-            if ici is not None:
-                c["d"] = ici[0] / Lu
-            hit = _ray_berge(p, d, chenal, porte * Lu)
-            # LA DIRECTION D'ABORD, et pour tout le monde : elle décide si la rue
-            # longe, et il faut le savoir même là où on ne posera rien — sans
-            # quoi une rive vue et non bordée sort du compte rendu au lieu d'y
-            # entrer. Elle se cherche des deux côtés : le fleuve a le même sens
-            # sur ses deux rives, et une rue dont l'axe est déjà au-dessus de
-            # l'eau n'a aucune berge devant elle.
-            near = (hit if hit is not None
-                    else ici or _berge_proche(p, None, chenal, (vue + h) * Lu))
-            if near is None:
-                cotes[cote] = c
-                continue
-            c["longe"] = abs(near[1][0] * u[1] - near[1][1] * u[0]) / Lu >= QUAI_COS
-            pb = bord
-            if hit is not None:
-                c["t"] = hit[0] / Lu
-                pb = (p[0] + d[0] * hit[0], p[1] + d[1] * hit[0])
-            elif not c["mouille"] and c["d"] is not None and c["d"] <= porte:
-                # La section ne répond pas — la berge fait un angle, son point le
-                # plus proche est oblique. On prend la distance mesurée.
-                c["t"] = c["d"]
-            # 🔴 Y A-T-IL DE L'EAU DE CE CÔTÉ-LÀ ? Cette question a l'air
-            # tautologique et elle a coûté un mur de 2,65 m debout au milieu de
-            # la ville. Le boulevard de quai a son AXE posé sur la ligne d'eau :
-            # la berge est alors à distance NULLE des deux côtés, et la mesure
-            # seule concluait « bord de l'eau » du côté des façades aussi. Une
-            # distance ne dit pas de quel côté est la rivière ; il faut aller
-            # voir 30 cm au-delà du bord trouvé.
-            vx, vy = pb[0] - p[0], pb[1] - p[1]
-            Lv = math.hypot(vx, vy)
-            q = ((pb[0] + vx / Lv * 0.30, pb[1] + vy / Lv * 0.30) if Lv > 1e-6
-                 else (p[0] + d[0] * 0.30, p[1] + d[1] * 0.30))
-            c["eau"] = c["mouille"] or chenal.dans_eau(q)
-            if relief is not None:
-                c["talus"] = relief.z(pb[0], pb[1]) < -0.20
-            cotes[cote] = c
-        st.append({"p": p, "dec": u, "cotes": cotes})
-    return st
+    ⏸️ CETTE FONCTION FAISAIT SIX FOIS PLUS. Elle tirait un rayon vers la
+    rivière (`_ray_berge`), cherchait la berge la plus proche du bon côté
+    (`_berge_proche`), mesurait l'écart latéral à l'eau, l'angle de la rue à la
+    berge (`QUAI_COS`), et comptait les rives vues mais non bordées
+    (`QUAI_VUE`). Tout cela servait à poser un mur DEPUIS LA ROUTE ; le mur
+    part maintenant de la berge, où aucune de ces approximations n'est
+    nécessaire — la berge, elle, sait où elle est. `relief` reste dans la
+    signature pour ne pas changer les deux appels ; il ne sert plus."""
+    return [{"p": p, "dec": dec[i],
+             "cotes": {cote: {"mouille": chenal.dans_eau(
+                 (p[0] + dec[i][0] * cote * h, p[1] + dec[i][1] * cote * h))}
+                 for cote in (1, -1)}}
+            for i, p in enumerate(net)]
 
 
 def _plages(drapeaux):
@@ -3992,15 +4037,412 @@ def _parapet(m, ext, inte, dehors, coul, coul_chap, G, y_bas=Y_SOL):
     return n
 
 
-def _bord_eau(m, axe, ch, chenal, relief, coul_mur, coul_chap, G):
+def _plages_pont(net, st):
+    """Les plages [a, b, i0, i1] où la chaussée TRAVERSE vraiment : les deux
+    bords au-dessus de l'eau, sur au moins `PONT_MIN`, étendues des culées.
+
+    🔴 SORTIE DE `_bord_eau` LE 2026-08-19, et ce n'est pas du rangement : le
+    quai a besoin de savoir où sont les tabliers AVANT que la boucle des routes
+    ne commence à émettre, pour ne pas bâtir un muret sous un pont. Deux copies
+    de cette décision auraient dérivé dès le premier réglage."""
+    pont = _combler([c["cotes"][1]["mouille"] and c["cotes"][-1]["mouille"]
+                     for c in st])
+    plages = []
+    for i0, i1 in _plages(pont):
+        if _longueur(net, i0, i1) < PONT_MIN:
+            continue                    # une amorce de rue, pas un ouvrage
+        a, b = _etendre(net, i0, i1, PONT_CULEE)
+        plages.append((a, b, i0, i1))
+    return plages
+
+
+def _tabliers(axe, ch, chenal, relief):
+    """Les emprises des tabliers de cette part de tronçon, sans rien émettre.
+
+    Mêmes polygones que ceux que `_bord_eau` rangera dans `plateformes` — c'est
+    la même recette lue deux fois, pas deux recettes."""
+    h = ch / 2.0
+    net = _densifier(_axe_ruban(axe, h, True), QUAI_PAS)
+    if len(net) < 2:
+        return []
+    dec = _onglets(net)
+    st = _stations_eau(net, dec, h, chenal, relief)
+    out = []
+    for a, b, _i0, _i1 in _plages_pont(net, st):
+        cotes = {}
+        for cote in (1, -1):
+            cotes[cote] = [(net[k][0] + dec[k][0] * cote * (h + BANDE_QUAI),
+                            net[k][1] + dec[k][1] * cote * (h + BANDE_QUAI))
+                           for k in range(a, b + 1)]
+        out.append(list(cotes[1]) + list(reversed(cotes[-1])) + [cotes[1][0]])
+    return out
+
+
+def _chaines_berge(chenal):
+    """Les arêtes de berge recousues en polylignes continues, dans le sens de
+    l'anneau d'îlot dont elles sortent — donc **l'eau est toujours à gauche**.
+
+    C'est la seule chose que `Chenal` ne savait pas faire : il donne un SAC
+    d'arêtes, indexé pour la recherche par boîte, et un sac ne se longe pas.
+    Sans ce recousage, un mur de quai ne peut être que le décalé d'autre chose
+    — et c'est exactement le défaut qu'on répare.
+
+    ⚠️ LE SENS EST HÉRITÉ, PAS DEVINÉ. `_chenal_eau` prouve déjà que la normale
+    à gauche du parcours regarde l'eau (contrôle « murs de quai, tous tournés
+    vers l'eau »). On ne le recalcule donc pas ici : on garde l'ordre des
+    arêtes tel que l'anneau les a produites."""
+    par_debut = {}
+    for k, (a, _b) in enumerate(chenal.berges):
+        par_debut.setdefault(_cle(a), []).append(k)
+    # Un sommet où AUCUNE arête n'arrive est un vrai début de chaîne : la rive
+    # y bute sur le bord de la carte, ou sur une arête interne à l'eau qui a
+    # été écartée. Les prendre d'abord évite de couper une rive en deux au
+    # milieu, ce qui remettrait un bout franc là où il n'y a rien.
+    fins = {_cle(b) for (_a, b) in chenal.berges}
+    depart = [k for k, (a, _b) in enumerate(chenal.berges)
+              if _cle(a) not in fins]
+    libre = set(range(len(chenal.berges)))
+    chaines = []
+    for k0 in depart + list(range(len(chenal.berges))):
+        if k0 not in libre:
+            continue
+        libre.discard(k0)
+        a, b = chenal.berges[k0]
+        chaine = [a, b]
+        while True:
+            suite = [k for k in par_debut.get(_cle(chaine[-1]), ())
+                     if k in libre]
+            if not suite:
+                break
+            libre.discard(suite[0])
+            chaine.append(chenal.berges[suite[0]][1])
+        chaines.append(chaine)
+    return chaines
+
+
+class GrilleChaussee(object):
+    """Les segments de chaussée rangés en cases de 8 m, pour répondre vite à
+    « y a-t-il de l'asphalte ici, et à quel tronçon ».
+
+    `_dans_chaussee` balaie les 430 rubans à chaque appel : la sonde du mur de
+    quai en fait ~75 000, et sans grille l'export y passerait plus de temps
+    qu'à tout le reste."""
+
+    PAS = 8.0
+
+    def __init__(self, index):
+        self.seg = []
+        self.idx = {}
+        for fid, demi, axe in index:
+            for a, b in zip(axe, axe[1:]):
+                k = len(self.seg)
+                self.seg.append((fid, demi, a, b))
+                for cx in range(int((min(a[0], b[0]) - demi) // self.PAS),
+                                int((max(a[0], b[0]) + demi) // self.PAS) + 1):
+                    for cy in range(int((min(a[1], b[1]) - demi) // self.PAS),
+                                    int((max(a[1], b[1]) + demi) // self.PAS) + 1):
+                        self.idx.setdefault((cx, cy), []).append(k)
+
+    def dessus(self, p, long_de=None):
+        """Le `fid` de la chaussée sous `p`, ou None.
+
+        🔴 `long_de` EST TOUT L'INTÉRÊT DE CETTE MÉTHODE, et c'est lui qui
+        empêche le quai de festonner. Au carrefour, la chaussée d'une rue
+        PERPENDICULAIRE se rallonge d'une demi-largeur pour remplir le
+        croisement, et ce carré d'asphalte de 7 m passe au-dessus de l'eau. Sans
+        ce filtre, la sonde le trouve, le mur s'avance pour le porter, et le
+        quai part en festons dans la rivière — vu à l'écran le 2026-08-19, en
+        pire que le défaut qu'on réparait. Une rue qui TRAVERSE n'a pas à
+        déplacer le bord de l'eau : son amorce reste derrière le parapet du
+        quai, comme avant, et le contrôle de l'asphalte en l'air le dit."""
+        for k in self.idx.get((int(p[0] // self.PAS), int(p[1] // self.PAS)), ()):
+            fid, demi, a, b = self.seg[k]
+            if D4C.dist_pt_seg(p, a, b) > demi:
+                continue
+            if long_de is not None:
+                u = _unite(a, b)
+                if u is None or abs(u[0] * long_de[1]
+                                    - u[1] * long_de[0]) > QUAI_LONGE_SIN:
+                    continue
+            return fid
+        return None
+
+
+def _debord_asphalte(p, w, t, grille):
+    """(débord, tronçon) à cette station de berge — le débord compté DEPUIS LA
+    BERGE, positif vers l'eau.
+
+    Trois réponses possibles, et ce sont elles qui décident de tout :
+      · un nombre POSITIF — l'asphalte déborde sur l'eau. Le mur devra s'avancer
+        d'autant pour le porter ;
+      · un nombre NÉGATIF — la chaussée s'arrête en deçà de la berge. Le mur se
+        pose sur la berge, et il n'y a rien à porter ;
+      · None — aucune chaussée à `QUAI_PORTEE` de là. Ce n'est pas un quai :
+        c'est une rive de campagne, et elle n'a que faire d'un muret.
+
+    ⚠️ ON SONDE CÔTÉ EAU D'ABORD, ET ON S'ARRÊTE AU PREMIER TROU. Prendre le
+    point le plus loin sans exiger la continuité ferait mordre le quai sur la
+    chaussée d'en face, à travers la rivière."""
+    d, debord, fid = 0.0, None, None
+    while d <= QUAI_DEBORD_MAX:
+        f = grille.dessus((p[0] + w[0] * d, p[1] + w[1] * d), t)
+        if f is None:
+            break
+        debord, fid = d, f
+        d += QUAI_SONDE
+    if debord is not None:
+        return debord, fid
+    # 🔴 LE REPLI ACCEPTE N'IMPORTE QUELLE RUE, et il le faut. Au débouché
+    # d'une perpendiculaire, la rue de quai s'arrête et c'est l'amorce de
+    # l'autre qui touche l'eau : avec le filtre « longe » ici aussi, le mur se
+    # coupait à chaque carrefour — un trou de parapet tous les 60 m, et
+    # l'asphalte de l'amorce par-dessus. Ce qui décide de l'AVANCÉE du mur doit
+    # longer ; ce qui décide qu'il y a un QUAI ici, non.
+    d = 0.0
+    while d <= QUAI_PORTEE:
+        f = grille.dessus((p[0] - w[0] * d, p[1] - w[1] * d))
+        if f is not None:
+            return -d, f
+        d += QUAI_SONDE
+    return None, None
+
+
+def _boites(polys):
+    """Chaque polygone avec sa boîte englobante. Le test d'appartenance sert
+    deux fois (le quai cherche les tabliers, le pont cherche les quais) et
+    `dedans` coûte un parcours complet de l'anneau : la boîte élimine 99 % des
+    candidats en quatre comparaisons."""
+    return [(min(q[0] for q in poly), min(q[1] for q in poly),
+             max(q[0] for q in poly), max(q[1] for q in poly), poly)
+            for poly in polys]
+
+
+def _dans_boites(p, boites):
+    return any(x0 <= p[0] <= x1 and y0 <= p[1] <= y1 and dedans(poly, p)
+               for x0, y0, x1, y1, poly in boites)
+
+
+def _bascule(pa, pb, test, tours=6):
+    """La fraction de [pa, pb] où `test` cesse d'être vrai — `test(pa)` vrai,
+    `test(pb)` faux. Six dichotomies ramènent l'erreur à 1/64 du pas.
+
+    ⚠️ SANS ELLE, LE BOUT DU PARAPET D'UN PONT TOMBE À LA STATION, donc à 2 m
+    près : ou bien il s'arrête 2 m avant le nu du quai et il reste un trou au
+    coin, ou bien il le dépasse de 2 m et il remonte sur la voie de berge —
+    c'est-à-dire exactement le défaut qu'on répare."""
+    lo, hi = 0.0, 1.0
+    for _ in range(tours):
+        mi = (lo + hi) / 2.0
+        if test((pa[0] + (pb[0] - pa[0]) * mi, pa[1] + (pb[1] - pa[1]) * mi)):
+            lo = mi
+        else:
+            hi = mi
+    return lo
+
+
+def _entre(pa, pb, t):
+    return (pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t)
+
+
+def _quais(chenal, relief, grille, tabliers):
+    """LE QUAI, TENU PAR LA BERGE — le PLAN, pas l'émission.
+
+    Renvoie (plan, compte, plateformes, murs), où `plan` est
+    `{fid: [morceau, ...]}`. Une passe unique, lancée AVANT la boucle des
+    routes : une berge ne sait pas à quel tronçon elle appartient, et le
+    morceau qui la borde doit tomber dans le GROUPE de ce tronçon — sans quoi
+    la rue aurait deux nœuds dans Godot, et les calques thématiques n'en
+    repeindraient qu'un.
+
+    L'ordre : on recoud les berges, on demande à chaque station ce que
+    l'asphalte fait par ici, on lisse le nu du mur, on découpe par tronçon."""
+    st = {"quai_m": 0.0, "avance_m": 0.0, "parapet_m": 0.0, "talus": 0,
+          "campagne": 0, "tablier": 0, "morceaux": 0, "runs": 0}
+    plan, murs, plateformes = {}, [], []
+    boites = _boites(tabliers)
+
+    def sous_tablier(p):
+        return _dans_boites(p, boites)
+
+    for chaine in _chaines_berge(chenal):
+        net = _densifier(chaine, QUAI_PAS)
+        n = len(net)
+        if n < 3:
+            continue
+        # La normale EAU de chaque station. Pas d'onglet ici : la berge n'est
+        # pas un ruban à décaler d'une largeur constante, et un onglet
+        # s'envolerait au premier angle droit de la rive.
+        eau = []
+        for i in range(n):
+            u = _unite(net[max(0, i - 1)], net[min(n - 1, i + 1)]) or (1.0, 0.0)
+            eau.append((-u[1], u[0]))
+        prendre = [False] * n
+        bord = [0.0] * n
+        off = [0.0] * n
+        fids = [None] * n
+        sous = [False] * n
+        for i, p in enumerate(net):
+            if sous_tablier(p):
+                sous[i] = True
+                st["tablier"] += 1
+                continue
+            # 🌾 Une berge de champ descend à 22 % jusqu'à l'eau : un muret
+            # planté au milieu de cette pente ne serait ni une barrière ni un
+            # quai. La ville tient la rive avec un mur, la campagne avec un
+            # talus — c'est déjà la règle du creusement.
+            if relief is not None and relief.z(p[0], p[1]) < -0.20:
+                st["talus"] += 1
+                continue
+            d, f = _debord_asphalte(p, eau[i], (-eau[i][1], eau[i][0]),
+                                    grille)
+            if d is None:
+                st["campagne"] += 1
+                continue
+            prendre[i] = True
+            bord[i] = d
+            fids[i] = f
+            # Le nu du mur : le débord de l'asphalte, plus la bande. Négatif,
+            # il retombe à zéro — le mur se pose alors sur la berge elle-même,
+            # et c'est le mur du chenal qui fait la paroi.
+            off[i] = max(0.0, d + BANDE_QUAI)
+        _combler(prendre)
+        # ⚠️ LA CORDE PEND. Entre deux stations de berge (2 m), le mur est une
+        # droite alors que le bord de l'asphalte, lui, tourne : quatre quais en
+        # courbe laissaient ainsi 16 m² d'asphalte dépasser d'un mètre. Chaque
+        # station prend donc le débord de ses voisines — c'est la corde qui se
+        # place sur la flèche, et non l'inverse.
+        large = list(off)
+        for i in range(n):
+            if prendre[i]:
+                off[i] = max(large[max(0, i - 1)], large[i],
+                             large[min(n - 1, i + 1)])
+        # 🌉 LE QUAI GLISSE SOUS LE TABLIER, de deux stations. Sans ça il
+        # s'arrête au ras du pont et il reste, entre son bout et la culée, un
+        # coin d'asphalte qui dépasse le parapet de 1,5 m — mesuré sur les
+        # tronçons 97, 101, 128 et 146. On ne prolonge QUE sous un tablier :
+        # prolonger dans un talus de champ y planterait un muret.
+        for i0, i1 in _plages(prendre):
+            for pas_, bout in ((-1, i0), (1, i1)):
+                k = bout
+                for _ in range(2):
+                    j = k + pas_
+                    if not (0 <= j < n) or prendre[j] or not sous[j]:
+                        break
+                    prendre[j] = True
+                    bord[j] = bord[k]
+                    off[j] = off[k]
+                    fids[j] = fids[k]
+                    k = j
+        for i0, i1 in _plages(prendre):
+            if _longueur(net, i0, i1) < 4.0:
+                continue
+            st["runs"] += 1
+            # L'ÉPAULEMENT : le nu ne peut pas sauter d'une station à l'autre.
+            for i in range(i0 + 1, i1 + 1):
+                off[i] = max(off[i], off[i - 1] - QUAI_PENTE)
+            for i in range(i1 - 1, i0 - 1, -1):
+                off[i] = max(off[i], off[i + 1] - QUAI_PENTE)
+            _decouper_quai(net, eau, off, bord, fids, sous, i0, i1,
+                           plan, st, murs, plateformes)
+    return plan, st, plateformes, murs
+
+
+def _decouper_quai(net, eau, off, bord, fids, sous, i0, i1, plan, st, murs,
+                   plateformes):
+    """Une longueur de quai découpée en morceaux à `fid` constant.
+
+    🔴 LE DÉCOUPAGE NE COUPE QUE LE MAILLAGE, JAMAIS LA LIGNE. Les morceaux
+    sont taillés dans les mêmes tableaux, en partageant leur station de
+    frontière : deux voisins ont donc les mêmes sommets au millimètre, et le
+    joint ne se voit pas. C'est ce qui permet de garder un parapet cliquable —
+    cliquer un muret ouvre la fiche de la rue — sans revenir aux 21 bouts de
+    mur qu'on vient de supprimer."""
+    ext = [(net[i][0] + eau[i][0] * off[i], net[i][1] + eau[i][1] * off[i])
+           for i in range(i0, i1 + 1)]
+    inte = [(net[i][0] + eau[i][0] * (off[i] - PARAPET_EP),
+             net[i][1] + eau[i][1] * (off[i] - PARAPET_EP))
+            for i in range(i0, i1 + 1)]
+    # Le couronnement ne commence qu'où le sol s'arrête : sous l'asphalte il
+    # n'y a rien à couvrir, et par-dessus la plaque de sol deux surfaces au même
+    # millimètre se battraient en duel.
+    interieur = [(net[i][0] + eau[i][0] * max(0.0, min(bord[i], off[i])),
+                  net[i][1] + eau[i][1] * max(0.0, min(bord[i], off[i])))
+                 for i in range(i0, i1 + 1)]
+    # La plateforme sert au contrôle de l'asphalte en l'air : ce qu'elle couvre
+    # est porté. Côté terre elle mord 2 m au-delà de la berge, ce qui ne coûte
+    # rien — l'asphalte de ce côté-là n'est pas au-dessus de l'eau.
+    arriere = [(net[i][0] - eau[i][0] * 2.0, net[i][1] - eau[i][1] * 2.0)
+               for i in range(i0, i1 + 1)]
+    plateformes.append(list(arriere) + list(reversed(ext)) + [arriere[0]])
+    for j in range(i1 - i0 + 1):
+        murs.append((ext[j], eau[i0 + j]))
+    st["quai_m"] += _longueur(net, i0, i1)
+
+    coupes = [0]
+    for j in range(1, i1 - i0 + 1):
+        if fids[i0 + j] != fids[i0 + j - 1]:
+            coupes.append(j)
+    coupes.append(i1 - i0)
+    for a, b in zip(coupes, coupes[1:]):
+        if b <= a:
+            continue
+        st["morceaux"] += 1
+        avance = []
+        for j0, j1 in _plages([off[i0 + k] > 0.05 for k in range(a, b + 1)]):
+            if j1 > j0:
+                avance.append((j0, j1))
+                st["avance_m"] += _longueur(net, i0 + a + j0, i0 + a + j1)
+        # 🚧 PAS DE PARAPET SOUS UN TABLIER. Le quai glisse sous le pont pour
+        # que rien ne dépasse entre les deux ; son MURET, lui, monte de 1 m et le
+        # tablier n'est qu'à 1 cm au-dessus du couronnement — il traverserait la
+        # chaussée du pont et poserait un crochet en travers, vu à l'écran le
+        # 2026-08-19. Le couronnement et la paroi, eux, restent : ils sont
+        # dessous, invisibles, et ce sont eux qui portent l'asphalte.
+        garde_fou = [(j0, j1) for j0, j1
+                     in _plages([not sous[i0 + k] for k in range(a, b + 1)])
+                     if j1 > j0]
+        st["parapet_m"] += sum(_longueur(net, i0 + a + j0, i0 + a + j1)
+                               for j0, j1 in garde_fou)
+        plan.setdefault(fids[i0 + a], []).append(
+            (ext[a:b + 1], inte[a:b + 1], interieur[a:b + 1],
+             (eau[i0 + a][0], 0.0, -eau[i0 + a][1]), avance, garde_fou))
+
+
+def _emettre_quai(m, morceaux, coul_mur, coul_chap, G):
+    """Les trois surfaces d'un morceau de quai : couronnement, paroi, parapet.
+    Appelé DANS le groupe du tronçon, d'où le fait qu'il ne marque rien."""
+    tri = 0
+    for ext, inte, interieur, dehors, avance, garde_fou in morceaux:
+        tri += _bande3d(m, [(p[0], p[1], Y_QUAI) for p in interieur],
+                        [(p[0], p[1], Y_QUAI) for p in ext],
+                        coul_mur, G, (0.0, 1.0, 0.0))
+        # La paroi ne descend au fond QUE là où le mur s'est avancé sur l'eau.
+        # Là où il est posé sur la berge, le mur de quai du chenal est déjà là,
+        # à la même place : deux parois coplanaires, c'est du z-fighting sur
+        # toute la longueur de l'Ilse.
+        for j0, j1 in avance:
+            tri += _bande3d(
+                m, [(p[0], p[1], Y_QUAI) for p in ext[j0:j1 + 1]],
+                [(p[0], p[1], FOND_ILSE) for p in ext[j0:j1 + 1]],
+                coul_mur, G, dehors)
+        for j0, j1 in garde_fou:
+            tri += _parapet(m, ext[j0:j1 + 1], inte[j0:j1 + 1], dehors,
+                            coul_mur, coul_chap, G, Y_QUAI)
+    return tri
+
+
+def _bord_eau(m, axe, ch, chenal, relief, coul_mur, coul_chap, G, quais=()):
     """Le quai porté et le pont, sur une part de tronçon. Renvoie un compte.
 
     L'ordre est celui du raisonnement : on relève ce que chaque station voit de
     l'eau, on décide QUI traverse et qui longe, et seulement ensuite on émet.
-    Rien ici ne connaît le nom d'une rue ni le numéro d'un franchissement."""
+    Rien ici ne connaît le nom d'une rue ni le numéro d'un franchissement.
+
+    `quais` : les plateformes de quai déjà planifiées, en boîtes. Elles ne
+    servent qu'à savoir où le parapet du pont doit s'arrêter — voir plus bas."""
     st_out = {"pont": 0, "pont_m": 0.0, "pile": 0, "quai_m": 0.0,
-              "avance_m": 0.0, "parapet_m": 0.0, "talus": 0, "vue_nue": 0,
-              "tri": 0}
+              "parapet_m": 0.0, "parapet_coupe_m": 0.0, "sur_quai": 0.0,
+              "bouts": 0, "tri": 0}
     ponts = []                  # (longueur, milieu) — pour le point de vue
     # (point du nu extérieur, normale sortante) : le contrôle s'en sert pour
     # dire de quel côté du mur tombe le peu d'asphalte qui reste en l'air.
@@ -4015,15 +4457,9 @@ def _bord_eau(m, axe, ch, chenal, relief, coul_mur, coul_chap, G):
     st = _stations_eau(net, dec, h, chenal, relief)
 
     # ① QUI TRAVERSE : les deux bords au-dessus de l'eau, sur au moins PONT_MIN.
-    pont = _combler([c["cotes"][1]["mouille"] and c["cotes"][-1]["mouille"]
-                     for c in st])
+    plages = _plages_pont(net, st)
     garde = [False] * len(st)
-    plages = []
-    for i0, i1 in _plages(pont):
-        if _longueur(net, i0, i1) < PONT_MIN:
-            continue                    # une amorce de rue, pas un ouvrage
-        a, b = _etendre(net, i0, i1, PONT_CULEE)
-        plages.append((a, b, i0, i1))
+    for a, b, _i0, _i1 in plages:
         for k in range(a, b + 1):
             garde[k] = True
     plateformes = []
@@ -4063,9 +4499,50 @@ def _bord_eau(m, axe, ch, chenal, relief, coul_mur, coul_chap, G):
             st_out["tri"] += _bande3d(
                 m, [(p[0], p[1], Y_SOL) for p in bord],
                 [(p[0], p[1], Y_SOL) for p in ligne], coul_mur, G, (0.0, 1.0, 0.0))
-            st_out["tri"] += _parapet(m, ligne, inte, dehors,
-                                      coul_mur, coul_chap, G)
-            st_out["parapet_m"] += _longueur(net, a, b)
+            # 🌉 LE PARAPET DU PONT S'ARRÊTE AU BORD DE L'EAU — demandé le
+            # 2026-08-19 sur capture : « les murs des ponts sont encore dans
+            # les routes des berges, ils doivent s'arrêter aux berges. »
+            #
+            # Il courait sur toute la plage, culées comprises, donc 2,5 m
+            # au-delà de la berge GÉOMÉTRIQUE — et le bord de l'eau qu'on VOIT
+            # est encore ~5 m plus loin dans la rivière, au nu du quai, parce
+            # que la voie de berge y déborde son asphalte et que le mur s'est
+            # avancé pour le porter. Le muret du pont finissait donc 7 m après
+            # la rive apparente, en travers de la chaussée qui longe.
+            #
+            # La règle ne mesure plus rien : le parapet ne couvre que l'EAU
+            # LIBRE — ni la terre, ni ce que le quai porte déjà. Là où le quai
+            # s'arrête (une berge de campagne), c'est la rive qui le borne, et
+            # le pont garde son retour de culée.
+            libre = (lambda p: chenal.dans_eau(p)
+                     and not _dans_boites(p, quais))
+            garde_p = [libre(p) for p in ligne]
+            st_out["parapet_coupe_m"] += _longueur(net, a, b)
+            # Le partage des mètres coupés, pour le contrôle : ce qui montait
+            # sur la TERRE (le retour de culée) et ce qui montait sur le QUAI —
+            # c'est le second que l'auteur voit en travers de la voie de berge.
+            st_out["sur_quai"] += sum(QUAI_PAS for k, p in enumerate(ligne)
+                                      if not garde_p[k] and chenal.dans_eau(p))
+            for j0, j1 in _plages(garde_p):
+                if j1 <= j0:
+                    continue
+                ext_p, int_p = list(ligne[j0:j1 + 1]), list(inte[j0:j1 + 1])
+                # Les deux bouts au millimètre, pas à la station : sinon un
+                # trou de 2 m au coin du quai, ou 2 m de muret par-dessus.
+                if j0 > 0:
+                    t = _bascule(ligne[j0], ligne[j0 - 1], libre)
+                    ext_p[0] = _entre(ligne[j0], ligne[j0 - 1], t)
+                    int_p[0] = _entre(inte[j0], inte[j0 - 1], t)
+                if j1 < len(ligne) - 1:
+                    t = _bascule(ligne[j1], ligne[j1 + 1], libre)
+                    ext_p[-1] = _entre(ligne[j1], ligne[j1 + 1], t)
+                    int_p[-1] = _entre(inte[j1], inte[j1 + 1], t)
+                st_out["tri"] += _parapet(m, ext_p, int_p, dehors,
+                                          coul_mur, coul_chap, G)
+                st_out["bouts"] += 1
+                L_p = _cumul(ext_p)[-1]
+                st_out["parapet_m"] += L_p
+                st_out["parapet_coupe_m"] -= L_p
         plateformes.append(list(cotes[1]) + list(reversed(cotes[-1]))
                            + [cotes[1][0]])
         for cote in (1, -1):
@@ -4095,75 +4572,12 @@ def _bord_eau(m, axe, ch, chenal, relief, coul_mur, coul_chap, G):
                 FOND_ILSE, Y_TABLIER, coul_mur, G)
             st_out["pile"] += 1
 
-    # ③ QUI LONGE : un mur, du fond du chenal au sol, et son parapet dessus.
-    for cote in (1, -1):
-        utile = []
-        for k, s_ in enumerate(st):
-            c = s_["cotes"][cote]
-            prendre = (not garde[k] and c["longe"] and c["eau"]
-                       and (c["mouille"] or c["t"] is not None))
-            if prendre and c["talus"]:
-                prendre = False
-                st_out["talus"] += 1
-            # L'eau était là, à portée de vue, et la règle ne l'a pas bordée :
-            # c'est le seul « trou » possible dans le parapet, et il se compte
-            # au lieu de se découvrir. Trois cas dans Wehrau, tous sur une rue
-            # dont la chaussée est à plus de 4 m du bord de l'eau.
-            if (not prendre and not garde[k] and c["longe"] and c["eau"]
-                    and c["d"] is not None):
-                st_out["vue_nue"] += 1
-            utile.append(prendre)
-        for i0, i1 in _plages(_combler(utile)):
-            if _longueur(net, i0, i1) < 1.0:
-                continue
-            ext, inte, cap, avance = [], [], [], []
-            for k in range(i0, i1 + 1):
-                u, p = st[k]["dec"], net[k]
-                t = st[k]["cotes"][cote]["t"]
-                t = h if t is None else t          # station rebouchée
-                # 🔴 LA LIGNE DE MUR EST LE PLUS DEHORS DES DEUX : la berge, ou
-                # le bord de l'asphalte plus sa bande. C'est cette seule ligne
-                # qui fait les deux cas — elle colle à la berge quand la rue est
-                # en retrait, elle s'avance sur l'eau quand la rue déborde. Sans
-                # ce max, il aurait fallu deux familles de murs et un raccord
-                # entre elles, et le raccord aurait fui.
-                off = max(h + BANDE_QUAI, t)
-                ext.append((p[0] + u[0] * cote * off, p[1] + u[1] * cote * off))
-                inte.append((p[0] + u[0] * cote * (off - PARAPET_EP),
-                             p[1] + u[1] * cote * (off - PARAPET_EP)))
-                # Le dessus du quai ne commence qu'où le sol s'arrête : sous
-                # l'asphalte il n'y a rien à couvrir, et par-dessus la plaque de
-                # sol deux surfaces au même millimètre se battraient en duel.
-                q = max(h, t)
-                cap.append((p[0] + u[0] * cote * q, p[1] + u[1] * cote * q))
-                avance.append(off > t + 0.05)
-            u = st[i0]["dec"]
-            dehors = (u[0] * cote, 0.0, -u[1] * cote)
-            st_out["tri"] += _bande3d(
-                m, [(p[0], p[1], Y_QUAI) for p in cap],
-                [(p[0], p[1], Y_QUAI) for p in ext], coul_mur, G, (0.0, 1.0, 0.0))
-            # La paroi ne descend au fond QUE là où le mur s'est avancé sur
-            # l'eau. Là où il est posé sur la berge, le mur de quai du chenal
-            # est déjà là, à la même place : deux parois coplanaires, c'est du
-            # z-fighting sur toute la longueur de l'Ilse.
-            for j0, j1 in _plages(avance):
-                if j1 == j0:
-                    continue
-                st_out["tri"] += _bande3d(
-                    m, [(p[0], p[1], Y_QUAI) for p in ext[j0:j1 + 1]],
-                    [(p[0], p[1], FOND_ILSE) for p in ext[j0:j1 + 1]],
-                    coul_mur, G, dehors)
-                st_out["avance_m"] += _longueur(net, i0 + j0, i0 + j1)
-            st_out["tri"] += _parapet(m, ext, inte, dehors,
-                                      coul_mur, coul_chap, G, Y_QUAI)
-            st_out["quai_m"] += _longueur(net, i0, i1)
-            st_out["parapet_m"] += _longueur(net, i0, i1)
-            plateformes.append(list(net[i0:i1 + 1]) + list(reversed(ext))
-                               + [net[i0]])
-            for j, k in enumerate(range(i0, i1 + 1)):
-                uu = st[k]["dec"]
-                Lu = math.hypot(uu[0], uu[1]) or 1.0
-                murs.append((ext[j], (uu[0] * cote / Lu, uu[1] * cote / Lu)))
+    # ⏸️ « ③ QUI LONGE » A QUITTÉ CETTE FONCTION LE 2026-08-19, et la remettre
+    # ici serait revenir en arrière. Le mur de quai était construit ici même,
+    # station par station le long de la chaussée, symétrique du pont : d'où un
+    # mur qui suivait les évasements de carrefour et se coupait à chaque bout de
+    # tronçon. Il se fait maintenant en une seule passe, à partir des berges
+    # recousues, après toutes les routes — voir `_quais`.
     return st_out, plateformes, ponts, murs
 
 
@@ -4546,6 +4960,137 @@ def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G):
     return st
 
 
+def _suites(js):
+    """Les files d'entiers consécutifs : [3,4,5,9,10] → [(3,5), (9,10)].
+
+    C'est ce qui évite de peindre le dos d'une rangée en autant de bouts
+    qu'elle a de places — un vrai parking le peint d'un seul trait."""
+    out = []
+    for j in js:
+        if out and j == out[-1][1] + 1:
+            out[-1][1] = j
+        else:
+            out.append([j, j])
+    return [(a, b) for a, b in out]
+
+
+def _places_de_parc(anneau):
+    """La trame de stationnement d'une place-parking : combien de places elle
+    range, le marquage qui les dessine, et l'aire qu'elle occupe.
+
+    Sortie : (places, traits, trame) — le compte, les segments à peindre
+    ((x0,y0), (x1,y1)), et l'anneau retiré du bord, qui sert deux fois : à
+    ranger les places, et à en tenir les arbres dehors.
+
+    Les sept règles sont commentées au § PLACE_LARGEUR. Ce qui n'y est pas et
+    qui compte ici : le DOS des deux rangées est le même trait pour les deux.
+    Peint une fois par rangée, il serait peint deux fois au même endroit, à la
+    même altitude — deux quadrilatères coplanaires, donc du z-fighting sur
+    toute la longueur de la place."""
+    n = len(anneau)
+    if n < 3:
+        return 0, [], None
+    inner = D4B.retracter(anneau, [BORD_PARKING] * n)
+    if len(inner) < 3 or abs(aire_signee(inner)) < MODULE_PARKING * PLACE_LARGEUR:
+        return 0, [], None
+    ferme = list(inner) + [inner[0]]
+
+    # ① la direction : la plus longue arête de l'emprise, donc la façade
+    # principale sur rue. Mesuré sur l'îlot 19 : les neuf directions possibles
+    # ne s'écartent que de 119 à 129 places — la direction ne se choisit donc
+    # PAS sur le compte, qui ne les départage pas, mais sur ce qu'elle veut
+    # dire. Un parking rangé de travers par rapport à sa façade se voit.
+    i = max(range(n), key=lambda k: (anneau[(k + 1) % n][0] - anneau[k][0]) ** 2
+                                    + (anneau[(k + 1) % n][1] - anneau[k][1]) ** 2)
+    a, b = anneau[i], anneau[(i + 1) % n]
+    theta = math.atan2(b[1] - a[1], b[0] - a[0])
+    ux, uy = math.cos(theta), math.sin(theta)
+    vx, vy = -uy, ux
+    ox = sum(p[0] for p in inner) / len(inner)
+    oy = sum(p[1] for p in inner) / len(inner)
+    us = [(p[0] - ox) * ux + (p[1] - oy) * uy for p in inner]
+    vs = [(p[0] - ox) * vx + (p[1] - oy) * vy for p in inner]
+
+    def P(u, v):
+        return (ox + ux * u + vx * v, oy + uy * u + vy * v)
+
+    def cadre(u0, u1, va, vb):
+        """Les QUATRE coins dedans, pas le centre. Un rectangle dont seul le
+        centre est testé déborde de moitié sur un bord oblique — et tous les
+        bords de cette place-ci sont obliques."""
+        return all(dedans(ferme, P(u, v)) for u, v in
+                   ((u0, va), (u1, va), (u1, vb), (u0, vb)))
+
+    def trame(dv, du):
+        cases = []
+        k0 = int(math.floor((min(vs) - dv) / MODULE_PARKING)) - 1
+        k1 = int(math.ceil((max(vs) - dv) / MODULE_PARKING)) + 1
+        j0 = int(math.floor((min(us) - du) / PLACE_LARGEUR)) - 1
+        j1 = int(math.ceil((max(us) - du) / PLACE_LARGEUR)) + 1
+        for k in range(k0, k1 + 1):
+            base = dv + k * MODULE_PARKING
+            dos = base + ALLEE_PARKING + PLACE_LONGUEUR
+            for r in (0, 1):
+                # r = 0 : la rangée qui donne sur l'allée du module, en deçà.
+                # r = 1 : celle qui lui tourne le dos et donne sur l'allée du
+                # module SUIVANT. Les deux se touchent en `dos`.
+                va = base + ALLEE_PARKING if r == 0 else dos
+                vb = dos if r == 0 else base + MODULE_PARKING
+                wa = va - ACCES_PARKING if r == 0 else vb
+                wb = va if r == 0 else vb + ACCES_PARKING
+                for j in range(j0, j1 + 1):
+                    ua = du + j * PLACE_LARGEUR
+                    ub = ua + PLACE_LARGEUR
+                    if cadre(ua, ub, va, vb) and cadre(ua, ub, wa, wb):
+                        cases.append((k, r, j))
+        return cases
+
+    # ③ le glissement. 80 essais à ~130 places : le coût est celui d'un
+    # clignement d'œil, et il vaut 10 places de plus que la trame centrée.
+    meilleur = ([], 0.0, 0.0)
+    for s in range(GLISSEMENT_V):
+        for t in range(GLISSEMENT_U):
+            dv = s * MODULE_PARKING / GLISSEMENT_V
+            du = t * PLACE_LARGEUR / GLISSEMENT_U
+            cases = trame(dv, du)
+            if len(cases) > len(meilleur[0]):
+                meilleur = (cases, dv, du)
+    cases, dv, du = meilleur
+    if not cases:
+        return 0, [], inner
+
+    par_module = {}
+    for k, r, j in cases:
+        par_module.setdefault(k, (set(), set()))[r].add(j)
+
+    traits = []
+    for k in sorted(par_module):
+        base = dv + k * MODULE_PARKING
+        dos = base + ALLEE_PARKING + PLACE_LONGUEUR
+        ra, rb = par_module[k]
+        # ⑥ les séparations. Une par BORD de place, donc une de plus que de
+        # places dans une file — et elle traverse les deux rangées d'un coup
+        # quand les deux sont là, ce qui est le marquage réel d'un dos à dos.
+        bords = set()
+        for rangee in (ra, rb):
+            for j in rangee:
+                bords.add(j)
+                bords.add(j + 1)
+        for jb in sorted(bords):
+            haut = (jb in ra) or (jb - 1 in ra)
+            bas = (jb in rb) or (jb - 1 in rb)
+            v0 = base + ALLEE_PARKING if haut else dos
+            v1 = base + MODULE_PARKING if bas else dos
+            u = du + jb * PLACE_LARGEUR
+            traits.append((P(u, v0), P(u, v1)))
+        # ⑦ le dos, d'un seul trait par file continue : c'est la butée des
+        # deux rangées à la fois.
+        for j0, j1 in _suites(sorted(ra | rb)):
+            traits.append((P(du + j0 * PLACE_LARGEUR, dos),
+                           P(du + (j1 + 1) * PLACE_LARGEUR, dos)))
+    return len(cases), traits, inner
+
+
 def _decouper(iv, retires):
     """L'intervalle privé des morceaux déjà traités."""
     out, s = [], iv[0]
@@ -4674,7 +5219,11 @@ def _trottoirs(ilots, routes, coudes):
                └ bordure
 
     Les mètres libres restent le sol nu de la plaque : c'est là que le
-    stationnement se dessinera — 4 587 places à Wehrau, aucune visible.
+    stationnement DE RUE se dessinera. 🔄 Le commentaire disait « 4 587 places
+    à Wehrau, aucune visible » ; les deux moitiés ont bougé. Le compte est de
+    3 310 places de rue (`routes.stationnement`, mesuré le 2026-08-19), et
+    depuis le même jour la place-parking, elle, est dessinée — 123 places
+    peintes sur les 127 annoncées, § `_places_de_parc`. Les rues, non.
 
     Sortie : {fid de tronçon: [faces]}. Les faces sont rangées sous LA RUE que
     longe l'arête, pas sous l'îlot — cliquer un trottoir ouvre la fiche du
@@ -4781,13 +5330,18 @@ def _trottoirs(ilots, routes, coudes):
     return faces, stats
 
 
-def _semer(anneau, d, rng, relief=None):
+def _semer(anneau, d, rng, relief=None, interdit=None):
     """Le semis d'arbres d'un îlot de sol. Densité dérivée de `canopee`,
     graine fixe : le même export donne toujours la même forêt.
 
     ⚠️ Le pied de l'arbre suit le talus. Sans ça, les arbres de rive des
     champs 3, 5, 6 et 8 resteraient plantés à 0 — une rangée en lévitation
-    au-dessus de la pente, et c'est l'endroit de la carte qu'on regarde."""
+    au-dessus de la pente, et c'est l'endroit de la carte qu'on regarde.
+
+    `interdit` est un anneau FERMÉ d'où le semis est exclu : la trame de
+    stationnement de la place, où un arbre pousserait au milieu d'une place
+    peinte. Un rejet de plus dans une boucle qui n'en avait qu'un — la
+    position reste tirée, elle n'est pas corrigée."""
     surf = abs(aire_signee(anneau))
     n = int(round((d["canopee"] or 0.0) * surf / M2_PAR_ARBRE))
     if n <= 0:
@@ -4802,6 +5356,8 @@ def _semer(anneau, d, rng, relief=None):
         x = rng.uniform(min(xs), max(xs))
         y = rng.uniform(min(ys), max(ys))
         if not dedans(ferme, (x, y)):
+            continue
+        if interdit is not None and dedans(interdit, (x, y)):
             continue
         # Un parc, un bois de rive ou une lisière : le conifère y est courant.
         out.append([x, y, 0.0 if relief is None else relief.z(x, y),
@@ -4898,6 +5454,15 @@ def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):
     # chenal de haut : à 260 m d'étendue, un tablier de 70 cm et une pile ne
     # sont pas jugeables. Le pont est visé de près, et c'est là qu'on voit s'il
     # passe AU-DESSUS de l'eau au lieu de flotter dedans.
+    # 🅿️ Le point de vue sur la place-parking. Il n'est pas visé sur un fid
+    # écrit ici : c'est l'îlot de SOL qui porte des places, et il n'y en a
+    # qu'un. 130 m d'étendue — une place de 2,5 m ne se juge pas à 1 200.
+    pm = [f for f, x in ilots.items()
+          if (x["hauteur"] or 0.0) <= 0.0 and (x["stationnement"] or 0) > 0]
+    place = {"cible": centre(pm[0]) if pm else [0.0, 0.0],
+             "taille": 130.0,
+             "libelle": "La place-parking et ses places"}
+
     pp, ptaille = ip, 260.0
     if ponts:
         L, mil = max(ponts, key=lambda x: x[0])
@@ -4921,6 +5486,7 @@ def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):
                   "libelle": "Le talus des champs, au bord de l'eau"},
         "pont": {"cible": pp, "taille": ptaille,
                  "libelle": "Le plus long franchissement, tablier et pile"},
+        "place": place,
     }
 
 

@@ -3,8 +3,8 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-19 (session 46).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. Cette session n'a pas touché au jeu : elle a **réduit les fichiers de contexte** et supprimé `CHANTIERS.md`.
-⏸️ Les trois travaux laissés en chantier à la session 45 sont à vérifier **avant d'ouvrir un quatrième sujet** → [Toits et sol](Prototype/Toits%20et%20sol.md) § 7.
+**2026-08-19 (sessions 46 à 48, fusionnées).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*.
+Deux machines en parallèle depuis le même point : ici les **fichiers de contexte** ont fondu et `CHANTIERS.md` a disparu ; là-bas **le sol a pris corps** — quai sur la berge, parapets arrêtés à l'eau, barres à 6 niveaux, **123 places** sur la place du marché → [Toits et sol](Prototype/Toits%20et%20sol.md) § 3 quater · quinquies · sexies. ⚠️ Le sol **n'a pas son entrée** dans [HISTORIQUE.md](HISTORIQUE.md), et la note d'étape **déborde : 154 l. pour 140** — signal que l'étape 4 approche de sa fin, pas qu'il faut relever le plafond.
 
 ## Prochaine action — juger l'échange à l'écran
 
@@ -12,11 +12,13 @@
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis lancer la maquette et regarder **les façades** d'abord, la **berge** ensuite, **la rue** enfin. La grille de lecture — *ce qu'il faut voir* / *ce qui prouverait que c'est cassé* — et les réglages qui se changent en une ligne sont dans [Toits et sol](Prototype/Toits%20et%20sol.md) § 6 · § 7.
+Puis lancer la maquette et regarder **la place-parking** d'abord (touche `M`), le **quai et les ponts** ensuite, **les façades** et **la rue** enfin. La grille de lecture — *ce qu'il faut voir* / *ce qui prouverait que c'est cassé* — et les réglages qui se changent en une ligne sont dans [Toits et sol](Prototype/Toits%20et%20sol.md) § 6 · § 7.
 Puis le geste énergie : cliquer un cœur ancien puis la barre de 1974 et comparer « se rembourse en » (**31 ans contre 10**) ; sur l'îlot 31, la caisse refuse. → [Énergie](Prototype/Énergie.md)
 
 ## Ce qui attend l'auteur
 
+- 🔴 **Le critère de réussite « une barre de 9 niveaux »** (`Plan 3 mois.md:48`) est périmé : la barre est descendue à **6** le 2026-08-19, et il y en a trois. Réécrire le critère, ou annuler la baisse.
+- 🔴 **L'asphalte des quais prend 6 m à l'Ilse** — plus un défaut visible, mais un **choix de carte** : une Ilse plus large veut dire reculer le **tracé** des voies de berge.
 - 🔴 **Le potentiel solaire réel est bas** — 11,0 ha de toiture réelle pour les 25–40 % annoncés au plan. **L'assumer, ou regonfler la colonne `equip`** de la table.
 - 🔴 **Quatre arbitrages de rendu pris le 2026-08-18 ne sont consignés nulle part** : la couleur suit l'époque et non la typologie · le calque « tissu » est la contrepartie · zéro asset · l'étape 4 s'ouvre et la 2 passe en pause. À fermer dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`.
 - 🔴 **La DA dit encore « un `sous_type` = une teinte, rien à peindre jamais »** — faux depuis le 2026-08-18.

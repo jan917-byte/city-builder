@@ -6,10 +6,13 @@ extends Node3D
 # l'auteur l'a demandée le 2026-08-17.
 #
 # ⚠️ L'ORTHOGRAPHIE, elle, reste : deux des trois critères de réussite en
-# dépendent (`Plan 3 mois.md:48`) — la barre de 9 niveaux doit projeter 3× une
-# maison de 3 OÙ QU'ELLE SOIT dans le cadre, idem pour les largeurs de rue. Et
-# comme l'œil ne s'approche jamais (zoomer, c'est réduire `size`), la coupe de
+# dépendent (`Plan 3 mois.md:48`) — la barre doit projeter 3× une maison de 3
+# OÙ QU'ELLE SOIT dans le cadre, idem pour les largeurs de rue. Et comme l'œil
+# ne s'approche jamais (zoomer, c'est réduire `size`), la coupe de
 # `Périmètre et coupes.md:42` tient toujours : pas de LOD, pas de distance.
+# 🔄 2026-08-19 : la barre est passée à 6 niveaux, et il y en a trois. L'argument
+# tient — il porte sur le RAPPORT, 16,2 m contre 8,1 m. Mais le critère du vault
+# dit encore 9 : à trancher dans `Questions ouvertes.md`, pas ici.
 #
 # Le prix payé : sous ~15° on regarde des façades, qui sont des murs nus d'une
 # seule teinte. Angle de contrôle (silhouettes, hauteurs), pas angle de jeu —

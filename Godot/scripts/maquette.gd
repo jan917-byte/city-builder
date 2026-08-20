@@ -239,6 +239,16 @@ ESSAI — la ville, sans décision")
 	await _capturer("essai_berge")
 	pivot.caler(30.0, 32.0)
 
+	# 🅿️ LA PLACE-PARKING (2026-08-19) : une place fait 2,5 m, soit un demi
+	# pixel au cadrage par défaut — les 123 places ne se voient sur aucune des
+	# autres captures. 68° : un marquage au sol ne se lit que de dessus, sinon
+	# la trame vire au moiré.
+	_repere("place")
+	pivot.caler(30.0, 68.0)
+	await get_tree().process_frame
+	await _capturer("essai_place")
+	pivot.caler(30.0, 32.0)
+
 	# 🪟 LA CAPTURE QUI JUGE LES FENÊTRES (2026-08-18) : les six autres
 	# regardent la ville de haut, où un percement tient sur deux pixels et où
 	# le shader a rendu la main à l'aplat. 150 m et 14°, la hauteur d'un piéton
@@ -936,6 +946,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_I: _repere("ilse")
 		KEY_G: _repere("berge")
 		KEY_O: _repere("pont")
+		KEY_M: _repere("place")
 		KEY_C: _sur_tissu()
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")

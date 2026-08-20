@@ -78,7 +78,25 @@ TISSU = {
     "front_commercant":   (   150,    4.0,   0.90,   0.04,   0.35,   0.10,  140),
     "maisons_de_ville":   (   100,    3.0,   0.68,   0.18,   0.50,   0.05,    0),
     "pavillonnaire":      (    20,    2.0,   0.42,   0.42,   0.25,   0.05,    0),
-    "barre_1970":         (   130,    9.0,   0.55,   0.32,   0.85,   0.15,    0),
+    # 🔄 2026-08-19 : 130 log/ha et 9 niveaux → 65 et 6, demandé par l'auteur
+    # devant l'image (« surdimensionnées pour une petite ville, moins hautes »)
+    # et attendu depuis la décision 13d — à 5 350 habitants la barre devient
+    # « un petit Neubau », pas un Plattenbau de Großstadt.
+    #
+    # ⚠️ 6 ET PAS 5, ET C'EST L'IMAGE QUI A TRANCHÉ. À 5 niveaux (13,5 m) les
+    # barres passaient SOUS les faîtages du cœur ancien — 4 niveaux plus une
+    # pente à 1,00 sur 11 m de fond, soit 16,3 m — et l'îlot 32 cessait d'être
+    # le point haut de Wehrau. Ce n'était plus une baisse, c'était un
+    # effacement. À 6 (16,2 m) le toit plat arrive au niveau des faîtages et la
+    # dalle se lit encore de loin.
+    #
+    # La densité SUIT la hauteur, elle ne se choisit pas à part : les trois
+    # bâtiments couvrent 2 003 m² au lieu de 2 674, et 6 niveaux au lieu de 9
+    # font 12 018 m² de plancher au lieu de 24 066. À surface par logement
+    # constante (121 m² bruts, circulations comprises) il reste 99 logements
+    # sur 198, soit 65 log/ha. Laisser 130 aurait entassé 198 logements dans
+    # 12 018 m² — 61 m² bruts par logement, ce qui n'existe pas.
+    "barre_1970":         (    65,    6.0,   0.55,   0.32,   0.85,   0.15,    0),
     "equipement":         (     0,    3.0,   0.72,   0.18,   0.00,   0.20,   80),
     "friche_industrielle":(     0,    1.0,   0.80,   0.20,   0.00,   0.05,   25),
     "place_minerale":     (     0,    0.0,   1.00,   0.02,   0.00,   0.55,    0),
