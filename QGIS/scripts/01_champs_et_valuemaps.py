@@ -1,28 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-⚰️ VESTIGE — NE PLUS LANCER. Ce script se collait dans la console Python de
-QGIS pour poser des listes déroulantes de saisie. QGIS est sorti du projet le
-2026-08-17 : plus personne ne saisit à la main, et sa liste `SOUS_TYPES` a de
-toute façon divergé de `02` (voir QGIS/README.md §8). Gardé pour mémoire, et
-parce qu'il documente ce que la saisie manuelle demandait avant les scripts.
+⚰️ VESTIGE — NE PLUS LANCER. Se collait dans la console Python de QGIS pour
+poser des listes déroulantes de saisie. QGIS est sorti du projet le 2026-08-17
+et sa liste `SOUS_TYPES` a divergé de `02` (QGIS/README.md §8). Gardé parce
+qu'il documente ce que la saisie manuelle demandait avant les scripts.
 
-Ce que ça fait, et rien d'autre :
-  1. ajoute les champs manquants sur `ilots` et sur la couche de lignes
-  2. recopie `hierarchy` → `hierarchie` en minuscules (Boulevard → boulevard)
-  3. calcule `surface_m2`
-  4. pose les listes de valeurs (value maps) pour que la saisie se fasse
-     au clavier en vue formulaire, pas en tapant du texte libre
-
-Ce que ça ne fait pas : aucune géométrie n'est touchée, aucune entité créée
-ou supprimée, `fonction` et `sous_type` restent VIDES — c'est ta saisie.
-
-MODE D'EMPLOI
-  1. copier Vallmar2.gpkg en Vallmar2_travail.gpkg
-  2. ouvrir la copie dans QGIS (les deux couches)
-  3. Extensions > Console Python, coller ce fichier, Entrée
-  4. lire le compte rendu ; si SIMULATION = True, rien n'a été écrit
-
-Repasser SIMULATION à False pour appliquer.
+Ajoute les champs manquants, recopie `hierarchy` → `hierarchie` en minuscules,
+calcule `surface_m2`, pose les value maps. Aucune géométrie touchée ;
+`fonction` et `sous_type` restent VIDES — c'était la saisie de l'auteur.
 """
 
 from qgis.core import QgsProject, QgsField, QgsEditorWidgetSetup
@@ -37,10 +22,8 @@ NOM_RUES = "routes"        # nom actuel de la couche ; le vault dit `rues`
 # `fonction` vient de Géométrie et données (décision 32), c'est arrêté.
 FONCTIONS = ["freiraum", "habitation", "industrie", "mixte", "riviere"]
 
-# `sous_type` : le vault dit « ~12 combinaisons maximum » sans les lister.
-# ⚠️ CETTE LISTE EST UNE PROPOSITION, PAS UNE DÉCISION. Elle est tirée des
-# accroches de level design déjà écrites dans Pipeline QGIS et du profil de
-# l'Altstadt. À valider, amender, ou remplacer — puis à consigner dans le vault.
+# ⚠️ PROPOSITION, PAS DÉCISION — le vault dit « ~12 combinaisons » sans les
+# lister. Tirée des accroches de level design et du profil de l'Altstadt.
 SOUS_TYPES = [
     "coeur_medieval",        # parcellaire fin, mitoyen, cour minérale
     "coeur_vert_prive",      # cœur d'îlot planté, invisible depuis la rue

@@ -20,32 +20,21 @@ dense a maintenant un cœur qui se voit. → `TISSU`, `bande_sur_rue`
 
 POURQUOI CE SCRIPT EXISTE
 
-L'empreinte était déjà calculée — mais dans `07_exporter_godot.py`, au moment
-de fabriquer la 3D. Trois conséquences, et ce sont elles qui ont motivé le
-déplacement :
+L'empreinte se calculait dans `07_exporter_godot.py`, au moment de fabriquer la
+3D : elle n'existait nulle part sur la carte, donc ne se jugeait qu'en bout de
+chaîne ; elle se recalculait à chaque export alors que la parcelle est l'entité
+persistante (35) ; et rien d'autre ne pouvait s'en servir, ni la surface de toit
+de l'énergie ni une mesure de densité.
 
-  · l'emprise n'existait NULLE PART sur la carte, donc elle ne se jugeait
-    qu'en 3D, en bout de chaîne ;
-  · elle se recalculait à chaque export, alors que la parcelle est l'entité
-    persistante (décision 35) — ce qui la porte doit être ÉCRIT une fois ;
-  · rien d'autre ne pouvait s'en servir : ni la surface de toit de l'énergie,
-    ni l'ombrage, ni une mesure de densité.
+Ce script AJOUTE aux règles de `07` : une distance aux limites latérales ET de
+fond (`07` ne connaissait qu'un `jeu` au voisin), un plafond d'emprise au sol
+par tissu, la maison détachée ramenée à un rectangle, et la bande constructible.
 
-Ce que ce script AJOUTE aux règles de `07` : une distance aux limites
-latérales ET de fond (`07` ne connaissait qu'un `jeu` au voisin), un plafond
-d'emprise au sol par tissu, la maison détachée ramenée à un rectangle, et la
-bande constructible ci-dessus.
+✅ `07` lit cette couche directement depuis le 2026-08-17 : l'aperçu 2D et Godot
+montrent les mêmes empreintes. Sa vieille recette géométrique reste nommée comme
+retour en arrière, mais n'est plus appelée.
 
-✅ LA CHAÎNE EST 02 → 03 → 04 → 04b → 04c → 04d, et `chaine.py` la tient.
-   Idempotent : on le relance, il refait la couche.
-
-✅ Depuis le 2026-08-17, `07_exporter_godot.py` lit cette couche directement :
-l'aperçu 2D et Godot montrent les mêmes empreintes. 07 retrouve la plus longue
-façade de la parcelle pour orienter le faîtage, et dessine la parcelle sous les
-volumes pour que sa part non bâtie reste visible en cour ou jardin. Sa vieille
-recette géométrique reste nommée comme retour en arrière, mais n'est plus appelée.
-
-Se lance sans QGIS : sqlite3 seul, et le lecteur WKB d'apercu_carte.
+Idempotent, et sans QGIS : sqlite3 seul, plus le lecteur WKB d'apercu_carte.
 """
 
 import math
@@ -75,24 +64,18 @@ SRS = 25832
 # 🎨 C'EST ELLE, ET PAS LE CODE, qui décide de quoi la ville a l'air. Une
 # ligne changée, on relance, on regarde. Six nombres par tissu :
 #
-#   recul       façade ↔ limite sur rue. 0 = SUR l'alignement, la forme des
-#               tissus anciens. Le bâtiment est toujours plaqué contre son
-#               recul, jamais centré dans la parcelle : c'est ce qui creuse le
+#   recul       façade ↔ limite sur rue ; 0 = sur l'alignement. Le bâtiment est
+#               plaqué contre son recul, jamais centré : c'est ce qui creuse le
 #               jardin DERRIÈRE au lieu de tout autour.
-#   lateral     distance aux limites latérales. 🔴 0 = MITOYEN, et le mitoyen
-#               est alors exact : les deux parcelles partagent déjà l'arête
-#               (décision 61), donc les deux murs tombent dessus au millimètre.
-#   fond        distance à la limite de fond — celle qui donne sur le cœur
-#               d'îlot ou sur la rangée d'en face. N'existait pas avant ce
-#               script : la profondeur du bâtiment tenait lieu de règle, donc
-#               une parcelle courte donnait un bâtiment collé au fond.
-#   facade      largeur visée du rectangle, pour les tissus DÉTACHÉS seulement.
-#               Sans objet en mitoyen, où la largeur est celle de la parcelle.
-#   profondeur  🔴 mesurée DEPUIS LA FAÇADE, pas depuis la rue. Au-delà, ce
-#               n'est plus la maison, c'est la cour ou le jardin.
-#   emprise     part de la parcelle que le bâtiment a le droit de couvrir.
-#               🔴 C'est ce nombre qui commande la SURFACE DE TOIT, donc le
-#               potentiel solaire en attente d'arbitrage.
+#   lateral     🔴 0 = MITOYEN, et exact : les deux parcelles partagent déjà
+#               l'arête (61), donc les murs tombent dessus au millimètre.
+#   fond        distance au cœur d'îlot ou à la rangée d'en face. N'existait pas
+#               avant ce script, donc une parcelle courte donnait un bâtiment
+#               collé au fond.
+#   facade      largeur visée du rectangle, tissus DÉTACHÉS seulement.
+#   profondeur  🔴 mesurée DEPUIS LA FAÇADE, pas depuis la rue.
+#   emprise     part de la parcelle couvrable. 🔴 Commande la SURFACE DE TOIT,
+#               donc le potentiel solaire.
 #
 # Et une famille de forme, qui est le vrai choix de dessin (voir `empreinte`).
 MITOYEN, DETACHE, BOITE = "mitoyen", "detache", "boite"
@@ -119,27 +102,21 @@ TISSU_ILOT = {
 }
 TISSU_ILOT_SOUS_TYPE = {16: "equipement"}
 
-# 🔴 CE QUE CETTE TABLE VIENT DE CHANGER, ET POURQUOI — 2026-08-17, désigné sur
-# `parcelles_ilot_14.png` : « les bâtiments ressemblent trop aux parcelles ».
-# Mesuré sur cette image : le cœur ancien couvrait 0,96 de sa parcelle et le
-# front commerçant 0,86 — donc pas de jardin, pas de cour, pas d'arrière. Une
-# mosaïque de polygones extrudés, pas du tissu urbain.
+# 🔴 « LES BÂTIMENTS RESSEMBLENT TROP AUX PARCELLES » — 2026-08-17, sur
+# `parcelles_ilot_14.png`. Mesuré : 0,96 de couverture en cœur ancien, 0,86 en
+# front commerçant. Pas de jardin, pas de cour : une mosaïque de polygones
+# extrudés, pas du tissu urbain.
 #
-# 🔄 CE QU'IL Y AVAIT AVANT, ET IL NE FAUT PAS Y REVENIR : `profondeur = None`
-# pour le cœur ancien et les maisons de ville, c'est-à-dire « aucune règle de
-# profondeur, l'empreinte EST la parcelle ». Ça venait d'une demande juste — les
-# maisons de ville ont une profondeur variable, et une profondeur unique comptée
-# depuis UNE SEULE façade coupait de travers les parcelles d'angle. Mais le
-# remède a supprimé la profondeur au lieu de réparer les coins.
+# 🔄 NE PAS REVENIR à `profondeur = None` pour le cœur ancien et les maisons de
+# ville (« l'empreinte EST la parcelle »). Ça répondait à un vrai problème — une
+# profondeur unique comptée depuis UNE SEULE façade coupe de travers les
+# parcelles d'angle — mais en supprimant la profondeur au lieu de réparer les
+# coins. Le coin est maintenant réparé dans `bande_sur_rue` : la bande se mesure
+# depuis CHAQUE limite sur rue et le bâtiment est leur RÉUNION, donc une parcelle
+# d'angle porte un L qui suit les deux rues.
 #
-# La profondeur est revenue parce que le coin est réparé ailleurs, dans
-# `bande_sur_rue` : la bande constructible se mesure depuis CHAQUE limite sur
-# rue, et le bâtiment est la RÉUNION de ces bandes. Une parcelle d'angle porte
-# donc un bâtiment en L qui suit les deux rues — ce que fait un immeuble d'angle
-# réel — au lieu d'être tranchée en biais par la profondeur de l'autre rue.
-#
-# Les plages viennent de l'auteur (2026-08-17) et la colonne `emprise` est le
-# HAUT de la plage, parce que c'est un plafond et non une cible :
+# 🎚️ Plages de l'auteur (2026-08-17) ; `emprise` en prend le HAUT, parce que
+# c'est un plafond et non une cible :
 #
 #     tissu               recul      profondeur   emprise visée
 #     pavillonnaire       3–7 m        8–12 m       20–35 %
@@ -148,25 +125,23 @@ TISSU_ILOT_SOUS_TYPE = {16: "equipement"}
 #     front commerçant    0 m         12–20 m       60–85 %
 #     équipement          variable    variable      25–60 %
 #
-# Ce que le plafond garantit en retour : « conserver au minimum 15 à 30 % de la
-# parcelle comme cour ou jardin ». 0,80 sur le cœur ancien, c'est 20 % de cour.
+# Le plafond garantit en retour 15 à 30 % de cour ou jardin : 0,80 en cœur
+# ancien, c'est 20 % de cour.
 #
-# ⚠️ LE RECUL DU PAVILLONNAIRE RESTE À 4 m ET IL NE FAUT PAS LE POUSSER. La plage
-# de l'auteur va de 3 à 7 m, mais le milieu de la plage coûte des maisons —
-# mesuré, en faisant varier ce seul nombre :
+# ⚠️ LE RECUL DU PAVILLONNAIRE RESTE À 4 m. La plage va de 3 à 7, mais son
+# milieu coûte des maisons — mesuré en faisant varier ce seul nombre :
 #
 #     recul   pavillons bâtis   refusés « aucune forme ne tient »
 #      4,0 m        174                    73
 #      4,5 m        166                    81
 #      5,0 m        163                    84
 #
-# La cause n'est pas le recul mais ce qu'il révèle : `rect_ancre` cherche un
-# rectangle de 9 × 10 m, et sur une parcelle de lotissement de 14 m de façade il
-# n'y a que 8,4 m entre les deux retraits latéraux. Reculer d'un mètre de plus le
-# fait sortir de la partie utile de la parcelle. 🔴 LES 73 REFUS RESTANTS SONT UN
-# DÉFAUT ANTÉRIEUR, pas une conséquence de la bande : des parcelles de 240 à
-# 530 m² avec 9 à 28 m de façade, où un pavillon devrait entrer sans effort.
-# → à traiter séparément, c'est la table `pavillonnaire` et `rect_ancre`.
+# La cause n'est pas le recul mais ce qu'il révèle : `rect_ancre` cherche
+# 9 × 10 m et une parcelle de lotissement de 14 m de façade n'a que 8,4 m entre
+# ses retraits latéraux.
+# 🔴 LES 73 REFUS RESTANTS SONT UN DÉFAUT ANTÉRIEUR : des parcelles de 240 à
+# 530 m² où un pavillon devrait entrer sans effort. → table `pavillonnaire`
+# et `rect_ancre`, à traiter séparément.
 
 # La variation demandée sur les plages, ±15 % : sans elle une rangée entière a
 # la même profondeur au centimètre, ce qui ne ressemble à rien de bâti. Tirée de
@@ -174,70 +149,54 @@ TISSU_ILOT_SOUS_TYPE = {16: "equipement"}
 JEU_PROF = 0.15
 
 # 🔴 R8 BIS — UNE PARCELLE ÉTROITE CREUSE AU LIEU DE RENONCER. La profondeur
-# typologique appliquée telle quelle à une parcelle de 5 m de façade donne 60 m²,
-# donc parfois moins que AIRE_MIN, donc un TROU dans le front de rue. Or c'est
-# l'inverse de ce qu'on veut : « conserver une façade bâtie presque continue sur
-# les rues ». Une maison à façade étroite est profonde, dans toutes les villes
-# anciennes. La profondeur a donc le droit de monter jusqu'à ce multiple de la
-# valeur du tissu avant qu'on renonce à bâtir.
+# typologique sur une façade de 5 m donne 60 m², parfois moins que AIRE_MIN,
+# donc un TROU dans le front de rue. Une maison à façade étroite est profonde
+# dans toutes les villes anciennes : la profondeur peut monter jusqu'à ce
+# multiple avant qu'on renonce.
 PROF_ETROITE_MAX = 2.0
 
-# ☕ LES EXCEPTIONS DU CŒUR ANCIEN. Une parcelle sur quatre, au-dessus de
-# COUR_AIRE, garde une cour derrière son bâtiment. Le tirage vient de la
-# position (35), donc la même parcelle garde sa cour d'une exécution à l'autre.
+# ☕ LES EXCEPTIONS DU CŒUR ANCIEN : une parcelle sur quatre au-dessus de
+# COUR_AIRE garde une cour derrière son bâtiment. Tirage sur la position (35),
+# donc stable d'une exécution à l'autre.
 #
-# 🔄 2026-08-17 — la cour était d'abord une PROFONDEUR (bâtiment sur les 12
-# premiers mètres). C'était faux au sens de la règle : sur une parcelle
-# d'angle, « les 12 premiers mètres depuis la façade » laisse le vide le long
-# de l'autre rue. La cour est donc une BANDE ARRIÈRE, comme tous les autres
-# vides du fichier.
+# 🔄 La cour était une PROFONDEUR (bâtiment sur les 12 premiers mètres) : faux
+# sur une parcelle d'angle, où ça laisse le vide le long de l'autre rue. C'est
+# une BANDE ARRIÈRE, comme tous les autres vides du fichier.
 #
-# ⚠️ CETTE EXCEPTION A CHANGÉ DE MÉTIER LE MÊME JOUR. Quand l'empreinte était la
-# parcelle, elle était le SEUL vide du cœur ancien. Maintenant que la profondeur
-# creuse un arrière partout, elle ne sert plus qu'à en creuser un PLUS GRAND sur
-# une parcelle sur quatre — d'où un fond plus profond que le retrait ordinaire,
-# et pas un fond là où il n'y en avait aucun.
+# ⚠️ Elle a changé de métier le même jour : quand l'empreinte était la parcelle,
+# elle était le SEUL vide du cœur ancien. La profondeur creusant un arrière
+# partout, elle ne sert plus qu'à en creuser un PLUS GRAND.
 COUR_PART = 0.25
 COUR_AIRE = 110.0          # sous cette taille, une cour ne laisse plus de maison
 COUR_FOND = 5.0
 
-# 🕳️ L'OUVERTURE MINIMALE D'UNE COUR — 2026-08-17. Part de son contour qui doit
-# être du bord de parcelle et non du mur du bâtiment. En dessous, ce n'est plus
-# une cour derrière la maison, c'est une poche creusée dans la masse : le
-# bâtiment en fait le tour et sort en C. Voir `bande_sur_rue`.
+# 🕳️ L'OUVERTURE MINIMALE D'UNE COUR (2026-08-17) : la part de son contour qui
+# est du bord de parcelle et non du mur. En dessous, c'est une poche creusée
+# dans la masse et le bâtiment sort en C. Voir `bande_sur_rue`.
 #
-# ⚠️ UN SEUIL DE LARGEUR A ÉTÉ ESSAYÉ EN PLUS, ET RETIRÉ LE JOUR MÊME. L'idée
-# était qu'une cour de moins de trois mètres est une fente, pas une cour. Mesuré :
-# 434 cours sur 701 tombaient dessous et repartaient en bâtiment — la cour
-# médiane du cœur ancien fait 22 m² derrière une parcelle de 9,5 m, donc 2,3 m de
-# profondeur. Le seuil aurait annulé la correction de la veille (« le bâtiment
-# n'est plus la parcelle ») en une ligne. La fente qui se voit encore sur l'îlot
-# 41 est un DOIGT de la cour qui rentre dans la masse, pas une cour séparée :
-# elle se traiterait par une ouverture morphologique, pas par un seuil.
+# ⚠️ UN SEUIL DE LARGEUR A ÉTÉ ESSAYÉ ET RETIRÉ LE JOUR MÊME : 434 cours sur 701
+# tombaient dessous et repartaient en bâtiment — la cour médiane du cœur ancien
+# fait 22 m² derrière 9,5 m de façade, donc 2,3 m de profondeur. Le seuil
+# annulait la correction de la veille en une ligne. La fente de l'îlot 41 est un
+# DOIGT de la cour, à traiter par ouverture morphologique.
 COUR_OUVERTURE = 0.40
 # Le doigt : une tranche plus étroite que ça et moins ouverte que ça n'est pas
 # une cour, c'est une fente que le bâtiment referme presque.
 COUR_LARGEUR_MIN = 3.0
 COUR_DOIGT = 0.50
 
-# 🏚️ L'AILE ARRIÈRE — « avec une probabilité de 20 à 35 %, ajouter une aile
-# arrière de 4 à 7 m de largeur » (2026-08-17). Ce qu'elle répare est nommé dans
-# la même demande : « ajouter quelques ailes arrière pour éviter une cour trop
-# régulière ». Sans elle, toutes les empreintes s'arrêtent sur la même ligne et
-# le cœur d'îlot sort en rectangle de gestionnaire.
-#
-# L'aile se pose CONTRE une limite latérale, jamais au milieu : une aile
-# arrière réelle longe le mur mitoyen, c'est ce qui la distingue d'un appentis.
+# 🏚️ L'AILE ARRIÈRE — « éviter une cour trop régulière » (2026-08-17). Sans
+# elle, toutes les empreintes s'arrêtent sur la même ligne et le cœur d'îlot
+# sort en rectangle de gestionnaire.
+# Elle se pose CONTRE une limite latérale, jamais au milieu : une aile réelle
+# longe le mur mitoyen, c'est ce qui la distingue d'un appentis.
 AILE_PART = 0.28           # dans la plage 20–35 % demandée
-# 🔴 L'AILE SE PAYE SUR LA PROFONDEUR DE LA BANDE, ELLE NE S'AJOUTE PAS.
-# Première version : l'aile était posée EN PLUS, dans la cour. Mesuré, ça ne
-# marchait jamais — la cour laissée derrière la bande fait 22 m² en médiane, donc
-# l'aile n'y entrait pas ; et quand elle y entrait, elle poussait l'emprise
-# au-dessus du plafond, que le rabot rendait aussitôt en raccourcissant TOUT le
-# bâtiment. On avait payé une façade pour un ressaut.
-# Le bâtiment à aile a donc une bande plus courte de ce facteur : même surface
-# bâtie, cour en L au lieu de cour en bande — ce qui est exactement la demande,
-# « éviter une cour trop régulière ».
+# 🔴 L'AILE SE PAYE SUR LA PROFONDEUR DE LA BANDE, ELLE NE S'AJOUTE PAS. Posée
+# EN PLUS dans la cour, elle n'entrait jamais (22 m² en médiane) et, quand elle
+# entrait, poussait l'emprise au-dessus du plafond que le rabot rendait en
+# raccourcissant TOUT le bâtiment : une façade payée pour un ressaut.
+# Le bâtiment à aile a donc une bande plus courte : même surface bâtie, cour en
+# L au lieu de cour en bande.
 AILE_ECHANGE = 0.18
 # Le front commerçant en est exclu : son plafond d'emprise est déjà à 0,85, donc
 # une aile y serait aussitôt reprise par le rabot de R8 — l'aile pousserait le
@@ -250,52 +209,32 @@ AILE_AIRE_MIN = 15.0       # sous ça, ce n'est plus une aile, c'est un ressaut
 # Sous cette cour, pas d'aile : il faut qu'il reste un arrière APRÈS l'aile,
 # sinon on a rendu la parcelle pleine par un autre chemin.
 AILE_COUR_MIN = 30.0
-# 🔴 ADOSSÉE, ET C'EST VÉRIFIÉ DEPUIS LE 2026-08-17 (2). La docstring de
-# `aile_arriere` promettait « adossée à une limite LATÉRALE et jamais posée au
-# milieu » depuis le premier jour — mais rien ne le contrôlait : l'aile se posait
-# à un BOUT DE LA COUR mesuré le long de la façade, et sur une parcelle d'angle
-# ce bout-là est le mur de l'autre bande, pas une limite de parcelle. D'où la
-# dent qui pend dans la cour et l'escalier que l'auteur a entourés sur l'îlot 41.
+# 🔴 ADOSSÉE, ET VÉRIFIÉ DEPUIS LE 2026-08-17. `aile_arriere` promettait
+# « adossée à une limite LATÉRALE » sans que rien ne le contrôle : l'aile se
+# posait à un bout de la COUR, qui sur une parcelle d'angle est le mur de
+# l'autre bande — d'où la dent et l'escalier entourés sur l'îlot 41.
+# Mesuré en éteignant l'aile : les poches à bouche ≤ 8 m passent de 57 à 14,
+# celles à bouche ≤ 6 m de 18 à 1. L'aile faisait les trois quarts des ressauts.
 #
-# Mesuré, en éteignant l'aile pour isoler sa part : les poches à bouche étroite
-# (≤ 8 m, ≥ 3 m²) passent de 57 à 14, et celles à bouche ≤ 6 m de 18 à 1. L'aile
-# faisait donc les trois quarts des ressauts du fichier.
-#
-# Le contrôle : la part du contour de l'aile posée sur la limite de la PARCELLE.
-# Une aile vraiment adossée y met une de ses deux joues, soit 3 à 6 m sur un
-# contour de 17 à 26 m — le seuil est bas exprès, il ne sépare pas « beaucoup »
-# de « peu » mais « une joue » de « rien du tout ».
+# Le contrôle est la part du contour posée sur la limite de PARCELLE. Une aile
+# adossée y met une joue, 3 à 6 m sur un contour de 17 à 26 : le seuil est bas
+# exprès, il sépare « une joue » de « rien du tout ».
 AILE_ADOS = 0.15
 
-# ✂️ LA POINTE N'EST PLUS BÂTIE PAR DÉFAUT — 2026-08-17 : « les pointes et
-# angles aigus sont presque toujours bâtis. Or dans la réalité ces endroits
-# deviennent souvent un jardinet, une cour, un passage. Les bâtiments très
-# pointus sont possibles, mais devraient rester des exceptions remarquables. »
-#
-# `ecorner` ne suffit pas : il coupe la pointe DU BÂTIMENT, donc il transforme
-# un couteau en coin tronqué, mais il bâtit quand même la pointe de l'îlot. Ici
-# c'est la parcelle qui est jugée, avant tout dessin.
-#
-# Le tirage garde une exception sur six — le bâtiment d'angle pointu existe, il
-# doit juste être rare. Et il n'y a pas de règle sans compte : les deux nombres
-# s'impriment.
+# ✂️ LA POINTE N'EST PLUS BÂTIE PAR DÉFAUT — 2026-08-17 : « les bâtiments très
+# pointus sont possibles, mais devraient rester des exceptions remarquables ».
+# `ecorner` ne suffit pas : il coupe la pointe DU BÂTIMENT mais bâtit quand même
+# la pointe de l'îlot. Ici c'est la parcelle qui est jugée, avant tout dessin.
+# Le tirage garde une exception sur six, et les deux nombres s'impriment.
 ANGLE_POINTE_DEG = 30.0
 POINTE_PART = 0.17
 
-# 🌿 LA PARCELLE SANS RUE EST UNE CATÉGORIE, PAS UN RÉSIDU — 2026-08-17 : « le
-# problème n'est pas leur existence, mais le fait qu'elles semblent être des
-# erreurs résiduelles plutôt qu'une catégorie urbaine assumée ».
-#
-# 🔴 MESURÉ AVANT D'ÉCRIRE QUOI QUE CE SOIT, et ça a annulé le travail prévu :
-# les 15 parcelles sans façade de Wehrau sont EXACTEMENT les 15 cœurs d'îlot,
-# `origine = 'coeur'`. Il n'existe aucune parcelle enclavée par accident — c'est
-# le « zéro reliquat enclavé » du 2026-08-17. Elles sont donc déjà une catégorie
-# assumée, écartées en amont par ORIGINES_NUES et dessinées en vert.
-#
-# Ce qui les faisait LIRE comme un résidu n'était pas leur statut, c'était leur
-# FORME : la pointe verte de l'îlot 59, désignée sur l'image. C'est la règle de
-# la pointe, juste au-dessus, qui y répond — et une remise au fond d'une cour
-# aurait été du code pour un cas qui n'existe pas.
+# 🌿 LA PARCELLE SANS RUE EST UNE CATÉGORIE, PAS UN RÉSIDU — 2026-08-17.
+# 🔴 MESURÉ AVANT D'ÉCRIRE, et ça a annulé le travail prévu : les 15 parcelles
+# sans façade de Wehrau sont EXACTEMENT les 15 cœurs d'îlot. Aucune enclave
+# accidentelle — elles sont déjà écartées par ORIGINES_NUES et dessinées en vert.
+# Ce qui les faisait LIRE comme un résidu était leur FORME (la pointe verte de
+# l'îlot 59), à quoi répond la règle de la pointe ci-dessus.
 
 # Les origines de parcelle qui ne portent pas de bâtiment. Un cœur d'îlot est
 # une cour, un chemin est une venelle : ni l'un ni l'autre ne se bâtit.
@@ -345,10 +284,8 @@ PLANCHER_FOND = 2.0
 LARGEUR_MIN = 3.0          # la largeur du mur qui reste, pas l'aire
 
 # 🔴 X, LE SEUIL DEMANDÉ LE 2026-08-17 : « si le bâtiment est < X m², alors
-# parcelle vide ». Il valait 25, ce qui laissait passer des cabanes — mesuré
-# avant relèvement : 14 empreintes entre 25 et 35 m², dont une de 25,0 m² large
-# de 4,6 m sur la parcelle 501, et deux triangles de 25 et 30 m² (parcelles 503
-# et 495). Le balayage, sur les 831 empreintes de la ville :
+# parcelle vide ». À 25 il laissait passer des cabanes — 14 empreintes entre 25
+# et 35 m², dont deux triangles. Balayage sur les 831 empreintes :
 #
 #     X (m²)   perdus   toit restant
 #       25          0      10,27 ha
@@ -357,16 +294,14 @@ LARGEUR_MIN = 3.0          # la largeur du mur qui reste, pas l'aire
 #       45         33      10,15 ha
 #       60         78       9,91 ha
 #
-# 40 parce que c'est là que le mot change de sens : au-dessus on peut discuter
-# d'un petit logement, en dessous c'est un appentis. Et ça ne coûte presque rien
-# au toit (−0,07 ha, 0,7 %) — ce qui se perd n'avait pas de surface, il avait
-# une forme. Monter à 60 commencerait à vider des rangées entières.
+# 40, parce que c'est là que le mot change de sens : au-dessus on discute d'un
+# petit logement, en dessous c'est un appentis. Coût au toit : −0,07 ha, 0,7 %.
+# Monter à 60 viderait des rangées entières.
 AIRE_MIN = 40.0
 
-# 🕳️ L'ENCOCHE — 2026-08-17 (2). Une empreinte a droit à UN décrochement
-# rentrant, pas deux. Voir `fermer_encoches` pour le pourquoi ; ici les nombres.
-#
-# Mesuré avant d'écrire la règle, sur les 701 empreintes de la ville :
+# 🕳️ L'ENCOCHE (2026-08-17) : une empreinte a droit à UN décrochement rentrant,
+# pas deux. Le pourquoi est dans `fermer_encoches` ; ici les nombres, mesurés
+# sur les 701 empreintes avant d'écrire la règle :
 #
 #     sommets rentrants   empreintes   ce que c'est
 #            0                542      la barre, le rectangle
@@ -374,10 +309,10 @@ AIRE_MIN = 40.0
 #            2                 26      l'escalier, le U
 #            3                  2      le C
 #
-# ⚠️ ET UN SEUIL DE LARGEUR NE SAIT PAS LES SÉPARER, c'est mesuré aussi : les
-# poches à bouche ≤ 8 m passent de 14 à 57 quand on rallume l'aile arrière, qui
-# est pourtant la forme la plus VOULUE du fichier. La bouche d'une équerre juste
-# et celle d'un ressaut font la même largeur ; c'est leur NOMBRE qui diffère.
+# ⚠️ UN SEUIL DE LARGEUR NE SAIT PAS LES SÉPARER : les poches à bouche ≤ 8 m
+# passent de 14 à 57 quand on rallume l'aile arrière, la forme la plus VOULUE du
+# fichier. Une équerre juste et un ressaut ont la même bouche ; c'est leur
+# NOMBRE qui diffère.
 ENCOCHE_RENTRANTS = 1
 # Au-delà, la poche n'est plus une encoche : c'est la cour que l'équerre
 # entoure, et la combler rendrait la parcelle pleine. 45 m² = la cour médiane du
@@ -388,35 +323,25 @@ ENCOCHE_PASSES = 4         # trois décrochements au pire, plus un tour de garde
 RENTRANT_AIRE_MIN = 0.5    # produit vectoriel, donc deux fois l'aire du coin
 RENTRANT_ARETE_MIN = 0.5   # m — sous ça l'arête n'a pas de direction
 
-# 🔴 LA FORME BIZARRE, même demande : « si il contient trop de coins ET a une
-# forme cheloue, alors parcelle vide aussi ». Les deux conditions ENSEMBLE, et
-# c'est ce qui les rend justes séparément :
+# 🔴 LA FORME BIZARRE : « trop de coins ET une forme cheloue ». Les deux
+# ENSEMBLE, et c'est ce qui les rend justes séparément — beaucoup de coins ne
+# prouve rien (un rectangle à deux pans coupés en a huit, et ils sont voulus),
+# une rectangularité basse non plus (un parallélogramme est légitime dès qu'une
+# rue n'est pas perpendiculaire à sa voisine). La conjonction attrape le seul cas
+# sans excuse : l'escalier, l'équerre tordue.
 #
-#   · beaucoup de coins tout seul ne prouve rien — un rectangle avec deux pans
-#     coupés d'angle en a huit, et ces pans sont voulus (`ecorner`) ;
-#   · une rectangularité basse toute seule ne prouve rien non plus — un
-#     parallélogramme est légitime dès qu'une rue n'est pas perpendiculaire à sa
-#     voisine (voir `04c.rectangularite`).
+# ⚠️ NE PEUT TOUCHER QUE LE MITOYEN, et c'est mesuré : DETACHE et BOITE sortent
+# d'un rectangle inscrit, donc 4 sommets et 1,00 de rectangularité.
 #
-# Ce que la conjonction attrape, c'est le seul cas qui n'a pas d'excuse : une
-# empreinte qui a beaucoup de coins ET qui ne remplit pas la boîte dans laquelle
-# elle tient, donc un bâtiment en escalier ou en équerre tordue.
-#
-# ⚠️ CE CRITÈRE NE PEUT TOUCHER QUE LE MITOYEN, et c'est mesuré, pas espéré :
-# les familles DETACHE et BOITE sortent d'un rectangle inscrit, donc toutes
-# leurs empreintes font 4 sommets et 1,00 de rectangularité. Le pavillonnaire ne
-# risque rien ici.
-#
-# Le croisement mesuré sur la ville (nombre d'empreintes concernées) :
+# Croisement mesuré sur la ville (empreintes concernées) :
 #
 #     coins >     rect<0,50   rect<0,60   rect<0,70
 #       5              3           7          16
 #       6              2           4           8
 #       7              2           4           7
 #
-# Retenu 5 et 0,60 : les 7 attrapées ont entre 6 et 8 coins pour 0,31 à 0,59 de
-# remplissage (les pires : parcelle 456 à 0,31, parcelle 105 à 0,49). Descendre
-# à 0,70 en prendrait 16, dont des équerres franches qui se lisent très bien.
+# Retenu 5 et 0,60 : les 7 attrapées ont 6 à 8 coins pour 0,31 à 0,59 de
+# remplissage. À 0,70 on en prendrait 16, dont des équerres qui se lisent bien.
 SOMMETS_MAX = 5
 RECT_MIN = 0.60
 

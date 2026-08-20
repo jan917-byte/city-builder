@@ -5,9 +5,9 @@
 Deux champs sont saisis à la main (`fonction`, `sous_type`, dans 02_qualifier.py).
 Tout le reste se dérive. Ce script écrit ce « tout le reste ».
 
-Il s'inspire du brainstorm du 2026-08-10 (inondation) : les attributs écrits
-ici ne sont pas une fiche d'identité de l'îlot, ce sont **les entrées des
-décisions**. Chaque colonne répond à « quelle décision devient possible ? » :
+Ces attributs ne sont pas une fiche d'identité de l'îlot, ce sont **les
+entrées des décisions** : chaque colonne répond à « quelle décision devient
+possible ? ».
 
   ÎLOTS
     densite · logements · hauteur   densifier / seuil de viabilité TC
@@ -59,8 +59,8 @@ GPKG = _ARGS[0] if _ARGS else os.path.join(DATA, "travail", "wehrau.gpkg")
 # ==========================================================================
 # LE DESIGN — la table de correspondance, 12 lignes
 # ==========================================================================
-# Une ligne par `sous_type`. C'est ici que se décide le comportement de toute
-# la carte, et c'est du design, pas de la mesure.
+# 🎚️ Une ligne par `sous_type`. Du design, pas de la mesure : c'est ici que se
+# décide le comportement de toute la carte.
 #
 #   densite     logements par hectare d'îlot (densité nette, hors voirie)
 #   hauteur     étages moyens
@@ -88,20 +88,14 @@ TISSU = {
     "riviere":            (     0,    0.0,   0.00,   0.00,   0.00,   0.00,    0),
 }
 
-# Les emplois. Un seul coefficient par sous-type, et il ne concerne que les
-# îlots `industrie` et `mixte` : le tissu résidentiel de Wehrau porte zéro
-# emploi, ce qui est une décision, pas un oubli.
+# Un coefficient par sous-type, sur les seuls îlots `industrie` et `mixte` :
+# le tissu résidentiel de Wehrau porte zéro emploi, et c'est une décision.
 #
-# ⚠ La friche industrielle est une FRICHE. Lui donner 25 emplois/ha, c'est dire
-# qu'il reste un atelier et un dépôt dans une halle qui en abritait cent. Si on
-# monte ce chiffre, on efface la raison d'être des deux îlots.
-#
-# Ce que ces coefficients produisent, il faut le regarder en face : Wehrau ne
-# porte que 10,4 ha d'activité sur 38 ha bâtis. Quel que soit le coefficient,
-# la ville sortira à ~0,15 emploi par habitant — un dortoir dont les gens
-# partent travailler ailleurs. C'est cohérent avec l'axe de transit saturé et
-# avec la voiture-dépendance, mais ce n'est pas un réglage : c'est la géométrie
-# qui le dit. Pour en faire autre chose il faudrait du sol d'activité en plus.
+# ⚠ La friche est une FRICHE : monter son coefficient efface la raison d'être
+# des deux îlots.
+# ⚠ Avec 10,4 ha d'activité sur 38 ha bâtis, la ville sortira à ~0,15 emploi
+# par habitant quel que soit le coefficient — un dortoir. C'est la géométrie
+# qui le dit, pas un réglage.
 
 PERSONNES_PAR_LOGEMENT = 2.1
 SURFACE_PAR_PLACE = 25.0        # m² par place, accès compris
@@ -110,29 +104,20 @@ HABITANTS_VAULT = 5350          # ce que le vault annonce — contrôlé, pas su
                                 # prototype est Wehrau. → Décisions arrêtées 13d
 
 # --- l'eau ----------------------------------------------------------------
-# 🔄 LA CARTE EST PLATE depuis le 2026-08-12, à la demande de l'auteur — dans
-# l'image ET dans la donnée. `altitude_relative` vaut donc 0 partout.
+# 🔄 LA CARTE EST PLATE depuis le 2026-08-12, dans l'image ET dans la donnée :
+# `altitude_relative` vaut 0 partout. Avant, une vallée sans MNT remontait de
+# part et d'autre de l'Ilse (3,2 % → 1,3 %, plafond 9 m) — jamais visible à
+# l'écran, 9 m de relief sur 898 m de large.
 #
-# Ce qu'il y avait avant, et qu'il faudrait réécrire pour revenir en arrière :
-# une vallée sans MNT, remontant de part et d'autre de l'Ilse avec une pente
-# qui s'adoucissait vers l'aval (3,2 % → 1,3 %, plafond à 9 m). Elle ne s'est
-# jamais vue à l'écran — 9 m de relief sur 898 m de large.
+# ⏸️ LA CRUE SORT DU PROTOTYPE (2026-08-12). `alea` n'est plus dérivé de rien ;
+# la colonne reste à 0 pour que rien de ce qui la lit ne casse.
+# Pour la rallumer sur une carte plate, il faudrait une portée de crue en
+# mètres modulée d'amont en aval. Mesuré avant de renoncer : à 250 m, l'aléa
+# moyen par rive tombait à 0,74 / 0,39 contre 0,75 / 0,43 par l'altitude — la
+# règle changeait, pas la carte du risque.
 #
-# 🔴 LA CRUE SORT DU PROTOTYPE, décidé par l'auteur le 2026-08-12 : *« pas de
-# crue. on oublie la crue pour ce prototype »*. `alea` n'est donc plus dérivé
-# de rien — la colonne reste dans le GeoPackage, à 0, pour que rien de ce qui
-# la lit ne casse, mais elle ne prétend plus mesurer quoi que ce soit.
-#
-# Ce qu'il faudrait pour la rallumer : une règle qui dise jusqu'où l'eau monte.
-# Elle tenait à l'altitude, qui n'existe plus ; sur une carte plate elle
-# tiendrait à la DISTANCE À L'EAU (une portée de crue en mètres, modulée de
-# l'amont vers l'aval). Mesuré avant de renoncer : à 250 m de portée, l'aléa
-# moyen par rive retombait à 0,74 rive gauche et 0,39 rive droite, contre 0,75
-# et 0,43 par l'altitude. La règle changeait, pas la carte du risque.
-#
-# ⚠️ Ce qui RESTE, et qui n'est pas de la crue : `rive` et `position_fil_eau`.
-# Ce sont des positions le long de l'eau, pas des risques — et c'est
-# `position_fil_eau` qui porte la portée « aval » d'une décision (08).
+# ⚠️ `rive` et `position_fil_eau` RESTENT : ce sont des positions le long de
+# l'eau, pas des risques, et `position_fil_eau` porte la portée « aval » (08).
 
 # --- les rues -------------------------------------------------------------
 # Ce qu'il faut réserver à la circulation, par hiérarchie : chaussée + trottoirs.
@@ -301,9 +286,8 @@ def charge_reseau(rues):
     def cle(p):
         return (round(p[0] / G), round(p[1] / G))
 
-    # Un nœud par SOMMET, pas seulement par extrémité de tronçon : sinon les
-    # rues qui se raccordent en T au milieu d'un tronçon sont vues comme
-    # déconnectées, et le réseau tombe en morceaux.
+    # Un nœud par SOMMET, pas par extrémité : sinon un raccordement en T au
+    # milieu d'un tronçon passe pour déconnecté et le réseau tombe en morceaux.
     # Une berge à largeur nulle est une rive, pas une voie : hors graphe.
     voisins = {}
     for fid, d in rues.items():
@@ -443,10 +427,9 @@ def main():
     segs_riv = [(a[i], a[i + 1])
                 for f in riv for a in ilots[f]["anneaux"]
                 for i in range(len(a) - 1)]
-    # Le fil de l'eau se mesure en latitude, pas en projection sur un axe
-    # droit : l'Ilse décrit un grand S d'ouest en est, et une droite la
-    # décrirait mal. Elle traverse toute la carte du nord au sud, donc
-    # « où est-on le long de la rivière » = « à quelle hauteur est-on ».
+    # En latitude, pas en projection sur un axe droit : l'Ilse décrit un grand
+    # S mais traverse la carte du nord au sud, donc « où est-on le long de la
+    # rivière » = « à quelle hauteur est-on ».
     ynord = max(p[1] for p in sommets)
     ysud = min(p[1] for p in sommets)
 

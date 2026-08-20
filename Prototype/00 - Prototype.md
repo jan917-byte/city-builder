@@ -1,78 +1,56 @@
 # Le prototype — ce qu'on construit, étape par étape
 
-> **Ce dossier est le chantier. Le vault est la tête.**
-> Une idée, un arbitrage, une règle du jeu → `Vault - Jeu urbanisme/`.
-> Ce qu'on est en train de construire, ses chiffres, ce qui reste → **ici**.
->
-> Ce dossier **n'est pas dans le vault** : pas de frontmatter, pas de wikilinks. Les liens y sont des liens markdown ordinaires, et les renvois au vault se font par le nom de la note en `code`.
+> **Ce dossier est le chantier ; le vault est la tête.** Les règles de partage sont dans `CLAUDE.md` §2 et n'ont pas à être répétées ici.
+> **Une seule étape est ouverte à la fois**, et elle se termine quand **son critère est vu à l'écran**. **Plafond de ce fichier : 60 lignes.**
 
----
-
-## La règle
-
-> **Une seule étape est ouverte à la fois.**
-
-Le prototype avance pas à pas. Une étape se termine quand **son critère de réussite est vu à l'écran**, pas quand le code compile. Tant qu'une étape est ouverte, les autres ne se travaillent pas — elles attendent leur ligne dans le tableau ci-dessous.
-
-Ce que ça protège : le risque nommé dans `Décisions arrêtées` **52** — *que la 3D mange le calendrier*. Deux étapes ouvertes en même temps, c'est le retour de ce risque par la porte de derrière.
-
-## Les étapes, dans l'ordre
+## Les étapes
 
 | | L'étape | État | Son critère de réussite |
 |---|---|---|---|
-| 1 | **La carte** — îlots, rues, attributs | ✅ fait | la ville privée de sa rivière tombe en deux morceaux, le réseau routier tient d'un seul tenant, l'axe de transit sort tout seul |
+| 1 | **La carte** — îlots, rues, attributs | ✅ | la ville privée de sa rivière tombe en deux morceaux · le réseau tient d'un seul tenant · l'axe de transit sort tout seul |
 | 2 | **[Les parcelles](Parcelles.md)** | ⏸️ **en pause** | la surface de toit mesurée retombe sur le coefficient de l'énergie · le cœur ancien ressemble à un cœur ancien |
-| 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ simplifié, **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
-| 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | 🎯 **en cours** | croire qu'on y habite |
+| 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
+| 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | 🎯 **ouverte** | croire qu'on y habite |
 | 5 | **Le trafic visible** | ☐ | une rue à `charge = 1,00` est désagréable à regarder |
 | 6 | **Le thème suivant** | ☐ | il s'écrit en trois pièces, sans toucher à la machinerie |
 
-**Pourquoi l'étape 2 passe en pause au lieu de passer à ✅**, le 2026-08-18 :
-son critère n'est pas atteint. Il lui reste **118 parcelles de rue avec un
-sommet rentrant**, dont le dard de l'îlot 40 que l'auteur a entouré. Ce n'est
-pas fini, c'est **suspendu** — et ce qui reste est décrit dans
-[CHANTIERS.md](../CHANTIERS.md) §1 n°8, avec la piste à essayer.
+⏸️ **L'étape 2 est en pause, pas finie** : son critère n'est pas atteint, il lui reste 118 parcelles de rue à sommet rentrant. L'auteur a ouvert la 4 explicitement et la 2 s'est refermée en même temps — la règle tient.
 
-🔴 **La règle « une seule étape ouverte » tient donc toujours**, et c'est
-important : ouvrir la 4 sans fermer la 2 aurait été exactement le retour du
-risque **52** par la porte de derrière. L'auteur a ouvert la 4 explicitement,
-et la 2 s'est refermée en même temps.
+## Ce qui commande le prototype
 
-**Pourquoi 3 apparaît quand même** : l'énergie est construite mais attend le
-regard de l'auteur ; elle ne porte plus de chantier de système.
-→ `Décisions arrêtées` **68**
+- 🎯 **Une seule décision testée** (68), mais elle a un prix et un rendement qui dépendent du tissu (69) : le prototype teste le lien **local → global**, et « où investir ? ».
+- 🔗 **La 3D et l'énergie se rejoignent sur le toit** (41 · 56 · 64) : la 3D produit `toit_m2`, `toit_pente`, `toit_plat` et l'ombrage ; l'énergie les lit sans savoir qui parle. 🔴 **L'énergie n'attend jamais la 3D** — le prototype reste jouable avec les toits estimés.
+- 🏘️ **Le prototype est Wehrau**, une ville entière qu'on voit en entier (13b · 13d) : elle a un amont et un aval, un quartier n'en a pas.
+- 🎨 **Townscaper pour le rendu** (42b), **Wehrau pastel au sol minéral** (42c) — le pastel étant celui des **murs** seulement depuis le 2026-08-18.
+- 🗺️ **La carte est plate**, dans l'image et dans la donnée. Le seul relief est le chenal de l'Ilse (fond à −2,85 m, nappe à −2 m) et le talus des 4 champs riverains. La voirie reste à 0 : **aucune ligne de code ne parle de pont**.
+- 💧 **La crue est sortie du prototype** : `alea` et `altitude_relative` restent à 0. Ce qui reste de l'eau est ce qui reste vrai sans elle — deux rives inégales et trois franchissements.
+- 🏛️ **La ville possède tout, logement compris** (70) — mais **posséder un logement n'est pas payer sa facture** : la ville est propriétaire-bailleur, ses locataires paient leur électricité.
 
-## Ce qui relie les deux étapes ouvertes : **le toit**
+## Les tables que l'auteur règle
 
-L'énergie estime aujourd'hui la surface de toit par un coefficient. Les parcelles la produisent pour de vrai. Donc :
+Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne changée, on relance, on regarde. Le contrôle n'est pas « est-ce juste » mais ***« est-ce qu'on croirait y habiter »***.
 
-- la **3D alimente** l'énergie — le toit cesse d'être estimé ;
-- l'**énergie donne aux parcelles leur critère de réussite** — un potentiel solaire calculé sur les vrais toits.
+| La table | Où | Ce qu'elle décide |
+|---|---|---|
+| les listes de `fid` | haut de `02_qualifier.py` | quel îlot est quoi, `PONTS_SUPPRIMES` compris |
+| `TISSU` | `04_deriver_attributs.py` | densité, hauteur, imperméabilisation, canopée, parking — le comportement de la carte |
+| `TISSU` | `04c_parcelles.py` | largeur de façade, profondeur, `style` (`peigne` ou `boite`) — **le grain de toute la ville** |
+| `TISSU` | `04d_emprises_batiments.py` | recul, retraits, profondeur, plafond d'emprise, famille de forme — l'empreinte du bâtiment |
+| `TOITURES` · `ENDUITS` | `palette.py` | les matériaux du bâti — la couleur de la ville depuis le 2026-08-18 |
+| `BATI` | `07_exporter_godot.py` | **la pente du toit seulement** |
 
-🔴 **Le sens ne se renverse jamais : l'énergie n'attend jamais la 3D.** Le prototype reste jouable avec les toits estimés quoi qu'il arrive au générateur.
+🔴 Dans `04d.TISSU`, le retrait latéral à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (61).
 
-## Où va quoi
+## La dette — ce qui ment tant que ce n'est pas payé
 
-| Ce que j'écris | Où ça va |
-|---|---|
-| une idée, un arbitrage, une règle du jeu, une référence | le **vault** — c'est la source de vérité |
-| ce qu'une étape fait, ses chiffres mesurés, ce qui lui reste | **ici**, une note par étape |
-| où on en est aujourd'hui, la prochaine commande à lancer | [`ETAT.md`](../ETAT.md) |
-| ce qui attend, les défauts connus, la dette | [`CHANTIERS.md`](../CHANTIERS.md) |
-| ce qui s'est passé, session par session | [`HISTORIQUE.md`](../HISTORIQUE.md) |
+Aucune n'est sur le chemin critique, mais chacune fausse un chiffre.
 
-🔴 **La frontière avec le vault, pour qu'aucune des deux ne mente.** Le vault porte **la doctrine** : *pourquoi* la parcelle est une partition, ce qu'on ne fera jamais, ce qui est tranché. Ce dossier porte **le chantier** : où en est l'algo aujourd'hui, avec quels chiffres. Quand les deux disent la même chose, c'est ici qu'on efface — le vault est la source.
-
-Une étape ne consigne **rien** dans `Décisions arrêtées` toute seule. Un arbitrage se ferme dans `Questions ouvertes.md` **et** se consigne dans `Décisions arrêtées.md`, jamais au détour d'une note de chantier.
-
-## La contrainte de machine
-
-Le travail se fait principalement sous **Windows**, parfois sur le Mac.
-
-> 🔄 **L'ancienne règle a disparu, elle n'a pas été assouplie.** Elle disait : *« Le script voyage entre les deux machines. La carte, non — `QGIS/data/*.gpkg` ne s'écrit que sous Windows. »* Sa seule raison d'être était que la carte était un **binaire suivi par git**, que git ne sait pas fusionner.
-
-Les deux machines font le même travail depuis le 2026-08-17 : la carte est du texte, aucun `.gpkg` n'est suivi. La passe `--blanc` reste obligatoire pour les trois scripts qui écrivent la source — c'est du level design. → `CLAUDE.md` §5
-
----
-
-**Voir aussi** : [ETAT.md](../ETAT.md) · [CHANTIERS.md](../CHANTIERS.md) · `Vault - Jeu urbanisme/00 - Index.md`
+- 🔴 **Calibrer les deux formules de budget** (59) : recettes ∝ `logements`, charges ∝ mètres de voirie. Contrôle nommé — *une densification pure ne doit pas s'autofinancer*. Aujourd'hui le budget ne mord jamais (418/500, +152 de solde, aucune décision refusée sur trois parties).
+- 🔴 **Repondérer les trois moyennes** (63) : `canopee_moy` et `impermeabilise_moy` par la surface, `riverain_moy` par la population — dans `08_jouer.py` **et** `ville.gd`, puis refaire le recoupement.
+- 🔴 **`largeur_m >= 20`, la cible de D05, rate quatre des cinq rues les plus chargées** : les tronçons 13, 21, 54 et 55 font 18 m. **Deux mètres de seuil décident si la décision existe.**
+- 🔴 **La montée de D07 est de 60 mois** : sur une partie, l'arbre ne reprend jamais ses mètres à la noue, donc la concurrence arbre/noue ne se joue pas.
+- **`stationnement` porte deux sens** — part de surface sur l'îlot, places sur rue sur le tronçon. **À renommer avant d'écrire l'indicateur**, sinon quelque chose les additionnera.
+- **Vérifier que chaque indicateur a un antagoniste** : les bornes sont la ceinture, le frein ce sont les antagonismes.
+- **Trois valeurs à t0 manquent** (la ville exposée, le CO₂, la desserte) et **`confort_ete` n'existe pas dans le `.gpkg`** — seule variable de D10, créée à 0.
+- **La deuxième décision dans Godot** : la candidate est **D06 supprimer le stationnement**, c'est elle qui libère l'emprise de D07 et D08.
+- **Sans urgence** : digérer le brainstorm du 2026-08-11 (9 décisions, 7 questions) · le tag `jeu/brightvale` · les conséquences de 5 350 hab. sur le lycée et la barre (13d, pas encore dans `Ville/Wehrau.md`) · les six dérives du dossier QGIS (`QGIS/README.md` §8).

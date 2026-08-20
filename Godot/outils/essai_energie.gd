@@ -1,10 +1,9 @@
 extends SceneTree
 # Le contrôle imprimé du système énergie — Prototype/Énergie.md §7, étapes 1, 2 et 6.
 #
-# Depuis la décision 65, l'auteur ne voit plus passer le code : ce compte rendu
-# en français est LE SEUL ENDROIT où une erreur peut encore se voir. Il tourne
-# sur le noyau nu (ville + énergie + chantiers), sans un seul nœud, donc en
-# --headless :
+# 🔴 L'auteur ne voit plus passer le code (décision 65) : ce compte rendu en
+# français est LE SEUL ENDROIT où une erreur peut encore se voir. Noyau nu,
+# aucun nœud, donc --headless :
 #
 #   Godot_v4.7.1-stable_win64_console.exe --headless --path Godot ^
 #       --script res://outils/essai_energie.gd
@@ -169,8 +168,8 @@ func _rentabilites(v) -> void:
 			% [st, liste[0], liste[liste.size() - 1], liste.size(),
 			"s" if liste.size() > 1 else ""])
 
-	# Les deux dérives de prix sont débranchées depuis la décision 69 : attendre
-	# ne doit donc plus améliorer mécaniquement la rentabilité.
+	# Dérives de prix débranchées (décision 69) : attendre ne doit plus
+	# améliorer mécaniquement la rentabilité.
 	var coeur: float = _mediane_tissu(v, "coeur_ancien", 0.0)
 	var coeur60: float = _mediane_tissu(v, "coeur_ancien", 60.0)
 	var coeur120: float = _mediane_tissu(v, "coeur_ancien", 120.0)
@@ -206,8 +205,8 @@ func _mediane_tissu(v, st: String, t: float) -> float:
 
 # ------------------------- 4. la barre de 1974 : panneaux, PUIS isolation
 
-## L'étape 3 du PLAN §7 en un scénario : équiper la barre, puis isoler la
-## même barre. Deux courbes, deux formes — et les invariants de l'étape 6.
+## PLAN §7 étape 3 : équiper la barre, puis l'isoler. Deux courbes, deux
+## formes, et les invariants de l'étape 6.
 func _scenario_barre(d: Dictionary) -> void:
 	var v := Ville.new()
 	v.charger(d)
@@ -257,8 +256,8 @@ func _scenario_barre(d: Dictionary) -> void:
 		co2_60 < co2_0)
 
 	_invariants(v, ch)
-	# L'ancien remboursement en points reste plus bas comme trace, mais la
-	# boucle jouable est désormais en euros et ne doit plus être validée ici.
+	# ⏸️ L'ancien remboursement en points reste plus bas comme trace : la boucle
+	# jouable est en euros et ne se valide plus ici.
 
 
 ## Les trois invariants de l'étape 6, aux cinq dates.
@@ -282,10 +281,9 @@ func _invariants(v, ch) -> void:
 	_controle("la production ne dépasse jamais le potentiel", ok_plafond)
 
 
-## Le remboursement : décidé au mois 0, un chantier rembourse son coût au mois
-## délai + travaux + 12 × rentabilité, à 2 % près. Exact par construction
-## (tarif ET coût figés au mois de la décision) — s'il dérive, c'est que
-## quelqu'un a débranché le gel du tarif.
+## Décidé au mois 0, un chantier rembourse au mois délai + travaux + 12 ×
+## rentabilité, à 2 % près. Exact par construction (tarif ET coût figés) :
+## s'il dérive, quelqu'un a débranché le gel du tarif.
 func _remboursement(v, ch, fid: int, pan: Dictionary) -> void:
 	var attendu: float = 6.0 + 6.0 + 12.0 * Energie.rentabilite_annees(v, fid, 0.0)
 	var cout: float = pan["cout"]
@@ -307,11 +305,10 @@ func _remboursement(v, ch, fid: int, pan: Dictionary) -> void:
 
 # ------------------------------------ 5. les deux parties, en aveugle
 
-## LE contrôle le plus important de la session (PLAN §8, 2 bis) : chaque mois,
-## on engage tout ce qu'on peut, une seule décision autorisée. La partie
-## « panneaux seuls » doit finir bloquée sur le CAPITAL, la partie « isolation
-## seule » sur le BUDGET. Si les deux vont au bout, la paire ne tient pas —
-## deux décisions indépendantes sont décoratives l'une pour l'autre.
+## LE contrôle le plus important (PLAN §8, 2 bis) : une seule décision
+## autorisée, engagée chaque mois. « Panneaux seuls » doit finir bloqué sur le
+## CAPITAL, « isolation seule » sur le BUDGET. Si les deux vont au bout, la
+## paire ne tient pas.
 func _partie_aveugle(d: Dictionary, id: String, attendu: String, titre: String) -> void:
 	var v := Ville.new()
 	v.charger(d)

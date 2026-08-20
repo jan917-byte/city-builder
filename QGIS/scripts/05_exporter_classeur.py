@@ -5,13 +5,12 @@
 
     python3 QGIS/scripts/05_exporter_classeur.py
 
-Sort trois fichiers dans Classeur/ : ilots.csv, routes.csv, adjacences.csv.
-Ce sont des DÉRIVÉS. On ne les édite jamais à la main : on relance 02 → 03 → 04,
-puis ce script. Les feuilles de design (decisions, effets, chantiers, partie) ne
-sont pas touchées.
+Sort trois DÉRIVÉS dans Classeur/ : ilots.csv, routes.csv, adjacences.csv. On
+ne les édite jamais à la main — on relance 02 → 03 → 04, puis ce script. Les
+feuilles de design ne sont pas touchées.
 
-N'écrit rien dans le GeoPackage. Se lance sans QGIS : sqlite3 seul.
-Le séparateur est le point-virgule (Excel FR/DE l'ouvre sans assistant d'import).
+N'écrit rien dans le GeoPackage, et se lance sans QGIS. Séparateur
+point-virgule : Excel FR/DE l'ouvre sans assistant d'import.
 """
 
 import math
@@ -29,8 +28,8 @@ SOURCE = os.path.join(RACINE, "QGIS", "data", "travail", "wehrau.gpkg")
 SORTIE = os.path.join(RACINE, "Classeur")
 SEP = ";"
 
-# Colonnes exportées, dans l'ordre. La géométrie ne sort pas : le classeur
-# travaille sur des identifiants et des attributs, la forme reste dans QGIS.
+# La géométrie ne sort pas : le classeur travaille sur des identifiants et des
+# attributs.
 COLS_ILOTS = [
     "fid", "fonction", "sous_type", "exception", "surface_m2", "densite",
     "logements", "emplois", "hauteur", "impermeabilise", "canopee", "desserte_tc",
@@ -55,10 +54,9 @@ def longueur(blob):
 
 
 def verifier_colonnes(con, table, cols):
-    """Un message clair plutôt qu'un « no such column » de sqlite.
-
-    `emplois` est arrivé dans 04 après coup : sans ce contrôle, un dépôt
-    fraîchement tiré plante sans dire qu'il manque juste un maillon."""
+    """Un message clair plutôt qu'un « no such column » de sqlite : `emplois`
+    est arrivé dans 04 après coup, et un dépôt fraîchement tiré plantait sans
+    dire qu'il manquait juste un maillon."""
     presentes = {r[1] for r in con.execute("PRAGMA table_info(%s)" % table)}
     manque = [c for c in cols if c not in presentes]
     if manque:
@@ -99,8 +97,7 @@ def main():
         con.execute("SELECT %s FROM ilots ORDER BY fid" % ",".join(COLS_ILOTS)),
     )
 
-    # Les routes gagnent une colonne longueur_m : c'est l'unité de coût des
-    # décisions de voirie (planter, désimperméabiliser, retirer la voiture).
+    # `longueur_m` est l'unité de coût des décisions de voirie.
     lignes = []
     for r in con.execute(
         "SELECT %s, geom FROM routes ORDER BY fid" % ",".join(COLS_ROUTES)

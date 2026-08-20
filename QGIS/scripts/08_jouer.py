@@ -14,32 +14,27 @@ mois 0, et les courbes des parties superposées.
 
 N'écrit RIEN dans le GeoPackage : il n'y est lu que la géométrie, en `ro`.
 
-Ce que fait ce script, et que le tableur ne fait pas
-----------------------------------------------------
-La quantité d'une décision se calcule sur l'état du mois où le chantier
-commence, pas sur l'état de départ. C'est tout le mécanisme de D06 : elle
-ajoute 2,5 m d'emprise libre, et D07/D08 n'ont de cible que par elle.
+Ce que le tableur ne fait pas : la quantité d'une décision se calcule sur
+l'état du mois où le chantier COMMENCE, pas sur l'état de départ. C'est tout le
+mécanisme de D06, dont D07/D08 tirent leur cible.
 
 Trois liens n'existaient dans aucune table et sont construits ici
 -----------------------------------------------------------------
 1. tronçon → îlots riverains. `adjacences.csv` est îlot↔îlot ; sans ce lien,
-   `D07;voisins;ilots;canopee` ne retombe nulle part et la spécificité
-   spatiale disparaît. Construit géométriquement, avec le critère de 04b
-   (milieu d'arête à moins de 30 cm d'un segment, et parallèle).
-2. tronçon → tronçons voisins, par sommet partagé. C'est le support du report
-   de charge de D05.
+   `D07;voisins;ilots;canopee` ne retombe nulle part. Construit
+   géométriquement, avec le critère de 04b.
+2. tronçon → tronçons voisins, par sommet partagé — le report de charge de D05.
 3. aval d'une décision de voirie : les îlots dont `position_fil_eau` dépasse
    celui du plus aval des riverains de la cible.
 
 Trois choix de lecture, à confirmer par l'auteur
 -------------------------------------------------
-- Pour une décision sur `routes`, `portee = cible` et `portee = voisins` avec
-  `couche = ilots` désignent le MÊME ensemble : les îlots riverains. Les deux
-  mots existent dans effets.csv, ils ne produisent pas deux anneaux.
-- `set` est converti en écart au moment où le chantier commence. Deux `set`
-  qui se chevauchent : le second part de l'état réellement atteint.
-- Une variable absente des données (`confort_ete`) est créée à 0 et signalée.
-  Ce qu'on lit alors est un gain cumulé, pas un niveau.
+- Sur `routes`, `portee = cible` et `portee = voisins`/`couche = ilots`
+  désignent le MÊME ensemble : les îlots riverains, pas deux anneaux.
+- `set` devient un écart au moment où le chantier commence : deux `set` qui se
+  chevauchent, le second part de l'état réellement atteint.
+- Une variable absente des données est créée à 0 et signalée — ce qu'on lit
+  est alors un gain cumulé, pas un niveau.
 """
 
 import csv
@@ -522,11 +517,10 @@ class Partie(object):
             g = [o for o in bati if o["rive"] == "gauche"]
             avl = [o for o in bati if (o.get("position_fil_eau") or 0) > 0.5]
             moy = lambda s, ch: (sum(o.get(ch) or 0 for o in s) / len(s)) if s else 0.0
-            # Moyennes SIMPLES par îlot, et `riverain` sur les seuls îlots
-            # habités : ce sont les définitions qui reproduisent le mois 0 de
-            # partie.csv. Elles traitent un champ de 50 ha comme un parc de
-            # 0,4 ha — c'est un choix, pas un accident, et le contrôle de fin
-            # de script est là pour qu'il reste conscient.
+            # ⚠️ Moyennes SIMPLES par îlot, `riverain` sur les seuls habités :
+            # les définitions qui reproduisent le mois 0 de partie.csv. Elles
+            # traitent un champ de 50 ha comme un parc de 0,4 ha — choix
+            # délibéré, que le contrôle de fin de script garde conscient.
             pond = lambda ch: moy(bati, ch)
             r = {
                 "mois": t, "annee": ANNEE_0 + t // 12,
@@ -544,10 +538,9 @@ class Partie(object):
                                                for o in ER.values()))),
                 "riverain_moy": round(moy(habites, "riverain"), 3),
                 "note": "",
-                # Hors partie.csv : le seuil de dégradation nommé par
-                # effets.csv (« au-delà de 0.80 la rue voisine se dégrade »).
-                # `charge_max` sature à 1 et ne dit plus rien ; le NOMBRE de
-                # tronçons au-dessus du seuil, si.
+                # Le seuil de dégradation nommé par effets.csv. `charge_max`
+                # sature à 1 et ne dit plus rien ; le NOMBRE de tronçons
+                # au-dessus du seuil, si.
                 "satures": sum(1 for o in ER.values()
                                if (o.get("charge") or 0) > 0.80),
             }

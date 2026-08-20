@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 """apercu_parcelles — voir le parcellaire, parce qu'il ne se voyait nulle part.
 
-`apercu_carte.py` dessine les îlots et les rues, `06_etat_zero.py` dessine les
-vingt calques de la ville, et NI L'UN NI L'AUTRE ne dessine les parcelles. Le
-découpage de `04c` se jugeait donc uniquement dans Godot, en bout de chaîne.
-Ce script comble ce trou : il sort le parcellaire en PNG, seul ou comparé à
-une autre version du GeoPackage.
+Ni `apercu_carte.py` ni `06_etat_zero.py` ne dessinent les parcelles : le
+découpage de `04c` ne se jugeait que dans Godot, en bout de chaîne.
 
     python QGIS/scripts/apercu_parcelles.py
         la ville entière + trois îlots en gros plan
@@ -21,13 +18,10 @@ Ce que l'image doit montrer, et qui décide si `04c` est bon :
   · un front de rue continu, chaque parcelle touchant la chaussée ;
   · un cœur d'îlot lisible au milieu des îlots profonds.
 
-🎨 LA LECTURE DE L'IMAGE TIENT EN DEUX COULEURS :
-  · en couleur de tissu — la parcelle a une façade sur rue, donc
-    `07_exporter_godot.py` y bâtira une maison ;
-  · en VERT — la parcelle n'a aucune façade, donc elle repart au jardin.
-C'est le critère d'egress du papier, dessiné. Le vert dispersé au milieu des
-maisons est le défaut qu'on corrige ; le vert rassemblé en cœur d'îlot est le
-résultat qu'on cherche. Ça se lit sans légende et sans chiffre.
+🎨 DEUX COULEURS SUFFISENT À LIRE L'IMAGE : couleur de tissu = la parcelle a
+une façade et sera bâtie ; VERT = aucune façade, elle repart au jardin. Le vert
+dispersé entre les maisons est le défaut ; rassemblé en cœur d'îlot, c'est le
+résultat cherché.
 """
 
 import math
@@ -43,10 +37,9 @@ sys.path.insert(0, ICI)
 
 from apercu_carte import gpkg_vers_wkb, lire_wkb  # noqa: E402
 
-# ⚠️ Les options à valeur mangent l'argument qui les suit. Sans ce tri, le
-# chemin donné à `--avant` était AUSSI pris pour le GeoPackage positionnel :
-# les deux panneaux chargeaient le même fichier et l'avant/après comparait la
-# carte à elle-même, sans que rien ne plante.
+# ⚠️ Les options à valeur mangent l'argument suivant. Sans ce tri, le chemin
+# de `--avant` était AUSSI pris pour le GeoPackage positionnel : l'avant/après
+# comparait la carte à elle-même sans que rien ne plante.
 _A_VALEUR = ("--avant", "--ilots")
 
 
@@ -78,10 +71,9 @@ GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
 
 
 AVANT = _opt("--avant")
-# 🔴 Le numéro d'îlot est écrit PAR DÉFAUT. Sans lui, désigner un défaut vu sur
-# l'image oblige à le décrire — « le bloc allongé en haut à gauche » — au lieu
-# de le nommer, et deux personnes qui regardent la même image ne parlent pas
-# forcément du même îlot. `--sans-fids` pour une image propre à montrer.
+# 🔴 Le numéro d'îlot est écrit PAR DÉFAUT : sans lui, un défaut se décrit
+# (« le bloc allongé en haut à gauche ») au lieu de se nommer.
+# `--sans-fids` pour une image propre à montrer.
 FIDS = "--sans-fids" not in sys.argv
 SORTIE = os.path.join(RACINE, "QGIS", "rendus")
 
@@ -100,20 +92,17 @@ DEFAUT = (200, 200, 200)
 FOND = (247, 245, 240)
 TRAIT = (92, 84, 76)
 RUE = (255, 255, 255)
-# Le vert des parcelles sans façade — celles qui repartent au jardin.
-# ⚠️ Franchement plus sombre que le vert pâle du `pavillonnaire` : les deux
-# étaient assez proches pour qu'un quartier pavillonnaire entier se lise comme
-# un cœur d'îlot, c'est-à-dire comme le défaut qu'on cherche justement à voir.
+# Les parcelles sans façade, celles qui repartent au jardin.
+# ⚠️ Franchement plus sombre que le vert du `pavillonnaire` : trop proches, un
+# quartier entier se lisait comme un cœur d'îlot, donc comme le défaut.
 JARDIN = (104, 142, 86)
-# 🚶 LE CHEMIN — la venelle retirée de l'emprise par 04c. Un gris de pavé, ni
-# le blanc de la rue (ce n'est pas une chaussée, aucune voiture n'y passe) ni
-# une couleur de tissu (rien n'y sera bâti). Il doit se lire comme une COUPURE
-# dans l'îlot : c'est exactement ce qu'il est.
+# 🚶 LE CHEMIN — la venelle retirée de l'emprise par 04c. Un gris de pavé : ni
+# le blanc de la rue (aucune voiture) ni une couleur de tissu (rien n'y sera
+# bâti). Il doit se lire comme une COUPURE.
 CHEMIN = (162, 156, 146)
-# 🏠 LE BÂTIMENT — la couche `batiments` de 04d, dessinée PAR-DESSUS sa
-# parcelle. Un seul ton sombre pour tous les tissus : ce qu'on regarde ici,
-# c'est la forme et l'implantation, pas la fonction — le tissu se lit déjà sous
-# le bâtiment, à la couleur de la parcelle.
+# 🏠 LE BÂTIMENT — `batiments` (04d), dessiné PAR-DESSUS sa parcelle. Un seul
+# ton pour tous les tissus : on regarde la forme et l'implantation, et le tissu
+# se lit déjà sous le bâtiment.
 BATI = (86, 74, 68)
 BATI_TRAIT = (48, 40, 36)
 
@@ -208,8 +197,6 @@ def dessiner(parcelles, emprises, batiments, boite, larg, titre, sous_titre,
         if len(an) < 3:
             continue
         forme = [pt(p) for p in an]
-        # 🎨 Le seul choix de couleur du fichier, et il dit tout : une parcelle
-        # sans façade ne portera pas de maison, elle repart au jardin.
         # ⚠️ Le chemin se teste AVANT la façade : ses deux bouts touchent le
         # bord de l'emprise, donc il a une façade non nulle et sortirait en
         # couleur de tissu — une venelle déguisée en rangée de maisons.

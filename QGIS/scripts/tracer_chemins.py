@@ -6,32 +6,18 @@
     python QGIS/scripts/tracer_chemins.py --tous      la mesure de TOUS les îlots
     python QGIS/scripts/tracer_chemins.py --refaire   écrase des chemins existants
 
-═══════════════════════════════════════════════════════════════════════════
-CE QUE CE SCRIPT EST, ET CE QU'IL N'EST PAS
-═══════════════════════════════════════════════════════════════════════════
+🎚️ CE N'EST PAS UNE ÉTAPE DE LA CHAÎNE, c'est un outil : il propose un premier
+tracé, l'auteur le corrige, et c'est le tracé corrigé qui compte. Le level
+design ne se délègue pas — mais partir d'une page blanche sur soixante-dix
+îlots, si.
 
-Ce n'est PAS une étape de la chaîne. C'est un outil, comme `apercu_carte.py` :
-il propose un premier tracé, l'auteur le corrige dans QGIS, et c'est le tracé
-corrigé qui compte. Le level design ne se délègue pas — mais partir d'une page
-blanche sur soixante-dix îlots, si.
+🔴 IL ÉCRIT DANS LA SOURCE, ET C'EST VOULU : `02` rebâtit la carte de travail à
+chaque passage, donc une couche posée là serait effacée sans prévenir. La
+source est le seul endroit où un tracé corrigé à la main survit — une venelle
+par ligne dans `chemins.geojson`, avec son `fid_ilot` et sa `largeur_m`.
 
-🔴 IL ÉCRIT DANS LA SOURCE, ET C'EST VOULU. `02_qualifier.py` rebâtit la carte
-de travail depuis la source à chaque passage : une couche posée dans la carte
-de travail serait effacée au prochain passage de la chaîne, sans prévenir. La
-source est le seul endroit où un tracé corrigé à la main survit.
-
-🔄 2026-08-17 — ET C'EST CE SCRIPT QUI GAGNE LE PLUS AU PASSAGE EN TEXTE. La
-correction à la main se faisait dans QGIS, qui vient de sortir de la chaîne ;
-sans le format texte, ce script n'aurait plus eu de main pour le corriger.
-Les venelles vivent maintenant dans `QGIS/data/source/chemins.geojson`, une
-par ligne, avec son `fid_ilot`, sa `largeur_m` et sa note. Supprimer une
-venelle qui tombe mal = supprimer une ligne ; changer sa largeur = changer un
-nombre. Seul le déplacement d'un tracé demande de toucher aux coordonnées.
-
-⚠️ ET IL NE RÉÉCRIT PAS UNE COUCHE EXISTANTE sans `--refaire`. Une fois que
-l'auteur a déplacé un tracé, ce script n'a plus rien à dire : le relancer
-effacerait le travail. `--refaire` est là pour repartir de zéro en connaissance
-de cause.
+⚠️ IL NE RÉÉCRIT PAS UNE COUCHE EXISTANTE sans `--refaire` : relancer après une
+correction effacerait le travail.
 
 ═══════════════════════════════════════════════════════════════════════════
 OÙ VA UN CHEMIN : AU PLI, ET NULLE PART AILLEURS
@@ -96,39 +82,28 @@ SRS = 25832
 # CE QUI SE RÈGLE
 # ==========================================================================
 
-# 🔴 CE QUI A ÉTÉ ESSAYÉ D'ABORD, ET QUE L'AUTEUR A REFUSÉ DEVANT L'IMAGE
-# (2026-08-14). La première version cherchait LE POINT LE PLUS LOIN DE TOUTE
-# RUE et traçait la corde la plus courte qui passe par lui. Ça marchait au sens
-# des chiffres — 61 maisons de plus — et c'était faux au sens de la ville : le
-# point le plus profond d'un îlot, c'est SON CŒUR, donc la venelle coupait
-# systématiquement en deux la cour qu'on venait de se donner du mal à garder.
+# 🔴 REFUSÉ DEVANT L'IMAGE le 2026-08-14 : partir du POINT LE PLUS LOIN DE
+# TOUTE RUE. Ça gagnait 61 maisons et coupait en deux la cour qu'on venait de
+# se donner du mal à garder — le point le plus profond d'un îlot est son cœur.
 #
-# Ce que l'auteur a demandé à la place, en trois phrases :
-#   · le chemin va DANS LE COUDE, c'est-à-dire au pli d'un îlot en L ;
-#   · un cœur d'îlot se préserve chaque fois que c'est possible ;
-#   · le chemin est au service de parcelles PLUS RECTANGULAIRES — s'il les
-#     dégrade, il ne vaut pas son prix.
-# Les trois se lisent directement dans les trois réglages ci-dessous.
+# Ce que l'auteur a demandé, et qui se lit dans les trois réglages ci-dessous :
+# le chemin va DANS LE COUDE ; un cœur d'îlot se préserve ; le chemin sert des
+# parcelles PLUS RECTANGULAIRES, sinon il ne vaut pas son prix.
 
-# ① LE COUDE. Un sommet de l'emprise est un coude s'il est RENTRANT — s'il
-# creuse au lieu de bomber. C'est exactement le pli d'un L, et c'est le seul
-# endroit d'où partir : le peigne ne sait pas découper un L parce qu'un L n'a
-# pas de fond, et une corde qui part du pli donne un devant et un derrière à
-# chacune des deux ailes.
-# Le seuil est l'angle dont le contour tourne en sens inverse. En dessous, ce
-# n'est pas un pli mais le biseau que la limite de mitre de `04b` laisse sur
-# les angles rentrants — il y en a partout, et ils ne veulent rien dire.
+# ① LE COUDE : un sommet RENTRANT, donc le pli d'un L — le seul endroit d'où
+# partir, puisqu'une corde qui part du pli donne un devant et un derrière à
+# chaque aile.
+# ⚠️ Sous le seuil ce n'est pas un pli mais le biseau que la limite de mitre de
+# `04b` laisse partout sur les angles rentrants.
 COUDE_MIN_DEG = 25.0
 
 # ② LE CŒUR. Part de la surface de cœur d'îlot que la venelle a le droit de
 # manger. Presque zéro : elle peut mordre un coin, pas traverser une cour.
 PERTE_COEUR_MAX = 0.05
 
-# ③ LA RECTANGULARITÉ. Une parcelle vaut le rapport de son aire à celle de son
-# rectangle englobant : 1,00 pour un rectangle, 0,50 pour un triangle. Le
-# chemin n'est retenu que s'il fait monter la moyenne de l'îlot d'au moins ça.
-# Un gain sous le seuil, c'est du bruit de découpe, et on ne prend pas 200 m²
-# de sol à la ville pour du bruit.
+# ③ LA RECTANGULARITÉ : aire / aire du rectangle englobant, 1,00 pour un
+# rectangle, 0,50 pour un triangle. Sous le seuil de gain, c'est du bruit de
+# découpe, et on ne prend pas 200 m² de sol à la ville pour du bruit.
 GAIN_MIN = 0.010
 
 # Une corde plus courte que ça n'est pas une venelle, c'est une encoche ; plus
@@ -243,14 +218,10 @@ def cordes_du_coude(anneau, sommet):
     return garde
 
 
-# 🔴 CE QUI A ÉTÉ RETIRÉ LE 2026-08-14, ET QU'IL NE FAUT PAS REMETTRE.
-# Une deuxième recherche cherchait les ÉTRANGLEMENTS — l'endroit du bord où
-# l'îlot est localement le plus mince — pour attraper les îlots qui se
-# rétrécissent sans avoir de sommet rentrant. Elle sortait trois venelles de
-# plus (11, 39, 55) et l'auteur les a refusées toutes les trois sur l'image :
-# un col n'est pas un coude. Un îlot qui s'affine n'a pas de pli, il a une
-# pointe, et une venelle en travers d'une pointe ne dessert rien.
-# Le pli reste donc le SEUL point de départ.
+# 🔴 RETIRÉ LE 2026-08-14, NE PAS REMETTRE : la recherche des ÉTRANGLEMENTS,
+# pour les îlots qui se rétrécissent sans sommet rentrant. Ses trois venelles
+# (11, 39, 55) ont été refusées sur l'image — un col n'est pas un coude, un
+# îlot qui s'affine a une pointe, et une venelle en travers ne dessert rien.
 
 
 def prolonger(ilot, p, u, t):
@@ -312,10 +283,9 @@ def coeur_perdu(coeurs, ligne, largeur):
 
 # ------------------------------------------------------------------ encodage
 
-# 🔄 Retirés le 2026-08-17 : `wkb_ligne` et `blob_gpkg`, qui encodaient les
-# venelles en binaire GeoPackage. La source est du texte, `carte.py` s'en
-# charge. Ce script lit toujours du GeoPackage — la carte de TRAVAIL, par
-# `D4C` — mais il n'en écrit plus.
+# 🔄 `wkb_ligne` et `blob_gpkg` retirés le 2026-08-17 : `carte.py` écrit la
+# source en texte. Ce script lit encore du GeoPackage (la carte de TRAVAIL,
+# par `D4C`) mais n'en écrit plus.
 
 
 # ---------------------------------------------------------------------- main
@@ -381,33 +351,26 @@ def main():
             continue
         if D4C.TISSU[st][2] != "peigne":
             continue                     # la boîte ne connaît pas les rues
-        # 🌾 PAS DE VENELLE DANS UN ÎLOT DE LISIÈRE — 🔄 2026-08-17. Le premier
-        # essai en proposait deux, sur les rubans 72 et 73, et la
-        # rectangularité montait pour de bon. Elle montait parce que la venelle
-        # ouvre une deuxième façade au milieu du ruban : des parcelles s'y
-        # retournent, dos à la route. C'est l'inverse de ce qu'un ruban est —
-        # une rangée qui regarde la route, le jardin derrière, jusqu'au champ
-        # (tranché par l'auteur le 2026-08-17). Le critère de rectangularité ne
-        # peut pas voir ça tout seul : il juge des formes, pas des orientations.
+        # 🌾 PAS DE VENELLE DANS UN ÎLOT DE LISIÈRE (2026-08-17). La
+        # rectangularité montait pour de bon sur les rubans 72 et 73, mais elle
+        # montait parce que la venelle ouvre une deuxième façade et retourne
+        # des parcelles dos à la route — l'inverse d'un ruban. Le critère juge
+        # des formes, pas des orientations.
         if d.get("morts"):
             refuses["lisière"] += 1
             continue
         ext = d["ext"]
         an, plis = coudes(ext)
-        # Les deux familles de candidats, dans cet ordre : les PLIS d'abord,
-        # parce que c'est là que l'auteur les met, puis les ÉTRANGLEMENTS, qui
-        # rattrapent les îlots qui se rétrécissent sans avoir de sommet
-        # rentrant.
+        # Les PLIS d'abord, parce que c'est là que l'auteur les met, puis les
+        # ÉTRANGLEMENTS.
         candidats = []
         for sommet, tour in plis:
             for t, u in cordes_du_coude(an, sommet):
                 candidats.append((sommet, u, t, tour))
-        # 🔴 DU PLUS COURT AU PLUS LONG, ET ON PREND LE PREMIER QUI PASSE.
-        # L'ordre EST la règle : l'auteur a tracé ses venelles au plus court en
-        # travers du pli, là où mes premières propositions partaient en biais
-        # parce qu'elles gagnaient un centième de rectangularité en plus. Une
-        # venelle courte coupe le coude ; une venelle longue traverse l'îlot,
-        # et ce n'est plus la même chose.
+        # 🔴 DU PLUS COURT AU PLUS LONG, PREMIER QUI PASSE — l'ordre EST la
+        # règle. Les propositions triées par gain partaient en biais pour un
+        # centième de rectangularité : une venelle courte coupe le coude, une
+        # venelle longue traverse l'îlot.
         candidats.sort(key=lambda c: c[2])
         if not candidats:
             refuses["pas de pli"] += 1
@@ -437,13 +400,10 @@ def main():
                 continue
             r1 = rectangularite(essai)
             n1 = batissables(essai)
-            # ⚠️ LE NOMBRE DE MAISONS N'EST PAS UN CRITÈRE, et il a failli le
-            # devenir. Un premier jet refusait tout tracé qui en faisait perdre
-            # — ce qui poussait la venelle sur la DIAGONALE du coude, longue,
-            # au lieu de la faire couper le bras en travers. L'auteur a tranché
-            # devant l'image : le critère est la forme des parcelles, pas leur
-            # compte. On le mesure quand même et on l'imprime, parce qu'il
-            # commande la surface de toit, donc le solaire.
+            # ⚠️ LE NOMBRE DE MAISONS N'EST PAS UN CRITÈRE. Refuser tout tracé
+            # qui en fait perdre poussait la venelle sur la DIAGONALE du coude
+            # au lieu du travers. Mesuré et imprimé quand même : il commande la
+            # surface de toit, donc le solaire.
             if r1 < r0 + GAIN_MIN:
                 continue
             meilleur = {"r1": r1, "n1": n1, "u": u, "t": t,

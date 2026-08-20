@@ -1,33 +1,28 @@
 extends RefCounted
-# Le noyau de génération de géométrie, isolé derrière une interface propre —
-# `Vault/Technique/Moteur et architecture.md:18`.
+# Le noyau de génération de géométrie, isolé derrière une interface propre
+# (`Vault/Technique/Moteur et architecture.md:18`) — et cette interface est le
+# contrat JSON, pas une hiérarchie de classes.
 #
-# Cette interface N'EST PAS une hiérarchie de classes : c'est le contrat JSON.
-# Toute la géométrie a été calculée en Python par 07_exporter_godot.py. Ici on
-# ne fait qu'EMPAQUETER des tableaux — aucune décision géométrique, aucune
-# boucle lourde (l.16), aucun accès aux nœuds.
-#
-# Le jour où ça goulotte, ce fichier se porte en C# par copier-coller.
+# 07_exporter_godot.py a tout calculé ; ici on EMPAQUETTE des tableaux. Aucune
+# décision géométrique, aucune boucle lourde (l.16), aucun accès aux nœuds :
+# le jour où ça goulotte, ce fichier se porte en C# par copier-coller.
 
 const PRIM := Mesh.PRIMITIVE_TRIANGLES
-# L'arbre est le seul objet du fichier qui porte ses matériaux DANS son
-# maillage — deux surfaces, deux matériaux — parce qu'un `material_override`
-# peindrait le tronc de la couleur du feuillage. D'où cet import, qui n'est
-# pas circulaire : `materiaux.gd` ne connaît pas ce fichier.
+# L'arbre porte ses matériaux DANS son maillage (deux surfaces) : un
+# `material_override` peindrait le tronc de la couleur du feuillage. L'import
+# n'est pas circulaire, `materiaux.gd` ne connaît pas ce fichier.
 const Materiaux := preload("res://scripts/materiaux.gd")
 
 
-## Un maillage plat {v, n, c, uv, i} → ArrayMesh. Un seul appel à
-## add_surface_from_arrays : c'est ce qui évite les ~95 000 appels de fonction
-## qu'un SurfaceTool coûterait sur le terrain.
+## {v, n, c, uv, i} → ArrayMesh, en UN seul add_surface_from_arrays : un
+## SurfaceTool coûterait ~95 000 appels de fonction sur le terrain.
 static func maillage(d: Dictionary) -> ArrayMesh:
 	var vs: Array = d["v"]
 	var ns: Array = d["n"]
 	var cs: Array = d["c"]
 	var uvs: Array = d.get("uv", [])
-	# 🪟 UV2 ne descend que sur les maillages qui portent un mur percé — 07
-	# ne l'écrit pas ailleurs. Absent, Godot laisse UV2 à zéro, ce qui est
-	# exactement « pas une façade » pour le shader.
+	# 🪟 UV2 ne descend que sur les maillages à mur percé. Absent, Godot le
+	# laisse à zéro, ce qui est « pas une façade » pour le shader.
 	var uv2s: Array = d.get("uv2", [])
 	var idx: Array = d["i"]
 
@@ -61,12 +56,9 @@ static func maillage(d: Dictionary) -> ArrayMesh:
 	return _surface(v, nm, co, i, uv, uv2)
 
 
-## Une TRANCHE du même maillage : les `nb` indices à partir de `debut`, avec
-## les sommets qu'ils citent et rien d'autre.
-##
-## C'est ce qui donne un nœud par îlot et par tronçon, donc un objet qu'on peut
-## cliquer, surligner et teinter. Les plages viennent de `groupes` (clé `g`),
-## posées par 07 au fil de l'émission — Godot ne redécoupe rien, il lit.
+## Une TRANCHE du maillage : `nb` indices depuis `debut`, et les seuls sommets
+## qu'ils citent. C'est ce qui donne un nœud par îlot et par tronçon, donc un
+## objet cliquable. Les plages viennent de la clé `g`, posée par 07.
 static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 	var vs: Array = d["v"]
 	var ns: Array = d["n"]
@@ -75,8 +67,8 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 	var uv2s: Array = d.get("uv2", [])
 	var idx: Array = d["i"]
 
-	# Les indices citent des sommets répartis dans TOUT le tableau : il faut
-	# les renuméroter, sinon la tranche traîne les 40 000 sommets des autres.
+	# Les indices citent des sommets répartis dans TOUT le tableau : sans
+	# renumérotation la tranche traîne les 40 000 sommets des autres.
 	var renumerote := {}
 	var v := PackedVector3Array()
 	var nm := PackedVector3Array()
@@ -102,18 +94,16 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 	return _surface(v, nm, co, i, uv, uv2)
 
 
-## RGB = la teinte déjà occluse, ALPHA = l'occlusion seule. C'est le shader de
-## `materiaux.gd` qui s'en sert pour repeindre un objet en calque thématique
-## sans perdre l'AO. Les exports d'avant n'ont que trois canaux : on retombe
-## sur 1,0, ce qui donne exactement l'ancien rendu.
+## RGB = teinte déjà occluse, ALPHA = l'occlusion seule, dont le shader se sert
+## pour repeindre en calque sans perdre l'AO. Les exports d'avant n'ont que
+## trois canaux : on retombe sur 1,0, donc l'ancien rendu.
 static func _couleur(c: Array) -> Color:
 	return Color(c[0], c[1], c[2], 1.0 if c.size() < 4 else float(c[3]))
 
 
-## 🔄 IL Y AVAIT ICI `terrain()` : le champ d'altitude déplié en grille, avec
-## ses normales analytiques. La carte est plate depuis le 2026-08-12, le sol
-## est un maillage troué par le chenal, et il passe par `maillage()` comme tout
-## le reste. Godot n'a plus qu'UNE façon de lire de la géométrie.
+## 🔄 `terrain()` dépliait ici un champ d'altitude en grille. La carte est plate
+## depuis le 2026-08-12 : le sol passe par `maillage()` comme tout le reste, et
+## Godot n'a plus qu'UNE façon de lire de la géométrie.
 
 
 static func _surface(v: PackedVector3Array, n: PackedVector3Array,
@@ -135,18 +125,15 @@ static func _surface(v: PackedVector3Array, n: PackedVector3Array,
 	return m
 
 
-## 🔲 L'EMPRISE D'UN ÎLOT — une plaque plate, jamais affichée, qui ne sert
-## qu'à COMPLÉTER la silhouette de l'îlot choisi dans le masque.
+## 🔲 L'EMPRISE D'UN ÎLOT — plaque plate jamais affichée, qui COMPLÈTE la
+## silhouette de l'îlot choisi dans le masque.
 ##
-## Un îlot bâti ne dessine pas son sol : sous une barre de 1970 il n'y a que la
-## plaque de terrain, qui n'appartient à personne. Détourer la seule silhouette
-## rendue collait donc le trait aux bâtiments et laissait dehors tout le gris
-## qui les entoure. La plaque bouche ce trou ; le trait suit ensuite l'union
-## des deux, donc l'emprise ET ce qui la dépasse en hauteur.
+## Un îlot bâti ne dessine pas son sol : sous une barre il n'y a que la plaque
+## de terrain, qui n'appartient à personne, donc le trait collait aux bâtiments
+## et laissait le gris dehors. La plaque bouche ce trou.
 ##
-## L'anneau est OUVERT et simple (contrôlé par 04b : 69/69), d'où le découpage
-## en oreilles de Godot sans précaution particulière. Le sens de parcours n'a
-## aucune importance : le matériau du masque n'élimine aucune face.
+## Anneau ouvert et simple (04b : 69/69), d'où la triangulation sans précaution.
+## Le sens de parcours est indifférent : le masque n'élimine aucune face.
 static func emprise(anneau: Array) -> ArrayMesh:
 	if anneau.size() < 3:
 		return null
@@ -154,14 +141,13 @@ static func emprise(anneau: Array) -> ArrayMesh:
 	var v := PackedVector3Array()
 	for p in anneau:
 		var pt: Array = p
-		# Le point porte SON altitude — un champ en pente a une emprise qui
-		# suit son talus, sinon le trait flotte au-dessus du bord.
+		# Le point porte SON altitude : sinon le trait flotte au-dessus d'un
+		# champ en pente.
 		v.append(Vector3(float(pt[0]), float(pt[1]), float(pt[2])))
 		plan.append(Vector2(float(pt[0]), float(pt[2])))
 	var idx := Geometry2D.triangulate_polygon(plan)
 	if idx.is_empty():
-		# Un anneau que la triangulation refuse n'est pas une raison de perdre
-		# le trait : il reste la silhouette rendue.
+		# Pas une raison de perdre le trait : il reste la silhouette rendue.
 		push_warning("emprise : anneau non triangulable (%d sommets)" % v.size())
 		return null
 	var nm := PackedVector3Array()
@@ -173,20 +159,17 @@ static func emprise(anneau: Array) -> ArrayMesh:
 	return _surface(v, nm, co, idx)
 
 
-## 🔲 LE COULOIR D'UN TRONÇON — un ruban plat, jamais affiché, qui ne sert
-## qu'à donner une SILHOUETTE D'UN SEUL TENANT à une rue choisie.
+## 🔲 LE COULOIR D'UN TRONÇON — ruban plat jamais affiché, qui donne une
+## SILHOUETTE D'UN SEUL TENANT à la rue choisie.
 ##
-## Une rue rendue est faite de morceaux disjoints : la chaussée, les mètres
-## libres (qui ne sont rien du tout — du sol nu), et un bout de trottoir par
-## îlot riverain. Détourer ce maillage-là donne trois bandes parallèles, pas
-## une rue. Ce ruban-ci va de façade à façade, d'une seule pièce.
+## Une rue rendue est faite de morceaux disjoints (chaussée, mètres libres, un
+## bout de trottoir par riverain) : la détourer donne des bandes parallèles.
+## Ce ruban va de façade à façade.
 ##
-## Les quadrilatères SE CHEVAUCHENT aux coudes, et c'est voulu : chaque
-## segment est rallongé d'une demi-largeur à ses jointures INTERNES, ce qui
-## remplit l'angle sans calculer d'onglet. Un masque ne se soucie pas des
-## recouvrements — seule sa couverture compte. Les deux BOUTS ne sont pas
-## rallongés : sinon la rue choisie déborderait de neuf mètres dans le
-## carrefour voisin.
+## Les quadrilatères SE CHEVAUCHENT aux coudes, et c'est voulu : chaque segment
+## est rallongé d'une demi-largeur à ses jointures INTERNES, ce qui remplit
+## l'angle sans onglet — un masque ne compte que sa couverture. Les deux BOUTS
+## ne le sont pas, sinon la rue déborde dans le carrefour voisin.
 static func couloir(axes: Array, largeur: float, y: float) -> ArrayMesh:
 	var h := largeur / 2.0
 	var v := PackedVector3Array()
@@ -220,8 +203,8 @@ static func couloir(axes: Array, largeur: float, y: float) -> ArrayMesh:
 			idx.append(b + 3)
 	if v.size() == 0:
 		return null
-	# Le matériau du masque est non éclairé et sans élimination de faces :
-	# normales et couleurs ne servent à rien, mais `_surface` les attend.
+	# Inutiles au masque (non éclairé, sans élimination) mais `_surface` les
+	# attend.
 	var nm := PackedVector3Array()
 	nm.resize(v.size())
 	nm.fill(Vector3.UP)
@@ -231,21 +214,14 @@ static func couloir(axes: Array, largeur: float, y: float) -> ArrayMesh:
 	return _surface(v, nm, co, idx)
 
 
-## Les arbres : UNE instance multiple par ESSENCE, pas un nœud par objet — « le
-## geste se prend au début, pas après » (`Génération procédurale.md:74`).
+## UNE instance multiple par ESSENCE, pas un nœud par objet — « le geste se
+## prend au début, pas après » (`Génération procédurale.md:74`). Les 69 îlots
+## n'en ont pas : un MultiMesh répète UN MÊME mesh, il en faudrait 69 d'une
+## instance, donc 69 draw calls au lieu de 1.
 ##
-## Les 69 îlots, eux, n'en ont pas : un MultiMesh répète UN MÊME mesh, or ce
-## sont 69 formes distinctes. Il faudrait 69 MultiMesh d'une instance chacun,
-## soit 69 draw calls au lieu de 1. La fusion en un ArrayMesh sert la même
-## intention, et mieux.
-##
-## 🔄 RETOUR EN ARRIÈRE SIGNALÉ. C'ÉTAIT UNE SPHÈRE, une seule, à six segments
-## — d'où les billes vertes des captures d'avant le 2026-08-18. Ce qu'une bille
-## ne peut pas donner, et que l'auteur voulait voir sur sa photo de référence :
-## un tronc, une couronne qui n'est pas un cercle parfait, et une sous-face
-## sombre. Les trois sont ici, et aucun n'est un asset : la couronne est un tas
-## de trois lobes, le dégradé est bakké en couleur de sommet, et l'essence est
-## une deuxième recette et non un deuxième fichier.
+## 🔄 RETOUR EN ARRIÈRE SIGNALÉ : c'était UNE sphère à six segments, d'où les
+## billes vertes d'avant le 2026-08-18. Il manquait un tronc, une couronne qui
+## ne soit pas un cercle, une sous-face sombre — trois recettes, aucun asset.
 const FEUILLU := 0
 const CONIFERE := 1
 
@@ -254,8 +230,8 @@ static func arbres(liste: Array, essence: int, feuillage: Color,
 		tronc: Color) -> MultiMesh:
 	var pris: Array = []
 	for a in liste:
-		# Les exports d'avant le 2026-08-18 n'ont que cinq nombres : tout y
-		# est feuillu, ce qui donne exactement l'ancienne forêt.
+		# Les exports d'avant le 2026-08-18 n'ont que cinq nombres : tout y est
+		# feuillu, donc l'ancienne forêt.
 		var e: int = int(a[5]) if (a as Array).size() > 5 else FEUILLU
 		if e == essence:
 			pris.append(a)
@@ -272,24 +248,20 @@ static func arbres(liste: Array, essence: int, feuillage: Color,
 		var t := Transform3D(Basis(), Vector3.ZERO)
 		t = t.rotated(Vector3.UP, float(a[4]))
 		t = t.scaled(Vector3(ech, ech, ech))
-		# 🔄 Le mesh a maintenant son PIED À L'ORIGINE : plus de demi-blob à
-		# remonter. L'ancienne ligne compensait le fait qu'une sphère est
-		# centrée sur elle-même.
+		# 🔄 Le mesh a son PIED À L'ORIGINE : plus de demi-blob à remonter,
+		# comme le faisait l'ancienne sphère centrée sur elle-même.
 		t.origin = Vector3(float(a[0]), float(a[1]), float(a[2]))
 		mm.set_instance_transform(k, t)
-		# Une variation de valeur, pas de teinte : « les teintes sont fixes »
-		# (Direction artistique l.67).
+		# Variation de valeur, pas de teinte (Direction artistique l.67).
 		var f: float = 0.86 + 0.28 * fmod(abs(float(a[4])) * 7.3, 1.0)
 		mm.set_instance_color(k, Color(feuillage.r * f, feuillage.g * f,
 			feuillage.b * f))
 	return mm
 
 
-## Un arbre en deux surfaces : la couronne (couleur de sommet, donc teintée par
-## l'instance) et le tronc (couleur fixe, donc INDIFFÉRENT à la teinte de
-## l'instance). C'est ce découpage qui permet d'avoir un tronc brun sous un
-## feuillage vert avec un seul MultiMesh — et c'est pour ça que les arbres ne
-## portent plus de `material_override`, qui écraserait les deux d'un coup.
+## Deux surfaces : la couronne suit la teinte d'instance, le tronc non. C'est
+## ce qui permet un tronc brun sous un feuillage vert dans un seul MultiMesh —
+## et pourquoi les arbres n'ont pas de `material_override`.
 static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 	var m := ArrayMesh.new()
 
@@ -299,15 +271,13 @@ static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 	var i := PackedInt32Array()
 
 	if essence == CONIFERE:
-		# Trois cônes empilés qui se resserrent : la silhouette d'un épicéa se
-		# lit à la SILHOUETTE, pas au détail — c'est la règle du budget
-		# polygonal (le détail va dans le matériau, jamais dans le maillage).
+		# Un épicéa se lit à sa SILHOUETTE, pas à son détail : budget
+		# polygonal, le détail va dans le matériau.
 		_cone(v, n, c, i, 1.90, 1.10, 3.20, 6, 0.62, 0.86)
 		_cone(v, n, c, i, 1.45, 3.00, 2.80, 6, 0.78, 1.00)
 		_cone(v, n, c, i, 0.95, 4.90, 2.60, 6, 0.92, 1.12)
 	else:
-		# Trois lobes DÉCENTRÉS. Le décentrage est tout le sujet : trois
-		# sphères concentriques redonneraient la bille d'avant.
+		# DÉCENTRÉS : concentriques, ils redonneraient la bille d'avant.
 		_lobe(v, n, c, i, Vector3(0.0, 4.7, 0.0), 2.70, 0.66, 1.10)
 		_lobe(v, n, c, i, Vector3(1.35, 3.85, -0.65), 2.00, 0.60, 0.96)
 		_lobe(v, n, c, i, Vector3(-1.10, 4.15, 0.90), 1.80, 0.60, 0.98)
@@ -326,9 +296,8 @@ static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 	return m
 
 
-## Un lobe de feuillage : une sphère à six méridiens, dont les sommets portent
-## un dégradé vertical bakké. Ce dégradé fait tout le travail — sans lui, une
-## sphère sous une lumière fixe est un disque plat.
+## Une sphère à six méridiens, dégradé vertical bakké en couleur de sommet :
+## sans lui, une sphère sous une lumière fixe est un disque plat.
 static func _lobe(v: PackedVector3Array, n: PackedVector3Array,
 		c: PackedColorArray, i: PackedInt32Array,
 		centre: Vector3, rayon: float, bas: float, haut: float) -> void:
@@ -341,8 +310,8 @@ static func _lobe(v: PackedVector3Array, n: PackedVector3Array,
 		centre.y - rayon * 0.93, centre.y + rayon * 0.93, bas, haut)
 
 
-## Un cône (ou un tronc de cône) posé sur `y0`. `pointe` < 1 le laisse ouvert
-## en haut : c'est ce qui donne un tronc plutôt qu'une aiguille.
+## Posé sur `y0`. `pointe` < 1 le laisse ouvert en haut : un tronc plutôt
+## qu'une aiguille.
 static func _cone(v: PackedVector3Array, n: PackedVector3Array,
 		c: PackedColorArray, i: PackedInt32Array,
 		rayon: float, y0: float, hauteur: float, cotes: int,
@@ -359,8 +328,8 @@ static func _cone(v: PackedVector3Array, n: PackedVector3Array,
 		y0, y0 + hauteur, bas, haut)
 
 
-## Verse une primitive dans les tableaux en cours, transformée, avec un dégradé
-## vertical entre `bas` et `haut` posé en couleur de sommet.
+## Verse une primitive transformée dans les tableaux, avec son dégradé vertical
+## en couleur de sommet.
 static func _fondre(v: PackedVector3Array, n: PackedVector3Array,
 		c: PackedColorArray, i: PackedInt32Array, source: PrimitiveMesh,
 		t: Transform3D, y0: float, y1: float, bas: float, haut: float) -> void:

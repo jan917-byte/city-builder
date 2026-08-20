@@ -37,9 +37,9 @@ TOL = 0.5          # m — distance max entre une frontière et la rue qui la po
 # ==========================================================================
 # LE DESIGN : ce qu'une rue laisse passer entre deux îlots
 # ==========================================================================
-# 0 = coupure totale, 1 = les deux îlots se comportent comme un seul.
-# C'est ici qu'est encodée la coupure urbaine, et c'est du design, pas de
-# la mesure : ces sept nombres décident du comportement de toute la carte.
+# 0 = coupure totale, 1 = les deux îlots n'en font qu'un.
+# 🎚️ Du design, pas de la mesure : ces sept nombres décident du comportement
+# de toute la carte.
 PERMEABILITE = {
     "ruelle":      1.00,   # on traverse sans y penser
     "rue":         0.80,
@@ -50,8 +50,8 @@ PERMEABILITE = {
     "sans_rue":    0.90,   # frontière sans voirie : deux arrières qui se touchent
 }
 
-# La voie rapide de berge est un boulevard de 22 m. Une rue large coupe plus
-# qu'une rue étroite : au-delà de ce seuil, la perméabilité est divisée.
+# Une rue large coupe plus qu'une rue étroite : au-delà du seuil, la
+# perméabilité est divisée. La voie rapide de berge est un boulevard de 22 m.
 LARGEUR_SEUIL = 20.0
 PENALITE_LARGE = 0.5
 

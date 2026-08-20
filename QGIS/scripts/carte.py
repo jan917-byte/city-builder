@@ -5,51 +5,26 @@ Le seul endroit du dépôt qui sait lire et écrire LA SOURCE de la carte.
     QGIS/data/source/*.geojson   ← du TEXTE, suivi par git, fusionnable
     QGIS/data/travail/*.gpkg     ← du binaire DÉRIVÉ, gitignoré, jetable
 
-🔴 CE QUE CE FICHIER A REMPLACÉ, ET POURQUOI. Jusqu'au 2026-08-17 la source
-était `QGIS/data/Vallmar2.gpkg`, un binaire suivi par git. Deux conséquences
-qu'on payait à chaque session :
+🔄 La source était `Vallmar2.gpkg`, un binaire suivi par git, jusqu'au
+2026-08-17. Deux prix payés à chaque session : git ne fusionne pas un `.gpkg`,
+d'où l'ancienne règle « la carte ne s'écrit que sous Windows » ; et le dérivé
+suivi lui aussi se périmait en silence (2026-08-14, une session passée à
+décrire un défaut déjà corrigé). QGIS étant sorti de la chaîne (65), plus
+personne n'ouvre ces fichiers à la main — et la source ne contient que de la
+géométrie, ~250 ko de texte, tout le reste étant recalculé.
 
-  1. git ne fusionne pas un `.gpkg`. Modifier la carte sur les deux machines
-     obligeait à en jeter une. D'où l'ancienne règle « la carte ne s'écrit que
-     sous Windows », qui interdisait la moitié du travail sur le Mac.
-  2. `Prototype_qualifie.gpkg` était suivi lui aussi alors qu'il est ENTIÈREMENT
-     dérivé. Il s'est périmé en silence : le 2026-08-14 l'auteur a passé une
-     session à décrire un défaut déjà corrigé dans le code, parce que la carte
-     du dépôt datait de deux commits plus tôt et que rien ne le signalait.
+FORMAT. Du GeoJSON écrit à la main pour tenir UNE ENTITÉ PAR LIGNE : c'est ce
+qui rend le diff lisible et la fusion possible. `json.dump(indent=…)` casserait
+les deux. Coordonnées en EPSG:25832, écrites par `repr()`.
 
-Ce qui a rendu le binaire inutile : QGIS est sorti de la chaîne (décision 65,
-puis abandon complet le 2026-08-17). Plus personne n'ouvre ces fichiers à la
-main. Or LA SOURCE NE CONTIENT QUE DE LA GÉOMÉTRIE — 70 polygones et 179
-lignes, plus une colonne `hierarchy` — soit ~250 ko de texte. Tout le reste
-(fonction, sous_type, largeurs, adjacences, emprises, parcelles) est recalculé
-par la chaîne à chaque passage.
+🔴 LA SOURCE NE S'ARRONDIT PAS — piège payé le 2026-08-17. Arrondir au
+millimètre a fait passer `04c` de 2 coupes effacées à 1 : la rectangularité de
+l'îlot 13 vaut 1,00 pile contre un seuil à 0,90, et un demi-millimètre suffit
+à faire basculer un test de forme. Le diff reste propre, `repr()` étant
+déterministe.
 
-Donc : la source devient du texte que git fusionne ligne à ligne, et la carte
-de travail redevient ce qu'elle est — un fichier temporaire.
-
-FORMAT. Du GeoJSON, mais écrit à la main pour tenir UNE ENTITÉ PAR LIGNE.
-C'est ce qui rend le diff lisible (« l'îlot 26 a bougé ») et la fusion
-possible : deux machines qui touchent deux îlots différents ne se marchent
-jamais dessus. `json.dump(indent=…)` casserait les deux — une géométrie
-étalée sur 300 lignes rend tout conflit illisible.
-
-Les coordonnées sont en EPSG:25832 (mètres) et écrites SANS AUCUN ARRONDI,
-par `repr()` — la plus courte écriture décimale qui redonne exactement le
-même flottant. Le texte est donc rigoureusement équivalent au binaire.
-
-🔴 PIÈGE PAYÉ LE 2026-08-17, à ne pas refaire. La première version arrondissait
-au millimètre : plus court à lire, et sans effet visible sur une carte en
-mètres. Le contrôle a dit l'inverse — `04c` a cessé d'effacer la coupe en
-diagonale de l'îlot 13 (2 coupes effacées, puis 1). La rectangularité de la
-paire réunie y vaut 1,00 pile contre un seuil à 0,90 : un demi-millimètre
-sur un sommet suffit à faire basculer un test de forme. La règle qu'on en
-tire : LA SOURCE NE S'ARRONDIT PAS. Le diff reste propre quand même, parce
-que `repr()` est déterministe — réécrire une carte inchangée redonne des
-octets identiques.
-
-⚠️ Le GeoJSON standard impose du WGS84 ; on ne le respecte pas et c'est
-volontaire — reprojeter ferait perdre la précision métrique pour personne,
-puisque seuls nos scripts lisent ces fichiers.
+⚠️ Le GeoJSON standard impose du WGS84 ; on ne le respecte pas volontairement,
+reprojeter perdrait la précision métrique pour personne.
 """
 
 import json
@@ -233,9 +208,8 @@ def _nb(v):
 def _points_vers_geom(parts, multi, type_geom):
     def anneau(pts, fermer=False):
         pts = list(pts)
-        # Les scripts de découpe (`00`, `00b`) travaillent en anneau OUVERT et
-        # laissent `wkb_polygone` refermer. Le texte doit refermer pareil,
-        # sinon la source et le GeoPackage ne disent plus la même chose.
+        # `00` et `00b` travaillent en anneau OUVERT et laissent
+        # `wkb_polygone` refermer ; le texte doit refermer pareil.
         if fermer and len(pts) > 1 and pts[0] != pts[-1]:
             pts.append(pts[0])
         return "[%s]" % ",".join("[%s,%s]" % (_nb(x), _nb(y)) for x, y in pts)

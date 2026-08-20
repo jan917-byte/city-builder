@@ -1,15 +1,11 @@
 extends RefCounted
 # Lecture et VALIDATION du JSON produit par 07_exporter_godot.py.
-#
-# Le geste vient du dépôt : `05_exporter_classeur.py:57-68` préfère « un
-# message clair plutôt qu'un no such column de sqlite ». Ici c'est pareil —
-# on échoue en nommant ce qui manque, jamais par un magenta silencieux
-# quarante lignes plus loin.
+# On échoue en NOMMANT ce qui manque, jamais par un magenta silencieux quarante
+# lignes plus loin (même geste que `05_exporter_classeur.py`).
 
 const CHEMIN := "res://data/wehrau.json"
 
-# Les comptes sont connus, donc vérifiables. S'ils changent, c'est que la
-# carte a changé — et on veut le savoir tout de suite.
+# Comptes connus, donc vérifiables : s'ils bougent, la carte a changé.
 const N_ILOTS := 71
 const N_ROUTES := 178      # source moins les deux ponts supprimés par la décision 30c
 
@@ -54,9 +50,8 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 		push_warning("La carte a changé : %d îlots et %d tronçons au lieu de %d et %d."
 			% [int(c["ilots"]), int(c["routes"]), N_ILOTS, N_ROUTES])
 
-	# 🔄 `terrain` était un champ d'altitude et se contrôlait à part (grille
-	# nx × nz contre nombre d'altitudes). La carte étant plate, c'est un
-	# maillage comme les autres — donc il passe le MÊME contrôle qu'eux.
+	# 🔄 `terrain` se contrôlait à part quand c'était un champ d'altitude ;
+	# la carte étant plate, c'est un maillage comme les autres.
 	for nom in ["terrain", "masses", "sols", "eau", "voirie"]:
 		var e: String = _valider_maillage(d[nom] as Dictionary, nom)
 		if e != "":
@@ -70,8 +65,7 @@ static func _valider_maillage(m: Dictionary, nom: String) -> String:
 	for cle in ["v", "n", "c", "i", "g"]:
 		if not m.has(cle):
 			return "maillage `%s` : clé `%s` absente" % [nom, cle]
-	# Une plage qui déborde donnerait un « index out of bounds » quarante
-	# lignes plus loin, sans dire de quel objet il s'agit.
+	# Sans ça, « index out of bounds » plus loin, sans dire quel objet.
 	var ni_total: int = (m["i"] as Array).size()
 	for g in (m["g"] as Array):
 		var gr: Array = g
@@ -88,10 +82,8 @@ static func _valider_maillage(m: Dictionary, nom: String) -> String:
 	if m.has("uv") and (m["uv"] as Array).size() != nv:
 		return "maillage `%s` : %d axes de toit pour %d sommets" % [nom,
 			(m["uv"] as Array).size(), nv]
-	# 🪟 UV2 est facultatif — seul un maillage qui porte des murs percés
-	# l'emporte. Mais s'il est là, il est COMPLET : un tableau plus court
-	# décalerait le genre de façade d'un sommet à l'autre, et la ville
-	# sortirait avec des vitrines au hasard.
+	# 🪟 UV2 est facultatif (murs percés seulement) mais, présent, il est
+	# COMPLET : trop court, il décale les façades et sème des vitrines au hasard.
 	if m.has("uv2") and (m["uv2"] as Array).size() != nv:
 		return "maillage `%s` : %d façades pour %d sommets" % [nom,
 			(m["uv2"] as Array).size(), nv]
@@ -101,9 +93,7 @@ static func _valider_maillage(m: Dictionary, nom: String) -> String:
 	return ""
 
 
-## La teinte d'un rôle de la palette. Un rôle absent est une erreur NOMMÉE :
-## le magenta silencieux fait perdre une heure, le message en fait perdre dix
-## secondes.
+## Un rôle absent est une erreur NOMMÉE : le magenta silencieux coûte une heure.
 static func teinte(d: Dictionary, role: String, defaut := Color.MAGENTA) -> Color:
 	var p: Dictionary = d["palette"]
 	if not p.has(role):

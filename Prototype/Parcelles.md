@@ -1,6 +1,7 @@
-# Étape 2 — Les parcelles 🎯
+# Étape 2 — Les parcelles ⏸️
 
-> **L'étape en cours.** Le point dur du pipeline : ce qui sépare 71 pâtés pleins d'une ville où on croirait habiter.
+> ⏸️ **EN PAUSE depuis le 2026-08-18, pas finie** — l'auteur a ouvert l'étape 4. Son critère n'est pas atteint : il reste **118 parcelles de rue sur 809 avec un sommet rentrant** (§ 7). **Ne pas la rouvrir tant que la 4 est ouverte.**
+> Le point dur du pipeline : Le point dur du pipeline : ce qui sépare 71 pâtés pleins d'une ville où on croirait habiter.
 > La doctrine — *pourquoi* la parcelle est une partition, ce qu'on ne fera jamais — est dans le vault : `Technique/Génération procédurale.md`. **Ici, le chantier seulement.**
 
 **Dernière mesure : 2026-08-18** (session 34, chaîne complète jusqu'à l'export Godot)
@@ -88,7 +89,7 @@ C'est la suite annoncée à la fin du §2 octies — « des doigts de cour qui r
 
 ⚠️ **Les 15 qui restent** sont refusées par `ENCOCHE_AIRE_MAX` (45 m²) : leur poche est plus grande que ça, donc on ne sait pas encore dire si c'est une encoche ou la cour. Îlots 13, 28, 29, 30, 40, 43, 50, 58, 62, 66.
 
-🔴 **Et l'îlot 40 n'est réparé qu'à moitié — ce qu'il reste est dans la PARCELLE, pas dans le bâtiment.** Dans le bout sud-est que l'auteur a entouré : la parcelle **435** sort en dard (116 m², une flèche), la **443** en lanière (89 m² pour 2,0 m de façade au bout), et la **438** porte deux petits replis hérités de la découpe. Mesuré : **118 parcelles de rue sur 809 ont au moins un sommet rentrant**, et le compte ne bouge pas quand on éteint la soudure des coins (119 → 118) — **ce n'est donc pas la soudure, c'est le peigne**. → [CHANTIERS.md](CHANTIERS.md)
+🔴 **Et l'îlot 40 n'est réparé qu'à moitié — ce qu'il reste est dans la PARCELLE, pas dans le bâtiment.** Dans le bout sud-est que l'auteur a entouré : la parcelle **435** sort en dard (116 m², une flèche), la **443** en lanière (89 m² pour 2,0 m de façade au bout), et la **438** porte deux petits replis hérités de la découpe. Mesuré : **118 parcelles de rue sur 809 ont au moins un sommet rentrant**, et le compte ne bouge pas quand on éteint la soudure des coins (119 → 118) — **ce n'est donc pas la soudure, c'est le peigne**. → § 7
 
 ## 2 octies. 🏢 Le coin d'îlot — corrigé le 2026-08-17
 
@@ -410,8 +411,10 @@ Lire la ligne 35° : pour faire tomber 53 pointes on perd **132 parcelles de rue
 - **On coupe par l'aire, pas au milieu géométrique.** L'îlot 34 ne remplit que 67 % de son rectangle englobant ; la coupe médiane le partageait en 927 et 1 685 m², et le tissu sortait deux à trois fois trop fin.
 - 🏔️ **Le joint en toiture n'a demandé aucun travail** — les pignons sont verticaux, donc deux mitoyennes de hauteurs différentes se décrochent franc. C'était le seul reste de 61.
 
-## 7. Ce qui attend l'auteur
+## 7. Ce qui attend l'auteur, et ce qui reste ouvert
 
+- [ ] 🔴 **LA PARCELLE EN DARD, et c'est le peigne qui la fabrique.** **118 parcelles de rue sur 809 ont au moins un sommet rentrant**, les pires à 59–80° : la **435** de l'îlot 40 sort en flèche, la **443** en lanière (89 m² pour 2,0 m de façade au bout), la **438** porte deux replis. C'est ce que l'auteur a entouré le 2026-08-17 sur le bout sud-est de l'îlot 40. 🔴 **Ce n'est PAS la soudure des coins** : éteinte, le compte passe de 119 à 118. C'est `04c`, le peigne, là où deux bandes de rues différentes se rencontrent — et **aucun remède du bâtiment ne peut rien pour celui-là** : une empreinte propre dans une parcelle en dard laisse quand même le dard en beige à l'écran.
+- [ ] ☐ **15 empreintes gardent deux décrochements** : leur poche dépasse `ENCOCHE_AIRE_MAX` (45 m²), donc on ne sait pas encore dire si c'est une encoche ou la cour que l'équerre entoure. Îlots 13, 28, 29, 30, 40, 43, 50, 58, 62, 66.
 - [ ] 🔴 **Le potentiel solaire réel est inférieur aux 25–40 % du plan.** ✅ **La suspension est levée** : `07` lit maintenant les **756 volumes** de `04d` et mesure **11,0 ha de toiture réelle pente comprise**. **À trancher maintenant : assumer ce potentiel bas, ou regonfler la colonne `equip` de la table d'énergie.**
 - [ ] **La table `TISSU` de `04c`** (§5) — c'est du level design, il n'est pas délégué.
 - [ ] **Les réparations de boucle de `04b`** — passées de 4 à **7 îlots** avec la carte à trois ponts. Les quatre anciennes (55, 13, 16, 21) sont signalées ; les trois neuves (9, 11, 62) ne le sont pas.

@@ -1,30 +1,20 @@
 extends RefCounted
 # Les décisions, et les chantiers qu'on en lance.
 #
-# Deux décisions, et elles sont de NATURE OPPOSÉE (PLAN §5 bis) : les panneaux
-# achètent de l'argent, l'isolation achète de la légitimité. Jouer une seule
-# des deux cartes ne marche pas — c'est la contrainte qui remplace une règle
-# qu'on aurait dû écrire.
+# Deux décisions de NATURE OPPOSÉE (PLAN §5 bis) : les panneaux achètent de
+# l'argent, l'isolation de la légitimité. N'en jouer qu'une ne marche pas.
 #
-# La machinerie, elle, ne parle d'aucun thème : elle lit des clés et des noms
-# de champs (décision 64, « le prototype énergie n'est pas un exemple, c'est
-# le gabarit »). Les multiplicateurs par tissu sont des champs dérivés servis
-# par `ville.valeur` — la machinerie ne sait pas qu'ils sortent d'une table
-# d'énergie.
+# La machinerie ne parle d'aucun thème : elle lit des clés et des noms de
+# champs (décision 64, « le prototype énergie est le gabarit »).
 #
-# Ce qui structure le jeu, et qu'il ne faut pas perdre en route
-# (`Classeur/README.md` §4) :
-#   · le BUDGET se paie ÉTALÉ sur délai + travaux
-#   · le CAPITAL politique se paie EN ENTIER au mois où on décide
-#   · le RETOUR n'arrive qu'à la fin des travaux, au tarif du jour de la
-#     décision — on encaisse le coût politique tout de suite et on récolte
-#     huit ans plus tard. Si cette asymétrie disparaît, il n'y a plus de jeu.
+# 🔴 L'ASYMÉTRIE, à ne pas perdre en route (`Classeur/README.md` §4) : le
+# BUDGET se paie étalé sur délai + travaux, le CAPITAL en entier au mois de la
+# décision, le RETOUR n'arrive qu'à la fin des travaux au tarif du jour. Sans
+# elle, il n'y a plus de jeu.
 #
-# ⏱️ Une décision porte TROIS durées, pas deux (PLAN §6 ter) :
-#   délai (il ne se passe rien) · travaux (le chantier) · montée (l'effet).
-# Un chantier fini n'est plus un chantier, même si son effet monte encore.
-# Ici panneaux et isolation ont travaux = montée ; D07 (archivée) ferait
-# 3 · 2 · 58 — c'est pour elle que la distinction existe déjà.
+# ⏱️ TROIS durées, pas deux (PLAN §6 ter) : délai · travaux · montée. Un
+# chantier fini n'est plus un chantier même si son effet monte encore. Ici
+# travaux = montée ; D07 (archivée) ferait 3 · 2 · 58.
 
 const Ville := preload("res://scripts/ville.gd")
 const Energie := preload("res://scripts/energie.gd")
@@ -48,12 +38,11 @@ const DECISIONS := {
 		# Le capital se paie PAR ÎLOT : -1, et -3 là où le patrimoine proteste.
 		"capital_base": 0.0, "capital_unitaire": 0.0,
 		"capital_cible_champ": "_capital_solaire",
-		# 6 pts par an et par GWh, au tarif du jour de la décision.
+		# Au tarif du jour de la décision.
 		"retour_champ": "_potentiel_gwh",
 		"retour_unitaire": Energie.RETOUR_PTS_PAR_GWH_AN,
 		"retour_derive_an": Energie.DERIVE_PRIX_ENERGIE_AN,
-		# 120 kg de CO2 par m², soit 14 400 kg par unité de 120 m².
-		"co2_gris_par_quantite": 14400.0,
+		"co2_gris_par_quantite": 14400.0,   # 120 kg/m² × 120 m² par unité
 		"effets": [
 			{"portee": "cible", "couche": "i",
 				"champ": "part_toit_equipe", "valeur": 1.0},
@@ -68,15 +57,14 @@ const DECISIONS := {
 		"libelle_seuil": "îlots de plus de", "unite_seuil": " logements",
 		# 9 mois d'études ET de concertation : des gens habitent là.
 		"delai": 9.0, "travaux": 18.0, "montee": 18.0,
-		# 1 point par logement rénové, × le coût du tissu. Pas de dérive :
-		# un échafaudage ne devient pas moins cher tout seul.
+		# 1 point par logement, × le coût du tissu. Pas de dérive : un
+		# échafaudage ne devient pas moins cher tout seul.
 		"quantite_champ": "logements", "quantite_par": 1.0,
 		"unite_quantite": "logements",
 		"cout_base": 0.0, "cout_unitaire": 1.0,
 		"cout_x_champ": "_cout_x_isolation",
 		"cout_derive_an": 1.0,
-		# +3 par chantier, +1 par tranche de 30 logements : l'isolation REND
-		# du capital. Aucun retour en argent — jamais.
+		# L'isolation REND du capital, et ne rapporte jamais d'argent.
 		"capital_base": 3.0, "capital_unitaire": 1.0 / 30.0,
 		"co2_gris_par_quantite": Energie.CO2_GRIS_ISOLATION_KG_LOG,
 		"effets": [
@@ -89,8 +77,7 @@ const DECISIONS := {
 var ville: Ville
 var journal := []   # [{id, mois, fids, quantite, cout, capital, L, T, M,
 					#   fin_travaux, retour_mensuel, co2_gris_kg}]
-var _engages := {}  # "PAN|i:55" -> true — PAR DÉCISION : équiper un îlot de
-					# panneaux n'interdit pas de l'isoler ensuite.
+var _engages := {}  # PAR DÉCISION : équiper un îlot n'interdit pas de l'isoler.
 
 
 func _init(v: Ville) -> void:
@@ -103,8 +90,8 @@ func engage(id: String, couche: String, fid: int) -> bool:
 	return _engages.has("%s|%s:%d" % [id, couche, fid])
 
 
-## Les objets qu'une décision attrape à ce seuil. On évalue sur l'état COURANT,
-## pas sur t0 : c'est ce qui fait qu'une décision peut en ouvrir une autre.
+## Évalué sur l'état COURANT, pas sur t0 : c'est ce qui permet à une décision
+## d'en ouvrir une autre.
 func eligibles(id: String, seuil: float, t: float) -> Array:
 	var D: Dictionary = DECISIONS[id]
 	var couche: String = D["couche"]
@@ -118,10 +105,8 @@ func eligibles(id: String, seuil: float, t: float) -> Array:
 	return out
 
 
-## Le devis s'accumule ÎLOT PAR ÎLOT : le coût et le capital dépendent du
-## tissu de chaque cible, pas d'une quantité globale. Le retour mensuel et le
-## carbone gris sortent d'ici aussi — figés au mois `t`, ils entreront tels
-## quels au journal.
+## ÎLOT PAR ÎLOT : coût et capital dépendent du tissu de chaque cible, pas
+## d'une quantité globale. Retour et carbone gris sont figés au mois `t`.
 func devis(id: String, fids: Array, t: float) -> Dictionary:
 	var D: Dictionary = DECISIONS[id]
 	var couche: String = D["couche"]
@@ -143,9 +128,8 @@ func devis(id: String, fids: Array, t: float) -> Dictionary:
 		if D.has("retour_champ"):
 			retour_an += ville.valeur(couche, fid, D["retour_champ"], t) \
 				* float(D["retour_unitaire"])
-	# Les deux dérives du temps : le coût fond (panneaux), le tarif de rachat
-	# monte. Tous deux FIGÉS au mois de la décision — c'est ce qui rend le
-	# remboursement exact, et c'est défendable : un tarif d'achat se signe.
+	# Coût qui fond, tarif qui monte, tous deux FIGÉS au mois de la décision :
+	# c'est ce qui rend le remboursement exact, et un tarif d'achat se signe.
 	cout *= Energie.derive_an(float(D.get("cout_derive_an", 1.0)), t)
 	retour_an *= Energie.derive_an(float(D.get("retour_derive_an", 1.0)), t)
 	return {
@@ -159,14 +143,10 @@ func devis(id: String, fids: Array, t: float) -> Dictionary:
 
 # ----------------------------------------------------------------- le budget
 
-## Ce qui a été versé au mois `t`.
-##
-## L'étalement court sur délai + TRAVAUX — on paie l'entreprise, pas la
-## maturation de l'effet. Le `+ 1` n'est pas cosmétique : `08_jouer.py` paie
-## sur les mois `d` à `d + étale − 1` INCLUS, donc une première mensualité
-## tombe au moment même où on décide. Sans lui les deux moteurs décalent d'un
-## mois et le recoupement sort 397 d'un côté, 399 de l'autre — assez peu pour
-## qu'on l'ignore, ce qui est exactement le danger.
+## L'étalement court sur délai + TRAVAUX : on paie l'entreprise, pas la
+## maturation de l'effet.
+## ⚠️ Le `+ 1` n'est pas cosmétique — `08_jouer.py` paie de `d` à `d + étale − 1`
+## INCLUS. Sans lui les deux moteurs sortent 397 et 399, l'écart qu'on ignore.
 func paye(t: float) -> float:
 	var total := 0.0
 	for c in journal:
@@ -176,10 +156,9 @@ func paye(t: float) -> float:
 	return total
 
 
-## Ce que les chantiers finis ont déjà rapporté au mois `t`. Le tarif est figé
-## au journal : cette somme ne recalcule RIEN, et le chantier qu'on est en
-## train d'évaluer n'y est pas encore — un chantier ne peut donc jamais se
-## financer lui-même (le défaut que la session 10 avait mesuré).
+## Tarif figé au journal, donc rien n'est recalculé — et le chantier en cours
+## d'évaluation n'y est pas encore, donc il ne peut pas se financer lui-même
+## (défaut mesuré en session 10).
 func retours(t: float) -> float:
 	var total := 0.0
 	for c in journal:
@@ -201,10 +180,9 @@ func capital(t: float) -> float:
 	return k
 
 
-## Le carbone gris des chantiers EN COURS, en kt/an. Émis « en une fois au
-## chantier », donc étalé sur la fenêtre de travaux : la courbe de CO2 monte
-## d'abord, puis redescend plus bas — si elle descend tout de suite, le gris
-## n'est pas branché (PLAN §8.8).
+## Chantiers EN COURS, en kt/an, étalé sur la fenêtre de travaux : la courbe
+## monte d'abord puis redescend plus bas. Si elle descend tout de suite, le
+## gris n'est pas branché (PLAN §8.8).
 func co2_gris_an(t: float) -> float:
 	var total := 0.0
 	for c in journal:
@@ -218,14 +196,11 @@ func co2_gris_an(t: float) -> float:
 
 ## Pourquoi on ne peut pas, ou "" si on peut.
 ##
-## Le CAPITAL se vérifie au mois où on décide — il se paie comptant. Mais
-## seulement quand le devis en COÛTE : un chantier qui en rend (l'isolation)
-## ne doit jamais être refusé pour ça.
-##
-## Le BUDGET se vérifie sur TOUTE la durée du chantier, pas seulement au mois
-## où on décide : un chantier de 24 mois engage 24 mois de budget, et le dire
-## après coup ne servirait à rien. Les retours des chantiers déjà engagés
-## comptent (ils sont dans `solde`) ; celui du candidat, NON.
+## Le CAPITAL se vérifie au mois de la décision, et seulement quand le devis en
+## coûte : un chantier qui en rend ne doit jamais être refusé pour ça.
+## Le BUDGET se vérifie sur TOUTE la durée : un chantier de 24 mois engage
+## 24 mois de budget. Les retours des chantiers déjà engagés comptent (ils sont
+## dans `solde`) ; celui du candidat, non.
 func refus(id: String, fids: Array, t: float) -> String:
 	if fids.is_empty():
 		return "Aucune cible à ce seuil."
@@ -280,12 +255,9 @@ func engager(id: String, fids: Array, t: float) -> Dictionary:
 		"quantite": d["quantite"]}
 
 
-## Qui reçoit l'effet.
-##
-## `riverains` est le lien tronçon → îlots que 07 exporte, construit
-## géométriquement (178/178, zéro orphelin). Il n'est dans aucune table du
-## GeoPackage : `adjacences` est îlot↔îlot. Sans lui, planter une rue ne
-## verdirait rien autour d'elle.
+## Qui reçoit l'effet. `riverains` est le lien tronçon → îlots exporté par 07
+## (178/178, zéro orphelin) ; il n'est dans aucune table du GeoPackage, où
+## `adjacences` est îlot↔îlot.
 func _portee(portee: String, _couche_dec: String, fids: Array) -> Array:
 	match portee:
 		"cible":

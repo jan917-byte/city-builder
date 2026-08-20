@@ -6,11 +6,9 @@ Qualification du prototype : écrit `fonction`, `sous_type`, `exception`,
 Ne touche JAMAIS la source : il la LIT et fabrique une carte de travail
 neuve, `QGIS/data/travail/wehrau.gpkg`. Aucune géométrie n'est modifiée.
 
-🔄 Depuis le 2026-08-17 la source n'est plus `Vallmar2.gpkg` mais
-`QGIS/data/source/*.geojson` — du texte que git fusionne. Ce qui a changé
-ici : `shutil.copy2` d'un binaire est devenu `carte.construire_gpkg`, qui
-bâtit le GeoPackage de zéro. Tout l'aval est inchangé, il lit toujours du
-GeoPackage. → `carte.py`, en-tête
+🔄 La source est du texte depuis le 2026-08-17 : `shutil.copy2` d'un binaire
+est devenu `carte.construire_gpkg`, qui bâtit le GeoPackage de zéro. L'aval
+est inchangé. → `carte.py`, en-tête
 
     python 02_qualifier.py
 
@@ -61,10 +59,9 @@ BERGE_VOIE_RAPIDE = [15, 55, 58]
 
 # --- les points fixes de la ville -----------------------------------------
 EQUIPEMENTS = [16, 36]      # église protégée · lycée
-# 🔄 2026-08-18, demandé par l'auteur : l'îlot 17 était le Rathaus, il repasse
-# en `coeur_ancien`. Wehrau n'a donc plus de mairie sur la carte — c'est un
-# choix, pas un oubli. Pour la remettre, ajouter un fid ici ET le retirer de
-# COEUR_ANCIEN ci-dessous ; 20 ou 22 conviennent (voisins de l'église).
+# 🔄 L'îlot 17 était le Rathaus ; repassé en `coeur_ancien` le 2026-08-18.
+# Wehrau n'a plus de mairie, et c'est un choix. Pour la remettre : ajouter un
+# fid ici ET le retirer de COEUR_ANCIEN (20 ou 22, voisins de l'église).
 PATRIMOINE_PROTEGE = [16]   # l'église : aucun panneau solaire en toiture
 # L'hôpital a été retiré : il était sur l'îlot 26. Pour le remettre ailleurs,
 # ajouter un fid ici — 35 (bord ouest) ou 30 (accès par l'axe sud) conviennent.
@@ -75,16 +72,12 @@ JARDINS = [48]              # les jardins familiaux, au nord-ouest
 # --- le tissu -------------------------------------------------------------
 FRONT_COMMERCANT = [12, 21, 24, 45, 72] # dont les deux moitiés de l'ancienne dalle
 COEUR_ANCIEN = [13, 14, 15, 17, 18, 20, 22, 34, 37, 38, 53, 55, 56]
-# 70 et 71 sont les moitiés neuves du 26 et du 42, coupées le 2026-08-13 par
-# les rues 179 et 180 ; l'ancien 27 a été fusionné dans le 26 (rue 78 retirée).
-# 73 et 74 sont les anciens numéros réservés aux ÎLOTS DE LISIÈRE posés le 2026-08-16 par
-# `00b_ilots_lisiere.py` : des rubans d'une seule parcelle de profondeur, de
-# l'autre côté de la rue qui fait le tour de la ville, taillés dans les champs
-# 9 (nord, face au 11), 1 (sud-ouest, face au 26) et 9 encore (ouest, face au
-# 42 — le ruban sud du champ 2 a été retiré le 2026-08-17, il tombait derrière
-# les barres). Pavillonnaire est le seul tissu qui convienne : c'est le seul
-# SANS cœur d'îlot, donc la parcelle va vraiment du trottoir au champ.
-# → `00b_ilots_lisiere.py`, en-tête
+# 70 et 71 : moitiés neuves du 26 et du 42, coupées le 2026-08-13 par les rues
+# 179 et 180 (l'ancien 27 a été fusionné dans le 26).
+# 73 et 74 : les ÎLOTS DE LISIÈRE de `00b_ilots_lisiere.py`, rubans d'une seule
+# parcelle de profondeur de l'autre côté de la rue de ceinture. Pavillonnaire
+# est le seul tissu SANS cœur d'îlot, donc le seul où la parcelle va vraiment
+# du trottoir au champ. → `00b_ilots_lisiere.py`, en-tête
 PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 60, 61, 63, 64, 70, 71, 73, 74]
 # tout le reste des îlots bâtis tombe en `maisons_de_ville`
 
@@ -131,24 +124,16 @@ def exceptions():
 
 
 # --- les rues -------------------------------------------------------------
-# Les franchissements de l'Ilse qu'on RETIRE de la carte. Décision 30c : trois
-# ponts, pas cinq — « à cinq ponts la rivière ne coupe plus rien, et ajouter
-# une passerelle cesse d'être une décision ».
+# 🎚️ Les franchissements de l'Ilse RETIRÉS. Décision 30c : trois ponts, pas
+# cinq — « à cinq ponts la rivière ne coupe plus rien ». Choix tranché par
+# l'auteur le 2026-08-12 : 136 double 145 à 20 m près et sur le même îlot,
+# 171 ne dessert que des champs et dix logements déjà servis.
 #
-# Le choix des deux, tranché par l'auteur le 2026-08-12 devant le tableau :
-#   · 136 — un boulevard de 20 m à 20 m de 145, qui atterrit sur le même îlot.
-#           Le même franchissement compté deux fois, et le moins chargé de tous
-#           (0,04). C'est lui qui faisait que la rivière ne coupait rien au nord
-#   · 171 — la petite rue de 12 m du nord (charge 0,07), qui ne dessert que des
-#           champs et dix logements déjà servis par 145
-#
-# Les trois qui restent tombent un par tiers de rivière : 145 au nord (0,69),
-# 168 au milieu (0,42), 169 au sud (0,24). ⚠️ 168 est intouchable — c'est le
-# seul accès des 279 logements du cœur du faubourg de rive gauche, celui que la
-# crue d'ouverture frappe (23b).
-#
-# Les dix paires possibles ont été testées : AUCUNE ne coupe le réseau routier
-# en deux. Le contrôle de connexité de `03` doit donc toujours passer après.
+# Les trois restants tombent un par tiers de rivière (145, 168, 169).
+# ⚠️ 168 est intouchable : seul accès des 279 logements du faubourg de rive
+# gauche, celui que la crue d'ouverture frappe (23b).
+# Les dix paires possibles ont été testées, aucune ne coupe le réseau — le
+# contrôle de connexité de `03` doit toujours passer après.
 PONTS_SUPPRIMES = [136, 171]
 
 # Largeur par défaut, en mètres, par hiérarchie. Base du profil en travers.
@@ -164,11 +149,9 @@ LARGEUR_TRANSIT = 20.0
 LARGEUR_QUAI_ORDINAIRE = 10.0
 
 # Une largeur constante par hiérarchie rendrait tout seuil inopérant : « je
-# plante sur toute rue de plus de X m » n'aurait que trois réponses possibles.
-# Les rues et ruelles varient donc selon le tissu qu'elles desservent et selon
-# leur longueur — les percées rectilignes sont celles qu'on a élargies.
-# Les boulevards, eux, gardent leur largeur posée à la main : c'est du level
-# design, et seuls le quai et l'axe de transit doivent dépasser 20 m.
+# plante au-delà de X m » n'aurait que trois réponses. Rues et ruelles varient
+# donc selon le tissu et la longueur ; 🎚️ les boulevards gardent leur largeur
+# posée à la main, et seuls le quai et l'axe de transit dépassent 20 m.
 MOD_ANCIEN = -2.0        # parcellaire ancien : l'emprise n'a jamais bougé
 MOD_MODERNE = +2.0       # normes des années 60 : lotissements, barre, dalle
 MOD_CAMPAGNE = +1.0      # route de campagne : accotements
@@ -285,10 +268,8 @@ def main():
     cur = con.cursor()
 
     # ---------------- les deux ponts qu'on retire (décision 30c)
-    # Avant toute lecture, pour que tout l'aval — le comptage, `03`, `04`,
-    # `04b`, l'export — travaille sur la carte réduite et jamais sur l'ancienne.
-    # Le GeoPackage porte ses propres déclencheurs de suppression : l'index
-    # spatial et le compteur de la couche se remettent à jour tout seuls.
+    # Avant toute lecture, pour que tout l'aval travaille sur la carte réduite.
+    # Les déclencheurs du GeoPackage remettent l'index spatial à jour seuls.
     if PONTS_SUPPRIMES:
         avant = cur.execute("SELECT count(*) FROM routes").fetchone()[0]
         cur.execute("DELETE FROM routes WHERE fid IN (%s)"
@@ -385,10 +366,8 @@ def main():
             dedans(ilots[r]["anneaux"][0], d["parts"][0][len(d["parts"][0]) // 2])
             for r in riv)
 
-        # Un tronçon qui sépare DEUX morceaux de rivière est un franchissement :
-        # c'est lui qui a coupé l'Ilse en six polygones. Sans cette règle il
-        # tombe en « rive » avec le reste de la berge, et la ville se retrouve
-        # sans aucun pont — les deux rives ne communiquent plus du tout.
+        # Un tronçon séparant DEUX morceaux de rivière est un franchissement :
+        # sans cette règle il tombe en « rive » et la ville n'a plus un pont.
         if len(long_riv) >= 2:
             pont = True
 

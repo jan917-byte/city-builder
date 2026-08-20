@@ -7,35 +7,22 @@ LA CHAÎNE — une seule commande pour refaire la carte depuis la source.
     python QGIS/scripts/chaine.py --court      seulement le compte rendu final
     python QGIS/scripts/chaine.py --depuis 04  reprendre au milieu
 
-═══════════════════════════════════════════════════════════════════════════
-POURQUOI CE FICHIER EXISTE
-═══════════════════════════════════════════════════════════════════════════
+L'ordre des étapes est une contrainte réelle (`04d` a besoin de `04c`, qui a
+besoin de `04b`…) qui était tenue de mémoire, recopiée dans six notes. Elle est
+maintenant tenue par le code.
 
-L'ordre des étapes est une contrainte réelle — `04d` a besoin des parcelles de
-`04c`, qui ont besoin des emprises de `04b`, qui ont besoin des largeurs de `04`,
-qui ont besoin des adjacences de `03` — mais c'était une contrainte tenue de
-mémoire, recopiée dans six notes. Elle est maintenant tenue par le code.
+🔴 OUBLIER UNE ÉTAPE ICI NE SE VOIT PAS. `04d`, écrit le 2026-08-17, annonçait
+la nouvelle chaîne dans son en-tête sans y être ajouté : la carte de travail
+n'avait aucune couche `batiments` et les aperçus sortaient sans bâtiment.
 
-🔴 `04d` A MANQUÉ À CETTE LISTE, ET ÇA S'EST VU. Écrit le 2026-08-17, il annonçait
-dans son propre en-tête « la chaîne devient 02 → 03 → 04 → 04b → 04c → 04d » —
-sans être ajouté ici. Conséquence : la carte de travail n'avait aucune couche
-`batiments`, les aperçus sortaient sans bâtiment, et la seule empreinte visible
-restait celle que `07` recalcule pour son compte. C'est exactement le piège que
-ce fichier existe pour fermer, arrivé par la porte de la documentation.
+🔄 Chaque étape se lançait à la main, précédée d'une passe `--blanc`, parce que
+les scripts écrivaient dans un GeoPackage suivi par git. La carte de travail
+est DÉRIVÉE et gitignorée depuis le 2026-08-17 ; la passe à blanc ne reste utile
+que là où elle protège du LEVEL DESIGN (`00`, `00b`, `tracer_chemins`).
 
-🔴 CE QU'IL Y AVAIT AVANT, ET LE PIÈGE QUE ÇA A COÛTÉ. Chaque étape se lançait
-à la main, précédée d'une passe `--blanc`. La passe à blanc existait parce que
-les scripts écrivaient dans un GeoPackage suivi par git : une écriture ratée
-salissait un binaire que git ne sait pas fusionner, donc on regardait avant de
-sauter. Depuis le 2026-08-17 la carte de travail est DÉRIVÉE et gitignorée —
-la casser ne coûte plus qu'un relancement. La passe à blanc reste utile là où
-elle protège du LEVEL DESIGN (`00`, `00b`, `tracer_chemins`, qui écrivent la
-source), et elle n'a plus de raison d'être dans la chaîne.
-
-Le piège que ça referme est celui du 2026-08-14 : la carte du dépôt datait de
-deux commits avant le code, rien ne le signalait, et une session entière est
-passée à décrire un défaut déjà corrigé. Ici `02` rebâtit la carte depuis la
-source à chaque passage — elle ne peut plus être plus vieille que le code.
+Le piège refermé est celui du 2026-08-14 : la carte du dépôt datait de deux
+commits avant le code, et une session entière est passée à décrire un défaut
+déjà corrigé. `02` rebâtit depuis la source à chaque passage.
 """
 
 import os
@@ -52,9 +39,8 @@ for flux in (sys.stdout, sys.stderr):
 ICI = os.path.dirname(os.path.abspath(__file__))
 RACINE = os.path.dirname(os.path.dirname(ICI))
 
-# L'ordre est la seule chose que ce fichier sait, et c'est tout ce qu'on lui
-# demande. `07` n'en fait pas partie : il alimente la maquette 3D, ce qui est
-# un autre métier et une autre attente — d'où `--godot`.
+# `07` n'en fait pas partie : la maquette 3D est un autre métier et une autre
+# attente, d'où `--godot`.
 ETAPES = [
     ("02", "02_qualifier.py",        "la carte de travail, bâtie depuis la source"),
     ("03", "03_adjacences.py",       "qui touche qui"),
@@ -97,8 +83,8 @@ def main():
                            encoding="utf-8", errors="replace")
         dt = time.time() - t0
         if r.returncode != 0:
-            # On s'arrête net : les étapes suivantes liraient une carte à
-            # moitié écrite et sortiraient des chiffres qui ont l'air bons.
+            # Les étapes suivantes liraient une carte à moitié écrite et
+            # sortiraient des chiffres qui ont l'air bons.
             if court and r.stdout:
                 print(r.stdout[-3000:])
             if r.stderr:

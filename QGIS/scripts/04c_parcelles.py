@@ -1,66 +1,41 @@
 # -*- coding: utf-8 -*-
 """04c — la subdivision de l'îlot en parcelles.
 
-Ce que ça fait, en une phrase : l'emprise bâtie de chaque îlot (couche
-`emprises`, écrite par 04b) est **découpée** récursivement en parcelles, et le
-résultat part dans une nouvelle couche `parcelles` du GeoPackage.
+L'emprise bâtie de chaque îlot (couche `emprises`, 04b) est **découpée**
+récursivement en parcelles, écrites dans une couche `parcelles`.
 
-═══════════════════════════════════════════════════════════════════════════
-LES DEUX DÉCISIONS QUI COMMANDENT CE FICHIER, ET CE QU'ELLES INTERDISENT
-═══════════════════════════════════════════════════════════════════════════
+LES DEUX DÉCISIONS QUI COMMANDENT CE FICHIER
+─────────────────────────────────────────────
+  61 · LA PARCELLE EST UNE PARTITION DE L'EMPRISE. On DÉCOUPE, on ne pose pas
+       des formes dans un vide : deux voisines partagent une arête exactement,
+       parce qu'elles sont les deux moitiés d'une même coupe. Le mitoyen est
+       une propriété de la méthode, pas un raccord après coup.
+       → Contrôle non négociable : la somme des aires vaut 100,00 % de
+         l'emprise.
+  35 · LA PARCELLE EST SEEDÉE INDIVIDUELLEMENT, d'après sa position et non son
+       rang : régénérer le bâtiment d'UNE parcelle ne touche aucune autre.
+       → ⚠️ La partition ne doit JAMAIS se rejouer quand une seule parcelle
+         change — d'où son calcul ici, une fois, écrit dans le `.gpkg`.
+         Déplacé dans Godot, il ré-effondrerait le voisinage à chaque clic
+         (ce qu'on reproche à Townscaper, 42b) et 35 tomberait avec.
 
-  61 · LA PARCELLE EST UNE PARTITION DE L'EMPRISE.
-       Le générateur DÉCOUPE, il ne pose pas des formes dans un vide. Deux
-       parcelles voisines partagent une arête EXACTEMENT, parce qu'elles sont
-       les deux moitiés d'une même coupe. Le mitoyen n'est pas un raccord à
-       faire après coup, c'est une propriété de la méthode.
-       → Le contrôle qui le prouve, et qui ne se négocie pas : la somme des
-         aires des parcelles d'un îlot vaut 100,00 % de l'aire de son emprise.
+La découpe est DÉTERMINISTE : la graine de chaque coupe vient des coordonnées
+du morceau, pas d'un compteur qui décalerait tout à la moindre ligne changée.
 
-  35 · LA PARCELLE EST L'ENTITÉ PERSISTANTE, SEEDÉE INDIVIDUELLEMENT.
-       Chaque parcelle porte sa propre graine, dérivée de sa position et non
-       de son rang. Conséquence : régénérer le bâtiment d'UNE parcelle ne
-       touche aucune autre.
-       → ⚠️ Le piège nommé par 61 : la partition ne doit JAMAIS se rejouer
-         quand une seule parcelle change. C'est pour ça qu'elle est calculée
-         ici, une fois, et écrite dans le `.gpkg` — pas recalculée au moment
-         de l'affichage. Si un jour quelqu'un déplace ce calcul dans Godot,
-         il ré-effondre le voisinage à chaque clic (ce qu'on reproche à
-         Townscaper, 42b) et 35 tombe avec.
+DEUX MANIÈRES DE DÉCOUPER — Vanegas et al., *Procedural Generation of Parcels
+in Urban Modeling*, Eurographics 2012
+─────────────────────────────────────────────
+  LE PEIGNE (§4.2) longe la rue, prend une bande aussi profonde que le tissu
+       le demande et la débite en dents perpendiculaires. Ce qu'aucune rue n'a
+       réclamé est le CŒUR D'ÎLOT. C'est la méthode des tissus de rue, et elle
+       donne gratuitement l'« egress » : une lanière, pas un carré.
+  LA BOÎTE (§4.3) coupe selon la boîte englobante et recommence. Seule méthode
+       jusqu'au 2026-08-13, elle garde les deux rôles que le papier lui
+       laisse : les tissus à un ou deux gros objets, et le remplissage du cœur.
 
-La découpe est DÉTERMINISTE : deux exécutions donnent exactement la même
-carte. Aucun `random` non seedé, et la graine de chaque coupe se dérive des
-coordonnées du morceau qu'on coupe — pas d'un compteur, qui décalerait tout
-dès qu'on change une ligne de la table ci-dessous.
-
-═══════════════════════════════════════════════════════════════════════════
-DEUX MANIÈRES DE DÉCOUPER, ET CELLE QUI COMMANDE
-═══════════════════════════════════════════════════════════════════════════
-
-D'après Vanegas, Kelly, Weber, Halatsch, Aliaga et Müller, *Procedural
-Generation of Parcels in Urban Modeling*, Eurographics 2012. Le papier montre
-qu'un îlot réel se découpe de deux façons, et en donne une par variété.
-
-  LE PEIGNE (§4.2 du papier — « skeleton subdivision »).
-       On longe la rue, on prend une bande aussi profonde que le tissu le
-       demande, et on la débite en dents perpendiculaires à la rue, larges
-       comme la façade visée. Ce qu'aucune rue n'a réclamé est le CŒUR
-       D'ÎLOT. C'est la méthode qui commande les tissus de rue.
-       → Ce qu'elle donne gratuitement : toute parcelle a sa façade sur rue
-         (l'« egress » du papier), et son grand axe lui est perpendiculaire.
-         Une lanière, pas un carré.
-
-  LA BOÎTE (§4.3 — « OBB subdivision »).
-       On coupe le morceau en deux selon sa boîte englobante, et on
-       recommence. C'était la SEULE méthode ici jusqu'au 2026-08-13 ; elle
-       garde deux rôles, exactement ceux que le papier lui laisse : les
-       tissus à un ou deux gros objets par îlot, et le REMPLISSAGE DU CŒUR.
-
-🎯 Ce que le peigne a corrigé, mesuré sur les mêmes 53 emprises. La boîte
-   respectait l'AIRE de la table et rien d'autre : un cœur ancien tombait à
-   111,7 m² pour 112 visés, mais sous la forme d'un carré de 10,6 m de côté
-   au lieu d'une lanière de 7 × 16. Une parcelle sur deux tournait le dos à
-   la rue, et 30 % n'avaient aucune façade.
+🎯 Ce que le peigne a corrigé, mesuré sur 53 emprises. La boîte respectait
+   l'AIRE et rien d'autre — un cœur ancien à 111,7 m² pour 112 visés, mais en
+   carré de 10,6 m au lieu d'une lanière de 7 × 16.
 
      élancement (profondeur ÷ façade)   avant   après   visé
        coeur_ancien                      1,59    2,19   2,29
@@ -69,15 +44,10 @@ qu'un îlot réel se découpe de deux façons, et en donne une par variété.
        front_commercant                  1,59    1,64   1,64
      parcelles sans façade sur rue        30 %     7 %
 
-⚠️ Ce qu'on n'a PAS repris du papier, et pourquoi :
-  · le squelette droit exact (le papier passe par CGAL) — inutile ici, la
-    bande d'une rue s'obtient par trois coupes en demi-plan que `couper` sait
-    déjà faire. L'arbitrage des coins, que le papier règle par des
-    bissectrices (§4.2.2), se règle ici par **la rue la plus longue passe en
-    premier et prend le coin** — c'est son schéma `StreetLength` ;
-  · la persistance sous édition (§5, coordonnées barycentriques) — sans
-    objet : la découpe est calculée une fois et écrite, et la décision 35 est
-    déjà tenue par la graine géométrique de `graine_de`.
+⚠️ Non repris du papier : le squelette droit exact (CGAL), inutile — la bande
+   s'obtient par trois coupes en demi-plan, et les coins se règlent par « la
+   rue la plus longue passe en premier », son schéma `StreetLength`. Et la
+   persistance sous édition (§5), sans objet : `graine_de` tient déjà 35.
 
 Usage :
     python QGIS/scripts/04c_parcelles.py            écrit dans le .gpkg
@@ -106,52 +76,38 @@ SRS = 25832                             # EPSG:25832 — décision 31
 # LE LEVEL DESIGN — les treize lignes qu'on règle, et rien d'autre
 # ==========================================================================
 #
-# Même forme que la table `TISSU` de `04_deriver_attributs.py`, et au même
-# endroit dans le fichier : en haut, avant toute mécanique.
+#   facade      largeur sur rue visée, en mètres — c'est elle qui décide du
+#               grain : 7 m fait un peigne de maisons étroites, 18 m des
+#               pavillons détachés.
+#   profondeur  profondeur de la bande le long de la rue. Au-delà du double,
+#               les bandes des deux rives ne se rejoignent plus et un CŒUR
+#               D'ÎLOT apparaît.
+#   style       `peigne` (tissus de rue) ou `boite` (un ou deux gros objets
+#               par îlot, où le peigne n'a rien à dire).
 #
-#   facade      largeur de rue visée pour une parcelle, en mètres. C'est ELLE
-#               qui décide du grain du tissu — 7 m fait un peigne de maisons
-#               étroites, 18 m fait des pavillons détachés.
-#   profondeur  profondeur de la bande prise le long de la rue. C'est elle qui
-#               décide de ce qu'il reste au milieu : au-delà de deux fois cette
-#               valeur, les bandes des deux rives ne se rejoignent pas et un
-#               CŒUR D'ÎLOT apparaît.
-#   style       `peigne` ou `boite`, les deux méthodes du papier (voir en-tête).
-#               Le peigne pour les tissus de rue ; la boîte pour les tissus à
-#               un ou deux gros objets par îlot, où le peigne n'a rien à dire.
+# 🔴 Depuis le peigne, les deux premières colonnes disent ce qu'elles disent :
+# la boîte ne respectait que leur PRODUIT, 7 × 16 et 11 × 10 lui étaient la
+# même consigne.
 #
-# 🔴 DEPUIS LE PEIGNE, LES DEUX PREMIÈRES COLONNES DISENT ENFIN CE QU'ELLES
-# DISENT. La boîte ne respectait que leur PRODUIT — 7 × 16 et 11 × 10 lui
-# étaient la même consigne. Maintenant `facade` est la largeur sur rue et
-# `profondeur` est le fond derrière : changer l'une sans l'autre change la
-# forme des parcelles, plus seulement leur nombre.
-#
-# ⚠️ Ces chiffres sont une PROPOSITION, à corriger devant l'image. Le contrôle
-# à faire n'est pas « est-ce que le nombre est juste » mais « est-ce que le
-# cœur ancien ressemble à un cœur ancien ».
+# ⚠️ Une PROPOSITION, à corriger devant l'image. Le contrôle n'est pas « le
+# nombre est-il juste » mais « le cœur ancien ressemble-t-il à un cœur ancien ».
 TISSU = {
     #  sous_type              facade  profondeur  style
     "coeur_ancien":            (7.0,   16.0,   "peigne"),  # fin, très mitoyen
-    # 🔄 2026-08-14 : 8,0 × 20,0 → 9,5 × 22,0, demandé par l'auteur devant
-    # l'image — « les parcelles de maisons de ville sont encore un peu trop
-    # petites/étroites ». 160 m² deviennent 209, et la façade passe au-dessus
-    # de la largeur d'une maison mitoyenne réelle (8 m était un minimum, pas
-    # une moyenne). L'élancement visé descend de 2,50 à 2,32 : moins de lanière,
-    # plus de terrain.
+    # 🔄 8,0 × 20,0 → 9,5 × 22,0 le 2026-08-14, devant l'image : 160 m²
+    # deviennent 209, et 8 m était un minimum de maison mitoyenne, pas une
+    # moyenne. Élancement visé 2,50 → 2,32.
     "maisons_de_ville":        (9.5,   22.0,   "peigne"),  # le tissu majoritaire
     "front_commercant":       (11.0,   18.0,   "peigne"),  # vitrines en rez-de-ch.
     # 🔄 2026-08-12 : 18 m de façade donnaient des pavillons trop larges et trop
     # peu nombreux — une rangée de gros blocs, pas un lotissement. À 12,5 m on
     # a une maison par parcelle et le jardin derrière a la place d'exister.
     "pavillonnaire":          (13.5,   28.0,   "peigne"),  # détaché, jardins
-    # 🔄 2026-08-14 : LA BARRE NE SE PEIGNE PLUS, demandé par l'auteur devant
-    # l'image. Le peigne la traitait comme un tissu de rue — il en sortait un
-    # anneau de parcelles le long des rues et un grand cœur vide au milieu,
-    # c'est-à-dire l'inverse exact de ce qu'a fait l'urbanisme de 1970 : la
-    # barre se pose au MILIEU de l'îlot, en travers, sans égard pour l'
-    # alignement sur rue. La boîte ne connaît pas les rues, donc elle donne ça.
-    # 80 × 70 = 5 600 m², soit la moitié des 11 158 m² de l'îlot 32 — le seul
-    # îlot de barre de Wehrau — donc DEUX objets, comme l'auteur les a comptés.
+    # 🔄 LA BARRE NE SE PEIGNE PLUS (2026-08-14). Le peigne en faisait un
+    # anneau de parcelles autour d'un cœur vide, l'inverse de l'urbanisme de
+    # 1970 : la barre se pose au MILIEU, en travers, sans égard pour la rue —
+    # ce que donne la boîte, qui ignore les rues.
+    # 80 × 70 = la moitié des 11 158 m² de l'îlot 32, donc DEUX objets.
     "barre_1970":             (50.0,   75.0,   "boite"),
     "equipement":             (45.0,   35.0,   "boite"),   # un ou deux objets
     "friche_industrielle":    (55.0,   45.0,   "boite"),   # des halles
@@ -161,49 +117,31 @@ TISSU = {
 SANS_DECOUPE = {"place_minerale", "parc", "champ", "jardins_familiaux",
                 "riviere"}
 
-# 🏡 LES TISSUS QUI N'ONT PAS DE CŒUR D'ÎLOT — 🔄 2026-08-14, demandé par
-# l'auteur devant l'image : « le résidentiel ne devrait pas avoir de cœur
-# d'îlot, la parcelle comprend la maison ET le jardin, et va jusqu'à la
-# prochaine parcelle ».
+# 🏡 LES TISSUS SANS CŒUR D'ÎLOT (2026-08-14) : « la parcelle comprend la
+# maison ET le jardin, et va jusqu'à la prochaine parcelle ». C'est un
+# lotissement — deux rangées dos à dos, RIEN entre elles. Le cœur d'îlot est
+# une figure de ville dense, pas de pavillonnaire.
 #
-# C'est la description exacte d'un lotissement : deux rangées dos à dos, la
-# limite de fond de jardin est la limite de propriété, et il n'y a RIEN entre
-# elles. Le cœur d'îlot est une figure de ville dense — la cour du cœur ancien,
-# l'arrière-cour des maisons de ville — pas de pavillonnaire.
-#
-# Ce que ça change dans la mécanique : la profondeur visée cesse d'être un
-# PLAFOND pour ces tissus. Chaque rive prend la moitié du fond quelle qu'elle
-# soit (et tout le fond quand personne n'est en face), donc les deux bandes se
-# rejoignent exactement au milieu et il ne reste rien. Ce qui survit malgré
-# tout — un coin, un biseau — est RENDU aux parcelles de rue au lieu de
-# devenir un jardin sans façade.
+# Mécaniquement, la profondeur visée cesse d'être un PLAFOND : chaque rive
+# prend la moitié du fond (tout le fond si personne n'est en face), donc les
+# bandes se rejoignent au milieu. Ce qui survit — un coin, un biseau — est
+# RENDU aux parcelles de rue au lieu de devenir un jardin sans façade.
 SANS_COEUR = {"pavillonnaire"}
 
-# 🌳 CE QUI FAIT UN VRAI CŒUR D'ÎLOT — 🔄 2026-08-14, DEUXIÈME ÉCRITURE DE LA
-# JOURNÉE, et c'est celle de l'auteur : « pour les grands îlots, les parcelles
-# vont seulement une certaine profondeur jusqu'au centre ; la surface qui reste
-# est un cœur d'îlot. »
+# 🌳 CE QUI FAIT UN VRAI CŒUR D'ÎLOT (2026-08-14) : « les parcelles vont
+# seulement une certaine profondeur jusqu'au centre ; la surface qui reste est
+# un cœur d'îlot. »
 #
-# 🔴 CE QUI A ÉTÉ ESSAYÉ LE MATIN ET QUI ÉTAIT TROP SÉVÈRE, à ne pas refaire :
-# un morceau devait être à la fois large ET sans pointe (`COEUR_ANGLE_MIN`,
-# 30°) pour compter comme cour. Le reste partait en « rendu », donc recollé aux
-# parcelles de rue. Sur l'image ça donnait exactement le défaut suivant que
-# l'auteur a entouré — « les cœurs d'îlots sont fusionnés avec les parcelles » :
-# le cœur de l'îlot 33 (741 m², 20,8 m de large, mais une pointe à 16°) partait
-# en entier dans UNE parcelle de 651 m², trois fois l'aire visée du tissu. Onze
-# parcelles dépassaient ainsi le double de leur aire visée, sur les îlots 10,
-# 26, 33, 34, 47, 49, 50, 63, 66 — les mêmes qu'il a entourés.
+# 🔴 LA RÈGLE EST LA LARGEUR, ET ELLE SEULE. Exiger en plus l'absence de pointe
+# (`COEUR_ANGLE_MIN`, 30°) était trop sévère : le cœur de l'îlot 33 — 741 m²,
+# 20,8 m de large mais une pointe à 16° — partait en entier dans UNE parcelle
+# de 651 m², et onze parcelles dépassaient le double de leur aire visée. Une
+# pointe au fond d'un îlot en éventail, c'est de la ville. Ce qui n'est pas un
+# cœur, c'est ce qui est trop MINCE pour qu'on y tienne.
 #
-# LA RÈGLE EST DONC LA LARGEUR, ET ELLE SEULE. Un cœur peut être pointu : une
-# pointe au fond d'un îlot en éventail, c'est de la ville, pas un défaut de
-# découpe. Ce qui n'est pas un cœur, c'est ce qui est trop MINCE pour qu'on y
-# tienne — la lamelle de 5 m entre deux rangées, qui ressortait en jardin sans
-# façade au milieu des maisons. Celle-là est toujours rendue.
-#
-# 🔄 Et le seuil descend de 10 à 8 m, mesuré : les restes des îlots 10 (9,8 m),
-# 49 (9,6 et 8,1) et 50 (9,2) tombaient JUSTE en dessous de 10 et gonflaient
-# une parcelle de rue chacun. Ce qui reste rendu à 8 m tient sous 110 m² —
-# îlots 12, 14, 23, 34 et un morceau de 49 — donc s'absorbe sans se voir.
+# 🔄 Seuil descendu de 10 à 8 m : les restes des îlots 10 (9,8 m), 49 (9,6 et
+# 8,1) et 50 (9,2) tombaient JUSTE en dessous et gonflaient une parcelle
+# chacun. Ce qui reste rendu à 8 m tient sous 110 m², donc s'absorbe.
 COEUR_MIN_LARGE = 8.0      # petit côté de la boîte englobante, en mètres
 COEUR_ANGLE_MIN = 0.0      # 🔴 éteint : un cœur a le droit d'être pointu
 
@@ -222,53 +160,36 @@ JEU = 0.25
 # des parcelles en pointe pour rien.
 LONGUEUR_MIN_RUE = 6.0
 
-# Une dent du peigne ne descend jamais sous cette part de la façade visée. Sans
-# ce plancher, une bande de 9 m avec 8 m de façade se couperait en deux dents
+# Sans ce plancher, une bande de 9 m avec 8 m de façade se coupe en deux dents
 # de 4,5 m — deux demi-maisons au lieu d'une maison un peu large.
-#
-# 🔄 2026-08-13 : 0,45 → 0,60. À 0,45 le plancher ne tenait QUE la moyenne, et
-# le jeu de coupe (`JEU`) rapprochait deux coupes voisines de 0,25 chacune —
-# donc la dent la plus étroite tombait à 0,225 × façade, soit 3 m en
-# pavillonnaire pour 13,5 visés. Le jeu est maintenant borné par ce plancher
-# (voir `_dents`), et le plancher vaut pour CHAQUE dent, plus pour la moyenne.
+# 🔄 0,45 → 0,60 le 2026-08-13 : le plancher ne tenait QUE la moyenne, et le
+# jeu de coupe rapprochait deux coupes voisines, donc la dent la plus étroite
+# tombait à 3 m en pavillonnaire pour 13,5 visés. Le jeu est maintenant borné
+# par ce plancher (`_dents`), qui vaut pour CHAQUE dent.
 DENT_MIN = 0.60
 
-# 🔴 QUAND L'ÎLOT N'EST PAS ASSEZ PROFOND POUR DEUX RANGÉES, ON N'EN FAIT
-# QU'UNE, QUI TRAVERSE. En dessous de ce multiple de la profondeur visée, la
-# première rue servie prend TOUT le fond et les parcelles donnent sur les deux
-# rues à la fois. Au-dessus, les deux rives se partagent la profondeur en deux
-# parts égales — la coupe tombe au milieu.
-#
-# Ce que ça remplace : la première rue servie prenait ses `profondeur` mètres
-# quoi qu'il arrive, et celle d'en face se contentait du reste. Sur l'îlot 64,
-# un côté sortait à 28 m et l'autre à 11.
-#
-#   à 1,2 · profondeur, en pavillonnaire (28 m) : un îlot de moins de 33 m de
-#   fond fait des parcelles traversantes ; au-delà, deux rangées d'au moins
-#   16,8 m chacune.
+# 🔴 SOUS CE MULTIPLE DE LA PROFONDEUR VISÉE, UNE SEULE RANGÉE QUI TRAVERSE :
+# la première rue servie prend tout le fond. Au-dessus, les deux rives se
+# partagent en parts égales.
+# 🔄 Avant, la première rue prenait ses `profondeur` mètres quoi qu'il arrive
+# et celle d'en face se contentait du reste : sur l'îlot 64, 28 m d'un côté et
+# 11 de l'autre.
+#   à 1,2 en pavillonnaire (28 m) : sous 33 m de fond, parcelles traversantes ;
+#   au-delà, deux rangées d'au moins 16,8 m.
 TRAVERSANT = 1.2
 
-# 🔴 LE PLAFOND DE PROFONDEUR VAUT AUSSI POUR LES TISSUS `SANS_COEUR` —
-# 🔄 2026-08-15, défaut n°1 désigné par l'auteur sur l'image : « la direction
-# des parcelles », îlots 63 et 26, tous les deux pavillonnaires.
+# 🔴 LE PLAFOND DE PROFONDEUR VAUT AUSSI POUR `SANS_COEUR` — 🔄 2026-08-15,
+# défaut n°1 désigné sur l'image (« la direction des parcelles », îlots 63
+# et 26).
 #
-# CE QUI SE PASSAIT. `SANS_COEUR` retirait le plafond pour que les deux rangées
-# d'un lotissement se rejoignent au milieu. Mais la profondeur se mesure PAR
-# RAPPORT À L'ARÊTE SERVIE : sur le petit côté d'un îlot allongé, le rayon part
-# dans le sens de la LONGUEUR de l'îlot et ressort 117 m plus loin. La moitié,
-# 58,6 m, devenait la profondeur de la bande — et le bout de l'îlot sortait en
-# trois dalles de 17 × 58 m couchées en travers du tissu, à contresens des deux
-# rangées d'à côté. Mesuré : îlot 63 arête est 58,6 m et 59,7 m, îlot 26 46,7 m
-# et 36,2 m, pour 28 m visés.
+# La profondeur se mesure PAR RAPPORT À L'ARÊTE SERVIE : sur le petit côté d'un
+# îlot allongé, le rayon part dans le sens de la LONGUEUR et ressort 117 m plus
+# loin. Sans plafond, le bout de l'îlot sortait en dalles de 17 × 58 m couchées
+# en travers du tissu (îlot 63 : 58,6 et 59,7 m ; îlot 26 : 46,7 et 36,2 — pour
+# 28 visés). Le plafond ne se lève donc que si la rue d'en face est assez près.
 #
-# LA RÈGLE. Le plafond ne se lève que si la rue d'en face est ASSEZ PRÈS pour
-# que les deux rangées se touchent vraiment. Au-delà, la profondeur visée
-# redevient un plafond, même en pavillonnaire — et le petit côté de l'îlot ne
-# sert plus qu'une rangée normale.
-#
-# Balayage du 2026-08-15, sur les 893 parcelles de rue de Wehrau. « Trop
-# profondes » = extension perpendiculaire à la façade au-delà de 1,5 fois la
-# consigne du tissu :
+# Balayage du 2026-08-15 sur 893 parcelles de rue, « trop profonde » = plus de
+# 1,5 fois la consigne :
 #
 #   plafond   parcelles de rue   trop profondes   aire > 2× la cible
 #   éteint           893               18                 9
@@ -277,40 +198,33 @@ TRAVERSANT = 1.2
 #     1,3            914                9                 7
 #     1,0            916               10                 5
 #
-# 1,3 est pris au genou de la courbe : le défaut tombe de moitié, et il reste
-# assez de marge pour qu'un lotissement dont les deux rangées se rejoignent
-# 36 m plus loin que la consigne les rejoigne quand même.
+# 1,3 est le genou de la courbe : le défaut tombe de moitié, et il reste de
+# quoi rejoindre deux rangées 36 m au-delà de la consigne.
 PROF_MAX = 1.3
 
 # Et elle ne dépasse jamais ce multiple de l'aire visée : au-delà, on ajoute des
 # dents. C'est le garde-fou `Amax` du papier (§4.2.3, deuxième cas).
 DENT_MAX = 2.0
 
-# 🧵 LE RÉSIDU DE COUPE, en fraction de l'aire du morceau découpé — 🔄
-# 2026-08-17. Quand une bande prend EXACTEMENT toute la profondeur du morceau,
-# la coupe laisse derrière elle un cheveu de largeur nulle. Ce n'est pas un
-# cœur d'îlot, ce n'est pas un éclat à réunir — `absorber` n'y arrive d'ailleurs
-# pas, un polygone d'aire nulle n'a pas de bord à partager avec une voisine —,
-# c'est le bruit de la virgule flottante avec un contour autour.
+# 🧵 LE RÉSIDU DE COUPE, en fraction de l'aire du morceau (2026-08-17). Quand
+# une bande prend EXACTEMENT toute la profondeur, la coupe laisse un cheveu
+# d'aire nulle — ni cœur, ni éclat à réunir (`absorber` n'y arrive pas, un
+# polygone d'aire nulle n'a pas de bord à partager), juste du bruit de flottant
+# avec un contour autour.
 #
-# Ça n'arrivait pas avant les îlots de lisière : sur un îlot ordinaire la bande
-# s'arrête toujours avant le bord d'en face. Sur un ruban, le fond n'est plus
-# une rue (voir `aretes_mortes`), la rangée de devant prend tout, et la coupe
-# tombe pile sur le bord. Trois cheveux mesurés sur les trois rubans : 0,000,
-# 0,000 et 0,010 m².
+# Apparu avec les îlots de lisière : sur un ruban le fond n'est plus une rue
+# (`aretes_mortes`), la rangée de devant prend tout, et la coupe tombe pile sur
+# le bord. Trois cheveux mesurés : 0,000, 0,000 et 0,010 m².
 #
-# Le seuil est RELATIF au morceau, et pas en m², pour qu'il reste toujours cinq
-# fois sous la tolérance du contrôle de partition (1e-5 de l'aire de l'îlot,
-# décision 61) — y compris sur les petits îlots du centre, où deux centièmes de
-# m² pèseraient plus lourd que sur un ruban de 7 000.
+# Seuil RELATIF au morceau, pour rester cinq fois sous la tolérance du contrôle
+# de partition (1e-5, décision 61) y compris sur les petits îlots du centre.
 RESTE_NEGLIGEABLE = 2e-6
 
 # 🔺 LA POINTE — sommet de parcelle plus aigu que ça, en degrés. Une parcelle
 # qui en porte un est réunie à sa voisine, comme un éclat ou une lamelle.
 #
-# 🔴 À ZÉRO, DONC ÉTEINT, ET C'EST UN CHOIX MESURÉ — pas un oubli. Le remède
-# coûte plus cher que le mal, parce qu'une pointe réunie à sa voisine en
-# refabrique souvent une autre :
+# 🔴 À ZÉRO, DONC ÉTEINT, et c'est un choix mesuré : le remède coûte plus cher
+# que le mal, une pointe réunie à sa voisine en refabriquant souvent une autre.
 #
 #   seuil   parcelles   de rue   triangles   pointues   réunions
 #     0°        1031      993        41         56         85
@@ -318,13 +232,9 @@ RESTE_NEGLIGEABLE = 2e-6
 #    30°         909      877        23         13        207
 #    35°         892      861        14          3        224
 #
-# Lire la ligne 35° : pour faire tomber 53 pointes on perd 132 parcelles de rue,
-# soit 14 % des maisons de la ville — et 14 triangles restent quand même. Or ce
-# sont les toits qui portent la décision solaire en attente : on ne paie pas ça
-# pour une gêne de tracé. Et `07_exporter_godot.py` coupe DÉJÀ la pointe du
-# BÂTIMENT (`ANGLE_MIN_DEG = 70`), donc une parcelle en pointe ne donne pas
-# forcément une maison en pointe : le vrai juge est la 3D, pas cette carte.
-#
+# À 35°, 53 pointes tombent contre 132 parcelles de rue perdues — 14 % des
+# maisons, donc des toits, donc de la décision solaire. Et `07` coupe DÉJÀ la
+# pointe du BÂTIMENT (`ANGLE_MIN_DEG = 70`) : le vrai juge est la 3D.
 # Le mettre à 30 ou 35 si l'image en 3D donne tort à ce raisonnement.
 ANGLE_MIN_PARCELLE = 0.0
 
@@ -332,21 +242,14 @@ ANGLE_MIN_PARCELLE = 0.0
 # défaut n°2 désigné par l'auteur : « deux triangles peuvent former un
 # rectangle », îlot 13, avec la légende « devrait n'être qu'une parcelle ».
 #
-# C'est le remède annoncé et jamais écrit du §6 bis de `Prototype/Parcelles.md` :
-# celui qui ne coûte rien. Le seuil d'angle (`ANGLE_MIN_PARCELLE`) traitait la
-# pointe comme un déchet et la faisait avaler par sa voisine — 132 parcelles de
-# rue perdues, 14 % des maisons. Ici on ne juge plus la pointe toute seule, on
-# juge LA RÉUNION : deux biseaux qui se recollent en rectangle n'étaient qu'une
-# parcelle coupée en deux par une diagonale.
+# Le remède du §6 bis de `Prototype/Parcelles.md`, celui qui ne coûte rien. On
+# ne juge plus la pointe seule mais LA RÉUNION : deux biseaux qui se recollent
+# en rectangle n'étaient qu'une parcelle coupée par une diagonale. Îlot 13 :
+# 67 m² à 0,52 et 78 m² à 0,55, réunies en 145 m² à 1,00 et angle mini 90°.
 #
-# Les deux parcelles de l'îlot 13 : 67 m² à 0,52 de rectangularité et 78 m² à
-# 0,55, réunies en 145 m² à 1,00, quatre sommets, angle mini 90°. Ce n'est pas
-# une amélioration de tracé, c'est une coupe qui n'aurait pas dû exister.
-#
-# 🔴 LE CRITÈRE N'EST PAS L'ANGLE, C'EST LE GAIN. Les deux parcelles de l'îlot
-# 13 ont toutes les deux un angle mini de 63,8° : aucun seuil de pointe ne les
-# aurait vues. Balayage du 2026-08-15 sur les 893 parcelles de rue — le compte
-# de paires trouvées est d'une stabilité qui dit que la règle vise juste :
+# 🔴 LE CRITÈRE N'EST PAS L'ANGLE, C'EST LE GAIN — les deux parcelles de
+# l'îlot 13 ont un angle mini de 63,8°, aucun seuil de pointe ne les aurait
+# vues. Balayage du 2026-08-15 sur 893 parcelles de rue :
 #
 #   gain ≥      rect. de la réunion ≥ 0,95   ≥ 0,90   ≥ 0,85
 #     0,30                1                     1        1
@@ -369,21 +272,16 @@ AIRE_MAX_REUNION = 2.0
 # coin (quitte à ce qu'elles soient un peu grandes) pour que les bâtiments
 # puissent avoir cette forme. »
 #
-# CE QUE LE PEIGNE FABRIQUE AU COIN, ET POURQUOI ÇA NE SUFFIT PAS. La rue la
-# plus longue est servie la première et prend le coin (`_bande`, le débordement
-# de `prof`). La parcelle du coin a donc une façade normale sur la rue longue et
-# un simple FLANC sur la rue courte — mesuré sur les 160 coins de rue des tissus
-# mitoyens : façade forte 16,2 m en médiane, façade faible 7,4 m, et 34 coins
-# sous la moitié de la consigne du tissu. `04d` y bâtit bien la réunion de deux
-# bandes, mais le bras court est un moignon : le bâtiment ne TOURNE pas le coin,
-# il pose un bout de mur en travers.
+# La rue la plus longue est servie la première et prend le coin (`_bande`) :
+# la parcelle du coin a une façade normale sur la rue longue et un simple FLANC
+# sur la courte. Mesuré sur 160 coins de tissu mitoyen : 16,2 m de façade forte
+# en médiane contre 7,4 m de faible, et 34 coins sous la moitié de la consigne.
+# Le bâtiment ne TOURNE pas le coin, il pose un bout de mur en travers.
 #
-# 🔴 LA CORRECTION SE FAIT ICI, DANS LE PARCELLAIRE, ET PAS DANS `04d`. Un
-# immeuble d'angle réel occupe une parcelle d'angle : agrandir seulement
-# l'empreinte ferait déborder le bâtiment sur la parcelle voisine (R0), et
-# rétrécir la voisine sans la réunir casserait la partition (61). On réunit donc
-# la parcelle du coin à sa voisine du côté FAIBLE, jusqu'à ce que les deux bras
-# aient de quoi porter un bâtiment.
+# 🔴 LA CORRECTION SE FAIT ICI, PAS DANS `04d` : agrandir la seule empreinte
+# ferait déborder le bâtiment sur la voisine (R0), et rétrécir la voisine sans
+# la réunir casserait la partition (61). On réunit donc la parcelle du coin à
+# sa voisine du côté FAIBLE.
 COIN_TISSUS = {"coeur_ancien", "maisons_de_ville", "front_commercant"}
 # Ce qui compte comme un coin de rue. En dessous c'est une pointe d'îlot — elle
 # se traite par la règle de la pointe de `04d`, pas en y entassant du terrain ;
@@ -416,44 +314,33 @@ JEU_NIVEAUX = 1
 # 🚶 LE CHEMIN — 🔄 2026-08-14, tranché par l'auteur
 # ==========================================================================
 #
-# LE PROBLÈME QU'IL RÈGLE. Le peigne ne sait pas découper un îlot en L : un L
-# n'a pas de fond. Chaque aile est servie par la rue qui la longe, et le coude
-# reste une masse que personne ne réclame — elle ressort en cœur qui n'en est
-# pas un, ou en parcelle deux fois trop profonde.
+# LE PROBLÈME. Le peigne ne sait pas découper un îlot en L : un L n'a pas de
+# fond, chaque aile est servie par sa rue, et le coude reste une masse que
+# personne ne réclame — faux cœur, ou parcelle deux fois trop profonde.
 #
-# 🔴 CE QU'ON N'A PAS FAIT, ET POURQUOI. L'autre remède était de COUPER l'îlot
-# en deux. Il a été écarté : l'îlot est l'unité de DÉCISION du jeu — le clic,
-# la teinte des calques, l'arbitrage du joueur sont à l'îlot, et `07` met déjà
-# toutes les parcelles d'un îlot dans le même groupe pour ça. Couper fabrique
-# deux décisions là où il y en a une, renumérote, et fait repasser `03` sur les
-# adjacences. Le chemin ne touche à rien de tout ça : 70 îlots restent 70.
+# 🔴 PAS DE COUPE EN DEUX DE L'ÎLOT : l'îlot est l'unité de DÉCISION du jeu
+# (le clic, les calques, l'arbitrage), et `07` met déjà toutes ses parcelles
+# dans le même groupe. Couper fabriquerait deux décisions, renuméroterait et
+# ferait repasser `03`. Le chemin ne touche à rien : 70 îlots restent 70.
 #
-# CE QUE C'EST, EXACTEMENT :
-#   · une LIGNE, dessinée par l'auteur dans la couche `chemins` (level design,
-#     comme les listes de `fid` de `02` et la table `TISSU` ci-dessus) ;
-#   · PAS un tronçon de route — elle n'entre dans aucun réseau, ni `03`, ni le
-#     trafic, ni la hiérarchie. Une venelle n'est pas une rue ;
-#   · un COULOIR retiré de l'emprise AVANT le peigne. L'emprise sort alors en
-#     deux morceaux, chacun peigné pour son compte, et les deux gardent le même
-#     `fid_ilot`. Le couloir lui-même reste une parcelle, d'origine `chemin`.
+# 🎚️ CE QUE C'EST : une LIGNE dessinée par l'auteur dans la couche `chemins`.
+# PAS un tronçon de route — elle n'entre dans aucun réseau, ni trafic, ni
+# hiérarchie. Un COULOIR retiré de l'emprise AVANT le peigne : l'emprise sort
+# en deux morceaux peignés séparément, sous le même `fid_ilot`, et le couloir
+# reste une parcelle d'origine `chemin`.
 #
-# 🎯 CE QUE ÇA DONNE GRATUITEMENT, ET QUI EST TOUT L'INTÉRÊT : les deux parois
-# du couloir sont maintenant du BORD D'EMPRISE, donc `facade_de` les compte
-# comme façade et le peigne les sert comme n'importe quelle rue. Le coude a un
-# devant et un derrière. Aucune ligne du peigne n'a eu à changer.
+# 🎯 CE QUE ÇA DONNE GRATUITEMENT : les deux parois du couloir sont du BORD
+# D'EMPRISE, donc `facade_de` les compte comme façade et le peigne les sert
+# comme une rue. Aucune ligne du peigne n'a eu à changer.
 #
-# ⚠️ CE QUE ÇA COÛTE, ET QU'IL FAUT DIRE : un chemin de 4 m sur 80 prend
-# ~320 m² à l'îlot, soit 3 %. La surface de toit baisse d'autant, donc le
-# potentiel solaire aussi — marginalement, mais c'est le chiffre en attente.
+# ⚠️ CE QUE ÇA COÛTE : un chemin de 4 m sur 80 prend ~320 m² à l'îlot, 3 %.
+# Autant de surface de toit, donc de potentiel solaire, en moins.
 
-# La largeur PAR DÉFAUT, quand l'auteur n'en donne pas dans la couche. Elle
-# varie de 3 à 5 m — l'auteur a demandé une largeur variable, pas un gabarit —
-# et ce qui la fait varier est ce que le chemin dessert :
-#   3,0 m  une SENTE entre deux murs de jardin, on y passe à pied
-#   5,0 m  une VENELLE où un véhicule de service passe
-# Le tissu décide, parce que c'est lui qui dit à quoi ressemble le fond de
-# parcelle des deux côtés. La colonne `largeur_m` de la couche prime toujours :
-# c'est là que l'auteur corrige, chemin par chemin.
+# La largeur PAR DÉFAUT, quand la couche n'en donne pas — variable, pas un
+# gabarit : 3,0 m pour une SENTE entre deux murs de jardin, 5,0 m pour une
+# VENELLE où passe un véhicule de service. Le tissu décide, puisque c'est lui
+# qui dit à quoi ressemble le fond de parcelle.
+# 🎚️ La colonne `largeur_m` prime toujours : c'est là que l'auteur corrige.
 LARGEUR_CHEMIN = {
     "coeur_ancien":       3.0,   # sente entre deux murs, la ville d'avant
     "maisons_de_ville":   3.5,
@@ -462,16 +349,12 @@ LARGEUR_CHEMIN = {
 }
 LARGEUR_CHEMIN_DEFAUT = 4.0
 
-# De combien le couloir déborde au-delà des deux bouts de la ligne.
-# 🔴 CE N'EST PAS UNE MARGE DE CONFORT, C'EST CE QUI FAIT QUE LE CHEMIN
-# TRAVERSE. L'auteur dessine sur la couche `ilots`, mais la découpe se fait sur
-# l'EMPRISE, qui a reculé de la demi-largeur de rue (04b) — donc un bout posé
-# sur le bord de l'îlot tombe déjà bien à l'extérieur de l'emprise. Le
-# débordement ne sert qu'au cas inverse : un bout posé au jugé un peu EN DEÇÀ
-# du bord. Sans lui il resterait une pellicule de terrain devant le chemin, et
-# les deux rives ne seraient pas séparées.
-# Corollaire à ne pas perdre : un chemin volontairement en CUL-DE-SAC marche
-# aussi — il s'arrête où l'auteur l'a arrêté, à un mètre près.
+# De combien le couloir déborde au-delà des bouts de la ligne.
+# 🔴 PAS UNE MARGE DE CONFORT : c'est ce qui fait que le chemin TRAVERSE. Le
+# tracé est dessiné sur `ilots` mais la découpe se fait sur l'EMPRISE, reculée
+# de la demi-largeur de rue (04b) ; le débordement rattrape un bout posé au
+# jugé un peu EN DEÇÀ du bord, qui laisserait une pellicule de terrain devant
+# le chemin. Un chemin volontairement en CUL-DE-SAC marche quand même.
 MARGE_CHEMIN = 1.0
 
 # Les origines de parcelle qui ne portent PAS de bâtiment. Elles sortent des
@@ -906,14 +789,11 @@ def fusionner(a, b):
     fusion = nettoyer(anneau)
     if len(fusion) < 3:
         return None
-    # ⚠️ LE SEUIL SE LIT EN CENTIMÈTRES CARRÉS, ET C'EST VOULU. Une aire
-    # calculée sur des coordonnées à six chiffres (EPSG:25832) porte un bruit
-    # de flottant d'environ 2,4·10⁻⁴ m² — mesuré, et reconnaissable : c'est
-    # exactement 2⁻¹². Un seuil relatif serré tombait dessus et refusait onze
-    # réunions parfaitement justes. Ce qu'on veut attraper ici est un tracé
-    # FAUX, qui se trompe d'au moins l'aire de l'éclat, soit des m². Un
-    # centimètre carré sépare les deux de deux ordres de grandeur de chaque
-    # côté.
+    # ⚠️ SEUIL EN CENTIMÈTRES CARRÉS, ET C'EST VOULU. Une aire calculée sur des
+    # coordonnées à six chiffres (EPSG:25832) porte un bruit de 2,4·10⁻⁴ m²,
+    # soit 2⁻¹² : un seuil relatif serré tombait dessus et refusait onze
+    # réunions justes. Ce qu'on attrape est un tracé FAUX, qui se trompe de
+    # plusieurs m² — deux ordres de grandeur de chaque côté.
     attendu = abs(aire_signee(a)) + abs(aire_signee(b))
     if abs(abs(aire_signee(fusion)) - attendu) > max(1e-2, 1e-7 * attendu):
         return None
@@ -1591,15 +1471,11 @@ def _bande(reste, a, b, u, nrm, prof, L):
     b0 = (b[0] + u[0] * debord, b[1] + u[1] * debord)
 
     # 🔴 ON NE COUPE QUE CE QUI TOUCHE LA RUE. Une coupe traverse tout le plan :
-    # sans ce tri, les trois droites de CHAQUE arête viennent tailler le cœur de
-    # l'îlot, qui est pourtant à l'autre bout. Après vingt arêtes le cœur
-    # ressortait en confettis — mesuré, 236 morceaux pour 32 îlots là où il en
-    # faut un par îlot.
+    # sans ce tri, les droites de chaque arête taillent le cœur de l'îlot, qui
+    # est à l'autre bout — mesuré, 236 morceaux pour 32 îlots.
     # Le tri est exact, pas prudent : une parcelle de la bande a forcément un
-    # bout de son bord SUR l'arête, donc un sommet dessus. Un morceau qui n'y
-    # touche pas ne peut pas en faire partie — il n'a pas de façade, il
-    # appartient au cœur. Il traverse sans être coupé, donc rien n'est perdu et
-    # la décision 61 tient toujours.
+    # sommet sur l'arête. Un morceau qui n'y touche pas appartient au cœur, il
+    # traverse sans être coupé, et la décision 61 tient toujours.
     morceaux, intacts = [], []
     for m in reste:
         if any(dist_pt_seg(p, a, b) <= 0.05 for p in m):
@@ -1761,12 +1637,10 @@ def _dents(morceaux, a, u, facade, prof):
     k = max(1, k)
 
     def debiter(k):
-        # 🔴 LE JEU DE COUPE EST BORNÉ PAR LE PLANCHER DE LARGEUR. Deux coupes
-        # voisines se décalent indépendamment : sans borne, elles peuvent se
-        # rapprocher de deux fois le jeu et fabriquer une dent deux fois trop
-        # étroite. Mesuré avant correction : 2,2 m de large en pavillonnaire
-        # pour 13,5 visés. On limite donc l'amplitude à la moitié de ce qui
-        # dépasse du plancher — chaque dent reste alors au-dessus.
+        # 🔴 LE JEU DE COUPE EST BORNÉ PAR LE PLANCHER DE LARGEUR : deux coupes
+        # voisines se décalent indépendamment et peuvent se rapprocher de deux
+        # fois le jeu — mesuré, 2,2 m de dent en pavillonnaire pour 13,5 visés.
+        # L'amplitude est limitée à la moitié de ce qui dépasse du plancher.
         pas = span / k
         plancher = min(pas * 0.999, facade * DENT_MIN)
         ampl = min(JEU * pas, max(0.0, (pas - plancher) / 2.0))
@@ -1784,18 +1658,15 @@ def _dents(morceaux, a, u, facade, prof):
             pieces = suite
         return [p for p in pieces if len(p) >= 3 and abs(aire_signee(p)) > 1e-6]
 
-    # Une dent trop maigre se rattrape en amont quand c'est possible : on
-    # refait la bande avec une dent de moins, ce qui vaut mieux que de la
-    # fabriquer puis de la recoller. Ce qui survit à ça part dans `absorber`.
+    # Une dent trop maigre se rattrape en amont : on refait la bande avec une
+    # dent de moins, plutôt que de la fabriquer puis de la recoller.
     #
-    # 🔴 2026-08-14 — LE CRITÈRE SE LIT EN SURFACE, PLUS « AUCUNE DENT MAIGRE ».
-    # Depuis que la grille est commune à toute la bande, une coupe tombe parfois
-    # au bout d'un morceau et y laisse un éclat : exiger que TOUTES les dents
-    # passent faisait alors retirer trois dents à la rangée entière pour un
-    # éclat de 20 m². Mesuré sur l'îlot 63 : 18 parcelles au lieu de 26, dont
-    # des pavillons de 1 200 m². On accepte donc tant que les éclats pèsent
-    # moins d'un vingtième de la bande — `absorber` les recolle ensuite, et le
-    # contrôle « aucun ne survit » le prouve.
+    # 🔴 LE CRITÈRE EST EN SURFACE, PLUS « AUCUNE DENT MAIGRE » (2026-08-14).
+    # La grille étant commune à toute la bande, une coupe tombe parfois au bout
+    # d'un morceau et y laisse un éclat : tout exiger retirait trois dents à la
+    # rangée pour un éclat de 20 m² — îlot 63, 18 parcelles au lieu de 26, dont
+    # des pavillons de 1 200 m². On accepte donc sous un vingtième de la bande,
+    # et `absorber` recolle ensuite.
     for essai in range(4):
         pieces = debiter(max(1, k - essai))
         maigre = sum(abs(aire_signee(p)) for p in pieces
@@ -2010,12 +1881,10 @@ def decouper_ilot(ext, st, chemins=(), bords_morts=()):
                             # une coupe parasite
     n_angles = 0            # et les soudures de coin, à part elles aussi : ce
                             # sont les seules qui AGRANDISSENT sciemment
-    # 🚶 LE CHEMIN PASSE AVANT TOUT LE RESTE. Le couloir sort de l'emprise,
-    # et l'îlot part au peigne en DEUX MORCEAUX au lieu d'un. Chaque
-    # morceau est peigné pour son compte — donc les parois du couloir sont
-    # du bord d'emprise pour lui, donc elles portent des façades — et les
-    # deux gardent le même `fid_ilot` : un seul îlot, une seule décision.
-    # Sans chemin, `morceaux` vaut [ext] et rien ne change.
+    # 🚶 LE CHEMIN PASSE AVANT TOUT LE RESTE : le couloir sort de l'emprise et
+    # l'îlot part au peigne en DEUX MORCEAUX, dont les parois du couloir sont
+    # du bord d'emprise, donc portent des façades. Même `fid_ilot` pour les
+    # deux. Sans chemin, `morceaux` vaut [ext].
     morceaux, couloirs = retirer_chemins(ext, chemins)
 
     parcelles_ilot = []
@@ -2032,44 +1901,29 @@ def decouper_ilot(ext, st, chemins=(), bords_morts=()):
                                                bords_morts)
             n_morts += morts[0]
             m_morts += morts[1]
-            # ⚠️ 2026-08-14 — CE QUI A ÉTÉ ESSAYÉ ICI ET RETIRÉ, pour ne pas le
-            # réintroduire : quand aucun morceau n'était une cour, on
-            # repeignait l'îlot SANS plafond de profondeur, comme un
-            # lotissement, pour que les deux rives se rejoignent au milieu et
-            # qu'il ne reste rien. L'image était propre — et c'était l'inverse
-            # de ce que l'auteur a demandé le jour même : « pour les grands
-            # îlots, les parcelles vont seulement une certaine profondeur
-            # jusqu'au centre ; la surface qui reste est un cœur d'îlot ». Le
-            # plafond de profondeur reste donc un plafond, et ce qui reste
-            # derrière les parcelles reste un cœur.
+            # ⚠️ RETIRÉ LE 2026-08-14, NE PAS RÉINTRODUIRE : repeigner l'îlot
+            # SANS plafond quand aucun morceau n'était une cour. L'image était
+            # propre, et c'était l'inverse de ce que l'auteur demandait le jour
+            # même — le plafond reste un plafond, et ce qui reste derrière les
+            # parcelles reste un cœur.
             for L, pe, mode, nd in bandes:
                 r = cr_rives.setdefault(mode, [0, 0, 0.0])
                 r[0] += 1
                 r[1] += nd
                 r[2] += pe * nd
                 rive_ilot[mode] = rive_ilot.get(mode, 0) + 1
-            # 🌳 UN CŒUR D'ÎLOT NE SE DÉCOUPE PAS, ET IL PEUT AVOIR N'IMPORTE
-            # QUELLE FORME — 🔄 2026-08-14, tranché par l'auteur. Il sort
-            # d'un seul tenant, tel que le peigne l'a laissé.
+            # 🌳 UN CŒUR D'ÎLOT NE SE DÉCOUPE PAS et peut avoir n'importe
+            # quelle forme (2026-08-14) : il sort d'un seul tenant.
+            # 🔴 Ce que ça retire : le cœur repassait par la boîte, et `07`
+            # tirait cour pavée / jardin planté morceau par morceau. Un cœur se
+            # tire donc EN UNE FOIS, plus de damier ; la proportion de gris de
+            # 42c tient par le nombre de cœurs et les fonds de parcelle.
             #
-            # 🔴 Ce que ça retire, et qu'il faut assumer : le cœur repassait
-            # par la boîte, et `07` tirait ensuite cour pavée / jardin planté
-            # morceau par morceau. Un cœur entier se tire donc EN UNE FOIS —
-            # une cour est toute pavée ou toute plantée, plus de damier. La
-            # proportion de gris de 42c reste tenue par le nombre de cœurs et
-            # par les fonds de parcelle, qui sont bien plus nombreux qu'eux.
-            #
-            # 🔄 Et TOUT MORCEAU DE CŒUR N'EST PAS UN CŒUR. Deux cas le
-            # disqualifient, et il repart alors en « rendu » — un morceau
-            # qu'`absorber` recollera à la parcelle de rue voisine :
-            #   · le tissu est dans `SANS_COEUR` (le pavillonnaire) : il ne
-            #     doit RIEN rester entre les deux rangées ;
-            #   · le morceau est plus mince que `COEUR_MIN_LARGE` : c'est le
-            #     coin pointu entre deux rangées non parallèles, pas une
-            #     cour.
-            # Celui-là, en revanche, est BIEN redécoupé avant d'être rendu :
-            # un long reste doit se redistribuer sur plusieurs parcelles de
-            # rue au lieu d'en gonfler une seule.
+            # 🔄 Deux cas le disqualifient et le renvoient en « rendu », qu'
+            # `absorber` recollera : le tissu est `SANS_COEUR`, ou le morceau
+            # est plus mince que `COEUR_MIN_LARGE` (le coin pointu entre deux
+            # rangées non parallèles). Celui-là est BIEN redécoupé avant d'être
+            # rendu : un long reste doit se répartir sur plusieurs parcelles.
             parcelles = [(p, "rue") for p in rue]
             for c in coeur:
                 if sans_coeur or not est_une_cour(c):
@@ -2098,43 +1952,31 @@ def decouper_ilot(ext, st, chemins=(), bords_morts=()):
             parcelles = [(p, "boite")
                          for p in subdiviser(ext_m, facade, prof)]
 
-        # ✂️ LES TROP PETITES SONT RÉUNIES À UNE VOISINE (papier §4.2.3).
-        # Après le peigne comme après la boîte : un éclat de 4 m² n'est pas
-        # une parcelle, et il donnerait une maison impossible ou un jardin
-        # invisible. La largeur plancher se lit sur la plus PETITE des deux
-        # consignes du tissu : c'est le côté court de la parcelle voulue, et
-        # une parcelle plus mince que ça est une lamelle, pas un terrain.
-        # 🔺 Et la POINTE est réunie de la même façon : c'est le troisième
-        # critère de `trop_petite`, ajouté le 2026-08-14.
-        # 🔄 Et les morceaux « rendu » sont réunis quelle que soit leur
-        # taille : ce ne sont pas des éclats, ce sont des restes de cœur qui
-        # n'avaient rien à faire là (`SANS_COEUR`, `COEUR_MIN_LARGE`).
+        # ✂️ LES TROP PETITES SONT RÉUNIES À UNE VOISINE (papier §4.2.3) : un
+        # éclat de 4 m² donnerait une maison impossible ou un jardin invisible.
+        # La largeur plancher se lit sur la plus PETITE des deux consignes du
+        # tissu — plus mince, c'est une lamelle, pas un terrain.
+        # 🔺 La POINTE part de la même façon (`trop_petite`, 2026-08-14), et
+        # 🔄 les morceaux « rendu » quelle que soit leur taille : ce sont des
+        # restes de cœur qui n'avaient rien à faire là.
         largeur_min = DENT_MIN * min(facade, prof)
         parcelles, n_f = absorber(parcelles, AIRE_MIN, largeur_min,
                                   ANGLE_MIN_PARCELLE, rendues={"rendu"})
         n_fusions += n_f
 
-        # 🚪 DEUXIÈME PASSE — 🔄 2026-08-14, ET C'EST ELLE QUI EFFACE LE
-        # VERT QUI RESTAIT ENTRE LES MAISONS.
+        # 🚪 DEUXIÈME PASSE (2026-08-14) — c'est elle qui efface le vert entre
+        # les maisons. La bande étant bornée par trois demi-plans et non par la
+        # rue, le fond d'une bande profonde peut sortir en morceau séparé qui
+        # ne touche plus le bord : ni éclat (532 m² sur l'îlot 63) ni cœur, un
+        # fond de jardin orphelin dont `07` ferait un jardin en pleine rangée.
         #
-        # Une parcelle de bande peut se retrouver DERRIÈRE une autre : la
-        # bande est bornée par trois demi-plans, pas par la rue elle-même,
-        # donc le fond d'une bande profonde peut sortir en morceau séparé
-        # qui ne touche plus le bord de l'îlot. Elle n'est ni un éclat
-        # (532 m² sur l'îlot 63) ni un cœur — c'est un fond de jardin
-        # orphelin, et `07` en ferait un jardin au milieu d'une rangée de
-        # maisons.
+        # La règle se lit sur le résultat : toute parcelle qui n'est pas de
+        # cœur et n'a AUCUNE façade est rendue. On recommence tant qu'il en
+        # apparaît, trois fois au plus — une réunion peut en démasquer une.
         #
-        # La règle se lit maintenant sur le résultat et non sur
-        # l'intention : toute parcelle qui n'est pas de cœur et qui n'a
-        # AUCUNE façade est rendue à sa voisine. On recommence tant qu'il en
-        # apparaît, trois fois au plus — une réunion peut en démasquer une
-        # autre.
-        #
-        # 🚶 L'index se lit sur `ext_m`, LE MORCEAU, et pas sur l'emprise
-        # entière : c'est ce qui fait qu'une paroi de chemin compte comme
-        # une façade. Sans ça toute la rangée qui donne sur la venelle
-        # serait déclarée enclavée, puis rendue, puis avalée.
+        # 🚶 L'index se lit sur `ext_m`, LE MORCEAU, pas sur l'emprise entière :
+        # sinon toute la rangée qui donne sur la venelle serait déclarée
+        # enclavée, puis rendue, puis avalée.
         idx = indexer_bord(ext_m)
         for _ in range(3):
             marquees = [(p, "rendu" if o != "coeur"
@@ -2180,12 +2022,10 @@ def decouper_ilot(ext, st, chemins=(), bords_morts=()):
 
     # ← fin du tour par morceau : l'îlot se recompose ici
 
-    # Le couloir n'est pas un déchet : il RESTE dans la partition, en
-    # parcelle d'origine `chemin`. Deux raisons, et la seconde compte plus
-    # que la première : `07` a besoin de sa géométrie pour poser le pavé au
-    # sol, et le contrôle de partition (61) reste une égalité à 100 % de
-    # l'emprise au lieu de devenir « 100 % moins ce qu'on a enlevé » — un
-    # contrôle qu'on affaiblit est un contrôle qui ne prouve plus rien.
+    # Le couloir RESTE dans la partition, en parcelle d'origine `chemin` :
+    # `07` a besoin de sa géométrie pour le pavé au sol, et surtout le contrôle
+    # (61) reste une égalité à 100 % au lieu de « 100 % moins ce qu'on a
+    # enlevé » — un contrôle affaibli ne prouve plus rien.
     idx_ilot = indexer_bord(ext)
     parcelles_ilot += [(c, "chemin", idx_ilot) for c in couloirs]
     return parcelles_ilot, {
@@ -2379,12 +2219,10 @@ def main():
         ext = d["ext"]
         aire0 = abs(aire_signee(ext))
 
-        # 🚶 LE CHEMIN PASSE AVANT TOUT LE RESTE. Le couloir sort de
-        # l'emprise, et l'îlot part au peigne en DEUX MORCEAUX au lieu d'un.
-        # Les deux gardent le même `fid_ilot` : un seul îlot, une seule
-        # décision pour le joueur. Toute la mécanique est dans
-        # `decouper_ilot`, pour que `tracer_chemins.py` la rejoue à
-        # l'identique quand il évalue un tracé candidat.
+        # 🚶 Le couloir sort de l'emprise et l'îlot part au peigne en DEUX
+        # MORCEAUX sous le même `fid_ilot`. Toute la mécanique est dans
+        # `decouper_ilot`, pour que `tracer_chemins.py` la rejoue à l'identique
+        # sur un tracé candidat.
         parcelles_ilot, cr = decouper_ilot(ext, st, chemins.get(fid, ()),
                                            bords_morts.get(fid, ()))
         if cr["morts"]:

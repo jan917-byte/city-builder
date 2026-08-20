@@ -54,9 +54,8 @@ TAILLE_ENVELOPPE = {0: 0, 1: 32, 2: 48, 3: 48, 4: 64}
 # ==========================================================================
 # Lire les coordonnées d'un blob GeoPackage sans les recopier
 # ==========================================================================
-# On ne reconstruit pas la géométrie : on repère la position de chaque couple
-# (x, y) dans le tampon et on le réécrit sur place. Rien d'autre ne bouge —
-# ni le type, ni l'ordre des anneaux, ni les octets d'en-tête hors enveloppe.
+# On ne reconstruit pas la géométrie : chaque couple (x, y) est réécrit sur
+# place. Ni le type, ni l'ordre des anneaux, ni l'en-tête ne bougent.
 
 def entete(blob):
     """(taille de l'en-tête, ordre des octets de l'enveloppe, taille env.)"""
@@ -257,11 +256,10 @@ def main():
     cur = con.cursor()
     cur.execute("BEGIN")   # tout ou rien, y compris le retrait des déclencheurs
 
-    # Les déclencheurs d'index spatial posés par QGIS appellent ST_IsEmpty(),
-    # une fonction que le sqlite3 de Python ne connaît pas : toute écriture sur
-    # `geom` échouerait. On les retire le temps de l'opération, on refait
-    # l'index à la main depuis les enveloppes neuves, puis on les remet mot
-    # pour mot — leur texte est relu dans le fichier, pas réécrit ici.
+    # ⚠️ Les déclencheurs d'index spatial de QGIS appellent ST_IsEmpty(), que
+    # le sqlite3 de Python ne connaît pas : toute écriture sur `geom` échoue.
+    # Retirés le temps de l'opération, puis remis mot pour mot — leur texte est
+    # relu dans le fichier, pas réécrit ici.
     declencheurs = [
         (n, s) for n, s in cur.execute(
             "SELECT name, sql FROM sqlite_master WHERE type='trigger' "
@@ -275,10 +273,8 @@ def main():
         cur.execute(
             "UPDATE gpkg_contents SET min_x=?, min_y=?, max_x=?, max_y=? "
             "WHERE table_name=?", (gminx, gminy, gmaxx, gmaxy, t))
-        # L'index spatial se refait à partir des boîtes calculées sur les
-        # sommets — surtout pas relues dans l'en-tête : cinq objets de la
-        # carte n'ont pas d'enveloppe (code 0), et lire à l'aveugle l'octet 8
-        # y donnerait du bruit.
+        # Boîtes calculées sur les SOMMETS, pas relues dans l'en-tête : cinq
+        # objets n'ont pas d'enveloppe (code 0) et donneraient du bruit.
         rtree = "rtree_%s_geom" % t
         existe = cur.execute(
             "SELECT count(*) FROM sqlite_master WHERE name=?", (rtree,)).fetchone()[0]

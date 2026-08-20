@@ -11,28 +11,20 @@
 
 POURQUOI CE SCRIPT EXISTE
 
-Les 69 îlots pavent l'emprise : 927 684 m² d'îlots pour 929 992 m² de carte,
-soit 99,75 %. Et les axes de rue tombent EXACTEMENT sur les bords d'îlots —
-0,0000 m d'écart, mesuré. Autrement dit `largeur_m` est un attribut pur, sans
-support géométrique : la rue est un nombre, pas un lieu.
+Les îlots pavent l'emprise à 99,75 %, et les axes de rue tombent EXACTEMENT sur
+leurs bords (0,0000 m d'écart, mesuré) : `largeur_m` est un attribut pur, sans
+support géométrique. Extruder les empreintes brutes donne donc un bloc plein de
+93 ha où aucune rue n'est visible, et « trouver monstrueuses les rues à 20 et
+22 m » devient inobservable.
 
-Conséquence en 3D : extruder les empreintes brutes donne un bloc plein de 93 ha
-où aucune rue n'est visible. La barre de 1974 serait collée à ses voisines, et
-« trouver monstrueuses les rues à 20 et 22 m » deviendrait inobservable.
+Chaque bord recule de la demi-largeur de la rue qui le longe : la rue devient
+le NÉGATIF, l'espace que les îlots cèdent — un alignement au sens urbanistique.
+Effet de bord décisif, ça dissout le problème des carrefours que
+`Génération procédurale.md:58` classe « le plus dur de tous » : il n'y a plus
+de rubans à raccorder, mais un vide qui se referme seul.
 
-La sortie est de faire reculer chaque bord d'îlot de la demi-largeur de la rue
-qui le longe. La rue devient le NÉGATIF — l'espace que les îlots cèdent. C'est
-un alignement, au sens urbanistique exact.
-
-Effet de bord décisif : ça dissout le problème des carrefours, que
-`Génération procédurale.md:58` classe « le plus dur de tous » et met hors phase.
-Il n'y a plus de rubans à raccorder, il y a un vide qui se referme tout seul.
-
-⚠ LA CHAÎNE DEVIENT 02 → 03 → 04 → 04b.
-   `02_qualifier.py` fait un `shutil.copy2` qui écrase le GeoPackage entier :
-   relancer 02 détruit cette couche. Ce script est idempotent, on le relance.
-
-Se lance sans QGIS : sqlite3 seul, et le lecteur WKB d'apercu_carte.
+⚠ Relancer `02` écrase le GeoPackage entier et détruit cette couche. Ce script
+est idempotent : on le relance.
 """
 
 import math
@@ -56,9 +48,9 @@ GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
 SRS = 25832                            # EPSG:25832 — décision 31
 
 # --- les tolérances -------------------------------------------------------
-# Une arête d'îlot « porte » une route si le milieu de l'arête est sur un
-# segment de route. Mesuré : l'écart est de 0,0000 m, donc 30 cm est déjà
-# dix fois trop généreux — c'est voulu, on veut rater bruyamment, pas de peu.
+# Une arête « porte » une route si son milieu est sur un segment de route.
+# L'écart mesuré est de 0,0000 m : 30 cm est dix fois trop généreux, et c'est
+# voulu — on veut rater bruyamment, pas de peu.
 TOL_ROUTE = 0.30
 COS_MIN = 0.85                         # et il faut que ce soit parallèle
 GRILLE = 25.0                          # index spatial, en cellules de 25 m
@@ -67,10 +59,8 @@ CLE = 0.25                             # grille de clé des sommets (comme 03)
 # Au-delà, on considère que l'anneau est détruit et on le signale.
 PERTE_ALERTE = 0.35                    # part de surface perdue qui mérite l'œil
 
-# Un sommet reculé ne doit pas s'éloigner du sommet d'origine de plus de
-# LIMITE_MITRE fois le retrait appliqué. Au-delà, biseau. (SVG utilise 4 par
-# défaut pour le même problème ; 3 est un peu plus sévère, et ici on préfère
-# un coin coupé à un pic.)
+# Au-delà de LIMITE_MITRE fois le retrait, un sommet reculé passe en biseau.
+# SVG utilise 4 pour le même problème ; ici on préfère un coin coupé à un pic.
 LIMITE_MITRE = 3.0
 
 
@@ -213,12 +203,9 @@ def retracter(anneau, retraits):
         t = ((cx - px) * cuy - (cy - py) * cux) / den
         mx, my = px + pux * t, py + puy * t
 
-        # LIMITE DE MITRE. À un sommet réflexe, les deux droites décalées
-        # divergent et leur intersection part à l'infini : mesuré, un sommet
-        # de l'îlot 43 filait à 258 m — un bâtiment qui traverse la carte.
-        # Au-delà de la limite, on remplace le pic par un biseau : le sommet
-        # décalé perpendiculairement à chacune des deux arêtes. Les rares
-        # croisements que le biseau introduit sont nettoyés par `reparer`.
+        # LIMITE DE MITRE : à un sommet réflexe les droites décalées divergent
+        # et leur intersection part à l'infini — un sommet de l'îlot 43 filait
+        # à 258 m. Au-delà, biseau ; ses rares croisements vont à `reparer`.
         dmax = max(pd, cd)
         if dmax > 1e-9 and math.hypot(mx - vx, my - vy) > LIMITE_MITRE * dmax:
             sortie.append((vx + pnx * pd, vy + pny * pd))

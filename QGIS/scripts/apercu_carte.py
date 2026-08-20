@@ -8,11 +8,9 @@ et le PNG sort à côté.
     python apercu_carte.py
     python apercu_carte.py QGIS/data/travail/essai.gpkg    ← sur une copie
 
-🔄 2026-08-17 — il visait `Vallmar2.gpkg`, du temps où la boucle était « je
-dessine dans QGIS → on regarde ». QGIS est sorti de la chaîne et la source est
-devenue du texte, qui ne porte plus que de la géométrie nue : c'est la carte
-de TRAVAIL qui a les attributs à colorier, et elle est refaite à chaque
-passage de `chaine.py`.
+🔄 Il visait `Vallmar2.gpkg` avant le 2026-08-17. La source ne porte plus que
+de la géométrie nue : les attributs à colorier sont dans la carte de TRAVAIL,
+refaite à chaque passage de `chaine.py`.
 
 Coloriage des îlots, par ordre de priorité :
   1. le champ `fonction` de la couche `ilots`, s'il existe (source de vérité)

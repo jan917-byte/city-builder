@@ -68,15 +68,11 @@ AIRE_FANTOME = 1.0
 # ==========================================================================
 
 
-# 🔄 Retirés le 2026-08-17, quand la source est passée en texte : sept
-# fonctions de lecture et d'écriture GeoPackage — `gpkg_vers_wkb`,
-# `_lire_simple`, `lire_wkb`, `wkb_polygone`, `wkb_lignes`, `blob_gpkg`,
-# `enveloppe` — plus `brancher_fonctions_spatiales`, qui fournissait
-# ST_MinX/ST_MaxX/… aux déclencheurs d'index spatial du GeoPackage.
-# Ce script ne touche plus une seule ligne de binaire : `carte.py` lit et
-# écrit la source, et c'est le seul endroit du dépôt qui connaisse le WKB.
-# ⚠️ Ne pas en recopier une ici « pour dépanner » : deux lecteurs de
-# géométrie qui divergent, c'est le bug qu'on ne verra pas.
+# 🔄 Huit fonctions de lecture/écriture GeoPackage retirées le 2026-08-17,
+# quand la source est passée en texte. `carte.py` est le seul endroit du dépôt
+# qui connaisse le WKB.
+# ⚠️ Ne pas en recopier une ici « pour dépanner » : deux lecteurs de géométrie
+# qui divergent, c'est le bug qu'on ne verra pas.
 
 
 
@@ -342,9 +338,8 @@ def main():
         print("\n[passe à blanc] rien n'a été écrit.")
         return
 
-    # On réécrit `src`, pas des dictionnaires reconstruits : les entités y
-    # portent leurs attributs (`hierarchy` sur les rues), qu'aucun calcul
-    # d'ici ne connaît. Repartir des seules géométries les effacerait.
+    # On réécrit `src`, pas des dictionnaires reconstruits : les entités
+    # portent des attributs qu'aucun calcul d'ici ne connaît.
     src["ilots"] = [e for e in src["ilots"] if e["fid"] not in fantomes]
     for e in src["ilots"]:
         e["parts"] = ilots[e["fid"]]["anneaux"]

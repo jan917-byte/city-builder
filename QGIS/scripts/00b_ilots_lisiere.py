@@ -86,44 +86,20 @@ SOURCE = _ARGS[0] if _ARGS else carte.SOURCE   # un DOSSIER de .geojson
 
 # Un ruban par ligne : (champ entamé, îlot bâti d'en face, profondeur bâtie).
 #
-# 🎯 LE CHOIX DES TROIS, proposé le 2026-08-16 et à corriger devant l'image.
-# Trois critères, dans cet ordre :
-#   1. TROIS CÔTÉS DIFFÉRENTS. Une ville ne pousse pas trois fois au même
-#      endroit ; et trois rubans alignés se liraient comme un lotissement
-#      unique, pas comme une lisière.
-#   2. LES PLUS LONGS MORCEAUX LIBRES de la ceinture (mesurés sur
-#      `adjacences` : 2 795 m répartis en 25 morceaux). En dessous de ~150 m
-#      un ruban ne porte plus qu'une poignée de maisons et ne se voit pas.
-#   3. DE LA CAMPAGNE DERRIÈRE. Voir `FOND_MIN` ci-dessous.
+# 🎚️ LE CHOIX DES TROIS, à corriger devant l'image. Trois critères : des CÔTÉS
+# DIFFÉRENTS (trois rubans alignés se liraient comme un lotissement unique) ;
+# les PLUS LONGS MORCEAUX LIBRES de la ceinture (sous ~150 m un ruban ne porte
+# qu'une poignée de maisons) ; DE LA CAMPAGNE DERRIÈRE, voir `FOND_MIN`.
 #
-# 🔴 CE QUI A ÉTÉ ÉCARTÉ, ET CE QUE ÇA A APPRIS. Le premier essai posait le
-# troisième ruban à l'EST, le long du 63 (199 m, le 3ᵉ plus long morceau).
-# Le contrôle de croisement l'a refusé : le champ 6 n'est pas un champ, c'est
-# une BANDE de 47 à 57 m entre la ville et le bord de la carte. Un ruban de
-# 34,5 m y laissait 12 à 22 m de vert — une haie, pas de la campagne. Tout le
-# côté est de Wehrau est dans ce cas (63 : 57 m · 61 : 47 · 60 : 17 · 64 : 2),
-# donc il n'y a PAS de lisière possible à l'est, et ce n'est pas un réglage à
-# forcer : c'est la carte qui s'arrête là.
+# ❌ PAS DE LISIÈRE POSSIBLE À L'EST, et ce n'est pas un réglage à forcer : le
+# champ 6 est une BANDE de 47 à 57 m, où un ruban laisse 12 à 22 m de vert —
+# une haie, pas de la campagne. Tout le côté est est dans ce cas.
+# ❌ NI DERRIÈRE LES BARRES, refusé par l'auteur le 2026-08-17 : une barre de
+# 1974 tourne le dos à la campagne, donc le ruban ferait face à un pignon.
 #
-# 🔄 2026-08-17 — LE TROISIÈME RUBAN A CHANGÉ DE CÔTÉ, tranché par l'auteur
-# devant l'image. Il partait au SUD, sur le champ 2, en face de la barre de
-# 1974 (îlot 32) ; l'argument était qu'un lotissement des années 80 en face
-# d'un grand ensemble, à la sortie de la ville, c'est ce qui s'est construit.
-# ❌ Refusé : « ce n'est pas logique qu'il soit derrière les barres ». Une
-# barre de 1974 tourne le dos à la campagne — elle n'a pas de devant de ce
-# côté-là, donc un ruban posé là ne fait pas face à une rue habitée, il fait
-# face à un pignon. Ne pas le remettre.
-#
-# Il part maintenant à l'OUEST, en face du 42 (pavillonnaire, frontière de
-# 192 m sur le même champ 9 que le ruban nord). Deux rubans sur un même champ
-# est prévu par la mécanique (voir la boucle de `main`) : le second se
-# découpe dans le champ DÉJÀ entamé par le premier, et le contrôle de
-# partition les additionne.
-#
-# ⚠️ Le critère « trois côtés différents » ci-dessus n'est donc plus tenu au
-# sens strict : nord et ouest mordent le même champ. Ils restent à deux bouts
-# opposés de ce champ, qui fait tout le nord-ouest de la carte, et les deux
-# rubans ne se voient pas l'un l'autre.
+# Le troisième part donc à l'OUEST, sur le même champ 9 que le ruban nord —
+# prévu par la mécanique (le second se découpe dans le champ déjà entamé) et
+# les deux bouts sont trop éloignés pour se voir.
 RUBANS = [
     #  champ  bâti     profondeur bâtie visée (m)
     (   9,     11,     28.0),   # NORD — 195 m, face au pavillonnaire du 11
@@ -131,31 +107,23 @@ RUBANS = [
     (   9,     42,     28.0),   # OUEST — 192 m, face au pavillonnaire du 42
 ]
 
-# 🔴 CE QUI SE RETRANCHE DE LA PROFONDEUR, ET POURQUOI ÇA NE S'OUBLIE PAS.
-# La frontière champ↔îlot est le PIED DE LA CHAUSSÉE au sens de `04b` : ce
-# script recule ensuite chaque bord d'îlot de la demi-largeur de sa rue pour
-# fabriquer l'emprise bâtie. Un ruban dessiné à 28 m sortirait donc à 22 m
-# bâtis — une parcelle pavillonnaire amputée d'un quart de son jardin.
-# On dessine donc 28 + demi-chaussée.
-#
-# Mesuré le 2026-08-16 sur la carte de travail (`wehrau.gpkg` depuis le
-# 2026-08-17) : les trois morceaux
-# retenus sont tous en hiérarchie `rue`, largeur 12,7 à 13,6 m → demi-chaussée
-# 6,3 à 6,8 m. On prend 6,5. L'écart résiduel (±0,3 m sur 28) est sous le
-# bruit de la découpe ; le contrôle imprimé après `04b` donne la profondeur
-# bâtie réelle, c'est LUI qui tranche si ça dérive.
+# 🔴 LA DEMI-CHAUSSÉE SE RAJOUTE À LA PROFONDEUR. La frontière champ↔îlot est
+# le PIED DE LA CHAUSSÉE au sens de `04b`, qui recule ensuite chaque bord :
+# un ruban dessiné à 28 m sortirait à 22 m bâtis, une parcelle amputée d'un
+# quart de son jardin.
+# Mesuré le 2026-08-16 : les trois morceaux retenus sont en hiérarchie `rue`,
+# 12,7 à 13,6 m de large, donc 6,3 à 6,8 m de demi-chaussée — on prend 6,5.
+# L'écart résiduel est sous le bruit de découpe, et c'est le contrôle imprimé
+# après `04b` qui tranche si ça dérive.
 DEMI_CHAUSSEE = 6.5
 
 # Un ruban plus court que ça n'est pas un îlot, c'est un accident : on refuse.
 LONGUEUR_MIN = 60.0
 
-# 🔴 CE QUI DOIT RESTER DE CAMPAGNE DERRIÈRE LE RUBAN, en mètres. Ce contrôle
-# n'était pas prévu : c'est le premier essai qui l'a réclamé (voir le
-# commentaire de `RUBANS`). Sans lui, un ruban posé sur une bande étroite sort
-# géométriquement valide et visuellement faux — la ville touche le bord de la
-# carte, et le fond de jardin donne sur le vide au lieu de donner sur un
-# champ. 40 m, c'est un peu plus qu'une profondeur de parcelle : il faut que
-# ce qui reste derrière puisse encore se lire comme de la campagne.
+# 🔴 CE QUI DOIT RESTER DE CAMPAGNE DERRIÈRE LE RUBAN, en mètres. Réclamé par
+# le premier essai (voir `RUBANS`) : sans lui, un ruban sur une bande étroite
+# sort géométriquement valide et visuellement faux, fond de jardin sur le vide.
+# 40 m, un peu plus qu'une profondeur de parcelle.
 FOND_MIN = 40.0
 
 # Pas d'échantillonnage le long du front pour mesurer ce fond. 5 m attrape les
@@ -176,12 +144,9 @@ LIMITE_MITRE = 3.0
 # ==========================================================================
 
 
-# 🔄 Retirés le 2026-08-17, quand la source est passée en texte : `lire_wkb`,
-# `gpkg_vers_wkb`, `wkb_polygone`, `blob_gpkg`, `enveloppe` et
-# `brancher_fonctions_spatiales` — six fonctions qui ne servaient qu'à lire et
-# écrire du GeoPackage. Ce script ne touche plus une seule ligne de binaire :
-# `carte.py` lit et écrit la source, et c'est le seul endroit du dépôt qui
-# connaisse encore le WKB. Même retrait dans `00_decouper_ilots.py`.
+# 🔄 Six fonctions de lecture/écriture GeoPackage retirées le 2026-08-17, comme
+# dans `00_decouper_ilots.py` : `carte.py` est le seul endroit du dépôt qui
+# connaisse encore le WKB.
 # ⚠️ Ne pas en recopier une ici « pour dépanner » : deux lecteurs de géométrie
 # qui divergent, c'est le bug qu'on ne verra pas.
 
@@ -571,11 +536,9 @@ def main():
         print("\nPasse à blanc : rien n'a été écrit.")
         return
 
-    # 🔄 Avant le 2026-08-17 il fallait aussi remettre à jour `gpkg_ogr_contents`,
-    # un compte de lignes que les outils SIG croient sur parole et qui laissait
-    # la couche s'ouvrir avec trois îlots de moins qu'elle n'en contenait. Le
-    # texte n'a pas de compteur à désynchroniser : le problème a disparu avec
-    # le format, il n'a pas été corrigé.
+    # 🔄 Il fallait aussi remettre à jour `gpkg_ogr_contents` avant le
+    # 2026-08-17, sans quoi la couche s'ouvrait avec trois îlots de moins. Le
+    # texte n'a pas de compteur : le problème a disparu avec le format.
     par_fid = {e["fid"]: e for e in src["ilots"]}
     for champ, rs in sorted(par_champ.items()):
         par_fid[champ]["parts"] = [rs[-1]["champ_neuf"]]

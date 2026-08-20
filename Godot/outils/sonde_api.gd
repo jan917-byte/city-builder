@@ -3,14 +3,12 @@ extends SceneTree
 #
 #   Godot_..._console.exe --headless --path <Godot/> --script res://outils/sonde_api.gd
 #
-# `Vault/Technique/Moteur et architecture.md:32` interdit de vibe-coder du
-# GDScript, à cause de la « pollution des API Godot 3 → 4 ». Et 4.7 est récent.
-# Plutôt que d'affirmer une signature, on la fait vérifier par le moteur : ce
-# fichier interroge ClassDB et sort en code ≠ 0 au premier manque.
+# `Moteur et architecture.md:32` interdit de vibe-coder du GDScript (pollution
+# des API Godot 3 → 4). On fait donc vérifier les signatures par ClassDB, avec
+# sortie ≠ 0 au premier manque.
 #
-# C'est le canari, pas la garantie. Ce qu'il ne peut pas voir — l'ordre des
-# arguments, le sens d'enroulement, l'espace colorimétrique — se mesure à
-# l'écran.
+# Canari, pas garantie : l'ordre des arguments, le sens d'enroulement et
+# l'espace colorimétrique se mesurent à l'écran.
 
 const METHODES := {
 	"ArrayMesh": ["add_surface_from_arrays", "surface_get_array_len"],
@@ -34,8 +32,7 @@ const PROPRIETES := {
 	"MultiMeshInstance3D": ["multimesh"],
 }
 
-# Les constantes dont un mauvais nom passerait à la compilation mais casserait
-# au rendu.
+# Un mauvais nom passerait la compilation et casserait au rendu.
 const ENUMS := {
 	"Mesh.ARRAY_MAX": Mesh.ARRAY_MAX,
 	"Mesh.ARRAY_VERTEX": Mesh.ARRAY_VERTEX,
@@ -75,7 +72,7 @@ func _init() -> void:
 	for e in ENUMS:
 		print("  %-32s = %s" % [e, ENUMS[e]])
 
-	# Le contrat qui compte le plus : un ArrayMesh construit pour de vrai.
+	# Le contrat qui compte le plus : un ArrayMesh vraiment construit.
 	var essai := _essai_array_mesh()
 	if essai != "":
 		push_error("MANQUE  ArrayMesh : %s" % essai)
@@ -87,7 +84,7 @@ func _init() -> void:
 
 
 func _essai_array_mesh() -> String:
-	# Un triangle, avec exactement les tableaux que le constructeur utilisera.
+	# Exactement les tableaux que le constructeur utilisera.
 	var v := PackedVector3Array([Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)])
 	var n := PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP])
 	var c := PackedColorArray([Color.RED, Color.RED, Color.RED])

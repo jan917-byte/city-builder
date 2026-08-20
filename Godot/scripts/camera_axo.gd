@@ -1,30 +1,19 @@
 extends Node3D
-# Caméra ORTHOGRAPHIQUE : zoom, panoramique, et — depuis le 2026-08-17 —
-# ORBITE : lacet libre sur 360°, hauteur du regard réglable de 6° à 90°.
+# Caméra ORTHOGRAPHIQUE : zoom, panoramique, et orbite (lacet 360°, hauteur
+# 6°–90°).
 #
-# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter). Ce fichier interdisait explicitement
-# l'orbite : « C'est l'ORBITE LIBRE qui romprait la coupe, en amenant l'œil au
-# niveau de la rue — d'où son absence ici. » L'auteur a demandé le contraire le
-# 2026-08-17 : voir la ville sous tous ses angles. Ce qui suit dit ce qui est
-# préservé et ce qui ne l'est plus, pour qu'on n'ait pas à le redécouvrir.
+# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter) : ce fichier interdisait l'orbite ;
+# l'auteur l'a demandée le 2026-08-17.
 #
-# CE QUI EST PRÉSERVÉ, ET C'EST L'ESSENTIEL — l'ORTHOGRAPHIE.
-# Elle est exigée par deux des trois critères de réussite (`Plan 3 mois.md:48`) :
-#   · « la barre de 1974 comme un objet aberrant de 9 niveaux au milieu de
-#     rangées à 3 » — en ortho, 27 m projettent 3× plus que 9 m OÙ QUE SOIT
-#     l'objet dans le cadre. En perspective, la barre au fond paraîtrait normale.
-#   · « trouver monstrueuses les rues à 20 et 22 m » — idem pour les largeurs.
-# Et « s'approcher » en orthographie, c'est réduire `size`, pas avancer. La coupe
-# de `Périmètre et coupes.md:42` (« caméra axonométrique fixe → élimine le LOD et
-# la question des façades ») reste donc prise POUR LE LOD : l'œil ne se rapproche
-# jamais, aucune distance n'existe, rien ne peut se simplifier au loin.
+# ⚠️ L'ORTHOGRAPHIE, elle, reste : deux des trois critères de réussite en
+# dépendent (`Plan 3 mois.md:48`) — la barre de 9 niveaux doit projeter 3× une
+# maison de 3 OÙ QU'ELLE SOIT dans le cadre, idem pour les largeurs de rue. Et
+# comme l'œil ne s'approche jamais (zoomer, c'est réduire `size`), la coupe de
+# `Périmètre et coupes.md:42` tient toujours : pas de LOD, pas de distance.
 #
-# CE QUI NE L'EST PLUS, ET QUI EST LE PRIX À PAYER : sous ~15° de hauteur, on
-# regarde la ville par ses FAÇADES, et les façades sont des murs nus d'une seule
-# teinte (`README.md`, « ce que la maquette ne montre pas »). L'angle bas n'est
-# donc pas un point de vue de jeu — c'est un point de vue de contrôle, bon pour
-# juger une silhouette et des hauteurs, mauvais pour juger un quartier. Le plancher
-# à 6° existe pour qu'il reste possible sans devenir la vue par défaut.
+# Le prix payé : sous ~15° on regarde des façades, qui sont des murs nus d'une
+# seule teinte. Angle de contrôle (silhouettes, hauteurs), pas angle de jeu —
+# d'où le plancher à 6°, possible sans devenir la vue par défaut.
 #
 # LES GESTES
 #   molette                zoom
@@ -52,9 +41,8 @@ const SUIVI := 18.0            # rattrapage de l'angle affiché, par seconde
 var camera: Camera3D
 var taille := 1200.0
 
-# CIBLES, pas valeurs affichées. `lacet` n'est volontairement PAS ramené dans
-# [0, 360[ : laisser Q/E l'accumuler évite tout saut de 359° → 0° pendant
-# l'interpolation. cos/sin s'en moquent, et l'affichage normalise lui-même.
+# CIBLES, pas valeurs affichées. `lacet` n'est PAS ramené dans [0, 360[ :
+# l'accumuler évite le saut 359° → 0° pendant l'interpolation.
 var lacet := 30.0
 var hauteur := HAUTEUR_DEFAUT
 
@@ -76,9 +64,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	# Interpolation exponentielle : indépendante du framerate, et sans elle un
-	# quart de tour est une téléportation dont on ressort désorienté — c'est
-	# exactement ce qu'on voulait éviter en ouvrant la caméra.
+	# Interpolation exponentielle : indépendante du framerate. Sans elle, un
+	# quart de tour est une téléportation dont on ressort désorienté.
 	if is_equal_approx(_lacet_vu, lacet) and is_equal_approx(_hauteur_vu, hauteur):
 		return
 	var k: float = 1.0 - exp(-SUIVI * delta)
@@ -92,36 +79,26 @@ func _process(delta: float) -> void:
 
 
 func _appliquer() -> void:
-	# ⚠️ `taille` n'est PAS passée telle quelle à la caméra, et c'est le seul
-	# endroit du fichier qui mérite d'être lu deux fois.
-	#
-	# En orthographie, la profondeur de sol visible vaut `size / sin(hauteur)` :
-	# à 10° la ville de 1 084 m ne projette plus que 188 m et se recroqueville
-	# en une bande au milieu d'un écran vide — mesuré à la première capture.
-	# En multipliant par `sin(hauteur)`, la QUANTITÉ DE SOL visible devient
-	# indépendante de l'angle : tourner autour de la ville ne la fait plus ni
-	# grossir ni fondre. Le rapport à sin(32°) garde la vue par défaut EXACTEMENT
-	# telle qu'elle était avant le 2026-08-17 — un repère qui bouge n'est plus
-	# un repère.
-	#
-	# Ce qui grandit, en revanche, c'est la hauteur des bâtiments à l'écran : un
-	# mur projette sa hauteur entière quel que soit l'angle. C'est précisément ce
-	# qu'on vient chercher en descendant le regard.
+	# ⚠️ `taille` n'est PAS passée telle quelle. En ortho, le sol visible vaut
+	# `size / sin(hauteur)` : à 10° la ville de 1 084 m ne projetait plus que
+	# 188 m, une bande au milieu d'un écran vide (mesuré à la 1re capture).
+	# Le sinus rend la quantité de sol indépendante de l'angle ; le rapport à
+	# sin(32°) garde la vue par défaut identique à ce qu'elle était.
+	# Les bâtiments, eux, grandissent — c'est ce qu'on vient chercher.
 	camera.size = taille * sin(deg_to_rad(_hauteur_vu)) / sin(deg_to_rad(HAUTEUR_DEFAUT))
 	rotation_degrees = Vector3(-_hauteur_vu, _lacet_vu, 0.0)
 	vue_changee.emit(_lacet_vu, _hauteur_vu)
 
 
 func viser(cible: Vector2, t: float) -> void:
-	# Un repère de clavier (V B R I) recadre et rezoome, mais ne redresse JAMAIS
-	# l'angle : sinon regarder la barre depuis l'ouest serait impossible.
+	# Les repères clavier (V B R I) recadrent sans redresser l'angle : sinon
+	# regarder la barre depuis l'ouest serait impossible.
 	position = Vector3(cible.x, position.y, cible.y)
 	taille = clampf(t, TAILLE_MIN, TAILLE_MAX)
 	_appliquer()
 
 
-## Pose l'angle SANS interpolation. Réservé aux captures automatiques : une
-## passe `--essai` n'attend pas que la caméra ait fini de tourner.
+## Sans interpolation : une passe `--essai` n'attend pas la caméra.
 func caler(l: float, h: float) -> void:
 	lacet = l
 	hauteur = clampf(h, HAUTEUR_MIN, HAUTEUR_MAX)
@@ -130,9 +107,8 @@ func caler(l: float, h: float) -> void:
 	_appliquer()
 
 
-## Recale sur le multiple de 90° suivant (ou précédent) plutôt que d'ajouter 90 :
-## après une orbite libre on retombe sur les quatre vues cardinales, au lieu de
-## traîner l'écart pris à la souris.
+## Recale sur le multiple de 90° plutôt que d'ajouter 90 : après une orbite
+## libre on retombe sur les vues cardinales, sans traîner l'écart de la souris.
 func _quart_de_tour(sens: float) -> void:
 	if sens > 0.0:
 		lacet = (floorf(lacet / 90.0) + 1.0) * 90.0
@@ -152,10 +128,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif b.button_index == MOUSE_BUTTON_MIDDLE:
 			_glisse = b.pressed
 		elif b.button_index == MOUSE_BUTTON_RIGHT:
-			# 🔄 Le clic droit déplaçait la vue jusqu'au 2026-08-17. Il tourne
-			# maintenant, et le panoramique garde deux entrées : le clic milieu,
-			# et maj + clic droit pour les souris qui n'ont pas de molette
-			# cliquable.
+			# 🔄 Le clic droit déplaçait la vue avant le 2026-08-17 ; il tourne.
+			# Maj + clic droit reste pour les souris sans molette cliquable.
 			_orbite = b.pressed and not b.shift_pressed
 			_glisse = b.pressed and b.shift_pressed
 	elif e is InputEventMouseMotion:
@@ -186,19 +160,14 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func _deplacer(rel: Vector2) -> void:
-	# Le panoramique suit le lacet AFFICHÉ : glisser vers la droite décale la
-	# ville vers la droite, quel que soit l'angle courant.
-	# ⚠️ `camera.size`, PAS `taille` : depuis la compensation d'angle les deux ne
-	# sont plus égales, et se tromper de nombre fait glisser la ville trois fois
-	# trop vite dès qu'on descend le regard.
+	# Le panoramique suit le lacet AFFICHÉ, pour glisser dans le sens du geste.
+	# ⚠️ `camera.size`, PAS `taille` : depuis la compensation d'angle elles
+	# diffèrent, et se tromper fait glisser 3× trop vite en regard rasant.
 	var k: float = camera.size / 900.0
 	var a: float = deg_to_rad(_lacet_vu)
 	var dx: float = -rel.x * k
-	# 1/sin convertit un déplacement à l'écran en déplacement au SOL : plus le
-	# regard est rasant, plus un pixel couvre de mètres. Combiné à la
-	# compensation de `_appliquer`, le sinus s'annule — la ville suit le curseur
-	# à la même vitesse à 6° comme à 90°. Aucun garde-fou nécessaire : la hauteur
-	# ne descend jamais à 0, où la division exploserait.
+	# 1/sin passe de l'écran au SOL. Combiné à `_appliquer`, le sinus s'annule :
+	# même vitesse à 6° qu'à 90°. La hauteur ne vaut jamais 0.
 	var dz: float = -rel.y * k / sin(deg_to_rad(_hauteur_vu))
 	position += Vector3(dx * cos(a) + dz * sin(a), 0.0,
 		-dx * sin(a) + dz * cos(a))

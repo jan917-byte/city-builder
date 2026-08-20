@@ -8,14 +8,10 @@
 Sort QGIS/rendus/etat_zero.html : la carte cliquable, tous les calques dans un
 seul fichier, et les stocks de la ville à t0 calculés à côté.
 
-Pourquoi une page et pas un PNG de plus : `apercu_carte.py` sort un calque par
-exécution. Vingt-deux attributs, c'est vingt-deux commandes et autant d'images à
-comparer de mémoire. Ici on clique et la carte change, et on survole un îlot
-pour lire toutes ses colonnes. C'est la boucle « je vois donc je corrige ».
+Une page et pas un PNG de plus : `apercu_carte.py` sort un calque par
+exécution, donc vingt-deux commandes et autant d'images à comparer de mémoire.
 
-Lecture seule (GeoPackage ouvert en `ro`), aucune dépendance : sqlite3 et le
-lecteur WKB d'apercu_carte. Le HTML est autonome — aucun appel réseau, il
-s'ouvre par double-clic sur les deux machines.
+Lecture seule, aucune dépendance. Le HTML est autonome — aucun appel réseau.
 """
 
 import json
@@ -56,9 +52,9 @@ CALQUES_ILOTS = [
     ("stationnement", "Stationnement", "num", " places"),
     ("riverain", "Fragilité riverain", "num", ""),
     ("desserte_tc", "Desserte TC", "num", ""),
-    # 2026-08-12 : plus de calque d'aléa ni d'altitude — la carte est plate et
-    # la crue sort du prototype. Les deux colonnes valent 0 partout ; un calque
-    # d'une seule couleur ne dit rien et fait croire qu'il dit quelque chose.
+    # ⏸️ Plus de calque d'aléa ni d'altitude (2026-08-12) : les deux colonnes
+    # valent 0 partout, et un calque d'une seule couleur fait croire qu'il dit
+    # quelque chose.
     ("position_fil_eau", "Fil de l'eau", "num", ""),
     ("surface_m2", "Surface", "num", " m²"),
 ]
@@ -174,9 +170,8 @@ def stocks(ilots, routes):
             ("Logements bien desservis en TC", "%d" % tc,
              "%.0f %% du parc (desserte > 0,7)" % (100 * tc / log)),
         ]),
-        # ⏸️ La crue sort du prototype (2026-08-12) : plus de logements exposés,
-        # plus d'aléa moyen par rive. Ce qui reste de l'eau est ce qui reste
-        # vrai sans elle — deux rives inégales, et trois ponts.
+        # ⏸️ La crue sort du prototype (2026-08-12). Ce qui reste de l'eau est
+        # ce qui reste vrai sans elle : deux rives inégales, et trois ponts.
         ("L'eau", [
             ("Rive gauche", "%d logements" % sum(i["logements"] for i in g),
              "%d îlots" % len(g)),

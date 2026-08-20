@@ -1,9 +1,6 @@
 extends CanvasLayer
-## Le thermomètre de la maquette, visible avec F3.
-##
-## Les valeurs viennent directement des compteurs de Godot. Elles sont
-## rafraîchies quatre fois par seconde : assez vite pour voir une chute, sans
-## refaire toute l'interface à chaque image ni fausser ce qu'on mesure.
+## Le thermomètre de la maquette, visible avec F3. Rafraîchi 4×/s : assez pour
+## voir une chute, sans fausser ce qu'on mesure.
 
 const INTERVALLE := 0.25
 const OCTETS_PAR_MIO := 1024.0 * 1024.0

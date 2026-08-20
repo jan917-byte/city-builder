@@ -12,8 +12,8 @@ En développement solo, Godot 4, moteur de simulation écrit à la main. → `Va
 city-builder/
 ├─ CLAUDE.md                    ← contexte permanent du projet pour Claude
 ├─ ETAT.md                      ← avancement et prochaine action (mis à jour chaque session)
-├─ CHANTIERS.md                 ← ce qui attend : défauts connus, dette, tables de level design
-├─ HISTORIQUE.md                ← les sessions passées
+├─ HISTORIQUE.md                ← les sessions passées, 3 lignes chacune
+├─ Prototype/                   ← le chantier : une note par étape, une seule ouverte
 ├─ Vault - Jeu urbanisme/       ← LA source de vérité du design (vault Obsidian)
 │   └─ 00 - Index.md            ← l'entrée : l'état affiché, les 3 trucs à trancher
 ├─ QGIS/
