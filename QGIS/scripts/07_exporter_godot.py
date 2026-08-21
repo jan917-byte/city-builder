@@ -1493,6 +1493,7 @@ def main():
     repare_voirie = Maillage()
     RELEVE = 0.02
     n_tablier_neuf = 0
+    n_pont_ruine = 0
     rng = random.Random(GRAINE)
     arbres = []
     emprises = {}
@@ -2167,9 +2168,9 @@ def main():
             for axe_entier in axes_voirie.get(d["fid"], ()):
                 manque = _axe_manque(axe_entier, chenal)
                 if manque:
-                    _pont_ruine(voirie, manque, larg, ch,
-                                PAL.vers_lineaire(PAL.GRAVATS), coul_ch,
-                                coul_quai, G)
+                    n_pont_ruine += _pont_ruine(
+                        voirie, manque, larg, ch,
+                        PAL.vers_lineaire(PAL.GRAVATS), coul_ch, coul_quai, G)
                     n_tablier_neuf += _pont_neuf(
                         repare_voirie, manque, larg, ch,
                         PAL.vers_lineaire(PAL.melanger(PAL.TROTTOIR,
@@ -2306,6 +2307,9 @@ def main():
                      if a[5] <= (routes_par_fid[int(f)]["canopee"] or 0.0))
     # 🔧 CE QUE LA RÉPARATION TIENT PRÊT CÔTÉ VOIRIE. À zéro tablier neuf avec
     # un pont coupé, la décision « rebâtir » existerait sans rien à montrer.
+    print("  ponts emportés : %d moignons de tablier visibles"
+          " · rives gauche %.0f m / droite +%.0f m"
+          % (n_pont_ruine, RIVE_GAUCHE_Y, RIVE_DROITE_Y))
     print("  réparation : %d tronçons lavés, %d tablier(s) neuf(s) prêt(s)"
           % (sum(1 for g in repare_voirie.groupes
                  if (par_fid.get(g[0], {}).get("etat_crue") or "") != "coupe"),
@@ -4467,7 +4471,7 @@ def _pont_ruine(m, axe, larg, ch, coul_tab, coul_ch, coul_par, G):
 
         n += _pont_neuf(m, morceau, larg, ch, coul_tab, coul_ch,
                         coul_par, G_casse)
-    return n
+    return 2
 
 
 def _plages_pont(net, st):

@@ -10,7 +10,7 @@
 |---|---|---|
 | la donnée | ✅ | `04e_crue.py`, dans la chaîne après `04d` |
 | les dégâts au bâti | ✅ **à regarder** | touche `F` |
-| le pont emporté | ✅ **à regarder** | touche `N` |
+| le pont emporté | ✅ **vu à l'écran** | touche `N` : deux moignons affaissés par coupure |
 | le diagnostic d'ensemble | ✅ **vu à l'écran** | bouton ou touche `D` |
 | `alea` rallumé | ✅ | l'îlot dit ce qu'il risque, pas seulement ce qu'il a pris |
 | **le choix du joueur** | ☐ | les trois postures — § 4, à arbitrer avant d'écrire |
@@ -21,8 +21,8 @@
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis lancer la maquette, `D` d'abord, `F` et `N` ensuite. **Ce qu'il faut voir** : en une image, le passage de l'eau en bleu, le bâti touché en orange et les trois franchissements bloqués en rouge · de près, des murs à crête cassée et ouverts au ciel en rive gauche · la ville d'en face intacte · les chaussées arrêtées au bord du vide.
-**Ce qui prouverait que c'est cassé** : une des trois couleurs absente du diagnostic · une ruine en rive droite · zéro ruine (`04e` n'est pas passé — l'export le dit en clair) · un tablier ou un parapet qui flotte au milieu de l'Ilse.
+Puis lancer la maquette, `D` d'abord, `F` et `N` ensuite. **Ce qu'il faut voir** : en une image, le passage de l'eau en bleu, le bâti touché en orange et les trois franchissements bloqués en rouge · de près, des murs à crête cassée et ouverts au ciel en rive gauche · la rive touchée 1 m plus bas et la rive intacte 1 m plus haut · deux moignons de tablier affaissés à chaque coupure.
+**Ce qui prouverait que c'est cassé** : une des trois couleurs absente du diagnostic · une ruine en rive droite · zéro ruine (`04e` n'est pas passé — l'export le dit en clair) · l'eau inclinée · un pont emporté réduit à un trou sans vestige, ou encore franchissable.
 
 ## 2. Le modèle, et pourquoi il n'est pas celui d'avant
 
@@ -30,7 +30,7 @@ L'essai du 2026-08-12 cherchait une **portée en mètres** et retombait sur la m
 
 Le sol monte quand on s'éloigne de l'eau. **La rive gauche est la plaine, la rive droite est la terrasse** — deux pentes et un décrochement. C'est le décrochement, et lui seul, qui tient la décision 23b : la ville regarde le faubourg se noyer. La plaine s'élargit vers l'aval, donc la pente de rive gauche se couche avec `position_fil_eau`.
 
-🔴 **La carte reste plate.** Ce profil est un profil de **calcul** ; aucune géométrie ne monte, `altitude_relative` reste à 0.
+Le profil de calcul reste dans `04e`, sans réintroduire `altitude_relative`. Le rendu en donne une coupe lisible : **−1 m sur la rive gauche touchée, +1 m sur la terrasse droite intacte**, tandis que la nappe reste horizontale. Toute géométrie terrestre lit la même fonction ; ce n'est pas un déplacement posé îlot par îlot.
 
 **Une seule règle, deux niveaux d'eau** : la crue d'ouverture est ce qui **est** arrivé, la crue annoncée est ce qui **peut** arriver — donc `alea`. Sur le même îlot le joueur lit les deux, et c'est ça le calcul que 23b réclame.
 
@@ -95,4 +95,4 @@ En tête de `04e_crue.py`. Une ligne changée, on relance, on lit le tableau imp
 | `SEUIL_SINISTRE` · `SEUIL_MOUILLE` | l'eau passe la porte · l'eau a touché |
 | `PONTS_CASSES` | 🎚️ level design pur, corrigé à la main |
 
-Le rendu, lui, se règle dans `palette.py` (`LIMON`, `RUINE_MUR`, `GRAVATS`, `salir`) et dans `07` (`RUINE_PANS`, `PONT_COUPE_MARGE`).
+Le rendu, lui, se règle dans `palette.py` (`LIMON`, `RUINE_MUR`, `GRAVATS`, `salir`) et dans `07` (`RUINE_PANS`, `RIVE_GAUCHE_Y`, `RIVE_DROITE_Y`, `PONT_COUPE_MARGE`, `PONT_RUINE_BOUT`, `PONT_RUINE_CHUTE`).

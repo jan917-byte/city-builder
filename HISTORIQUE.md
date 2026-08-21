@@ -6,6 +6,14 @@
 
 ---
 
+**2026-08-21 (session 53) — les deux rives se séparent à l'écran.** La rive gauche touchée descend de **1 m**, la terrasse droite intacte monte de **1 m** ; l'eau reste horizontale et toute la géométrie terrestre lit la même coupe.
+Les trois ponts emportés ne sont plus de simples trous : chacun garde **deux moignons de tablier affaissés**, tandis que la réparation montre toujours un ouvrage neuf complet. La vue `N` et la passe automatisée ont été regardées.
+🔴 Le côté de rive se dérive de la coupe locale de l'Ilse, jamais d'une liste d'îlots ; six vestiges sortent donc des trois coupures. (23b)
+
+**2026-08-21 (session 52) — le faubourg garde ses vestiges.** La crue d'ouverture redescend de 4,40 à **3,80 m** : **68 ruines et 71 bâtiments encore debout mais sinistrés**, contre 106 et 33 avant.
+La terrasse droite, les 417 logements touchés et les trois ponts coupés ne bougent pas ; seule la violence visible dans les îlots est reprise. La chaîne et la passe graphique automatisée sont vertes.
+🔴 Le niveau intermédiaire conserve l'effet systémique de la hauteur d'eau : aucun plafond artificiel de ruines n'est ajouté par îlot. (23b)
+
 **2026-08-21 (session 51) — l'urgence donne l'ordre du jeu.** Deux jauges séparent l'**adaptation**, qui relève logements et ponts, de la **réduction**, qui mesure ensuite les émissions évitées.
 Avant ce passage, toute décision solaire disparaît de la fiche et le noyau la refuse ; après les réparations essentielles, elle revient. Les deux états ont été vus sur les captures automatisées.
 🔴 **Décision 72.** Le verrou fonctionne, mais les prix actuels rendent son ouverture inaccessible en vingt ans : seuil et coûts restent du level design (question 23).

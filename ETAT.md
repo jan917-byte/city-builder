@@ -3,7 +3,7 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-21 (session 52).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. La crue laisse désormais autant de bâtiments debout que de ruines dans le faubourg ; l'étape 4 reste ouverte.
+**2026-08-21 (session 53).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. Sur `crue`, la rive touchée descend de 1 m, l'intacte monte de 1 m et les trois ponts emportés gardent leurs vestiges visibles ; l'étape 4 reste ouverte.
 Les **README ont fondu** : 23 600 → 7 700 tokens, et `CLAUDE.md` porte une **sixième règle** — un README dit à quoi sert le dossier, quoi lancer et les pièges permanents, **et aucun chiffre mesuré**.
 
 ## Prochaine action — juger l'échange à l'écran
