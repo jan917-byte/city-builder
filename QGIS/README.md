@@ -12,7 +12,7 @@ QGIS ne fait plus partie de la chaîne — le dossier garde son nom, pas sa dép
 python QGIS/scripts/chaine.py
 ```
 
-Elle enchaîne **02 → 03 → 04 → 04b → 04c** et s'arrête net à la première étape qui échoue. `--godot` ajoute `07`, `--depuis 04` reprend au milieu.
+Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête net à la première étape qui échoue. `--godot` ajoute `07`, `--depuis 04` reprend au milieu.
 
 🔴 **`02` rebâtit la carte de travail de zéro** et détruit tout ce que les suivants y avaient écrit, `emprises` et `parcelles` comprises. Ne jamais le lancer seul. Les autres — `03`, `04`, `04b`, `04c` et tous les lecteurs — se relancent sans risque.
 
@@ -39,6 +39,7 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c** et s'arrête net à la premi
 | `04b_emprises_baties.py` | l'îlot après retrait de voirie |
 | `04c_parcelles.py` | le découpage en parcelles |
 | `04d_emprises_batiments.py` | l'empreinte de chaque bâtiment |
+| `04e_crue.py` | la crue : hauteur d'eau, dégâts, ponts coupés |
 | `05_exporter_classeur.py` | → `Classeur/*.csv` |
 | `06_etat_zero.py` | 👁 la ville entière en HTML |
 | `07_exporter_godot.py` | → `Godot/data/wehrau.json`, toute la géométrie 3D |

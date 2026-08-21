@@ -17,14 +17,14 @@ Puis le geste énergie : cliquer un cœur ancien puis la barre de 1974 et compar
 
 ## Ce qui attend l'auteur
 
-- 🔴 **Le critère de réussite « une barre de 9 niveaux »** (`Plan 3 mois.md:48`) est périmé : la barre est descendue à **6** le 2026-08-19, et il y en a trois. Réécrire le critère, ou annuler la baisse.
+- 🔴 **La barre ne fait pas la hauteur décidée** : 6 niveaux arrêtés le 2026-08-19, **5 à l'écran** — le ±1 niveau de `04c` a tiré −1 sur ses trois parcelles, et 13,5 m est exactement la hauteur refusée ce jour-là, celle qui passe sous les faîtages du cœur ancien. `04c` l'affiche désormais à chaque passage. Le critère « une barre de 9 niveaux » (`Plan 3 mois.md:48`) reste périmé par la même occasion.
 - 🔴 **L'asphalte des quais prend 6 m à l'Ilse** — plus un défaut visible, mais un **choix de carte** : une Ilse plus large veut dire reculer le **tracé** des voies de berge.
 - 🔴 **Le potentiel solaire réel est bas** — 11,0 ha de toiture réelle pour les 25–40 % annoncés au plan. **L'assumer, ou regonfler la colonne `equip`** de la table.
 - 🔴 **Cinq arbitrages de rendu du 2026-08-18 ne sont consignés nulle part** : la couleur suit l'époque et non la typologie · le calque « tissu » est la contrepartie · zéro asset · l'étape 4 s'ouvre et la 2 passe en pause · et la DA dit **encore** « un `sous_type` = une teinte », faux depuis. À fermer dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`.
 - 🟠 **Découper `07_exporter_godot.py`** — 5 500 lignes, 110 fonctions, un `main()` de 944 l., **79 000 tokens** : plus lourd que tous les markdown du dépôt réunis, et il faut le charger pour toucher à l'étape 4. Cinq fichiers par thème, contrôle nommé : **l'export doit sortir identique**. C'est du code, donc délégué (40b).
 - 🟠 **Les quatre nombres de l'économie sont du level design** : 260 €/m², 150 €/MWh, 800 k€ de caisse, 30 k€/mois. Ce sont eux qui décident si le jeu est *dur mais possible*.
 - 🟠 **Le nom des quartiers de Wehrau** — sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase.
-- 🟠 **La crue** — la décision **23b** (le jeu s'ouvre sur une crue rive gauche) contredit « pas de crue dans ce prototype ». Suspendue ou abandonnée ?
+- 🔴 **La crue est reprise sur la branche `crue`** → [Crue](Prototype/Crue.md). Les dégâts et le pont emporté sont **à l'écran** (`F` et `N`) ; deux arbitrages bloquent la suite : **la rive droite risque-t-elle quelque chose** (0,02 mesuré contre 0,43 annoncé au vault) et **quel pont on coupe** (168 proposé, ce qui contredit 30c). Le choix du joueur — les trois postures — n'est **pas** écrit : ses prix sont du level design.
 - 🟠 **Le rôle du classeur** : banc d'essai des seuils, ou archive ? Il n'a jamais été étendu à l'énergie, et le recoupement des deux moteurs est suspendu. **Un deuxième moteur à moitié entretenu ment sans qu'on le sache.**
 - ⏸️ **L'étape 2 est en pause**, pas finie : 118 parcelles de rue sur 809 ont un sommet rentrant, et c'est **le peigne de `04c`**. **Ne pas la rouvrir tant que la 4 est ouverte.** → [Parcelles](Prototype/Parcelles.md) § 7
 

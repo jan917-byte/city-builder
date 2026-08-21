@@ -23,7 +23,7 @@
 - 🏘️ **Le prototype est Wehrau**, une ville entière qu'on voit en entier (13b · 13d) : elle a un amont et un aval, un quartier n'en a pas.
 - 🎨 **Townscaper pour le rendu** (42b), **Wehrau pastel au sol minéral** (42c) — le pastel étant celui des **murs** seulement depuis le 2026-08-18.
 - 🗺️ **La carte est plate**, dans l'image et dans la donnée. Le seul relief est le chenal de l'Ilse (fond à −2,85 m, nappe à −2 m) et le talus des 4 champs riverains. La voirie reste à 0 : **aucune ligne de code ne parle de pont**.
-- 💧 **La crue est sortie du prototype** : `alea` et `altitude_relative` restent à 0. Ce qui reste de l'eau est ce qui reste vrai sans elle — deux rives inégales et trois franchissements.
+- 💧 **La crue revient, sur la branche `crue` seulement** (23b) → [Crue](Crue.md). `alea` est rallumé et le faubourg de rive gauche est sinistré ; `altitude_relative` reste à 0, la carte reste plate. Sur `master`, la phrase d'avant tient toujours : ce qui reste de l'eau est ce qui reste vrai sans elle — deux rives inégales et trois franchissements.
 - 🏛️ **La ville possède tout, logement compris** (70) — mais **posséder un logement n'est pas payer sa facture** : la ville est propriétaire-bailleur, ses locataires paient leur électricité.
 
 ## Les tables que l'auteur règle
@@ -36,6 +36,7 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 | `TISSU` | `04_deriver_attributs.py` | densité, hauteur, imperméabilisation, canopée, parking — le comportement de la carte |
 | `TISSU` | `04c_parcelles.py` | largeur de façade, profondeur, `style` (`peigne` ou `boite`) — **le grain de toute la ville** |
 | `TISSU` | `04d_emprises_batiments.py` | recul, retraits, profondeur, plafond d'emprise, famille de forme — l'empreinte du bâtiment |
+| les sept nombres de la crue | haut de `04e_crue.py` | qui est ruiné, qui est mouillé, quel pont est coupé — **branche `crue`** |
 | `TOITURES` · `ENDUITS` | `palette.py` | les matériaux du bâti — la couleur de la ville depuis le 2026-08-18 |
 | `BATI` | `07_exporter_godot.py` | **la pente du toit seulement** |
 
@@ -46,6 +47,7 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 Aucune n'est sur le chemin critique, mais chacune fausse un chiffre.
 
 - 🔴 **Calibrer les deux formules de budget** (59) : recettes ∝ `logements`, charges ∝ mètres de voirie. Contrôle nommé — *une densification pure ne doit pas s'autofinancer*. Aujourd'hui le budget ne mord jamais (418/500, +152 de solde, aucune décision refusée sur trois parties).
+- 🔴 **`logements` est inventé, le plancher est mesuré** — densité × hectares d'un côté, emprise × niveaux de l'autre, et rien ne relie les deux : **ajouter un étage n'ajoute aucun habitant**. `04d` imprime maintenant les deux ; ils se recoupent à **101 m² bruts par logement**, donc inverser la causalité ne coûte rien à l'échelle de la ville et ne fait que redistribuer entre îlots. À trancher **avant** d'écrire la moindre ligne sur la densification.
 - 🔴 **Repondérer les trois moyennes** (63) : `canopee_moy` et `impermeabilise_moy` par la surface, `riverain_moy` par la population — dans `08_jouer.py` **et** `ville.gd`, puis refaire le recoupement.
 - 🔴 **`largeur_m >= 20`, la cible de D05, rate quatre des cinq rues les plus chargées** : les tronçons 13, 21, 54 et 55 font 18 m. **Deux mètres de seuil décident si la décision existe.**
 - 🔴 **La montée de D07 est de 60 mois** : sur une partie, l'arbre ne reprend jamais ses mètres à la noue, donc la concurrence arbre/noue ne se joue pas.

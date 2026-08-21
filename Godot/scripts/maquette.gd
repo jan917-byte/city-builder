@@ -216,6 +216,23 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_ilse")
 
+	# 🌊 LE FAUBOURG SINISTRÉ (23b). Ce qu'il faut y voir : des murs SANS TOIT
+	# le long de l'eau, le limon qui s'arrête quelque part au lieu de couvrir
+	# toute la rive gauche, et la ville d'en face intacte. À 40° : de plus haut
+	# on perd les toits manquants, de plus bas on perd l'emprise du limon.
+	_repere("faubourg")
+	pivot.caler(120.0, 40.0)
+	await get_tree().process_frame
+	await _capturer("essai_faubourg")
+
+	# Le pont emporté, de profil : la chaussée doit s'arrêter au bord de l'eau
+	# des DEUX côtés, sans tablier ni parapet en l'air au-dessus du vide.
+	_repere("pont_casse")
+	pivot.caler(200.0, 14.0)
+	await get_tree().process_frame
+	await _capturer("essai_pont_casse")
+	pivot.caler(30.0, 32.0)
+
 	# 🌉 LE FRANCHISSEMENT DE PRES (2026-08-18) : a 260 m d'etendue, `ilse` ne
 	# donne pas deux pixels a un tablier de 70 cm. De profil (12°), on doit
 	# voir l'eau passer SOUS le tablier et la pile s'y poser.
@@ -947,6 +964,9 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_G: _repere("berge")
 		KEY_O: _repere("pont")
 		KEY_M: _repere("place")
+		# 🌊 La crue (23b) : le faubourg sinistré, et le pont qu'elle a emporté.
+		KEY_F: _repere("faubourg")
+		KEY_N: _repere("pont_casse")
 		KEY_C: _sur_tissu()
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")

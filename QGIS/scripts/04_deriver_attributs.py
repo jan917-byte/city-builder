@@ -16,7 +16,8 @@ possible ? ».
     desserte_tc                     le seuil que la densité doit atteindre
     riverain                        fragilité sociale — la boucle gentrification
     stationnement                   le coût politique de la place-parking
-    altitude_relative · alea        ⏸️ à 0 : carte plate, crue hors prototype
+    altitude_relative               ⏸️ à 0 : la carte est plate
+    alea                            ⏸️ posé à 0 ici, ÉCRASÉ PAR `04e` ensuite
     position_fil_eau                la portée « aval » d'une décision
     rive                            l'asymétrie des deux rives
 
@@ -127,12 +128,14 @@ HABITANTS_VAULT = 5350          # ce que le vault annonce — contrôlé, pas su
 # part et d'autre de l'Ilse (3,2 % → 1,3 %, plafond 9 m) — jamais visible à
 # l'écran, 9 m de relief sur 898 m de large.
 #
-# ⏸️ LA CRUE SORT DU PROTOTYPE (2026-08-12). `alea` n'est plus dérivé de rien ;
-# la colonne reste à 0 pour que rien de ce qui la lit ne casse.
-# Pour la rallumer sur une carte plate, il faudrait une portée de crue en
-# mètres modulée d'amont en aval. Mesuré avant de renoncer : à 250 m, l'aléa
-# moyen par rive tombait à 0,74 / 0,39 contre 0,75 / 0,43 par l'altitude — la
-# règle changeait, pas la carte du risque.
+# 🔄 LA CRUE EST REVENUE (2026-08-21, décision 23b) — mais PAS ICI : `04e_crue.py`
+# la porte en entier et RÉÉCRIT `alea` après ce script. Les deux lignes à 0
+# ci-dessous ne sont donc plus une renonciation, c'est une VALEUR PAR DÉFAUT.
+# 🔴 Lancer `04` seul APRÈS `04e` efface la crue sans rien dire. L'ordre est
+# tenu par `chaine.py`, et c'est la seule chose qui le tienne.
+# Ce que l'essai abandonné avait mesuré, et qui reste vrai : une PORTÉE en
+# mètres redonnait la carte de l'altitude (0,74 / 0,39 contre 0,75 / 0,43) — la
+# règle changeait, pas le risque. `04e` a changé de grandeur, pas de réglage.
 #
 # ⚠️ `rive` et `position_fil_eau` RESTENT : ce sont des positions le long de
 # l'eau, pas des risques, et `position_fil_eau` porte la portée « aval » (08).
@@ -471,7 +474,7 @@ def main():
         d["rive"] = "lit" if d["st"] == "riviere" else \
             ("gauche" if cote > 0 else "droite")
 
-        # Carte plate, crue hors prototype : les deux colonnes restent, à 0.
+        # Valeurs par défaut : `04e` réécrit `alea`, `altitude_relative` reste à 0.
         d["alt"] = 0.0
         d["alea"] = 0.0
 
@@ -619,7 +622,7 @@ def main():
         print("       c'est la géométrie — il faudrait dessiner du sol d'activité.")
         print("       Cohérent avec l'axe de transit saturé : les gens sortent.")
 
-    print("\nL'EAU  (crue hors prototype — il reste les DEUX RIVES et l'amont/aval)")
+    print("\nL'EAU  (les DEUX RIVES et l'amont/aval — la crue est dans 04e)")
     for cote in ("gauche", "droite", "lit"):
         fs = [f for f, d in ilots.items() if d["rive"] == cote]
         if not fs:

@@ -265,20 +265,32 @@ Y_TABLIER = Y_SOL - TABLIER_EP
 # au quai de glisser dessous sans ressortir par la chaussée.
 Y_QUAI = Y_SOL - 0.01
 
-# ⏸️ `altitude_relative` et `alea` ne sont plus exportés : la carte est plate et
-# la crue sort du prototype (2026-08-12). Les colonnes existent toujours dans le
-# GeoPackage, à 0 — les remettre ici est une ligne. `position_fil_eau` et
-# `rive`, eux, restent : ce sont des positions le long de l'eau, pas des
-# risques, et c'est `position_fil_eau` qui porte la portée « aval ».
+# 🌊 LA CRUE, CÔTÉ RENDU (04e · décision 23b). Deux constantes, et elles ne
+# décident rien du jeu : `04e` dit QUI est ruiné, celles-ci disent à quoi ça
+# ressemble.
+RUINE_NIVEAUX = 1.0        # ce qui reste debout : le rez-de-chaussée, sans toit
+# De combien la coupure d'un pont emporté déborde de part et d'autre de l'eau.
+# Assez pour que le vide se voie depuis la vue d'ensemble (touche V), pas assez
+# pour manger la culée — sinon la route s'arrête au milieu du quai, ce qui se
+# lit comme un bug de la chaîne et non comme un ouvrage détruit.
+PONT_COUPE_MARGE = 3.0
+
+# 🔄 `alea` EST DE RETOUR (04e, décision 23b) : la crue rentre dans le prototype
+# et l'îlot doit pouvoir dire ce qu'il a pris et ce qu'il risque. Il vient avec
+# les quatre chiffres de dégât de `04e`. `altitude_relative` reste dehors — la
+# carte est plate, et le profil de terrain de `04e` est un profil de CALCUL qui
+# ne remonte aucune géométrie.
 COLS_ILOTS = [
     "fid", "fonction", "sous_type", "surface_m2", "solaire_possible",
     "hauteur", "impermeabilise",
     "canopee", "stationnement",
     "position_fil_eau", "rive", "densite", "logements", "emplois", "riverain",
     "desserte_tc",
+    "alea", "hauteur_eau_max", "part_ruinee", "part_ruinee_apres",
+    "part_sinistree", "logements_sinistres",
 ]
 COLS_ROUTES = ["fid", "hierarchie", "largeur_m", "emprise_libre_m", "charge",
-               "canopee", "stationnement"]
+               "canopee", "stationnement", "etat_crue", "hauteur_eau"]
 
 # Ce qui part dans `objets` : la fiche qu'on lit en cliquant, et l'état de
 # départ du noyau. Tout ce qui n'est pas là ne peut ni s'afficher ni évoluer.
@@ -1295,12 +1307,17 @@ def lire(con):
         parcelles[fid] = p
         ilots[fid_i]["parcelles"].append(p)
 
-    for fid_p, fid_i, geom in con.execute(
-        "SELECT fid_parcelle, fid_ilot, geom FROM batiments ORDER BY fid"
+    # 🌊 `etat_crue` et `hauteur_eau` viennent de `04e` et ne servent QU'AU
+    # RENDU ici : c'est la seule chose que la 3D sait de la crue. Le nombre qui
+    # compte pour le jeu (`alea`, les parts sinistrées) reste sur l'îlot.
+    for fid_p, fid_i, geom, etat, h in con.execute(
+        "SELECT fid_parcelle, fid_ilot, geom, etat_crue, hauteur_eau"
+        " FROM batiments ORDER BY fid"
     ):
         if fid_i in ilots and fid_p in parcelles:
             ilots[fid_i]["batiments"].append(
-                {"anneau": anneau_ouvert(geom), "parcelle": parcelles[fid_p]})
+                {"anneau": anneau_ouvert(geom), "parcelle": parcelles[fid_p],
+                 "crue": etat or "intact", "eau": h or 0.0})
 
     routes = []
     for r in con.execute("SELECT %s, geom FROM routes ORDER BY fid"
@@ -1410,6 +1427,7 @@ def main():
     n_parc = n_parc_batie = n_vol = 0
     n_pentu = n_plat_force = 0
     n_deborde = 0
+    n_ruine = n_sali = 0
     deb_max = 0.0
     toit_total = 0.0
     canopee_perdue = 0.0
@@ -1456,10 +1474,16 @@ def main():
         an = d["anneau"]
         st = d["sous_type"]
         haut = d["hauteur"] or 0.0
+        # 🌊 LE LIMON, ET IL EST L'EMPRISE DE LA CRUE. Les ruines disent la
+        # violence, le sol dit l'ÉTENDUE — vu d'en haut, c'est la seule chose
+        # qui trace la limite de ce que l'eau a pris. Il vient de l'îlot et non
+        # du bâtiment : `hauteur_eau_max` est le maximum de ses volumes, donc
+        # un îlot dont un coin a bu se salit en entier, ce qui est le cas.
+        brut_ilot = PAL.salir(PAL.couleur_ilot(st, haut, d["impermeabilise"]),
+                              d["hauteur_eau_max"] or 0.0, 0.24, 0.72)
         # En espace LINÉAIRE : Godot interprète les couleurs de sommet
         # comme telles. En sRGB, toute la maquette ressort délavée.
-        coul = PAL.vers_lineaire(
-            PAL.couleur_ilot(st, haut, d["impermeabilise"]))
+        coul = PAL.vers_lineaire(brut_ilot)
 
         if len(an) < 3:
             continue
@@ -1505,6 +1529,13 @@ def main():
         if haut > 0.0:
             n_masse += 1
             masses.marque(fid)
+            # 🌊 Le jardin et la cour prennent le limon comme le reste : c'est
+            # la plus grande surface de SOL visible d'un îlot bâti, donc celle
+            # qui dit jusqu'où l'eau est montée à l'intérieur du pâté.
+            eau_ilot = d["hauteur_eau_max"] or 0.0
+            coul_jardin_i = coul_jardin if eau_ilot <= 0.10 else                 PAL.vers_lineaire(PAL.salir(
+                    PAL.couleur_sol("jardins_familiaux", 0.10), eau_ilot,
+                    0.26, 0.88))
             # ⚠️ TOUTES les parcelles d'un îlot tombent dans LE MÊME groupe.
             # C'est ce qui permet d'avoir mille bâtiments sans passer de 237 à
             # 1 200 nœuds cliquables : la géométrie descend à la parcelle, la
@@ -1529,7 +1560,19 @@ def main():
                     p = b["parcelle"]
                     emp = b["anneau"]
                     faite = _direction_faitage(p["anneau"], idx)
-                    volumes.append((emp, p["niveaux"], faite, p))
+                    # 🌊 UNE RUINE PERD SON TOIT ET SES ÉTAGES (04e). Un mur
+                    # sans couverture est ce qui se lit de plus loin en
+                    # axonométrie — bien avant une tache de couleur — et c'est
+                    # la seule chose qui distingue « ruines encore chaudes »
+                    # (23b) d'un faubourg simplement sali.
+                    if b["crue"] == "ruine":
+                        niv = min(p["niveaux"], RUINE_NIVEAUX)
+                        faite = None          # dalle nue, jamais de faîtage
+                        n_ruine += 1
+                    else:
+                        niv = p["niveaux"]
+                        n_sali += b["crue"] != "intact"
+                    volumes.append((emp, niv, faite, p, b["crue"], b["eau"]))
                     batiments_par_parcelle.setdefault(p["fid"], []).append(emp)
                 n_parc += len(d["parcelles"]) - len(chemins_ilot)
                 n_parc_batie += len(batiments_par_parcelle)
@@ -1538,7 +1581,8 @@ def main():
             # 🪟 L'index des murs de TOUT l'îlot, bâti une fois : c'est lui
             # qui dira, mur par mur, lesquels sont mitoyens — donc aveugles.
             idx_murs = _index_murs([v[0] for v in volumes])
-            for k_vol, (emp, niv, faite, parcelle) in enumerate(volumes):
+            for k_vol, (emp, niv, faite, parcelle, crue, eau_m) in \
+                    enumerate(volumes):
                 # ⚠️ TOIT À DEUX PENTES SUR EMPREINTE CONVEXE SEULEMENT, et
                 # c'est une limite du procédé, pas une préférence. Sur une
                 # empreinte concave, une arête d'égout peut repartir en arrière
@@ -1569,8 +1613,20 @@ def main():
                 # l'empreinte, donc bouger une ligne de table ne rebat pas
                 # toute la ville.
                 gr = _graine_lieu(emp)
-                c_mur = PAL.vers_lineaire(PAL.couleur_mur(st, gr))
-                c_toit = PAL.vers_lineaire(PAL.couleur_toit(st, gr))
+                mur = PAL.couleur_mur(st, gr)
+                toit = PAL.couleur_toit(st, gr)
+                # 🌊 CE QUE LA CRUE A LAISSÉ. Les teintes se MÉLANGENT à celles
+                # du bâtiment, elles ne les remplacent pas : la couleur dit
+                # l'époque depuis le 2026-08-18, et un faubourg gris uni
+                # effacerait le tissu. Une ruine, elle, a bien perdu son enduit.
+                if crue == "ruine":
+                    mur = PAL.melanger(mur, PAL.RUINE_MUR, 0.72)
+                    toit = PAL.RUINE_TOIT
+                elif crue != "intact":
+                    mur = PAL.salir(mur, eau_m)
+                    toit = PAL.salir(toit, eau_m, 0.05)  # le toit n'a pas bu
+                c_mur = PAL.vers_lineaire(mur)
+                c_toit = PAL.vers_lineaire(toit)
                 # 🪟 Le percement des murs, mur par mur, et le tirage qui
                 # donne à CE bâtiment son entraxe de travées. Le tirage vient
                 # de la même graine de lieu que ses deux teintes : bouger une
@@ -1658,7 +1714,7 @@ def main():
                 # parcelle grise, sans que la simulation ne l'explique.
                 vert_force = st == "pavillonnaire" and bool(emps)
                 if vert_force:
-                    _sol(masses, j, coul_jardin, G)
+                    _sol(masses, j, coul_jardin_i, G)
                     n_pav_vert += 1
                 if aire_j < AIRE_JARDIN_MIN or len(j) < 3:
                     continue
@@ -1674,7 +1730,7 @@ def main():
                 # qui reste visible est donc la différence parcelle − bâti,
                 # sans introduire un second moteur de géométrie dans 07.
                 if not vert_force:
-                    _sol(masses, j, coul_jardin, G)
+                    _sol(masses, j, coul_jardin_i, G)
                 arbres_jardin = _semer_jardin(j, aire_j, emps)
                 arbres.extend(arbres_jardin)
                 n_arbre_jardin += len(arbres_jardin)
@@ -1707,8 +1763,13 @@ def main():
             # bandes de fauche. C'est la plus grande surface unie de l'image,
             # donc celle qui trahissait le plus la maquette.
             if st == "champ":
-                brut_champ = PAL.couleur_champ(_graine_lieu(an),
-                                               d["impermeabilise"])
+                # 🌊 Le champ riverain est l'EXPANSION DE CRUE : il boit avant
+                # tout le monde, donc il se salit comme le reste. Sans cette
+                # ligne, l'emprise de l'eau s'arrêtait pile au dernier îlot
+                # bâti et la crue avait l'air de respecter le cadastre.
+                brut_champ = PAL.salir(
+                    PAL.couleur_champ(_graine_lieu(an), d["impermeabilise"]),
+                    d["hauteur_eau_max"] or 0.0, 0.24, 0.72)
                 coul = PAL.vers_lineaire(brut_champ)
                 # 🌊 La berge n'est ni fauchée ni cultivée : on ne descend pas
                 # une moissonneuse à 22 %. Sa teinte part de celle du champ et
@@ -1803,6 +1864,17 @@ def main():
               % len(plats))
         print("  empreintes : lues directement dans 04d, aucune forme recalculée"
               " par l'export Godot")
+        # 🌊 CE QUE LA CRUE DOIT AVOIR CHANGÉ À L'ÉCRAN. Deux nombres, et ils
+        # se contrôlent à l'œil : les ruines sont des murs sans toit, le reste
+        # du faubourg est sali. À zéro ruine, `04e` n'est pas passé.
+        print("  crue : %d ruines sans toit (ramenées à %.0f niveau), %d"
+              " bâtiments salis, %d pont(s) emporté(s)"
+              % (n_ruine, RUINE_NIVEAUX, n_sali,
+                 sum(1 for r in routes
+                     if (r.get("etat_crue") or "") == "coupe")))
+        if not n_ruine:
+            print("        ⚠️ aucune ruine — relancer `04e_crue.py`, ou la table"
+                  " de `04e` ne ruine plus personne")
         # 🎨 LE RENDU RÉALISTE (2026-08-18). Ces quatre lignes sont le compte
         # rendu de la passe : elles disent ce que l'auteur doit RETROUVER à
         # l'écran, et ce qui manquerait si un des trois volets était muet.
@@ -1878,6 +1950,18 @@ def main():
     coul_marq = PAL.vers_lineaire(PAL.MARQUAGE)
     coudes, (n_coude, n_marque, n_rond) = _coudes(routes)
     axes_voirie, chaussees = _index_chaussees(routes, coudes)
+    # 🌊 LE PONT EMPORTÉ (04e · 23b). On ampute son axe UNE FOIS, ici, et tout
+    # ce qui le lit ensuite — chaussée, tablier, parapet, pile, marquage — ne
+    # voit qu'un axe qui s'arrête au bord de l'eau. Aucune de ces cinq recettes
+    # n'a été touchée : c'est ce qui rend la chose réversible en une ligne de
+    # `04e` et ce qui évite d'ouvrir `_bord_eau`.
+    # ⚠️ Un axe amputé rend une LISTE de morceaux, jamais un axe.
+    morceaux_voirie = {}
+    for d in routes:
+        coupe = (d.get("etat_crue") or "") == "coupe"
+        morceaux_voirie[d["fid"]] = [
+            _axe_ampute(a, chenal) if coupe else [a]
+            for a in axes_voirie.get(d["fid"], ())]
     # Les arbres semés lisent les îlots, qui devraient déjà s'arrêter au bord
     # des rues. On les contrôle quand même ici : c'est le filet qui montrera
     # immédiatement une future régression du découpage de la carte.
@@ -1923,8 +2007,8 @@ def main():
         ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5),
                  d["largeur_m"])
         for ip in range(len(d["parts"])):
-            tabliers.extend(_tabliers(axes_voirie[d["fid"]][ip], ch,
-                                      chenal, relief))
+            for axe_ in morceaux_voirie[d["fid"]][ip]:
+                tabliers.extend(_tabliers(axe_, ch, chenal, relief))
     plan_quai, st_quai, plat_quai, murs_quai = _quais(
         chenal, relief, GrilleChaussee(chaussees), tabliers)
     plateformes.extend(plat_quai)
@@ -1958,28 +2042,51 @@ def main():
         ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
         voirie.marque(d["fid"])
         axes = []
+        # 🌊 Un pont FRAGILE (04e) garde toute sa géométrie et prend le limon :
+        # il passe encore, et il se voit qu'il a bu. Le pont EMPORTÉ, lui, a
+        # déjà perdu ses morceaux au-dessus de l'eau.
+        etat_crue = d.get("etat_crue") or "intact"
+        # 🌊 LE LIMON SUR LA CHAUSSÉE, ET C'EST LUI QUI DESSINE L'EMPRISE. Vue
+        # de dessus, la ville est un tapis de toits : le sol des îlots ne se
+        # voit presque pas, le RÉSEAU si. Sans cette ligne, la crue ne se
+        # lisait que de trois quarts, sur les toits manquants.
+        # ⚠️ Une seule hauteur par tronçon (04e) : la limite de l'emprise
+        # tombe donc sur un carrefour, jamais au milieu d'une rue.
+        eau_rue = d.get("hauteur_eau") or 0.0
+        if etat_crue == "fragile":
+            eau_rue = max(eau_rue, 2.0)     # le tablier a bu, quoi qu'il arrive
+        coul_ch_d = (PAL.vers_lineaire(PAL.salir(PAL.MINERAL, eau_rue, 0.20, 0.62))
+                     if eau_rue > 0.10 else coul_ch)
+        coul_tr_d = (PAL.vers_lineaire(PAL.salir(PAL.TROTTOIR, eau_rue, 0.20, 0.62))
+                     if eau_rue > 0.10 else coul_tr)
         for ip, part in enumerate(d["parts"]):
             axe = axes_voirie[d["fid"]][ip]
-            _ruban(voirie, axe, ch, coul_ch, G)
-            n_seg += len(axe) - 1
-            # 🎨 Le marquage se pose SUR la chaussée qu'on vient d'émettre,
-            # et dans le même groupe : cliquer une ligne blanche ouvre la
-            # fiche de la rue, comme cliquer son trottoir.
-            for k_, v_ in _marquage(voirie, d, axe, ip, ch, nd_marq,
-                                    chenal, coul_marq, G).items():
-                st_marq[k_] += v_
-            # 🌊 Le mur de quai et le pont, dans le GROUPE DU TRONÇON : cliquer
-            # un parapet ou un tablier ouvre la fiche de la rue, comme cliquer
-            # son trottoir. Un pont n'est pas un objet du jeu, c'est un état de
-            # la route — et c'est déjà ce que dit le creusement du chenal.
-            k_, pl_, po_, mu_ = _bord_eau(voirie, axe, ch, chenal, relief,
-                                          coul_quai, coul_chap, G,
-                                          boites_quai)
-            for nom, v_ in k_.items():
-                st_bord[nom] += v_
-            plateformes.extend(pl_)
-            ponts_vus.extend(po_)
-            murs_eau.extend(mu_)
+            for axe_ in morceaux_voirie[d["fid"]][ip]:
+                _ruban(voirie, axe_, ch, coul_ch_d, G)
+                n_seg += len(axe_) - 1
+                # 🎨 Le marquage se pose SUR la chaussée qu'on vient d'émettre,
+                # et dans le même groupe : cliquer une ligne blanche ouvre la
+                # fiche de la rue, comme cliquer son trottoir.
+                # ⚠️ Sur un pont emporté il tombe de lui-même : le marquage se
+                # cale sur l'axe REÇU, et cet axe s'arrête au bord de l'eau.
+                for k_, v_ in _marquage(voirie, d, axe_, ip, ch, nd_marq,
+                                        chenal, coul_marq, G).items():
+                    st_marq[k_] += v_
+                # 🌊 Le mur de quai et le pont, dans le GROUPE DU TRONÇON :
+                # cliquer un parapet ou un tablier ouvre la fiche de la rue,
+                # comme cliquer son trottoir. Un pont n'est pas un objet du jeu,
+                # c'est un état de la route — et c'est déjà ce que dit le
+                # creusement du chenal.
+                k_, pl_, po_, mu_ = _bord_eau(voirie, axe_, ch, chenal, relief,
+                                              coul_quai, coul_chap, G,
+                                              boites_quai)
+                for nom, v_ in k_.items():
+                    st_bord[nom] += v_
+                plateformes.extend(pl_)
+                ponts_vus.extend(po_)
+                murs_eau.extend(mu_)
+            # ⚠️ Le COULOIR de sélection reste celui de l'axe ENTIER : on doit
+            # pouvoir cliquer un pont détruit pour lire sa fiche.
             plat = []
             for pt in axe:
                 g = G(pt[0], pt[1], 0.0)
@@ -1997,7 +2104,7 @@ def main():
         # groupe : cliquer un trottoir ouvre la fiche de la rue.
         for f in trot.get(d["fid"], ()):
             if f[0] == "plat":
-                n_tri_tr += _dessus_trottoir(voirie, f[1], coul_tr, G)
+                n_tri_tr += _dessus_trottoir(voirie, f[1], coul_tr_d, G)
             else:
                 n_tri_tr += _bordure(voirie, f[1], f[2], f[3], coul_bord, G)
         emplacements = _alignement(d, rng)
@@ -2071,7 +2178,7 @@ def main():
     # règle tient en trois lignes : qui traverse prend un pont, qui longe prend
     # un mur, et le contrôle dit combien d'asphalte reste en l'air.
     aire_eau, aire_cache, aire_dela, depasse = _asphalte_en_lair(
-        routes, coudes, chenal, plateformes, murs_eau)
+        routes, coudes, chenal, plateformes, murs_eau, morceaux_voirie)
     print("  bord de l'eau : %d ponts (%.0f m de tablier, %d piles),"
           " %.2f km de quai porté en %d longueurs"
           % (st_bord["pont"], st_bord["pont_m"], st_bord["pile"],
@@ -4037,6 +4144,35 @@ def _parapet(m, ext, inte, dehors, coul, coul_chap, G, y_bas=Y_SOL):
     return n
 
 
+def _axe_ampute(axe, chenal, marge=PONT_COUPE_MARGE):
+    """L'axe d'un pont EMPORTÉ (04e) : ce qu'il en reste de part et d'autre.
+
+    On retire le trajet au-dessus de l'eau, plus `marge` de chaque côté, et on
+    rend les morceaux. Un axe amputé n'a plus ses deux bords mouillés en même
+    temps, donc `_plages_pont` n'y voit plus d'ouvrage : ni tablier, ni parapet,
+    ni pile ne sortent — le vide est celui du tablier, pas seulement de
+    l'asphalte. C'est ce qui économise toute chirurgie dans `_bord_eau`.
+
+    ⚠️ Rend une liste, pas un axe : appelé partout où l'axe entier l'était,
+    donc TOUJOURS dans une boucle. Un morceau de moins de deux points est jeté.
+    """
+    dense = _densifier(list(axe), 1.0)
+    mouille = [chenal.dans_eau(p) for p in dense]
+    if not any(mouille):
+        return [list(axe)]
+    cum = _cumul(dense)
+    s0 = min(cum[k] for k in range(len(dense)) if mouille[k]) - marge
+    s1 = max(cum[k] for k in range(len(dense)) if mouille[k]) + marge
+    out = []
+    for a, b in ((0.0, s0), (s1, cum[-1])):
+        if b - a < 1.0:
+            continue
+        bout = _tronquer(dense, cum, max(0.0, a), min(cum[-1], b))
+        if len(bout) >= 2:
+            out.append(bout)
+    return out
+
+
 def _plages_pont(net, st):
     """Les plages [a, b, i0, i1] où la chaussée TRAVERSE vraiment : les deux
     bords au-dessus de l'eau, sur au moins `PONT_MIN`, étendues des culées.
@@ -4581,7 +4717,8 @@ def _bord_eau(m, axe, ch, chenal, relief, coul_mur, coul_chap, G, quais=()):
     return st_out, plateformes, ponts, murs
 
 
-def _asphalte_en_lair(routes, coudes, chenal, plateformes, murs, pas=0.75):
+def _asphalte_en_lair(routes, coudes, chenal, plateformes, murs,
+                      morceaux=None, pas=0.75):
     """LE CONTRÔLE : combien d'asphalte reste au-dessus du vide, et s'il se voit.
 
     Il échantillonne toute la chaussée affichée, garde les points qui tombent
@@ -4599,6 +4736,12 @@ def _asphalte_en_lair(routes, coudes, chenal, plateformes, murs, pas=0.75):
     7 212 m² volaient avant ce lot, sans distinction. Séparer les trois est ce
     qui permet de dire « ✅ » sans mentir : ce qui reste doit être AU-DELÀ, et
     négligeable.
+
+    🔴 `morceaux` N'EST PAS UNE COMMODITÉ : sans lui, ce contrôle rebâtit l'axe
+    depuis `routes` et mesure une chaussée QUI N'EST PLUS ÉMISE. Un pont emporté
+    (04e) lui faisait alors annoncer 296 m² d'asphalte au-dessus du vide là où il
+    n'y a plus rien du tout. Un contrôle qui mesure autre chose que ce qu'on
+    affiche est pire qu'absent.
     """
     boites = []
     for poly in plateformes:
@@ -4620,53 +4763,56 @@ def _asphalte_en_lair(routes, coudes, chenal, plateformes, murs, pas=0.75):
         ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
         h = ch / 2.0
         for ip, part in enumerate(d["parts"]):
-            net = _axe_ruban(_axe_arrondi(part, d["fid"], ip, coudes), h)
-            if len(net) < 2:
-                continue
-            dec = _onglets(net)
-            for i in range(len(net) - 1):
-                seg = math.hypot(net[i + 1][0] - net[i][0],
-                                 net[i + 1][1] - net[i][1])
-                if seg < 1e-9:
+            # 🌊 Les morceaux RÉELLEMENT émis, pont emporté compris.
+            for axe in (morceaux[d["fid"]][ip] if morceaux
+                        else [_axe_arrondi(part, d["fid"], ip, coudes)]):
+                net = _axe_ruban(axe, h)
+                if len(net) < 2:
                     continue
-                nk = max(1, int(math.ceil(seg / pas)))
-                nw = max(2, int(math.ceil(ch / pas)))
-                aire = (seg / nk) * (ch / nw)
-                for a in range(nk):
-                    f = (a + 0.5) / nk
-                    px = net[i][0] + (net[i + 1][0] - net[i][0]) * f
-                    py = net[i][1] + (net[i + 1][1] - net[i][1]) * f
-                    ux = dec[i][0] + (dec[i + 1][0] - dec[i][0]) * f
-                    uy = dec[i][1] + (dec[i + 1][1] - dec[i][1]) * f
-                    for b in range(nw):
-                        w = -h + ch * (b + 0.5) / nw
-                        q = (px + ux * w, py + uy * w)
-                        if not chenal.dans_eau(q):
-                            continue
-                        total += aire
-                        if any(x0 <= q[0] <= x1 and y0 <= q[1] <= y1
-                               and dedans(poly, q)
-                               for x0, y0, x1, y1, poly in boites):
-                            continue
-                        best = None
-                        cx, cy = int(q[0] // GR), int(q[1] // GR)
-                        for jx in (cx - 1, cx, cx + 1):
-                            for jy in (cy - 1, cy, cy + 1):
-                                for k in idx.get((jx, jy), ()):
-                                    mp = murs[k][0]
-                                    dd = math.hypot(q[0] - mp[0], q[1] - mp[1])
-                                    if best is None or dd < best[0]:
-                                        best = (dd, k)
-                        if best is None:
-                            dela += aire
-                            continue
-                        mp, mn = murs[best[1]]
-                        proj = (q[0] - mp[0]) * mn[0] + (q[1] - mp[1]) * mn[1]
-                        if proj > 0.02:
-                            dela += aire
-                            depasse = max(depasse, proj)
-                        else:
-                            cache += aire
+                dec = _onglets(net)
+                for i in range(len(net) - 1):
+                    seg = math.hypot(net[i + 1][0] - net[i][0],
+                                     net[i + 1][1] - net[i][1])
+                    if seg < 1e-9:
+                        continue
+                    nk = max(1, int(math.ceil(seg / pas)))
+                    nw = max(2, int(math.ceil(ch / pas)))
+                    aire = (seg / nk) * (ch / nw)
+                    for a in range(nk):
+                        f = (a + 0.5) / nk
+                        px = net[i][0] + (net[i + 1][0] - net[i][0]) * f
+                        py = net[i][1] + (net[i + 1][1] - net[i][1]) * f
+                        ux = dec[i][0] + (dec[i + 1][0] - dec[i][0]) * f
+                        uy = dec[i][1] + (dec[i + 1][1] - dec[i][1]) * f
+                        for b in range(nw):
+                            w = -h + ch * (b + 0.5) / nw
+                            q = (px + ux * w, py + uy * w)
+                            if not chenal.dans_eau(q):
+                                continue
+                            total += aire
+                            if any(x0 <= q[0] <= x1 and y0 <= q[1] <= y1
+                                   and dedans(poly, q)
+                                   for x0, y0, x1, y1, poly in boites):
+                                continue
+                            best = None
+                            cx, cy = int(q[0] // GR), int(q[1] // GR)
+                            for jx in (cx - 1, cx, cx + 1):
+                                for jy in (cy - 1, cy, cy + 1):
+                                    for k in idx.get((jx, jy), ()):
+                                        mp = murs[k][0]
+                                        dd = math.hypot(q[0] - mp[0], q[1] - mp[1])
+                                        if best is None or dd < best[0]:
+                                            best = (dd, k)
+                            if best is None:
+                                dela += aire
+                                continue
+                            mp, mn = murs[best[1]]
+                            proj = (q[0] - mp[0]) * mn[0] + (q[1] - mp[1]) * mn[1]
+                            if proj > 0.02:
+                                dela += aire
+                                depasse = max(depasse, proj)
+                            else:
+                                cache += aire
     return total, cache, dela, depasse
 
 
@@ -5469,6 +5615,28 @@ def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):
         pp = [round(mil[0] - cx, 2), round(-(mil[1] - cy), 2)]
         ptaille = round(L * 2.2, 1)
 
+    # 🌊 LE FAUBOURG SINISTRÉ (23b). Sans ce point de vue, la crue ne se juge
+    # sur aucune capture : `ville` la montre à 1 200 m d'étendue, où une ruine
+    # fait deux pixels. Visé sur le barycentre des îlots de RIVE GAUCHE qui ont
+    # bu — donc il suit la table de `04e` au lieu d'une liste de fid écrite ici.
+    noyes = [f for f, x in ilots.items()
+             if x.get("rive") == "gauche" and (x.get("hauteur_eau_max") or 0) > 0
+             and (x["hauteur"] or 0.0) > 0.0]
+    fb = [0.0, 0.0]
+    if noyes:
+        cs = [centre(f) for f in noyes]
+        fb = [round(sum(c[0] for c in cs) / len(cs), 2),
+              round(sum(c[1] for c in cs) / len(cs), 2)]
+    # 🌉 Et le pont EMPORTÉ, visé sur son milieu : c'est un trou, donc rien ne
+    # le signale sur une vue d'ensemble. `pont` vise le plus LONG, qui n'est
+    # pas forcément celui que la crue a pris.
+    casse = [d for d in routes if (d.get("etat_crue") or "") == "coupe"]
+    cp, ctaille = pp, 150.0
+    if casse:
+        pts = [q for d in casse for part in d["parts"] for q in part]
+        cp = [round(sum(q[0] for q in pts) / len(pts) - cx, 2),
+              round(-(sum(q[1] for q in pts) / len(pts) - cy), 2)]
+
     return {
         # 🔄 C'était « la vallée ». Il n'y a plus de vallée : la carte est
         # plate. Le point de vue, lui, sert toujours — c'est la ville entière.
@@ -5487,6 +5655,10 @@ def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):
         "pont": {"cible": pp, "taille": ptaille,
                  "libelle": "Le plus long franchissement, tablier et pile"},
         "place": place,
+        "faubourg": {"cible": fb, "taille": 420.0,
+                     "libelle": "Le faubourg sinistre, rive gauche"},
+        "pont_casse": {"cible": cp, "taille": ctaille,
+                       "libelle": "Le pont emporte par la crue"},
     }
 
 

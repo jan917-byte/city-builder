@@ -190,6 +190,22 @@ CHAMPS = [
     "#C3B896",   # terre travaillée
 ]
 
+# ------------------------------------------------------------------- la crue
+# 🎨 TROIS TEINTES, ET ELLES NE SONT PAS DES COULEURS D'ALARME. La DA dit « pas
+# de météo d'ambiance, pas de drame » : la crue se lit à ce qu'elle a LAISSÉ —
+# du limon, des murs nus — jamais à un rouge de danger posé par-dessus.
+# ⚠️ Le prototype est en couleur d'ÉPOQUE depuis le 2026-08-18 : ces teintes se
+# MÉLANGENT à la couleur du bâtiment, elles ne la remplacent pas. Un faubourg
+# repeint en gris uni effacerait le tissu qu'on vient de passer une étape à
+# rendre lisible.
+LIMON = "#8E7F63"          # le dépôt qui reste quand l'eau se retire
+RUINE_MUR = "#8C8578"       # un mur sans toit, lessivé — ni noir ni brûlé
+# 🔴 LA DALLE D'UNE RUINE EST CLAIRE, ET C'EST MESURÉ À L'ÉCRAN : à #5C574F
+# elle sortait plus sombre que tout, donc lue comme un HANGAR — or Wehrau a
+# déjà deux friches à toiture sombre. Un plancher éventré est du béton et du
+# plâtre : c'est le seul gris pâle de la ville, il ne ressemble à rien d'autre.
+RUINE_TOIT = "#B4AEA1"
+
 # ----------------------------------------------------------------- minéral
 # Un seul gris pour tout le réseau : la hiérarchie s'exprime par la LARGEUR,
 # ce qui est le sujet du troisième critère de réussite et économise quatre
@@ -300,6 +316,15 @@ def couleur_mur(sous_type, graine):
     r = random.Random(graine ^ 0x3D0C)
     bases = ENDUITS.get(sous_type, ENDUITS_DEFAUT)
     return _varier(bases[r.randrange(len(bases))], r, 0.05)
+
+
+def salir(base, hauteur_eau, force=0.14, plafond=0.55):
+    """Ce que la crue a laissé sur une surface : `force` de limon par mètre
+    d'eau, plafonné. Sert au mur ET au sol, d'où les deux paramètres — un sol
+    reste sale plus longtemps qu'une façade, que la pluie lave, et un jardin
+    ravagé n'a plus d'herbe du tout, ce qu'aucun plafond commun ne dirait."""
+    return melanger(base, LIMON,
+                    min(plafond, max(0.0, hauteur_eau) * force))
 
 
 def couleur_champ(graine, impermeabilise=0.0):

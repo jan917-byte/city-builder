@@ -29,6 +29,8 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **G** | le talus des champs, au bord de l'eau |
 | **O** | le plus long franchissement, de près |
 | **M** | la place-parking et ses places peintes — à regarder de haut |
+| **F** | le faubourg sinistré, rive gauche |
+| **N** | le pont que la crue a emporté |
 | **Q / E** | quart de tour, recalé sur les quatre vues cardinales |
 | **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
 | **T** | bascule vue de dessus ⇄ hauteur précédente |
