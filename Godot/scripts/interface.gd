@@ -1,17 +1,16 @@
 extends CanvasLayer
-# L'interface du prototype énergie simplifié.
-#
-# Deux niveaux sans mélange : la ville à gauche, l'îlot choisi à droite, et le
-# survol ne change jamais la fiche. Un seul geste, augmenter la part de toit
-# équipée — qui prend du temps, se voit avancer, et se paie.
-#
-# 💶 Quatre nombres à l'écran, pas un de plus : caisse et recette à gauche,
-# coût de la pose visée et amortissement à droite. Le capital politique reste
-# hors du test.
+# L'interface du prologue climatique : adaptation, puis réduction.
+# Tant que l'urgence tient, aucune décision solaire n'apparaît ; les
+# réparations font avancer la jauge d'adaptation.
 
 signal solaire_demande(fid: int, part: float)
 signal vitesse_demandee(vitesse: float)
 signal temps_remis()
+signal diagnostic_demande(actif: bool)
+# 🔧 Une seule demande pour les trois réparations : reconstruire un îlot,
+# déblayer une rue, rebâtir un tablier. C'est `04e` qui les distingue par le
+# prix, pas l'interface.
+signal reparation_demandee(couche: String, fid: int)
 
 const Ville := preload("res://scripts/ville.gd")
 
@@ -36,6 +35,18 @@ class Jauge extends Control:
 
 	var pose := 0.0   # 0 → 1
 	var cible := 0.0  # 0 → 1, toujours ≥ pose
+	var couleur_reste := RESTE
+	var couleur_visee := VISEE
+	var couleur_pose := POSE
+	var couleur_cadre := CADRE
+
+	func colorer(rempli: Color, vide := RESTE) -> void:
+		if rempli == couleur_pose and vide == couleur_reste:
+			return
+		couleur_pose = rempli
+		couleur_visee = rempli.darkened(0.35)
+		couleur_reste = vide
+		queue_redraw()
 
 	func regler(p: float, c: float) -> void:
 		if is_equal_approx(p, pose) and is_equal_approx(c, cible):
@@ -45,19 +56,25 @@ class Jauge extends Control:
 		queue_redraw()
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), RESTE)
+		draw_rect(Rect2(Vector2.ZERO, size), couleur_reste)
 		if cible > pose:
-			draw_rect(Rect2(0.0, 0.0, size.x * cible, size.y), VISEE)
+			draw_rect(Rect2(0.0, 0.0, size.x * cible, size.y), couleur_visee)
 		if pose > 0.0:
-			draw_rect(Rect2(0.0, 0.0, size.x * pose, size.y), POSE)
+			draw_rect(Rect2(0.0, 0.0, size.x * pose, size.y), couleur_pose)
 		# Sans ce filet, une jauge à 0 % est un rectangle sombre de plus dans un
 		# panneau sombre.
-		draw_rect(Rect2(Vector2.ZERO, size), CADRE, false, 1.0)
+		draw_rect(Rect2(Vector2.ZERO, size), couleur_cadre, false, 1.0)
 
 
 var ville: Ville
 
 var _ville_valeurs := {}
+var _adaptation_jauge: Jauge
+var _adaptation_valeur: Label
+var _adaptation_etat: Label
+var _reduction_jauge: Jauge
+var _reduction_valeur: Label
+var _reduction_etat: Label
 var _fiche_valeurs := {}
 var _fiche_titre: Label
 var _fiche_vide: Label
@@ -72,11 +89,23 @@ var _message: Label
 var _camera_vue: Label
 var _temps_label: Label
 var _vitesses := {}
+var _diagnostic_bouton: Button
+var _diagnostic_panneau: PanelContainer
+var _fiche_panneau: PanelContainer
 
 var _fiche_fid := -1
+var _fiche_couche := "i"
+var _rue_grille: GridContainer
+var _rue_valeurs := {}
+var _repare_bloc: VBoxContainer
+var _repare_texte: Label
+var _repare_bouton: Button
+var _degats := {}
+var _degats_valeurs := {}
 var _mois := 0.0
 var _caisse_ke := Ville.CAISSE_DEPART_KE
 var _cout_en_alerte := false
+var _reduction_verrouillee := true
 
 # La position posée par l'auteur et pas encore validée ; -1 = la fiche commande.
 # ⚠️ Sans ce souvenir, `_maj_fiche()` (à chaque image) reposait la valeur sous
@@ -90,6 +119,7 @@ var _ecrit_curseur := false
 func batir() -> void:
 	_panneau_ville()
 	_panneau_ilot()
+	_panneau_diagnostic()
 	_panneau_camera()
 	_controles_temps()
 
@@ -157,6 +187,23 @@ func _panneau_ville() -> void:
 	p.add_child(v)
 	v.add_child(_label("WEHRAU", 12, ACCENT))
 	v.add_child(_label("Toute la ville", 20, TEXTE))
+	_diagnostic_bouton = Button.new()
+	_diagnostic_bouton.text = "Diagnostic de crue"
+	_diagnostic_bouton.toggle_mode = true
+	_diagnostic_bouton.tooltip_text = "Voir le passage de la crue, les routes bloquées et les bâtiments touchés."
+	_diagnostic_bouton.toggled.connect(func(actif: bool) -> void:
+		diagnostic_demande.emit(actif))
+	v.add_child(_diagnostic_bouton)
+	v.add_child(HSeparator.new())
+	v.add_child(_label("DURABILITÉ", 12, ACCENT))
+	var adaptation := _jauge_climat(v, "Adaptation", Color8(38, 157, 196))
+	_adaptation_jauge = adaptation["jauge"]
+	_adaptation_valeur = adaptation["valeur"]
+	_adaptation_etat = adaptation["etat"]
+	var reduction := _jauge_climat(v, "Réduction", Color8(91, 174, 117))
+	_reduction_jauge = reduction["jauge"]
+	_reduction_valeur = reduction["valeur"]
+	_reduction_etat = reduction["etat"]
 	v.add_child(HSeparator.new())
 
 	for ligne in [
@@ -184,8 +231,87 @@ func _panneau_ville() -> void:
 	(_ville_valeurs["caisse"] as Label).add_theme_color_override("font_color", ACCENT)
 
 
+func _jauge_climat(parent: VBoxContainer, titre: String, couleur: Color) -> Dictionary:
+	var h := HBoxContainer.new()
+	h.add_child(_label(titre, 13, TEXTE))
+	var valeur := _label("0 %", 13, TEXTE)
+	valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	valeur.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(valeur)
+	parent.add_child(h)
+	var jauge := Jauge.new()
+	jauge.custom_minimum_size = Vector2(0, 13)
+	jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	jauge.colorer(couleur)
+	parent.add_child(jauge)
+	var etat := _label("", 11, GRIS)
+	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(etat)
+	return {"jauge": jauge, "valeur": valeur, "etat": etat}
+
+
+func _panneau_diagnostic() -> void:
+	_diagnostic_panneau = PanelContainer.new()
+	_diagnostic_panneau.add_theme_stylebox_override("panel", _boite())
+	_diagnostic_panneau.anchor_left = 0.5
+	_diagnostic_panneau.anchor_right = 0.5
+	_diagnostic_panneau.offset_left = -205
+	_diagnostic_panneau.offset_right = 205
+	_diagnostic_panneau.offset_top = 16
+	_diagnostic_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_diagnostic_panneau.visible = false
+	add_child(_diagnostic_panneau)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_diagnostic_panneau.add_child(v)
+	v.add_child(_label("DIAGNOSTIC DE CRUE", 12, ACCENT))
+	v.add_child(_label("Ce que la crue a laissé dans la ville", 18, TEXTE))
+	v.add_child(HSeparator.new())
+	_legende_crue(v, Color8(38, 157, 196), "Passage de la crue · sols et rues noyés")
+	_legende_crue(v, Color8(232, 126, 48), "Bâtiments touchés · sinistrés ou ruinés")
+	_legende_crue(v, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")
+	v.add_child(HSeparator.new())
+	# 🔧 CE QUE LA CRUE COÛTE ENCORE. Ces trois nombres BAISSENT quand on
+	# répare : sans eux, reconstruire un îlot ne changerait rien de visible
+	# ailleurs que sur cet îlot, et la décision n'aurait pas de contrepartie.
+	for ligne in [
+		["logements", "Logements perdus"],
+		["ponts", "Franchissements coupés"],
+		["reste", "Reste à réparer"],
+	]:
+		var h := HBoxContainer.new()
+		h.add_child(_label(ligne[1], 12, GRIS))
+		var val := _label("—", 14, TEXTE)
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(val)
+		_degats_valeurs[ligne[0]] = val
+		v.add_child(h)
+	v.add_child(_label("D ou le bouton pour fermer", 11, GRIS))
+
+
+func _legende_crue(parent: VBoxContainer, couleur: Color, texte: String) -> void:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	var carre := ColorRect.new()
+	carre.color = couleur
+	carre.custom_minimum_size = Vector2(12, 12)
+	carre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(carre)
+	h.add_child(_label(texte, 12, TEXTE))
+	parent.add_child(h)
+
+
+func afficher_diagnostic(actif: bool) -> void:
+	_diagnostic_panneau.visible = actif
+	_diagnostic_bouton.set_pressed_no_signal(actif)
+	_fiche_panneau.visible = not actif
+
+
 func _panneau_ilot() -> void:
 	var p := PanelContainer.new()
+	_fiche_panneau = p
 	p.add_theme_stylebox_override("panel", _boite())
 	p.anchor_left = 1.0
 	p.anchor_right = 1.0
@@ -225,6 +351,42 @@ func _panneau_ilot() -> void:
 		valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_fiche_grille.add_child(valeur)
 		_fiche_valeurs[ligne[0]] = valeur
+
+	# 🔧 LA FICHE D'UNE RUE. Quatre lignes, et la seule qui compte est l'état :
+	# c'est elle qui dit si le bloc du dessous propose un déblaiement ou un
+	# tablier neuf.
+	_rue_grille = GridContainer.new()
+	_rue_grille.columns = 2
+	_rue_grille.add_theme_constant_override("h_separation", 14)
+	_rue_grille.add_theme_constant_override("v_separation", 4)
+	_rue_grille.visible = false
+	v.add_child(_rue_grille)
+	for ligne in [
+		["type", "Voie"],
+		["largeur", "Largeur"],
+		["charge", "Trafic"],
+		["etat", "Après la crue"],
+	]:
+		_rue_grille.add_child(_label(ligne[1], 12, GRIS))
+		var val := _label("", 12, TEXTE)
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_rue_grille.add_child(val)
+		_rue_valeurs[ligne[0]] = val
+
+	# 🔧 LE BLOC DE RÉPARATION, le même pour un îlot et pour une rue.
+	_repare_bloc = VBoxContainer.new()
+	_repare_bloc.add_theme_constant_override("separation", 6)
+	_repare_bloc.visible = false
+	v.add_child(_repare_bloc)
+	_repare_bloc.add_child(HSeparator.new())
+	_repare_bloc.add_child(_label("Après la crue", 13, ACCENT))
+	_repare_texte = _label("", 12, TEXTE)
+	_repare_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_repare_bloc.add_child(_repare_texte)
+	_repare_bouton = Button.new()
+	_repare_bouton.pressed.connect(func() -> void:
+		reparation_demandee.emit(_fiche_couche, _fiche_fid))
+	_repare_bloc.add_child(_repare_bouton)
 
 	_solaire_bloc = VBoxContainer.new()
 	_solaire_bloc.add_theme_constant_override("separation", 6)
@@ -305,7 +467,7 @@ func _panneau_camera() -> void:
 		"clic milieu glissé : déplacer · molette : zoom",
 		"Q E : quart de tour · flèches : ajuster",
 		"T : vue de dessus · V B R I G O M : les repères",
-		"C : recolorer par tissu",
+		"C : recolorer par tissu · D : diagnostic de crue",
 	]:
 		v.add_child(_label(ligne, 11, GRIS))
 
@@ -378,31 +540,70 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_caisse_ke = indic["caisse_ke"]
 	_ville_valeurs["caisse"].text = _milliers(_caisse_ke) + " k€"
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
+	_maj_durabilite(indic)
 	_temps_label.text = "Mois %s" % _nb(mois, 1)
+	maj_degats(ville.degats(mois))
 	for v in _vitesses:
 		(_vitesses[v] as Button).disabled = is_equal_approx(float(v), vitesse)
 	if _fiche_fid >= 0:
 		_maj_fiche()
 
 
+func _maj_durabilite(indic: Dictionary) -> void:
+	var adaptation := float(indic["adaptation_part"])
+	_adaptation_jauge.regler(adaptation, adaptation)
+	_adaptation_valeur.text = "%d %%" % int(roundf(adaptation * 100.0))
+	_adaptation_etat.text = "%d logements à relever · %d ponts coupés" % [
+		int(ceil(float(indic["adaptation_logements"]))),
+		int(indic["adaptation_ponts"])] if adaptation < 0.9995 else \
+		"La ville tient de nouveau."
+
+	_reduction_verrouillee = bool(indic["reduction_verrouillee"])
+	var reduction := float(indic["reduction_part"])
+	_reduction_jauge.colorer(GRIS.darkened(0.25) if _reduction_verrouillee \
+		else Color8(91, 174, 117))
+	_reduction_jauge.regler(0.0 if _reduction_verrouillee else reduction,
+		0.0 if _reduction_verrouillee else reduction)
+	_reduction_valeur.text = "VERROUILLÉE" if _reduction_verrouillee else \
+		"%d %%" % int(roundf(reduction * 100.0))
+	if _reduction_verrouillee:
+		_reduction_etat.text = "Urgence : relever les logements et les ponts."
+	else:
+		var ecart := float(indic["reduction_ecart_kt"])
+		_reduction_etat.text = "%s kt/an évitées depuis le mois 0." % _nb(ecart, 1) \
+			if ecart >= 0.0 else "Émissions +%s kt/an depuis le mois 0." % _nb(-ecart, 1)
+
+
 func montrer(couche: String, fid: int, _garder := true) -> void:
-	# La fiche appartient au seul îlot cliqué : rues et survol se surlignent
-	# dans la ville sans jamais en prendre possession.
-	if couche != "i" or fid < 0:
+	# 🔄 LA FICHE S'OUVRE AUSSI SUR UNE RUE depuis le 2026-08-21. Elle
+	# n'appartenait qu'à l'îlot ; la crue a mis deux décisions sur la voirie —
+	# déblayer, rebâtir — et une décision qu'on ne peut pas cliquer n'existe pas.
+	if fid < 0 or (couche != "i" and couche != "r"):
 		return
-	if fid != _fiche_fid:
-		_solaire_choix = -1.0  # changer d'îlot abandonne le réglage non validé
+	if fid != _fiche_fid or couche != _fiche_couche:
+		_solaire_choix = -1.0  # changer d'objet abandonne le réglage non validé
 	_fiche_fid = fid
+	_fiche_couche = couche
 	_fiche_vide.visible = false
-	_solaire_bloc.visible = true
+	_fiche_grille.visible = couche == "i"
+	_rue_grille.visible = couche == "r"
+	_solaire_bloc.visible = couche == "i" and not _reduction_verrouillee
 	_maj_fiche()
 
 
 func _maj_fiche() -> void:
+	if _fiche_couche == "r":
+		_maj_fiche_rue()
+		return
 	var o: Dictionary = ville.ilots.get(_fiche_fid, {})
 	if o.is_empty():
 		return
 	_fiche_titre.text = "Îlot %d" % _fiche_fid
+	_maj_reparation(o)
+	# Avant le passage Adaptation → Réduction, il n'y a pas de décision solaire
+	# grisée : elle n'existe pas encore dans le langage du jeu. La jauge de
+	# gauche suffit à annoncer ce qui viendra.
+	_solaire_bloc.visible = not _reduction_verrouillee
 
 	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _mois)
 	var prod := ville.valeur("i", _fiche_fid, "_production_mwh", _mois)
@@ -411,7 +612,11 @@ func _maj_fiche() -> void:
 	var pct := float(etat["actuel"]) * 100.0
 	var cible_pct := float(etat["cible"]) * 100.0
 	(_fiche_valeurs["tissu"] as Label).text = str(o.get("sous_type", "?")).replace("_", " ")
-	(_fiche_valeurs["logements"] as Label).text = _nb(float(o.get("logements", 0.0)), 0)
+	# 🔄 Par `ville.valeur` depuis le 2026-08-21, plus par la fiche brute :
+	# `logements` BOUGE maintenant — la crue en a retiré 417, une
+	# reconstruction les rend, et la base seule affichait toujours 0.
+	(_fiche_valeurs["logements"] as Label).text = _nb(
+		ville.valeur("i", _fiche_fid, "logements", _mois), 0)
 	(_fiche_valeurs["conso"] as Label).text = _nb(conso, 0) + " MWh/an"
 	(_fiche_valeurs["production"] as Label).text = _nb(prod, 0) + " MWh/an"
 	(_fiche_valeurs["toit"] as Label).text = _nb(toit, 0) + " m²"
@@ -426,7 +631,8 @@ func _maj_fiche() -> void:
 	# ce verrou permet aux rampes de s'additionner sans réécrire l'histoire
 	# d'un toit (`ville.lancer_solaire`).
 	_ecrit_curseur = true
-	_solaire_curseur.editable = toit > 0.0 and pct < 100.0 and not etat["en_cours"]
+	_solaire_curseur.editable = not _reduction_verrouillee \
+		and toit > 0.0 and pct < 100.0 and not etat["en_cours"]
 	if _solaire_choix < 0.0:
 		_solaire_curseur.set_value_no_signal(maxf(pct, cible_pct))
 	else:
@@ -440,7 +646,12 @@ func _maj_fiche() -> void:
 
 	var recette := ville.valeur("i", _fiche_fid, "_recette_ke_an", _mois)
 	_alerter_cout(false)
-	if toit <= 0.0:
+	if _reduction_verrouillee:
+		_solaire_valeur.text = "Réduction verrouillée pendant l'urgence."
+		_solaire_cout.text = "Relevez les logements sinistrés et rétablissez les ponts d'abord."
+		_solaire_bouton.text = "Urgence en cours"
+		_solaire_bouton.disabled = true
+	elif toit <= 0.0:
 		_solaire_valeur.text = "Église protégée — panneaux solaires interdits." \
 			if int(o.get("solaire_possible", 1)) == 0 else "Aucun toit équipable."
 		_solaire_cout.text = ""
@@ -503,7 +714,7 @@ func viser(pct: float) -> void:
 
 
 func _sur_curseur(v: float) -> void:
-	if _fiche_fid < 0 or _ecrit_curseur:
+	if _fiche_fid < 0 or _ecrit_curseur or _reduction_verrouillee:
 		return
 	var actuel := ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois) * 100.0
 	# Déposer des panneaux n'est pas une décision de ce prototype (`Énergie` §1).
@@ -554,3 +765,99 @@ static func _milliers(v: float) -> String:
 			out += " "
 		out += s[i]
 	return ("−" if v < -0.5 else "") + out
+
+
+# ------------------------------------------------- après la crue (04e · 23b)
+
+## La fiche d'une rue. Elle n'a qu'un sujet : ce que la crue lui a fait.
+func _maj_fiche_rue() -> void:
+	var o: Dictionary = ville.routes.get(_fiche_fid, {})
+	if o.is_empty():
+		return
+	_fiche_titre.text = "Rue %d" % _fiche_fid
+	var etat := str(o.get("etat_crue", "intact"))
+	if ville.est_repare("r", _fiche_fid):
+		etat = "repare"
+	(_rue_valeurs["type"] as Label).text = str(o.get("hierarchie", "?"))
+	(_rue_valeurs["largeur"] as Label).text = "%s m" % _nb(float(o.get("largeur_m", 0.0)), 0)
+	(_rue_valeurs["charge"] as Label).text = "%d %%" % int(roundf(
+		ville.valeur("r", _fiche_fid, "charge", _mois) * 100.0))
+	(_rue_valeurs["etat"] as Label).text = {
+		"coupe": "franchissement emporté",
+		"fragile": "pile déchaussée",
+		"repare": "remise en service",
+	}.get(etat, "%s m d'eau" % _nb(float(o.get("hauteur_eau", 0.0)), 1)
+		if float(o.get("hauteur_eau", 0.0)) > 0.1 else "intacte")
+	_maj_reparation(o)
+
+
+## LE BLOC DE RÉPARATION, et c'est le seul endroit où le jeu dit non deux fois :
+## une fois parce que la caisse ne suit pas, une fois parce qu'il n'y a rien à
+## réparer. Un bouton grisé sans phrase est une panne ; sous « il manque 214 k€ »
+## c'est une règle.
+func _maj_reparation(o: Dictionary) -> void:
+	var couche := _fiche_couche
+	var prix := float(o.get("cout_reparation_ke", 0.0))
+	if prix <= 0.0:
+		_repare_bloc.visible = false
+		return
+	_repare_bloc.visible = true
+	var fini: bool = ville.reparation_finie(couche, _fiche_fid, _mois)
+	var engage: bool = ville.est_repare(couche, _fiche_fid)
+	var verbe := _verbe_reparation(couche, o)
+	if fini:
+		_repare_texte.text = "%s : fait." % verbe
+		_repare_bouton.text = "Terminé"
+		_repare_bouton.disabled = true
+		return
+	if engage:
+		_repare_texte.text = "Chantier en cours · encore %s" % _duree(
+			ville.reste_reparation_mois(couche, _fiche_fid, _mois))
+		_repare_bouton.text = "Chantier en cours"
+		_repare_bouton.disabled = true
+		return
+	var manque := prix - _caisse_ke
+	var phrase := "%s coûte %s k€, et le chantier dure %s." % [
+		verbe, _milliers(prix),
+		_duree(ville.duree_reparation_mois(couche, _fiche_fid))]
+	_repare_texte.text = _degat_en_clair(couche, o) + "  " + phrase
+	if manque > 0.0:
+		_repare_texte.text += "  Il manque %s k€." % _milliers(manque)
+	_repare_bouton.text = "%s · %s k€" % [verbe, _milliers(prix)]
+	_repare_bouton.disabled = manque > 0.0
+
+
+func _verbe_reparation(couche: String, o: Dictionary) -> String:
+	if couche == "i":
+		return "Reconstruire l'îlot"
+	if str(o.get("etat_crue", "")) == "coupe":
+		return "Rebâtir le tablier"
+	return "Déblayer la rue"
+
+## Ce que la crue a pris à CET objet, en une phrase. Sans elle, le prix n'a
+## pas de contrepartie et le joueur choisit à l'aveugle.
+func _degat_en_clair(couche: String, o: Dictionary) -> String:
+	if couche == "i":
+		var apres := int(roundf(float(o.get("part_ruinee_apres", 0.0)) * 100.0))
+		return "%d bâtiments détruits, %d logements perdus. La crue annoncée en reprendrait %d %%." % [
+			int(o.get("batiments_ruines", 0)),
+			int(o.get("logements_sinistres", 0)), apres]
+	if str(o.get("etat_crue", "")) == "coupe":
+		return "Le tablier est parti ; la rive gauche n'a plus d'accès routier."
+	return "La rue a gardé %s m de limon." % _nb(
+		float(o.get("hauteur_eau", 0.0)), 1)
+
+
+## Ce que la crue coûte encore à la ville. Trois nombres, et ils baissent quand
+## on répare : c'est la seule contrepartie visible d'une reconstruction tant que
+## le budget ne dépend pas de `logements` (dette nommée du prototype).
+func maj_degats(d: Dictionary) -> void:
+	_degats = d
+	if _degats_valeurs.is_empty():
+		return
+	(_degats_valeurs["logements"] as Label).text = _nb(
+		float(d["logements_perdus"]), 0)
+	(_degats_valeurs["ponts"] as Label).text = "%d sur 3" % int(
+		d["franchissements_coupes"])
+	(_degats_valeurs["reste"] as Label).text = _milliers(
+		float(d["a_reparer_ke"])) + " k€"

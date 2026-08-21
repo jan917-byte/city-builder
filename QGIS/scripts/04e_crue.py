@@ -31,6 +31,7 @@ LE MODÈLE, EN QUATRE IDÉES
      lit les deux sur le même îlot : « il a pris 1,4 m, la prochaine en met 2,6 ».
 """
 
+import math
 import os
 import sqlite3
 import sys
@@ -61,10 +62,17 @@ PENTE_DROITE = 26.0             # la terrasse, la même du nord au sud
 # 🔴 LE DÉCROCHEMENT DE LA RIVE DROITE, en mètres. C'est LUI qui tient la
 # décision 23b : à 0, la crue d'ouverture mord la ville et le faubourg cesse
 # d'être « le petit bout d'en face qu'on pourrait ne pas reconstruire ».
-BERGE_DROITE_M = 3.10
+# 🔄 MONTÉ AVEC LA CRUE le 2026-08-21 (3,10 → 4,50) : l'auteur veut la rive
+# gauche RASÉE, et le décrochement se mesure à la crue, pas dans l'absolu. À
+# 3,10 sous une crue de 4,40 le front de quai buvait, et « la ville regarde »
+# devenait « la ville aussi ».
+BERGE_DROITE_M = 4.50
 
-NIVEAU_OUVERTURE_M = 3.00       # la crue qui a eu lieu — l'état de départ
-NIVEAU_ANNONCE_M = 5.00         # celle qu'on annonce — c'est elle qui fait `alea`
+# 🔄 REPRIS le 2026-08-21 (3,00 → 4,40 → 3,80) : à 4,40, les 106
+# ruines effaçaient le tissu du faubourg. À 3,80, ruines et bâtiments encore
+# debout se partagent les îlots touchés : la crue frappe sans raser le lieu.
+NIVEAU_OUVERTURE_M = 3.80       # la crue qui a eu lieu — l'état de départ
+NIVEAU_ANNONCE_M = 6.00         # celle qu'on annonce — c'est elle qui fait `alea`
 
 # Les paliers de dégât, en mètres d'eau AU PIED du bâtiment.
 # 🔴 2,60 m n'est pas un réglage libre : c'est la hauteur sous plafond d'un
@@ -76,14 +84,36 @@ SEUIL_MOUILLE = 0.10
 
 # 🎚️ LES PONTS. Level design pur : la liste se corrige à la main, jamais par
 # un calcul. Trois franchissements restent après 30c (145, 168, 169).
-# ⚠️ 168 est LE pont du faubourg — `02_qualifier.py` le dit intouchable, seul
-# accès des 279 logements de rive gauche. Le couper est exactement pour ça : la
-# crue prend au joueur la seule chose qui reliait le faubourg à la ville, et
-# « rendre à l'eau » cesse d'être une lubie pour devenir l'option qui économise
-# un pont. Rétablir 145 ou 169 à sa place ne coûte qu'une ligne ici.
+# 🔄 LES TROIS SONT COUPÉS depuis le 2026-08-21, demande de l'auteur : la rive
+# gauche n'est plus accessible du tout. Avant, 168 seul l'était et 169 tenait —
+# le faubourg restait joignable, donc la crue ne coûtait rien de structurel.
+# ⚠️ Ça contredit frontalement 30c (`le faubourg garde un accès qui n'est pas
+# le quai`) : c'est le prix à payer pour que « rendre à l'eau » soit l'option
+# qui ÉCONOMISE trois ponts au lieu d'un caprice. Rétablir un accès ne coûte
+# qu'une ligne ici — mettre 169 en `fragile` rend le faubourg piéton.
+# --- LE PRIX DE LA RÉPARATION --------------------------------------------
+# 🎚️ LEVEL DESIGN PUR, et c'est une PROPOSITION : ces trois nombres décident
+# si « rendre à l'eau » est un choix ou une évidence. Ils se corrigent à la
+# main, comme les listes de `fid` de `02`.
+#
+# Le repère qui les tient : la caisse part à 800 k€, la dotation vaut 360 k€/an,
+# donc ~7 700 k€ sur les vingt ans du jeu — et équiper toute la ville en solaire
+# en coûte 11 000. Tout remettre en état DOIT rester hors de portée ; un îlot,
+# non. Le tableau imprimé plus bas dit où on en est à chaque relance.
+PRIX_RECONSTRUCTION_EUR_M2 = 220.0   # par m² de plancher ruiné (emprise × niveaux)
+PRIX_REMISE_EN_ETAT_EUR_M2 = 60.0    # par m² de plancher SINISTRÉ : le rez à refaire
+PRIX_DEBLAIEMENT_EUR_M2 = 14.0       # la vase enlevée d'une rue, par m² de voirie
+PRIX_PONT_EUR_M2 = 3500.0            # un tablier neuf, par m² de tablier
+
+# Les trois franchissements qui restent apres 30c. Ecrits ici pour que le
+# controle d'acces sache dire « il en reste un » : `02` en a la liste, elle
+# ne remonte pas jusqu'ici.
+FRANCHISSEMENTS = (145, 168, 169)
+
 PONTS_CASSES = {
-    168: "coupe",      # tablier emporté — infranchissable
-    169: "fragile",    # pile déchaussée — passe, mais ne tiendra pas la suivante
+    145: "coupe",      # tablier emporté — infranchissable
+    168: "coupe",      # celui du faubourg : les 279 logements n'ont plus d'accès
+    169: "coupe",      # tablier emporté — infranchissable
 }
 
 
@@ -137,7 +167,23 @@ def _riviere(cur):
     _, u = D4.axe_principal([p for a in anneaux for p in a])
     if u[1] > 0:
         u = (-u[0], -u[1])
-    return segs, max(ys), min(ys), u
+    return segs, max(ys), min(ys), u, anneaux
+
+
+def _dedans(anneau, p):
+    """Lancer de rayon. Sert à mesurer la PORTÉE d'un pont : la longueur de son
+    axe qui passe au-dessus de l'eau, et c'est elle qui fait le prix du tablier.
+    """
+    x, y = p
+    dedans = False
+    n = len(anneau)
+    for i in range(n):
+        ax, ay = anneau[i]
+        bx, by = anneau[(i + 1) % n]
+        if (ay > y) != (by > y) and \
+                x < (bx - ax) * (y - ay) / (by - ay) + ax:
+            dedans = not dedans
+    return dedans
 
 
 def _rive_de(p, segs, u):
@@ -156,7 +202,7 @@ def main():
         raise SystemExit("introuvable : %s\nLancer la chaîne d'abord." % GPKG)
     con = sqlite3.connect(GPKG)
     cur = con.cursor()
-    segs, ynord, ysud, aval = _riviere(cur)
+    segs, ynord, ysud, aval, eaux = _riviere(cur)
 
     def mesurer(anneau):
         c = D4.centroide(anneau)
@@ -233,24 +279,73 @@ def main():
     # Les rues du faubourg sont courtes, la marche ne se voit pas — sur une
     # radiale de 300 m, elle se verrait.
     rues = []
-    for fid, blob in cur.execute("SELECT fid, geom FROM routes"):
+    largeurs = {}
+    for fid, blob, larg in cur.execute(
+            "SELECT fid, geom, largeur_m FROM routes"):
         parts, _ = lire_wkb(gpkg_vers_wkb(blob))
         pts = [p for pa in parts for p in pa]
         c = (sum(p[0] for p in pts) / len(pts),
              sum(p[1] for p in pts) / len(pts))
         d = min(D4.dist_pt_seg(c, a, b) for a, b in segs)
         f = D4.borne((ynord - c[1]) / (ynord - ysud))
+        # La longueur du tronçon, et celle de la part qui passe AU-DESSUS DE
+        # L'EAU : la première fait le prix du déblaiement, la seconde celui du
+        # tablier. Aucune des deux n'est dans la table `routes`.
+        longueur = portee = 0.0
+        for pa in parts:
+            for k in range(len(pa) - 1):
+                a0, b0 = pa[k], pa[k + 1]
+                L = math.hypot(b0[0] - a0[0], b0[1] - a0[1])
+                longueur += L
+                mil = ((a0[0] + b0[0]) / 2.0, (a0[1] + b0[1]) / 2.0)
+                if any(_dedans(an, mil) for an in eaux):
+                    portee += L
+        largeurs[fid] = (larg or 0.0, longueur, portee)
         # La rive d'une rue n'est pas dans les données : on la déduit, par le
         # même test qu'en `04`. Un pont tombe d'un côté ou de l'autre selon son
         # milieu — sans conséquence, il porte déjà `etat_crue`.
         h = hauteur_eau(d, f, _rive_de(c, segs, aval), NIVEAU_OUVERTURE_M)
         rues.append((round(h, 2), fid))
 
-    _compte_rendu(ilots, bats, rues)
+    # --- CE QUE COÛTE LA RÉPARATION ------------------------------------
+    # 🔴 UN PRIX PAR OBJET, SUR L'OBJET. C'est ce qui permet à la maquette de
+    # poser trois décisions — un îlot, une rue, un pont — sans qu'une seule
+    # ligne de GDScript ne connaisse la crue. Godot lit `cout_reparation_ke`
+    # et l'affiche ; il ne le calcule jamais.
+    niveaux = dict(cur.execute(
+        "SELECT b.fid, p.niveaux FROM batiments b"
+        " JOIN parcelles p ON p.fid = b.fid_parcelle"))
+    for b in bats:
+        b["plancher"] = b["surf"] * (niveaux.get(b["fid"]) or 1.0)
+    for fid, d in ilots.items():
+        sdp = sum(b["plancher"] for b in d["bats"] if b["etat"] == "ruine")
+        # 🔴 UN SEUL PRIX POUR TOUT L'ÎLOT, et il couvre les deux états : on ne
+        # reconstruit pas une maison en laissant sa voisine les pieds dans la
+        # boue. C'est ce qui permet à « reconstruire » de rendre TOUS les
+        # logements perdus, ruinés comme sinistrés.
+        sdp_sin = sum(b["plancher"] for b in d["bats"]
+                      if b["etat"] == "sinistre")
+        d["n_ruines"] = sum(1 for b in d["bats"] if b["etat"] == "ruine")
+        d["sdp_ruinee"] = sdp
+        d["cout_ke"] = round((sdp * PRIX_RECONSTRUCTION_EUR_M2
+                              + sdp_sin * PRIX_REMISE_EN_ETAT_EUR_M2)
+                             / 1000.0, 1)
+    couts_rue = {}
+    for h, fid in rues:
+        larg, longueur, portee = largeurs.get(fid, (0.0, 0.0, 0.0))
+        if PONTS_CASSES.get(fid) == "coupe":
+            # Un tablier neuf, sur la portée MESURÉE au-dessus de l'eau.
+            couts_rue[fid] = round(portee * larg
+                                   * PRIX_PONT_EUR_M2 / 1000.0, 1)
+        elif h >= SEUIL_MOUILLE:
+            couts_rue[fid] = round(longueur * larg
+                                   * PRIX_DEBLAIEMENT_EUR_M2 / 1000.0, 1)
+
+    _compte_rendu(ilots, bats, rues, couts_rue, largeurs)
     if BLANC:
         print("\n--blanc : rien n'a ete ecrit.")
         return
-    _ecrire(con, cur, ilots, bats, rues)
+    _ecrire(con, cur, ilots, bats, rues, couts_rue)
     print("\n[ok] ecrit dans %s" % os.path.relpath(GPKG, RACINE))
 
 
@@ -259,7 +354,7 @@ def main():
 ORDRE = ("ruine", "sinistre", "mouille", "intact")
 
 
-def _compte_rendu(ilots, bats, RUES):
+def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None):
     print("=" * 78)
     print("04e — LA CRUE  (ouverture %.2f m · annoncée %.2f m)"
           % (NIVEAU_OUVERTURE_M, NIVEAU_ANNONCE_M))
@@ -317,12 +412,55 @@ def _compte_rendu(ilots, bats, RUES):
           % (sum(1 for h in hs if h >= SEUIL_MOUILLE), len(hs),
              max(hs or [0.0])))
 
+    # 💶 CE QUE LA RÉPARATION COÛTE, ET C'EST LE TABLEAU QU'ON REGARDE POUR
+    # RÉGLER LES TROIS PRIX. Le total DOIT dépasser ce que la ville gagne en
+    # vingt ans, sinon reconstruire n'est pas un choix ; un îlot pris seul
+    # DOIT rester payable, sinon il n'y a pas de décision du tout.
+    if COUTS is not None:
+        print("\nLE PRIX DE LA RÉPARATION  (%.0f €/m² de plancher ·"
+              " %.0f €/m² de rue · %.0f €/m² de tablier)"
+              % (PRIX_RECONSTRUCTION_EUR_M2, PRIX_DEBLAIEMENT_EUR_M2,
+                 PRIX_PONT_EUR_M2))
+        print("  fid  ce qu'on répare              ruines   plancher     k€")
+        tot_i = 0.0
+        for fid, d in sorted(ilots.items(), key=lambda t: -t[1]["cout_ke"]):
+            if d["cout_ke"] <= 0.0:
+                continue
+            tot_i += d["cout_ke"]
+            print("  %3d  reconstruire %-16s %5d %8.0f m² %7.0f"
+                  % (fid, d["st"], d["n_ruines"], d["sdp_ruinee"],
+                     d["cout_ke"]))
+        tot_p = sum(v for f, v in COUTS.items()
+                    if PONTS_CASSES.get(f) == "coupe")
+        tot_r = sum(COUTS.values()) - tot_p
+        for f in sorted(FRANCHISSEMENTS):
+            if f in COUTS and PONTS_CASSES.get(f) == "coupe":
+                larg, _, portee = (LARGEURS or {}).get(f, (0.0, 0.0, 0.0))
+                print("  %3d  rebâtir le tablier          %5.0f m × %.0f m     %7.0f" % (f, portee, larg, COUTS[f]))
+        print("  %-50s %7.0f" % ("déblayer les rues envasées", tot_r))
+        print("  %-50s %7.0f" % ("TOUT réparer", tot_i + tot_p + tot_r))
+        print("       la ville dispose de ~7 700 k€ sur vingt ans"
+              " (800 de caisse + 360/an) — donc %.1f× ce qu'elle a"
+              % ((tot_i + tot_p + tot_r) / 7700.0))
+
+    # 🌉 CE QU'ON DEMANDE À CE TABLEAU N'EST PLUS « quel pont est cassé »
+    # mais « reste-t-il un accès » — c'est ça que l'auteur a tranché le
+    # 2026-08-21. Le contrôle sort en clair pour qu'un `PONTS_CASSES`
+    # retouché à la main dise tout de suite ce qu'il vient de rouvrir.
     print("\nLES FRANCHISSEMENTS")
-    for fid in sorted(PONTS_CASSES):
-        print("  pont %3d  → %s" % (fid, PONTS_CASSES[fid]))
-    print("  ⚠️ le réseau routier N'EST PAS retouché : un pont coupé reste dans"
-          " `routes`.\n     Le report de trafic n'est pas modélisé — dette"
-          " nommée dans Prototype/Crue.md.")
+    for fid in sorted(FRANCHISSEMENTS):
+        print("  pont %3d  → %s" % (fid, PONTS_CASSES.get(fid, "intact")))
+    passants = [f for f in FRANCHISSEMENTS if PONTS_CASSES.get(f) != "coupe"]
+    log_g = sum(d["log"] for d in ilots.values() if d["rive"] == "gauche")
+    if passants:
+        print("  → la rive gauche RESTE ACCESSIBLE par %s"
+              % ", ".join("le pont %d" % f for f in sorted(passants)))
+    else:
+        print("  → RIVE GAUCHE COUPÉE : aucun franchissement, %d logements"
+              " sans accès routier" % log_g)
+    print("  ⚠️ le réseau routier N'EST PAS retouché : un pont coupé reste"
+          " dans `routes`. Le report de trafic n'est pas modélisé —"
+          " dette nommée dans Prototype/Crue.md.")
 
 
 # ----------------------------------------------------------------- l'écriture
@@ -336,7 +474,7 @@ def _colonnes(cur, table, cols):
             cur.execute('ALTER TABLE "%s" ADD COLUMN %s %s' % (table, nom, typ))
 
 
-def _ecrire(con, cur, ilots, bats, rues):
+def _ecrire(con, cur, ilots, bats, rues, couts_rue):
     _colonnes(cur, "batiments", [("hauteur_eau", "REAL"),
                                  ("hauteur_eau_annoncee", "REAL"),
                                  ("etat_crue", "TEXT")])
@@ -344,23 +482,39 @@ def _ecrire(con, cur, ilots, bats, rues):
                              ("part_ruinee", "REAL"),
                              ("part_ruinee_apres", "REAL"),
                              ("part_sinistree", "REAL"),
-                             ("logements_sinistres", "INTEGER")])
+                             ("logements_sinistres", "INTEGER"),
+                             ("batiments_ruines", "INTEGER"),
+                             ("cout_reparation_ke", "REAL")])
     _colonnes(cur, "routes", [("etat_crue", "TEXT"),
-                              ("hauteur_eau", "REAL")])
+                              ("hauteur_eau", "REAL"),
+                              ("cout_reparation_ke", "REAL")])
 
     cur.executemany(
         "UPDATE batiments SET hauteur_eau=?, hauteur_eau_annoncee=?,"
         " etat_crue=? WHERE fid=?",
         [(round(b["h"], 2), round(b["h_annonce"], 2), b["etat"], b["fid"])
          for b in bats])
+    # 🔴 LES LOGEMENTS SINISTRÉS SORTENT DU PARC. Sans ça l'îlot 66 annonçait
+    # 71 logements alors que ses 21 bâtiments sont des murs sans toit, et la
+    # ville consommait pour un faubourg évacué. `logements_sinistres` garde la
+    # trace de ce qui a été retiré : c'est lui que « reconstruire » rend.
+    # ⚠️ `04` recalcule `logements` au passage précédent — cette soustraction
+    # ne tient que parce que `chaine.py` fait passer 04e APRÈS.
+    cur.executemany(
+        "UPDATE ilots SET logements = MAX(0, logements - ?) WHERE fid=?",
+        [(d["log_sinistres"], f) for f, d in ilots.items()
+         if d["log_sinistres"]])
     cur.executemany(
         "UPDATE ilots SET alea=?, hauteur_eau_max=?, part_ruinee=?,"
-        " part_ruinee_apres=?, part_sinistree=?, logements_sinistres=?"
-        " WHERE fid=?",
+        " part_ruinee_apres=?, part_sinistree=?, logements_sinistres=?,"
+        " batiments_ruines=?, cout_reparation_ke=? WHERE fid=?",
         [(d["alea"], round(d["h_max"], 2), round(d["part_ruinee"], 3),
           round(d["part_ruinee_apres"], 3), round(d["part_sinistree"], 3),
-          d["log_sinistres"], f) for f, d in ilots.items()])
-    cur.execute("UPDATE routes SET etat_crue='intact'")
+          d["log_sinistres"], d["n_ruines"], d["cout_ke"], f)
+         for f, d in ilots.items()])
+    cur.execute("UPDATE routes SET etat_crue='intact', cout_reparation_ke=0")
+    cur.executemany("UPDATE routes SET cout_reparation_ke=? WHERE fid=?",
+                    [(v, f) for f, v in couts_rue.items()])
     cur.executemany("UPDATE routes SET hauteur_eau=? WHERE fid=?", rues)
     cur.executemany("UPDATE routes SET etat_crue=? WHERE fid=?",
                     [(v, f) for f, v in PONTS_CASSES.items()])

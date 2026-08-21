@@ -79,6 +79,8 @@ Fichier : `QGIS/data/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
 
 Des ruines encore chaudes sur les treize îlots du faubourg, 417 logements touchés — et **une seconde crue annoncée**. C'est l'annonce qui fait le jeu : sans elle, « ne pas reconstruire » est un choix sentimental ; avec elle, c'est un calcul.
 
+Cette réparation forme le prologue : **seule l'adaptation est en jeu**. La réduction des émissions entre lorsque la ville tient de nouveau. → [[Adaptation et réduction]] · [[Décisions arrêtées]] 72
+
 Ce que la carte porte, si on veut chiffrer l'événement :
 
 | Niveau | Îlots touchés | Logements | Part du parc |

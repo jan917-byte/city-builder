@@ -145,6 +145,10 @@ MARGE_TRONC_CHAUSSEE = 0.40
 # champs est ce qui fait lire les deux.
 FOND_ILSE = -2.6           # le lit, sous l'eau, jamais vu
 NAPPE_ILSE = -2.0          # le plan d'eau : 2 m sous la ville
+# La crue se lit aussi dans la coupe de ville : le faubourg touché, rive
+# gauche, est 1 m plus bas ; la terrasse intacte, rive droite, 1 m plus haut.
+RIVE_GAUCHE_Y = -1.0
+RIVE_DROITE_Y = 1.0
 # ⚠️ La VOIRIE reste à 0, comme tout le reste : les trois franchissements
 # passent donc au-dessus du chenal sans qu'aucune ligne de code ne parle de
 # pont. C'est le creusement qui fabrique le pont, pas un tablier dessiné. Le
@@ -268,12 +272,34 @@ Y_QUAI = Y_SOL - 0.01
 # 🌊 LA CRUE, CÔTÉ RENDU (04e · décision 23b). Deux constantes, et elles ne
 # décident rien du jeu : `04e` dit QUI est ruiné, celles-ci disent à quoi ça
 # ressemble.
-RUINE_NIVEAUX = 1.0        # ce qui reste debout : le rez-de-chaussée, sans toit
+# 🔄 REPRIS EN ENTIER le 2026-08-21. Une ruine était un rez-de-chaussée arasé
+# à plat sous une dalle claire : cent bâtiments traités pareil sortaient en
+# lotissement de toits plats, et l'auteur ne voyait AUCUNE destruction. Ce qui
+# fait lire une ruine en axonométrie est sa CRÊTE CASSÉE et le trou sombre
+# qu'elle laisse voir — pas sa teinte.
+# 🔴 LES DEUX NOMBRES QUI PERMETTENT DE RECONSTRUIRE SANS RIEN EFFACER. Une
+# ruine tient tout entière SOUS le bâtiment neuf qui la remplacera : sa crête
+# reste sous 2,70 m (le rez le plus bas de la ville) et son emprise rentre de
+# 5 cm. Montrer le maillage « réparé » suffit donc à faire disparaître la
+# ruine — aucun nœud à retirer, aucune géométrie à reconstruire à l'exécution.
+# ⚠️ Monter RUINE_PANS au-delà de 0,95 fait ressortir des bouts de mur cassé
+# À TRAVERS les maisons reconstruites.
+RUINE_PANS = (0.10, 0.36, 0.64, 0.88)   # hauteurs de pan de mur, en rez
+RUINE_PAN_ARETES = (1, 3)               # arêtes consécutives à la même hauteur
+RUINE_RETRAIT = 0.05                    # de combien la ruine rentre sous le neuf
+RUINE_DALLE_Y = 0.08                    # le plancher éventré, au ras du sol
+# 🌳 Au-dessus de cette hauteur d'eau, on ne plante plus rien : ni jardin, ni
+# alignement. Ce n'est pas de la botanique — c'est ce qui fait que le faubourg
+# CESSE D'ÊTRE VERT. Une rangée de tilleuls intacts au-dessus d'une rue de
+# limon annulait à elle seule tout le reste.
+CRUE_ARBRE_NOYE_M = 1.20
 # De combien la coupure d'un pont emporté déborde de part et d'autre de l'eau.
 # Assez pour que le vide se voie depuis la vue d'ensemble (touche V), pas assez
 # pour manger la culée — sinon la route s'arrête au milieu du quai, ce qui se
 # lit comme un bug de la chaîne et non comme un ouvrage détruit.
 PONT_COUPE_MARGE = 3.0
+PONT_RUINE_BOUT = 6.0      # moignon gardé depuis chaque culée
+PONT_RUINE_CHUTE = 0.65    # affaissement du bord cassé
 
 # 🔄 `alea` EST DE RETOUR (04e, décision 23b) : la crue rentre dans le prototype
 # et l'îlot doit pouvoir dire ce qu'il a pris et ce qu'il risque. Il vient avec
@@ -288,9 +314,13 @@ COLS_ILOTS = [
     "desserte_tc",
     "alea", "hauteur_eau_max", "part_ruinee", "part_ruinee_apres",
     "part_sinistree", "logements_sinistres",
+    # 🔧 CE QUE LA RÉPARATION COÛTE, calculé par `04e` et jamais ici : le prix
+    # est du level design, il vit avec les sept nombres de la crue.
+    "batiments_ruines", "cout_reparation_ke",
 ]
 COLS_ROUTES = ["fid", "hierarchie", "largeur_m", "emprise_libre_m", "charge",
-               "canopee", "stationnement", "etat_crue", "hauteur_eau"]
+               "canopee", "stationnement", "etat_crue", "hauteur_eau",
+               "cout_reparation_ke"]
 
 # Ce qui part dans `objets` : la fiche qu'on lit en cliquant, et l'état de
 # départ du noyau. Tout ce qui n'est pas là ne peut ni s'afficher ni évoluer.
@@ -298,7 +328,7 @@ FICHE_ILOTS = [c for c in COLS_ILOTS if c != "fid"]
 # 🔗 L'interface du toit (41 · 64), calculée et non lue dans le `.gpkg` :
 # surface réelle, pente, et le drapeau « toit plat ». L'ombrage, lui, est déjà
 # là — c'est `canopee`.
-TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat"]
+TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat", "toit_m2_neuf"]
 FICHE_ROUTES = [c for c in COLS_ROUTES if c != "fid"] + ["longueur_m"]
 
 # La canopée d'un tronçon PLANTÉ DE BOUT EN BOUT — un arbre tous les
@@ -760,6 +790,9 @@ class Chenal(object):
         # ~200 arêtes de berge une par une.
         self.pas = 40.0
         self.idx = {}
+        self._coupes_rive = {}
+        ys = [p[1] for a in self.rivieres for p in a]
+        self._y_rive = (min(ys), max(ys)) if ys else (0.0, 0.0)
         for k, (p, q) in enumerate(self.berges):
             for cx in range(int(min(p[0], q[0]) // self.pas),
                             int(max(p[0], q[0]) // self.pas) + 1):
@@ -769,6 +802,31 @@ class Chenal(object):
 
     def dans_eau(self, p):
         return any(dedans(r, p) for r in self.rivieres)
+
+    def niveau_rive(self, x, y, eau_plate=True):
+        """Décalage vertical des deux rives ; l'eau reste horizontale.
+
+        L'Ilse coule vers le sud : face à l'aval, sa rive gauche est à l'est.
+        Une coupe horizontale donne son milieu local même dans le grand S.
+        """
+        cle = int(round(y * 4.0))
+        coupe = self._coupes_rive.get(cle)
+        if coupe is None:
+            yc = min(max(cle / 4.0, self._y_rive[0] + 1e-4),
+                     self._y_rive[1] - 1e-4)
+            xs = []
+            for a in self.rivieres:
+                for p, q in zip(a, a[1:]):
+                    if (p[1] <= yc < q[1]) or (q[1] <= yc < p[1]):
+                        t = (yc - p[1]) / (q[1] - p[1])
+                        xs.append(p[0] + (q[0] - p[0]) * t)
+            coupe = (min(xs), max(xs)) if len(xs) >= 2 else (x, x)
+            self._coupes_rive[cle] = coupe
+        gauche_x, droite_x = coupe
+        if eau_plate and gauche_x < x < droite_x:
+            return 0.0
+        milieu = (gauche_x + droite_x) / 2.0
+        return RIVE_GAUCHE_Y if x > milieu else RIVE_DROITE_Y
 
     def est_berge(self, a, b):
         return tuple(sorted((_cle(a), _cle(b)))) in self.cles_berges
@@ -1376,13 +1434,16 @@ def main():
 
     # Repère Godot : Y en haut, Z vers le sud. Le signe sur Z garde le nord
     # au nord — et inverse la chiralité, ce dont la triangulation tient compte.
-    def G(x, y, alt):
+    def G_eau(x, y, alt):
         return (x - cx, alt, -(y - cy))
 
     chenal = Chenal([d["brut"] for d in ilots.values()
                      if d["sous_type"] == "riviere"])
     print("  chenal : %d arêtes de berge (%d arêtes internes à l'eau écartées)"
           % (len(chenal.berges), chenal.internes))
+
+    def G(x, y, alt):
+        return G_eau(x, y, alt + chenal.niveau_rive(x, y))
 
     # ------------------------------------------------- le talus, puis la plaque
     # LA VILLE RESTE PLATE. Le seul relief est la descente des champs vers
@@ -1420,6 +1481,18 @@ def main():
 
     # ------------------------------------------------------------ les îlots
     masses, sols, eau = Maillage(), Maillage(), Maillage()
+    # 🔧 LE MAILLAGE DE LA RÉPARATION. Les mêmes bâtiments, intacts, groupés
+    # par îlot — jamais affichés au chargement. Godot en montre le groupe d'un
+    # îlot le jour où le joueur paie sa reconstruction ; la ruine, qui tient
+    # dessous, disparaît d'elle-même. Voir RUINE_RETRAIT.
+    repare = Maillage()
+    # 🔧 LA VOIRIE RÉPARÉE, un groupe par tronçon : le tablier neuf d'un
+    # franchissement emporté, la chaussée lavée d'une rue envasée. Cachée au
+    # chargement, comme le bâti réparé — et posée 2 cm plus haut que ce qu'elle
+    # recouvre, sans quoi deux surfaces coplanaires se battraient en duel.
+    repare_voirie = Maillage()
+    RELEVE = 0.02
+    n_tablier_neuf = 0
     rng = random.Random(GRAINE)
     arbres = []
     emprises = {}
@@ -1468,6 +1541,7 @@ def main():
     n_chemin = 0
     aire_chemin = 0.0
     n_champ = n_bande = n_maille_talus = 0
+    n_neuf = 0                 # bâtiments préparés pour la reconstruction
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -1480,7 +1554,7 @@ def main():
         # du bâtiment : `hauteur_eau_max` est le maximum de ses volumes, donc
         # un îlot dont un coin a bu se salit en entier, ce qui est le cas.
         brut_ilot = PAL.salir(PAL.couleur_ilot(st, haut, d["impermeabilise"]),
-                              d["hauteur_eau_max"] or 0.0, 0.24, 0.72)
+                              d["hauteur_eau_max"] or 0.0, 0.26, 0.86)
         # En espace LINÉAIRE : Godot interprète les couleurs de sommet
         # comme telles. En sRGB, toute la maquette ressort délavée.
         coul = PAL.vers_lineaire(brut_ilot)
@@ -1494,8 +1568,9 @@ def main():
             # 🌊 Sur l'anneau BRUT, pas sur l'emprise : l'emprise est retirée
             # de la voirie, et le chenal doit tomber exactement sur la limite
             # de l'îlot d'eau, sinon un liseré de sol flotte au-dessus du vide.
-            a, b = _chenal_eau(eau, terre, d["brut"], chenal, coul, coul_quai,
-                               G, relief)
+            a, b = _chenal_eau(
+                eau, terre, d["brut"], chenal, coul, coul_quai, G_eau, relief,
+                lambda x, y: chenal.niveau_rive(x, y, False))
             quais_ok += a
             quais_tot += b
             continue
@@ -1533,16 +1608,23 @@ def main():
             # la plus grande surface de SOL visible d'un îlot bâti, donc celle
             # qui dit jusqu'où l'eau est montée à l'intérieur du pâté.
             eau_ilot = d["hauteur_eau_max"] or 0.0
-            coul_jardin_i = coul_jardin if eau_ilot <= 0.10 else                 PAL.vers_lineaire(PAL.salir(
+            # 🌊 La haie suit le jardin : une bordure verte VIF autour d'une
+            # parcelle de vase annulait à elle seule tout le reste de la passe.
+            coul_jardin_i = coul_jardin
+            if eau_ilot > 0.10:
+                coul_jardin_i = PAL.vers_lineaire(PAL.salir(
                     PAL.couleur_sol("jardins_familiaux", 0.10), eau_ilot,
                     0.26, 0.88))
+            coul_haie_i = tuple(c * 0.68 for c in coul_jardin_i)
             # ⚠️ TOUTES les parcelles d'un îlot tombent dans LE MÊME groupe.
             # C'est ce qui permet d'avoir mille bâtiments sans passer de 237 à
             # 1 200 nœuds cliquables : la géométrie descend à la parcelle, la
             # SÉLECTION reste à l'îlot — et la décision aussi. La parcelle est
             # l'entité persistante des données (35), pas celle du clic.
+            repare.marque(fid)
             pente = BATI.get(st, BATI_DEFAUT)[3]
             toit_ilot = 0.0
+            toit_neuf_ilot = 0.0
             volumes = []
             batiments_par_parcelle = {}
             # 🚶 LA VENELLE NE SE BÂTIT PAS, ET ELLE EST UNE ADRESSE. Deux
@@ -1560,19 +1642,16 @@ def main():
                     p = b["parcelle"]
                     emp = b["anneau"]
                     faite = _direction_faitage(p["anneau"], idx)
-                    # 🌊 UNE RUINE PERD SON TOIT ET SES ÉTAGES (04e). Un mur
-                    # sans couverture est ce qui se lit de plus loin en
-                    # axonométrie — bien avant une tache de couleur — et c'est
-                    # la seule chose qui distingue « ruines encore chaudes »
-                    # (23b) d'un faubourg simplement sali.
+                    # 🌊 LA HAUTEUR ET LE FAÎTAGE RESTENT CEUX DU BÂTIMENT
+                    # INTACT, même pour une ruine : ce sont eux que le maillage
+                    # « réparé » emploiera. Ce qu'une ruine perd — toit, étages,
+                    # percements — est perdu à l'ÉMISSION, pas ici.
                     if b["crue"] == "ruine":
-                        niv = min(p["niveaux"], RUINE_NIVEAUX)
-                        faite = None          # dalle nue, jamais de faîtage
                         n_ruine += 1
                     else:
-                        niv = p["niveaux"]
                         n_sali += b["crue"] != "intact"
-                    volumes.append((emp, niv, faite, p, b["crue"], b["eau"]))
+                    volumes.append((emp, p["niveaux"], faite, p,
+                                    b["crue"], b["eau"]))
                     batiments_par_parcelle.setdefault(p["fid"], []).append(emp)
                 n_parc += len(d["parcelles"]) - len(chemins_ilot)
                 n_parc_batie += len(batiments_par_parcelle)
@@ -1598,7 +1677,14 @@ def main():
                 # de ce volume-là : un toit plat ne porte pas les 1,4 m² de
                 # couverture par m² d'emprise d'un toit à 45°. C'est ce nombre
                 # que l'énergie viendra lire (41 · 64).
-                toit_ilot += abs(D4C.aire_signee(emp)) * math.hypot(1.0, pente_v)
+                # 🌊 UNE RUINE N'A PLUS DE TOIT, DONC PLUS DE PANNEAUX. C'est
+                # la seule chose que « reconstruire » RAPPORTE aujourd'hui :
+                # `toit_m2` est ce qu'on peut équiper maintenant, `toit_m2_neuf`
+                # ce qu'on pourrait équiper une fois l'îlot relevé.
+                aire_toit = abs(D4C.aire_signee(emp)) * math.hypot(1.0, pente_v)
+                toit_neuf_ilot += aire_toit
+                if crue != "ruine":
+                    toit_ilot += aire_toit
                 # ⚠️ Les chemins sont ÉCARTÉS de ce contrôle : un bâtiment qui
                 # mord sur la venelle est exactement le défaut qu'on cherche à
                 # voir, et le compter « dans une parcelle » le masquerait.
@@ -1613,15 +1699,19 @@ def main():
                 # l'empreinte, donc bouger une ligne de table ne rebat pas
                 # toute la ville.
                 gr = _graine_lieu(emp)
-                mur = PAL.couleur_mur(st, gr)
-                toit = PAL.couleur_toit(st, gr)
+                mur_neuf = PAL.couleur_mur(st, gr)
+                toit_neuf = PAL.couleur_toit(st, gr)
+                mur, toit = mur_neuf, toit_neuf
                 # 🌊 CE QUE LA CRUE A LAISSÉ. Les teintes se MÉLANGENT à celles
                 # du bâtiment, elles ne les remplacent pas : la couleur dit
                 # l'époque depuis le 2026-08-18, et un faubourg gris uni
                 # effacerait le tissu. Une ruine, elle, a bien perdu son enduit.
                 if crue == "ruine":
-                    mur = PAL.melanger(mur, PAL.RUINE_MUR, 0.72)
-                    toit = PAL.RUINE_TOIT
+                    # 🔄 0,72 → 0,88 le 2026-08-21 : une ruine A perdu son
+                    # enduit, elle n'a pas à garder la couleur de son époque.
+                    # C'est la seule exception au rendu par matériau du
+                    # 2026-08-18, et elle vaut pour 68 bâtiments sur 757.
+                    mur = PAL.melanger(mur, PAL.RUINE_MUR, 0.88)
                 elif crue != "intact":
                     mur = PAL.salir(mur, eau_m)
                     toit = PAL.salir(toit, eau_m, 0.05)  # le toit n'a pas bu
@@ -1634,8 +1724,22 @@ def main():
                 genres = _facades(k_vol, emp, parcelle["anneau"], idx,
                                   idx_murs, st)
                 alea = random.Random(gr ^ 0xFE4E).random()
-                a, b, c, e = _masse(masses, emp, d, c_mur, G, niv,
-                                    pente_v, faite, c_toit, genres, alea)
+                if crue == "ruine":
+                    a, b, c, e = _ruine(masses, emp, c_mur,
+                                        PAL.vers_lineaire(PAL.GRAVATS), G,
+                                        random.Random(gr ^ 0x9C21))
+                    # 🔧 ET LE MÊME BÂTIMENT NEUF, dans un maillage à part que
+                    # Godot garde CACHÉ jusqu'à ce que la décision tombe. C'est
+                    # tout ce que « reconstruire » demande à la 3D : la maquette
+                    # bâtit sa géométrie une fois, elle ne sait pas en fabriquer
+                    # en cours de partie.
+                    n_neuf += 1
+                    _masse(repare, emp, d, PAL.vers_lineaire(mur_neuf), G, niv,
+                           pente_v, faite, PAL.vers_lineaire(toit_neuf),
+                           genres, alea)
+                else:
+                    a, b, c, e = _masse(masses, emp, d, c_mur, G, niv,
+                                        pente_v, faite, c_toit, genres, alea)
                 murs_ok += a
                 murs_tot += b
                 toits_ok += c
@@ -1697,7 +1801,7 @@ def main():
                         dessine = 0.0
                         for debut, fin in morceaux:
                             longueur = _haie(
-                                masses, debut, fin, coul_haie, G)
+                                masses, debut, fin, coul_haie_i, G)
                             if longueur > 0.0:
                                 n_haie += 1
                                 longueur_haie += longueur
@@ -1731,6 +1835,8 @@ def main():
                 # sans introduire un second moteur de géométrie dans 07.
                 if not vert_force:
                     _sol(masses, j, coul_jardin_i, G)
+                if eau_ilot >= CRUE_ARBRE_NOYE_M:
+                    continue                  # jardin noyé : plus un arbre
                 arbres_jardin = _semer_jardin(j, aire_j, emps)
                 arbres.extend(arbres_jardin)
                 n_arbre_jardin += len(arbres_jardin)
@@ -1748,6 +1854,10 @@ def main():
             #   VOLUME PAR VOLUME : un bâtiment tombé au toit plat compte pour
             #   son emprise, pas pour l'emprise étirée du tissu.
             d["toit_m2"] = round(toit_ilot, 1)
+            # Ce que l'îlot porterait une fois relevé. Égal à `toit_m2` partout
+            # où la crue n'a rien pris : c'est l'écart entre les deux qui donne
+            # à « reconstruire » son seul rendement mesurable.
+            d["toit_m2_neuf"] = round(toit_neuf_ilot, 1)
             d["toit_pente"] = round(pente, 2)
             d["toit_plat"] = 1 if pente <= 0.0 else 0
             toit_total += toit_ilot
@@ -1817,7 +1927,7 @@ def main():
                 # un anneau de plus — pas une position corrigée à la main.
                 if trame_pl is not None:
                     interdit = list(trame_pl) + [trame_pl[0]]
-            plantes = _semer(an, d, rng, relief, interdit)
+            plantes = [] if (d["hauteur_eau_max"] or 0.0) >= CRUE_ARBRE_NOYE_M                 else _semer(an, d, rng, relief, interdit)
             arbres.extend(plantes)
             if interdit is not None:
                 # Le compte est MESURÉ sur les arbres rendus, pas déduit du
@@ -1867,11 +1977,16 @@ def main():
         # 🌊 CE QUE LA CRUE DOIT AVOIR CHANGÉ À L'ÉCRAN. Deux nombres, et ils
         # se contrôlent à l'œil : les ruines sont des murs sans toit, le reste
         # du faubourg est sali. À zéro ruine, `04e` n'est pas passé.
-        print("  crue : %d ruines sans toit (ramenées à %.0f niveau), %d"
-              " bâtiments salis, %d pont(s) emporté(s)"
-              % (n_ruine, RUINE_NIVEAUX, n_sali,
-                 sum(1 for r in routes
-                     if (r.get("etat_crue") or "") == "coupe")))
+        coupes = [r["fid"] for r in routes
+                  if (r.get("etat_crue") or "") == "coupe"]
+        print("  crue : %d ruines à ciel ouvert, %d bâtiments salis,"
+              " %d franchissement(s) emporté(s) %s"
+              % (n_ruine, n_sali, len(coupes), sorted(coupes)))
+        print("        crêtes tirées dans %s × 2,70 m — si elles sortent"
+              " toutes pareilles, la ruine se lit comme un toit plat"
+              % (RUINE_PANS,))
+        print("  réparation : %d bâtiments neufs en attente sur %d îlots"
+              % (n_neuf, len(repare.groupes)))
         if not n_ruine:
             print("        ⚠️ aucune ruine — relancer `04e_crue.py`, ou la table"
                   " de `04e` ne ruine plus personne")
@@ -2031,6 +2146,7 @@ def main():
     # chaussée, coudes arrondis compris) et la largeur FAÇADE À FAÇADE. Godot
     # en fait un ruban plat, invisible, qui ne sert qu'à être détouré.
     couloirs = {}
+    par_fid = {d["fid"]: d for d in routes}
     n_align_eau = 0
     n_align_chaussee = 0
     n_align_chaussee_t0 = 0
@@ -2046,6 +2162,19 @@ def main():
         # il passe encore, et il se voit qu'il a bu. Le pont EMPORTÉ, lui, a
         # déjà perdu ses morceaux au-dessus de l'eau.
         etat_crue = d.get("etat_crue") or "intact"
+        if etat_crue == "coupe":
+            repare_voirie.marque(d["fid"])
+            for axe_entier in axes_voirie.get(d["fid"], ()):
+                manque = _axe_manque(axe_entier, chenal)
+                if manque:
+                    _pont_ruine(voirie, manque, larg, ch,
+                                PAL.vers_lineaire(PAL.GRAVATS), coul_ch,
+                                coul_quai, G)
+                    n_tablier_neuf += _pont_neuf(
+                        repare_voirie, manque, larg, ch,
+                        PAL.vers_lineaire(PAL.melanger(PAL.TROTTOIR,
+                                                       "#FFFFFF", 0.10)),
+                        coul_ch, coul_quai, G)
         # 🌊 LE LIMON SUR LA CHAUSSÉE, ET C'EST LUI QUI DESSINE L'EMPRISE. Vue
         # de dessus, la ville est un tapis de toits : le sol des îlots ne se
         # voit presque pas, le RÉSEAU si. Sans cette ligne, la crue ne se
@@ -2053,24 +2182,49 @@ def main():
         # ⚠️ Une seule hauteur par tronçon (04e) : la limite de l'emprise
         # tombe donc sur un carrefour, jamais au milieu d'une rue.
         eau_rue = d.get("hauteur_eau") or 0.0
+        # 🔧 UNE RUE ENVASÉE SE DÉBLAIE, UN PONT EMPORTÉ SE REBÂTIT : deux
+        # décisions, jamais les deux sur le même tronçon. `04e` ne met de prix
+        # de déblaiement que sur les rues qui ne sont pas coupées.
+        lavage = (d.get("hauteur_eau") or 0.0) > 0.10 and etat_crue != "coupe"
+        if lavage:
+            repare_voirie.marque(d["fid"])
         if etat_crue == "fragile":
             eau_rue = max(eau_rue, 2.0)     # le tablier a bu, quoi qu'il arrive
-        coul_ch_d = (PAL.vers_lineaire(PAL.salir(PAL.MINERAL, eau_rue, 0.20, 0.62))
+        # 🔄 Plafond monté de 0,62 à 0,72 le 2026-08-21 : sous 3,80 m d'eau une
+        # chaussée n'est plus « un peu sale ». Pas plus haut, et c'est mesuré à
+        # l'écran : à 0,84 la rue prenait exactement la teinte du sol des îlots,
+        # le faubourg devenait un aplat et on ne lisait plus le réseau — or le
+        # réseau est ce qui montre que la ville continue SOUS le limon.
+        coul_ch_d = (PAL.vers_lineaire(PAL.salir(PAL.MINERAL, eau_rue, 0.22, 0.72))
                      if eau_rue > 0.10 else coul_ch)
-        coul_tr_d = (PAL.vers_lineaire(PAL.salir(PAL.TROTTOIR, eau_rue, 0.20, 0.62))
+        coul_tr_d = (PAL.vers_lineaire(PAL.salir(PAL.TROTTOIR, eau_rue, 0.22, 0.80))
                      if eau_rue > 0.10 else coul_tr)
+        # 🎨 ET LA PEINTURE SE SALIT AVEC. Un passage piéton blanc pur au milieu
+        # d'une rue de vase disait « rue en service » plus fort que tout le
+        # reste ne disait « rue emportée ». La peinture RESTE — elle ne se
+        # décolle pas — mais elle est sous 4 m de limon comme le reste.
+        coul_marq_d = (PAL.vers_lineaire(PAL.salir(PAL.MARQUAGE, eau_rue, 0.22, 0.78))
+                       if eau_rue > 0.10 else coul_marq)
         for ip, part in enumerate(d["parts"]):
             axe = axes_voirie[d["fid"]][ip]
             for axe_ in morceaux_voirie[d["fid"]][ip]:
                 _ruban(voirie, axe_, ch, coul_ch_d, G)
                 n_seg += len(axe_) - 1
+                # 🔧 LA MÊME RUE, LAVÉE, dans le maillage caché. Elle ne coûte
+                # que sur les 36 tronçons envasés — ailleurs `lavage` est faux
+                # et rien n'est émis.
+                if lavage:
+                    _ruban(repare_voirie, axe_, ch, coul_ch, G,
+                           y=Y_CHAUSSEE + RELEVE)
+                    _marquage(repare_voirie, d, axe_, ip, ch, nd_marq,
+                              chenal, coul_marq, G, dy=RELEVE)
                 # 🎨 Le marquage se pose SUR la chaussée qu'on vient d'émettre,
                 # et dans le même groupe : cliquer une ligne blanche ouvre la
                 # fiche de la rue, comme cliquer son trottoir.
                 # ⚠️ Sur un pont emporté il tombe de lui-même : le marquage se
                 # cale sur l'axe REÇU, et cet axe s'arrête au bord de l'eau.
                 for k_, v_ in _marquage(voirie, d, axe_, ip, ch, nd_marq,
-                                        chenal, coul_marq, G).items():
+                                        chenal, coul_marq_d, G).items():
                     st_marq[k_] += v_
                 # 🌊 Le mur de quai et le pont, dans le GROUPE DU TRONÇON :
                 # cliquer un parapet ou un tablier ouvre la fiche de la rue,
@@ -2105,9 +2259,14 @@ def main():
         for f in trot.get(d["fid"], ()):
             if f[0] == "plat":
                 n_tri_tr += _dessus_trottoir(voirie, f[1], coul_tr_d, G)
+                if lavage:
+                    _dessus_trottoir(repare_voirie, f[1], coul_tr, G, RELEVE)
             else:
                 n_tri_tr += _bordure(voirie, f[1], f[2], f[3], coul_bord, G)
-        emplacements = _alignement(d, rng)
+                if lavage:
+                    _bordure(repare_voirie, f[1], f[2], f[3], coul_bord, G,
+                             RELEVE)
+        emplacements = [] if (d["hauteur_eau"] or 0.0) >= CRUE_ARBRE_NOYE_M             else _alignement(d, rng)
         # 🌊 Un franchissement reste une route pour la voirie, mais sa bande
         # plantable traverse le chenal. Avant ce filtre, le décalage latéral des
         # arbres de pont posait leurs troncs dans l'eau. On retire aussi les
@@ -2145,6 +2304,13 @@ def main():
     plantes_t0 = sum(1 for f, v in alignements.items()
                      for a in v
                      if a[5] <= (routes_par_fid[int(f)]["canopee"] or 0.0))
+    # 🔧 CE QUE LA RÉPARATION TIENT PRÊT CÔTÉ VOIRIE. À zéro tablier neuf avec
+    # un pont coupé, la décision « rebâtir » existerait sans rien à montrer.
+    print("  réparation : %d tronçons lavés, %d tablier(s) neuf(s) prêt(s)"
+          % (sum(1 for g in repare_voirie.groupes
+                 if (par_fid.get(g[0], {}).get("etat_crue") or "") != "coupe"),
+             sum(1 for g in repare_voirie.groupes
+                 if (par_fid.get(g[0], {}).get("etat_crue") or "") == "coupe")))
     print("  voirie : %d segments de chaussée, %d triangles"
           % (n_seg, len(voirie)))
     print("        couloirs de sélection : %d tronçons, %.1f m de large en"
@@ -2312,6 +2478,12 @@ def main():
         # autres : Godot n'a plus qu'UNE façon de lire de la géométrie.
         "terrain": terre.json(),
         "masses": masses.json(),
+        # 🔧 LA VILLE RÉPARÉE, groupe par groupe, jamais montrée au chargement.
+        # Le bâti neuf d'un îlot ruiné, et le tablier neuf d'un franchissement
+        # emporté : les deux seules géométries qui apparaissent en cours de
+        # partie, et elles sont calculées ici comme tout le reste.
+        "repare": repare.json(),
+        "repare_voirie": repare_voirie.json(),
         "sols": sols.json(),
         "eau": eau.json(),
         "voirie": voirie.json(),
@@ -2381,7 +2553,7 @@ def _cap_plat(m, anneau, y, coul, G, relief=None, facteur=1.0):
 
 
 def _chenal_eau(m_eau, m_dur, anneau, chenal, coul_eau, coul_mur, G,
-                relief=None):
+                relief=None, niveau_rive=None):
     """Un îlot d'eau : le fond du chenal, la nappe, et les murs de berge.
 
     ⚠️ Deux maillages, et ce n'est pas un détail : la NAPPE part dans le
@@ -2435,6 +2607,11 @@ def _chenal_eau(m_eau, m_dur, anneau, chenal, coul_eau, coul_mur, G,
             if relief is not None:
                 hp += relief.z(p[0], p[1])
                 hq += relief.z(q[0], q[1])
+            if niveau_rive is not None:
+                niveau = niveau_rive((p[0] + q[0]) / 2.0,
+                                     (p[1] + q[1]) / 2.0)
+                hp += niveau
+                hq += niveau
             # Le mur regarde l'EAU, pas la ville : on parcourt l'arête à
             # l'envers de ce que fait un mur de bâtiment, ce qui retourne
             # la face.
@@ -3040,6 +3217,60 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
     if abs(aire_signee(anneau)) >= 20.0:
         _acrotere(m, anneau, y_haut, tuple(c * 0.88 for c in coul), G)
     return ok, n, haut_ok, len(tris)
+
+
+def _ruine(m, anneau, coul_mur, coul_gravats, G, rng):
+    """Un bâtiment que la crue a emporté : des pans de mur cassés à des
+    hauteurs différentes, et le plancher du rez à nu entre eux.
+
+    🔴 LA CRÊTE FAIT LA RUINE, PAS LA COULEUR. Arasés au même plan, cent
+    bâtiments sortent en lotissement de toits plats. Chaque arête porte donc sa
+    hauteur, tirée par PAQUETS de une à trois arêtes : arête par arête on
+    obtient une dentelure régulière, qui se lit comme un motif et non comme une
+    casse.
+
+    Aucune couverture, aucun acrotère, aucun percement : le dessus est OUVERT.
+    Les murs étant à face unique, ceux du fond sont cullés et on voit le sol
+    sombre entre ceux de devant — c'est le seul trou noir de la ville.
+    """
+    anneau = _decaler(anneau, -RUINE_RETRAIT)
+    n = len(anneau)
+    y_bas = -ENFOUISSEMENT
+    hauteurs = []
+    while len(hauteurs) < n:
+        h = rng.choice(RUINE_PANS) * ETAGE_M
+        hauteurs += [h] * rng.randint(*RUINE_PAN_ARETES)
+
+    def ao(y):
+        return AO_MIN + (1.0 - AO_MIN) * min(1.0, max(0.0, (y - y_bas) / AO_HAUTEUR))
+
+    ok = 0
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        y_haut = hauteurs[i]
+        pa_b = G(a[0], a[1], y_bas)
+        pb_b = G(b[0], b[1], y_bas)
+        pa_h = G(a[0], a[1], y_haut)
+        pb_h = G(b[0], b[1], y_haut)
+        fb, fh = ao(y_bas), ao(y_haut)
+        m.triangle(pa_b, pb_b, pb_h, coul_mur, (fb, fb, fh))
+        m.triangle(pa_b, pb_h, pa_h, coul_mur, (fb, fh, fh))
+        # Le même contrôle de chiralité que `_masse` : on ne parie pas sur le
+        # sens des faces après l'inversion de Z, on le mesure.
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy)
+        nn = normale(pa_b, pb_b, pb_h)
+        if L > 1e-9 and (nn[0] * dy + nn[2] * dx) / L > 0.9:
+            ok += 1
+
+    tris = trianguler(anneau)
+    f = ao(RUINE_DALLE_Y)
+    for ia, ib, ic in tris:
+        pa = G(anneau[ia][0], anneau[ia][1], RUINE_DALLE_Y)
+        pb = G(anneau[ib][0], anneau[ib][1], RUINE_DALLE_Y)
+        pc = G(anneau[ic][0], anneau[ic][1], RUINE_DALLE_Y)
+        m.triangle(pa, pb, pc, coul_gravats, (f, f, f))
+    return ok, n, len(tris), len(tris)
 
 
 def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
@@ -4173,6 +4404,72 @@ def _axe_ampute(axe, chenal, marge=PONT_COUPE_MARGE):
     return out
 
 
+def _axe_manque(axe, chenal, marge=PONT_COUPE_MARGE):
+    """Le morceau que `_axe_ampute` a retiré — donc exactement ce qu'il faudra
+    rebâtir. Les deux lisent la MÊME marge : sinon le tablier neuf ne
+    retomberait pas sur les deux bouts de chaussée qui l'attendent."""
+    dense = _densifier(list(axe), 1.0)
+    mouille = [chenal.dans_eau(p) for p in dense]
+    if not any(mouille):
+        return []
+    cum = _cumul(dense)
+    s0 = min(cum[k] for k in range(len(dense)) if mouille[k]) - marge
+    s1 = max(cum[k] for k in range(len(dense)) if mouille[k]) + marge
+    bout = _tronquer(dense, cum, max(0.0, s0), min(cum[-1], s1))
+    return bout if len(bout) >= 2 else []
+
+
+def _pont_neuf(m, axe, larg, ch, coul_tab, coul_ch, coul_par, G):
+    """LE TABLIER QU'ON REBÂTIT : une dalle, sa chaussée, deux parapets pleins.
+
+    C'est la seule géométrie du projet qui apparaisse EN COURS DE PARTIE, et
+    elle est volontairement simple — ce n'est pas le pont d'avant, c'est un
+    ouvrage neuf, et ça se voit. Les deux autres franchissements tiennent leur
+    muret de `_bord_eau`, qui travaille sur la berge et ne sait rien
+    reconstruire au-dessus du vide.
+    """
+    n = _ruban(m, axe, larg, coul_tab, G, y=Y_CHAUSSEE)
+    # 2 cm plus haut, pas au même millimètre : deux surfaces coplanaires se
+    # battent en duel sur toute la longueur du tablier.
+    n += _ruban(m, axe, ch, coul_ch, G, y=Y_CHAUSSEE + 0.02)
+    demi = larg / 2.0 - PARAPET_EP / 2.0
+    for k in range(len(axe) - 1):
+        a, b = axe[k], axe[k + 1]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy)
+        if L < 0.5:
+            continue
+        u = (dx / L, dy / L)
+        for signe in (-1.0, 1.0):
+            c = ((a[0] + b[0]) / 2.0 - u[1] * signe * demi,
+                 (a[1] + b[1]) / 2.0 + u[0] * signe * demi)
+            n += _boite(m, c, u, L, PARAPET_EP, Y_CHAUSSEE,
+                        Y_CHAUSSEE + PARAPET_H, coul_par, G)
+    return n
+
+
+def _pont_ruine(m, axe, larg, ch, coul_tab, coul_ch, coul_par, G):
+    """Ce que le courant laisse : un moignon affaissé depuis chaque culée."""
+    cum = _cumul(axe)
+    if not cum or cum[-1] < 2.0:
+        return 0
+    bout = min(PONT_RUINE_BOUT, cum[-1] / 3.0)
+    n = 0
+    for a, b, casse_fin in ((0.0, bout, True),
+                            (cum[-1] - bout, cum[-1], False)):
+        morceau = _tronquer(axe, cum, a, b)
+        casse = morceau[-1] if casse_fin else morceau[0]
+
+        def G_casse(x, y, alt):
+            d = math.hypot(x - casse[0], y - casse[1])
+            chute = PONT_RUINE_CHUTE * max(0.0, 1.0 - d / 2.5)
+            return G(x, y, alt - chute)
+
+        n += _pont_neuf(m, morceau, larg, ch, coul_tab, coul_ch,
+                        coul_par, G_casse)
+    return n
+
+
 def _plages_pont(net, st):
     """Les plages [a, b, i0, i1] où la chaussée TRAVERSE vraiment : les deux
     bords au-dessus de l'eau, sur au moins `PONT_MIN`, étendues des culées.
@@ -4980,7 +5277,7 @@ def _est_carrefour(nd, p):
     return len(nd.get((round(p[0] / 0.25), round(p[1] / 0.25)), [])) >= 3
 
 
-def _passage_pieton(m, pts, cum, s, ch, coul, G):
+def _passage_pieton(m, pts, cum, s, ch, coul, G, dy=0.0):
     """La trame d'un passage piéton : des bandes de PASSAGE_BANDE, en travers.
 
     Chaque bande est un ruban court dans le sens de la marche — donc le même
@@ -5004,11 +5301,11 @@ def _passage_pieton(m, pts, cum, s, ch, coul, G):
         a = (c[0] - u[0] * hp, c[1] - u[1] * hp)
         b = (c[0] + u[0] * hp, c[1] + u[1] * hp)
         tri += _ruban(m, [a, b], PASSAGE_BANDE, coul, G,
-                      y=Y_MARQUAGE, bouts=False)
+                      y=Y_MARQUAGE + dy, bouts=False)
     return k, tri
 
 
-def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G):
+def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G, dy=0.0):
     """Tout le marquage d'une part de tronçon. Renvoie un compte.
 
     L'ordre compte : on place d'abord les PASSAGES (ce sont eux qui décident
@@ -5062,7 +5359,7 @@ def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G):
         st["sans_trottoir"] = 1
 
     for s in tv:
-        k, tri = _passage_pieton(m, axe, cum, s, ch, coul, G)
+        k, tri = _passage_pieton(m, axe, cum, s, ch, coul, G, dy)
         if k:
             st["passages"] += 1
             st["bandes"] += k
@@ -5085,13 +5382,13 @@ def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G):
             for a, b in ici:
                 st["tri"] += _ruban(m, _tronquer(axe, cum, a, b),
                                     LARGEUR_LIGNE, coul, G,
-                                    y=Y_MARQUAGE, bouts=False)
+                                    y=Y_MARQUAGE + dy, bouts=False)
                 st["pleins"] += 1
             for a, b in _decouper(iv, ici):
                 for t0, t1 in _pointilles(a, b):
                     st["tri"] += _ruban(m, _tronquer(axe, cum, t0, t1),
                                         LARGEUR_LIGNE, coul, G,
-                                        y=Y_MARQUAGE, bouts=False)
+                                        y=Y_MARQUAGE + dy, bouts=False)
                     st["traits"] += 1
 
     # ③ les lignes de rive, pleines, réservées aux voies rapides
@@ -5101,7 +5398,7 @@ def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G):
             sub = _tronquer(axe, cum, a, b)
             for cote in (-dec, dec):
                 st["tri"] += _ruban(m, sub, LARGEUR_LIGNE, coul, G,
-                                    y=Y_MARQUAGE, decal=cote, bouts=False)
+                                    y=Y_MARQUAGE + dy, decal=cote, bouts=False)
                 st["rives"] += 1
     return st
 
@@ -5249,7 +5546,7 @@ def _decouper(iv, retires):
     return [(a, b) for a, b in out if b - a > 1e-6]
 
 
-def _dessus_trottoir(m, poly, coul, G):
+def _dessus_trottoir(m, poly, coul, G, dy=0.0):
     """Une face horizontale au niveau du trottoir. Le sens de parcours est
     MESURÉ, pas supposé : un coin extérieur de virage se parcourt à l'envers
     d'un coin intérieur, et une face à l'envers est cullée — donc invisible,
@@ -5263,13 +5560,14 @@ def _dessus_trottoir(m, poly, coul, G):
         a, b, c = poly[0], poly[k], poly[k + 1]
         if abs(_aire_xy([a, b, c])) < 1e-6:
             continue
-        m.triangle(G(a[0], a[1], Y_TROTTOIR), G(b[0], b[1], Y_TROTTOIR),
-                   G(c[0], c[1], Y_TROTTOIR), coul)
+        m.triangle(G(a[0], a[1], Y_TROTTOIR + dy),
+                   G(b[0], b[1], Y_TROTTOIR + dy),
+                   G(c[0], c[1], Y_TROTTOIR + dy), coul)
         n += 1
     return n
 
 
-def _bordure(m, a, b, vers, coul, G):
+def _bordure(m, a, b, vers, coul, G, dy=0.0):
     """LA BORDURE : la face verticale d'un trottoir, du dessus jusqu'à la
     plaque de sol. `vers` est la direction, à plat, vers laquelle elle doit
     regarder — la chaussée pour la bordure de rue, l'îlot pour son flanc.
@@ -5282,10 +5580,10 @@ def _bordure(m, a, b, vers, coul, G):
         return 0
     if (n[0] * vers[0] + n[1] * vers[1]) < 0.0:
         a, b = b, a
-    p = G(a[0], a[1], Y_TROTTOIR)
-    q = G(b[0], b[1], Y_TROTTOIR)
-    r = G(b[0], b[1], Y_TERRAIN)
-    s = G(a[0], a[1], Y_TERRAIN)
+    p = G(a[0], a[1], Y_TROTTOIR + dy)
+    q = G(b[0], b[1], Y_TROTTOIR + dy)
+    r = G(b[0], b[1], Y_TERRAIN + dy)
+    s = G(a[0], a[1], Y_TERRAIN + dy)
     m.triangle(p, s, r, coul)
     m.triangle(p, r, q, coul)
     return 2

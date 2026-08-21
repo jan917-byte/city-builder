@@ -1,6 +1,6 @@
 # Godot — la maquette de Wehrau
 
-On clique un îlot, on lit sa fiche, on augmente sa part de panneaux solaires, et les totaux de ville suivent. Godot **4.7.1**, aucun plugin, aucune dépendance.
+On relève d'abord la ville après la crue ; les décisions solaires n'apparaissent que lorsque les logements sinistrés et les franchissements sont rétablis. Deux jauges rendent ce passage **adaptation → réduction** visible. Godot **4.7.1**, aucun plugin, aucune dépendance.
 
 🔴 **Aucun chiffre mesuré dans ce fichier.** Ils sont dans `Prototype/`, à l'étape qui les porte, et l'export les réimprime à chaque passage. Le design est dans le vault, ce qui reste à faire dans `ETAT.md`.
 
@@ -36,6 +36,7 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **T** | bascule vue de dessus ⇄ hauteur précédente |
 | **souris** | molette : zoom · clic droit glissé : tourner · clic milieu glissé : déplacer |
 | **C** | recolorer la ville **par tissu** — la palette d'avant le rendu réaliste |
+| **D** | ouvrir le **diagnostic de crue** — passage de l'eau, routes bloquées et bâtiments touchés |
 | **F3** | afficher / masquer le moniteur de performances |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |

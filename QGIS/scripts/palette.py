@@ -200,11 +200,15 @@ CHAMPS = [
 # rendre lisible.
 LIMON = "#8E7F63"          # le dépôt qui reste quand l'eau se retire
 RUINE_MUR = "#8C8578"       # un mur sans toit, lessivé — ni noir ni brûlé
-# 🔴 LA DALLE D'UNE RUINE EST CLAIRE, ET C'EST MESURÉ À L'ÉCRAN : à #5C574F
-# elle sortait plus sombre que tout, donc lue comme un HANGAR — or Wehrau a
-# déjà deux friches à toiture sombre. Un plancher éventré est du béton et du
-# plâtre : c'est le seul gris pâle de la ville, il ne ressemble à rien d'autre.
-RUINE_TOIT = "#B4AEA1"
+RUINE_TOIT = "#B4AEA1"      # ⏸️ plus employé depuis le 2026-08-21, voir GRAVATS
+# 🔴 LE SOL D'UNE RUINE EST SOMBRE, ET C'EST UN RETOUR EN ARRIÈRE ASSUMÉ.
+# Le 2026-08-18, un gris à #5C574F posé EN DALLE, à hauteur d'étage, se lisait
+# comme la toiture d'un hangar — Wehrau en a deux. Depuis le 2026-08-21 une
+# ruine n'a plus de dalle du tout : ses murs sont cassés à des hauteurs
+# différentes et on voit le plancher du rez AU SOL, entre eux. Un trou sombre
+# entouré de murs clairs ne ressemble à aucun toit de la ville, et c'est la
+# seule chose qui se lise à 1 200 m d'étendue.
+GRAVATS = "#4B463E"
 
 # ----------------------------------------------------------------- minéral
 # Un seul gris pour tout le réseau : la hiérarchie s'exprime par la LARGEUR,

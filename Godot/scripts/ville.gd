@@ -30,6 +30,10 @@ var riverains := {}        # fid tronçon -> [fid îlot]
 var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 var _solaire := {}         # fid -> {debut, duree, cible, cout_ke}
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
+var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
+var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
+var _adaptation_total_ke := 0.0
+var _co2_depart_kt := 0.0
 
 # 🔄 Un `_base_avant` figeait en base la part posée pour permettre de réviser
 # une cible en cours de chantier. Retiré avec la caisse : réécrire la base
@@ -53,6 +57,22 @@ const CHAMPS_MOBILES := {
 }
 
 
+# ==========================================================================
+# LA CRUE — trois réparations, un seul mécanisme (04e · décision 23b)
+# ==========================================================================
+# 🔴 LE NOYAU NE SAIT RIEN DE LA CRUE. Chaque objet porte SON prix, calculé par
+# `04e_crue.py` et posé dans sa fiche : un îlot à reconstruire, une rue à
+# déblayer, un tablier à rebâtir. Ici on compare un nombre à la caisse, et on
+# note ce qui est engagé. Le jour où le level design change les prix, pas une
+# ligne de GDScript ne bouge.
+#
+# 🎚️ LES TROIS DURÉES, elles, sont d'ici — ce sont des durées de JEU, pas des
+# chiffres de la carte. Repère : la pose solaire d'un îlot tient en un mois.
+const RECONSTRUCTION_MOIS := 12.0    # un îlot relevé : un an de chantier
+const DEBLAIEMENT_MOIS := 1.0        # la vase enlevée d'une rue
+const PONT_MOIS := 18.0              # un franchissement rebâti
+
+
 func charger(d: Dictionary) -> void:
 	var o: Dictionary = d["objets"]
 	for cle in (o["ilots"] as Dictionary):
@@ -64,6 +84,18 @@ func charger(d: Dictionary) -> void:
 		for f in (d["riverains"] as Dictionary)[cle]:
 			liste.append(int(f))
 		riverains[int(cle)] = liste
+
+	# La jauge d'adaptation porte l'urgence vitale : logements à relever et
+	# franchissements à rétablir. Le déblaiement des rues reste visible dans le
+	# diagnostic, mais ne retient pas indéfiniment l'ouverture de la réduction.
+	for fid in ilots:
+		if base("i", fid, "logements_sinistres") > 0.0:
+			_adaptation_total_ke += base("i", fid, "cout_reparation_ke")
+	for fid in routes:
+		if str(routes[fid].get("etat_crue", "")) == "coupe":
+			_adaptation_total_ke += base("r", fid, "cout_reparation_ke")
+	var m := Energie.ville_mwh(self, 0.0)
+	_co2_depart_kt = float(m["achat"]) * Energie.CO2_KG_KWH / 1000.0
 
 
 func objets(couche: String) -> Dictionary:
@@ -131,6 +163,12 @@ func vider_rampes() -> void:
 func reinitialiser() -> void:
 	_solaire.clear()
 	_depense_ke = 0.0
+	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
+	# donnée que `reparer` écrit en base, donc la seule à défaire.
+	for fid in _toit_avant:
+		ilots[fid]["toit_m2"] = _toit_avant[fid]
+	_toit_avant.clear()
+	_repare.clear()
 	vider_rampes()
 
 
@@ -150,7 +188,11 @@ func cout_solaire_ke(fid: int, part: float, t: float) -> float:
 ## encaissée, qui en est l'intégrale — d'où le prix payé : une pose engagée ne
 ## se révise plus.
 func lancer_solaire(fid: int, part: float, t: float) -> bool:
-	if not ilots.has(fid) or etat_solaire(fid, t)["en_cours"]:
+	# Décision 72 : tant que la ville ne tient pas de nouveau, la réduction
+	# n'est pas une décision disponible — même un appel qui contourne l'UI est
+	# refusé ici.
+	if not reduction_deverrouillee(t) \
+			or not ilots.has(fid) or etat_solaire(fid, t)["en_cours"]:
 		return false
 	if Energie.toit_equipable_m2(self, fid) <= 0.0:
 		return false
@@ -258,13 +300,159 @@ func fids_batis() -> Array:
 ## `chantiers.co2_gris_an(t)`.
 func indicateurs(t: float) -> Dictionary:
 	var m := Energie.ville_mwh(self, t)
-	return {
+	var co2 := float(m["achat"]) * Energie.CO2_KG_KWH / 1000.0
+	var out := {
 		"conso_mwh": m["conso"],
 		"production_mwh": m["production"],
 		"achat_mwh": m["achat"],
-		"co2_kt": m["achat"] * Energie.CO2_KG_KWH / 1000.0,
+		"co2_kt": co2,
 		# La petite économie : ce que les panneaux posés rapportent chaque année,
 		# et ce qui reste en caisse après les avoir payés.
 		"recette_ke_an": m["production"] * Energie.PRIX_ENERGIE_EUR_MWH / 1000.0,
+		"caisse_ke": caisse_ke(t),
+	}
+	out.merge(durabilite(t, co2))
+	return out
+
+
+# --------------------------------------------------- réparer après la crue
+
+## Ce que `04e` a chiffré pour cet objet, 0 s'il n'y a rien à réparer ou si
+## c'est déjà payé.
+func cout_reparation_ke(couche: String, fid: int) -> float:
+	if est_repare(couche, fid):
+		return 0.0
+	return base(couche, fid, "cout_reparation_ke")
+
+
+func est_repare(couche: String, fid: int) -> bool:
+	return _repare.has(couche + ":" + str(fid))
+
+
+## Combien de mois dure CE chantier-là. Un pont n'est pas une rue.
+func duree_reparation_mois(couche: String, fid: int) -> float:
+	if couche == "i":
+		return RECONSTRUCTION_MOIS
+	var coupe := str(objets("r").get(fid, {}).get("etat_crue", "")) == "coupe"
+	return PONT_MOIS if coupe else DEBLAIEMENT_MOIS
+
+
+## Ce qui reste avant que la géométrie neuve n'apparaisse. 0 = c'est fini.
+func reste_reparation_mois(couche: String, fid: int, t: float) -> float:
+	var cle := couche + ":" + str(fid)
+	if not _repare.has(cle):
+		return 0.0
+	return maxf(float(_repare[cle]) + duree_reparation_mois(couche, fid) - t, 0.0)
+
+
+## `true` quand le chantier est terminé : c'est CE test que la maquette
+## interroge pour montrer le maillage neuf. Une géométrie qui apparaîtrait à
+## l'engagement dirait qu'un pont se rebâtit en une image.
+func reparation_finie(couche: String, fid: int, t: float) -> bool:
+	return est_repare(couche, fid) and reste_reparation_mois(couche, fid, t) <= 0.0
+
+
+## Le seuil visible du prologue : les logements sinistrés sont relevés et les
+## franchissements rouverts. Les rues encore sales restent une dette, pas une
+## serrure sur tout le reste du jeu.
+func reduction_deverrouillee(t: float) -> bool:
+	for fid in ilots:
+		if base("i", fid, "logements_sinistres") > 0.0 \
+				and not reparation_finie("i", fid, t):
+			return false
+	for fid in routes:
+		if str(routes[fid].get("etat_crue", "")) == "coupe" \
+				and not reparation_finie("r", fid, t):
+			return false
+	return _adaptation_total_ke > 0.0
+
+
+## Les deux jauges de durabilité. L'adaptation avance au rythme réel des
+## chantiers essentiels ; la réduction mesure le CO₂ évité depuis t0.
+func durabilite(t: float, co2_kt: float) -> Dictionary:
+	var reste_ke := 0.0
+	var logements := 0.0
+	var ponts := 0
+	for fid in ilots:
+		var perdus := base("i", fid, "logements_sinistres")
+		if perdus <= 0.0:
+			continue
+		var part := 1.0
+		if est_repare("i", fid):
+			part = clampf(reste_reparation_mois("i", fid, t) \
+				/ RECONSTRUCTION_MOIS, 0.0, 1.0)
+		reste_ke += base("i", fid, "cout_reparation_ke") * part
+		logements += perdus * part
+	for fid in routes:
+		if str(routes[fid].get("etat_crue", "")) != "coupe":
+			continue
+		var part := 1.0
+		if est_repare("r", fid):
+			part = clampf(reste_reparation_mois("r", fid, t) / PONT_MOIS, 0.0, 1.0)
+		reste_ke += base("r", fid, "cout_reparation_ke") * part
+		ponts += int(part > 0.0)
+	var adaptation := 1.0 if _adaptation_total_ke <= 0.0 else \
+		clampf(1.0 - reste_ke / _adaptation_total_ke, 0.0, 1.0)
+	var reduction := 0.0 if _co2_depart_kt <= 0.0 else \
+		clampf(1.0 - co2_kt / _co2_depart_kt, 0.0, 1.0)
+	return {
+		"adaptation_part": adaptation,
+		"reduction_part": reduction,
+		"reduction_ecart_kt": _co2_depart_kt - co2_kt,
+		"reduction_verrouillee": not reduction_deverrouillee(t),
+		"adaptation_logements": logements,
+		"adaptation_ponts": ponts,
+	}
+
+
+## `false` si rien à réparer, si c'est déjà engagé, ou si la caisse ne suit pas.
+## L'interface pré-vérifie et explique ; ici, le verrou seul — même partage que
+## `lancer_solaire`.
+func reparer(couche: String, fid: int, t: float) -> bool:
+	var cout := cout_reparation_ke(couche, fid)
+	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
+		return false
+	_repare[couche + ":" + str(fid)] = t
+	_depense_ke += cout
+	if couche == "i":
+		# 🔗 CE QUE LA RECONSTRUCTION REND, et c'est tout : les logements que
+		# `04e` avait retirés du parc, et le toit qu'il avait emporté. Les deux
+		# étaient déjà dans la fiche — on ne fabrique aucun nombre ici.
+		# ⚠️ Le budget de la ville ne dépend pas encore de `logements` (dette
+		# nommée du prototype) : reconstruire ne rapporte donc rien d'autre que
+		# des toits équipables. C'est un manque, pas un choix.
+		var perdus := base("i", fid, "logements_sinistres")
+		if perdus > 0.0:
+			ajouter_rampe("i", fid, "logements", perdus, t, 0.0,
+				RECONSTRUCTION_MOIS)
+		var neuf := base("i", fid, "toit_m2_neuf")
+		if neuf > 0.0:
+			_toit_avant[fid] = ilots[fid].get("toit_m2", 0.0)
+			ilots[fid]["toit_m2"] = neuf
+	return true
+
+
+## Ce que la crue a pris à la ville, et ce qu'il en reste à cet instant. Deux
+## nombres seulement : sans eux, réparer un îlot ne change rien de VISIBLE au
+## bandeau de gauche et la décision n'a pas de contrepartie lisible.
+func degats(t: float) -> Dictionary:
+	var perdus := 0.0
+	var a_reparer := 0.0
+	var coupes := 0
+	for fid in ilots:
+		if est_repare("i", fid):
+			continue
+		perdus += base("i", fid, "logements_sinistres")
+		a_reparer += base("i", fid, "cout_reparation_ke")
+	for fid in routes:
+		if est_repare("r", fid):
+			continue
+		a_reparer += base("r", fid, "cout_reparation_ke")
+		if str(routes[fid].get("etat_crue", "")) == "coupe":
+			coupes += 1
+	return {
+		"logements_perdus": perdus,
+		"a_reparer_ke": a_reparer,
+		"franchissements_coupes": coupes,
 		"caisse_ke": caisse_ke(t),
 	}

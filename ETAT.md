@@ -3,7 +3,7 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-20 (session 49).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. ⚠️ **Rien de l'étape 4 n'a bougé** : la session a porté sur les fichiers, pas sur l'écran. La note d'étape **déborde toujours — 154 l. pour 140**, signal que l'étape approche de sa fin, pas qu'il faut relever le plafond.
+**2026-08-21 (session 52).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. La crue laisse désormais autant de bâtiments debout que de ruines dans le faubourg ; l'étape 4 reste ouverte.
 Les **README ont fondu** : 23 600 → 7 700 tokens, et `CLAUDE.md` porte une **sixième règle** — un README dit à quoi sert le dossier, quoi lancer et les pièges permanents, **et aucun chiffre mesuré**.
 
 ## Prochaine action — juger l'échange à l'écran
@@ -24,7 +24,7 @@ Puis le geste énergie : cliquer un cœur ancien puis la barre de 1974 et compar
 - 🟠 **Découper `07_exporter_godot.py`** — 5 500 lignes, 110 fonctions, un `main()` de 944 l., **79 000 tokens** : plus lourd que tous les markdown du dépôt réunis, et il faut le charger pour toucher à l'étape 4. Cinq fichiers par thème, contrôle nommé : **l'export doit sortir identique**. C'est du code, donc délégué (40b).
 - 🟠 **Les quatre nombres de l'économie sont du level design** : 260 €/m², 150 €/MWh, 800 k€ de caisse, 30 k€/mois. Ce sont eux qui décident si le jeu est *dur mais possible*.
 - 🟠 **Le nom des quartiers de Wehrau** — sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase.
-- 🔴 **La crue est reprise sur la branche `crue`** → [Crue](Prototype/Crue.md). Les dégâts et le pont emporté sont **à l'écran** (`F` et `N`) ; deux arbitrages bloquent la suite : **la rive droite risque-t-elle quelque chose** (0,02 mesuré contre 0,43 annoncé au vault) et **quel pont on coupe** (168 proposé, ce qui contredit 30c). Le choix du joueur — les trois postures — n'est **pas** écrit : ses prix sont du level design.
+- 🔴 **La crue est reprise sur la branche `crue`** → [Crue](Prototype/Crue.md). Deux jauges rendent **adaptation → réduction** visible ; toute décision solaire disparaît pendant l'urgence et le noyau la refuse. Le seuil prototype est logements relevés + ponts rétablis, mais leurs prix actuels le rendent inaccessible en vingt ans : seuil et prix restent du level design (72 · question 23).
 - 🟠 **Le rôle du classeur** : banc d'essai des seuils, ou archive ? Il n'a jamais été étendu à l'énergie, et le recoupement des deux moteurs est suspendu. **Un deuxième moteur à moitié entretenu ment sans qu'on le sache.**
 - ⏸️ **L'étape 2 est en pause**, pas finie : 118 parcelles de rue sur 809 ont un sommet rentrant, et c'est **le peigne de `04c`**. **Ne pas la rouvrir tant que la 4 est ouverte.** → [Parcelles](Prototype/Parcelles.md) § 7
 

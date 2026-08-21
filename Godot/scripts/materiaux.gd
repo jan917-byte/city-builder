@@ -32,6 +32,9 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "render_mode cull_back, specular_disabled;\n" \
 		+ "instance uniform vec4 teinte = vec4(1.0, 1.0, 1.0, 1.0);\n" \
 		+ "instance uniform vec4 calque = vec4(1.0, 1.0, 1.0, 0.0);\n" \
+		+ "instance uniform float diagnostic_mode = 0.0;\n" \
+		+ "instance uniform float diagnostic_sol = 0.0;\n" \
+		+ "instance uniform float diagnostic_bati = 0.0;\n" \
 		+ "instance uniform float equipe = 0.0;\n" \
 		+ "varying vec3 pos_monde;\n" \
 		+ "// Choix de LISIBILITÉ, pas des mesures de toiture. ⚠ Mesuré le\n" \
@@ -206,6 +209,19 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tbase = mix(base, min(base * 1.28 + 0.012, vec3(1.0)), dormant * net);\n" \
 		+ "\t\tbase = mix(base, VITRE * mix(1.0, 0.45, ombre) * COLOR.a, vitre);\n" \
 		+ "\t\trugosite = mix(rugosite, 0.18, vitre * net);\n" \
+		+ "\t}\n" \
+		+ "\t// Diagnostic de crue : le sol raconte le passage de l'eau, le\n" \
+		+ "\t// volume raconte les bâtiments touchés. Les routes coupées prennent\n" \
+		+ "\t// une troisième couleur ; tout le reste s'efface sans disparaître.\n" \
+		+ "\tif (diagnostic_mode > 0.5) {\n" \
+		+ "\t\tbase *= 0.42;\n" \
+		+ "\t\tif (diagnostic_sol > 0.5) {\n" \
+		+ "\t\t\tvec3 signal_sol = diagnostic_sol > 1.5 ? vec3(0.72, 0.035, 0.025) : vec3(0.020, 0.310, 0.550);\n" \
+		+ "\t\t\tbase = mix(base, signal_sol * COLOR.a, 0.88);\n" \
+		+ "\t\t}\n" \
+		+ "\t\tif (diagnostic_bati > 0.5 && pos_monde.y > 0.35) {\n" \
+		+ "\t\t\tbase = mix(base, vec3(0.81, 0.210, 0.030) * COLOR.a, 0.92);\n" \
+		+ "\t\t}\n" \
 		+ "\t}\n" \
 		+ "\tALBEDO = base * teinte.rgb;\n" \
 		+ "\tROUGHNESS = rugosite;\n" \

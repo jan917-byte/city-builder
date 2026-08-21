@@ -11,15 +11,18 @@
 | la donnée | ✅ | `04e_crue.py`, dans la chaîne après `04d` |
 | les dégâts au bâti | ✅ **à regarder** | touche `F` |
 | le pont emporté | ✅ **à regarder** | touche `N` |
+| le diagnostic d'ensemble | ✅ **vu à l'écran** | bouton ou touche `D` |
 | `alea` rallumé | ✅ | l'îlot dit ce qu'il risque, pas seulement ce qu'il a pris |
 | **le choix du joueur** | ☐ | les trois postures — § 4, à arbitrer avant d'écrire |
+| **les deux jauges** | ✅ **vu à l'écran** | Adaptation active · Réduction verrouillée, sans décision solaire |
+| **la fin de l'urgence** | ✅ **prototype** | logements relevés + ponts rétablis ; seuil définitif ouvert — question 23 du vault |
 
 ```bash
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis lancer la maquette, `F` d'abord, `N` ensuite. **Ce qu'il faut voir** : des murs **sans toit**, gris pâle, le long de l'eau en rive gauche · le limon sur les rues et les jardins du faubourg, et **une limite** quelque part au lieu d'une rive entièrement sale · la ville d'en face **intacte** · la chaussée qui s'arrête net des deux côtés du pont 168, sans tablier au-dessus du vide.
-**Ce qui prouverait que c'est cassé** : une ruine en rive droite · zéro ruine (`04e` n'est pas passé — l'export le dit en clair) · un tablier ou un parapet qui flotte au milieu de l'Ilse · le faubourg entier gris (alors la couleur ne dit plus l'époque, et l'étape 4 est perdue).
+Puis lancer la maquette, `D` d'abord, `F` et `N` ensuite. **Ce qu'il faut voir** : en une image, le passage de l'eau en bleu, le bâti touché en orange et les trois franchissements bloqués en rouge · de près, des murs à crête cassée et ouverts au ciel en rive gauche · la ville d'en face intacte · les chaussées arrêtées au bord du vide.
+**Ce qui prouverait que c'est cassé** : une des trois couleurs absente du diagnostic · une ruine en rive droite · zéro ruine (`04e` n'est pas passé — l'export le dit en clair) · un tablier ou un parapet qui flotte au milieu de l'Ilse.
 
 ## 2. Le modèle, et pourquoi il n'est pas celui d'avant
 
@@ -37,16 +40,16 @@ Tout se réimprime à chaque passage de `04e` : rien de ce qui suit ne s'archive
 
 | | rive gauche | rive droite |
 |---|---|---|
-| bâtiments ruinés | 18 | **0** |
-| bâtiments sinistrés | 100 | 0 |
-| mouillés · intacts | 20 · 1 | 0 · 618 |
-| `alea` moyen (crue annoncée) | **0,77** | 0,02 |
+| bâtiments ruinés | 68 | **0** |
+| bâtiments sinistrés | 71 | 0 |
+| mouillés · intacts | 0 · 0 | 0 · 618 |
+| `alea` moyen (crue annoncée) | **0,81** | 0,01 |
 
-**369 logements sinistrés sur les 417 du faubourg.** Le vault annonçait un aléa de 0,75 en rive gauche : la nouvelle règle retombe à 0,77 sans avoir été calée dessus — c'est le contrôle le plus solide qu'on ait sur le modèle.
+**Les 417 logements du faubourg sont sinistrés.** Le vault annonçait un aléa de 0,75 en rive gauche : la nouvelle règle tombe à 0,81.
 
-Les îlots vont de **69** (72 % de son bâti détruit, 4 bâtiments) à **61** (rien de ruiné, 6 logements touchés) : le faubourg n'est pas une tache uniforme, et c'est ce qui rend le § 4 possible. Le tableau complet sort de `04e`.
+La moitié du bâti reste debout : **71 bâtiments sinistrés entre 68 ruines**. Les îlots 61, 62 et 64 ne perdent aucun bâtiment, tandis que 68 et 69 sont entièrement ruinés : le faubourg garde des vestiges sans devenir une tache uniforme. Le tableau complet sort de `04e`.
 
-**35 tronçons sur 178** ont gardé du limon.
+**36 tronçons sur 178** ont gardé du limon.
 
 ## 4. Les trois postures — à arbitrer avant d'écrire une ligne
 
@@ -64,14 +67,15 @@ Le brainstorm du 2026-08-10 les pose ; personne ne les a chiffrées. **C'est du 
 
 ⚠️ **Ce que le rendu demande, et qui n'existe pas** : la maquette construit sa géométrie **une fois** au chargement. Faire disparaître un bâtiment n'est pas un changement de couleur. Le chemin le moins cher est que `07` exporte, pour les seuls îlots du faubourg, **un second maillage « après »** (le sol rendu à l'eau) que Godot montre à la place du premier — un nœud caché, un nœud montré. Chiffré à vue : ~30 lignes dans `07`, ~20 dans `maquette.gd`. **Rien n'est écrit tant que le tableau ci-dessus n'est pas rempli.**
 
-## 5. Les deux questions pour l'auteur
+## 5. Les deux réponses de l'auteur
 
-- 🔴 **La rive droite est-elle vraiment hors d'atteinte ?** Le vault annonçait un aléa de **0,43** en face ; le modèle en donne **0,02**. Les deux se défendent : soit la ville est sur une terrasse et ne risque rien — ce qui rend le faubourg d'autant plus injuste, et colle à 23b — soit la crue annoncée doit mordre le front de quai, et alors `BERGE_DROITE_M` descend. **Le second indicateur « ville exposée » (54) n'a pas le même sens selon la réponse.**
-- 🔴 **Quels ponts, et dans quel état ?** La proposition coupe **168** et fragilise **169**. 168 est celui que `02_qualifier.py` déclare intouchable — *seul accès des 279 logements du faubourg*. Le couper est exactement l'intérêt : la crue prend au joueur ce qui reliait le faubourg à la ville, et « rendre à l'eau » cesse d'être une lubie pour devenir l'option qui **économise un pont**. Mais ça contredit la contrainte écrite en 30c (*le faubourg garde un accès qui n'est pas le quai*). **Une ligne de `04e` suffit à changer d'avis.**
+- ✅ **La rive droite reste hors d'atteinte.** La terrasse monte avec la crue : le front de quai regarde le faubourg se noyer sans boire lui-même. Le vault annonce encore 0,43 en face ; le modèle donne 0,01.
+- ✅ **Les trois franchissements 145, 168 et 169 sont coupés.** Le faubourg n'a plus d'accès routier. Cela contredit volontairement 30c : « rendre à l'eau » peut désormais économiser trois ponts au lieu d'un.
 
 ## 6. La dette de ce chantier
 
 - 🔴 **Le report de trafic n'existe pas.** Un pont coupé reste dans `routes` : `charge` ne bouge pas, l'axe de transit non plus. Le réseau routier n'est donc plus d'un seul tenant **à l'écran** alors qu'il l'est **dans les données** — le contrôle de connexité de `03` passe toujours, et il a raison de passer, mais il ne dit plus la vérité de l'image.
+- 🔴 **Le passage à la réduction est financièrement inaccessible en vingt ans avec les prix actuels.** Les logements sinistrés et les trois ponts essentiels coûtent plus que la caisse de départ et vingt ans de dotation réunis. Le verrou et les jauges fonctionnent ; leur seuil économique est du level design, pas un défaut d'interface.
 - 🟠 **Une seule hauteur d'eau par tronçon**, prise à son milieu. La limite du limon tombe donc sur un carrefour, jamais au milieu d'une rue. Invisible sur les rues courtes du faubourg ; ça se verrait sur une radiale de 300 m.
 - 🟠 **Le marquage au sol survit au pont emporté** : les passages piétons et les lignes d'axe s'arrêtent au bord de l'eau, peints jusqu'au vide. Défendable (la peinture reste), mais ça n'a pas été choisi.
 - 🟠 **Les logements sinistrés se déduisent de la surface touchée**, faute de lien entre `logements` et l'emprise bâtie. C'est la dette « `logements` est inventé » du prototype, vue sous un autre angle — et la crue lui donne enfin une raison d'être payée.
@@ -91,4 +95,4 @@ En tête de `04e_crue.py`. Une ligne changée, on relance, on lit le tableau imp
 | `SEUIL_SINISTRE` · `SEUIL_MOUILLE` | l'eau passe la porte · l'eau a touché |
 | `PONTS_CASSES` | 🎚️ level design pur, corrigé à la main |
 
-Le rendu, lui, se règle dans `palette.py` (`LIMON`, `RUINE_MUR`, `RUINE_TOIT`, `salir`) et dans `07` (`RUINE_NIVEAUX`, `PONT_COUPE_MARGE`).
+Le rendu, lui, se règle dans `palette.py` (`LIMON`, `RUINE_MUR`, `GRAVATS`, `salir`) et dans `07` (`RUINE_PANS`, `PONT_COUPE_MARGE`).

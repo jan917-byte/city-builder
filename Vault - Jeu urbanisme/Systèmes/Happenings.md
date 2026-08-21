@@ -7,6 +7,8 @@ statut: arrêté (paramétrage ouvert)
 
 En parallèle du but du joueur (créer son utopie), la ville subit des événements qui demandent de choisir **en urgence** : vague de chaleur, crue, révolte populaire.
 
+À l'ouverture, cette urgence forme une phase entière : **l'adaptation vient avant la réduction des émissions**. → [[Adaptation et réduction]]
+
 ## La mécanique
 
 À chaque crise, le joueur arbitre :
@@ -20,7 +22,7 @@ C'est là que les deux ressources s'échangent, au pire moment. → [[Ressources
 
 ## Le système se referme
 
-**Les décisions changent les crises possibles.** Le joueur comprend que la seule sortie du cycle d'urgence est **structurelle**. C'est le message du jeu, exprimé mécaniquement et non par du texte.
+**Les décisions changent l'issue des crises, puis leur intensité future.** Le joueur comprend que la sortie du cycle d'urgence est **structurelle**. C'est le message du jeu, exprimé mécaniquement et non par du texte.
 
 ## ⚠️ Piège 1 — la prévention réussie est invisible
 

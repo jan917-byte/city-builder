@@ -13,6 +13,7 @@ extends Node3D
 #   Q / E  quart de tour            P        capture PNG
 #   ← → ↑ ↓  orienter la caméra     T        vue de dessus
 #   C      recolorer par tissu
+#   D      diagnostic de crue
 #   F3     afficher / masquer les performances
 #   Échap  quitter
 #
@@ -95,13 +96,20 @@ var _contour_fid := -1
 var _contour_couche := ""
 var _couloirs := {}
 var _plaques := {}
+var _diagnostic_marqueurs: Node3D
 
 var noeuds := {"i": {}, "r": {}}
+# 🔧 LA VILLE RÉPARÉE, cachée au chargement. Un nœud par îlot ruiné et par
+# tronçon abîmé ; il apparaît quand le chantier payé arrive à son terme. C'est
+# la seule géométrie qui se montre en cours de partie — elle est CALCULÉE par
+# 07 comme tout le reste, Godot ne fabrique rien.
+var reparations := {"i": {}, "r": {}}
 var mois := 0.0
 var vitesse := 1.0
 var _derniere_vitesse := 1.0
 var calque_couche := ""
 var calque_champ := ""
+var diagnostic_crue := false
 var _etendue := [0.0, 1.0]
 var _dernier_peint := -1.0
 
@@ -121,6 +129,7 @@ func _ready() -> void:
 	monde.name = "Monde"
 	add_child(monde)
 	_construire()
+	_batir_marqueurs_crue()
 	_decor()
 
 	pivot = CameraAxo.new()
@@ -143,6 +152,8 @@ func _ready() -> void:
 	interface.solaire_demande.connect(_sur_solaire)
 	interface.vitesse_demandee.connect(_sur_vitesse)
 	interface.temps_remis.connect(_sur_reset)
+	interface.diagnostic_demande.connect(_sur_diagnostic)
+	interface.reparation_demandee.connect(_sur_reparation)
 	pivot.vue_changee.connect(interface.maj_camera)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
 
@@ -231,6 +242,13 @@ ESSAI — la ville, sans décision")
 	pivot.caler(200.0, 14.0)
 	await get_tree().process_frame
 	await _capturer("essai_pont_casse")
+
+	# 🔧 LES TROIS RÉPARATIONS, ÉPROUVÉES PLUTÔT QUE PROMISES. On paie, on
+	# avance le temps jusqu'à la fin du chantier, et on REGARDE : un tablier
+	# doit avoir repoussé au-dessus de l'eau, un îlot doit avoir retrouvé ses
+	# toits. Si la ruine ressort À TRAVERS le bâtiment neuf, c'est RUINE_PANS
+	# qui est monté trop haut (voir 07).
+	await _essai_reparation()
 	pivot.caler(30.0, 32.0)
 
 	# 🌉 LE FRANCHISSEMENT DE PRES (2026-08-18) : a 260 m d'etendue, `ilse` ne
@@ -307,9 +325,25 @@ ESSAI — la ville, sans décision")
 		_dernier_peint = -1.0
 		_rafraichir(true)
 
+	# Le noyau refuse la réduction pendant l'urgence, même si une ancienne
+	# interface essayait encore de l'appeler.
+	var caisse_verrou := ville.caisse_ke(mois)
+	if ville.lancer_solaire(32, 1.0, mois) \
+			or absf(ville.caisse_ke(mois) - caisse_verrou) > 0.001:
+		push_error("la réduction est disponible pendant l'urgence")
+		get_tree().quit(1)
+		return
+	print("  réduction verrouillée pendant l'urgence ✅")
+	mois = _essai_deverrouiller_reduction()
+	if mois < 0.0:
+		return
+
 	# Le seul geste du prototype, vérifié sur la barre : mi-pose puis 100 %.
 	var caisse_avant := ville.caisse_ke(mois)
-	ville.lancer_solaire(32, 1.0, mois)
+	if not ville.lancer_solaire(32, 1.0, mois):
+		push_error("l'îlot 32 refuse la pose après le déverrouillage")
+		get_tree().quit(1)
+		return
 	var etat32 := ville.etat_solaire(32, mois)
 	var cout32: float = etat32["cout_ke"]
 	# La pose se paie COMPTANT : la caisse tombe exactement du coût annoncé, ni
@@ -384,6 +418,9 @@ ESSAI — la ville, sans décision")
 	selection.sel_couche = "i"
 	selection.sel_fid = 22
 	interface.montrer("i", 22, false)
+	mois = _essai_deverrouiller_reduction()
+	if mois < 0.0:
+		return
 	if not ville.lancer_solaire(22, 1.0, mois):
 		push_error("l'îlot 22 refuse la pose de contrôle pan par pan")
 		get_tree().quit(1)
@@ -417,7 +454,55 @@ ESSAI — la ville, sans décision")
 	await _capturer("essai_tissu")
 	_sur_tissu()
 
+	# 🌊 Le diagnostic doit prouver ses trois lectures sur UNE image : emprise,
+	# bâti touché et coupures. Un signal vide échoue avant la capture.
+	var diag := [0, 0, 0]
+	for o in ville.ilots.values():
+		diag[0] += int(float(o.get("hauteur_eau_max", 0.0)) > 0.10)
+		diag[1] += int(float(o.get("part_sinistree", 0.0)) > 0.0)
+	for o in ville.routes.values():
+		diag[2] += int(str(o.get("etat_crue", "")) == "coupe")
+	if diag.min() <= 0:
+		push_error("diagnostic de crue incomplet : %s" % [diag])
+		get_tree().quit(1)
+		return
+	_sur_diagnostic(true)
+	pivot.caler(30.0, 55.0)
+	await get_tree().process_frame
+	await _capturer("essai_diagnostic_crue")
+	print("  diagnostic crue : %d îlots noyés, %d avec bâti touché, %d routes bloquées"
+		% diag)
+	_sur_diagnostic(false)
+
 	get_tree().quit()
+
+
+## Déverrouille la réduction sans passe-droit : au mois 600 la dotation peut
+## payer les réparations essentielles, puis on attend leur vraie durée. Ce
+## mois n'est pas du level design ; c'est seulement la caisse de l'essai.
+func _essai_deverrouiller_reduction() -> float:
+	var debut := 600.0
+	for fid in ville.ilots:
+		if ville.base("i", fid, "logements_sinistres") <= 0.0:
+			continue
+		if not ville.reparer("i", fid, debut):
+			push_error("l'essai ne peut pas relever l'îlot %d" % fid)
+			get_tree().quit(1)
+			return -1.0
+	for fid in ville.routes:
+		if str(ville.routes[fid].get("etat_crue", "")) != "coupe":
+			continue
+		if not ville.reparer("r", fid, debut):
+			push_error("l'essai ne peut pas rebâtir le pont %d" % fid)
+			get_tree().quit(1)
+			return -1.0
+	var fin := debut + maxf(Ville.RECONSTRUCTION_MOIS, Ville.PONT_MOIS) + 0.1
+	if not ville.reduction_deverrouillee(fin):
+		push_error("la réduction reste verrouillée après les réparations essentielles")
+		get_tree().quit(1)
+		return -1.0
+	print("  adaptation terminée : réduction déverrouillée ✅")
+	return fin
 
 
 ## 🎚️ LE compte rendu qui sert à régler `CAISSE_DEPART_KE` et
@@ -427,6 +512,102 @@ ESSAI — la ville, sans décision")
 ## même siècle.
 ##
 ## Rend le fid de l'îlot que la caisse ne peut PAS payer, ou −1 : c'est celui
+## 🔧 Payer, attendre, regarder. Le seul contrôle qui prouve que la géométrie
+## neuve existe et qu'elle recouvre bien la ruine.
+func _essai_reparation() -> void:
+	print("
+RÉPARATION — ce que la crue laisse à payer")
+	var d0: Dictionary = ville.degats(mois)
+	print("  au mois 0 : %d logements perdus · %d franchissement(s) coupé(s)"
+		% [int(d0["logements_perdus"]), int(d0["franchissements_coupes"])])
+	print("  tout réparer coûterait %.0f k€, la caisse en a %.0f"
+		% [d0["a_reparer_ke"], ville.caisse_ke(mois)])
+
+	# Le pont le moins cher, puis l'îlot le moins cher : ce sont les deux que
+	# la caisse de départ peut effectivement payer.
+	var pont := -1
+	var ilot := -1
+	for fid in ville.routes:
+		if str(ville.routes[fid].get("etat_crue", "")) != "coupe":
+			continue
+		var c_pont := ville.cout_reparation_ke("r", fid)
+		if pont < 0 or c_pont < ville.cout_reparation_ke("r", pont):
+			pont = fid
+	for fid in ville.ilots:
+		# ⚠️ Il faut un îlot QUI A DES RUINES : un îlot seulement sinistré porte
+		# un prix (le rez à refaire) mais aucune géométrie neuve, et le contrôle
+		# « bâti neuf visible » sortirait faux sans qu'il y ait de défaut.
+		if ville.base("i", fid, "batiments_ruines") <= 0.0:
+			continue
+		var c := ville.cout_reparation_ke("i", fid)
+		if ilot < 0 or c < ville.cout_reparation_ke("i", ilot):
+			ilot = fid
+
+	# 🔴 LE REFUS, ÉPROUVÉ : le pont le moins cher dépasse la caisse de départ,
+	# et l'essayer ne doit pas bouger un centime.
+	var avant := ville.caisse_ke(mois)
+	if pont >= 0 and ville.cout_reparation_ke("r", pont) > avant:
+		var lance := ville.reparer("r", pont, mois)
+		if lance or absf(ville.caisse_ke(mois) - avant) > 0.001:
+			push_error("pont %d rebâti sans la caisse" % pont)
+			get_tree().quit(1)
+			return
+		print("  refus vérifié : le pont %d coûte %.0f k€, la caisse en a %.0f ✅"
+			% [pont, ville.cout_reparation_ke("r", pont), avant])
+
+	if ilot >= 0 and ville.reparer("i", ilot, mois):
+		print("  îlot %d reconstruit : %.0f k€ · caisse %.0f → %.0f k€"
+			% [ilot, avant - ville.caisse_ke(mois), avant, ville.caisse_ke(mois)])
+		mois = Ville.RECONSTRUCTION_MOIS + 0.1
+		_dernier_peint = -1.0
+		_rafraichir(true)
+		var noeud: MeshInstance3D = reparations["i"].get(ilot)
+		print("  au mois %.1f : bâti neuf visible %s · logements %d · toit %.0f m²"
+			% [mois, "✅" if noeud != null and noeud.visible else "❌",
+			int(ville.valeur("i", ilot, "logements", mois)),
+			ville.valeur("i", ilot, "_toit_equipable_m2", mois)])
+		selection.sel_couche = "i"
+		selection.sel_fid = ilot
+		interface.montrer("i", ilot, false)
+		_repere("faubourg")
+		pivot.caler(120.0, 40.0)
+		_rafraichir(true)
+		await get_tree().process_frame
+		await _capturer("essai_reconstruit")
+
+	# Le temps a passé : la dotation a coulé, le pont devient payable.
+	mois = 96.0
+	_rafraichir(true)
+	if pont >= 0 and ville.reparer("r", pont, mois):
+		mois += Ville.PONT_MOIS + 0.1
+		_dernier_peint = -1.0
+		_rafraichir(true)
+		var n2: MeshInstance3D = reparations["r"].get(pont)
+		var reste: Dictionary = ville.degats(mois)
+		print("  pont %d rebâti au mois %.0f : tablier visible %s · %d franchissement(s) encore coupé(s)"
+			% [pont, mois, "✅" if n2 != null and n2.visible else "❌",
+			int(reste["franchissements_coupes"])])
+		selection.sel_couche = "r"
+		selection.sel_fid = pont
+		interface.montrer("r", pont, false)
+		# ⚠️ Visé sur le tablier NEUF lui-même, pas sur le repère « pont_casse » :
+		# celui-ci vise le barycentre des TROIS coupures, et le seul ouvrage
+		# rebâti tombait hors cadre.
+		if n2 != null:
+			var b := n2.get_aabb()
+			pivot.viser(Vector2(b.get_center().x, b.get_center().z), 130.0)
+		pivot.caler(200.0, 26.0)
+		_rafraichir(true)
+		await get_tree().process_frame
+		await _capturer("essai_pont_rebati")
+	# On repart d'une ville intacte : les captures suivantes jugent le rendu,
+	# pas une partie déjà jouée.
+	mois = 0.0
+	ville.reinitialiser()
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
 ## dont on capture le refus.
 func _essai_economie() -> int:
 	var cout_ville := 0.0
@@ -501,6 +682,8 @@ func _construire() -> void:
 	# ~250, invisible sur 40 000 triangles.
 	_par_objet("Ilots", [donnees["masses"], donnees["sols"]], "i")
 	_par_objet("Routes", [donnees["voirie"]], "r")
+	_par_reparation("Reparation", donnees["repare"], "i")
+	_par_reparation("ReparationVoirie", donnees["repare_voirie"], "r")
 
 	var liste: Array = (donnees["arbres"] as Array).duplicate()
 
@@ -585,6 +768,54 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 	print("  %-8s %3d objets, %6d triangles" % [nom, parent.get_child_count(), tris])
 
 
+## Les nœuds de réparation. Même recette que `_par_objet`, trois différences :
+## ils partent CACHÉS, leur corps de collision part désactivé, et ils ne
+## remplacent personne — une ruine tient tout entière SOUS le bâtiment neuf qui
+## la couvre (voir RUINE_RETRAIT dans 07), donc rien n'est à retirer.
+func _par_reparation(nom: String, source: Dictionary, couche: String) -> void:
+	if _ignore("Ilots" if couche == "i" else "Routes"):
+		return
+	var parent := Node3D.new()
+	parent.name = nom
+	monde.add_child(parent)
+	for g in (source["g"] as Array):
+		var gr: Array = g
+		var fid := int(gr[0])
+		var mi := MeshInstance3D.new()
+		mi.name = "%s%d" % ["N" if couche == "i" else "T", fid]
+		mi.mesh = Constructeur.maillage_groupe(source, int(gr[1]), int(gr[2]))
+		mi.material_override = mat_objet
+		mi.set_meta("fid", fid)
+		mi.set_meta("couche", couche)
+		mi.visible = false
+		parent.add_child(mi)
+		mi.create_trimesh_collision()
+		_corps(mi, false)
+		reparations[couche][fid] = mi
+	print("  %-8s %3d objets prêts à réparer" % [nom, parent.get_child_count()])
+
+
+## Un corps de collision caché reste TOUCHÉ par le raycast : masquer le
+## maillage ne suffit pas, il faut sortir le corps du calque.
+func _corps(mi: MeshInstance3D, actif: bool) -> void:
+	for e in mi.get_children():
+		if e is StaticBody3D:
+			(e as StaticBody3D).collision_layer = 1 if actif else 0
+
+
+## Montre ce qui vient d'être fini. Une géométrie qui apparaîtrait à
+## l'ENGAGEMENT dirait qu'un pont se rebâtit en une image.
+func _montrer_reparations() -> void:
+	for couche in ["i", "r"]:
+		for fid in reparations[couche]:
+			var mi: MeshInstance3D = reparations[couche][fid]
+			var fini: bool = ville.reparation_finie(couche, fid, mois)
+			if fini == mi.visible:
+				continue
+			mi.visible = fini
+			_corps(mi, fini)
+
+
 func _dire(nom: String, m: ArrayMesh) -> void:
 	# Comme les scripts QGIS : un maillage vide ou hors cadre doit se voir dans
 	# la console, pas se deviner à l'écran.
@@ -619,7 +850,13 @@ func _decor() -> void:
 # ------------------------------------------------------------------ le temps
 
 func _process(delta: float) -> void:
-	mois = minf(mois + delta * vitesse * MOIS_PAR_SECONDE, Ville.HORIZON_MOIS)
+	# L'essai pousse artificiellement la caisse au-delà des vingt ans pour
+	# éprouver le déverrouillage avec les prix non calibrés de la crue. En jeu,
+	# l'horizon reste strictement celui du projet.
+	if "--essai" in OS.get_cmdline_user_args():
+		mois += delta * vitesse * MOIS_PAR_SECONDE
+	else:
+		mois = minf(mois + delta * vitesse * MOIS_PAR_SECONDE, Ville.HORIZON_MOIS)
 	_rafraichir(false)
 
 
@@ -631,6 +868,7 @@ func _rafraichir(force: bool) -> void:
 		interface.maj(ville.indicateurs(mois), mois, vitesse)
 		return
 	_dernier_peint = mois
+	_montrer_reparations()
 	_peindre()
 	interface.maj(ville.indicateurs(mois), mois, vitesse)
 
@@ -666,6 +904,8 @@ var _teintes_tissu := {}
 func _sur_tissu() -> void:
 	calque_tissu = not calque_tissu
 	if calque_tissu:
+		diagnostic_crue = false
+		interface.afficher_diagnostic(false)
 		calque_couche = ""
 		calque_champ = ""
 		if _teintes_tissu.is_empty():
@@ -680,6 +920,8 @@ func _sur_tissu() -> void:
 
 
 func _sur_calque(couche: String, champ: String) -> void:
+	diagnostic_crue = false
+	interface.afficher_diagnostic(false)
 	calque_tissu = false
 	calque_couche = couche
 	calque_champ = champ
@@ -710,6 +952,21 @@ func _peindre() -> void:
 	for couche in ["i", "r"]:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
+			var diagnostic_sol := 0.0
+			var diagnostic_bati := 0.0
+			if diagnostic_crue:
+				var o: Dictionary = ville.objets(couche).get(fid, {})
+				if couche == "i":
+					if float(o.get("hauteur_eau_max", 0.0)) > 0.10:
+						diagnostic_sol = 1.0
+					if float(o.get("part_sinistree", 0.0)) > 0.0:
+						diagnostic_bati = 1.0
+				else:
+					diagnostic_sol = 2.0 if str(o.get("etat_crue", "")) == "coupe" \
+						else (1.0 if float(o.get("hauteur_eau", 0.0)) > 0.10 else 0.0)
+			mi.set_instance_shader_parameter("diagnostic_mode", 1.0 if diagnostic_crue else 0.0)
+			mi.set_instance_shader_parameter("diagnostic_sol", diagnostic_sol)
+			mi.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
 			var c := Color(1.0, 1.0, 1.0, 0.0)
 			if calque_tissu and couche == "i":
 				c = _teintes_tissu.get(fid, Color.MAGENTA)
@@ -720,13 +977,66 @@ func _peindre() -> void:
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
 				c.a = 0.88
-			mi.set_instance_shader_parameter("calque", c)
-			mi.set_instance_shader_parameter("teinte", _teinte(couche, fid))
-			if couche == "i":
-				# La preuve que quelque chose s'est passé sans ouvrir un menu :
-				# les toits se couvrent au fil de la pose.
-				mi.set_instance_shader_parameter("equipe",
-					ville.valeur("i", fid, "part_toit_equipe", mois))
+			# Le nœud réparé prend les MÊMES paramètres que celui qu'il
+			# recouvre : sans ça un îlot reconstruit sortirait du calque, ne se
+			# surlignerait plus au survol et n'accepterait plus de panneaux.
+			for mj in [mi, reparations[couche].get(fid)]:
+				if mj == null:
+					continue
+				mj.set_instance_shader_parameter("calque", c)
+				mj.set_instance_shader_parameter("teinte", _teinte(couche, fid))
+				if couche == "i":
+					# La preuve que quelque chose s'est passé sans ouvrir un
+					# menu : les toits se couvrent au fil de la pose.
+					mj.set_instance_shader_parameter("equipe",
+						ville.valeur("i", fid, "part_toit_equipe", mois))
+
+
+func _sur_diagnostic(actif: bool) -> void:
+	diagnostic_crue = actif
+	_diagnostic_marqueurs.visible = actif
+	interface.afficher_diagnostic(actif)
+	if actif:
+		calque_tissu = false
+		calque_couche = ""
+		calque_champ = ""
+		_repere("ville")
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
+func _batir_marqueurs_crue() -> void:
+	_diagnostic_marqueurs = Node3D.new()
+	_diagnostic_marqueurs.name = "RoutesBloquees"
+	_diagnostic_marqueurs.visible = false
+	monde.add_child(_diagnostic_marqueurs)
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color8(220, 58, 48)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for fid in ville.routes:
+		if str(ville.routes[fid].get("etat_crue", "")) != "coupe":
+			continue
+		var cle := str(fid)
+		if not (donnees["couloirs"] as Dictionary).has(cle):
+			continue
+		var parties: Array = donnees["couloirs"][cle][1]
+		if parties.is_empty():
+			continue
+		var axe: Array = parties[0]
+		var k := int(axe.size() / 4) * 2
+		var marqueur := Node3D.new()
+		marqueur.name = "Route%d" % fid
+		marqueur.position = Vector3(float(axe[k]), 7.0, float(axe[k + 1]))
+		_diagnostic_marqueurs.add_child(marqueur)
+		for angle in [-45.0, 45.0]:
+			var barre := MeshInstance3D.new()
+			var boite := BoxMesh.new()
+			boite.size = Vector3(22.0, 0.9, 2.0)
+			barre.mesh = boite
+			barre.material_override = mat
+			barre.rotation_degrees.y = angle
+			marqueur.add_child(barre)
 
 
 func _disponible(couche: String, fid: int) -> bool:
@@ -921,6 +1231,20 @@ func _sur_solaire(fid: int, part: float) -> void:
 	_rafraichir(true)
 
 
+## 🔧 LES TROIS RÉPARATIONS PASSENT PAR ICI. Le noyau dit oui ou non ; la
+## géométrie neuve, elle, n'apparaîtra qu'à la FIN du chantier — c'est
+## `_montrer_reparations` qui la découvre, au fil du temps.
+func _sur_reparation(couche: String, fid: int) -> void:
+	var cout := ville.cout_reparation_ke(couche, fid)
+	if not ville.reparer(couche, fid, mois):
+		return
+	print("%s %d · réparation engagée : %.0f k€ · %.0f mois · caisse %.0f k€"
+		% ["îlot" if couche == "i" else "rue", fid, cout,
+		ville.duree_reparation_mois(couche, fid), ville.caisse_ke(mois)])
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
 ## La pause est volontaire : sans elle, un retour demandé en ×12 recommence à
 ## défiler avant qu'on ait regardé.
 func _sur_reset() -> void:
@@ -968,6 +1292,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_F: _repere("faubourg")
 		KEY_N: _repere("pont_casse")
 		KEY_C: _sur_tissu()
+		KEY_D: _sur_diagnostic(not diagnostic_crue)
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")
 		KEY_ESCAPE: get_tree().quit()

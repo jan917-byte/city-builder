@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — n°16, 17, 18, 12 et 14 closes le 2026-08-12. Restent n°19, 20, 21 (l'écran) et n°4 (les fins) — n°22 close le 2026-08-18
-maj: 2026-08-18
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins) et n°23 (le seuil du prologue)
+maj: 2026-08-21
 ---
 
 # Questions ouvertes
@@ -47,6 +47,22 @@ Celle que le joueur montre en disant *« regarde ce que j'ai fait »*. Candidat 
 
 ### 6. Le premier clic et les 60 premières secondes
 Toujours sans réponse. Se découvre en jouant, pas en réfléchissant.
+
+### 23. Quand la ville est-elle assez réparée pour parler de réduction ?
+
+Le principe est arrêté : le prologue ne propose que l'**adaptation** ; la **réduction des émissions** entre après la réparation. Ce qui manque est le seuil qui fait changer d'horizon. → [[Décisions arrêtées]] 72 · [[Adaptation et réduction]]
+
+Trois formes possibles :
+
+| | Seuil | Risque |
+|---|---|---|
+| **Tout réparer** | aucun pont, logement ou équipement encore sinistré | transforme le prologue en liste de nettoyage et peut le faire durer trop longtemps |
+| **Attendre une date** | la réduction s'ouvre après N mois | l'urgence devient un décor : le joueur peut attendre sans relever la ville |
+| **Rétablir les fonctions vitales** | aucun quartier habité isolé, services indispensables accessibles, relogement d'urgence résolu | demande de nommer peu de fonctions, mais le passage se lit réellement sur la carte |
+
+**Recommandation : la troisième.** Les ruines restantes deviennent alors une dette visible, pas une serrure invisible. À trancher devant le premier scénario jouable de la crue, parce que la durée du prologue est du level design.
+
+🧪 **Prototypé le 2026-08-21** : la jauge Adaptation suit les logements à relever et les ponts à rétablir ; la décision solaire disparaît entièrement jusqu'à leur achèvement. Le passage fonctionne, mais les prix actuels le rendent inaccessible sur l'horizon de vingt ans — le prototype révèle donc le prochain arbitrage, il ne le ferme pas.
 
 ## 🎯 Nées de la phase actuelle — une ville crédible et belle
 
