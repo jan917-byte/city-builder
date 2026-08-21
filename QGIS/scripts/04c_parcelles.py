@@ -2203,6 +2203,7 @@ def main():
     traversants = []
     traces = []                 # 🚶 un par îlot qui porte un chemin
     lisieres = []               # 🌾 un par îlot qui a une arête sans rue
+    cible_haut = {}             # 🏢 {sous_type: hauteur voulue par 04.TISSU}
     n_fusions = 0
     reunions = {}               # 🔷 {fid_ilot: nombre de coupes effacées}
     angles = {}                 # 🏢 {fid_ilot: nombre de coins soudés}
@@ -2220,6 +2221,7 @@ def main():
             continue
 
         facade, prof, style = TISSU[st]
+        cible_haut[st] = d["haut"]
         ext = d["ext"]
         aire0 = abs(aire_signee(ext))
 
@@ -2306,6 +2308,31 @@ def main():
     print("  %-22s %5d %8d" % ("TOTAL", sum(len(v) for v in par_st.values()), total))
     print()
     print("  %d îlots laissés entiers (sols, rivière, hauteur nulle)" % len(saute))
+    print()
+
+    # 🔴 LE ± JEU_NIVEAUX NE S'ANNULE QUE SUR BEAUCOUP DE PARCELLES. Sur un
+    # tissu qui en compte trois, le tirage décide seul de la hauteur que le
+    # joueur voit, et la table de `04` ne veut plus rien dire.
+    print("  🏢 LA HAUTEUR TIRÉE TIENT-ELLE LA TABLE ? (± %d niveau autour de"
+          " `04.TISSU`)" % JEU_NIVEAUX)
+    print("  %-22s %9s %8s %8s %8s" % ("sous_type", "parcelles", "voulu",
+                                       "tiré", "écart"))
+    print("  " + "-" * 70)
+    for st in sorted(cible_haut, key=lambda k: -cible_haut[k]):
+        lot = [r for r in resultats
+               if r["st"] == st and r["origine"] != "chemin"]
+        if not lot:
+            continue
+        moy = sum(r["niveaux"] for r in lot) / len(lot)
+        ecart = moy - cible_haut[st]
+        # Le plancher à 1 niveau tire vers le HAUT les tissus bas : sur la
+        # friche (1 niveau voulu) l'écart positif est attendu, pas un défaut.
+        attendu = cible_haut[st] <= JEU_NIVEAUX and ecart > 0
+        marque = "  ✅" if abs(ecart) < 0.5 or attendu else "  🔴"
+        print("  %-22s %9d %8.1f %8.2f %+8.2f%s"
+              % (st, len(lot), cible_haut[st], moy, ecart, marque))
+    print("  " + "-" * 70)
+    print("     🔴 = ce qu'on voit à l'écran n'est plus ce que la table dit.")
     print()
 
     # ── ce que la table demande, et ce que la carte rend ───────────────────

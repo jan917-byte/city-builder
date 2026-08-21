@@ -1644,18 +1644,23 @@ def _forme(env, ring, rues, retraits, cadre, a, famille, facade, prof, recul,
 
 def lire(con):
     parcelles = []
-    for fid, fid_ilot, st, origine, geom in con.execute(
-        "SELECT fid, fid_ilot, sous_type, origine, geom FROM parcelles"
+    # `niveaux` ne sert à AUCUNE forme ici : il n'entre que dans le contrôle du
+    # plancher, seul endroit où emprise mesurée et logements inventés se voient.
+    for fid, fid_ilot, st, origine, niveaux, geom in con.execute(
+        "SELECT fid, fid_ilot, sous_type, origine, niveaux, geom FROM parcelles"
         " ORDER BY fid"
     ):
         anneaux, _ = lire_wkb(gpkg_vers_wkb(geom))
         parcelles.append({"fid": fid, "ilot": fid_ilot, "st": st,
-                          "origine": origine, "anneau": D4C.ouvrir(anneaux[0])})
+                          "origine": origine, "niveaux": niveaux or 0.0,
+                          "anneau": D4C.ouvrir(anneaux[0])})
     emprises = {}
     for fid_ilot, geom in con.execute("SELECT fid_ilot, geom FROM emprises"):
         emprises.setdefault(fid_ilot, []).append(
             D4C.ouvrir(lire_wkb(gpkg_vers_wkb(geom))[0][0]))
-    return parcelles, emprises
+    logements = dict(con.execute(
+        "SELECT sous_type, SUM(logements) FROM ilots GROUP BY sous_type"))
+    return parcelles, emprises, logements
 
 
 # --------------------------------------------------------------------- main
@@ -1665,7 +1670,7 @@ def main():
         sys.exit("Introuvable : %s — lancer 02 → 03 → 04 → 04b → 04c d'abord."
                  % GPKG)
     con = sqlite3.connect("file:%s?mode=ro" % GPKG.replace("\\", "/"), uri=True)
-    parcelles, emprises = lire(con)
+    parcelles, emprises, logements = lire(con)
     con.close()
 
     print("=" * 74)
@@ -1704,7 +1709,7 @@ def main():
         resultats.append({"parcelle": p, "emps": emps, "rues": rues,
                           "retraits": retraits, "note": note})
 
-    controles(resultats, parcelles, refus)
+    controles(resultats, parcelles, refus, logements)
     if "--pourquoi" in sys.argv:
         pourquoi(detail)
 
@@ -1716,7 +1721,7 @@ def main():
           % (n, os.path.basename(GPKG)))
 
 
-def controles(resultats, parcelles, refus):
+def controles(resultats, parcelles, refus, logements):
     """🔴 LE SEUL ENDROIT OÙ UNE ERREUR PEUT SE VOIR sans lancer la 3D. Les
     trois lignes qui comptent : aucun bâtiment ne sort de sa parcelle (R0), la
     distance mesurée aux limites tient la table (R1/R4), et la surface de toit
@@ -1735,7 +1740,7 @@ def controles(resultats, parcelles, refus):
                                    "n_dehors": 0, "larg": 9e9, "vide_rue": 0,
                                    "creux": 0.0, "aire_min": 9e9,
                                    "coins": 0, "rect": 1.0, "bizarre": 0,
-                                   "cour": 0.0, "aile": 0})
+                                   "cour": 0.0, "aile": 0, "plancher": 0.0})
         d["n_parc"] += 1
         # 🔴 L'EMPRISE SE LIT PAR PARCELLE, LA FORME PAR BÂTIMENT. Depuis qu'une
         # parcelle traversante en porte deux, les deux ne se comptent plus dans
@@ -1744,6 +1749,7 @@ def controles(resultats, parcelles, refus):
         couvert = sum(abs(D4C.aire_signee(m)) for m in emps)
         d["part"] += couvert / ap if ap else 0.0
         d["cour"] += (1.0 - couvert / ap) if ap else 0.0
+        d["plancher"] += couvert * r["parcelle"]["niveaux"]
         if r["note"].get("aile"):
             d["aile"] += 1
         if TISSU[st][6] == MITOYEN:
@@ -1897,6 +1903,34 @@ def controles(resultats, parcelles, refus):
 
     print("\n  🌞 SURFACE DE TOIT — le chiffre qui rejoint l'énergie")
     print("     %.2f ha sur %d bâtiments." % (toit / 1e4, total))
+
+    # 🔴 LE PLANCHER EST MESURÉ, `logements` EST INVENTÉ (04 : densité × ha).
+    # Les deux nombres ne se parlent pas : tant que c'est le cas, ajouter un
+    # étage ne peut ajouter aucun habitant. Ce tableau est l'instrument de
+    # cette bascule — le m²/log est ce qu'elle coûterait aujourd'hui.
+    print("\n  🏢 LE PLANCHER, ET CE QU'IL DIT DES LOGEMENTS")
+    print("     %-21s %11s %8s %9s %9s"
+          % ("sous_type", "plancher m²", "niv.moy", "logements", "m²/log"))
+    print("     " + "-" * 63)
+    p_tot, l_tot = 0.0, 0
+    for st in sorted(par_st, key=lambda s: -par_st[s]["plancher"]):
+        d = par_st[st]
+        log = int(logements.get(st) or 0)
+        niv = d["plancher"] / d["aire"] if d["aire"] else 0.0
+        m2 = (d["plancher"] / log) if log else 0.0
+        print("     %-21s %11.0f %8.2f %9s %9s"
+              % (st, d["plancher"], niv, log or "—",
+                 "%.0f" % m2 if log else "—"))
+        # Le total ne retient QUE le tissu habité : y jeter la friche et
+        # l'équipement gonflerait le m²/log d'un plancher sans locataire.
+        if log:
+            p_tot += d["plancher"]
+            l_tot += log
+    print("     " + "-" * 63)
+    print("     %-21s %11.0f %8s %9d %9.0f"
+          % ("habité", p_tot, "", l_tot, p_tot / max(l_tot, 1)))
+    print("     Un logement allemand moyen fait 90 à 110 m² BRUTS, circulations")
+    print("     comprises : hors de cette fourchette, c'est le tissu qui ment.")
 
     n_coeur = par_st.get("coeur_ancien", {}).get("n_parc", 0)
     if n_coeur:
