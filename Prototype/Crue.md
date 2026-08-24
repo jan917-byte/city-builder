@@ -12,6 +12,7 @@
 | les dégâts au bâti | ✅ **à regarder** | touche `F` |
 | le pont emporté | ✅ **vu à l'écran** | touche `N` : deux moignons affaissés par coupure |
 | le diagnostic d'ensemble | ✅ **vu à l'écran** | bouton ou touche `D` |
+| **la vue chantiers** | ✅ **à regarder** | bouton ou touche `X` : rouge ce qui est cassé, ambre ce qui est en travaux, vert ce qui est fait, et la liste des chantiers en cours |
 | `alea` rallumé | ✅ | l'îlot dit ce qu'il risque, pas seulement ce qu'il a pris |
 | **le choix du joueur** | ☐ | les trois postures — § 4, à arbitrer avant d'écrire |
 | **les deux jauges** | ✅ **vu à l'écran** | Adaptation active · Réduction verrouillée, sans décision solaire |
@@ -23,6 +24,9 @@ python QGIS/scripts/chaine.py --godot
 
 Puis lancer la maquette, `D` d'abord, `F` et `N` ensuite. **Ce qu'il faut voir** : en une image, le passage de l'eau en bleu, le bâti touché en orange et les trois franchissements bloqués en rouge · de près, des murs à crête cassée et ouverts au ciel en rive gauche · la rive touchée 1 m plus bas et la rive intacte 1 m plus haut · deux moignons de tablier affaissés à chaque coupure.
 **Ce qui prouverait que c'est cassé** : une des trois couleurs absente du diagnostic · une ruine en rive droite · zéro ruine (`04e` n'est pas passé — l'export le dit en clair) · l'eau inclinée · un pont emporté réduit à un trou sans vestige, ou encore franchissable.
+
+Puis `X`, **la vue chantiers** : le diagnostic dit ce que l'eau **a pris** et ne bouge plus, celle-ci dit **où on en est**. **Ce qu'il faut voir** : au mois 0, tout le faubourg en rouge et le compteur « Encore cassé » qui le compte · on paie une reconstruction, l'îlot passe **en ambre** et entre dans la liste avec sa durée restante · le chantier fini, il passe **en vert** et le « Reste à payer » a baissé d'autant · une pose de panneaux engagée apparaît dans la même liste, c'est un chantier comme un autre.
+**Ce qui prouverait que c'est cassé** : un îlot rouge et vert à la fois (la ruine et le bâti neuf ne portent pas le même état) · un chantier payé qui reste rouge · une durée restante qui ne descend pas quand le temps avance · le diagnostic et les chantiers ouverts en même temps l'un sur l'autre · la liste vide alors que la caisse vient de payer.
 
 ## 2. Le modèle, et pourquoi il n'est pas celui d'avant
 
@@ -74,6 +78,9 @@ Le brainstorm du 2026-08-10 les pose ; personne ne les a chiffrées. **C'est du 
 
 ## 6. La dette de ce chantier
 
+- ✅ **Le report de trafic existe** (2026-08-24). `04e` réaffecte la charge sans les ponts coupés et la réécrit dans `routes` ; le tronçon coupé tombe à 0 et la maquette l'affiche. Le réseau sort en **2 morceaux — 151 nœuds contre 45** —, et `04e` le dit comme un résultat voulu, pas comme une alerte.
+  🎯 **Le chiffre qui compte pour 23b : la rue qui encaisse le plus ne prend que +0,05.** Couper le faubourg ne coûte presque rien au reste de la ville — l'argument de « la ville regarde le faubourg se noyer » est maintenant mesuré, pas supposé.
+- 🟠 **Le trafic ne connaît que la géométrie.** Ni `logements` ni `emplois` n'entrent dans la demande, et aucune capacité ne ralentit personne : densifier n'ajoute aucune voiture, et un axe saturé ne déborde jamais sur les rues voisines. Le report de D05 reste donc un `+0,35` écrit dans `effets.csv`. → étape 5
 - 🔴 **Le passage à la réduction est financièrement inaccessible en vingt ans avec les prix actuels.** Les logements sinistrés et les trois ponts essentiels coûtent plus que la caisse de départ et vingt ans de dotation réunis. Le verrou et les jauges fonctionnent ; leur seuil économique est du level design, pas un défaut d'interface.
 - 🟠 **Une seule hauteur d'eau par tronçon**, prise à son milieu. La limite du limon tombe donc sur un carrefour, jamais au milieu d'une rue. Invisible sur les rues courtes du faubourg ; ça se verrait sur une radiale de 300 m.
 - 🟠 **Le marquage au sol survit au pont emporté** : les passages piétons et les lignes d'axe s'arrêtent au bord de l'eau, peints jusqu'au vide. Défendable (la peinture reste), mais ça n'a pas été choisi.

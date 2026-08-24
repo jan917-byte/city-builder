@@ -280,9 +280,12 @@ def main():
     # radiale de 300 m, elle se verrait.
     rues = []
     largeurs = {}
-    for fid, blob, larg in cur.execute(
-            "SELECT fid, geom, largeur_m FROM routes"):
+    reseau = {}          # ce que `charge_reseau` attend, pour le report ci-dessous
+    for fid, blob, larg, hier in cur.execute(
+            "SELECT fid, geom, largeur_m, hierarchie FROM routes"):
         parts, _ = lire_wkb(gpkg_vers_wkb(blob))
+        reseau[fid] = {"parts": parts, "hier": (hier or "").strip().lower(),
+                       "largeur": larg or 0.0}
         pts = [p for pa in parts for p in pa]
         c = (sum(p[0] for p in pts) / len(pts),
              sum(p[1] for p in pts) / len(pts))
@@ -341,11 +344,26 @@ def main():
             couts_rue[fid] = round(longueur * larg
                                    * PRIX_DEBLAIEMENT_EUR_M2 / 1000.0, 1)
 
-    _compte_rendu(ilots, bats, rues, couts_rue, largeurs)
+    # --- LE REPORT DE TRAFIC ------------------------------------------------
+    # 🌉 Un pont emporté sort du GRAPHE, pas de la table : `routes` le garde,
+    # avec sa géométrie et son prix de tablier. Seule la charge se réaffecte.
+    # ⚠️ `04` a calculé la charge sur le réseau intact au passage précédent ;
+    # c'est ici qu'elle devient vraie. Même dépendance à l'ordre de la chaîne
+    # que `ilots.alea` — lancer `04` seul après `04e` la ramène à l'intact.
+    # 🔴 L'AVANT SE RECALCULE, il ne se relit pas dans `routes.charge` : sinon
+    # relancer `04e` seul comparerait l'après à lui-même et le report tomberait
+    # à zéro sans rien dire. Une affectation de plus coûte quelques dixièmes.
+    coupes = {f for f, v in PONTS_CASSES.items() if v == "coupe"}
+    charge_avant, _intact = D4.charge_reseau(reseau)
+    charge_apres, morceaux = D4.charge_reseau(reseau, coupes)
+    trafic = {"avant": charge_avant, "apres": charge_apres,
+              "morceaux": morceaux, "coupes": coupes}
+
+    _compte_rendu(ilots, bats, rues, couts_rue, largeurs, trafic)
     if BLANC:
         print("\n--blanc : rien n'a ete ecrit.")
         return
-    _ecrire(con, cur, ilots, bats, rues, couts_rue)
+    _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic)
     print("\n[ok] ecrit dans %s" % os.path.relpath(GPKG, RACINE))
 
 
@@ -354,7 +372,7 @@ def main():
 ORDRE = ("ruine", "sinistre", "mouille", "intact")
 
 
-def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None):
+def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None, TRAFIC=None):
     print("=" * 78)
     print("04e — LA CRUE  (ouverture %.2f m · annoncée %.2f m)"
           % (NIVEAU_OUVERTURE_M, NIVEAU_ANNONCE_M))
@@ -460,6 +478,38 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None):
               " sans accès routier" % log_g)
     print("  le réseau source reste entier ; Godot exclut les tronçons"
           " endommagés du trafic jusqu'à la fin de leur réparation.")
+    # Deux trafics, deux questions : ici le report une fois pour toutes (23b),
+    # dans Godot les rues cassées vidées puis rouvertes à la réparation.
+    if not TRAFIC:
+        return
+    # 🚗 LE REPORT DE TRAFIC. Ce tableau répond à une seule question : est-ce
+    # que couper le faubourg coûte quelque chose à la ville ? Si la colonne
+    # « après » de la rive droite ne bouge pas, la réponse est non — et c'est
+    # l'argument chiffré de la décision 23b.
+    av, ap = TRAFIC["avant"], TRAFIC["apres"]
+    mor = TRAFIC["morceaux"]
+    print("\nLE REPORT DE TRAFIC  (la charge recalculée sans les ponts coupés)")
+    if len(mor) > 1:
+        print("  réseau en %d morceaux %s — VOULU : le faubourg est une île."
+              % (len(mor), mor))
+        print("  ⚠️ le contrôle de `04` dit encore « d'un seul tenant » : il"
+              " parle du réseau intact, avant la crue.")
+    else:
+        print("  réseau d'un seul tenant (%d nœuds) : un accès subsiste."
+              % (mor[0] if mor else 0))
+    ecarts = sorted(av, key=lambda f: ap.get(f, 0.0) - av.get(f, 0.0))
+    for titre, fs in (("CE QUE LA COUPURE VIDE", ecarts[:4]),
+                      ("CE QUI ENCAISSE", list(reversed(ecarts[-4:])))):
+        print("  %s" % titre)
+        for f in fs:
+            print("    tronçon %-4d  %.2f → %.2f   (%+.2f)"
+                  % (f, av.get(f, 0.0), ap.get(f, 0.0),
+                     ap.get(f, 0.0) - av.get(f, 0.0)))
+    gain = max((ap.get(f, 0.0) - av.get(f, 0.0)) for f in av) if av else 0.0
+    print("  → la rue qui encaisse le plus prend %+.2f de charge ;"
+          " %d tronçons tombent à zéro, contre %d avant."
+          % (gain, sum(1 for f in av if ap.get(f, 0.0) <= 0.001),
+             sum(1 for f in av if av[f] <= 0.001)))
 
 
 # ----------------------------------------------------------------- l'écriture
@@ -473,7 +523,7 @@ def _colonnes(cur, table, cols):
             cur.execute('ALTER TABLE "%s" ADD COLUMN %s %s' % (table, nom, typ))
 
 
-def _ecrire(con, cur, ilots, bats, rues, couts_rue):
+def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic):
     _colonnes(cur, "batiments", [("hauteur_eau", "REAL"),
                                  ("hauteur_eau_annoncee", "REAL"),
                                  ("etat_crue", "TEXT")])
@@ -511,6 +561,10 @@ def _ecrire(con, cur, ilots, bats, rues, couts_rue):
           round(d["part_ruinee_apres"], 3), round(d["part_sinistree"], 3),
           d["log_sinistres"], d["n_ruines"], d["cout_ke"], f)
          for f, d in ilots.items()])
+    # ⚠️ Même dépendance à l'ordre que `ilots.alea` juste au-dessus : `04`
+    # écrit la charge du réseau intact, on la remplace par celle d'après.
+    cur.executemany("UPDATE routes SET charge=? WHERE fid=?",
+                    [(v, f) for f, v in trafic["apres"].items()])
     cur.execute("UPDATE routes SET etat_crue='intact', cout_reparation_ke=0")
     cur.executemany("UPDATE routes SET cout_reparation_ke=? WHERE fid=?",
                     [(v, f) for f, v in couts_rue.items()])

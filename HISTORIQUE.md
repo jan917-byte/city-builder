@@ -6,6 +6,14 @@
 
 ---
 
+**2026-08-24 (session 58) — le trafic se remet à compter juste, et la crue le déplace.** La charge comptait un point par **segment dessiné** et non par tronçon traversé : l'axe de transit sortait en pics isolés (4 tronçons au-dessus de 0,80, 260 m) au lieu d'un corridor continu (**16 tronçons, 799 m**).
+`04e` réaffecte désormais la charge **sans les ponts coupés** et la réécrit : le réseau sort en 2 morceaux (151 nœuds contre 45), 21 tronçons tombent à zéro contre 14, et la rue qui encaisse le plus ne prend que **+0,05** — le faubourg coupé ne coûte presque rien à la ville, ce qui chiffre 23b.
+Piège payé : « avant » se **recalcule** au lieu de se relire dans `routes.charge`, sinon relancer `04e` seul compare l'après à lui-même et affiche un report nul. La dette de `Crue.md` § 6 est payée ; le trafic reste aveugle aux logements et sans capacité (23b · étape 5)
+
+**2026-08-24 (session 58) — une deuxième vue d'ensemble : les chantiers.** Le diagnostic (`D`) dit ce que l'eau **a pris** et ne bouge plus ; la vue chantiers (`X`) dit **où on en est** — rouge le cassé, ambre les travaux, vert le fait — et liste les chantiers en cours avec leur durée restante.
+La pose de panneaux y figure comme les trois réparations : le noyau ne connaît toujours pas la crue, il compare un prix à la caisse. La passe automatisée capture le seul mois où les trois états coexistent.
+🔴 **Rien n'a été vu à l'écran** : le Mac de cette session n'a pas Godot, donc la vue n'a même pas été compilée. (23b · 72)
+
 **2026-08-21 (session 57) — le trafic obéit à l'état de la voirie.** Les 37 routes endommagées, dont trois ponts emportés, restent sans voiture jusqu'à la fin de leur réparation ; chaque réouverture rejoue l'affectation.
 Fermer l'axe 55 le vide dès le clic, puis reporte le flux en six mois de 1,00 à 0,00 ; supprimer le stationnement nomme ses deux mois de chantier et ne s'engage qu'une fois.
 🔴 Le monde visible et la simulation lisent désormais le même état praticable ; l'essai rendu contrôle zéro voiture sur chaque route cassée. (23b · 62)
@@ -21,7 +29,6 @@ La réserve roulante tombe de 2 544 à 972 positions, le stationnement de 1 916 
 **2026-08-21 (session 54) — la charge descend dans la rue.** Deux MultiMesh figurent le flux et 58 % des 3 310 places ; charge 1 tasse et ralentit la file, tandis qu'une rue calme respire.
 La fiche de rue supprime le stationnement ou retire la voiture de l'axe ; la seconde décision rejoue l'affectation agrégée sur une échelle figée, et le tronçon 55 tombe de 1,00 à 0,05.
 🔴 L'étape 5 s'ouvre et la 4 passe en pause ; aucune voiture ne navigue, la file est une image du flux conformément à 62.
-
 **2026-08-21 (session 53) — les deux rives se séparent à l'écran.** La rive gauche touchée descend de **1 m**, la terrasse droite intacte monte de **1 m** ; l'eau reste horizontale et toute la géométrie terrestre lit la même coupe.
 Les trois ponts emportés ne sont plus de simples trous : chacun garde **deux moignons de tablier affaissés**, tandis que la réparation montre toujours un ouvrage neuf complet. La vue `N` et la passe automatisée ont été regardées.
 🔴 Le côté de rive se dérive de la coupe locale de l'Ilse, jamais d'une liste d'îlots ; six vestiges sortent donc des trois coupures. (23b)

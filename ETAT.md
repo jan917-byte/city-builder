@@ -3,8 +3,9 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-21 (session 57).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause.
+**2026-08-24 (session 59).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause.
 Les 37 routes endommagées sont vides jusqu'à leur réparation et l'affectation se rejoue à chaque réouverture. Retirer la voiture vide l'axe dès le clic puis reporte le flux en six mois ; les deux boutons routiers nomment désormais l'effet en cours.
+Le travail du Mac est fusionné : `04e` chiffre le **report de trafic** une fois pour toutes (la rue qui encaisse le plus ne prend que **+0,05**, l'argument de 23b), et la maquette a une **deuxième vue d'ensemble** — touche `X`, les chantiers. → [Crue](Prototype/Crue.md) § 6
 
 ## Prochaine action — juger le trafic à l'écran
 
@@ -13,6 +14,7 @@ python QGIS/scripts/chaine.py --godot
 ```
 
 Regarder l'avant/après `wehrau_essai_axe.png` → `wehrau_essai_axe_ferme.png`, puis `wehrau_essai_rue_calme.png` → `wehrau_essai_stationnement_retire.png`, et enfin `wehrau_essai_pont_casse.png`. L'axe 55 doit se vider ; aucune voiture ne doit flotter sur le pont absent. `H` ne sert qu'au diagnostic. → [Trafic](Prototype/Trafic.md)
+Puis lancer la maquette et ouvrir la **vue chantiers** (`X`) et le **diagnostic** (`D`) — les deux se ferment l'une l'autre. La vue `X` arrive du Mac : elle compile et la passe la capture, mais **elle n'a encore été jugée par personne**.
 
 ## Ce qui attend l'auteur
 

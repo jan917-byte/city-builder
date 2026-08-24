@@ -7,6 +7,7 @@ signal solaire_demande(fid: int, part: float)
 signal vitesse_demandee(vitesse: float)
 signal temps_remis()
 signal diagnostic_demande(actif: bool)
+signal chantiers_demande(actif: bool)
 # 🔧 Une seule demande pour les trois réparations : reconstruire un îlot,
 # déblayer une rue, rebâtir un tablier. C'est `04e` qui les distingue par le
 # prix, pas l'interface.
@@ -23,6 +24,11 @@ const ACCENT := Color(0.910, 0.769, 0.416)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
 const ALERTE := Color(0.878, 0.451, 0.376)
+# 🔧 LES TROIS COULEURS DE LA VUE CHANTIERS, aussi dans le shader
+# (`materiaux.objet`, en linéaire) : n'en changer qu'une fait mentir la légende.
+const CASSE := Color8(220, 58, 48)
+const EN_TRAVAUX := Color8(232, 170, 48)
+const FAIT := Color8(91, 174, 117)
 
 
 ## Ce qui est POSÉ, et vers quoi ça va. Un `ProgressBar` ne montre qu'un
@@ -93,6 +99,10 @@ var _temps_label: Label
 var _vitesses := {}
 var _diagnostic_bouton: Button
 var _diagnostic_panneau: PanelContainer
+var _chantiers_bouton: Button
+var _chantiers_panneau: PanelContainer
+var _chantiers_valeurs := {}
+var _chantiers_lignes := []
 var _fiche_panneau: PanelContainer
 
 var _fiche_fid := -1
@@ -125,6 +135,7 @@ func batir() -> void:
 	_panneau_ville()
 	_panneau_ilot()
 	_panneau_diagnostic()
+	_panneau_chantiers()
 	_panneau_camera()
 	_controles_temps()
 
@@ -199,6 +210,13 @@ func _panneau_ville() -> void:
 	_diagnostic_bouton.toggled.connect(func(actif: bool) -> void:
 		diagnostic_demande.emit(actif))
 	v.add_child(_diagnostic_bouton)
+	_chantiers_bouton = Button.new()
+	_chantiers_bouton.text = "Chantiers"
+	_chantiers_bouton.toggle_mode = true
+	_chantiers_bouton.tooltip_text = "Voir ce qui est encore cassé et tout ce qui est en travaux."
+	_chantiers_bouton.toggled.connect(func(actif: bool) -> void:
+		chantiers_demande.emit(actif))
+	v.add_child(_chantiers_bouton)
 	v.add_child(HSeparator.new())
 	v.add_child(_label("DURABILITÉ", 12, ACCENT))
 	var adaptation := _jauge_climat(v, "Adaptation", Color8(38, 157, 196))
@@ -273,9 +291,9 @@ func _panneau_diagnostic() -> void:
 	v.add_child(_label("DIAGNOSTIC DE CRUE", 12, ACCENT))
 	v.add_child(_label("Ce que la crue a laissé dans la ville", 18, TEXTE))
 	v.add_child(HSeparator.new())
-	_legende_crue(v, Color8(38, 157, 196), "Passage de la crue · sols et rues noyés")
-	_legende_crue(v, Color8(232, 126, 48), "Bâtiments touchés · sinistrés ou ruinés")
-	_legende_crue(v, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")
+	_legende(v, Color8(38, 157, 196), "Passage de la crue · sols et rues noyés")
+	_legende(v, Color8(232, 126, 48), "Bâtiments touchés · sinistrés ou ruinés")
+	_legende(v, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")
 	v.add_child(HSeparator.new())
 	# 🔧 CE QUE LA CRUE COÛTE ENCORE. Ces trois nombres BAISSENT quand on
 	# répare : sans eux, reconstruire un îlot ne changerait rien de visible
@@ -296,7 +314,7 @@ func _panneau_diagnostic() -> void:
 	v.add_child(_label("D ou le bouton pour fermer", 11, GRIS))
 
 
-func _legende_crue(parent: VBoxContainer, couleur: Color, texte: String) -> void:
+func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
 	var carre := ColorRect.new()
@@ -311,7 +329,116 @@ func _legende_crue(parent: VBoxContainer, couleur: Color, texte: String) -> void
 func afficher_diagnostic(actif: bool) -> void:
 	_diagnostic_panneau.visible = actif
 	_diagnostic_bouton.set_pressed_no_signal(actif)
-	_fiche_panneau.visible = not actif
+	_place_fiche()
+
+
+# ================================================== la ville en travaux (X)
+#
+# 🔧 CE QUE LE DIAGNOSTIC NE DIT PAS. Lui montre ce que l'eau A PRIS, une fois
+# pour toutes ; celle-ci montre l'état COURANT — ce qui est encore cassé, ce
+# qui est en travaux, ce qui est fait. Les deux tiennent la même place à
+# l'écran et ne s'ouvrent donc jamais ensemble.
+
+## Six chantiers listés, le septième dit combien débordent. Au-delà, le
+## panneau couvrirait la ville qu'il commente.
+const CHANTIERS_LIGNES := 7
+
+
+func _panneau_chantiers() -> void:
+	_chantiers_panneau = PanelContainer.new()
+	_chantiers_panneau.add_theme_stylebox_override("panel", _boite())
+	_chantiers_panneau.anchor_left = 0.5
+	_chantiers_panneau.anchor_right = 0.5
+	_chantiers_panneau.offset_left = -205
+	_chantiers_panneau.offset_right = 205
+	_chantiers_panneau.offset_top = 16
+	_chantiers_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_chantiers_panneau.visible = false
+	add_child(_chantiers_panneau)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_chantiers_panneau.add_child(v)
+	v.add_child(_label("CHANTIERS", 12, ACCENT))
+	v.add_child(_label("Ce qui est cassé, ce qui est en travaux", 18, TEXTE))
+	v.add_child(HSeparator.new())
+	_legende(v, CASSE, "Cassé · rien d'engagé")
+	_legende(v, EN_TRAVAUX, "Chantier en cours")
+	_legende(v, FAIT, "Fait · la ville est réparée là")
+	v.add_child(HSeparator.new())
+	for ligne in [
+		["casses", "Encore cassé"],
+		["reste", "Reste à payer"],
+		["en_cours", "Chantiers en cours"],
+		["faits", "Chantiers finis"],
+	]:
+		var h := HBoxContainer.new()
+		h.add_child(_label(ligne[1], 12, GRIS))
+		var val := _label("—", 14, TEXTE)
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(val)
+		_chantiers_valeurs[ligne[0]] = val
+		v.add_child(h)
+	v.add_child(HSeparator.new())
+	# Les lignes sont créées UNE fois et remplies ensuite : bâtir des Labels à
+	# chaque image ferait tomber la maquette pour un panneau de texte.
+	for i in CHANTIERS_LIGNES:
+		var l := _label("", 12, TEXTE)
+		l.visible = false
+		_chantiers_lignes.append(l)
+		v.add_child(l)
+	v.add_child(_label("X ou le bouton pour fermer", 11, GRIS))
+
+
+func afficher_chantiers(actif: bool) -> void:
+	_chantiers_panneau.visible = actif
+	_chantiers_bouton.set_pressed_no_signal(actif)
+	_place_fiche()
+
+
+## La fiche se retire tant que l'un des deux panneaux du haut est ouvert.
+func _place_fiche() -> void:
+	_fiche_panneau.visible = not (_diagnostic_panneau.visible \
+		or _chantiers_panneau.visible)
+
+
+## ⚠️ Appelé seulement quand le panneau est ouvert : `ville.chantiers` parcourt
+## les 69 îlots et les 178 tronçons, et ce serait une troisième traversée par
+## image pour un panneau que personne ne regarde.
+func maj_chantiers(d: Dictionary) -> void:
+	var g: Dictionary = d["casses_par_genre"]
+	(_chantiers_valeurs["casses"] as Label).text = "%d îlots · %d ponts · %d rues" % [
+		int(g["reconstruction"]), int(g["pont"]), int(g["deblaiement"])]
+	(_chantiers_valeurs["reste"] as Label).text = _milliers(
+		float(d["reste_ke"])) + " k€"
+	var liste: Array = d["en_cours"]
+	(_chantiers_valeurs["en_cours"] as Label).text = "%d" % liste.size()
+	(_chantiers_valeurs["faits"] as Label).text = "%d" % int(d["faits"])
+	for i in _chantiers_lignes.size():
+		var texte := ""
+		if liste.is_empty():
+			texte = "Aucun chantier en cours." if i == 0 else ""
+		elif i == CHANTIERS_LIGNES - 1 and liste.size() > CHANTIERS_LIGNES:
+			texte = "… et %d autre(s)" % (liste.size() - i)
+		elif i < liste.size():
+			texte = _ligne_chantier(liste[i])
+		var l: Label = _chantiers_lignes[i]
+		if l.text != texte:
+			l.text = texte
+		l.visible = texte != ""
+
+
+## Le numéro d'abord : c'est par lui que l'auteur désigne l'objet à l'écran.
+func _ligne_chantier(c: Dictionary) -> String:
+	var modele: String = {
+		"reconstruction": "Îlot %d · reconstruction",
+		"pont": "Rue %d · tablier",
+		"deblaiement": "Rue %d · déblaiement",
+		"solaire": "Îlot %d · panneaux",
+	}.get(str(c["genre"]), "%d")
+	return "%s · encore %s" % [modele % int(c["fid"]),
+		_duree(float(c["reste_mois"]))]
 
 
 func _panneau_ilot() -> void:
@@ -490,6 +617,7 @@ func _panneau_camera() -> void:
 		"Q E : quart de tour · flèches : ajuster",
 		"T : vue de dessus · V B R I G O M : les repères",
 		"C : recolorer par tissu · H : charge · D : diagnostic de crue",
+		"X : chantiers — cassé, en travaux, fait",
 	]:
 		v.add_child(_label(ligne, 11, GRIS))
 
@@ -565,6 +693,8 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_maj_durabilite(indic)
 	_temps_label.text = "Mois %s" % _nb(mois, 1)
 	maj_degats(ville.degats(mois))
+	if _chantiers_panneau.visible:
+		maj_chantiers(ville.chantiers(mois))
 	for v in _vitesses:
 		(_vitesses[v] as Button).disabled = is_equal_approx(float(v), vitesse)
 	if _fiche_fid >= 0:

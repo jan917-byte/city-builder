@@ -14,7 +14,7 @@ extends Node3D
 #   ← → ↑ ↓  orienter la caméra     T        vue de dessus
 #   C      recolorer par tissu
 #   H      calque de charge du trafic
-#   D      diagnostic de crue
+#   D      diagnostic de crue     X  vue chantiers
 #   F3     afficher / masquer les performances
 #   Échap  quitter
 #
@@ -114,6 +114,7 @@ var _derniere_vitesse := 1.0
 var calque_couche := ""
 var calque_champ := ""
 var diagnostic_crue := false
+var vue_chantiers := false
 var _etendue := [0.0, 1.0]
 var _dernier_peint := -1.0
 
@@ -163,6 +164,7 @@ func _ready() -> void:
 	interface.vitesse_demandee.connect(_sur_vitesse)
 	interface.temps_remis.connect(_sur_reset)
 	interface.diagnostic_demande.connect(_sur_diagnostic)
+	interface.chantiers_demande.connect(_sur_chantiers)
 	interface.reparation_demandee.connect(_sur_reparation)
 	interface.trafic_demande.connect(_sur_trafic)
 	pivot.vue_changee.connect(interface.maj_camera)
@@ -651,6 +653,9 @@ RÉPARATION — ce que la crue laisse à payer")
 	mois = 96.0
 	_rafraichir(true)
 	if pont >= 0 and ville.reparer("r", pont, mois):
+		# 🔧 LE MOMENT OÙ LA VUE CHANTIERS A SES TROIS ÉTATS : l'îlot relevé
+		# est fini, le pont vient d'être engagé, le reste du faubourg attend.
+		await _capturer_chantiers()
 		mois += Ville.PONT_MOIS + 0.1
 		_dernier_peint = -1.0
 		_rafraichir(true)
@@ -678,6 +683,26 @@ RÉPARATION — ce que la crue laisse à payer")
 	ville.reinitialiser()
 	_dernier_peint = -1.0
 	_rafraichir(true)
+
+
+## 🔧 La vue chantiers, prouvée sur UNE image. Les trois états doivent être
+## présents ensemble : un état vide est une couleur que personne n'a jamais vue.
+func _capturer_chantiers() -> void:
+	_sur_chantiers(true)
+	var c := ville.chantiers(mois)
+	var en_cours: Array = c["en_cours"]
+	var compte := [int(c["casses"]), en_cours.size(), int(c["faits"])]
+	if compte.min() <= 0:
+		push_error("vue chantiers incomplète : %s" % [compte])
+		get_tree().quit(1)
+		return
+	pivot.caler(30.0, 55.0)
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_chantiers")
+	print("  vue chantiers : %d cassés, %d en cours, %d fini(s) · %.0f k€ à payer"
+		% [compte[0], compte[1], compte[2], c["reste_ke"]])
+	_sur_chantiers(false)
 
 
 ## dont on capture le refus.
@@ -986,6 +1011,7 @@ func _sur_tissu() -> void:
 	if calque_tissu:
 		diagnostic_crue = false
 		interface.afficher_diagnostic(false)
+		_fermer_chantiers()
 		calque_couche = ""
 		calque_champ = ""
 		if _teintes_tissu.is_empty():
@@ -1002,6 +1028,7 @@ func _sur_tissu() -> void:
 func _sur_calque(couche: String, champ: String) -> void:
 	diagnostic_crue = false
 	interface.afficher_diagnostic(false)
+	_fermer_chantiers()
 	calque_tissu = false
 	calque_couche = couche
 	calque_champ = champ
@@ -1057,12 +1084,18 @@ func _peindre() -> void:
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
 				c.a = 0.88
+			var etat_travaux := ville.etat_chantier(couche, fid, mois) \
+				if vue_chantiers else 0
 			# Le nœud réparé prend les MÊMES paramètres que celui qu'il
 			# recouvre : sans ça un îlot reconstruit sortirait du calque, ne se
-			# surlignerait plus au survol et n'accepterait plus de panneaux.
+			# surlignerait plus au survol, n'accepterait plus de panneaux — et
+			# sortirait vert par le dessus, rouge par le dessous.
 			for mj in [mi, reparations[couche].get(fid)]:
 				if mj == null:
 					continue
+				mj.set_instance_shader_parameter("chantier_mode",
+					1.0 if vue_chantiers else 0.0)
+				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
 				mj.set_instance_shader_parameter("calque", c)
 				mj.set_instance_shader_parameter("teinte", _teinte(couche, fid))
 				if couche == "i":
@@ -1077,12 +1110,39 @@ func _sur_diagnostic(actif: bool) -> void:
 	_diagnostic_marqueurs.visible = actif
 	interface.afficher_diagnostic(actif)
 	if actif:
+		_fermer_chantiers()
 		calque_tissu = false
 		calque_couche = ""
 		calque_champ = ""
 		_repere("ville")
 	_dernier_peint = -1.0
 	_rafraichir(true)
+
+
+## 🔧 LA VUE CHANTIERS — 2026-08-24. Le diagnostic dit ce que l'eau A PRIS et
+## ne bouge plus ; celle-ci dit où on en est MAINTENANT : rouge ce qui est
+## encore cassé, ambre ce qui est en travaux, vert ce qui est fait. Elle occupe
+## la même place que le diagnostic, donc les deux se ferment l'une l'autre.
+func _sur_chantiers(actif: bool) -> void:
+	vue_chantiers = actif
+	interface.afficher_chantiers(actif)
+	if actif:
+		diagnostic_crue = false
+		_diagnostic_marqueurs.visible = false
+		interface.afficher_diagnostic(false)
+		calque_tissu = false
+		calque_couche = ""
+		calque_champ = ""
+		_repere("ville")
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
+func _fermer_chantiers() -> void:
+	if not vue_chantiers:
+		return
+	vue_chantiers = false
+	interface.afficher_chantiers(false)
 
 
 func _batir_marqueurs_crue() -> void:
@@ -1405,6 +1465,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_H: _sur_calque("", "") if calque_champ == "charge" \
 			else _sur_calque("r", "charge")
 		KEY_D: _sur_diagnostic(not diagnostic_crue)
+		KEY_X: _sur_chantiers(not vue_chantiers)
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")
 		KEY_ESCAPE: get_tree().quit()

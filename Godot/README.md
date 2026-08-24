@@ -35,6 +35,7 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **C** | recolorer la ville **par tissu** — la palette d'avant le rendu réaliste |
 | **D** | ouvrir le **diagnostic de crue** — passage de l'eau, routes bloquées et bâtiments touchés |
 | **H** | afficher / masquer le calque de **charge du trafic** — diagnostic seulement |
+| **X** | ouvrir la **vue chantiers** — ce qui est encore cassé, ce qui est en travaux, ce qui est fait, et la liste des chantiers en cours |
 | **F3** | afficher / masquer le moniteur de performances |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
@@ -53,6 +54,7 @@ scripts/
   ville.gd             l'état, les rampes, les indicateurs, la caisse  ← LE NOYAU
   energie.gd           la table par tissu, les formules, les deux prix. Tout statique
   chantiers.gd         ancien prototype à deux décisions, conservé comme trace
+                       (sans rapport avec la vue chantiers, qui vit dans ville.gd)
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la ville à gauche, l'îlot et son curseur à droite
   moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
