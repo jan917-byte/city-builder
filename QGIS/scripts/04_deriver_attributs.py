@@ -294,13 +294,19 @@ def axe_principal(points):
 
 # ---------------------------------------------------------------- le trafic
 
-def charge_reseau(rues):
+def charge_reseau(rues, exclus=()):
     """Affectation de trafic minimale : le plus court chemin en TEMPS entre
     les nœuds du réseau. Deux demandes superposées — l'échange (entre les
     radiales qui sortent de la carte) et le local (tous les nœuds entre eux).
 
     Ce n'est pas une simulation : c'est le socle sur lequel « fermer une rue
     reporte sa charge sur les voisines » devient calculable. → brainstorm §5
+
+    `exclus` retire des tronçons du graphe — un pont emporté, une rue fermée.
+    Ils gardent une entrée dans le résultat, à 0. C'est par là que `04e` fait
+    passer la crue ; le reste de la ville se réaffecte tout seul.
+    ⚠️ La demande ne tient qu'à la géométrie : ni `logements` ni `emplois` n'y
+    entrent, et aucune capacité ne freine personne.
     """
     G = 0.5
 
@@ -313,7 +319,7 @@ def charge_reseau(rues):
     voisins = {}
     for fid, d in rues.items():
         h = d["hier"]
-        if h == "rive" and not d["largeur"]:
+        if fid in exclus or (h == "rive" and not d["largeur"]):
             continue
         v = VITESSE.get(h, 30.0)
         if v <= 0:
@@ -353,14 +359,21 @@ def charge_reseau(rues):
         return dist, prec
 
     def accumuler(sources, cibles, compteur):
+        # 🔴 UN POINT PAR TRONÇON TRAVERSÉ, pas par segment dessiné. Le chemin
+        # revient en arêtes du graphe, donc en points de la polyligne : compter
+        # là chargeait une rue au prorata de ses sommets. Mesuré le 2026-08-24 :
+        # l'axe de transit sortait en pics isolés, 4 tronçons au-dessus de 0,80
+        # au lieu de 16 qui se suivent.
         for s in sources:
             _, prec = dijkstra(s)
             for t in cibles:
                 if t == s or t not in prec:
                     continue
-                u = t
+                u, traverses = t, set()
                 while u in prec:
                     u, fid = prec[u]
+                    traverses.add(fid)
+                for fid in traverses:
                     compteur[fid] = compteur.get(fid, 0) + 1
 
     c_transit, c_local = {}, {}
@@ -369,7 +382,7 @@ def charge_reseau(rues):
 
     def norme(c):
         """Normaliser par le maximum écraserait tout : un seul tronçon porte
-        l'essentiel des plus courts chemins. On cale sur le 9e décile et on
+        l'essentiel des plus courts chemins. On cale sur le 95e centile et on
         étire le bas de l'échelle, pour que « chargée » et « très chargée »
         restent distinguables à l'œil."""
         if not c:
@@ -702,6 +715,12 @@ def main():
         d = rues[f]
         print("    tronçon %-4d %-10s %5.0f m · charge %.2f · %d places"
               % (f, d["hier"], d["long"], d["charge"], d["places"]))
+    # Le critère de l'étape 5 porte sur un AXE, pas sur un tronçon : c'est le
+    # linéaire saturé qu'il faut lire, la tête de liste sature toujours.
+    sat = [f for f, d in rues.items() if d["charge"] > 0.80]
+    print("    → %d tronçons au-dessus de 0,80, soit %.0f m sur %.0f m"
+          % (len(sat), sum(rues[f]["long"] for f in sat),
+             sum(d["long"] for d in rues.values())))
 
     print("\nSAISIES PROTÉGÉES  %d îlots %s (exception=1)"
           % (len(FORCE), sorted(FORCE)))
