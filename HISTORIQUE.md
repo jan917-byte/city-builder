@@ -6,6 +6,10 @@
 
 ---
 
+**2026-08-24 (session 59) — les deux machines se rejoignent, et les deux trafics se composent.** Quatre sessions Windows jamais commitées (54→57) et une session Mac poussée le même jour portaient toutes deux le numéro 54 ; celle du Mac devient la **58**. Sept fichiers se heurtaient, `04e` compris.
+Le chevauchement était réel et les deux côtés sont gardés : `04e` **chiffre** le report une fois pour toutes (+0,05 sur la rue qui encaisse le plus, réseau en 2 morceaux — 151 nœuds contre 45), Godot **vide** les 37 routes cassées et les rouvre à la réparation. Conséquence mesurée : l'axe 55 part désormais de **0,88** et non de 1,00, la maquette lisant la charge d'après-crue.
+🔴 La vue chantiers `X` du Mac **compile enfin** — 46 cassés, 1 en cours, 1 fini, 13 495 k€ à payer — et la passe sort en 0 avec ses 14 contrôles ✅. Elle est capturée, pas encore jugée. (23b · 72)
+
 **2026-08-24 (session 58) — le trafic se remet à compter juste, et la crue le déplace.** La charge comptait un point par **segment dessiné** et non par tronçon traversé : l'axe de transit sortait en pics isolés (4 tronçons au-dessus de 0,80, 260 m) au lieu d'un corridor continu (**16 tronçons, 799 m**).
 `04e` réaffecte désormais la charge **sans les ponts coupés** et la réécrit : le réseau sort en 2 morceaux (151 nœuds contre 45), 21 tronçons tombent à zéro contre 14, et la rue qui encaisse le plus ne prend que **+0,05** — le faubourg coupé ne coûte presque rien à la ville, ce qui chiffre 23b.
 Piège payé : « avant » se **recalcule** au lieu de se relire dans `routes.charge`, sinon relancer `04e` seul compare l'après à lui-même et affiche un report nul. La dette de `Crue.md` § 6 est payée ; le trafic reste aveugle aux logements et sans capacité (23b · étape 5)

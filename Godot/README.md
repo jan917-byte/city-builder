@@ -35,7 +35,7 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **C** | recolorer la ville **par tissu** — la palette d'avant le rendu réaliste |
 | **D** | ouvrir le **diagnostic de crue** — passage de l'eau, routes bloquées et bâtiments touchés |
 | **H** | afficher / masquer le calque de **charge du trafic** — diagnostic seulement |
-| **X** | ouvrir la **vue chantiers** — ce qui est encore cassé, ce qui est en travaux, ce qui est fait, et la liste des chantiers en cours |
+| **X** | ouvrir la **vue chantiers** — le cassé, les travaux, le fait, et les chantiers en cours |
 | **F3** | afficher / masquer le moniteur de performances |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
@@ -53,8 +53,8 @@ scripts/
   constructeur.gd      tableaux → ArrayMesh. Aucun accès aux nœuds   ← isolé
   ville.gd             l'état, les rampes, les indicateurs, la caisse  ← LE NOYAU
   energie.gd           la table par tissu, les formules, les deux prix. Tout statique
-  chantiers.gd         ancien prototype à deux décisions, conservé comme trace
-                       (sans rapport avec la vue chantiers, qui vit dans ville.gd)
+  chantiers.gd         ancien prototype, conservé comme trace — RIEN à voir
+                       avec la vue chantiers (`X`), qui vit dans ville.gd
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la ville à gauche, l'îlot et son curseur à droite
   moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
@@ -100,12 +100,10 @@ L'occlusion voyage dans `COLOR.a` — la teinte occluse est dans `COLOR.rgb`, le
 godot --headless --path Godot --script res://outils/sonde_api.gd
 ```
 
-La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change.
+La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change. Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
 - `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`).
 - `-- --essai` joue la partie de contrôle et quitte. ⚠️ **pas** avec `--headless` : le pilote de rendu y est factice, aucune image n'en sort.
-
-Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
 `.mcp.json` à la racine déclare le serveur `godot-mcp`, qui permet de lancer la maquette et de lire la console. 🔴 **C'est le seul fichier du dépôt qui ne soit pas portable** : il est écrit pour Windows, et se corrige à la main sur le Mac. `run_project` lance un vrai processus — c'est `stop_project` qui le tue.
 

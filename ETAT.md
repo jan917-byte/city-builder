@@ -4,8 +4,7 @@
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
 **2026-08-24 (session 59).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause.
-Les 37 routes endommagées sont vides jusqu'à leur réparation et l'affectation se rejoue à chaque réouverture. Retirer la voiture vide l'axe dès le clic puis reporte le flux en six mois ; les deux boutons routiers nomment désormais l'effet en cours.
-Le travail du Mac est fusionné : `04e` chiffre le **report de trafic** une fois pour toutes (la rue qui encaisse le plus ne prend que **+0,05**, l'argument de 23b), et la maquette a une **deuxième vue d'ensemble** — touche `X`, les chantiers. → [Crue](Prototype/Crue.md) § 6
+Les 37 routes endommagées sont vides jusqu'à leur réparation ; retirer la voiture vide l'axe dès le clic puis reporte le flux en six mois. Le travail du Mac est fusionné : `04e` chiffre le **report de trafic** une fois pour toutes — la rue qui encaisse le plus ne prend que **+0,05**, l'argument de 23b — et la maquette gagne une **deuxième vue d'ensemble**, touche `X`, les chantiers. → [Crue](Prototype/Crue.md) § 6
 
 ## Prochaine action — juger le trafic à l'écran
 

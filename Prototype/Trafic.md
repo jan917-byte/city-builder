@@ -36,5 +36,6 @@ Le critère se juge sans fiche et sans calque : sur l'axe chargé, les voitures 
 - Au-delà d'une taille de caméra de 700 m, les véhicules sont sous le pixel : les deux MultiMesh sont masqués et la pulsation sort immédiatement.
 - Une charge à 1 tasse la file à 4,8 m et ralentit à environ 4 km/h ; la rue calme espace le flux jusqu'à 48 m.
 - Les **37 routes endommagées**, dont les trois ponts emportés, ne portent aucune voiture avant la fin de leur réparation ; chaque réouverture rejoue l'affectation.
-- Supprimer le stationnement vide sa bordure en deux mois et le bouton montre le chantier. Retirer la voiture vide l'axe dès le clic, puis reporte le flux en six mois ; l'essai fait tomber le tronçon 55 de 1,00 à 0,00.
+- Supprimer le stationnement vide sa bordure en deux mois et le bouton montre le chantier. Retirer la voiture vide l'axe dès le clic, puis reporte le flux en six mois ; l'essai fait tomber le tronçon 55 de 0,88 à 0,00.
+- Depuis la fusion du 2026-08-24, la maquette lit la charge **d'après-crue** que `04e` réécrit : le tronçon 55 part de 0,88 et non de 1,00, et la rue à 1,00 du critère est le tronçon **5**. → [Crue](Crue.md) § 6
 - Le critère reste ouvert jusqu'au regard de l'auteur : l'essai automatique prouve le mécanisme, pas que l'image est juste.
