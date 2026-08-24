@@ -3,17 +3,16 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-21 (session 53).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. Sur `crue`, la rive touchée descend de 1 m, l'intacte monte de 1 m et les trois ponts emportés gardent leurs vestiges visibles ; l'étape 4 reste ouverte.
-Les **README ont fondu** : 23 600 → 7 700 tokens, et `CLAUDE.md` porte une **sixième règle** — un README dit à quoi sert le dossier, quoi lancer et les pièges permanents, **et aucun chiffre mesuré**.
+**2026-08-21 (session 57).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause.
+Les 37 routes endommagées sont vides jusqu'à leur réparation et l'affectation se rejoue à chaque réouverture. Retirer la voiture vide l'axe dès le clic puis reporte le flux en six mois ; les deux boutons routiers nomment désormais l'effet en cours.
 
-## Prochaine action — juger l'échange à l'écran
+## Prochaine action — juger le trafic à l'écran
 
 ```bash
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis lancer la maquette et regarder **la place-parking** d'abord (touche `M`), le **quai et les ponts** ensuite, **les façades** et **la rue** enfin. La grille de lecture — *ce qu'il faut voir* / *ce qui prouverait que c'est cassé* — et les réglages qui se changent en une ligne sont dans [Toits et sol](Prototype/Toits%20et%20sol.md) § 6 · § 7.
-Puis le geste énergie : cliquer un cœur ancien puis la barre de 1974 et comparer « se rembourse en » (**31 ans contre 10**) ; sur l'îlot 31, la caisse refuse. → [Énergie](Prototype/Énergie.md)
+Regarder l'avant/après `wehrau_essai_axe.png` → `wehrau_essai_axe_ferme.png`, puis `wehrau_essai_rue_calme.png` → `wehrau_essai_stationnement_retire.png`, et enfin `wehrau_essai_pont_casse.png`. L'axe 55 doit se vider ; aucune voiture ne doit flotter sur le pont absent. `H` ne sert qu'au diagnostic. → [Trafic](Prototype/Trafic.md)
 
 ## Ce qui attend l'auteur
 

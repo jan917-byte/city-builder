@@ -6,6 +6,22 @@
 
 ---
 
+**2026-08-21 (session 57) — le trafic obéit à l'état de la voirie.** Les 37 routes endommagées, dont trois ponts emportés, restent sans voiture jusqu'à la fin de leur réparation ; chaque réouverture rejoue l'affectation.
+Fermer l'axe 55 le vide dès le clic, puis reporte le flux en six mois de 1,00 à 0,00 ; supprimer le stationnement nomme ses deux mois de chantier et ne s'engage qu'une fois.
+🔴 Le monde visible et la simulation lisent désormais le même état praticable ; l'essai rendu contrôle zéro voiture sur chaque route cassée. (23b · 62)
+
+**2026-08-21 (session 56) — le mouvement quitte le CPU.** Les voitures roulantes sont désormais déplacées par le GPU à la fréquence de l'écran ; aucune transform n'est réécrite par image.
+Le niveau de détail suit les événements de caméra et une pulsation plafonnée à 4 Hz ne transmet que les changements de charge ; loin de la ville, elle sort immédiatement.
+🔴 La simulation reste agrégée et lente ; les 414 véhicules visibles sont une animation 60 Hz, pas 414 agents. (62)
+
+**2026-08-21 (session 55) — les voitures redeviennent une image.** Le trafic ne suit plus le framerate : 12 mises à jour par seconde, une lecture par rue, aucune réécriture d'instance cachée.
+La réserve roulante tombe de 2 544 à 972 positions, le stationnement de 1 916 à 1 000 symboles ; ombres coupées, et à l'échelle de la ville tout disparaît sous le pixel avec zéro travail CPU/GPU.
+🔴 `charge` et les décisions restent la simulation ; les véhicules ne sont qu'un échantillon adaptatif du résultat, conformément à 62.
+
+**2026-08-21 (session 54) — la charge descend dans la rue.** Deux MultiMesh figurent le flux et 58 % des 3 310 places ; charge 1 tasse et ralentit la file, tandis qu'une rue calme respire.
+La fiche de rue supprime le stationnement ou retire la voiture de l'axe ; la seconde décision rejoue l'affectation agrégée sur une échelle figée, et le tronçon 55 tombe de 1,00 à 0,05.
+🔴 L'étape 5 s'ouvre et la 4 passe en pause ; aucune voiture ne navigue, la file est une image du flux conformément à 62.
+
 **2026-08-21 (session 53) — les deux rives se séparent à l'écran.** La rive gauche touchée descend de **1 m**, la terrasse droite intacte monte de **1 m** ; l'eau reste horizontale et toute la géométrie terrestre lit la même coupe.
 Les trois ponts emportés ne sont plus de simples trous : chacun garde **deux moignons de tablier affaissés**, tandis que la réparation montre toujours un ouvrage neuf complet. La vue `N` et la passe automatisée ont été regardées.
 🔴 Le côté de rive se dérive de la coupe locale de l'Ilse, jamais d'une liste d'îlots ; six vestiges sortent donc des trois coupures. (23b)

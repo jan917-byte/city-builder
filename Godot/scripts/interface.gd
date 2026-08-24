@@ -11,6 +11,7 @@ signal diagnostic_demande(actif: bool)
 # déblayer une rue, rebâtir un tablier. C'est `04e` qui les distingue par le
 # prix, pas l'interface.
 signal reparation_demandee(couche: String, fid: int)
+signal trafic_demande(action: String, fid: int)
 
 const Ville := preload("res://scripts/ville.gd")
 
@@ -67,6 +68,7 @@ class Jauge extends Control:
 
 
 var ville: Ville
+var trafic
 
 var _ville_valeurs := {}
 var _adaptation_jauge: Jauge
@@ -100,6 +102,9 @@ var _rue_valeurs := {}
 var _repare_bloc: VBoxContainer
 var _repare_texte: Label
 var _repare_bouton: Button
+var _trafic_bloc: VBoxContainer
+var _trafic_stationnement: Button
+var _trafic_axe: Button
 var _degats := {}
 var _degats_valeurs := {}
 var _mois := 0.0
@@ -388,6 +393,23 @@ func _panneau_ilot() -> void:
 		reparation_demandee.emit(_fiche_couche, _fiche_fid))
 	_repare_bloc.add_child(_repare_bouton)
 
+	_trafic_bloc = VBoxContainer.new()
+	_trafic_bloc.add_theme_constant_override("separation", 6)
+	_trafic_bloc.visible = false
+	v.add_child(_trafic_bloc)
+	_trafic_bloc.add_child(HSeparator.new())
+	_trafic_bloc.add_child(_label("Transformer la rue", 13, ACCENT))
+	_trafic_stationnement = Button.new()
+	_trafic_stationnement.text = "Supprimer le stationnement"
+	_trafic_stationnement.pressed.connect(func() -> void:
+		trafic_demande.emit("stationnement", _fiche_fid))
+	_trafic_bloc.add_child(_trafic_stationnement)
+	_trafic_axe = Button.new()
+	_trafic_axe.text = "Retirer la voiture de cet axe"
+	_trafic_axe.pressed.connect(func() -> void:
+		trafic_demande.emit("axe", _fiche_fid))
+	_trafic_bloc.add_child(_trafic_axe)
+
 	_solaire_bloc = VBoxContainer.new()
 	_solaire_bloc.add_theme_constant_override("separation", 6)
 	_solaire_bloc.visible = false
@@ -467,7 +489,7 @@ func _panneau_camera() -> void:
 		"clic milieu glissé : déplacer · molette : zoom",
 		"Q E : quart de tour · flèches : ajuster",
 		"T : vue de dessus · V B R I G O M : les repères",
-		"C : recolorer par tissu · D : diagnostic de crue",
+		"C : recolorer par tissu · H : charge · D : diagnostic de crue",
 	]:
 		v.add_child(_label(ligne, 11, GRIS))
 
@@ -588,6 +610,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_fiche_grille.visible = couche == "i"
 	_rue_grille.visible = couche == "r"
 	_solaire_bloc.visible = couche == "i" and not _reduction_verrouillee
+	_trafic_bloc.visible = couche == "r"
 	_maj_fiche()
 
 
@@ -782,6 +805,21 @@ func _maj_fiche_rue() -> void:
 	(_rue_valeurs["largeur"] as Label).text = "%s m" % _nb(float(o.get("largeur_m", 0.0)), 0)
 	(_rue_valeurs["charge"] as Label).text = "%d %%" % int(roundf(
 		ville.valeur("r", _fiche_fid, "charge", _mois) * 100.0))
+	_trafic_bloc.visible = true
+	var stationnement_engage := ville.stationnement_en_suppression(_fiche_fid)
+	var axe_ferme: bool = trafic != null and trafic.axe_ferme(_fiche_fid)
+	var stationnement_fini := stationnement_engage and ville.valeur(
+		"r", _fiche_fid, "stationnement", _mois) < 0.5
+	_trafic_stationnement.text = ("Stationnement supprimé" if stationnement_fini \
+		else "Suppression en cours · 2 mois") if stationnement_engage \
+		else "Supprimer le stationnement"
+	_trafic_stationnement.disabled = stationnement_engage or ville.valeur(
+		"r", _fiche_fid, "stationnement", _mois) < 0.5
+	_trafic_axe.text = ("Axe fermé · report en cours" if trafic.report_en_cours(
+		_fiche_fid, _mois) else "Axe fermé") if axe_ferme \
+		else "Retirer la voiture de cet axe"
+	_trafic_axe.disabled = axe_ferme or not ville.route_praticable(_fiche_fid, _mois) \
+		or ville.valeur("r", _fiche_fid, "charge", _mois) < 0.20
 	(_rue_valeurs["etat"] as Label).text = {
 		"coupe": "franchissement emporté",
 		"fragile": "pile déchaussée",

@@ -13,6 +13,7 @@ extends Node3D
 #   Q / E  quart de tour            P        capture PNG
 #   ← → ↑ ↓  orienter la caméra     T        vue de dessus
 #   C      recolorer par tissu
+#   H      calque de charge du trafic
 #   D      diagnostic de crue
 #   F3     afficher / masquer les performances
 #   Échap  quitter
@@ -33,6 +34,7 @@ const Ville := preload("res://scripts/ville.gd")
 const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
+const Trafic := preload("res://scripts/trafic.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
 
@@ -86,6 +88,8 @@ var ville: Ville
 var selection: Selection
 var interface: Interface
 var moniteur_performances: MoniteurPerformances
+var trafic: Trafic
+var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
 var masque: SubViewport
 var cam_masque: Camera3D
@@ -129,6 +133,10 @@ func _ready() -> void:
 	monde.name = "Monde"
 	add_child(monde)
 	_construire()
+	trafic = Trafic.new()
+	trafic.name = "Trafic"
+	monde.add_child(trafic)
+	trafic.batir(donnees, ville)
 	_batir_marqueurs_crue()
 	_decor()
 
@@ -136,6 +144,7 @@ func _ready() -> void:
 	pivot.name = "Pivot"
 	add_child(pivot)
 	_repere("ville")
+	trafic.regler_detail(pivot.taille)
 
 	selection = Selection.new()
 	selection.name = "Selection"
@@ -147,6 +156,7 @@ func _ready() -> void:
 	interface = Interface.new()
 	interface.name = "Interface"
 	interface.ville = ville
+	interface.trafic = trafic
 	add_child(interface)
 	interface.batir()
 	interface.solaire_demande.connect(_sur_solaire)
@@ -154,8 +164,15 @@ func _ready() -> void:
 	interface.temps_remis.connect(_sur_reset)
 	interface.diagnostic_demande.connect(_sur_diagnostic)
 	interface.reparation_demandee.connect(_sur_reparation)
+	interface.trafic_demande.connect(_sur_trafic)
 	pivot.vue_changee.connect(interface.maj_camera)
+	pivot.vue_changee.connect(_sur_vue_changee)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
+	horloge_trafic = Timer.new()
+	horloge_trafic.wait_time = 0.25
+	horloge_trafic.autostart = true
+	horloge_trafic.timeout.connect(_sur_pulsation_trafic)
+	add_child(horloge_trafic)
 
 	moniteur_performances = MoniteurPerformances.new()
 	moniteur_performances.name = "MoniteurPerformances"
@@ -187,6 +204,18 @@ func _essai() -> void:
 	vitesse = 0.0
 	print("
 ESSAI — la ville, sans décision")
+	var routes_endommagees := 0
+	for fid in ville.routes:
+		if ville.route_praticable(fid, 0.0):
+			continue
+		routes_endommagees += 1
+		var voitures: Array = trafic.voitures_visibles_sur(fid)
+		if voitures != [0, 0]:
+			push_error("rue endommagée %d : %d voiture(s) roulante(s), %d garée(s)" \
+				% [fid, voitures[0], voitures[1]])
+			get_tree().quit(1)
+			return
+	print("  %d routes endommagées sans aucune voiture ✅" % routes_endommagees)
 	_repere("ville")
 	pivot.caler(30.0, 32.0)
 	await get_tree().process_frame
@@ -203,6 +232,49 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_dessus")
 	pivot.caler(30.0, 32.0)
+
+	# Le critère de l'étape 5 : deux rues, sans calque et assez près pour lire
+	# l'espacement, la vitesse et le stationnement.
+	_viser_route(55, 90.0)
+	pivot.caler(35.0, 28.0)
+	interface.montrer("r", 55, false)
+	await get_tree().process_frame
+	await _capturer("essai_axe")
+	var calme := _route_calme()
+	_viser_route(calme, 70.0)
+	interface.montrer("r", calme, false)
+	await get_tree().process_frame
+	await _capturer("essai_rue_calme")
+	ville.supprimer_stationnement(calme, 0.0)
+	mois = 2.1
+	trafic.avancer(mois)
+	await get_tree().process_frame
+	await _capturer("essai_stationnement_retire")
+	_sur_reset()
+	trafic.retirer_axe(55, 0.0)
+	trafic.avancer(0.0)
+	var fermees: Array = trafic.voitures_visibles_sur(55)
+	if int(fermees[0]) != 0:
+		push_error("axe 55 fermé mais %d voiture(s) y roulent encore" % fermees[0])
+		get_tree().quit(1)
+		return
+	print("  fermeture de l'axe 55 visible dès le clic ✅")
+	_viser_route(55, 90.0)
+	pivot.caler(35.0, 28.0)
+	interface.montrer("r", 55, false)
+	await get_tree().process_frame
+	await _capturer("essai_axe_ferme")
+	mois = 6.1
+	trafic.avancer(mois)
+	var ville_repere: Dictionary = donnees["reperes"]["ville"]
+	var centre: Array = ville_repere["cible"]
+	pivot.viser(Vector2(float(centre[0]), float(centre[1])), 650.0)
+	pivot.caler(30.0, 32.0)
+	await get_tree().process_frame
+	await _capturer("essai_report_trafic")
+	print("  retrait de l'axe 55 : charge %.2f → %.2f ✅"
+		% [ville.base("r", 55, "charge"), ville.valeur("r", 55, "charge", mois)])
+	_sur_reset()
 
 	# De près, sur la barre de 1974 : les volumes tiennent-ils après le
 	# découpage en nœuds, et le clic retrouve-t-il l'objet sous le curseur.
@@ -860,6 +932,14 @@ func _process(delta: float) -> void:
 	_rafraichir(false)
 
 
+func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
+	trafic.regler_detail(pivot.taille)
+
+
+func _sur_pulsation_trafic() -> void:
+	trafic.avancer(mois)
+
+
 func _rafraichir(force: bool) -> void:
 	# Hors du raccourci ci-dessous : le trait suit la CAMÉRA, qui bouge même
 	# quand le temps est en pause.
@@ -1245,10 +1325,22 @@ func _sur_reparation(couche: String, fid: int) -> void:
 	_rafraichir(true)
 
 
+func _sur_trafic(action: String, fid: int) -> void:
+	if action == "stationnement":
+		if ville.supprimer_stationnement(fid, mois):
+			print("rue %d · suppression du stationnement engagée · 2 mois" % fid)
+	elif action == "axe":
+		trafic.retirer_axe(fid, mois)
+		print("rue %d · voiture retirée immédiatement, report sur 6 mois" % fid)
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
 ## La pause est volontaire : sans elle, un retour demandé en ×12 recommence à
 ## défiler avant qu'on ait regardé.
 func _sur_reset() -> void:
 	ville.reinitialiser()
+	trafic.reinitialiser()
 	mois = 0.0
 	_sur_vitesse(0.0)
 	interface.remis_a_zero()
@@ -1275,6 +1367,24 @@ func _repere(nom: String) -> void:
 	pivot.viser(Vector2(float(c[0]), float(c[1])), float(d["taille"]))
 
 
+func _viser_route(fid: int, taille: float) -> void:
+	var parties: Array = donnees["couloirs"][str(fid)][1]
+	var axe: Array = parties[0]
+	var k := int(axe.size() / 4) * 2
+	pivot.viser(Vector2(float(axe[k]), float(axe[k + 1])), taille)
+
+
+func _route_calme() -> int:
+	for fid in ville.routes:
+		var o: Dictionary = ville.routes[fid]
+		var q := ville.valeur("r", fid, "charge", 0.0)
+		if str(o.get("hierarchie", "")) == "rue" and q >= 0.10 and q <= 0.18 \
+				and ville.valeur("r", fid, "stationnement", 0.0) >= 10.0 \
+				and donnees["couloirs"].has(str(fid)):
+			return fid
+	return 55
+
+
 func _unhandled_input(e: InputEvent) -> void:
 	if not (e is InputEventKey) or not (e as InputEventKey).pressed \
 			or (e as InputEventKey).echo:
@@ -1292,6 +1402,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_F: _repere("faubourg")
 		KEY_N: _repere("pont_casse")
 		KEY_C: _sur_tissu()
+		KEY_H: _sur_calque("", "") if calque_champ == "charge" \
+			else _sur_calque("r", "charge")
 		KEY_D: _sur_diagnostic(not diagnostic_crue)
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")

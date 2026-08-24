@@ -29,6 +29,7 @@ var routes := {}
 var riverains := {}        # fid tronçon -> [fid îlot]
 var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 var _solaire := {}         # fid -> {debut, duree, cible, cout_ke}
+var _stationnement_supprime := {}  # fid -> mois d'engagement
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
@@ -158,10 +159,33 @@ func vider_rampes() -> void:
 	_rampes = {"i": {}, "r": {}}
 
 
+func supprimer_stationnement(fid: int, t: float) -> bool:
+	if _stationnement_supprime.has(fid):
+		return false
+	var actuel := valeur("r", fid, "stationnement", t)
+	if actuel <= 0.0:
+		return false
+	_stationnement_supprime[fid] = t
+	ajouter_rampe("r", fid, "stationnement", -actuel, t, 0.0, 2.0)
+	return true
+
+
+func stationnement_en_suppression(fid: int) -> bool:
+	return _stationnement_supprime.has(fid)
+
+
+## Une rue envasée ou un tablier emporté ne redevient praticable qu'à la fin
+## de son chantier. Le prix exporté est le seul marqueur commun aux deux cas.
+func route_praticable(fid: int, t: float) -> bool:
+	return base("r", fid, "cout_reparation_ke") <= 0.0 \
+		or reparation_finie("r", fid, t)
+
+
 ## Retour au mois 0. Rien n'ayant été écrit en base, il n'y a rien d'autre à
 ## défaire — et ni géométrie ni caméra ne sont concernées.
 func reinitialiser() -> void:
 	_solaire.clear()
+	_stationnement_supprime.clear()
 	_depense_ke = 0.0
 	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
 	# donnée que `reparer` écrit en base, donc la seule à défaire.

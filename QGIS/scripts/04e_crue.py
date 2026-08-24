@@ -458,9 +458,8 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None):
     else:
         print("  → RIVE GAUCHE COUPÉE : aucun franchissement, %d logements"
               " sans accès routier" % log_g)
-    print("  ⚠️ le réseau routier N'EST PAS retouché : un pont coupé reste"
-          " dans `routes`. Le report de trafic n'est pas modélisé —"
-          " dette nommée dans Prototype/Crue.md.")
+    print("  le réseau source reste entier ; Godot exclut les tronçons"
+          " endommagés du trafic jusqu'à la fin de leur réparation.")
 
 
 # ----------------------------------------------------------------- l'écriture

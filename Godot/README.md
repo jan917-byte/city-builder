@@ -1,9 +1,7 @@
 # Godot — la maquette de Wehrau
 
 On relève d'abord la ville après la crue ; les décisions solaires n'apparaissent que lorsque les logements sinistrés et les franchissements sont rétablis. Deux jauges rendent ce passage **adaptation → réduction** visible. Godot **4.7.1**, aucun plugin, aucune dépendance.
-
 🔴 **Aucun chiffre mesuré dans ce fichier.** Ils sont dans `Prototype/`, à l'étape qui les porte, et l'export les réimprime à chaque passage. Le design est dans le vault, ce qui reste à faire dans `ETAT.md`.
-
 **Toute la géométrie est calculée en Python**, dans `07_exporter_godot.py`. Godot ne prend aucune décision géométrique : il lit des tableaux et les passe à `ArrayMesh`. L'« interface propre » de `Moteur et architecture:18` n'est pas une hiérarchie de classes, **c'est le contrat JSON**.
 
 ## Le lancer
@@ -13,7 +11,6 @@ python QGIS/scripts/chaine.py --godot
 ```
 
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
-
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
 
 ## Le clavier
@@ -37,6 +34,7 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **souris** | molette : zoom · clic droit glissé : tourner · clic milieu glissé : déplacer |
 | **C** | recolorer la ville **par tissu** — la palette d'avant le rendu réaliste |
 | **D** | ouvrir le **diagnostic de crue** — passage de l'eau, routes bloquées et bâtiments touchés |
+| **H** | afficher / masquer le calque de **charge du trafic** — diagnostic seulement |
 | **F3** | afficher / masquer le moniteur de performances |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |

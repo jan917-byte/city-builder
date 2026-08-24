@@ -10,11 +10,11 @@
 | 1 | **La carte** — îlots, rues, attributs | ✅ | la ville privée de sa rivière tombe en deux morceaux · le réseau tient d'un seul tenant · l'axe de transit sort tout seul |
 | 2 | **[Les parcelles](Parcelles.md)** | ⏸️ **en pause** | la surface de toit mesurée retombe sur le coefficient de l'énergie · le cœur ancien ressemble à un cœur ancien |
 | 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
-| 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | 🎯 **ouverte** | croire qu'on y habite |
-| 5 | **Le trafic visible** | ☐ | une rue à `charge = 1,00` est désagréable à regarder |
+| 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | ⏸️ **en pause** | croire qu'on y habite |
+| 5 | **[Le trafic visible](Trafic.md)** | 🎯 **ouverte** | une rue à `charge = 1,00` est désagréable à regarder |
 | 6 | **Le thème suivant** | ☐ | il s'écrit en trois pièces, sans toucher à la machinerie |
 
-⏸️ **L'étape 2 est en pause, pas finie** : son critère n'est pas atteint, il lui reste 118 parcelles de rue à sommet rentrant. L'auteur a ouvert la 4 explicitement et la 2 s'est refermée en même temps — la règle tient.
+⏸️ **Les étapes 2 et 4 sont en pause, pas finies** : leurs critères n'ont pas été vus à l'écran. L'auteur a ouvert la 5 explicitement ; la règle d'une seule étape ouverte tient.
 
 ## Ce qui commande le prototype
 

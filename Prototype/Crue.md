@@ -74,7 +74,6 @@ Le brainstorm du 2026-08-10 les pose ; personne ne les a chiffrées. **C'est du 
 
 ## 6. La dette de ce chantier
 
-- 🔴 **Le report de trafic n'existe pas.** Un pont coupé reste dans `routes` : `charge` ne bouge pas, l'axe de transit non plus. Le réseau routier n'est donc plus d'un seul tenant **à l'écran** alors qu'il l'est **dans les données** — le contrôle de connexité de `03` passe toujours, et il a raison de passer, mais il ne dit plus la vérité de l'image.
 - 🔴 **Le passage à la réduction est financièrement inaccessible en vingt ans avec les prix actuels.** Les logements sinistrés et les trois ponts essentiels coûtent plus que la caisse de départ et vingt ans de dotation réunis. Le verrou et les jauges fonctionnent ; leur seuil économique est du level design, pas un défaut d'interface.
 - 🟠 **Une seule hauteur d'eau par tronçon**, prise à son milieu. La limite du limon tombe donc sur un carrefour, jamais au milieu d'une rue. Invisible sur les rues courtes du faubourg ; ça se verrait sur une radiale de 300 m.
 - 🟠 **Le marquage au sol survit au pont emporté** : les passages piétons et les lignes d'axe s'arrêtent au bord de l'eau, peints jusqu'au vide. Défendable (la peinture reste), mais ça n'a pas été choisi.
