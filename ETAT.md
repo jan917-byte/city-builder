@@ -3,8 +3,8 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-21 (session 53).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. Sur `crue`, la rive touchée descend de 1 m, l'intacte monte de 1 m et les trois ponts emportés gardent leurs vestiges visibles ; l'étape 4 reste ouverte.
-Les **README ont fondu** : 23 600 → 7 700 tokens, et `CLAUDE.md` porte une **sixième règle** — un README dit à quoi sert le dossier, quoi lancer et les pièges permanents, **et aucun chiffre mesuré**.
+**2026-08-24 (session 54).** Étape ouverte : **4 — [Les toits et le sol](Prototype/Toits%20et%20sol.md)**, critère *croire qu'on y habite*. Sur `crue`, la maquette a une **deuxième vue d'ensemble** : touche `X`, les chantiers — rouge ce qui est encore cassé, ambre ce qui est en travaux, vert ce qui est fait, plus la liste des chantiers en cours (réparations **et** poses solaires). Le **trafic** a été corrigé et branché sur la crue : l'axe de transit est enfin continu (**16 tronçons saturés, 799 m**) et les ponts coupés reportent leur charge. → [Crue](Prototype/Crue.md) § 1 · § 6
+🔴 **Rien n'en a été vu à l'écran** : ce Mac n'a pas Godot, la vue n'a donc été ni jugée ni même compilée. C'est la première chose à faire côté Windows.
 
 ## Prochaine action — juger l'échange à l'écran
 
@@ -12,7 +12,7 @@ Les **README ont fondu** : 23 600 → 7 700 tokens, et `CLAUDE.md` porte une **s
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis lancer la maquette et regarder **la place-parking** d'abord (touche `M`), le **quai et les ponts** ensuite, **les façades** et **la rue** enfin. La grille de lecture — *ce qu'il faut voir* / *ce qui prouverait que c'est cassé* — et les réglages qui se changent en une ligne sont dans [Toits et sol](Prototype/Toits%20et%20sol.md) § 6 · § 7.
+Puis lancer la maquette, ouvrir la **vue chantiers** (`X`) et le **diagnostic** (`D`) — les deux se ferment l'une l'autre —, puis regarder **la place-parking** (touche `M`), le **quai et les ponts** ensuite, **les façades** et **la rue** enfin. La grille de lecture — *ce qu'il faut voir* / *ce qui prouverait que c'est cassé* — et les réglages qui se changent en une ligne sont dans [Toits et sol](Prototype/Toits%20et%20sol.md) § 6 · § 7.
 Puis le geste énergie : cliquer un cœur ancien puis la barre de 1974 et comparer « se rembourse en » (**31 ans contre 10**) ; sur l'îlot 31, la caisse refuse. → [Énergie](Prototype/Énergie.md)
 
 ## Ce qui attend l'auteur

@@ -6,6 +6,14 @@
 
 ---
 
+**2026-08-24 (session 54) — le trafic se remet à compter juste, et la crue le déplace.** La charge comptait un point par **segment dessiné** et non par tronçon traversé : l'axe de transit sortait en pics isolés (4 tronçons au-dessus de 0,80, 260 m) au lieu d'un corridor continu (**16 tronçons, 799 m**).
+`04e` réaffecte désormais la charge **sans les ponts coupés** et la réécrit : le réseau sort en 2 morceaux (151 nœuds contre 45), 21 tronçons tombent à zéro contre 14, et la rue qui encaisse le plus ne prend que **+0,05** — le faubourg coupé ne coûte presque rien à la ville, ce qui chiffre 23b.
+Piège payé : « avant » se **recalcule** au lieu de se relire dans `routes.charge`, sinon relancer `04e` seul compare l'après à lui-même et affiche un report nul. La dette de `Crue.md` § 6 est payée ; le trafic reste aveugle aux logements et sans capacité (23b · étape 5)
+
+**2026-08-24 (session 54) — une deuxième vue d'ensemble : les chantiers.** Le diagnostic (`D`) dit ce que l'eau **a pris** et ne bouge plus ; la vue chantiers (`X`) dit **où on en est** — rouge le cassé, ambre les travaux, vert le fait — et liste les chantiers en cours avec leur durée restante.
+La pose de panneaux y figure comme les trois réparations : le noyau ne connaît toujours pas la crue, il compare un prix à la caisse. La passe automatisée capture le seul mois où les trois états coexistent.
+🔴 **Rien n'a été vu à l'écran** : le Mac de cette session n'a pas Godot, donc la vue n'a même pas été compilée. (23b · 72)
+
 **2026-08-21 (session 53) — les deux rives se séparent à l'écran.** La rive gauche touchée descend de **1 m**, la terrasse droite intacte monte de **1 m** ; l'eau reste horizontale et toute la géométrie terrestre lit la même coupe.
 Les trois ponts emportés ne sont plus de simples trous : chacun garde **deux moignons de tablier affaissés**, tandis que la réparation montre toujours un ouvrage neuf complet. La vue `N` et la passe automatisée ont été regardées.
 🔴 Le côté de rive se dérive de la coupe locale de l'Ilse, jamais d'une liste d'îlots ; six vestiges sortent donc des trois coupures. (23b)

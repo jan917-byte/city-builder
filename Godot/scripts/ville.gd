@@ -456,3 +456,82 @@ func degats(t: float) -> Dictionary:
 		"franchissements_coupes": coupes,
 		"caisse_ke": caisse_ke(t),
 	}
+
+
+# ------------------------------------------------- la ville en travaux
+
+# 🔧 LA VUE CHANTIERS (touche X) lit ces deux fonctions et rien d'autre. Un
+# objet est CASSÉ, EN CHANTIER ou FAIT — jamais deux à la fois, sinon la
+# couleur ment. Le solaire en est : « tous les chantiers » n'en exclut aucun.
+# ⚠️ Rien à voir avec `chantiers.gd`, l'ancien prototype à deux décisions.
+const CHANTIER_INTACT := 0
+const CHANTIER_CASSE := 1
+const CHANTIER_EN_COURS := 2
+const CHANTIER_FAIT := 3
+
+
+func etat_chantier(couche: String, fid: int, t: float) -> int:
+	# La pose passe devant : sur un îlot déjà relevé, c'est elle le chantier.
+	if couche == "i" and _solaire.has(fid) and etat_solaire(fid, t)["en_cours"]:
+		return CHANTIER_EN_COURS
+	if base(couche, fid, "cout_reparation_ke") <= 0.0:
+		return CHANTIER_INTACT
+	if reparation_finie(couche, fid, t):
+		return CHANTIER_FAIT
+	return CHANTIER_EN_COURS if est_repare(couche, fid) else CHANTIER_CASSE
+
+
+## Ce qui est cassé, ce qui se répare, ce qui est fait — à cet instant.
+## Les genres sont des mots, pas des couleurs : l'interface les traduit.
+##
+## ⚠️ Les chantiers EN COURS se listent, le cassé se COMPTE : au mois 0 le
+## cassé se compte en centaines d'objets, et c'est la couleur au sol qui dit où
+## ils sont. Appelée à chaque image tant que le panneau est ouvert — d'où
+## l'absence d'une liste qu'il faudrait allouer puis trier pour rien.
+func chantiers(t: float) -> Dictionary:
+	var en_cours := []
+	var faits := 0
+	var casses := 0
+	var reste_ke := 0.0
+	var casses_par_genre := {"reconstruction": 0, "pont": 0, "deblaiement": 0}
+	for couche in ["i", "r"]:
+		for fid in objets(couche):
+			var prix := base(couche, fid, "cout_reparation_ke")
+			if prix <= 0.0:
+				continue
+			var genre := _genre_chantier(couche, fid)
+			if not est_repare(couche, fid):
+				casses += 1
+				casses_par_genre[genre] += 1
+				reste_ke += prix
+			elif reparation_finie(couche, fid, t):
+				faits += 1
+			else:
+				en_cours.append({"couche": couche, "fid": fid,
+					"genre": genre, "cout_ke": prix,
+					"reste_mois": reste_reparation_mois(couche, fid, t)})
+	# La pose est un chantier comme un autre : sans elle, « tous les chantiers
+	# en cours » en oublierait un, et l'îlot ambre ne serait dans aucune liste.
+	for fid in _solaire:
+		var e := etat_solaire(fid, t)
+		if not e["en_cours"]:
+			continue
+		en_cours.append({"couche": "i", "fid": fid, "genre": "solaire",
+			"cout_ke": float(e["cout_ke"]), "reste_mois": float(e["reste_mois"])})
+	# Le plus proche de sa fin en tête : c'est l'ordre dans lequel on lit une
+	# liste qui ne tient pas entière à l'écran.
+	en_cours.sort_custom(func(a, b): return a["reste_mois"] < b["reste_mois"])
+	return {
+		"en_cours": en_cours,
+		"casses": casses,
+		"casses_par_genre": casses_par_genre,
+		"faits": faits,
+		"reste_ke": reste_ke,
+	}
+
+
+func _genre_chantier(couche: String, fid: int) -> String:
+	if couche == "i":
+		return "reconstruction"
+	return "pont" if str(objets("r").get(fid, {}).get("etat_crue", "")) == "coupe" \
+		else "deblaiement"

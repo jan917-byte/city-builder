@@ -35,6 +35,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "instance uniform float diagnostic_mode = 0.0;\n" \
 		+ "instance uniform float diagnostic_sol = 0.0;\n" \
 		+ "instance uniform float diagnostic_bati = 0.0;\n" \
+		+ "instance uniform float chantier_etat = 0.0;\n" \
+		+ "instance uniform float chantier_mode = 0.0;\n" \
 		+ "instance uniform float equipe = 0.0;\n" \
 		+ "varying vec3 pos_monde;\n" \
 		+ "// Choix de LISIBILITÉ, pas des mesures de toiture. ⚠ Mesuré le\n" \
@@ -221,6 +223,19 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t}\n" \
 		+ "\t\tif (diagnostic_bati > 0.5 && pos_monde.y > 0.35) {\n" \
 		+ "\t\t\tbase = mix(base, vec3(0.81, 0.210, 0.030) * COLOR.a, 0.92);\n" \
+		+ "\t\t}\n" \
+		+ "\t}\n" \
+		+ "\t// Vue chantiers : l'objet ENTIER prend la couleur de son état —\n" \
+		+ "\t// cassé, en travaux, fait. Ce n'est pas la crue qu'on lit ici mais\n" \
+		+ "\t// l'avancement, donc le sol et le volume disent la même chose.\n" \
+		+ "\t// ⚠ Les trois teintes sont aussi dans `interface.gd`, en sRGB.\n" \
+		+ "\tif (chantier_mode > 0.5) {\n" \
+		+ "\t\tbase *= 0.42;\n" \
+		+ "\t\tif (chantier_etat > 0.5) {\n" \
+		+ "\t\t\tvec3 signal = chantier_etat > 2.5 ? vec3(0.105, 0.423, 0.178)\n" \
+		+ "\t\t\t\t: (chantier_etat > 1.5 ? vec3(0.807, 0.402, 0.030)\n" \
+		+ "\t\t\t\t: vec3(0.716, 0.042, 0.030));\n" \
+		+ "\t\t\tbase = mix(base, signal * COLOR.a, 0.88);\n" \
 		+ "\t\t}\n" \
 		+ "\t}\n" \
 		+ "\tALBEDO = base * teinte.rgb;\n" \
