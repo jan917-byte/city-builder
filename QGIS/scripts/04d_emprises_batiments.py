@@ -87,6 +87,21 @@ TISSU = {
     "front_commercant":    (0.0,  0.0,  3.0,  None,  16.0,  0.85, MITOYEN),
     "pavillonnaire":       (4.0,  3.0,  3.0,   9.0,  10.0,  0.35, DETACHE),
     "barre_1970":          (6.0,  5.0,  5.0,  None,  13.0,  1.00, BOITE),
+    # Détaché, pas mitoyen : des plots. 5 m de recul = les places de voiture
+    # devant, qui sont la signature de l'époque.
+    # 🔴 3 m DE LATÉRAL ET PAS 4, ET C'EST MESURÉ : à 4 m sur 26 m de façade le
+    # plancher tombait à 8 208 m² sur l'îlot 30, soit 68 m² bruts par logement —
+    # le chiffre qui n'existe pas, celui que la barre a déjà payé le 2026-08-19.
+    # 18 m de bâtiment sur 24 de parcelle remonte à 110. Ne pas rouvrir sans
+    # refaire le rapport plancher / logements.
+    "collectif_1995":      (5.0,  3.0,  5.0,  18.0,  13.0,  0.42, DETACHE),
+    # 🔴 lateral 0,0 = MITOYEN, mais le front n'est PAS continu pour autant :
+    # c'est la percée qui l'interrompt tous les 30 m (voir PERCEE_TISSUS), et
+    # sans elle ce tissu sortait en îlot fermé — un anneau de mur sans entrée.
+    # 12 m de profondeur, c'est ce qui donne des logements traversants ;
+    # au-delà on refait de la barre. Le plafond 0,55 ne mord pas — le rectangle
+    # décide — il garde juste 45 % de cour.
+    "ilot_compact":        (1.0,  0.0,  6.0,  None,  12.0,  0.55, MITOYEN),
     "equipement":          (4.0,  3.0,  3.0,  20.0,  22.0,  0.60, DETACHE),
     "friche_industrielle": (3.0,  2.5,  2.5,  None,  35.0,  0.55, BOITE),
 }
@@ -228,6 +243,31 @@ AILE_ADOS = 0.15
 # Le tirage garde une exception sur six, et les deux nombres s'impriment.
 ANGLE_POINTE_DEG = 30.0
 POINTE_PART = 0.17
+
+# 🕳️ LA PERCÉE — 2026-08-25, sur `parcelles_ilot_49.png` : « l'îlot compact
+# doit être un entre-deux, cour intérieure accessible, compact mais pas continu
+# sur toute la longueur ». Le mur mitoyen s'interrompt dès qu'il dépasse
+# PERCEE_MUR_MAX, et la coupe traverse TOUTE la profondeur du bâtiment : c'est
+# elle qui rend la cour accessible, un redent la laisserait enfermée.
+# 🔄 Ne pas la rendre au tirage : le vide doit tomber là où le mur est long,
+# pas là où le dé tombe — c'est ce qui distingue l'îlot ouvert du lotissement.
+PERCEE_TISSUS = {"ilot_compact"}
+# 🔴 UN SEUL NOMBRE POUR DEUX ENDROITS, et c'est voulu : un mur trop long l'est
+# qu'il soit fait de cinq bâtiments mitoyens (`percees_ilot`, qui ouvre la
+# limite) ou d'un seul trop étiré (`percer`, qui le coupe en deux).
+# 🎚️ 60 m = la longueur d'un côté d'îlot ordinaire de Wehrau. Mesuré sur
+# l'îlot 49 : 286 m de mur d'un seul tenant, dont aucun bâtiment ne dépasse
+# 31 m — c'est bien la limite mitoyenne qu'il faut ouvrir, pas le bâtiment.
+PERCEE_MUR_MAX = 60.0
+# Une percée, pas une venelle : deux murs de 12 m de profondeur à 3 m l'un de
+# l'autre font un couloir, même remarque que RECUL_VENELLE_MIN.
+PERCEE_LARGEUR = 9.0
+PERCEE_SEGMENT_MIN = 12.0  # sous ça le tronçon restant n'est plus un immeuble
+# 🔴 CE QU'UNE PERCÉE LAISSE DEBOUT DOIT ÊTRE UN BÂTIMENT. Sur une parcelle
+# d'angle, le bâtiment est un L et deux percées lui coupent le coin : mesuré
+# sur la parcelle 559, il restait une écharde de 56 m² large de 4,5 m et à huit
+# sommets. Sous cette largeur, ce que la percée laisse repart au jardin.
+PERCEE_RESTE_MIN = 9.0
 
 # 🌿 LA PARCELLE SANS RUE EST UNE CATÉGORIE, PAS UN RÉSIDU — 2026-08-17.
 # 🔴 MESURÉ AVANT D'ÉCRIRE, et ça a annulé le travail prévu : les 15 parcelles
@@ -385,7 +425,8 @@ COMPTE = {"cour": 0, "fond_cede": 0, "creux_garde": 0,
           "creuse": 0, "rabote": 0,
           "pointe_nue": 0, "pointe_gardee": 0, "traversante": 0,
           "morceau_jete": 0, "poche_comblee": 0,
-          "encoche": 0, "encoche_bat": 0}
+          "encoche": 0, "encoche_bat": 0,
+          "percee": 0, "percee_parc": 0, "percee_coupe": 0}
 
 
 # ------------------------------------------------------------------ géométrie
@@ -421,6 +462,21 @@ def sans_doublons(anneau, tol=0.05):
 def jeu(g, sel, ampleur):
     """Un écart reproductible dans [-ampleur, +ampleur], tiré de la graine."""
     return ((((g >> sel) & 1023) / 1023.0) * 2.0 - 1.0) * ampleur
+
+
+def dans_un_trou(p, trous):
+    """Ce point tombe-t-il dans une percée ?
+
+    🔴 L'EXCEPTION À R2 BIS, ET LA SEULE. « Le vide est toujours derrière,
+    jamais le long d'une rue » est ce qui tient le front de rue continu — donc
+    c'est aussi ce qui fermait l'îlot compact en anneau. Une percée EST un vide
+    sur rue, voulu, borné, large de PERCEE_LARGEUR : les points qu'elle contient
+    ne se mesurent pas, sinon elle ressort en creux et la pose est refusée."""
+    for hp in trous:
+        if all((p[0] - p0[0]) * nrm[0] + (p[1] - p0[1]) * nrm[1] >= 0.0
+               for p0, nrm in hp):
+            return True
+    return False
 
 
 def touche_les_rues(poly, ring, rues, retraits, marge=0.35):
@@ -467,7 +523,7 @@ def _portee(ring, i):
     return max((p[0] - a[0]) * nx + (p[1] - a[1]) * ny for p in ring)
 
 
-def creux_sur_rue(polys, ring, rues, retraits):
+def creux_sur_rue(polys, ring, rues, retraits, trous=()):
     """De combien le bâti recule-t-il de sa rue, au-delà de son recul ?
 
     Le contrôle de R2 bis. `touche_les_rues` répond oui ou non et sert à
@@ -494,6 +550,8 @@ def creux_sur_rue(polys, ring, rues, retraits):
         bord = min((retraits[i] + 1.0) / L, 0.34)
         for t in (bord, 0.5, 1.0 - bord):
             base = (a[0] + dx * t, a[1] + dy * t)
+            if trous and dans_un_trou(base, trous):
+                continue                     # une percée n'est pas un creux
             for k in range(1, 60):
                 q = (base[0] + nx * 0.25 * k, base[1] + ny * 0.25 * k)
                 if not dans(ring, q):
@@ -502,6 +560,80 @@ def creux_sur_rue(polys, ring, rues, retraits):
                     pire = max(pire, 0.25 * k - retraits[i])
                     break
     return pire
+
+
+def demi_plan(poly, nx, ny, c):
+    """Sutherland–Hodgman : ce qui reste du polygone du bon côté d'une droite.
+
+    Couper ne fait que RETIRER, donc le résultat est contenu dans le polygone
+    de départ par construction. C'est la propriété sur laquelle tient R0, et
+    c'est pourquoi `enveloppe` et `percer` passent tous les deux par ici."""
+    out = []
+    m = len(poly)
+    for k in range(m):
+        p, q = poly[k], poly[(k + 1) % m]
+        dp = p[0] * nx + p[1] * ny - c
+        dq = q[0] * nx + q[1] * ny - c
+        if dp >= -1e-9:
+            out.append(p)
+        if (dp > 1e-9) != (dq > 1e-9) and abs(dq - dp) > 1e-12:
+            t = dp / (dp - dq)
+            out.append((p[0] + t * (q[0] - p[0]),
+                        p[1] + t * (q[1] - p[1])))
+    return out
+
+
+def percer(morceau):
+    """Un bâtiment mitoyen trop long devient plusieurs, séparés par des percées.
+
+    🔴 LA DIRECTION SORT DE LA PLUS LONGUE ARÊTE DU MORCEAU, pas de la façade
+    de la parcelle : sur une parcelle d'angle, la bande de l'autre rue court
+    en travers, et une coupe prise sur `u` l'aurait fendue dans sa longueur —
+    deux lanières au lieu de deux immeubles.
+
+    Le nombre de tronçons est le plus petit qui ramène chaque mur sous
+    PERCEE_MUR_MAX ; les percées sont réparties à intervalle égal. Renvoie
+    (morceaux, nombre de percées)."""
+    n = len(morceau)
+    if n < 3:
+        return [morceau], 0
+    best, L = None, 0.0
+    for i in range(n):
+        p, q = morceau[i], morceau[(i + 1) % n]
+        d = math.hypot(q[0] - p[0], q[1] - p[1])
+        if d > L:
+            best, L = (p, q), d
+    if best is None or L < 1e-9:
+        return [morceau], 0
+    (p, q) = best
+    ux, uy = (q[0] - p[0]) / L, (q[1] - p[1]) / L
+    s = [x[0] * ux + x[1] * uy for x in morceau]
+    s0, s1 = min(s), max(s)
+    portee = s1 - s0
+    if portee <= PERCEE_MUR_MAX:
+        return [morceau], 0
+    g = PERCEE_LARGEUR
+    k = int(math.ceil((portee + g) / (PERCEE_MUR_MAX + g)))
+    while k > 1 and (portee - (k - 1) * g) / k < PERCEE_SEGMENT_MIN:
+        k -= 1
+    if k < 2:
+        return [morceau], 0
+    pas = (portee - (k - 1) * g) / k
+    morceaux = []
+    for i in range(k):
+        d0 = s0 + i * (pas + g)
+        # Le premier et le dernier tronçon gardent leur bout : la percée est
+        # INTÉRIEURE au bâtiment, elle ne le raccourcit pas par les extrémités.
+        m2 = morceau
+        if i > 0:
+            m2 = demi_plan(m2, ux, uy, d0)
+        if i < k - 1:
+            m2 = demi_plan(m2, -ux, -uy, -(d0 + pas))
+        if len(m2) >= 3:
+            morceaux.append(m2)
+    if len(morceaux) < 2:
+        return [morceau], 0
+    return morceaux, k - 1
 
 
 def enveloppe(ring, retraits, rues):
@@ -560,18 +692,7 @@ def enveloppe(ring, retraits, rues):
             continue
         nx, ny = -dy / L, dx / L            # rentrant : anneau ccw
         c = (a[0] * nx + a[1] * ny) + retraits[i]
-        suivant = []
-        m = len(poly)
-        for k in range(m):
-            p, q = poly[k], poly[(k + 1) % m]
-            dp = p[0] * nx + p[1] * ny - c
-            dq = q[0] * nx + q[1] * ny - c
-            if dp >= -1e-9:
-                suivant.append(p)
-            if (dp > 1e-9) != (dq > 1e-9) and abs(dq - dp) > 1e-12:
-                t = dp / (dp - dq)
-                suivant.append((p[0] + t * (q[0] - p[0]),
-                                p[1] + t * (q[1] - p[1])))
+        suivant = demi_plan(poly, nx, ny, c)
         if not rues[i] and len(suivant) >= 3 \
                 and not touche_les_rues(suivant, ring, rues, retraits):
             COMPTE["fond_cede"] += 1
@@ -894,6 +1015,165 @@ def sur_index(milieu, idx):
                 if D4C.dist_pt_seg((mx, my), p, q) <= TOL_RUE:
                     return True
     return False
+
+
+def _sur_rue(ring, idx_b):
+    """La façade totale de la parcelle : c'est elle qui mesure le mur."""
+    n = len(ring)
+    total = 0.0
+    for i in range(n):
+        a, b = ring[i], ring[(i + 1) % n]
+        if sur_index(((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0), idx_b):
+            total += math.hypot(b[0] - a[0], b[1] - a[1])
+    return total
+
+
+def _limite_commune(ra, rb, idx_b):
+    """(longueur, indices des arêtes de `ra`) du mur mitoyen commun aux deux.
+
+    🔴 UNE LIMITE QUI N'ATTEINT PAS LA RUE N'EST PAS UNE PERCÉE POSSIBLE. Deux
+    voisines partagent souvent DEUX bords : le mur mitoyen, qui part du
+    trottoir, et le fond, qui longe le cœur d'îlot. Ouvrir le second creuse une
+    tranchée dans le dos du bâtiment sans rien ouvrir du tout — mesuré sur la
+    parcelle 560, une bande de 4,5 m le long de 31,8 m de fond.
+    🔄 LE TEST N'EST PAS UN ANGLE. « Perpendiculaire à la rue la plus proche »
+    a été essayé et se trompe sur les parcelles d'angle, où les DEUX bords non
+    bâtis sont parallèles à l'une des deux rues. Toucher la rue, si.
+
+    ⚠️ TIENT PARCE QUE LES DEUX ANNEAUX SONT CONSTRUITS PAREIL : `percees_ilot`
+    et `empreinte` passent tous deux par ccw(sans_doublons(ouvrir(...))), donc
+    l'indice désigne la même arête des deux côtés. Changer l'un sans l'autre
+    déplacerait les percées en silence."""
+    aretes = [(rb[i], rb[(i + 1) % len(rb)]) for i in range(len(rb))]
+    L, idx = 0.0, []
+    n = len(ra)
+    for i in range(n):
+        p, q = ra[i], ra[(i + 1) % n]
+        d = math.hypot(q[0] - p[0], q[1] - p[1])
+        if d < LONGUEUR_ARETE_MIN:
+            continue
+        mx, my = (p[0] + q[0]) / 2.0, (p[1] + q[1]) / 2.0
+        if all(D4C.dist_pt_seg((mx, my), a, b) > TOL_RUE for a, b in aretes):
+            continue
+        if not (sur_index(p, idx_b) or sur_index(q, idx_b)):
+            continue
+        L += d
+        idx.append(i)
+    return L, idx
+
+
+def mur_continu(emprises_ilot, bats, recul=2.0, pas=0.5):
+    """Le plus long mur d'un seul tenant sur le tour d'un îlot.
+
+    🔴 LE SEUL NOMBRE QUI JUGE LA PERCÉE, et il ne se déduit d'aucun autre :
+    compter les percées ne dit pas si elles sont tombées au bon endroit. On
+    longe le bord de l'emprise en sondant 2 m à l'intérieur — un bâtiment est à
+    son recul, donc il répond — et on garde la plus longue suite de oui."""
+    ferme = [list(b) + [b[0]] for b in bats]
+    if not ferme:
+        return 0.0
+    pire = suite = 0.0
+    for ring in emprises_ilot:
+        n = len(ring)
+        for i in range(n):
+            a, b = ring[i], ring[(i + 1) % n]
+            L = math.hypot(b[0] - a[0], b[1] - a[1])
+            if L < 1e-9:
+                continue
+            ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+            nx, ny = -uy, ux                # rentrant : anneau ccw
+            for k in range(int(L / pas)):
+                t = (k + 0.5) * pas
+                p = (a[0] + ux * t + nx * recul, a[1] + uy * t + ny * recul)
+                if any(dans(x, p) for x in ferme):
+                    suite += pas
+                    pire = max(pire, suite)
+                else:
+                    suite = 0.0
+    return pire
+
+
+def percees_ilot(lot, idx_b):
+    """Où le mur mitoyen d'un îlot s'interrompt — décidé une fois, par ÎLOT.
+
+    🔴 LE MUR CONTINU EST UN FAIT D'ÎLOT, PAS DE PARCELLE. Mesuré sur l'îlot
+    49 : dix bâtiments mitoyens font 286 m de mur d'un seul tenant, et aucun ne
+    dépasse 31 m de long. Aucune règle jugeant une parcelle seule ne peut voir
+    ça — d'où ce tour d'îlot, avant toute pose.
+
+    On ordonne les parcelles autour du centre, on accumule la façade, et dès
+    qu'un tronçon dépasserait PERCEE_MUR_MAX la limite mitoyenne s'ouvre.
+
+    🔴 LA PERCÉE SE PREND MOITIÉ-MOITIÉ SUR LES DEUX VOISINES. Posée en entier
+    sur une seule, elle lui mange 9 m de façade quand l'autre garde la sienne :
+    le vide n'est plus une entrée d'îlot mais une parcelle amputée.
+
+    Renvoie {fid: {indices d'arêtes}} — les limites que cette parcelle ouvre,
+    la moitié de la percée de chaque côté."""
+    infos = {}
+    for p in lot:
+        if p["origine"] in ORIGINES_NUES or p["st"] not in PERCEE_TISSUS:
+            continue
+        ring = ccw(sans_doublons(D4C.ouvrir(p["anneau"])))
+        if len(ring) < 3:
+            continue
+        f = _sur_rue(ring, idx_b)
+        if f < 1e-9:
+            continue
+        cx = sum(x[0] for x in ring) / len(ring)
+        cy = sum(x[1] for x in ring) / len(ring)
+        infos[p["fid"]] = (f, (cx, cy), ring)
+    if len(infos) < 3:
+        return {}
+
+    # Le tour de l'îlot. L'angle autour du centre suffit et ne suppose rien de
+    # la forme des parcelles : elles rayonnent toutes de la rue vers le cœur.
+    ox = sum(v[1][0] for v in infos.values()) / len(infos)
+    oy = sum(v[1][1] for v in infos.values()) / len(infos)
+    ordre = sorted(infos, key=lambda f: math.atan2(infos[f][1][1] - oy,
+                                                   infos[f][1][0] - ox))
+    n = len(ordre)
+    demi = PERCEE_LARGEUR / 2.0
+    ouverts = {f: 0 for f in ordre}
+    cotes = {}
+
+    def tient(fid, de_plus=1):
+        return infos[fid][0] - demi * (ouverts[fid] + de_plus) \
+            >= PERCEE_SEGMENT_MIN
+
+    def ouvrir(fa, fb):
+        # Une limite plus courte que la percée n'en est pas une : deux
+        # parcelles qui se touchent par un coin n'ont pas de mur à ouvrir.
+        La, ia = _limite_commune(infos[fa][2], infos[fb][2], idx_b)
+        Lb, ib = _limite_commune(infos[fb][2], infos[fa][2], idx_b)
+        if min(La, Lb) < PERCEE_LARGEUR:
+            return False
+        cotes.setdefault(fa, set()).update(ia)
+        cotes.setdefault(fb, set()).update(ib)
+        ouverts[fa] += 1
+        ouverts[fb] += 1
+        COMPTE["percee"] += 1
+        return True
+
+    tete = run = 0.0
+    premiere = False
+    for pos in range(n):
+        fid = ordre[pos]
+        f = infos[fid][0]
+        prec = ordre[pos - 1]
+        if pos > 0 and run + f > PERCEE_MUR_MAX \
+                and tient(prec) and tient(fid) and ouvrir(prec, fid):
+            if not premiere:
+                tete, premiere = run, True
+            run = f
+        else:
+            run += f
+    # Le tour se referme : le dernier tronçon et le premier n'en font qu'un.
+    if premiere and run + tete > PERCEE_MUR_MAX \
+            and tient(ordre[-1]) and tient(ordre[0]):
+        ouvrir(ordre[-1], ordre[0])
+    COMPTE["percee_parc"] += len(cotes)
+    return cotes
 
 
 def _rentrants(anneau):
@@ -1255,7 +1535,8 @@ def rect_max(grille, du, dv, nu, nv, u0, v0, prof):
 
 # --------------------------------------------------------------- l'empreinte
 
-def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None, fid_ilot=None):
+def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None,
+              fid_ilot=None, percee=None):
     """La parcelle devient une empreinte de bâtiment.
 
     Les gestes, dans l'ordre, et chacun répond à une règle :
@@ -1387,7 +1668,7 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None, fid_ilot=None)
         emps, motif, retraits, note = _poser(ring, rues, venelles, u, nrm,
                                              cadre, a, st, famille, recul,
                                              lat0, fond0, facade, prof, g,
-                                             veut_aile)
+                                             veut_aile, percee)
         if emps or prof is None or motif != MOTIF_PETIT:
             break
         if prof >= PROF_ETROITE_MAX * prof0:
@@ -1420,7 +1701,7 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None, fid_ilot=None)
             prof *= 0.88
             e2, _m2, r2, n2 = _poser(ring, rues, venelles, u, nrm, cadre, a,
                                      st, famille, recul, lat0, fond0,
-                                     facade, prof, g, veut_aile)
+                                     facade, prof, g, veut_aile, percee)
             if not e2:
                 break
             emps, retraits, note = e2, r2, n2
@@ -1432,7 +1713,7 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None, fid_ilot=None)
 
 
 def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
-           recul, lat0, fond0, facade, prof, g, veut_aile):
+           recul, lat0, fond0, facade, prof, g, veut_aile, percee=None):
     """Un essai de pose, à retraits donnés. Rendu séparé parce que R5 le
     rejoue en réduisant les retraits : c'est la seule boucle du fichier où
     l'échec est une étape normale."""
@@ -1467,7 +1748,50 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
                     r = lat
             retraits.append(r)
 
-        note = {"cour": []}
+        # 🕳️ LES BANDES DE PERCÉE — une par limite mitoyenne ouverte, et elles
+        # traversent toute la profondeur du bâtiment : c'est ça qui rend la cour
+        # accessible, un redent la laisserait enfermée.
+        # 🔄 LA PERCÉE A ÉTÉ UN RETRAIT LATÉRAL, ET C'ÉTAIT FAUX : un retrait
+        # est un demi-plan, donc une droite INFINIE qui traverse la parcelle en
+        # biais — le défaut même que `enveloppe` documente pour le fond. Mesuré
+        # sur la parcelle 559 : 258 m² de bâtiment tombés à 48. Une percée est
+        # une BANDE, bornée par les deux bouts de la limite qu'elle ouvre.
+        # Elle suit R5 comme le reste : si rien ne tient, mieux vaut une percée
+        # étroite qu'une parcelle vide.
+        trous = []
+        if percee:
+            demi = (PERCEE_LARGEUR / 2.0) * f
+            for i in sorted(percee):
+                if i >= n or rues[i] or venelles[i]:
+                    continue
+                p, q = ring[i], ring[(i + 1) % n]
+                dl = math.hypot(q[0] - p[0], q[1] - p[1])
+                if dl < LONGUEUR_ARETE_MIN:
+                    continue
+                tx, ty = (q[0] - p[0]) / dl, (q[1] - p[1]) / dl
+                nx, ny = -ty, tx             # rentrant : anneau ccw
+                # 🔴 LA PERCÉE PART DE LA RUE ET S'ARRÊTE AU FOND DU BÂTIMENT.
+                # Sans cette borne, une limite mitoyenne de 32 m emporte une
+                # tranchée de 32 m quand le bâtiment n'en fait que 13.
+                deb, fin = 0.0, dl
+                if prof is not None:
+                    loin = recul + prof + 1.0
+                    if rues[(i - 1) % n]:
+                        fin = min(dl, loin)          # la rue est au DÉBUT
+                    elif rues[(i + 1) % n]:
+                        deb = max(0.0, dl - loin)    # la rue est à la FIN
+                # Les demi-plans pointent vers l'INTÉRIEUR de ce qu'on retire.
+                # Un demi-mètre de rab aux bouts : sans lui la bande laisse un
+                # éclat de mur sur le trottoir.
+                trous.append([(p, (nx, ny)),
+                              ((p[0] + nx * demi, p[1] + ny * demi),
+                               (-nx, -ny)),
+                              ((p[0] + tx * (deb - 0.5),
+                                p[1] + ty * (deb - 0.5)), (tx, ty)),
+                              ((p[0] + tx * (fin + 0.5),
+                                p[1] + ty * (fin + 0.5)), (-tx, -ty))])
+
+        note = {"cour": [], "trous": trous}
         if famille == MITOYEN:
             env = enveloppe(ring, retraits, rues)
             if len(env) < 3 or abs(D4C.aire_signee(env)) < AIRE_MIN:
@@ -1488,6 +1812,36 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
                          facade, prof, recul, nrm, note)
         if not emp:
             dernier = "aucune forme ne tient"
+            continue
+
+        # 🕳️ LA PERCÉE SE COUPE ICI : après la bande, avant les contrôles de
+        # forme. Chaque tronçon se juge alors comme un bâtiment à part entière
+        # — aire, largeur, coins — ce qu'il est devenu.
+        # Le compte va dans `note` et non dans COMPTE : R5 et le rabot rejouent
+        # cette fonction jusqu'à dix fois par parcelle, un compteur global y
+        # dirait dix percées pour une.
+        if trous:
+            perces = []
+            for m in emp:
+                reste = [m]
+                for hp in trous:
+                    suite = []
+                    for x in reste:
+                        suite.extend(D4C._soustraire_convexe(x, hp)[0])
+                    reste = suite
+                perces.extend(x for x in reste
+                              if len(x) >= 3
+                              and largeur_min(x) >= PERCEE_RESTE_MIN)
+            emp = perces
+        if st in PERCEE_TISSUS:
+            perces, npc = [], 0
+            for m in emp:
+                tr, k = percer(m)
+                perces.extend(tr)
+                npc += k
+            emp, note["percee"] = perces, npc
+        if not emp:
+            dernier = MOTIF_PETIT
             continue
 
         # 🔴 CHAQUE MORCEAU SE JUGE SÉPARÉMENT, ET LES RECALÉS REPARTENT AU
@@ -1534,10 +1888,10 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
         # une rue. Là, c'est le retrait qui plie : on redescend d'un cran et on
         # reprend. Le meilleur essai est gardé au cas où aucun ne serait net.
         if famille == MITOYEN:
-            creux = creux_sur_rue(garde, ring, rues, retraits)
+            creux = creux_sur_rue(garde, ring, rues, retraits, trous)
             if creux > CREUX_TOLERE:
                 if secours is None or creux < secours[0]:
-                    secours = (creux, garde, retraits)
+                    secours = (creux, garde, retraits, note)
                 dernier = "creux de %.1f m sur rue" % creux
                 continue
 
@@ -1574,11 +1928,11 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
 
     if secours is not None:
         COMPTE["creux_garde"] += 1
-        return secours[1], None, secours[2], {"cour": []}
+        return secours[1], None, secours[2], secours[3]
     if pire is not None and dernier == MOTIF_FORME:
         COMPTE["pire_coins"] = max(COMPTE["pire_coins"], pire[0])
         COMPTE["pire_rect"] = min(COMPTE["pire_rect"], pire[1])
-    return None, dernier, retraits, {"cour": []}
+    return None, dernier, retraits, {"cour": [], "trous": []}
 
 
 def _forme(env, ring, rues, retraits, cadre, a, famille, facade, prof, recul,
@@ -1690,6 +2044,11 @@ def main():
         if vens:
             idx_venelle[f] = index_bord(vens)
     dirs = {f: direction_ilot(a) for f, a in emprises.items()}
+    # 🕳️ La percée se décide par ÎLOT et AVANT toute pose : le mur trop long
+    # est une somme de façades voisines, un seul bâtiment ne la voit pas.
+    percees = {}
+    for f, lot in par_ilot.items():
+        percees.update(percees_ilot(lot, idx_bord.get(f, {})))
 
     resultats, refus, detail = [], {}, []
     for p in parcelles:
@@ -1701,7 +2060,8 @@ def main():
             continue
         emps, motif, rues, retraits, note = empreinte(
             p["anneau"], st, idx_bord.get(p["ilot"], {}),
-            idx_venelle.get(p["ilot"]), dirs.get(p["ilot"]), p["ilot"])
+            idx_venelle.get(p["ilot"]), dirs.get(p["ilot"]), p["ilot"],
+            percees.get(p["fid"]))
         if not emps:
             refus[motif] = refus.get(motif, 0) + 1
             detail.append((p, motif))
@@ -1709,7 +2069,7 @@ def main():
         resultats.append({"parcelle": p, "emps": emps, "rues": rues,
                           "retraits": retraits, "note": note})
 
-    controles(resultats, parcelles, refus, logements)
+    controles(resultats, parcelles, refus, logements, emprises)
     if "--pourquoi" in sys.argv:
         pourquoi(detail)
 
@@ -1721,7 +2081,7 @@ def main():
           % (n, os.path.basename(GPKG)))
 
 
-def controles(resultats, parcelles, refus, logements):
+def controles(resultats, parcelles, refus, logements, emprises):
     """🔴 LE SEUL ENDROIT OÙ UNE ERREUR PEUT SE VOIR sans lancer la 3D. Les
     trois lignes qui comptent : aucun bâtiment ne sort de sa parcelle (R0), la
     distance mesurée aux limites tient la table (R1/R4), et la surface de toit
@@ -1757,7 +2117,7 @@ def controles(resultats, parcelles, refus, logements):
             # ont été calculés — sinon les index ne désignent pas les mêmes
             # arêtes. Et sur la LISTE : voir `creux_sur_rue`.
             creux = creux_sur_rue(emps, ccw(sans_doublons(ring)), r["rues"],
-                                  r["retraits"])
+                                  r["retraits"], r["note"].get("trous", ()))
             if creux > CREUX_TOLERE:
                 d["vide_rue"] += 1
                 d["creux"] = max(d["creux"], creux)
@@ -1833,6 +2193,28 @@ def controles(resultats, parcelles, refus, logements):
     print("     depuis chaque limite sur rue, et le reste est cour ou jardin.")
     print("     %-44s %5d" % ("parcelles traversantes, deux bâtiments",
                               COMPTE["traversante"]))
+    # 🕳️ Les deux nombres ensemble, sinon ils ne veulent rien dire : six
+    # percées sur deux parcelles, c'est un bâtiment haché ; six percées sur
+    # sept parcelles, c'est le rythme cherché.
+    print("     %-44s %5d" % ("percées ouvertes (mur > %.0f m, large de %.0f m)"
+                              % (PERCEE_MUR_MAX, PERCEE_LARGEUR),
+                              COMPTE["percee"]))
+    print("     %-44s %5d" % ("  … sur combien de parcelles",
+                              COMPTE["percee_parc"]))
+    print("     %-44s %5d" % ("  … plus de bâtiments coupés en deux",
+                              sum(r["note"].get("percee", 0)
+                                  for r in resultats)))
+    # 🔴 ET VOICI CE QUI DIT SI ELLES SONT TOMBÉES AU BON ENDROIT.
+    par_ilot_bat = {}
+    for r in resultats:
+        if r["parcelle"]["st"] in PERCEE_TISSUS:
+            par_ilot_bat.setdefault(r["parcelle"]["ilot"], []).extend(r["emps"])
+    for fid in sorted(par_ilot_bat):
+        L = mur_continu(emprises.get(fid, []), par_ilot_bat[fid])
+        print("     %-44s %5.0f  %s"
+              % ("îlot %d : mur d'un seul tenant, plafond %.0f m"
+                 % (fid, PERCEE_MUR_MAX), L,
+                 "✅" if L <= PERCEE_MUR_MAX * 1.1 else "⚠️"))
     # 🕳️ À lire avec le compte des coins soudés de `04c` : les deux règles
     # visent le même défaut par les deux bouts, la parcelle et l'empreinte.
     print("     %-44s %5d" % ("poches comblées (cour ouverte < %.0f %%)"

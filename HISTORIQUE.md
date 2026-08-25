@@ -6,6 +6,10 @@
 
 ---
 
+**2026-08-25 (session 62) — l'îlot compact n'est plus un anneau fermé.** Demandé devant l'image : « un entre-deux, cour intérieure accessible, compact mais pas continu sur toute la longueur ». `04d` ouvre désormais une **percée** de 9 m dans le mur mitoyen dès qu'il dépasse 60 m de long — décidée par ÎLOT et non par parcelle, parce qu'un mur continu est une somme de façades voisines : sur l'îlot 49, dix bâtiments faisaient 286 m de mur d'un seul tenant sans qu'aucun ne dépasse 31 m.
+Trois pièges payés, tous mesurés : R2 bis annulait la percée en silence (« le vide est toujours derrière ») et il lui faut son exception ; un retrait latéral est une droite INFINIE qui a fait tomber la parcelle 559 de 258 à 48 m² — une percée est une bande bornée ; deux voisines partagent aussi leur FOND, dont l'ouverture creuse une tranchée derrière le bâtiment au lieu d'ouvrir quoi que ce soit.
+Résultat sur l'îlot 49 : mur le plus long **85 → 61 m**, cinq percées de 9 à 10 m, 96 → 80 % du tour bâti, emprise 0,52 → 0,45 pour un plafond de 0,55. Les deux nombres (60 m, 9 m) sont du **level design** et attendent l'auteur.
+
 **2026-08-25 (session 61) — le futur tient dans la fiche, pas dans la ville.** Tout réglage d'un îlot ou d'un tronçon met immédiatement à jour la miniature de sa fiche, qui montre l'état livré avant validation et pendant les travaux.
 La ville garde son état construit réel ; elle ne montre que le signal de chantier, puis reçoit le résultat quand celui-ci est fini. La miniature et l'objet livré sortent de la même recette visuelle.
 🔄 Le « ghost preview instantané » n'est plus un principe sans emplacement : la décision 12 est précisée sans changer son rôle anti-spectateur. (12)

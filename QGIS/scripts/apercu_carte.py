@@ -81,6 +81,9 @@ COULEURS = {
     "maisons_de_ville":    (214, 198, 172),
     "pavillonnaire":       (238, 232, 214),
     "barre_1970":          (192, 176, 190),
+    "collectif_1995":      (196, 202, 212),   # froid et pâle : à 222,210,186 il
+                                             # se confondait avec le pavillonnaire
+    "ilot_compact":        (150, 190, 158),
     "friche_industrielle": (150, 132, 122),
     None:                  (222, 216, 204),   # non qualifié
 }

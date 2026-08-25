@@ -12,7 +12,7 @@ RÈGLES QUI COMMANDENT CE FICHIER — `Vault/Technique/Direction artistique.md`
   « Les bâtiments sont pastel. Le sol est de l'asphalte. »       (l.59)
   « aucun état visuel posé à la main, tout dérive d'un attribut »(l.75)
 
-Douze `sous_type` pour 8–10 teintes : la tension se résout en FAMILLES. Une
+Quatorze `sous_type` pour 8–10 teintes : la tension se résout en FAMILLES. Une
 famille = une teinte ; à l'intérieur, les sous-types se distinguent par la
 valeur. Aucune des trois plaies n'a de couleur propre — voir `couleur_sol()`.
 """
@@ -32,6 +32,10 @@ FAMILLES = {
     "agricole":  "les champs — vert jauni, pas un gazon",
     "eau":       "l'Ilse",
     "mineral":   "l'asphalte. Chaussée, place-parking, sol nu",
+    # 🔄 2026-08-25, DIXIÈME ET DERNIÈRE famille : au-delà la règle « 8–10
+    # teintes » casse. Ni le chaud de l'ancien ni le froid de la barre — les
+    # deux époques récentes se distinguent entre elles par la valeur.
+    "neuf":      "1995 et 2019 — neutre et clair",
 }
 
 # ------------------------------------------------------------------ masses
@@ -46,6 +50,8 @@ MASSES = {
     "equipement":          "#D7D0C4",   # ocre
     "friche_industrielle": "#B5AA9B",   # ocre, désaturé — une friche n'est pas entretenue
     "barre_1970":          "#C2C9D3",   # apres_guerre        ← la plaie 32, par le froid
+    "collectif_1995":      "#E0DACE",   # neuf
+    "ilot_compact":        "#C7CFC0",   # neuf, valeur − et verdi par la cour
 }
 
 # -------------------------------------------------------------------- sols
@@ -104,6 +110,21 @@ TOITURES = {
     "etancheite": [  # le toit plat de 1974 — bitume et gravier
         "#6E6E6A", "#77766E", "#666660",
     ],
+    # 🔴 PAS DE LA TUILE ROUGE : à couverture identique, 1995 se lirait comme le
+    # cœur ancien vu d'en haut, et l'arbitrage du 2026-08-18 dit que la couleur
+    # suit l'ÉPOQUE. La tuile béton des années 90 est brune et mate.
+    "tuile_beton": [
+        "#8A6E5E", "#8A6E5E", "#8A6E5E",   # la courante — 43 %
+        "#7E6656", "#7E6656",
+        "#946F5C",
+        "#6E5F55",   # anthracite délavé, le goût des années 2000
+    ],
+    # Membrane claire et sédum. ⚠️ Surtout PAS `etancheite` : le bitume de 1974
+    # ferait ressembler l'îlot compact à la barre exactement là où il doit s'en
+    # distinguer. Et pas un vert de pelouse — du sédum sec.
+    "toiture_neuve": [
+        "#8F9A8A", "#98A092", "#9AA09A", "#828C80",
+    ],
     "bac_acier": [   # les halles et la friche
         "#5F6367", "#6B6A66", "#585B5F",
         "#726A62",   # une travée rouillée
@@ -118,6 +139,8 @@ TOIT_TISSU = {
     "equipement":          "ardoise",
     "barre_1970":          "etancheite",
     "friche_industrielle": "bac_acier",
+    "collectif_1995":      "tuile_beton",
+    "ilot_compact":        "toiture_neuve",
 }
 
 # --- les enduits de façade ------------------------------------------------
@@ -150,6 +173,18 @@ ENDUITS = {
     "barre_1970": [
         "#C8C6BF", "#C1C2BE", "#CCC8BC",
         "#D2CBB8",   # un pignon repeint
+    ],
+    # Un lotissement se construit d'un coup, en plus neuf encore que le
+    # pavillonnaire : le blanc de série pèse la moitié de la liste.
+    "collectif_1995": [
+        "#EDE8DE", "#EDE8DE", "#E8E0D0",
+        "#EDD9BE",   # 🔸 le pignon abricot, la signature de l'époque
+    ],
+    # Enduit clair et bardage bois : le bois est le seul endroit de la palette
+    # où un mur a le droit d'être plus sombre que crème.
+    "ilot_compact": [
+        "#E4DED0", "#DFD6C4",
+        "#D8C9A8", "#CDBB9A",
     ],
     "equipement": [
         "#E2DED3", "#DED7C7", "#D8D9D4",

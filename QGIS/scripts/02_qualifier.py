@@ -78,12 +78,27 @@ COEUR_ANCIEN = [13, 14, 15, 17, 18, 20, 22, 34, 37, 38, 53, 55, 56]
 # parcelle de profondeur de l'autre côté de la rue de ceinture. Pavillonnaire
 # est le seul tissu SANS cœur d'îlot, donc le seul où la parcelle va vraiment
 # du trottoir au champ. → `00b_ilots_lisiere.py`, en-tête
-PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 60, 61, 63, 64, 70, 71, 73, 74]
+PAVILLONNAIRE = [11, 26, 35, 39, 42, 47, 63, 64, 70, 71, 73, 74]
+
+# --- les deux époques récentes (2026-08-25) -------------------------------
+# 🔴 30 EST LA SEULE ADRESSE DE LA BARRE VERS LA VILLE : 158 m de rue ordinaire,
+# tout le reste autour du 32 est champ, friche ou boulevard. Le déplacer coupe
+# le seul chemin piéton des 99 logements du 32 vers les commerces.
+# 60 et 61 sont les mêmes immeubles de part et d'autre de la ligne d'eau —
+# 3,48 m et ruiné, 1,84 m et debout. C'est le pilier « le lieu change le
+# résultat » démontré sans machinerie neuve. ⚠️ Ils étaient pavillonnaires :
+# les basculer AJOUTE ~106 logements sinistrés à la crue d'ouverture.
+COLLECTIF_1995 = [30, 60, 61]
+
+# La forme visée, bâtie une fois en 2019. 49 touche le parc 46, donc sa cour
+# plantée se lit d'en haut. 🔄 Il sort de COEUR_VERT_PRIVE et de `04.SAISIES` :
+# la typologie porte maintenant ce que l'exception disait.
+ILOT_COMPACT = [49]
 # tout le reste des îlots bâtis tombe en `maisons_de_ville`
 
 # Cœur d'îlot vert privatisé : invisible depuis la rue, mais c'est le seul
 # vrai gisement de fraîcheur du centre. Encodé plus tard en `canopee` élevée.
-COEUR_VERT_PRIVE = [44, 49]
+COEUR_VERT_PRIVE = [44]
 
 FONCTION_DE = {
     "riviere": "riviere", "champ": "freiraum", "parc": "freiraum",
@@ -91,7 +106,8 @@ FONCTION_DE = {
     "coeur_ancien": "mixte", "front_commercant": "mixte",
     "equipement": "mixte",
     "maisons_de_ville": "habitation", "pavillonnaire": "habitation",
-    "barre_1970": "habitation",
+    "barre_1970": "habitation", "collectif_1995": "habitation",
+    "ilot_compact": "habitation",
     "friche_industrielle": "industrie",
 }
 
@@ -105,7 +121,9 @@ def sous_types():
                     (PARCS, "parc"), (JARDINS, "jardins_familiaux"),
                     (FRONT_COMMERCANT, "front_commercant"),
                     (COEUR_ANCIEN, "coeur_ancien"),
-                    (PAVILLONNAIRE, "pavillonnaire")):
+                    (PAVILLONNAIRE, "pavillonnaire"),
+                    (COLLECTIF_1995, "collectif_1995"),
+                    (ILOT_COMPACT, "ilot_compact")):
         for fid in lst:
             if fid in s:
                 raise SystemExit("îlot %d affecté deux fois (%s et %s)"
@@ -119,7 +137,8 @@ def sous_types():
 def exceptions():
     e = set(RIVIERE) | set(PLACE_PARKING) \
         | set(FRICHES) | set(EQUIPEMENTS) | set(BARRE) | set(PARCS) \
-        | set(JARDINS) | set(COEUR_VERT_PRIVE)
+        | set(JARDINS) | set(COEUR_VERT_PRIVE) \
+        | set(COLLECTIF_1995) | set(ILOT_COMPACT)
     return e
 
 
@@ -329,7 +348,11 @@ def main():
     transit = set(FRONT_COMMERCANT)          # l'axe qui longe le front commerçant
     coeur = set(COEUR_ANCIEN) | set(FRONT_COMMERCANT)
     champs = set(CHAMPS)
-    moderne = set(PAVILLONNAIRE) | set(BARRE)
+    # 🔴 COLLECTIF_1995 EST DEDANS, ET CE N'EST PAS UN DÉTAIL : sans lui, les
+    # îlots 60 et 61 en quittant le pavillonnaire rétrécissaient leurs rues de
+    # 2 m, ce qui redécoupait les voisins 59 et 62 sans que rien ne le dise.
+    # Les normes de desserte de 1995 sont celles de 1965, en pire.
+    moderne = set(PAVILLONNAIRE) | set(BARRE) | set(COLLECTIF_1995)
     bati = set(ilots) - riv - champs
 
     def moduler(base, bordes, longueur):

@@ -87,6 +87,8 @@ COULEUR = {
     "barre_1970":           (176, 180, 196),
     "equipement":           (168, 186, 206),
     "friche_industrielle":  (176, 168, 156),
+    "collectif_1995":       (222, 210, 186),
+    "ilot_compact":         (150, 190, 158),
 }
 DEFAUT = (200, 200, 200)
 FOND = (247, 245, 240)

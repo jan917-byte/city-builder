@@ -384,6 +384,8 @@ BATI = {
     "front_commercant":        (0.0,  0.0,   13.0,     0.70),  # sur rue, vitrines
     "pavillonnaire":           (5.5,  2.5,   10.0,     0.60),  # détaché, jardin derrière
     "barre_1970":              (6.0,  5.0,   13.0,     0.00),  # toit plat, 1974
+    "collectif_1995":          (5.0,  4.0,   13.0,     0.55),  # deux pentes, plus plates qu'en ville ancienne
+    "ilot_compact":            (1.0,  0.0,   12.0,     0.12),  # quasi plat : du panneau, pas du comble
     "equipement":              (4.0,  3.0,   22.0,     0.25),
     "friche_industrielle":     (3.0,  2.5,   35.0,     0.00),  # des halles
 }
@@ -427,6 +429,8 @@ VERDURE = {
     "maisons_de_ville":      0.65,   # petits jardins de ville
     "pavillonnaire":         0.92,   # le jardin EST le tissu
     "barre_1970":            0.75,   # l'espace vert de dalle, hérité de 1974
+    "collectif_1995":        0.45,   # pelouse tondue, et le reste en places
+    "ilot_compact":          0.85,   # la cour EST plantée, c'est tout le sujet
     "equipement":            0.45,   # cour de récréation ou pelouse
     "friche_industrielle":   0.20,   # des friches, pas des prés
 }

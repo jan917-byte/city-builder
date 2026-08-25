@@ -98,6 +98,22 @@ TISSU = {
     # sur 198, soit 65 log/ha. Laisser 130 aurait entassé 198 logements dans
     # 12 018 m² — 61 m² bruts par logement, ce qui n'existe pas.
     "barre_1970":         (    65,    6.0,   0.55,   0.32,   0.85,   0.15,    0),
+    # 🔴 4 NIVEAUX, PAS 5 : faîtage à ~14,4 m, donc la barre (16,2) reste le
+    # point haut de Wehrau — c'est ce qui a été tranché le 2026-08-19.
+    # `park` 0,18 est le plus gros stock de voitures posé sur des îlots après
+    # la place-parking : c'est là qu'est le levier, pas dans la densité.
+    # 🔄 85 ET PAS 95, RECALÉ SUR LE PLANCHER MESURÉ (2026-08-25) : 22 049 m²
+    # sur les trois îlots, donc 98 m² bruts par logement, au milieu de la ville
+    # (95 au cœur ancien, 121 à la barre). À 95 log/ha il sortait 87, le plus
+    # bas de Wehrau. La densité SUIT la forme, elle ne se choisit pas à part.
+    "collectif_1995":     (    85,    4.0,   0.62,   0.22,   0.55,   0.18,    0),
+    # 🎯 LA LIGNE QUI PORTE LA DÉMONSTRATION : aussi dense que le front
+    # commerçant (150), moitié moins imperméable (0,52 contre 0,90), plus vert
+    # qu'un lotissement (0,45 contre 0,42) — et le bâtiment le plus BAS de la
+    # ville, 12,2 m contre 16,3 au cœur ancien.
+    # 🔄 canopée 0,45 et imperm 0,50 reprennent EXACTEMENT l'ancienne saisie
+    # protégée de l'îlot 49 : la typologie remplace l'exception, sans régression.
+    "ilot_compact":       (   150,    4.5,   0.50,   0.45,   0.30,   0.03,    0),
     "equipement":         (     0,    3.0,   0.72,   0.18,   0.00,   0.20,   80),
     "friche_industrielle":(     0,    1.0,   0.80,   0.20,   0.00,   0.05,   25),
     "place_minerale":     (     0,    0.0,   1.00,   0.02,   0.00,   0.55,    0),
@@ -166,7 +182,6 @@ FORCE = {
     # Cœurs d'îlot verts privatisés : invisibles depuis la rue, et pourtant le
     # seul vrai gisement de fraîcheur du centre. → [[Wehrau]]
     44: {"canopee": 0.55, "impermeabilise": 0.50},
-    49: {"canopee": 0.55, "impermeabilise": 0.50},
 }
 
 # Les îlots que le vault raconte. On les relit dans les données pour vérifier

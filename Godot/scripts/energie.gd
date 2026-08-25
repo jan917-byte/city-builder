@@ -1,5 +1,5 @@
 extends RefCounted
-# L'énergie de Wehrau : la table des douze tissus et les formules qui en sortent.
+# L'énergie de Wehrau : la table des quatorze tissus et les formules qui en sortent.
 #
 # ⚠️ Tout est statique, la ville arrive en paramètre `v` : un preload croisé avec
 # `ville.gd` casse au chargement, et un cycle RefCounted fuirait.
@@ -28,6 +28,14 @@ const ENERGIE := {
 	"maisons_de_ville":   [   17.0,   0.0,  0.55,  0.30,   1.3,  0.95,   0.35,    1.0,  -1.0],
 	"pavillonnaire":      [   22.0,   0.0,  0.20,  0.40,   1.2,  1.00,   0.40,    1.5,  -1.0],
 	"barre_1970":         [   24.0,   0.0,  0.20,  0.70,   0.8,  1.10,   0.45,    0.7,  -1.0],
+	# De grands pans de tuile simples : le 2e gisement de la ville après la barre,
+	# et sans argument patrimonial en face. 🔴 cap_sol −2 : c'est le logement le
+	# plus récent et le mieux loti, donc celui qui se plaint de l'échafaudage.
+	"collectif_1995":     [   16.0,   0.0,  0.25,  0.60,   0.9,  1.05,   0.30,    0.9,  -2.0],
+	# Le MWh le moins cher de Wehrau, et il n'y en a presque pas à prendre :
+	# toit plat, aucune opposition (cap_sol 0), mais une conso déjà basse.
+	# `gain_iso` 0 = décision d'isolation INDISPONIBLE — il n'y a rien à isoler.
+	"ilot_compact":       [   11.0,   0.0,  0.33,  0.75,   0.7,  1.15,   0.00,    0.0,   0.0],
 	"equipement":         [    0.0,   9.0,  0.40,  0.55,   0.9,  1.05,   0.00,    0.0,  -1.0],
 	"friche_industrielle":[    0.0,   9.0,  0.45,  0.65,   0.8,  1.00,   0.00,    0.0,  -1.0],
 	"place_minerale":     [    0.0,   0.0,  0.00,  0.00,   0.0,  0.00,   0.00,    0.0,   0.0],

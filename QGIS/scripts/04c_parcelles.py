@@ -113,6 +113,14 @@ TISSU = {
     # c'est le piège : sous 76 m on repart en dos-à-dos et il sort une lanière
     # de 136 m, une barre de Großstadt. Mesuré : 46, 57 et 58 m, 2 003 m².
     "barre_1970":             (46.0,   80.0,   "boite"),
+    # 🔴 PEIGNE ET PAS BOÎTE, et c'est LA différence avec 1974 : les années 90
+    # reviennent s'adresser à la rue. La boîte ignore les rues — c'était le
+    # sujet de la barre, pas celui-ci. Le cœur d'îlot devient la cour de
+    # stationnement commune, ce que le peigne laisse justement en reste.
+    "collectif_1995":         (24.0,   28.0,   "peigne"),
+    # 16 m = une cage d'escalier. Le GRAIN dit l'époque à lui seul :
+    # 7 → 9,5 → 11 → 13,5 → 16 → 26 → 46.
+    "ilot_compact":           (16.0,   24.0,   "peigne"),
     "equipement":             (45.0,   35.0,   "boite"),   # un ou deux objets
     "friche_industrielle":    (55.0,   45.0,   "boite"),   # des halles
 }
@@ -286,7 +294,8 @@ AIRE_MAX_REUNION = 2.0
 # ferait déborder le bâtiment sur la voisine (R0), et rétrécir la voisine sans
 # la réunir casserait la partition (61). On réunit donc la parcelle du coin à
 # sa voisine du côté FAIBLE.
-COIN_TISSUS = {"coeur_ancien", "maisons_de_ville", "front_commercant"}
+COIN_TISSUS = {"coeur_ancien", "maisons_de_ville", "front_commercant",
+               "ilot_compact"}   # sur l'alignement, donc il tourne le coin en L
 # Ce qui compte comme un coin de rue. En dessous c'est une pointe d'îlot — elle
 # se traite par la règle de la pointe de `04d`, pas en y entassant du terrain ;
 # au-dessus c'est un pli de rue, pas un angle, et un bâtiment n'a rien à y
