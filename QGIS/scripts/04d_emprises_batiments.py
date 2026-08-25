@@ -263,11 +263,10 @@ PERCEE_MUR_MAX = 60.0
 # l'autre font un couloir, même remarque que RECUL_VENELLE_MIN.
 PERCEE_LARGEUR = 9.0
 PERCEE_SEGMENT_MIN = 12.0  # sous ça le tronçon restant n'est plus un immeuble
-# 🔴 CE QU'UNE PERCÉE LAISSE DEBOUT DOIT ÊTRE UN BÂTIMENT. Sur une parcelle
-# d'angle, le bâtiment est un L et deux percées lui coupent le coin : mesuré
-# sur la parcelle 559, il restait une écharde de 56 m² large de 4,5 m et à huit
-# sommets. Sous cette largeur, ce que la percée laisse repart au jardin.
-PERCEE_RESTE_MIN = 9.0
+# 🔄 IL Y A EU ICI UN SEUIL « CE QUE LA PERCÉE LAISSE DEBOUT », retiré le jour
+# même : il rattrapait les échardes que la percée fabriquait quand elle se
+# creusait dans le BÂTIMENT. Elle se prend maintenant sur la façade, avant que
+# le bâtiment n'existe (voir `pignon`), et il n'y a plus d'écharde à balayer.
 
 # 🌿 LA PARCELLE SANS RUE EST UNE CATÉGORIE, PAS UN RÉSIDU — 2026-08-17.
 # 🔴 MESURÉ AVANT D'ÉCRIRE, et ça a annulé le travail prévu : les 15 parcelles
@@ -581,6 +580,53 @@ def demi_plan(poly, nx, ny, c):
             out.append((p[0] + t * (q[0] - p[0]),
                         p[1] + t * (q[1] - p[1])))
     return out
+
+
+def pignon(ring, rues, i, demi):
+    """La tranche de parcelle qu'une percée retire au bout d'une limite mitoyenne.
+
+    🔴 PERPENDICULAIRE À LA RUE, PAS LE LONG DE LA LIMITE. Une limite mitoyenne
+    est rarement perpendiculaire à sa rue et ne fait presque jamais la
+    profondeur du bâtiment : une bande posée dessus s'arrête n'importe où DANS
+    l'empreinte, et il en sort un coin taillé (parcelle 559) ou un C (558) —
+    « des formes peu réalisables », 2026-08-25. Ce qu'on retire ici est une
+    tranche de FAÇADE : `demi` mètres de trottoir, et tout ce qu'il y a
+    derrière. Ce qui reste finit donc sur un mur droit, perpendiculaire à sa rue
+    — un pignon, la seule fin de bâtiment qui se construise.
+
+    ⚠️ LA TRANCHE N'A PAS DE FOND, et c'est sans risque parce qu'elle se retire
+    de la PARCELLE avant que `bande_sur_rue` ne dessine quoi que ce soit :
+    derrière la bande bâtie il n'y a que de la cour, et une cour un peu
+    entamée ne se voit pas. Bornée, elle s'arrêtait dans le bâtiment et y
+    laissait une langue.
+
+    Renvoie une liste de demi-plans (point, normale rentrante), ou None."""
+    n = len(ring)
+    j = None
+    for d in (-1, 1, -2, 2):       # la rue est au bout, à un pan coupé près
+        if rues[(i + d) % n]:
+            j = (i + d) % n
+            break
+    if j is None:
+        return None
+    a, b = ring[j], ring[(j + 1) % n]
+    L = math.hypot(b[0] - a[0], b[1] - a[1])
+    if L < LONGUEUR_ARETE_MIN:
+        return None
+    p, q = ring[i], ring[(i + 1) % n]
+
+    def pres(x):
+        return min((x[0] - p[0]) ** 2 + (x[1] - p[1]) ** 2,
+                   (x[0] - q[0]) ** 2 + (x[1] - q[1]) ** 2)
+
+    coin, autre = (a, b) if pres(a) <= pres(b) else (b, a)
+    wx, wy = (autre[0] - coin[0]) / L, (autre[1] - coin[1]) / L
+    nx, ny = -wy, wx               # rentrant : anneau ccw
+    # Un demi-mètre de rab vers le trottoir : sans lui la tranche laisse un
+    # éclat de mur devant elle.
+    return [(coin, (wx, wy)),
+            ((coin[0] + wx * demi, coin[1] + wy * demi), (-wx, -wy)),
+            ((coin[0] - nx * 0.5, coin[1] - ny * 0.5), (nx, ny))]
 
 
 def percer(morceau):
@@ -1758,42 +1804,38 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
         # une BANDE, bornée par les deux bouts de la limite qu'elle ouvre.
         # Elle suit R5 comme le reste : si rien ne tient, mieux vaut une percée
         # étroite qu'une parcelle vide.
+        # 🕳️ LES TRANCHES DE PERCÉE. Une par limite mitoyenne ouverte, prise
+        # sur la FAÇADE et non le long de la limite (voir `pignon`). Elles
+        # suivent R5 comme le reste : si rien ne tient, mieux vaut une percée
+        # étroite qu'une parcelle vide.
         trous = []
         if percee:
             demi = (PERCEE_LARGEUR / 2.0) * f
             for i in sorted(percee):
                 if i >= n or rues[i] or venelles[i]:
                     continue
-                p, q = ring[i], ring[(i + 1) % n]
-                dl = math.hypot(q[0] - p[0], q[1] - p[1])
-                if dl < LONGUEUR_ARETE_MIN:
-                    continue
-                tx, ty = (q[0] - p[0]) / dl, (q[1] - p[1]) / dl
-                nx, ny = -ty, tx             # rentrant : anneau ccw
-                # 🔴 LA PERCÉE PART DE LA RUE ET S'ARRÊTE AU FOND DU BÂTIMENT.
-                # Sans cette borne, une limite mitoyenne de 32 m emporte une
-                # tranchée de 32 m quand le bâtiment n'en fait que 13.
-                deb, fin = 0.0, dl
-                if prof is not None:
-                    loin = recul + prof + 1.0
-                    if rues[(i - 1) % n]:
-                        fin = min(dl, loin)          # la rue est au DÉBUT
-                    elif rues[(i + 1) % n]:
-                        deb = max(0.0, dl - loin)    # la rue est à la FIN
-                # Les demi-plans pointent vers l'INTÉRIEUR de ce qu'on retire.
-                # Un demi-mètre de rab aux bouts : sans lui la bande laisse un
-                # éclat de mur sur le trottoir.
-                trous.append([(p, (nx, ny)),
-                              ((p[0] + nx * demi, p[1] + ny * demi),
-                               (-nx, -ny)),
-                              ((p[0] + tx * (deb - 0.5),
-                                p[1] + ty * (deb - 0.5)), (tx, ty)),
-                              ((p[0] + tx * (fin + 0.5),
-                                p[1] + ty * (fin + 0.5)), (-tx, -ty))])
+                hp = pignon(ring, rues, i, demi)
+                if hp:
+                    trous.append(hp)
 
         note = {"cour": [], "trous": trous}
         if famille == MITOYEN:
             env = enveloppe(ring, retraits, rues)
+            # 🕳️ LA PERCÉE SE CREUSE DANS LA PARCELLE, PAS DANS LE BÂTIMENT, ET
+            # C'EST TOUT L'ÉCART ENTRE UN PIGNON ET UN DÉFAUT. Retirée après
+            # coup de l'empreinte, elle y mordait n'importe où : la 559 sortait
+            # en coin taillé et la 558 en C, « des formes peu réalisables ».
+            # Retirée AVANT, c'est `bande_sur_rue` qui redessine le bâtiment sur
+            # ce qui reste — donc un mur droit, perpendiculaire à sa rue.
+            for hp in trous:
+                suite = []
+                for x in ([env] if len(env) >= 3 else []):
+                    suite.extend(D4C._soustraire_convexe(x, hp)[0])
+                # Une percée ne coupe pas une parcelle en deux : elle longe une
+                # de ses limites. Le plus grand morceau EST la parcelle percée ;
+                # s'il en tombe un autre, c'est un éclat de découpe.
+                env = max(suite, key=lambda x: abs(D4C.aire_signee(x))) \
+                    if suite else []
             if len(env) < 3 or abs(D4C.aire_signee(env)) < AIRE_MIN:
                 # Même motif que le refus d'en bas, et ce n'est pas de la
                 # paresse : les deux disent « il n'y a pas la place pour un
@@ -1820,19 +1862,6 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
         # Le compte va dans `note` et non dans COMPTE : R5 et le rabot rejouent
         # cette fonction jusqu'à dix fois par parcelle, un compteur global y
         # dirait dix percées pour une.
-        if trous:
-            perces = []
-            for m in emp:
-                reste = [m]
-                for hp in trous:
-                    suite = []
-                    for x in reste:
-                        suite.extend(D4C._soustraire_convexe(x, hp)[0])
-                    reste = suite
-                perces.extend(x for x in reste
-                              if len(x) >= 3
-                              and largeur_min(x) >= PERCEE_RESTE_MIN)
-            emp = perces
         if st in PERCEE_TISSUS:
             perces, npc = [], 0
             for m in emp:
