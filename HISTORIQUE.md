@@ -6,6 +6,10 @@
 
 ---
 
+**2026-08-25 (session 61) — le futur tient dans la fiche, pas dans la ville.** Tout réglage d'un îlot ou d'un tronçon met immédiatement à jour la miniature de sa fiche, qui montre l'état livré avant validation et pendant les travaux.
+La ville garde son état construit réel ; elle ne montre que le signal de chantier, puis reçoit le résultat quand celui-ci est fini. La miniature et l'objet livré sortent de la même recette visuelle.
+🔄 Le « ghost preview instantané » n'est plus un principe sans emplacement : la décision 12 est précisée sans changer son rôle anti-spectateur. (12)
+
 **2026-08-25 (session 60) — la maquette a deux vues, et le diagnostic a un menu.** Quatre drapeaux indépendants (`calque_tissu`, `diagnostic_crue`, `vue_chantiers`, `calque_champ`) s'éteignaient l'un l'autre à la main, une touche chacun : ils deviennent **une seule case, le thème actif**. Un cinquième thème coûtait quatre modifications, il coûte une ligne — le critère de l'étape 6, atteint avant elle.
 La deuxième vue passe la ville en **maquette blanche** : plus de matière, plus d'arbres, plus de voitures, rien que le volume porté par l'AO, et seul le thème choisi en couleur. Raison de fond, pas de goût : tant que le diagnostic ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le calque, et les critères d'étape se jugent sans calque. Le thème **énergie** existe enfin, sur `_classe_solaire` — « où agir ? », pas « qu'a-t-on posé ? », qui vaut 0 partout au mois 0.
 🔴 Deux retours en arrière signalés, et une perte assumée : les touches `C` `D` `H` `X` sont **supprimées** — l'auteur a demandé un menu, il n'y a plus de secours au clavier — et la caméra **ne recadre plus** à l'ouverture d'un thème, ce qui rend les deux vues comparables. **Écrit sur un Mac sans Godot : ni compilé, ni lancé, ni vu.** (étape 5 · 42b)

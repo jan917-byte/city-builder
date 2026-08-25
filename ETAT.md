@@ -3,7 +3,7 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-25 (session 60).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause.
+**2026-08-25 (session 61).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause. La décision 12 est précisée : **la fiche prévisualise le futur d'un îlot ou d'un tronçon ; la ville attend la livraison du chantier**. → [Chantiers et temps](Vault%20-%20Jeu%20urbanisme/Systèmes/Chantiers%20et%20temps.md)
 La maquette a maintenant **deux vues** : la ville vivante, et un **diagnostic en maquette blanche** dont on choisit le thème **au menu** — dangers, chantiers, énergie, trafic, tissu. Les quatre touches `C` `D` `H` `X` sont supprimées, un thème neuf coûte une ligne, et le thème **énergie** existe enfin. **Écrit sur un Mac sans Godot : ni compilé, ni vu.** → [Trafic](Prototype/Trafic.md) § Les deux vues
 
 ## Prochaine action — juger le trafic à l'écran
