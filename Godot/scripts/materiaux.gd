@@ -32,11 +32,10 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "render_mode cull_back, specular_disabled;\n" \
 		+ "instance uniform vec4 teinte = vec4(1.0, 1.0, 1.0, 1.0);\n" \
 		+ "instance uniform vec4 calque = vec4(1.0, 1.0, 1.0, 0.0);\n" \
-		+ "instance uniform float diagnostic_mode = 0.0;\n" \
+		+ "instance uniform float maquette_blanche = 0.0;\n" \
 		+ "instance uniform float diagnostic_sol = 0.0;\n" \
 		+ "instance uniform float diagnostic_bati = 0.0;\n" \
 		+ "instance uniform float chantier_etat = 0.0;\n" \
-		+ "instance uniform float chantier_mode = 0.0;\n" \
 		+ "instance uniform float equipe = 0.0;\n" \
 		+ "varying vec3 pos_monde;\n" \
 		+ "// Choix de LISIBILITÉ, pas des mesures de toiture. ⚠ Mesuré le\n" \
@@ -63,13 +62,17 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// ⚠ LINÉAIRE. #3A424B en sRGB : du verre qui reflète un ciel\n" \
 		+ "// couvert. Une vitre noire donne à la ville l'air bombardée.\n" \
 		+ "const vec3 VITRE = vec3(0.042, 0.055, 0.070);\n" \
+		+ "// ⚠ LINÉAIRE. #D2CFC9 en sRGB : le carton d'une maquette\n" \
+		+ "// d'architecte. Assez clair pour que les quatre signaux\n" \
+		+ "// saturés ressortent, assez gris pour ne pas brûler au soleil.\n" \
+		+ "const vec3 PAPIER = vec3(0.624, 0.605, 0.560);\n" \
 		+ "void vertex() {\n" \
 		+ "\tpos_monde = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n" \
 		+ "}\n" \
 		+ "void fragment() {\n" \
 		+ "\t// COLOR.rgb = teinte × AO ; COLOR.a = l'AO seule, qui pose le\n" \
 		+ "\t// volume et doit survivre au repeint thématique.\n" \
-		+ "\tvec3 base = mix(COLOR.rgb, calque.rgb * COLOR.a, calque.a);\n" \
+		+ "\tvec3 base = COLOR.rgb;\n" \
 		+ "\t// Une recette, pas un asset (règle 52). NORMAL est en espace VUE,\n" \
 		+ "\t// ramené au monde ; la hauteur écarte cours et jardins, qui sont\n" \
 		+ "\t// dans le même maillage que le bâti.\n" \
@@ -212,11 +215,20 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tbase = mix(base, VITRE * mix(1.0, 0.45, ombre) * COLOR.a, vitre);\n" \
 		+ "\t\trugosite = mix(rugosite, 0.18, vitre * net);\n" \
 		+ "\t}\n" \
-		+ "\t// Diagnostic de crue : le sol raconte le passage de l'eau, le\n" \
-		+ "\t// volume raconte les bâtiments touchés. Les routes coupées prennent\n" \
-		+ "\t// une troisième couleur ; tout le reste s'efface sans disparaître.\n" \
-		+ "\tif (diagnostic_mode > 0.5) {\n" \
-		+ "\t\tbase *= 0.42;\n" \
+		+ "\t// 🩶 LA MAQUETTE BLANCHE — la vue diagnostic. La ville perd sa\n" \
+		+ "\t// matière et ne garde que son VOLUME (COLOR.a = l'AO bakée) :\n" \
+		+ "\t// seul le thème est en couleur, donc tout thème est lisible.\n" \
+		+ "\t// Les quatre signaux s'excluent — un thème remplit un seul.\n" \
+		+ "\tif (maquette_blanche > 0.5) {\n" \
+		+ "\t\tbase = PAPIER * COLOR.a;\n" \
+		+ "\t\trugosite = 1.0;\n" \
+		+ "\t\t// Le calque continu : énergie, trafic, tissu. Opacité pleine,\n" \
+		+ "\t\t// il n'y a plus de matière sous lui à ménager.\n" \
+		+ "\t\tif (calque.a > 0.0) {\n" \
+		+ "\t\t\tbase = mix(base, calque.rgb * COLOR.a, calque.a);\n" \
+		+ "\t\t}\n" \
+		+ "\t\t// Dangers : le sol raconte le passage de l'eau, le volume les\n" \
+		+ "\t\t// bâtiments touchés, les routes coupées ont leur rouge.\n" \
 		+ "\t\tif (diagnostic_sol > 0.5) {\n" \
 		+ "\t\t\tvec3 signal_sol = diagnostic_sol > 1.5 ? vec3(0.72, 0.035, 0.025) : vec3(0.020, 0.310, 0.550);\n" \
 		+ "\t\t\tbase = mix(base, signal_sol * COLOR.a, 0.88);\n" \
@@ -224,13 +236,9 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tif (diagnostic_bati > 0.5 && pos_monde.y > 0.35) {\n" \
 		+ "\t\t\tbase = mix(base, vec3(0.81, 0.210, 0.030) * COLOR.a, 0.92);\n" \
 		+ "\t\t}\n" \
-		+ "\t}\n" \
-		+ "\t// Vue chantiers : l'objet ENTIER prend la couleur de son état —\n" \
-		+ "\t// cassé, en travaux, fait. Ce n'est pas la crue qu'on lit ici mais\n" \
-		+ "\t// l'avancement, donc le sol et le volume disent la même chose.\n" \
-		+ "\t// ⚠ Les trois teintes sont aussi dans `interface.gd`, en sRGB.\n" \
-		+ "\tif (chantier_mode > 0.5) {\n" \
-		+ "\t\tbase *= 0.42;\n" \
+		+ "\t\t// Chantiers : l'objet ENTIER prend la couleur de son état, sol\n" \
+		+ "\t\t// et volume ensemble — c'est l'avancement qu'on lit, pas l'eau.\n" \
+		+ "\t\t// ⚠ Les trois teintes sont aussi dans `interface.gd`, en sRGB.\n" \
 		+ "\t\tif (chantier_etat > 0.5) {\n" \
 		+ "\t\t\tvec3 signal = chantier_etat > 2.5 ? vec3(0.105, 0.423, 0.178)\n" \
 		+ "\t\t\t\t: (chantier_etat > 1.5 ? vec3(0.807, 0.402, 0.030)\n" \

@@ -18,7 +18,7 @@ Le critère se juge sans fiche et sans calque : sur l'axe chargé, les voitures 
 
 - pas d'agent individuel, de feu, de file calculée ni de recherche d'itinéraire par voiture ;
 - pas de choix modal ni de matrice origine-destination dans cette étape ;
-- le calque `charge` ne sert qu'au diagnostic : s'il faut l'activer pour comprendre l'image, le rendu a raté.
+- le thème `charge` ne sert qu'au diagnostic : s'il faut l'ouvrir pour comprendre l'image, le rendu a raté.
 
 ## Ce qu'il faut regarder
 
@@ -26,7 +26,26 @@ Le critère se juge sans fiche et sans calque : sur l'axe chargé, les voitures 
 |---|---|---|
 | axe le plus chargé | voitures proches et lentes, rue hostile | flot dense mais rapide et agréable |
 | rue calme du cœur | quelques voitures espacées, stationnement lisible | rue entièrement vide |
-| ville entière | l'épine chargée ressort sans calque | toutes les rues paraissent identiques |
+| ville entière | l'épine chargée ressort sans thème | toutes les rues paraissent identiques |
+
+## Les deux vues — écrites le 2026-08-25, jugées par personne
+
+Le calque de charge n'est plus une touche : c'est un **thème du diagnostic**, la deuxième des deux vues. La première est la ville vivante ; la seconde passe la ville en **maquette blanche** — plus de matière, plus d'arbres, plus de voitures — et n'y laisse en couleur que le thème choisi au menu : dangers, chantiers, énergie, trafic, tissu. Le temps continue, la caméra ne bouge plus d'elle-même, et la fiche répond au clic dans les deux.
+
+Pourquoi ça compte pour cette étape : le critère se juge **sans thème**, sur la ville vivante. Tant que le diagnostic ressemblait à la ville, on ne savait pas si on jugeait le rendu ou le calque.
+
+| À regarder, toutes au même cadrage | Ce qui doit s'y voir |
+|---|---|
+| `wehrau_essai_materiaux.png` | la ville vivante, le point de départ |
+| `wehrau_essai_diag_trafic.png` | l'épine chargée en rouge sur une ville de carton |
+| `wehrau_essai_diag_energie.png` | le dégradé d'amortissement ; gris = pas de toit équipable |
+| `wehrau_essai_diag_dangers.png` · `..._diag_tissu.png` · `..._chantiers.png` | les trois thèmes déjà connus, sur le même carton |
+| `wehrau_essai_retour_ville.png` | **exactement `essai_materiaux`** |
+
+Ce qui prouverait que c'est cassé : une voiture ou un arbre sur une image de diagnostic · `essai_retour_ville` qui diffère de `essai_materiaux` · deux signaux sur le même objet · un carton si clair que les couleurs de thème s'y perdent — le seul réglage qu'aucun contrôle n'attrape, il tient à un nombre du shader.
+
+🔴 **Écrit sur un Mac sans Godot** : ni compilé, ni lancé, ni vu. Les touches `C` `D` `H` `X` ont été retirées avec l'ancien mécanisme — si le menu ne s'ouvre pas, il n'y a plus de chemin de secours au clavier.
+🔴 **La décision « deux vues » n'existe pas dans le vault** : à ouvrir dans `Questions ouvertes.md` et fermer dans `Décisions arrêtées.md`.
 
 ## Ce qui reste
 

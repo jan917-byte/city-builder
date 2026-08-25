@@ -6,6 +6,10 @@
 
 ---
 
+**2026-08-25 (session 60) — la maquette a deux vues, et le diagnostic a un menu.** Quatre drapeaux indépendants (`calque_tissu`, `diagnostic_crue`, `vue_chantiers`, `calque_champ`) s'éteignaient l'un l'autre à la main, une touche chacun : ils deviennent **une seule case, le thème actif**. Un cinquième thème coûtait quatre modifications, il coûte une ligne — le critère de l'étape 6, atteint avant elle.
+La deuxième vue passe la ville en **maquette blanche** : plus de matière, plus d'arbres, plus de voitures, rien que le volume porté par l'AO, et seul le thème choisi en couleur. Raison de fond, pas de goût : tant que le diagnostic ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le calque, et les critères d'étape se jugent sans calque. Le thème **énergie** existe enfin, sur `_classe_solaire` — « où agir ? », pas « qu'a-t-on posé ? », qui vaut 0 partout au mois 0.
+🔴 Deux retours en arrière signalés, et une perte assumée : les touches `C` `D` `H` `X` sont **supprimées** — l'auteur a demandé un menu, il n'y a plus de secours au clavier — et la caméra **ne recadre plus** à l'ouverture d'un thème, ce qui rend les deux vues comparables. **Écrit sur un Mac sans Godot : ni compilé, ni lancé, ni vu.** (étape 5 · 42b)
+
 **2026-08-24 (session 59) — les deux machines se rejoignent, et les deux trafics se composent.** Quatre sessions Windows jamais commitées (54→57) et une session Mac poussée le même jour portaient toutes deux le numéro 54 ; celle du Mac devient la **58**. Sept fichiers se heurtaient, `04e` compris.
 Le chevauchement était réel et les deux côtés sont gardés : `04e` **chiffre** le report une fois pour toutes (+0,05 sur la rue qui encaisse le plus, réseau en 2 morceaux — 151 nœuds contre 45), Godot **vide** les 37 routes cassées et les rouvre à la réparation. Conséquence mesurée : l'axe 55 part désormais de **0,88** et non de 1,00, la maquette lisant la charge d'après-crue.
 🔴 La vue chantiers `X` du Mac **compile enfin** — 46 cassés, 1 en cours, 1 fini, 13 495 k€ à payer — et la passe sort en 0 avec ses 14 contrôles ✅. Elle est capturée, pas encore jugée. (23b · 72)

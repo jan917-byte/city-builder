@@ -32,13 +32,13 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
 | **T** | bascule vue de dessus ⇄ hauteur précédente |
 | **souris** | molette : zoom · clic droit glissé : tourner · clic milieu glissé : déplacer |
-| **C** | recolorer la ville **par tissu** — la palette d'avant le rendu réaliste |
-| **D** | ouvrir le **diagnostic de crue** — passage de l'eau, routes bloquées et bâtiments touchés |
-| **H** | afficher / masquer le calque de **charge du trafic** — diagnostic seulement |
-| **X** | ouvrir la **vue chantiers** — le cassé, les travaux, le fait, et les chantiers en cours |
 | **F3** | afficher / masquer le moniteur de performances |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
+
+## Les deux vues
+
+**La ville vivante** et **le diagnostic**, à la souris : le bouton « Diagnostic » du tableau de bord, puis le menu des thèmes qui prend sa place — pas de raccourci clavier, c'est voulu. Le diagnostic passe la ville en **maquette blanche** — plus de matière, plus d'arbres, plus de voitures, rien que le volume — et **seul le thème choisi est en couleur** : tant qu'il ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le thème. Le temps continue, la caméra ne bouge pas, la fiche répond toujours au clic — **le diagnostic change ce qu'on voit, jamais ce qu'on peut faire**. Un thème neuf, c'est **trois pièces** : une ligne dans `THEMES` (haut de `maquette.gd`), son genre de peinture, et un panneau seulement s'il en faut un.
 
 Les gestes de caméra sont rappelés en bas à gauche de l'écran, avec l'angle courant. `V` `B` `R` ne sont pas un confort : ce sont **les critères de réussite du plan**, une touche chacun. On ne juge pas de mémoire.
 
@@ -54,9 +54,9 @@ scripts/
   ville.gd             l'état, les rampes, les indicateurs, la caisse  ← LE NOYAU
   energie.gd           la table par tissu, les formules, les deux prix. Tout statique
   chantiers.gd         ancien prototype, conservé comme trace — RIEN à voir
-                       avec la vue chantiers (`X`), qui vit dans ville.gd
+                       avec le thème « chantiers », qui vit dans ville.gd
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
-  interface.gd         la ville à gauche, l'îlot et son curseur à droite
+  interface.gd         la ville ou le menu à gauche, l'îlot et son curseur à droite
   moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
   materiaux.gd         les matériaux, zéro texture
   camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°
@@ -72,8 +72,8 @@ outils/
 - **La caméra est orthographique**, et ça ne se rouvre pas : aucune perspective, donc une hauteur double projette double où que soit l'objet. « S'approcher » est réduire le cadrage, jamais avancer — ni LOD, ni distance, ni façades à détailler.
 - 🔴 En orthographie, la profondeur de sol visible vaut `cadrage / sin(hauteur)`. Le cadrage est donc **multiplié par le sinus de la hauteur**, sinon la vue rasante ne montre plus qu'une bande au milieu d'un écran vide.
 - **On montre l'écart au mois 0 à côté de la valeur**, partout. Une valeur qui bouge de 2 % ne se voit pas, et sans l'écart on croit que rien ne bouge.
-- **L'échelle de couleur d'un calque est fixée sur l'état de DÉPART**, jamais recalculée à chaque pas de temps — sinon l'extrémum suit le changement et l'image reste identique.
-- **Le toit et le mur sont deux matériaux**, le matériau découle de l'**époque** du bâtiment, et chaque bâtiment tire sa teinte de sa **position** (35). La touche `C` est la contrepartie : la couleur ne disant plus la typologie, il faut pouvoir la retrouver d'un geste.
+- **L'échelle de couleur d'un thème est fixée sur l'état de DÉPART**, jamais recalculée à chaque pas de temps — sinon l'extrémum suit le changement et l'image reste identique.
+- **Le toit et le mur sont deux matériaux**, le matériau découle de l'**époque** du bâtiment, et chaque bâtiment tire sa teinte de sa **position** (35). Le thème « tissu » est la contrepartie : la couleur ne disant plus la typologie, il faut pouvoir la retrouver d'un geste.
 - **Aucune fenêtre n'est un triangle** : le percement est dessiné par le matériau. `07` décide le genre de percement et la longueur du mur, Godot dessine.
 
 ## Ce qui se sélectionne, et comment

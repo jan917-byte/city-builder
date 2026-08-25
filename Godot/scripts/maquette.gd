@@ -12,11 +12,11 @@ extends Node3D
 #                                V B R I G   les cinq points de vue
 #   Q / E  quart de tour            P        capture PNG
 #   ← → ↑ ↓  orienter la caméra     T        vue de dessus
-#   C      recolorer par tissu
-#   H      calque de charge du trafic
-#   D      diagnostic de crue     X  vue chantiers
 #   F3     afficher / masquer les performances
 #   Échap  quitter
+#
+# 🩶 Les deux vues — la ville vivante et le diagnostic — se prennent au MENU,
+# pas au clavier : voir THEMES plus bas.
 #
 # 🔄 Caméra libre depuis le 2026-08-17 (clic droit glissé) : le déplacement est
 # passé au clic milieu. Voir `camera_axo.gd` pour ce que ça coûte.
@@ -111,10 +111,9 @@ var reparations := {"i": {}, "r": {}}
 var mois := 0.0
 var vitesse := 1.0
 var _derniere_vitesse := 1.0
+# Dérivés du thème actif par `_sur_theme` — jamais réglés ailleurs.
 var calque_couche := ""
 var calque_champ := ""
-var diagnostic_crue := false
-var vue_chantiers := false
 var _etendue := [0.0, 1.0]
 var _dernier_peint := -1.0
 
@@ -158,13 +157,16 @@ func _ready() -> void:
 	interface.name = "Interface"
 	interface.ville = ville
 	interface.trafic = trafic
+	# Passées plutôt que preloadées : `interface.gd` importerait `maquette.gd`,
+	# qui l'importe déjà.
+	interface.themes = THEMES
+	interface.rampe = RAMPE
 	add_child(interface)
 	interface.batir()
 	interface.solaire_demande.connect(_sur_solaire)
 	interface.vitesse_demandee.connect(_sur_vitesse)
 	interface.temps_remis.connect(_sur_reset)
-	interface.diagnostic_demande.connect(_sur_diagnostic)
-	interface.chantiers_demande.connect(_sur_chantiers)
+	interface.theme_demande.connect(_sur_theme)
 	interface.reparation_demandee.connect(_sur_reparation)
 	interface.trafic_demande.connect(_sur_trafic)
 	pivot.vue_changee.connect(interface.maj_camera)
@@ -508,11 +510,12 @@ ESSAI — la ville, sans décision")
 	print("  contrôle visuel : îlot 22 à 50 % — premier pan entier, second nu")
 	_sur_reset()
 
-	# 🎨 LE CALQUE « TISSU », capturé plutôt que décrit : deux images d'affilée,
-	# la ville en matériaux puis repeinte par tissu, sont le seul moyen de juger
-	# si l'échange vaut le coup.
-	# On DÉSÉLECTIONNE d'abord : sur une paire destinée à juger des MATÉRIAUX,
-	# un objet éclairci passerait pour un matériau de plus.
+	# 🩶 LES DEUX VUES, DEPUIS LE MÊME POINT DE VUE. Une image de la ville
+	# vivante, puis une par thème, toutes au même cadrage : c'est la seule
+	# façon de juger si le changement de registre est franc et si chaque thème
+	# se lit sur le carton. La caméra ne bouge plus d'elle-même, ces captures
+	# le prouvent aussi.
+	# On DÉSÉLECTIONNE d'abord : un objet éclairci passerait pour un thème.
 	selection.sel_fid = -1
 	selection.sel_couche = ""
 	_repere("ville")
@@ -521,15 +524,9 @@ ESSAI — la ville, sans décision")
 	_rafraichir(true)
 	await get_tree().process_frame
 	await _capturer("essai_materiaux")
-	_sur_tissu()
-	print("  calque tissu (touche C) : %d îlots repeints par sous_type"
-		% _teintes_tissu.size())
-	await get_tree().process_frame
-	await _capturer("essai_tissu")
-	_sur_tissu()
 
-	# 🌊 Le diagnostic doit prouver ses trois lectures sur UNE image : emprise,
-	# bâti touché et coupures. Un signal vide échoue avant la capture.
+	# 🌊 Le thème « dangers » doit prouver ses trois lectures sur UNE image :
+	# emprise, bâti touché et coupures. Un signal vide échoue avant la capture.
 	var diag := [0, 0, 0]
 	for o in ville.ilots.values():
 		diag[0] += int(float(o.get("hauteur_eau_max", 0.0)) > 0.10)
@@ -537,16 +534,38 @@ ESSAI — la ville, sans décision")
 	for o in ville.routes.values():
 		diag[2] += int(str(o.get("etat_crue", "")) == "coupe")
 	if diag.min() <= 0:
-		push_error("diagnostic de crue incomplet : %s" % [diag])
+		push_error("thème dangers incomplet : %s" % [diag])
 		get_tree().quit(1)
 		return
-	_sur_diagnostic(true)
-	pivot.caler(30.0, 55.0)
-	await get_tree().process_frame
-	await _capturer("essai_diagnostic_crue")
-	print("  diagnostic crue : %d îlots noyés, %d avec bâti touché, %d routes bloquées"
+	print("  dangers : %d îlots noyés, %d avec bâti touché, %d routes bloquées"
 		% diag)
-	_sur_diagnostic(false)
+
+	for th in THEMES:
+		var id := str(th["id"])
+		if id == "chantiers":
+			continue    # capturé plus haut, sur une partie déjà jouée
+		_sur_theme(id)
+		# Un thème qui ne peint RIEN sort une ville de carton uni, et ça ne se
+		# voit pas sur une capture qu'on ne compare à rien. « dangers » a déjà
+		# ses trois comptes ci-dessus, d'où le −1 qui le laisse passer.
+		var peints := -1
+		if _genre() == "tissu":
+			peints = _teintes_tissu.size()
+		elif _genre() == "calque":
+			peints = 0
+			for fid in noeuds[calque_couche]:
+				peints += int(_disponible(calque_couche, fid))
+		if peints == 0:
+			push_error("thème %s : aucun objet peint" % id)
+			get_tree().quit(1)
+			return
+		await get_tree().process_frame
+		await _capturer("essai_diag_%s" % id)
+		print("  thème %-9s : %4d objets peints → essai_diag_%s.png"
+			% [id, peints, id])
+	_sur_theme("")
+	await get_tree().process_frame
+	await _capturer("essai_retour_ville")
 
 	get_tree().quit()
 
@@ -688,7 +707,8 @@ RÉPARATION — ce que la crue laisse à payer")
 ## 🔧 La vue chantiers, prouvée sur UNE image. Les trois états doivent être
 ## présents ensemble : un état vide est une couleur que personne n'a jamais vue.
 func _capturer_chantiers() -> void:
-	_sur_chantiers(true)
+	_sur_theme("chantiers")
+	_repere("ville")
 	var c := ville.chantiers(mois)
 	var en_cours: Array = c["en_cours"]
 	var compte := [int(c["casses"]), en_cours.size(), int(c["faits"])]
@@ -702,7 +722,7 @@ func _capturer_chantiers() -> void:
 	await _capturer("essai_chantiers")
 	print("  vue chantiers : %d cassés, %d en cours, %d fini(s) · %.0f k€ à payer"
 		% [compte[0], compte[1], compte[2], c["reste_ke"]])
-	_sur_chantiers(false)
+	_sur_theme("")
 
 
 ## dont on capture le refus.
@@ -997,56 +1017,147 @@ const DISPO := {
 }
 
 
-# 🎨 LE CALQUE « TISSU », touche C — 2026-08-18. Depuis que les bâtiments sont
-# rendus par MATÉRIAU, la couleur ne dit plus la typologie : cette touche
-# repeint la ville avec la palette d'avant, le temps d'un coup d'œil.
-# Il passe par le MÊME uniforme `calque` que les calques thématiques, donc
-# l'AO bakée survit et deux repeints ne peuvent pas se superposer.
-var calque_tissu := false
+# ================================================= LES DEUX VUES, ET LES THÈMES
+#
+# 🩶 DEUX VUES, décidées le 2026-08-25. ① la ville vivante — matière, ciel,
+# voitures, arbres ; ② le diagnostic — la MAQUETTE BLANCHE (`materiaux.gd`),
+# où seul le thème choisi est en couleur. Le temps continue dans les deux, et
+# la fiche reste : le diagnostic change ce qu'on VOIT, jamais ce qu'on peut
+# faire.
+#
+# 🔄 RETOUR EN ARRIÈRE SIGNALÉ : c'étaient quatre drapeaux indépendants
+# (`calque_tissu`, `diagnostic_crue`, `vue_chantiers`, `calque_champ`) qui
+# s'éteignaient l'un l'autre À LA MAIN, touches C · D · H · X. Un cinquième
+# thème coûtait quatre modifications ; il en coûte une ligne ici. Les quatre
+# touches sont parties avec eux : le choix se fait AU MENU (décision de
+# l'auteur, 2026-08-25).
+#
+# 🧩 UN THÈME EN TROIS PIÈCES, et c'est le critère de l'étape 6 : ① une ligne
+# ici ; ② son `genre` de peinture ; ③ s'il en a besoin, un panneau dans
+# `interface.gd`. Un thème `calque` n'a rien d'autre à écrire qu'une ligne.
+#
+#   genre "calque"    un champ + la rampe. La voie normale d'un thème neuf.
+#   genre "tissu"     une teinte par sous_type, pas une échelle continue.
+#   genre "crue"      trois signaux de l'eau + les croix des routes coupées.
+#   genre "chantiers" l'état d'avancement de l'objet entier.
+const THEMES := [
+	{"id": "dangers", "nom": "Dangers naturels", "genre": "crue",
+		"resume": "Ce que la crue a laissé dans la ville"},
+	{"id": "chantiers", "nom": "Chantiers", "genre": "chantiers",
+		"resume": "Ce qui est cassé, ce qui est en travaux"},
+	# `_classe_solaire` et non `part_toit_equipe` : un diagnostic répond « où
+	# agir ? », et la part posée vaut 0 partout au mois 0.
+	{"id": "energie", "nom": "Énergie", "genre": "calque",
+		"couche": "i", "champ": "_classe_solaire",
+		"resume": "Où le solaire s'amortit dans la partie",
+		"bas": "Amorti vite", "haut": "Jamais rentable",
+		"note": "Gris : pas de toit équipable — hors jeu, pas mauvais."},
+	{"id": "trafic", "nom": "Trafic", "genre": "calque",
+		"couche": "r", "champ": "charge",
+		"resume": "La charge des rues, après la crue",
+		"bas": "Rue calme", "haut": "Saturée",
+		"note": "Un diagnostic : si l'axe ne se voit QUE là, le rendu a raté."},
+	{"id": "tissu", "nom": "Tissu urbain", "genre": "tissu",
+		"resume": "Une teinte par type de tissu",
+		"note": "La palette d'avant le rendu par matériau (2026-08-18)."},
+]
+
+## "" = la ville vivante. Sinon l'`id` d'un thème de THEMES.
+var theme := ""
+
+
+func _theme_actif() -> Dictionary:
+	for t in THEMES:
+		if t["id"] == theme:
+			return t
+	return {}
+
+
+func _genre() -> String:
+	return str(_theme_actif().get("genre", ""))
+
+
+# 🎨 LE THÈME « TISSU » — 2026-08-18. Depuis que les bâtiments sont rendus par
+# MATÉRIAU, la couleur ne dit plus la typologie : ce thème repeint la ville
+# avec la palette d'avant, le temps d'un coup d'œil. Il passe par le MÊME
+# uniforme `calque` que les thèmes continus, donc l'AO bakée survit et deux
+# repeints ne peuvent pas se superposer.
 var _teintes_tissu := {}
 
 
-func _sur_tissu() -> void:
-	calque_tissu = not calque_tissu
-	if calque_tissu:
-		diagnostic_crue = false
-		interface.afficher_diagnostic(false)
-		_fermer_chantiers()
-		calque_couche = ""
-		calque_champ = ""
-		if _teintes_tissu.is_empty():
-			for f in (donnees["objets"]["ilots"] as Dictionary):
-				var st: String = donnees["objets"]["ilots"][f]["sous_type"]
-				# ⚠ Palette en sRGB, uniforme en LINÉAIRE : sans conversion le
-				# repeint ressort délavé (cf. `vers_lineaire` côté Python).
-				_teintes_tissu[int(f)] = Donnees.teinte(
-					donnees, st, Color.MAGENTA).srgb_to_linear()
+## Le seul aiguillage des deux vues. `id` vide ramène à la ville vivante ;
+## sinon c'est un `id` de THEMES, et il chasse le précédent parce qu'il n'y a
+## qu'une case — l'exclusion mutuelle n'est plus écrite nulle part.
+func _sur_theme(id: String) -> void:
+	if id == theme:
+		return
+	theme = id
+	var t := _theme_actif()
+	if id != "" and t.is_empty():
+		push_error("thème inconnu : %s" % id)
+		theme = ""
+		t = {}
+	var genre := str(t.get("genre", ""))
+
+	if genre == "tissu" and _teintes_tissu.is_empty():
+		for f in (donnees["objets"]["ilots"] as Dictionary):
+			var st: String = donnees["objets"]["ilots"][f]["sous_type"]
+			# ⚠ Palette en sRGB, uniforme en LINÉAIRE : sans conversion le
+			# repeint ressort délavé (cf. `vers_lineaire` côté Python).
+			_teintes_tissu[int(f)] = Donnees.teinte(
+				donnees, st, Color.MAGENTA).srgb_to_linear()
+
+	calque_couche = str(t.get("couche", ""))
+	calque_champ = str(t.get("champ", ""))
+	if calque_champ != "":
+		_calibrer_echelle()
+
+	# La ville vivante n'entre pas dans la maquette blanche : arbres, voitures,
+	# eau et terrain la quittent ensemble, sinon le thème se lit sur un décor.
+	_habiller_monde(id != "")
+	_diagnostic_marqueurs.visible = genre == "crue"
+	interface.montrer_theme(id, t)
+	# 🔄 RETOUR EN ARRIÈRE SIGNALÉ : ouvrir la crue ou les chantiers recadrait
+	# sur la ville entière. La caméra NE BOUGE PLUS — c'est ce qui rend les
+	# deux vues comparables, et un avant/après lisible sans recadrer à la main.
 	_dernier_peint = -1.0
 	_rafraichir(true)
 
 
-func _sur_calque(couche: String, champ: String) -> void:
-	diagnostic_crue = false
-	interface.afficher_diagnostic(false)
-	_fermer_chantiers()
-	calque_tissu = false
-	calque_couche = couche
-	calque_champ = champ
-	if ETENDUES_FIXES.has(champ):
-		_etendue = ETENDUES_FIXES[champ]
-	elif champ != "":
-		# Échelle fixée sur l'état de DÉPART (leçon de `parties.html`) : sinon
-		# chaque pas de temps recalcule l'extrémum et rien ne semble bouger.
-		# La PEINTURE, elle, reste au mois courant.
-		var lo := INF
-		var hi := -INF
-		for fid in noeuds[couche]:
-			var v := _val(couche, fid, 0.0)
-			lo = minf(lo, v)
-			hi = maxf(hi, v)
-		_etendue = [lo, hi if hi > lo else lo + 1.0]
-	_dernier_peint = -1.0
-	_rafraichir(true)
+## Échelle fixée sur l'état de DÉPART (leçon de `parties.html`) : sinon chaque
+## pas de temps recalcule l'extrémum et rien ne semble bouger. La PEINTURE,
+## elle, reste au mois courant.
+func _calibrer_echelle() -> void:
+	if ETENDUES_FIXES.has(calque_champ):
+		_etendue = ETENDUES_FIXES[calque_champ]
+		return
+	var lo := INF
+	var hi := -INF
+	for fid in noeuds[calque_couche]:
+		var v := _val(calque_couche, fid, 0.0)
+		lo = minf(lo, v)
+		hi = maxf(hi, v)
+	_etendue = [lo, hi if hi > lo else lo + 1.0]
+
+
+## Ce que la maquette blanche éteint. Le TERRAIN et l'EAU restent — sans eux
+## les deux rives disparaissent et le thème « dangers » n'a plus de sujet —
+## mais ils passent au gris, comme le carton du reste.
+func _habiller_monde(diagnostic: bool) -> void:
+	trafic.visible = not diagnostic
+	for n in monde.get_children():
+		if n is MultiMeshInstance3D and str(n.name).begins_with("Arbres"):
+			n.visible = not diagnostic
+	var terrain := monde.get_node_or_null("Terrain") as MeshInstance3D
+	if terrain != null:
+		# `surface()` peint par couleur de sommet ; l'albédo la MULTIPLIE.
+		(terrain.material_override as StandardMaterial3D).albedo_color = \
+			Color(0.66, 0.66, 0.66) if diagnostic else Color.WHITE
+	var eau := monde.get_node_or_null("Eau") as MeshInstance3D
+	if eau != null:
+		(eau.material_override as StandardMaterial3D).albedo_color = \
+			Color(0.30, 0.33, 0.36) if diagnostic \
+			else Donnees.teinte(donnees, "riviere")
 
 
 func _val(couche: String, fid: int, t: float) -> float:
@@ -1056,12 +1167,14 @@ func _val(couche: String, fid: int, t: float) -> float:
 
 
 func _peindre() -> void:
+	var genre := _genre()
+	var blanche := theme != ""
 	for couche in ["i", "r"]:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
 			var diagnostic_sol := 0.0
 			var diagnostic_bati := 0.0
-			if diagnostic_crue:
+			if genre == "crue":
 				var o: Dictionary = ville.objets(couche).get(fid, {})
 				if couche == "i":
 					if float(o.get("hauteur_eau_max", 0.0)) > 0.10:
@@ -1071,30 +1184,29 @@ func _peindre() -> void:
 				else:
 					diagnostic_sol = 2.0 if str(o.get("etat_crue", "")) == "coupe" \
 						else (1.0 if float(o.get("hauteur_eau", 0.0)) > 0.10 else 0.0)
-			mi.set_instance_shader_parameter("diagnostic_mode", 1.0 if diagnostic_crue else 0.0)
-			mi.set_instance_shader_parameter("diagnostic_sol", diagnostic_sol)
-			mi.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
 			var c := Color(1.0, 1.0, 1.0, 0.0)
-			if calque_tissu and couche == "i":
+			if genre == "tissu" and couche == "i":
 				c = _teintes_tissu.get(fid, Color.MAGENTA)
-				# 1,0 et pas 0,88 : ce calque REMPLACE la matière. À 0,92 le
-				# rouge des tuiles transparaît et le cœur ancien sort orange.
+				# 1,0 et pas 0,88 : ce thème REMPLACE le carton. Une opacité
+				# partielle laisserait le gris teinter chaque sous_type.
 				c.a = 1.0
-			elif calque_champ != "" and calque_couche == couche \
+			elif genre == "calque" and calque_couche == couche \
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
-				c.a = 0.88
+				c.a = 1.0
 			var etat_travaux := ville.etat_chantier(couche, fid, mois) \
-				if vue_chantiers else 0
+				if genre == "chantiers" else 0
 			# Le nœud réparé prend les MÊMES paramètres que celui qu'il
-			# recouvre : sans ça un îlot reconstruit sortirait du calque, ne se
+			# recouvre : sans ça un îlot reconstruit sortirait du thème, ne se
 			# surlignerait plus au survol, n'accepterait plus de panneaux — et
 			# sortirait vert par le dessus, rouge par le dessous.
 			for mj in [mi, reparations[couche].get(fid)]:
 				if mj == null:
 					continue
-				mj.set_instance_shader_parameter("chantier_mode",
-					1.0 if vue_chantiers else 0.0)
+				mj.set_instance_shader_parameter("maquette_blanche",
+					1.0 if blanche else 0.0)
+				mj.set_instance_shader_parameter("diagnostic_sol", diagnostic_sol)
+				mj.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
 				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
 				mj.set_instance_shader_parameter("calque", c)
 				mj.set_instance_shader_parameter("teinte", _teinte(couche, fid))
@@ -1104,45 +1216,6 @@ func _peindre() -> void:
 					mj.set_instance_shader_parameter("equipe",
 						ville.valeur("i", fid, "part_toit_equipe", mois))
 
-
-func _sur_diagnostic(actif: bool) -> void:
-	diagnostic_crue = actif
-	_diagnostic_marqueurs.visible = actif
-	interface.afficher_diagnostic(actif)
-	if actif:
-		_fermer_chantiers()
-		calque_tissu = false
-		calque_couche = ""
-		calque_champ = ""
-		_repere("ville")
-	_dernier_peint = -1.0
-	_rafraichir(true)
-
-
-## 🔧 LA VUE CHANTIERS — 2026-08-24. Le diagnostic dit ce que l'eau A PRIS et
-## ne bouge plus ; celle-ci dit où on en est MAINTENANT : rouge ce qui est
-## encore cassé, ambre ce qui est en travaux, vert ce qui est fait. Elle occupe
-## la même place que le diagnostic, donc les deux se ferment l'une l'autre.
-func _sur_chantiers(actif: bool) -> void:
-	vue_chantiers = actif
-	interface.afficher_chantiers(actif)
-	if actif:
-		diagnostic_crue = false
-		_diagnostic_marqueurs.visible = false
-		interface.afficher_diagnostic(false)
-		calque_tissu = false
-		calque_couche = ""
-		calque_champ = ""
-		_repere("ville")
-	_dernier_peint = -1.0
-	_rafraichir(true)
-
-
-func _fermer_chantiers() -> void:
-	if not vue_chantiers:
-		return
-	vue_chantiers = false
-	interface.afficher_chantiers(false)
 
 
 func _batir_marqueurs_crue() -> void:
@@ -1461,11 +1534,6 @@ func _unhandled_input(e: InputEvent) -> void:
 		# 🌊 La crue (23b) : le faubourg sinistré, et le pont qu'elle a emporté.
 		KEY_F: _repere("faubourg")
 		KEY_N: _repere("pont_casse")
-		KEY_C: _sur_tissu()
-		KEY_H: _sur_calque("", "") if calque_champ == "charge" \
-			else _sur_calque("r", "charge")
-		KEY_D: _sur_diagnostic(not diagnostic_crue)
-		KEY_X: _sur_chantiers(not vue_chantiers)
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")
 		KEY_ESCAPE: get_tree().quit()

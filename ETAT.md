@@ -3,8 +3,8 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-24 (session 59).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause.
-Les 37 routes endommagées sont vides jusqu'à leur réparation ; retirer la voiture vide l'axe dès le clic puis reporte le flux en six mois. Le travail du Mac est fusionné : `04e` chiffre le **report de trafic** une fois pour toutes — la rue qui encaisse le plus ne prend que **+0,05**, l'argument de 23b — et la maquette gagne une **deuxième vue d'ensemble**, touche `X`, les chantiers. → [Crue](Prototype/Crue.md) § 6
+**2026-08-25 (session 60).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder*. L'étape 4 est en pause.
+La maquette a maintenant **deux vues** : la ville vivante, et un **diagnostic en maquette blanche** dont on choisit le thème **au menu** — dangers, chantiers, énergie, trafic, tissu. Les quatre touches `C` `D` `H` `X` sont supprimées, un thème neuf coûte une ligne, et le thème **énergie** existe enfin. **Écrit sur un Mac sans Godot : ni compilé, ni vu.** → [Trafic](Prototype/Trafic.md) § Les deux vues
 
 ## Prochaine action — juger le trafic à l'écran
 
@@ -12,15 +12,15 @@ Les 37 routes endommagées sont vides jusqu'à leur réparation ; retirer la voi
 python QGIS/scripts/chaine.py --godot
 ```
 
-Regarder l'avant/après `wehrau_essai_axe.png` → `wehrau_essai_axe_ferme.png`, puis `wehrau_essai_rue_calme.png` → `wehrau_essai_stationnement_retire.png`, et enfin `wehrau_essai_pont_casse.png`. L'axe 55 doit se vider ; aucune voiture ne doit flotter sur le pont absent. `H` ne sert qu'au diagnostic. → [Trafic](Prototype/Trafic.md)
-Puis lancer la maquette et ouvrir la **vue chantiers** (`X`) et le **diagnostic** (`D`) — les deux se ferment l'une l'autre. La vue `X` arrive du Mac : elle compile et la passe la capture, mais **elle n'a encore été jugée par personne**.
+**D'abord la passe rendue**, sur la machine qui a Godot : `Godot_console.exe --path Godot -- --essai`. Elle échoue au premier manque, et sort les images.
+Puis juger, dans cet ordre : ① le **critère de l'étape 5**, sans thème — `wehrau_essai_axe.png` → `..._axe_ferme.png`, `..._rue_calme.png` → `..._stationnement_retire.png` ; ② les **deux vues**, sept captures au même cadrage, la liste et les défauts qui les trahiraient sont dans la note. → [Trafic](Prototype/Trafic.md)
 
 ## Ce qui attend l'auteur
 
 - 🔴 **La barre ne fait pas la hauteur décidée** : 6 niveaux arrêtés le 2026-08-19, **5 à l'écran** — le ±1 niveau de `04c` a tiré −1 sur ses trois parcelles, et 13,5 m est exactement la hauteur refusée ce jour-là, celle qui passe sous les faîtages du cœur ancien. `04c` l'affiche désormais à chaque passage. Le critère « une barre de 9 niveaux » (`Plan 3 mois.md:48`) reste périmé par la même occasion.
 - 🔴 **L'asphalte des quais prend 6 m à l'Ilse** — plus un défaut visible, mais un **choix de carte** : une Ilse plus large veut dire reculer le **tracé** des voies de berge.
 - 🔴 **Le potentiel solaire réel est bas** — 11,0 ha de toiture réelle pour les 25–40 % annoncés au plan. **L'assumer, ou regonfler la colonne `equip`** de la table.
-- 🔴 **Cinq arbitrages de rendu du 2026-08-18 ne sont consignés nulle part** : la couleur suit l'époque et non la typologie · le calque « tissu » est la contrepartie · zéro asset · l'étape 4 s'ouvre et la 2 passe en pause · et la DA dit **encore** « un `sous_type` = une teinte », faux depuis. À fermer dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`.
+- 🔴 **Six arbitrages de rendu ne sont consignés nulle part** — les cinq du 2026-08-18, plus **« deux vues »**, pris et appliqué le 2026-08-25 : la couleur suit l'époque et non la typologie · le calque « tissu » est la contrepartie · zéro asset · l'étape 4 s'ouvre et la 2 passe en pause · et la DA dit **encore** « un `sous_type` = une teinte », faux depuis. À ouvrir puis fermer dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`.
 - 🟠 **Découper `07_exporter_godot.py`** — 5 500 lignes, 110 fonctions, un `main()` de 944 l., **79 000 tokens** : plus lourd que tous les markdown du dépôt réunis, et il faut le charger pour toucher à l'étape 4. Cinq fichiers par thème, contrôle nommé : **l'export doit sortir identique**. C'est du code, donc délégué (40b).
 - 🟠 **Les quatre nombres de l'économie sont du level design** : 260 €/m², 150 €/MWh, 800 k€ de caisse, 30 k€/mois. Ce sont eux qui décident si le jeu est *dur mais possible*.
 - 🟠 **Le nom des quartiers de Wehrau** — sans lui, « investir dans le Ried avant la rive gauche » n'existe pas comme phrase.

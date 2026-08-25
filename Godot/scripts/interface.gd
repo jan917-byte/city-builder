@@ -6,8 +6,8 @@ extends CanvasLayer
 signal solaire_demande(fid: int, part: float)
 signal vitesse_demandee(vitesse: float)
 signal temps_remis()
-signal diagnostic_demande(actif: bool)
-signal chantiers_demande(actif: bool)
+## "" ramène à la ville vivante, sinon c'est un `id` de `maquette.THEMES`.
+signal theme_demande(id: String)
 # 🔧 Une seule demande pour les trois réparations : reconstruire un îlot,
 # déblayer une rue, rebâtir un tablier. C'est `04e` qui les distingue par le
 # prix, pas l'interface.
@@ -75,6 +75,8 @@ class Jauge extends Control:
 
 var ville: Ville
 var trafic
+var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
+var rampe := []      # `maquette.RAMPE`, en sRGB
 
 var _ville_valeurs := {}
 var _adaptation_jauge: Jauge
@@ -97,10 +99,22 @@ var _message: Label
 var _camera_vue: Label
 var _temps_label: Label
 var _vitesses := {}
-var _diagnostic_bouton: Button
+var _ville_panneau: PanelContainer
+var _menu_panneau: PanelContainer
+var _menu_boutons := {}
 var _diagnostic_panneau: PanelContainer
-var _chantiers_bouton: Button
 var _chantiers_panneau: PanelContainer
+var _calque_panneau: PanelContainer
+var _calque_bas: Label
+var _calque_haut: Label
+var _calque_barre: TextureRect
+var _calque_note: Label
+## Les trois panneaux de thème portent le MÊME en-tête, tiré de la table :
+## le nom et le résumé ne sont écrits qu'une fois, dans `maquette.THEMES`.
+var _entetes := {}
+## Rouvrir le diagnostic doit rendre le thème qu'on regardait, pas le premier
+## de la liste : sinon comparer deux mois coûte deux clics au lieu d'un.
+var _dernier_theme := "dangers"
 var _chantiers_valeurs := {}
 var _chantiers_lignes := []
 var _fiche_panneau: PanelContainer
@@ -134,8 +148,10 @@ var _ecrit_curseur := false
 func batir() -> void:
 	_panneau_ville()
 	_panneau_ilot()
+	_panneau_menu()
 	_panneau_diagnostic()
 	_panneau_chantiers()
+	_panneau_calque()
 	_panneau_camera()
 	_controles_temps()
 
@@ -197,26 +213,19 @@ func _panneau_ville() -> void:
 	p.offset_top = 16
 	p.custom_minimum_size = Vector2(245, 0)
 	add_child(p)
+	_ville_panneau = p
 
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	p.add_child(v)
 	v.add_child(_label("WEHRAU", 12, ACCENT))
 	v.add_child(_label("Toute la ville", 20, TEXTE))
-	_diagnostic_bouton = Button.new()
-	_diagnostic_bouton.text = "Diagnostic de crue"
-	_diagnostic_bouton.toggle_mode = true
-	_diagnostic_bouton.tooltip_text = "Voir le passage de la crue, les routes bloquées et les bâtiments touchés."
-	_diagnostic_bouton.toggled.connect(func(actif: bool) -> void:
-		diagnostic_demande.emit(actif))
-	v.add_child(_diagnostic_bouton)
-	_chantiers_bouton = Button.new()
-	_chantiers_bouton.text = "Chantiers"
-	_chantiers_bouton.toggle_mode = true
-	_chantiers_bouton.tooltip_text = "Voir ce qui est encore cassé et tout ce qui est en travaux."
-	_chantiers_bouton.toggled.connect(func(actif: bool) -> void:
-		chantiers_demande.emit(actif))
-	v.add_child(_chantiers_bouton)
+	# La seule porte vers la deuxième vue. Elle rend le dernier thème regardé.
+	var diag := Button.new()
+	diag.text = "Diagnostic"
+	diag.tooltip_text = "Quitter la ville vivante : dangers, chantiers, énergie, trafic, tissu."
+	diag.pressed.connect(func() -> void: theme_demande.emit(_dernier_theme))
+	v.add_child(diag)
 	v.add_child(HSeparator.new())
 	v.add_child(_label("DURABILITÉ", 12, ACCENT))
 	var adaptation := _jauge_climat(v, "Adaptation", Color8(38, 157, 196))
@@ -273,6 +282,150 @@ func _jauge_climat(parent: VBoxContainer, titre: String, couleur: Color) -> Dict
 	return {"jauge": jauge, "valeur": valeur, "etat": etat}
 
 
+# ============================================== LA DEUXIÈME VUE, ET SON MENU
+#
+# 🩶 La ville vivante d'un côté, le diagnostic de l'autre (2026-08-25). Ce menu
+# PREND LA PLACE du tableau de bord : deux vues, jamais deux panneaux de tête à
+# l'écran en même temps. Le thème choisi commande le panneau du haut.
+
+
+func _panneau_menu() -> void:
+	_menu_panneau = PanelContainer.new()
+	_menu_panneau.add_theme_stylebox_override("panel", _boite())
+	_menu_panneau.offset_left = 16
+	_menu_panneau.offset_top = 16
+	_menu_panneau.custom_minimum_size = Vector2(245, 0)
+	_menu_panneau.visible = false
+	add_child(_menu_panneau)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	_menu_panneau.add_child(v)
+	v.add_child(_label("DIAGNOSTIC", 12, ACCENT))
+	v.add_child(_label("Ce que la ville ne montre pas", 20, TEXTE))
+	v.add_child(HSeparator.new())
+	# ⚠️ `allow_unpress` à false : sans lui, recliquer le thème actif l'éteint
+	# À L'ÉCRAN alors que la ville reste peinte — le menu mentirait.
+	var groupe := ButtonGroup.new()
+	groupe.allow_unpress = false
+	for t in themes:
+		var b := Button.new()
+		b.text = str(t["nom"])
+		b.toggle_mode = true
+		b.button_group = groupe
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.tooltip_text = str(t.get("resume", ""))
+		var id := str(t["id"])
+		b.pressed.connect(func() -> void: theme_demande.emit(id))
+		v.add_child(b)
+		_menu_boutons[id] = b
+	v.add_child(HSeparator.new())
+	var retour := Button.new()
+	retour.text = "← Revenir à la ville"
+	retour.tooltip_text = "Retrouver la matière, les arbres et les voitures."
+	retour.pressed.connect(func() -> void: theme_demande.emit(""))
+	v.add_child(retour)
+	v.add_child(_label("Le temps continue, et la fiche reste : cliquer un îlot\nmarche ici aussi.", 11, GRIS))
+
+
+## Le panneau des thèmes CONTINUS — énergie, trafic — et du tissu. Un thème
+## neuf n'écrit rien de plus : il tombe ici par son `genre`.
+func _panneau_calque() -> void:
+	_calque_panneau = PanelContainer.new()
+	_calque_panneau.add_theme_stylebox_override("panel", _boite())
+	_calque_panneau.anchor_left = 0.5
+	_calque_panneau.anchor_right = 0.5
+	_calque_panneau.offset_left = -205
+	_calque_panneau.offset_right = 205
+	_calque_panneau.offset_top = 16
+	_calque_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_calque_panneau.visible = false
+	add_child(_calque_panneau)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_calque_panneau.add_child(v)
+	_entetes["_calque"] = _entete(v)
+	v.add_child(HSeparator.new())
+	_calque_barre = TextureRect.new()
+	_calque_barre.custom_minimum_size = Vector2(0, 13)
+	_calque_barre.stretch_mode = TextureRect.STRETCH_SCALE
+	_calque_barre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_calque_barre)
+	var h := HBoxContainer.new()
+	_calque_bas = _label("", 12, GRIS)
+	h.add_child(_calque_bas)
+	_calque_haut = _label("", 12, GRIS)
+	_calque_haut.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_calque_haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(_calque_haut)
+	v.add_child(h)
+	_calque_note = _label("", 11, GRIS)
+	_calque_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_calque_note)
+
+
+func _entete(parent: VBoxContainer) -> Array:
+	var titre := _label("", 12, ACCENT)
+	parent.add_child(titre)
+	var resume := _label("", 18, TEXTE)
+	parent.add_child(resume)
+	return [titre, resume]
+
+
+func _ecrire_entete(e: Array, t: Dictionary) -> void:
+	(e[0] as Label).text = str(t["nom"]).to_upper()
+	(e[1] as Label).text = str(t.get("resume", ""))
+
+
+## La rampe des thèmes continus, dessinée une fois. ⚠ En sRGB : `maquette`
+## convertit en linéaire pour le SHADER, jamais pour l'interface.
+func _texture_rampe() -> Texture2D:
+	var g := Gradient.new()
+	var pos := PackedFloat32Array()
+	var teintes := PackedColorArray()
+	for i in rampe.size():
+		pos.append(float(i) / maxf(1.0, float(rampe.size() - 1)))
+		teintes.append(rampe[i])
+	g.offsets = pos
+	g.colors = teintes
+	var t := GradientTexture1D.new()
+	t.gradient = g
+	t.width = 256
+	return t
+
+
+## L'unique entrée de la deuxième vue : `maquette` dit quel thème, l'interface
+## en tire tout le reste. `id` vide = la ville vivante.
+func montrer_theme(id: String, t: Dictionary) -> void:
+	if id != "":
+		_dernier_theme = id
+	var genre := str(t.get("genre", ""))
+	_ville_panneau.visible = id == ""
+	_menu_panneau.visible = id != ""
+	for cle in _menu_boutons:
+		(_menu_boutons[cle] as Button).set_pressed_no_signal(cle == id)
+	_diagnostic_panneau.visible = genre == "crue"
+	_chantiers_panneau.visible = genre == "chantiers"
+	_calque_panneau.visible = genre == "calque" or genre == "tissu"
+	if id != "":
+		var cle := "_calque" if _calque_panneau.visible else id
+		_ecrire_entete(_entetes[cle], t)
+	if _calque_panneau.visible:
+		_calque_note.text = str(t.get("note", ""))
+		_calque_note.visible = _calque_note.text != ""
+		# Le tissu n'a pas d'échelle : une teinte par sous_type, donc ni rampe
+		# ni bornes. C'est la seule différence entre les deux genres ici.
+		var continu := genre == "calque"
+		if continu and _calque_barre.texture == null:
+			_calque_barre.texture = _texture_rampe()
+		_calque_barre.visible = continu
+		_calque_bas.visible = continu
+		_calque_haut.visible = continu
+		_calque_bas.text = str(t.get("bas", ""))
+		_calque_haut.text = str(t.get("haut", ""))
+
+
 func _panneau_diagnostic() -> void:
 	_diagnostic_panneau = PanelContainer.new()
 	_diagnostic_panneau.add_theme_stylebox_override("panel", _boite())
@@ -288,8 +441,7 @@ func _panneau_diagnostic() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	_diagnostic_panneau.add_child(v)
-	v.add_child(_label("DIAGNOSTIC DE CRUE", 12, ACCENT))
-	v.add_child(_label("Ce que la crue a laissé dans la ville", 18, TEXTE))
+	_entetes["dangers"] = _entete(v)
 	v.add_child(HSeparator.new())
 	_legende(v, Color8(38, 157, 196), "Passage de la crue · sols et rues noyés")
 	_legende(v, Color8(232, 126, 48), "Bâtiments touchés · sinistrés ou ruinés")
@@ -311,7 +463,6 @@ func _panneau_diagnostic() -> void:
 		h.add_child(val)
 		_degats_valeurs[ligne[0]] = val
 		v.add_child(h)
-	v.add_child(_label("D ou le bouton pour fermer", 11, GRIS))
 
 
 func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
@@ -326,18 +477,11 @@ func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
 	parent.add_child(h)
 
 
-func afficher_diagnostic(actif: bool) -> void:
-	_diagnostic_panneau.visible = actif
-	_diagnostic_bouton.set_pressed_no_signal(actif)
-	_place_fiche()
-
-
-# ================================================== la ville en travaux (X)
+# ===================================================== la ville en travaux
 #
-# 🔧 CE QUE LE DIAGNOSTIC NE DIT PAS. Lui montre ce que l'eau A PRIS, une fois
-# pour toutes ; celle-ci montre l'état COURANT — ce qui est encore cassé, ce
-# qui est en travaux, ce qui est fait. Les deux tiennent la même place à
-# l'écran et ne s'ouvrent donc jamais ensemble.
+# 🔧 CE QUE LE THÈME « DANGERS » NE DIT PAS. Lui montre ce que l'eau A PRIS,
+# une fois pour toutes ; celui-ci montre l'état COURANT — ce qui est encore
+# cassé, ce qui est en travaux, ce qui est fait.
 
 ## Six chantiers listés, le septième dit combien débordent. Au-delà, le
 ## panneau couvrirait la ville qu'il commente.
@@ -359,8 +503,7 @@ func _panneau_chantiers() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	_chantiers_panneau.add_child(v)
-	v.add_child(_label("CHANTIERS", 12, ACCENT))
-	v.add_child(_label("Ce qui est cassé, ce qui est en travaux", 18, TEXTE))
+	_entetes["chantiers"] = _entete(v)
 	v.add_child(HSeparator.new())
 	_legende(v, CASSE, "Cassé · rien d'engagé")
 	_legende(v, EN_TRAVAUX, "Chantier en cours")
@@ -388,19 +531,6 @@ func _panneau_chantiers() -> void:
 		l.visible = false
 		_chantiers_lignes.append(l)
 		v.add_child(l)
-	v.add_child(_label("X ou le bouton pour fermer", 11, GRIS))
-
-
-func afficher_chantiers(actif: bool) -> void:
-	_chantiers_panneau.visible = actif
-	_chantiers_bouton.set_pressed_no_signal(actif)
-	_place_fiche()
-
-
-## La fiche se retire tant que l'un des deux panneaux du haut est ouvert.
-func _place_fiche() -> void:
-	_fiche_panneau.visible = not (_diagnostic_panneau.visible \
-		or _chantiers_panneau.visible)
 
 
 ## ⚠️ Appelé seulement quand le panneau est ouvert : `ville.chantiers` parcourt
@@ -441,6 +571,10 @@ func _ligne_chantier(c: Dictionary) -> String:
 		_duree(float(c["reste_mois"]))]
 
 
+## 🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-08-25 : la fiche se retirait dès qu'un
+## panneau du haut s'ouvrait. Elle reste maintenant dans LES DEUX VUES — c'est
+## elle qui porte les décisions, et le diagnostic ne change que ce qu'on voit.
+## ⚠️ Elle croise le panneau de thème en dessous de ~1 100 px de large.
 func _panneau_ilot() -> void:
 	var p := PanelContainer.new()
 	_fiche_panneau = p
