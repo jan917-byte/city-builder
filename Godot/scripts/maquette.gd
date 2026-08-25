@@ -12,9 +12,11 @@ extends Node3D
 #                                V B R I G   les cinq points de vue
 #   Q / E  quart de tour            P        capture PNG
 #   ← → ↑ ↓  orienter la caméra     T        vue de dessus
-#   C      recolorer par tissu
 #   F3     afficher / masquer les performances
 #   Échap  quitter
+#
+# 🩶 Les deux vues — la ville vivante et le diagnostic — se prennent au MENU,
+# pas au clavier : voir THEMES plus bas.
 #
 # 🔄 Caméra libre depuis le 2026-08-17 (clic droit glissé) : le déplacement est
 # passé au clic milieu. Voir `camera_axo.gd` pour ce que ça coûte.
@@ -32,6 +34,7 @@ const Ville := preload("res://scripts/ville.gd")
 const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
+const Trafic := preload("res://scripts/trafic.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
 
@@ -85,6 +88,8 @@ var ville: Ville
 var selection: Selection
 var interface: Interface
 var moniteur_performances: MoniteurPerformances
+var trafic: Trafic
+var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
 var masque: SubViewport
 var cam_masque: Camera3D
@@ -95,11 +100,18 @@ var _contour_fid := -1
 var _contour_couche := ""
 var _couloirs := {}
 var _plaques := {}
+var _diagnostic_marqueurs: Node3D
 
 var noeuds := {"i": {}, "r": {}}
+# 🔧 LA VILLE RÉPARÉE, cachée au chargement. Un nœud par îlot ruiné et par
+# tronçon abîmé ; il apparaît quand le chantier payé arrive à son terme. C'est
+# la seule géométrie qui se montre en cours de partie — elle est CALCULÉE par
+# 07 comme tout le reste, Godot ne fabrique rien.
+var reparations := {"i": {}, "r": {}}
 var mois := 0.0
 var vitesse := 1.0
 var _derniere_vitesse := 1.0
+# Dérivés du thème actif par `_sur_theme` — jamais réglés ailleurs.
 var calque_couche := ""
 var calque_champ := ""
 var _etendue := [0.0, 1.0]
@@ -121,12 +133,18 @@ func _ready() -> void:
 	monde.name = "Monde"
 	add_child(monde)
 	_construire()
+	trafic = Trafic.new()
+	trafic.name = "Trafic"
+	monde.add_child(trafic)
+	trafic.batir(donnees, ville)
+	_batir_marqueurs_crue()
 	_decor()
 
 	pivot = CameraAxo.new()
 	pivot.name = "Pivot"
 	add_child(pivot)
 	_repere("ville")
+	trafic.regler_detail(pivot.taille)
 
 	selection = Selection.new()
 	selection.name = "Selection"
@@ -138,13 +156,27 @@ func _ready() -> void:
 	interface = Interface.new()
 	interface.name = "Interface"
 	interface.ville = ville
+	interface.trafic = trafic
+	# Passées plutôt que preloadées : `interface.gd` importerait `maquette.gd`,
+	# qui l'importe déjà.
+	interface.themes = THEMES
+	interface.rampe = RAMPE
 	add_child(interface)
 	interface.batir()
 	interface.solaire_demande.connect(_sur_solaire)
 	interface.vitesse_demandee.connect(_sur_vitesse)
 	interface.temps_remis.connect(_sur_reset)
+	interface.theme_demande.connect(_sur_theme)
+	interface.reparation_demandee.connect(_sur_reparation)
+	interface.trafic_demande.connect(_sur_trafic)
 	pivot.vue_changee.connect(interface.maj_camera)
+	pivot.vue_changee.connect(_sur_vue_changee)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
+	horloge_trafic = Timer.new()
+	horloge_trafic.wait_time = 0.25
+	horloge_trafic.autostart = true
+	horloge_trafic.timeout.connect(_sur_pulsation_trafic)
+	add_child(horloge_trafic)
 
 	moniteur_performances = MoniteurPerformances.new()
 	moniteur_performances.name = "MoniteurPerformances"
@@ -176,6 +208,18 @@ func _essai() -> void:
 	vitesse = 0.0
 	print("
 ESSAI — la ville, sans décision")
+	var routes_endommagees := 0
+	for fid in ville.routes:
+		if ville.route_praticable(fid, 0.0):
+			continue
+		routes_endommagees += 1
+		var voitures: Array = trafic.voitures_visibles_sur(fid)
+		if voitures != [0, 0]:
+			push_error("rue endommagée %d : %d voiture(s) roulante(s), %d garée(s)" \
+				% [fid, voitures[0], voitures[1]])
+			get_tree().quit(1)
+			return
+	print("  %d routes endommagées sans aucune voiture ✅" % routes_endommagees)
 	_repere("ville")
 	pivot.caler(30.0, 32.0)
 	await get_tree().process_frame
@@ -192,6 +236,49 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_dessus")
 	pivot.caler(30.0, 32.0)
+
+	# Le critère de l'étape 5 : deux rues, sans calque et assez près pour lire
+	# l'espacement, la vitesse et le stationnement.
+	_viser_route(55, 90.0)
+	pivot.caler(35.0, 28.0)
+	interface.montrer("r", 55, false)
+	await get_tree().process_frame
+	await _capturer("essai_axe")
+	var calme := _route_calme()
+	_viser_route(calme, 70.0)
+	interface.montrer("r", calme, false)
+	await get_tree().process_frame
+	await _capturer("essai_rue_calme")
+	ville.supprimer_stationnement(calme, 0.0)
+	mois = 2.1
+	trafic.avancer(mois)
+	await get_tree().process_frame
+	await _capturer("essai_stationnement_retire")
+	_sur_reset()
+	trafic.retirer_axe(55, 0.0)
+	trafic.avancer(0.0)
+	var fermees: Array = trafic.voitures_visibles_sur(55)
+	if int(fermees[0]) != 0:
+		push_error("axe 55 fermé mais %d voiture(s) y roulent encore" % fermees[0])
+		get_tree().quit(1)
+		return
+	print("  fermeture de l'axe 55 visible dès le clic ✅")
+	_viser_route(55, 90.0)
+	pivot.caler(35.0, 28.0)
+	interface.montrer("r", 55, false)
+	await get_tree().process_frame
+	await _capturer("essai_axe_ferme")
+	mois = 6.1
+	trafic.avancer(mois)
+	var ville_repere: Dictionary = donnees["reperes"]["ville"]
+	var centre: Array = ville_repere["cible"]
+	pivot.viser(Vector2(float(centre[0]), float(centre[1])), 650.0)
+	pivot.caler(30.0, 32.0)
+	await get_tree().process_frame
+	await _capturer("essai_report_trafic")
+	print("  retrait de l'axe 55 : charge %.2f → %.2f ✅"
+		% [ville.base("r", 55, "charge"), ville.valeur("r", 55, "charge", mois)])
+	_sur_reset()
 
 	# De près, sur la barre de 1974 : les volumes tiennent-ils après le
 	# découpage en nœuds, et le clic retrouve-t-il l'objet sous le curseur.
@@ -215,6 +302,30 @@ ESSAI — la ville, sans décision")
 	_repere("ilse")
 	await get_tree().process_frame
 	await _capturer("essai_ilse")
+
+	# 🌊 LE FAUBOURG SINISTRÉ (23b). Ce qu'il faut y voir : des murs SANS TOIT
+	# le long de l'eau, le limon qui s'arrête quelque part au lieu de couvrir
+	# toute la rive gauche, et la ville d'en face intacte. À 40° : de plus haut
+	# on perd les toits manquants, de plus bas on perd l'emprise du limon.
+	_repere("faubourg")
+	pivot.caler(120.0, 40.0)
+	await get_tree().process_frame
+	await _capturer("essai_faubourg")
+
+	# Le pont emporté, de profil : la chaussée doit s'arrêter au bord de l'eau
+	# des DEUX côtés, sans tablier ni parapet en l'air au-dessus du vide.
+	_repere("pont_casse")
+	pivot.caler(200.0, 14.0)
+	await get_tree().process_frame
+	await _capturer("essai_pont_casse")
+
+	# 🔧 LES TROIS RÉPARATIONS, ÉPROUVÉES PLUTÔT QUE PROMISES. On paie, on
+	# avance le temps jusqu'à la fin du chantier, et on REGARDE : un tablier
+	# doit avoir repoussé au-dessus de l'eau, un îlot doit avoir retrouvé ses
+	# toits. Si la ruine ressort À TRAVERS le bâtiment neuf, c'est RUINE_PANS
+	# qui est monté trop haut (voir 07).
+	await _essai_reparation()
+	pivot.caler(30.0, 32.0)
 
 	# 🌉 LE FRANCHISSEMENT DE PRES (2026-08-18) : a 260 m d'etendue, `ilse` ne
 	# donne pas deux pixels a un tablier de 70 cm. De profil (12°), on doit
@@ -290,9 +401,25 @@ ESSAI — la ville, sans décision")
 		_dernier_peint = -1.0
 		_rafraichir(true)
 
+	# Le noyau refuse la réduction pendant l'urgence, même si une ancienne
+	# interface essayait encore de l'appeler.
+	var caisse_verrou := ville.caisse_ke(mois)
+	if ville.lancer_solaire(32, 1.0, mois) \
+			or absf(ville.caisse_ke(mois) - caisse_verrou) > 0.001:
+		push_error("la réduction est disponible pendant l'urgence")
+		get_tree().quit(1)
+		return
+	print("  réduction verrouillée pendant l'urgence ✅")
+	mois = _essai_deverrouiller_reduction()
+	if mois < 0.0:
+		return
+
 	# Le seul geste du prototype, vérifié sur la barre : mi-pose puis 100 %.
 	var caisse_avant := ville.caisse_ke(mois)
-	ville.lancer_solaire(32, 1.0, mois)
+	if not ville.lancer_solaire(32, 1.0, mois):
+		push_error("l'îlot 32 refuse la pose après le déverrouillage")
+		get_tree().quit(1)
+		return
 	var etat32 := ville.etat_solaire(32, mois)
 	var cout32: float = etat32["cout_ke"]
 	# La pose se paie COMPTANT : la caisse tombe exactement du coût annoncé, ni
@@ -367,6 +494,9 @@ ESSAI — la ville, sans décision")
 	selection.sel_couche = "i"
 	selection.sel_fid = 22
 	interface.montrer("i", 22, false)
+	mois = _essai_deverrouiller_reduction()
+	if mois < 0.0:
+		return
 	if not ville.lancer_solaire(22, 1.0, mois):
 		push_error("l'îlot 22 refuse la pose de contrôle pan par pan")
 		get_tree().quit(1)
@@ -380,11 +510,12 @@ ESSAI — la ville, sans décision")
 	print("  contrôle visuel : îlot 22 à 50 % — premier pan entier, second nu")
 	_sur_reset()
 
-	# 🎨 LE CALQUE « TISSU », capturé plutôt que décrit : deux images d'affilée,
-	# la ville en matériaux puis repeinte par tissu, sont le seul moyen de juger
-	# si l'échange vaut le coup.
-	# On DÉSÉLECTIONNE d'abord : sur une paire destinée à juger des MATÉRIAUX,
-	# un objet éclairci passerait pour un matériau de plus.
+	# 🩶 LES DEUX VUES, DEPUIS LE MÊME POINT DE VUE. Une image de la ville
+	# vivante, puis une par thème, toutes au même cadrage : c'est la seule
+	# façon de juger si le changement de registre est franc et si chaque thème
+	# se lit sur le carton. La caméra ne bouge plus d'elle-même, ces captures
+	# le prouvent aussi.
+	# On DÉSÉLECTIONNE d'abord : un objet éclairci passerait pour un thème.
 	selection.sel_fid = -1
 	selection.sel_couche = ""
 	_repere("ville")
@@ -393,14 +524,78 @@ ESSAI — la ville, sans décision")
 	_rafraichir(true)
 	await get_tree().process_frame
 	await _capturer("essai_materiaux")
-	_sur_tissu()
-	print("  calque tissu (touche C) : %d îlots repeints par sous_type"
-		% _teintes_tissu.size())
+
+	# 🌊 Le thème « dangers » doit prouver ses trois lectures sur UNE image :
+	# emprise, bâti touché et coupures. Un signal vide échoue avant la capture.
+	var diag := [0, 0, 0]
+	for o in ville.ilots.values():
+		diag[0] += int(float(o.get("hauteur_eau_max", 0.0)) > 0.10)
+		diag[1] += int(float(o.get("part_sinistree", 0.0)) > 0.0)
+	for o in ville.routes.values():
+		diag[2] += int(str(o.get("etat_crue", "")) == "coupe")
+	if diag.min() <= 0:
+		push_error("thème dangers incomplet : %s" % [diag])
+		get_tree().quit(1)
+		return
+	print("  dangers : %d îlots noyés, %d avec bâti touché, %d routes bloquées"
+		% diag)
+
+	for th in THEMES:
+		var id := str(th["id"])
+		if id == "chantiers":
+			continue    # capturé plus haut, sur une partie déjà jouée
+		_sur_theme(id)
+		# Un thème qui ne peint RIEN sort une ville de carton uni, et ça ne se
+		# voit pas sur une capture qu'on ne compare à rien. « dangers » a déjà
+		# ses trois comptes ci-dessus, d'où le −1 qui le laisse passer.
+		var peints := -1
+		if _genre() == "tissu":
+			peints = _teintes_tissu.size()
+		elif _genre() == "calque":
+			peints = 0
+			for fid in noeuds[calque_couche]:
+				peints += int(_disponible(calque_couche, fid))
+		if peints == 0:
+			push_error("thème %s : aucun objet peint" % id)
+			get_tree().quit(1)
+			return
+		await get_tree().process_frame
+		await _capturer("essai_diag_%s" % id)
+		print("  thème %-9s : %4d objets peints → essai_diag_%s.png"
+			% [id, peints, id])
+	_sur_theme("")
 	await get_tree().process_frame
-	await _capturer("essai_tissu")
-	_sur_tissu()
+	await _capturer("essai_retour_ville")
 
 	get_tree().quit()
+
+
+## Déverrouille la réduction sans passe-droit : au mois 600 la dotation peut
+## payer les réparations essentielles, puis on attend leur vraie durée. Ce
+## mois n'est pas du level design ; c'est seulement la caisse de l'essai.
+func _essai_deverrouiller_reduction() -> float:
+	var debut := 600.0
+	for fid in ville.ilots:
+		if ville.base("i", fid, "logements_sinistres") <= 0.0:
+			continue
+		if not ville.reparer("i", fid, debut):
+			push_error("l'essai ne peut pas relever l'îlot %d" % fid)
+			get_tree().quit(1)
+			return -1.0
+	for fid in ville.routes:
+		if str(ville.routes[fid].get("etat_crue", "")) != "coupe":
+			continue
+		if not ville.reparer("r", fid, debut):
+			push_error("l'essai ne peut pas rebâtir le pont %d" % fid)
+			get_tree().quit(1)
+			return -1.0
+	var fin := debut + maxf(Ville.RECONSTRUCTION_MOIS, Ville.PONT_MOIS) + 0.1
+	if not ville.reduction_deverrouillee(fin):
+		push_error("la réduction reste verrouillée après les réparations essentielles")
+		get_tree().quit(1)
+		return -1.0
+	print("  adaptation terminée : réduction déverrouillée ✅")
+	return fin
 
 
 ## 🎚️ LE compte rendu qui sert à régler `CAISSE_DEPART_KE` et
@@ -410,6 +605,126 @@ ESSAI — la ville, sans décision")
 ## même siècle.
 ##
 ## Rend le fid de l'îlot que la caisse ne peut PAS payer, ou −1 : c'est celui
+## 🔧 Payer, attendre, regarder. Le seul contrôle qui prouve que la géométrie
+## neuve existe et qu'elle recouvre bien la ruine.
+func _essai_reparation() -> void:
+	print("
+RÉPARATION — ce que la crue laisse à payer")
+	var d0: Dictionary = ville.degats(mois)
+	print("  au mois 0 : %d logements perdus · %d franchissement(s) coupé(s)"
+		% [int(d0["logements_perdus"]), int(d0["franchissements_coupes"])])
+	print("  tout réparer coûterait %.0f k€, la caisse en a %.0f"
+		% [d0["a_reparer_ke"], ville.caisse_ke(mois)])
+
+	# Le pont le moins cher, puis l'îlot le moins cher : ce sont les deux que
+	# la caisse de départ peut effectivement payer.
+	var pont := -1
+	var ilot := -1
+	for fid in ville.routes:
+		if str(ville.routes[fid].get("etat_crue", "")) != "coupe":
+			continue
+		var c_pont := ville.cout_reparation_ke("r", fid)
+		if pont < 0 or c_pont < ville.cout_reparation_ke("r", pont):
+			pont = fid
+	for fid in ville.ilots:
+		# ⚠️ Il faut un îlot QUI A DES RUINES : un îlot seulement sinistré porte
+		# un prix (le rez à refaire) mais aucune géométrie neuve, et le contrôle
+		# « bâti neuf visible » sortirait faux sans qu'il y ait de défaut.
+		if ville.base("i", fid, "batiments_ruines") <= 0.0:
+			continue
+		var c := ville.cout_reparation_ke("i", fid)
+		if ilot < 0 or c < ville.cout_reparation_ke("i", ilot):
+			ilot = fid
+
+	# 🔴 LE REFUS, ÉPROUVÉ : le pont le moins cher dépasse la caisse de départ,
+	# et l'essayer ne doit pas bouger un centime.
+	var avant := ville.caisse_ke(mois)
+	if pont >= 0 and ville.cout_reparation_ke("r", pont) > avant:
+		var lance := ville.reparer("r", pont, mois)
+		if lance or absf(ville.caisse_ke(mois) - avant) > 0.001:
+			push_error("pont %d rebâti sans la caisse" % pont)
+			get_tree().quit(1)
+			return
+		print("  refus vérifié : le pont %d coûte %.0f k€, la caisse en a %.0f ✅"
+			% [pont, ville.cout_reparation_ke("r", pont), avant])
+
+	if ilot >= 0 and ville.reparer("i", ilot, mois):
+		print("  îlot %d reconstruit : %.0f k€ · caisse %.0f → %.0f k€"
+			% [ilot, avant - ville.caisse_ke(mois), avant, ville.caisse_ke(mois)])
+		mois = Ville.RECONSTRUCTION_MOIS + 0.1
+		_dernier_peint = -1.0
+		_rafraichir(true)
+		var noeud: MeshInstance3D = reparations["i"].get(ilot)
+		print("  au mois %.1f : bâti neuf visible %s · logements %d · toit %.0f m²"
+			% [mois, "✅" if noeud != null and noeud.visible else "❌",
+			int(ville.valeur("i", ilot, "logements", mois)),
+			ville.valeur("i", ilot, "_toit_equipable_m2", mois)])
+		selection.sel_couche = "i"
+		selection.sel_fid = ilot
+		interface.montrer("i", ilot, false)
+		_repere("faubourg")
+		pivot.caler(120.0, 40.0)
+		_rafraichir(true)
+		await get_tree().process_frame
+		await _capturer("essai_reconstruit")
+
+	# Le temps a passé : la dotation a coulé, le pont devient payable.
+	mois = 96.0
+	_rafraichir(true)
+	if pont >= 0 and ville.reparer("r", pont, mois):
+		# 🔧 LE MOMENT OÙ LA VUE CHANTIERS A SES TROIS ÉTATS : l'îlot relevé
+		# est fini, le pont vient d'être engagé, le reste du faubourg attend.
+		await _capturer_chantiers()
+		mois += Ville.PONT_MOIS + 0.1
+		_dernier_peint = -1.0
+		_rafraichir(true)
+		var n2: MeshInstance3D = reparations["r"].get(pont)
+		var reste: Dictionary = ville.degats(mois)
+		print("  pont %d rebâti au mois %.0f : tablier visible %s · %d franchissement(s) encore coupé(s)"
+			% [pont, mois, "✅" if n2 != null and n2.visible else "❌",
+			int(reste["franchissements_coupes"])])
+		selection.sel_couche = "r"
+		selection.sel_fid = pont
+		interface.montrer("r", pont, false)
+		# ⚠️ Visé sur le tablier NEUF lui-même, pas sur le repère « pont_casse » :
+		# celui-ci vise le barycentre des TROIS coupures, et le seul ouvrage
+		# rebâti tombait hors cadre.
+		if n2 != null:
+			var b := n2.get_aabb()
+			pivot.viser(Vector2(b.get_center().x, b.get_center().z), 130.0)
+		pivot.caler(200.0, 26.0)
+		_rafraichir(true)
+		await get_tree().process_frame
+		await _capturer("essai_pont_rebati")
+	# On repart d'une ville intacte : les captures suivantes jugent le rendu,
+	# pas une partie déjà jouée.
+	mois = 0.0
+	ville.reinitialiser()
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
+## 🔧 La vue chantiers, prouvée sur UNE image. Les trois états doivent être
+## présents ensemble : un état vide est une couleur que personne n'a jamais vue.
+func _capturer_chantiers() -> void:
+	_sur_theme("chantiers")
+	_repere("ville")
+	var c := ville.chantiers(mois)
+	var en_cours: Array = c["en_cours"]
+	var compte := [int(c["casses"]), en_cours.size(), int(c["faits"])]
+	if compte.min() <= 0:
+		push_error("vue chantiers incomplète : %s" % [compte])
+		get_tree().quit(1)
+		return
+	pivot.caler(30.0, 55.0)
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_chantiers")
+	print("  vue chantiers : %d cassés, %d en cours, %d fini(s) · %.0f k€ à payer"
+		% [compte[0], compte[1], compte[2], c["reste_ke"]])
+	_sur_theme("")
+
+
 ## dont on capture le refus.
 func _essai_economie() -> int:
 	var cout_ville := 0.0
@@ -484,6 +799,8 @@ func _construire() -> void:
 	# ~250, invisible sur 40 000 triangles.
 	_par_objet("Ilots", [donnees["masses"], donnees["sols"]], "i")
 	_par_objet("Routes", [donnees["voirie"]], "r")
+	_par_reparation("Reparation", donnees["repare"], "i")
+	_par_reparation("ReparationVoirie", donnees["repare_voirie"], "r")
 
 	var liste: Array = (donnees["arbres"] as Array).duplicate()
 
@@ -568,6 +885,54 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 	print("  %-8s %3d objets, %6d triangles" % [nom, parent.get_child_count(), tris])
 
 
+## Les nœuds de réparation. Même recette que `_par_objet`, trois différences :
+## ils partent CACHÉS, leur corps de collision part désactivé, et ils ne
+## remplacent personne — une ruine tient tout entière SOUS le bâtiment neuf qui
+## la couvre (voir RUINE_RETRAIT dans 07), donc rien n'est à retirer.
+func _par_reparation(nom: String, source: Dictionary, couche: String) -> void:
+	if _ignore("Ilots" if couche == "i" else "Routes"):
+		return
+	var parent := Node3D.new()
+	parent.name = nom
+	monde.add_child(parent)
+	for g in (source["g"] as Array):
+		var gr: Array = g
+		var fid := int(gr[0])
+		var mi := MeshInstance3D.new()
+		mi.name = "%s%d" % ["N" if couche == "i" else "T", fid]
+		mi.mesh = Constructeur.maillage_groupe(source, int(gr[1]), int(gr[2]))
+		mi.material_override = mat_objet
+		mi.set_meta("fid", fid)
+		mi.set_meta("couche", couche)
+		mi.visible = false
+		parent.add_child(mi)
+		mi.create_trimesh_collision()
+		_corps(mi, false)
+		reparations[couche][fid] = mi
+	print("  %-8s %3d objets prêts à réparer" % [nom, parent.get_child_count()])
+
+
+## Un corps de collision caché reste TOUCHÉ par le raycast : masquer le
+## maillage ne suffit pas, il faut sortir le corps du calque.
+func _corps(mi: MeshInstance3D, actif: bool) -> void:
+	for e in mi.get_children():
+		if e is StaticBody3D:
+			(e as StaticBody3D).collision_layer = 1 if actif else 0
+
+
+## Montre ce qui vient d'être fini. Une géométrie qui apparaîtrait à
+## l'ENGAGEMENT dirait qu'un pont se rebâtit en une image.
+func _montrer_reparations() -> void:
+	for couche in ["i", "r"]:
+		for fid in reparations[couche]:
+			var mi: MeshInstance3D = reparations[couche][fid]
+			var fini: bool = ville.reparation_finie(couche, fid, mois)
+			if fini == mi.visible:
+				continue
+			mi.visible = fini
+			_corps(mi, fini)
+
+
 func _dire(nom: String, m: ArrayMesh) -> void:
 	# Comme les scripts QGIS : un maillage vide ou hors cadre doit se voir dans
 	# la console, pas se deviner à l'écran.
@@ -602,8 +967,22 @@ func _decor() -> void:
 # ------------------------------------------------------------------ le temps
 
 func _process(delta: float) -> void:
-	mois = minf(mois + delta * vitesse * MOIS_PAR_SECONDE, Ville.HORIZON_MOIS)
+	# L'essai pousse artificiellement la caisse au-delà des vingt ans pour
+	# éprouver le déverrouillage avec les prix non calibrés de la crue. En jeu,
+	# l'horizon reste strictement celui du projet.
+	if "--essai" in OS.get_cmdline_user_args():
+		mois += delta * vitesse * MOIS_PAR_SECONDE
+	else:
+		mois = minf(mois + delta * vitesse * MOIS_PAR_SECONDE, Ville.HORIZON_MOIS)
 	_rafraichir(false)
+
+
+func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
+	trafic.regler_detail(pivot.taille)
+
+
+func _sur_pulsation_trafic() -> void:
+	trafic.avancer(mois)
 
 
 func _rafraichir(force: bool) -> void:
@@ -614,6 +993,7 @@ func _rafraichir(force: bool) -> void:
 		interface.maj(ville.indicateurs(mois), mois, vitesse)
 		return
 	_dernier_peint = mois
+	_montrer_reparations()
 	_peindre()
 	interface.maj(ville.indicateurs(mois), mois, vitesse)
 
@@ -637,50 +1017,147 @@ const DISPO := {
 }
 
 
-# 🎨 LE CALQUE « TISSU », touche C — 2026-08-18. Depuis que les bâtiments sont
-# rendus par MATÉRIAU, la couleur ne dit plus la typologie : cette touche
-# repeint la ville avec la palette d'avant, le temps d'un coup d'œil.
-# Il passe par le MÊME uniforme `calque` que les calques thématiques, donc
-# l'AO bakée survit et deux repeints ne peuvent pas se superposer.
-var calque_tissu := false
+# ================================================= LES DEUX VUES, ET LES THÈMES
+#
+# 🩶 DEUX VUES, décidées le 2026-08-25. ① la ville vivante — matière, ciel,
+# voitures, arbres ; ② le diagnostic — la MAQUETTE BLANCHE (`materiaux.gd`),
+# où seul le thème choisi est en couleur. Le temps continue dans les deux, et
+# la fiche reste : le diagnostic change ce qu'on VOIT, jamais ce qu'on peut
+# faire.
+#
+# 🔄 RETOUR EN ARRIÈRE SIGNALÉ : c'étaient quatre drapeaux indépendants
+# (`calque_tissu`, `diagnostic_crue`, `vue_chantiers`, `calque_champ`) qui
+# s'éteignaient l'un l'autre À LA MAIN, touches C · D · H · X. Un cinquième
+# thème coûtait quatre modifications ; il en coûte une ligne ici. Les quatre
+# touches sont parties avec eux : le choix se fait AU MENU (décision de
+# l'auteur, 2026-08-25).
+#
+# 🧩 UN THÈME EN TROIS PIÈCES, et c'est le critère de l'étape 6 : ① une ligne
+# ici ; ② son `genre` de peinture ; ③ s'il en a besoin, un panneau dans
+# `interface.gd`. Un thème `calque` n'a rien d'autre à écrire qu'une ligne.
+#
+#   genre "calque"    un champ + la rampe. La voie normale d'un thème neuf.
+#   genre "tissu"     une teinte par sous_type, pas une échelle continue.
+#   genre "crue"      trois signaux de l'eau + les croix des routes coupées.
+#   genre "chantiers" l'état d'avancement de l'objet entier.
+const THEMES := [
+	{"id": "dangers", "nom": "Dangers naturels", "genre": "crue",
+		"resume": "Ce que la crue a laissé dans la ville"},
+	{"id": "chantiers", "nom": "Chantiers", "genre": "chantiers",
+		"resume": "Ce qui est cassé, ce qui est en travaux"},
+	# `_classe_solaire` et non `part_toit_equipe` : un diagnostic répond « où
+	# agir ? », et la part posée vaut 0 partout au mois 0.
+	{"id": "energie", "nom": "Énergie", "genre": "calque",
+		"couche": "i", "champ": "_classe_solaire",
+		"resume": "Où le solaire s'amortit dans la partie",
+		"bas": "Amorti vite", "haut": "Jamais rentable",
+		"note": "Gris : pas de toit équipable — hors jeu, pas mauvais."},
+	{"id": "trafic", "nom": "Trafic", "genre": "calque",
+		"couche": "r", "champ": "charge",
+		"resume": "La charge des rues, après la crue",
+		"bas": "Rue calme", "haut": "Saturée",
+		"note": "Un diagnostic : si l'axe ne se voit QUE là, le rendu a raté."},
+	{"id": "tissu", "nom": "Tissu urbain", "genre": "tissu",
+		"resume": "Une teinte par type de tissu",
+		"note": "La palette d'avant le rendu par matériau (2026-08-18)."},
+]
+
+## "" = la ville vivante. Sinon l'`id` d'un thème de THEMES.
+var theme := ""
+
+
+func _theme_actif() -> Dictionary:
+	for t in THEMES:
+		if t["id"] == theme:
+			return t
+	return {}
+
+
+func _genre() -> String:
+	return str(_theme_actif().get("genre", ""))
+
+
+# 🎨 LE THÈME « TISSU » — 2026-08-18. Depuis que les bâtiments sont rendus par
+# MATÉRIAU, la couleur ne dit plus la typologie : ce thème repeint la ville
+# avec la palette d'avant, le temps d'un coup d'œil. Il passe par le MÊME
+# uniforme `calque` que les thèmes continus, donc l'AO bakée survit et deux
+# repeints ne peuvent pas se superposer.
 var _teintes_tissu := {}
 
 
-func _sur_tissu() -> void:
-	calque_tissu = not calque_tissu
-	if calque_tissu:
-		calque_couche = ""
-		calque_champ = ""
-		if _teintes_tissu.is_empty():
-			for f in (donnees["objets"]["ilots"] as Dictionary):
-				var st: String = donnees["objets"]["ilots"][f]["sous_type"]
-				# ⚠ Palette en sRGB, uniforme en LINÉAIRE : sans conversion le
-				# repeint ressort délavé (cf. `vers_lineaire` côté Python).
-				_teintes_tissu[int(f)] = Donnees.teinte(
-					donnees, st, Color.MAGENTA).srgb_to_linear()
+## Le seul aiguillage des deux vues. `id` vide ramène à la ville vivante ;
+## sinon c'est un `id` de THEMES, et il chasse le précédent parce qu'il n'y a
+## qu'une case — l'exclusion mutuelle n'est plus écrite nulle part.
+func _sur_theme(id: String) -> void:
+	if id == theme:
+		return
+	theme = id
+	var t := _theme_actif()
+	if id != "" and t.is_empty():
+		push_error("thème inconnu : %s" % id)
+		theme = ""
+		t = {}
+	var genre := str(t.get("genre", ""))
+
+	if genre == "tissu" and _teintes_tissu.is_empty():
+		for f in (donnees["objets"]["ilots"] as Dictionary):
+			var st: String = donnees["objets"]["ilots"][f]["sous_type"]
+			# ⚠ Palette en sRGB, uniforme en LINÉAIRE : sans conversion le
+			# repeint ressort délavé (cf. `vers_lineaire` côté Python).
+			_teintes_tissu[int(f)] = Donnees.teinte(
+				donnees, st, Color.MAGENTA).srgb_to_linear()
+
+	calque_couche = str(t.get("couche", ""))
+	calque_champ = str(t.get("champ", ""))
+	if calque_champ != "":
+		_calibrer_echelle()
+
+	# La ville vivante n'entre pas dans la maquette blanche : arbres, voitures,
+	# eau et terrain la quittent ensemble, sinon le thème se lit sur un décor.
+	_habiller_monde(id != "")
+	_diagnostic_marqueurs.visible = genre == "crue"
+	interface.montrer_theme(id, t)
+	# 🔄 RETOUR EN ARRIÈRE SIGNALÉ : ouvrir la crue ou les chantiers recadrait
+	# sur la ville entière. La caméra NE BOUGE PLUS — c'est ce qui rend les
+	# deux vues comparables, et un avant/après lisible sans recadrer à la main.
 	_dernier_peint = -1.0
 	_rafraichir(true)
 
 
-func _sur_calque(couche: String, champ: String) -> void:
-	calque_tissu = false
-	calque_couche = couche
-	calque_champ = champ
-	if ETENDUES_FIXES.has(champ):
-		_etendue = ETENDUES_FIXES[champ]
-	elif champ != "":
-		# Échelle fixée sur l'état de DÉPART (leçon de `parties.html`) : sinon
-		# chaque pas de temps recalcule l'extrémum et rien ne semble bouger.
-		# La PEINTURE, elle, reste au mois courant.
-		var lo := INF
-		var hi := -INF
-		for fid in noeuds[couche]:
-			var v := _val(couche, fid, 0.0)
-			lo = minf(lo, v)
-			hi = maxf(hi, v)
-		_etendue = [lo, hi if hi > lo else lo + 1.0]
-	_dernier_peint = -1.0
-	_rafraichir(true)
+## Échelle fixée sur l'état de DÉPART (leçon de `parties.html`) : sinon chaque
+## pas de temps recalcule l'extrémum et rien ne semble bouger. La PEINTURE,
+## elle, reste au mois courant.
+func _calibrer_echelle() -> void:
+	if ETENDUES_FIXES.has(calque_champ):
+		_etendue = ETENDUES_FIXES[calque_champ]
+		return
+	var lo := INF
+	var hi := -INF
+	for fid in noeuds[calque_couche]:
+		var v := _val(calque_couche, fid, 0.0)
+		lo = minf(lo, v)
+		hi = maxf(hi, v)
+	_etendue = [lo, hi if hi > lo else lo + 1.0]
+
+
+## Ce que la maquette blanche éteint. Le TERRAIN et l'EAU restent — sans eux
+## les deux rives disparaissent et le thème « dangers » n'a plus de sujet —
+## mais ils passent au gris, comme le carton du reste.
+func _habiller_monde(diagnostic: bool) -> void:
+	trafic.visible = not diagnostic
+	for n in monde.get_children():
+		if n is MultiMeshInstance3D and str(n.name).begins_with("Arbres"):
+			n.visible = not diagnostic
+	var terrain := monde.get_node_or_null("Terrain") as MeshInstance3D
+	if terrain != null:
+		# `surface()` peint par couleur de sommet ; l'albédo la MULTIPLIE.
+		(terrain.material_override as StandardMaterial3D).albedo_color = \
+			Color(0.66, 0.66, 0.66) if diagnostic else Color.WHITE
+	var eau := monde.get_node_or_null("Eau") as MeshInstance3D
+	if eau != null:
+		(eau.material_override as StandardMaterial3D).albedo_color = \
+			Color(0.30, 0.33, 0.36) if diagnostic \
+			else Donnees.teinte(donnees, "riviere")
 
 
 func _val(couche: String, fid: int, t: float) -> float:
@@ -690,26 +1167,89 @@ func _val(couche: String, fid: int, t: float) -> float:
 
 
 func _peindre() -> void:
+	var genre := _genre()
+	var blanche := theme != ""
 	for couche in ["i", "r"]:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
+			var diagnostic_sol := 0.0
+			var diagnostic_bati := 0.0
+			if genre == "crue":
+				var o: Dictionary = ville.objets(couche).get(fid, {})
+				if couche == "i":
+					if float(o.get("hauteur_eau_max", 0.0)) > 0.10:
+						diagnostic_sol = 1.0
+					if float(o.get("part_sinistree", 0.0)) > 0.0:
+						diagnostic_bati = 1.0
+				else:
+					diagnostic_sol = 2.0 if str(o.get("etat_crue", "")) == "coupe" \
+						else (1.0 if float(o.get("hauteur_eau", 0.0)) > 0.10 else 0.0)
 			var c := Color(1.0, 1.0, 1.0, 0.0)
-			if calque_tissu and couche == "i":
+			if genre == "tissu" and couche == "i":
 				c = _teintes_tissu.get(fid, Color.MAGENTA)
-				# 1,0 et pas 0,88 : ce calque REMPLACE la matière. À 0,92 le
-				# rouge des tuiles transparaît et le cœur ancien sort orange.
+				# 1,0 et pas 0,88 : ce thème REMPLACE le carton. Une opacité
+				# partielle laisserait le gris teinter chaque sous_type.
 				c.a = 1.0
-			elif calque_champ != "" and calque_couche == couche \
+			elif genre == "calque" and calque_couche == couche \
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
-				c.a = 0.88
-			mi.set_instance_shader_parameter("calque", c)
-			mi.set_instance_shader_parameter("teinte", _teinte(couche, fid))
-			if couche == "i":
-				# La preuve que quelque chose s'est passé sans ouvrir un menu :
-				# les toits se couvrent au fil de la pose.
-				mi.set_instance_shader_parameter("equipe",
-					ville.valeur("i", fid, "part_toit_equipe", mois))
+				c.a = 1.0
+			var etat_travaux := ville.etat_chantier(couche, fid, mois) \
+				if genre == "chantiers" else 0
+			# Le nœud réparé prend les MÊMES paramètres que celui qu'il
+			# recouvre : sans ça un îlot reconstruit sortirait du thème, ne se
+			# surlignerait plus au survol, n'accepterait plus de panneaux — et
+			# sortirait vert par le dessus, rouge par le dessous.
+			for mj in [mi, reparations[couche].get(fid)]:
+				if mj == null:
+					continue
+				mj.set_instance_shader_parameter("maquette_blanche",
+					1.0 if blanche else 0.0)
+				mj.set_instance_shader_parameter("diagnostic_sol", diagnostic_sol)
+				mj.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
+				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
+				mj.set_instance_shader_parameter("calque", c)
+				mj.set_instance_shader_parameter("teinte", _teinte(couche, fid))
+				if couche == "i":
+					# La preuve que quelque chose s'est passé sans ouvrir un
+					# menu : les toits se couvrent au fil de la pose.
+					mj.set_instance_shader_parameter("equipe",
+						ville.valeur("i", fid, "part_toit_equipe", mois))
+
+
+
+func _batir_marqueurs_crue() -> void:
+	_diagnostic_marqueurs = Node3D.new()
+	_diagnostic_marqueurs.name = "RoutesBloquees"
+	_diagnostic_marqueurs.visible = false
+	monde.add_child(_diagnostic_marqueurs)
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color8(220, 58, 48)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for fid in ville.routes:
+		if str(ville.routes[fid].get("etat_crue", "")) != "coupe":
+			continue
+		var cle := str(fid)
+		if not (donnees["couloirs"] as Dictionary).has(cle):
+			continue
+		var parties: Array = donnees["couloirs"][cle][1]
+		if parties.is_empty():
+			continue
+		var axe: Array = parties[0]
+		var k := int(axe.size() / 4) * 2
+		var marqueur := Node3D.new()
+		marqueur.name = "Route%d" % fid
+		marqueur.position = Vector3(float(axe[k]), 7.0, float(axe[k + 1]))
+		_diagnostic_marqueurs.add_child(marqueur)
+		for angle in [-45.0, 45.0]:
+			var barre := MeshInstance3D.new()
+			var boite := BoxMesh.new()
+			boite.size = Vector3(22.0, 0.9, 2.0)
+			barre.mesh = boite
+			barre.material_override = mat
+			barre.rotation_degrees.y = angle
+			marqueur.add_child(barre)
 
 
 func _disponible(couche: String, fid: int) -> bool:
@@ -904,10 +1444,36 @@ func _sur_solaire(fid: int, part: float) -> void:
 	_rafraichir(true)
 
 
+## 🔧 LES TROIS RÉPARATIONS PASSENT PAR ICI. Le noyau dit oui ou non ; la
+## géométrie neuve, elle, n'apparaîtra qu'à la FIN du chantier — c'est
+## `_montrer_reparations` qui la découvre, au fil du temps.
+func _sur_reparation(couche: String, fid: int) -> void:
+	var cout := ville.cout_reparation_ke(couche, fid)
+	if not ville.reparer(couche, fid, mois):
+		return
+	print("%s %d · réparation engagée : %.0f k€ · %.0f mois · caisse %.0f k€"
+		% ["îlot" if couche == "i" else "rue", fid, cout,
+		ville.duree_reparation_mois(couche, fid), ville.caisse_ke(mois)])
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
+func _sur_trafic(action: String, fid: int) -> void:
+	if action == "stationnement":
+		if ville.supprimer_stationnement(fid, mois):
+			print("rue %d · suppression du stationnement engagée · 2 mois" % fid)
+	elif action == "axe":
+		trafic.retirer_axe(fid, mois)
+		print("rue %d · voiture retirée immédiatement, report sur 6 mois" % fid)
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
 ## La pause est volontaire : sans elle, un retour demandé en ×12 recommence à
 ## défiler avant qu'on ait regardé.
 func _sur_reset() -> void:
 	ville.reinitialiser()
+	trafic.reinitialiser()
 	mois = 0.0
 	_sur_vitesse(0.0)
 	interface.remis_a_zero()
@@ -934,6 +1500,24 @@ func _repere(nom: String) -> void:
 	pivot.viser(Vector2(float(c[0]), float(c[1])), float(d["taille"]))
 
 
+func _viser_route(fid: int, taille: float) -> void:
+	var parties: Array = donnees["couloirs"][str(fid)][1]
+	var axe: Array = parties[0]
+	var k := int(axe.size() / 4) * 2
+	pivot.viser(Vector2(float(axe[k]), float(axe[k + 1])), taille)
+
+
+func _route_calme() -> int:
+	for fid in ville.routes:
+		var o: Dictionary = ville.routes[fid]
+		var q := ville.valeur("r", fid, "charge", 0.0)
+		if str(o.get("hierarchie", "")) == "rue" and q >= 0.10 and q <= 0.18 \
+				and ville.valeur("r", fid, "stationnement", 0.0) >= 10.0 \
+				and donnees["couloirs"].has(str(fid)):
+			return fid
+	return 55
+
+
 func _unhandled_input(e: InputEvent) -> void:
 	if not (e is InputEventKey) or not (e as InputEventKey).pressed \
 			or (e as InputEventKey).echo:
@@ -947,7 +1531,9 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_G: _repere("berge")
 		KEY_O: _repere("pont")
 		KEY_M: _repere("place")
-		KEY_C: _sur_tissu()
+		# 🌊 La crue (23b) : le faubourg sinistré, et le pont qu'elle a emporté.
+		KEY_F: _repere("faubourg")
+		KEY_N: _repere("pont_casse")
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")
 		KEY_ESCAPE: get_tree().quit()

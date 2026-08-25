@@ -1,6 +1,7 @@
 ---
 tags: [système, temps]
 statut: arrêté
+maj: 2026-08-25
 ---
 
 # Chantiers et temps
@@ -23,15 +24,15 @@ statut: arrêté
 ## Les trois temps d'une décision
 
 ```
-  pose        délai avant effet        montée en charge         maturité
-   │──── ghost preview ────│─────────────────────│──────────────────▶
-   ▲                        ▲                     ▲
-   │                        │                     │
- feedback              premiers effets       effet plein
- instantané             visibles
+  réglage dans la fiche       validation       chantier       livraison
+   │──── preview du résultat ────│────────────────│───────────────▶
+   ▲                             ▲               ▲               ▲
+ futur visible             intention posée   travaux visibles   résultat dans la ville
 ```
 
-- **Le ghost preview est non négociable** : feedback immédiat pendant que la réalisation reste lente. C'est la réponse au risque de spectateur.
+- **La preview de la fiche est non négociable.** Tout réglage qui change un îlot ou un tronçon met immédiatement à jour la miniature de l'objet sélectionné ; elle montre l'état qui sera livré, avant validation comme pendant le chantier.
+- **La ville ne montre jamais le futur.** Avant la livraison, elle garde son état construit réel ; pendant les travaux, seul le signal de chantier partagé s'y ajoute. Le résultat apparaît dans la ville quand le chantier est fini.
+- **La miniature ne ment pas** : elle est produite par les mêmes paramètres et la même recette visuelle que l'objet livré, jamais par une vignette dessinée à part.
 - **Le délai est la variable centrale** du design en temps continu. Il doit être modélisé dès le classeur du mois 1, sinon on teste un jeu qui n'est pas le sien.
 
 ## Plusieurs chantiers en vol

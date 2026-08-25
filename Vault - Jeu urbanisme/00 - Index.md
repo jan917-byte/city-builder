@@ -33,6 +33,7 @@ maj: 2026-08-12
 - [[Décisions]] — l'anatomie d'une décision, l'exemple de référence
 - [[Chantiers et temps]] — temps continu, délai, montée en charge
 - [[Happenings]] — canicule, crue, révolte : urgence contre vision
+- [[Adaptation et réduction]] — d'abord relever la ville ; les émissions entrent après l'urgence
 - [[Diagnostic et calques]] — l'activité principale entre deux décisions
 - [[Déclin et défaite]] — pas de game over, des quartiers qu'on perd
 - [[Milestones]] — les jalons cumulables : zéro voiture, ville-éponge, autonomie… la rareté est dans le calendrier

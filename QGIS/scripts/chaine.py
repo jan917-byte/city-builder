@@ -48,6 +48,7 @@ ETAPES = [
     ("04b", "04b_emprises_baties.py", "les emprises bâties"),
     ("04c", "04c_parcelles.py",      "le parcellaire"),
     ("04d", "04d_emprises_batiments.py", "les emprises des bâtiments"),
+    ("04e", "04e_crue.py",               "la crue : dégâts et ponts coupés"),
 ]
 GODOT = ("07", "07_exporter_godot.py", "l'export vers la maquette 3D")
 

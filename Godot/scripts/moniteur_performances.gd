@@ -6,6 +6,7 @@ const INTERVALLE := 0.25
 const OCTETS_PAR_MIO := 1024.0 * 1024.0
 
 var _etiquette: Label
+var _fermer: Button
 var _attente := 0.0
 
 
@@ -38,6 +39,26 @@ func batir(visible_au_depart: bool = true) -> void:
 	_etiquette.add_theme_font_size_override("font_size", 14)
 	_etiquette.add_theme_color_override("font_color", Color(0.88, 0.91, 0.92))
 	panneau.add_child(_etiquette)
+
+	# Posee sur la couche, pas dans le panneau : le PanelContainer n'accepte
+	# qu'un enfant, et une croix logee dedans decalerait le texte centre.
+	_fermer = Button.new()
+	_fermer.name = "Fermer"
+	_fermer.text = "✕"
+	_fermer.flat = true
+	_fermer.focus_mode = Control.FOCUS_NONE
+	_fermer.tooltip_text = "Masquer les performances (F3)"
+	_fermer.anchor_left = 0.5
+	_fermer.anchor_right = 0.5
+	_fermer.offset_left = 158.0
+	_fermer.offset_right = 182.0
+	_fermer.offset_top = 20.0
+	_fermer.offset_bottom = 44.0
+	_fermer.add_theme_font_size_override("font_size", 13)
+	_fermer.add_theme_color_override("font_color", Color(0.62, 0.68, 0.72))
+	_fermer.add_theme_color_override("font_hover_color", Color(1.0, 0.72, 0.68))
+	_fermer.pressed.connect(func() -> void: visible = false)
+	add_child(_fermer)
 
 	visible = visible_au_depart
 	_rafraichir()

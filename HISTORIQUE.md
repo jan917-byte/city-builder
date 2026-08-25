@@ -6,6 +6,57 @@
 
 ---
 
+**2026-08-25 (session 61) — le futur tient dans la fiche, pas dans la ville.** Tout réglage d'un îlot ou d'un tronçon met immédiatement à jour la miniature de sa fiche, qui montre l'état livré avant validation et pendant les travaux.
+La ville garde son état construit réel ; elle ne montre que le signal de chantier, puis reçoit le résultat quand celui-ci est fini. La miniature et l'objet livré sortent de la même recette visuelle.
+🔄 Le « ghost preview instantané » n'est plus un principe sans emplacement : la décision 12 est précisée sans changer son rôle anti-spectateur. (12)
+
+**2026-08-25 (session 60) — la maquette a deux vues, et le diagnostic a un menu.** Quatre drapeaux indépendants (`calque_tissu`, `diagnostic_crue`, `vue_chantiers`, `calque_champ`) s'éteignaient l'un l'autre à la main, une touche chacun : ils deviennent **une seule case, le thème actif**. Un cinquième thème coûtait quatre modifications, il coûte une ligne — le critère de l'étape 6, atteint avant elle.
+La deuxième vue passe la ville en **maquette blanche** : plus de matière, plus d'arbres, plus de voitures, rien que le volume porté par l'AO, et seul le thème choisi en couleur. Raison de fond, pas de goût : tant que le diagnostic ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le calque, et les critères d'étape se jugent sans calque. Le thème **énergie** existe enfin, sur `_classe_solaire` — « où agir ? », pas « qu'a-t-on posé ? », qui vaut 0 partout au mois 0.
+🔴 Deux retours en arrière signalés, et une perte assumée : les touches `C` `D` `H` `X` sont **supprimées** — l'auteur a demandé un menu, il n'y a plus de secours au clavier — et la caméra **ne recadre plus** à l'ouverture d'un thème, ce qui rend les deux vues comparables. **Écrit sur un Mac sans Godot : ni compilé, ni lancé, ni vu.** (étape 5 · 42b)
+
+**2026-08-24 (session 59) — les deux machines se rejoignent, et les deux trafics se composent.** Quatre sessions Windows jamais commitées (54→57) et une session Mac poussée le même jour portaient toutes deux le numéro 54 ; celle du Mac devient la **58**. Sept fichiers se heurtaient, `04e` compris.
+Le chevauchement était réel et les deux côtés sont gardés : `04e` **chiffre** le report une fois pour toutes (+0,05 sur la rue qui encaisse le plus, réseau en 2 morceaux — 151 nœuds contre 45), Godot **vide** les 37 routes cassées et les rouvre à la réparation. Conséquence mesurée : l'axe 55 part désormais de **0,88** et non de 1,00, la maquette lisant la charge d'après-crue.
+🔴 La vue chantiers `X` du Mac **compile enfin** — 46 cassés, 1 en cours, 1 fini, 13 495 k€ à payer — et la passe sort en 0 avec ses 14 contrôles ✅. Elle est capturée, pas encore jugée. (23b · 72)
+
+**2026-08-24 (session 58) — le trafic se remet à compter juste, et la crue le déplace.** La charge comptait un point par **segment dessiné** et non par tronçon traversé : l'axe de transit sortait en pics isolés (4 tronçons au-dessus de 0,80, 260 m) au lieu d'un corridor continu (**16 tronçons, 799 m**).
+`04e` réaffecte désormais la charge **sans les ponts coupés** et la réécrit : le réseau sort en 2 morceaux (151 nœuds contre 45), 21 tronçons tombent à zéro contre 14, et la rue qui encaisse le plus ne prend que **+0,05** — le faubourg coupé ne coûte presque rien à la ville, ce qui chiffre 23b.
+Piège payé : « avant » se **recalcule** au lieu de se relire dans `routes.charge`, sinon relancer `04e` seul compare l'après à lui-même et affiche un report nul. La dette de `Crue.md` § 6 est payée ; le trafic reste aveugle aux logements et sans capacité (23b · étape 5)
+
+**2026-08-24 (session 58) — une deuxième vue d'ensemble : les chantiers.** Le diagnostic (`D`) dit ce que l'eau **a pris** et ne bouge plus ; la vue chantiers (`X`) dit **où on en est** — rouge le cassé, ambre les travaux, vert le fait — et liste les chantiers en cours avec leur durée restante.
+La pose de panneaux y figure comme les trois réparations : le noyau ne connaît toujours pas la crue, il compare un prix à la caisse. La passe automatisée capture le seul mois où les trois états coexistent.
+🔴 **Rien n'a été vu à l'écran** : le Mac de cette session n'a pas Godot, donc la vue n'a même pas été compilée. (23b · 72)
+
+**2026-08-21 (session 57) — le trafic obéit à l'état de la voirie.** Les 37 routes endommagées, dont trois ponts emportés, restent sans voiture jusqu'à la fin de leur réparation ; chaque réouverture rejoue l'affectation.
+Fermer l'axe 55 le vide dès le clic, puis reporte le flux en six mois de 1,00 à 0,00 ; supprimer le stationnement nomme ses deux mois de chantier et ne s'engage qu'une fois.
+🔴 Le monde visible et la simulation lisent désormais le même état praticable ; l'essai rendu contrôle zéro voiture sur chaque route cassée. (23b · 62)
+
+**2026-08-21 (session 56) — le mouvement quitte le CPU.** Les voitures roulantes sont désormais déplacées par le GPU à la fréquence de l'écran ; aucune transform n'est réécrite par image.
+Le niveau de détail suit les événements de caméra et une pulsation plafonnée à 4 Hz ne transmet que les changements de charge ; loin de la ville, elle sort immédiatement.
+🔴 La simulation reste agrégée et lente ; les 414 véhicules visibles sont une animation 60 Hz, pas 414 agents. (62)
+
+**2026-08-21 (session 55) — les voitures redeviennent une image.** Le trafic ne suit plus le framerate : 12 mises à jour par seconde, une lecture par rue, aucune réécriture d'instance cachée.
+La réserve roulante tombe de 2 544 à 972 positions, le stationnement de 1 916 à 1 000 symboles ; ombres coupées, et à l'échelle de la ville tout disparaît sous le pixel avec zéro travail CPU/GPU.
+🔴 `charge` et les décisions restent la simulation ; les véhicules ne sont qu'un échantillon adaptatif du résultat, conformément à 62.
+
+**2026-08-21 (session 54) — la charge descend dans la rue.** Deux MultiMesh figurent le flux et 58 % des 3 310 places ; charge 1 tasse et ralentit la file, tandis qu'une rue calme respire.
+La fiche de rue supprime le stationnement ou retire la voiture de l'axe ; la seconde décision rejoue l'affectation agrégée sur une échelle figée, et le tronçon 55 tombe de 1,00 à 0,05.
+🔴 L'étape 5 s'ouvre et la 4 passe en pause ; aucune voiture ne navigue, la file est une image du flux conformément à 62.
+**2026-08-21 (session 53) — les deux rives se séparent à l'écran.** La rive gauche touchée descend de **1 m**, la terrasse droite intacte monte de **1 m** ; l'eau reste horizontale et toute la géométrie terrestre lit la même coupe.
+Les trois ponts emportés ne sont plus de simples trous : chacun garde **deux moignons de tablier affaissés**, tandis que la réparation montre toujours un ouvrage neuf complet. La vue `N` et la passe automatisée ont été regardées.
+🔴 Le côté de rive se dérive de la coupe locale de l'Ilse, jamais d'une liste d'îlots ; six vestiges sortent donc des trois coupures. (23b)
+
+**2026-08-21 (session 52) — le faubourg garde ses vestiges.** La crue d'ouverture redescend de 4,40 à **3,80 m** : **68 ruines et 71 bâtiments encore debout mais sinistrés**, contre 106 et 33 avant.
+La terrasse droite, les 417 logements touchés et les trois ponts coupés ne bougent pas ; seule la violence visible dans les îlots est reprise. La chaîne et la passe graphique automatisée sont vertes.
+🔴 Le niveau intermédiaire conserve l'effet systémique de la hauteur d'eau : aucun plafond artificiel de ruines n'est ajouté par îlot. (23b)
+
+**2026-08-21 (session 51) — l'urgence donne l'ordre du jeu.** Deux jauges séparent l'**adaptation**, qui relève logements et ponts, de la **réduction**, qui mesure ensuite les émissions évitées.
+Avant ce passage, toute décision solaire disparaît de la fiche et le noyau la refuse ; après les réparations essentielles, elle revient. Les deux états ont été vus sur les captures automatisées.
+🔴 **Décision 72.** Le verrou fonctionne, mais les prix actuels rendent son ouverture inaccessible en vingt ans : seuil et coûts restent du level design (question 23).
+
+**2026-08-21 (session 50) — la crue revient, sur une branche.** La décision **23b** repart de la hauteur d'eau : crue d'ouverture à 4,40 m, terrasse droite intacte, **106 ruines et 33 bâtiments sinistrés** en rive gauche, les 417 logements du faubourg touchés. Les trois franchissements 145, 168 et 169 sont emportés : la rive gauche n'a plus d'accès routier, contradiction volontaire avec 30c.
+À l'écran, les ruines ont des crêtes cassées et un plancher ouvert ; limon, jardins, haies, arbres et marquage répondent à la même donnée. Le diagnostic `D` réunit passage de l'eau, bâti touché et routes bloquées, avec une croix au-dessus de chaque coupure ; la capture automatisée échoue si l'un des trois signaux est vide.
+🐞 Le contrôle de l'asphalte lit désormais les morceaux réellement émis, pas le réseau théorique. Le choix du joueur reste à écrire : reconstruire, adapter ou rendre à l'eau, et leurs prix sont du level design.
+
 **2026-08-20 (session 49) — les README fondent, et le poids réel change de camp.** Les six fichiers de documentation passent de **23 600 à 7 700 tokens** : partent les chiffres mesurés, les états datés, les défauts, les arbitrages et les expériences retirées ; restent le mode d'emploi, le clavier, la carte des fichiers et les pièges permanents. `CLAUDE.md` gagne une **sixième règle** et un plafond de 120 l. par README — *un README qui raconte la session qui l'a écrit est déjà faux*. Trois références vers des sections supprimées corrigées dans la même passe.
 🔴 **Le vrai poids n'était pas la prose.** Mesuré : le démarrage de session pèse ≈ 13 100 tokens, mais une session sur l'étape 4 en charge ≈ 103 000 — dont **79 000 pour `07_exporter_godot.py` seul** (5 500 l., 110 fonctions, un `main()` de 944 l.). Le découpage de ce fichier est le prochain gros levier, et il est dans `ETAT.md`.
 🐞 Deux dérives que `QGIS/README.md` §8 décrivait étaient elles-mêmes périmées : `HABITANTS_VAULT` est déjà passé à 5 350. Et **`00b_mettre_a_echelle.py` vise `Vallmar2.gpkg`**, disparu le 2026-08-17 — ce n'est pas un script qui écrit la source mais un vestige ; reclassé, et versé à la dette de `Prototype/00`.

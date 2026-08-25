@@ -16,7 +16,8 @@ possible ? ».
     desserte_tc                     le seuil que la densité doit atteindre
     riverain                        fragilité sociale — la boucle gentrification
     stationnement                   le coût politique de la place-parking
-    altitude_relative · alea        ⏸️ à 0 : carte plate, crue hors prototype
+    altitude_relative               ⏸️ à 0 : la carte est plate
+    alea                            ⏸️ posé à 0 ici, ÉCRASÉ PAR `04e` ensuite
     position_fil_eau                la portée « aval » d'une décision
     rive                            l'asymétrie des deux rives
 
@@ -127,12 +128,14 @@ HABITANTS_VAULT = 5350          # ce que le vault annonce — contrôlé, pas su
 # part et d'autre de l'Ilse (3,2 % → 1,3 %, plafond 9 m) — jamais visible à
 # l'écran, 9 m de relief sur 898 m de large.
 #
-# ⏸️ LA CRUE SORT DU PROTOTYPE (2026-08-12). `alea` n'est plus dérivé de rien ;
-# la colonne reste à 0 pour que rien de ce qui la lit ne casse.
-# Pour la rallumer sur une carte plate, il faudrait une portée de crue en
-# mètres modulée d'amont en aval. Mesuré avant de renoncer : à 250 m, l'aléa
-# moyen par rive tombait à 0,74 / 0,39 contre 0,75 / 0,43 par l'altitude — la
-# règle changeait, pas la carte du risque.
+# 🔄 LA CRUE EST REVENUE (2026-08-21, décision 23b) — mais PAS ICI : `04e_crue.py`
+# la porte en entier et RÉÉCRIT `alea` après ce script. Les deux lignes à 0
+# ci-dessous ne sont donc plus une renonciation, c'est une VALEUR PAR DÉFAUT.
+# 🔴 Lancer `04` seul APRÈS `04e` efface la crue sans rien dire. L'ordre est
+# tenu par `chaine.py`, et c'est la seule chose qui le tienne.
+# Ce que l'essai abandonné avait mesuré, et qui reste vrai : une PORTÉE en
+# mètres redonnait la carte de l'altitude (0,74 / 0,39 contre 0,75 / 0,43) — la
+# règle changeait, pas le risque. `04e` a changé de grandeur, pas de réglage.
 #
 # ⚠️ `rive` et `position_fil_eau` RESTENT : ce sont des positions le long de
 # l'eau, pas des risques, et `position_fil_eau` porte la portée « aval » (08).
@@ -291,13 +294,19 @@ def axe_principal(points):
 
 # ---------------------------------------------------------------- le trafic
 
-def charge_reseau(rues):
+def charge_reseau(rues, exclus=()):
     """Affectation de trafic minimale : le plus court chemin en TEMPS entre
     les nœuds du réseau. Deux demandes superposées — l'échange (entre les
     radiales qui sortent de la carte) et le local (tous les nœuds entre eux).
 
     Ce n'est pas une simulation : c'est le socle sur lequel « fermer une rue
     reporte sa charge sur les voisines » devient calculable. → brainstorm §5
+
+    `exclus` retire des tronçons du graphe — un pont emporté, une rue fermée.
+    Ils gardent une entrée dans le résultat, à 0. C'est par là que `04e` fait
+    passer la crue ; le reste de la ville se réaffecte tout seul.
+    ⚠️ La demande ne tient qu'à la géométrie : ni `logements` ni `emplois` n'y
+    entrent, et aucune capacité ne freine personne.
     """
     G = 0.5
 
@@ -310,7 +319,7 @@ def charge_reseau(rues):
     voisins = {}
     for fid, d in rues.items():
         h = d["hier"]
-        if h == "rive" and not d["largeur"]:
+        if fid in exclus or (h == "rive" and not d["largeur"]):
             continue
         v = VITESSE.get(h, 30.0)
         if v <= 0:
@@ -350,14 +359,21 @@ def charge_reseau(rues):
         return dist, prec
 
     def accumuler(sources, cibles, compteur):
+        # 🔴 UN POINT PAR TRONÇON TRAVERSÉ, pas par segment dessiné. Le chemin
+        # revient en arêtes du graphe, donc en points de la polyligne : compter
+        # là chargeait une rue au prorata de ses sommets. Mesuré le 2026-08-24 :
+        # l'axe de transit sortait en pics isolés, 4 tronçons au-dessus de 0,80
+        # au lieu de 16 qui se suivent.
         for s in sources:
             _, prec = dijkstra(s)
             for t in cibles:
                 if t == s or t not in prec:
                     continue
-                u = t
+                u, traverses = t, set()
                 while u in prec:
                     u, fid = prec[u]
+                    traverses.add(fid)
+                for fid in traverses:
                     compteur[fid] = compteur.get(fid, 0) + 1
 
     c_transit, c_local = {}, {}
@@ -366,7 +382,7 @@ def charge_reseau(rues):
 
     def norme(c):
         """Normaliser par le maximum écraserait tout : un seul tronçon porte
-        l'essentiel des plus courts chemins. On cale sur le 9e décile et on
+        l'essentiel des plus courts chemins. On cale sur le 95e centile et on
         étire le bas de l'échelle, pour que « chargée » et « très chargée »
         restent distinguables à l'œil."""
         if not c:
@@ -471,7 +487,7 @@ def main():
         d["rive"] = "lit" if d["st"] == "riviere" else \
             ("gauche" if cote > 0 else "droite")
 
-        # Carte plate, crue hors prototype : les deux colonnes restent, à 0.
+        # Valeurs par défaut : `04e` réécrit `alea`, `altitude_relative` reste à 0.
         d["alt"] = 0.0
         d["alea"] = 0.0
 
@@ -619,7 +635,7 @@ def main():
         print("       c'est la géométrie — il faudrait dessiner du sol d'activité.")
         print("       Cohérent avec l'axe de transit saturé : les gens sortent.")
 
-    print("\nL'EAU  (crue hors prototype — il reste les DEUX RIVES et l'amont/aval)")
+    print("\nL'EAU  (les DEUX RIVES et l'amont/aval — la crue est dans 04e)")
     for cote in ("gauche", "droite", "lit"):
         fs = [f for f, d in ilots.items() if d["rive"] == cote]
         if not fs:
@@ -699,6 +715,12 @@ def main():
         d = rues[f]
         print("    tronçon %-4d %-10s %5.0f m · charge %.2f · %d places"
               % (f, d["hier"], d["long"], d["charge"], d["places"]))
+    # Le critère de l'étape 5 porte sur un AXE, pas sur un tronçon : c'est le
+    # linéaire saturé qu'il faut lire, la tête de liste sature toujours.
+    sat = [f for f, d in rues.items() if d["charge"] > 0.80]
+    print("    → %d tronçons au-dessus de 0,80, soit %.0f m sur %.0f m"
+          % (len(sat), sum(rues[f]["long"] for f in sat),
+             sum(d["long"] for d in rues.values())))
 
     print("\nSAISIES PROTÉGÉES  %d îlots %s (exception=1)"
           % (len(FORCE), sorted(FORCE)))

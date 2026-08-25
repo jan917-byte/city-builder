@@ -226,6 +226,65 @@ const FEUILLU := 0
 const CONIFERE := 1
 
 
+## Une recette unique pour voitures roulantes et garées. La teinte vient de
+## l'instance ; 4 000 véhicules restent donc deux MultiMesh et deux appels.
+static func voitures(nombre: int, anime := false) -> MultiMesh:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var i := PackedInt32Array()
+	_boite(v, n, c, i, Vector3(1.78, 0.62, 4.15), Vector3(0.0, 0.31, 0.0), Color.WHITE)
+	_boite(v, n, c, i, Vector3(1.48, 0.58, 2.05), Vector3(0.0, 0.90, -0.15),
+		Color(0.28, 0.33, 0.36))
+	var mesh := _surface(v, n, c, i)
+	if anime:
+		var shader := Shader.new()
+		shader.code = "shader_type spatial;\n" \
+			+ "varying vec4 teinte;\n" \
+			+ "void vertex() {\n" \
+			+ "  float longueur = max(INSTANCE_CUSTOM.z, 0.01);\n" \
+			+ "  VERTEX.z += mod(INSTANCE_CUSTOM.x + TIME * INSTANCE_CUSTOM.y, longueur);\n" \
+			+ "  teinte = COLOR;\n" \
+			+ "}\n" \
+			+ "void fragment() { ALBEDO = teinte.rgb; ROUGHNESS = 0.72; }\n"
+		var mat := ShaderMaterial.new()
+		mat.shader = shader
+		mesh.surface_set_material(0, mat)
+	else:
+		var mat := StandardMaterial3D.new()
+		mat.vertex_color_use_as_albedo = true
+		mat.roughness = 0.72
+		mesh.surface_set_material(0, mat)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.use_custom_data = anime
+	mm.mesh = mesh
+	mm.instance_count = nombre
+	return mm
+
+
+static func _boite(v: PackedVector3Array, n: PackedVector3Array,
+		c: PackedColorArray, i: PackedInt32Array, taille: Vector3,
+		centre: Vector3, couleur: Color) -> void:
+	var h := taille * 0.5
+	var faces := [
+		[Vector3.RIGHT, [Vector3(h.x,-h.y,-h.z), Vector3(h.x,-h.y,h.z), Vector3(h.x,h.y,h.z), Vector3(h.x,h.y,-h.z)]],
+		[Vector3.LEFT, [Vector3(-h.x,-h.y,h.z), Vector3(-h.x,-h.y,-h.z), Vector3(-h.x,h.y,-h.z), Vector3(-h.x,h.y,h.z)]],
+		[Vector3.UP, [Vector3(-h.x,h.y,-h.z), Vector3(h.x,h.y,-h.z), Vector3(h.x,h.y,h.z), Vector3(-h.x,h.y,h.z)]],
+		[Vector3.DOWN, [Vector3(-h.x,-h.y,h.z), Vector3(h.x,-h.y,h.z), Vector3(h.x,-h.y,-h.z), Vector3(-h.x,-h.y,-h.z)]],
+		[Vector3.FORWARD, [Vector3(h.x,-h.y,h.z), Vector3(-h.x,-h.y,h.z), Vector3(-h.x,h.y,h.z), Vector3(h.x,h.y,h.z)]],
+		[Vector3.BACK, [Vector3(-h.x,-h.y,-h.z), Vector3(h.x,-h.y,-h.z), Vector3(h.x,h.y,-h.z), Vector3(-h.x,h.y,-h.z)]],
+	]
+	for f in faces:
+		var b := v.size()
+		for p in f[1]:
+			v.append(p + centre)
+			n.append(f[0])
+			c.append(couleur)
+		i.append_array(PackedInt32Array([b, b + 1, b + 2, b, b + 2, b + 3]))
+
+
 static func arbres(liste: Array, essence: int, feuillage: Color,
 		tronc: Color) -> MultiMesh:
 	var pris: Array = []

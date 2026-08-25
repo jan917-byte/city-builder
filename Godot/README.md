@@ -1,9 +1,7 @@
 # Godot — la maquette de Wehrau
 
-On clique un îlot, on lit sa fiche, on augmente sa part de panneaux solaires, et les totaux de ville suivent. Godot **4.7.1**, aucun plugin, aucune dépendance.
-
+On relève d'abord la ville après la crue ; les décisions solaires n'apparaissent que lorsque les logements sinistrés et les franchissements sont rétablis. Deux jauges rendent ce passage **adaptation → réduction** visible. Godot **4.7.1**, aucun plugin, aucune dépendance.
 🔴 **Aucun chiffre mesuré dans ce fichier.** Ils sont dans `Prototype/`, à l'étape qui les porte, et l'export les réimprime à chaque passage. Le design est dans le vault, ce qui reste à faire dans `ETAT.md`.
-
 **Toute la géométrie est calculée en Python**, dans `07_exporter_godot.py`. Godot ne prend aucune décision géométrique : il lit des tableaux et les passe à `ArrayMesh`. L'« interface propre » de `Moteur et architecture:18` n'est pas une hiérarchie de classes, **c'est le contrat JSON**.
 
 ## Le lancer
@@ -13,7 +11,6 @@ python QGIS/scripts/chaine.py --godot
 ```
 
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
-
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
 
 ## Le clavier
@@ -29,14 +26,19 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **G** | le talus des champs, au bord de l'eau |
 | **O** | le plus long franchissement, de près |
 | **M** | la place-parking et ses places peintes — à regarder de haut |
+| **F** | le faubourg sinistré, rive gauche |
+| **N** | le pont que la crue a emporté |
 | **Q / E** | quart de tour, recalé sur les quatre vues cardinales |
 | **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
 | **T** | bascule vue de dessus ⇄ hauteur précédente |
 | **souris** | molette : zoom · clic droit glissé : tourner · clic milieu glissé : déplacer |
-| **C** | recolorer la ville **par tissu** — la palette d'avant le rendu réaliste |
 | **F3** | afficher / masquer le moniteur de performances |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
+
+## Les deux vues
+
+**La ville vivante** et **le diagnostic**, à la souris : le bouton « Diagnostic » du tableau de bord, puis le menu des thèmes qui prend sa place — pas de raccourci clavier, c'est voulu. Le diagnostic passe la ville en **maquette blanche** — plus de matière, plus d'arbres, plus de voitures, rien que le volume — et **seul le thème choisi est en couleur** : tant qu'il ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le thème. Le temps continue, la caméra ne bouge pas, la fiche répond toujours au clic — **le diagnostic change ce qu'on voit, jamais ce qu'on peut faire**. Un thème neuf, c'est **trois pièces** : une ligne dans `THEMES` (haut de `maquette.gd`), son genre de peinture, et un panneau seulement s'il en faut un.
 
 Les gestes de caméra sont rappelés en bas à gauche de l'écran, avec l'angle courant. `V` `B` `R` ne sont pas un confort : ce sont **les critères de réussite du plan**, une touche chacun. On ne juge pas de mémoire.
 
@@ -51,9 +53,10 @@ scripts/
   constructeur.gd      tableaux → ArrayMesh. Aucun accès aux nœuds   ← isolé
   ville.gd             l'état, les rampes, les indicateurs, la caisse  ← LE NOYAU
   energie.gd           la table par tissu, les formules, les deux prix. Tout statique
-  chantiers.gd         ancien prototype à deux décisions, conservé comme trace
+  chantiers.gd         ancien prototype, conservé comme trace — RIEN à voir
+                       avec le thème « chantiers », qui vit dans ville.gd
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
-  interface.gd         la ville à gauche, l'îlot et son curseur à droite
+  interface.gd         la ville ou le menu à gauche, l'îlot et son curseur à droite
   moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
   materiaux.gd         les matériaux, zéro texture
   camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°
@@ -69,8 +72,8 @@ outils/
 - **La caméra est orthographique**, et ça ne se rouvre pas : aucune perspective, donc une hauteur double projette double où que soit l'objet. « S'approcher » est réduire le cadrage, jamais avancer — ni LOD, ni distance, ni façades à détailler.
 - 🔴 En orthographie, la profondeur de sol visible vaut `cadrage / sin(hauteur)`. Le cadrage est donc **multiplié par le sinus de la hauteur**, sinon la vue rasante ne montre plus qu'une bande au milieu d'un écran vide.
 - **On montre l'écart au mois 0 à côté de la valeur**, partout. Une valeur qui bouge de 2 % ne se voit pas, et sans l'écart on croit que rien ne bouge.
-- **L'échelle de couleur d'un calque est fixée sur l'état de DÉPART**, jamais recalculée à chaque pas de temps — sinon l'extrémum suit le changement et l'image reste identique.
-- **Le toit et le mur sont deux matériaux**, le matériau découle de l'**époque** du bâtiment, et chaque bâtiment tire sa teinte de sa **position** (35). La touche `C` est la contrepartie : la couleur ne disant plus la typologie, il faut pouvoir la retrouver d'un geste.
+- **L'échelle de couleur d'un thème est fixée sur l'état de DÉPART**, jamais recalculée à chaque pas de temps — sinon l'extrémum suit le changement et l'image reste identique.
+- **Le toit et le mur sont deux matériaux**, le matériau découle de l'**époque** du bâtiment, et chaque bâtiment tire sa teinte de sa **position** (35). Le thème « tissu » est la contrepartie : la couleur ne disant plus la typologie, il faut pouvoir la retrouver d'un geste.
 - **Aucune fenêtre n'est un triangle** : le percement est dessiné par le matériau. `07` décide le genre de percement et la longueur du mur, Godot dessine.
 
 ## Ce qui se sélectionne, et comment
@@ -97,12 +100,10 @@ L'occlusion voyage dans `COLOR.a` — la teinte occluse est dans `COLOR.rgb`, le
 godot --headless --path Godot --script res://outils/sonde_api.gd
 ```
 
-La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change.
+La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change. Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
 - `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`).
 - `-- --essai` joue la partie de contrôle et quitte. ⚠️ **pas** avec `--headless` : le pilote de rendu y est factice, aucune image n'en sort.
-
-Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
 `.mcp.json` à la racine déclare le serveur `godot-mcp`, qui permet de lancer la maquette et de lire la console. 🔴 **C'est le seul fichier du dépôt qui ne soit pas portable** : il est écrit pour Windows, et se corrige à la main sur le Mac. `run_project` lance un vrai processus — c'est `stop_project` qui le tue.
 

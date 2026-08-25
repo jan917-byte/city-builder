@@ -190,6 +190,26 @@ CHAMPS = [
     "#C3B896",   # terre travaillée
 ]
 
+# ------------------------------------------------------------------- la crue
+# 🎨 TROIS TEINTES, ET ELLES NE SONT PAS DES COULEURS D'ALARME. La DA dit « pas
+# de météo d'ambiance, pas de drame » : la crue se lit à ce qu'elle a LAISSÉ —
+# du limon, des murs nus — jamais à un rouge de danger posé par-dessus.
+# ⚠️ Le prototype est en couleur d'ÉPOQUE depuis le 2026-08-18 : ces teintes se
+# MÉLANGENT à la couleur du bâtiment, elles ne la remplacent pas. Un faubourg
+# repeint en gris uni effacerait le tissu qu'on vient de passer une étape à
+# rendre lisible.
+LIMON = "#8E7F63"          # le dépôt qui reste quand l'eau se retire
+RUINE_MUR = "#8C8578"       # un mur sans toit, lessivé — ni noir ni brûlé
+RUINE_TOIT = "#B4AEA1"      # ⏸️ plus employé depuis le 2026-08-21, voir GRAVATS
+# 🔴 LE SOL D'UNE RUINE EST SOMBRE, ET C'EST UN RETOUR EN ARRIÈRE ASSUMÉ.
+# Le 2026-08-18, un gris à #5C574F posé EN DALLE, à hauteur d'étage, se lisait
+# comme la toiture d'un hangar — Wehrau en a deux. Depuis le 2026-08-21 une
+# ruine n'a plus de dalle du tout : ses murs sont cassés à des hauteurs
+# différentes et on voit le plancher du rez AU SOL, entre eux. Un trou sombre
+# entouré de murs clairs ne ressemble à aucun toit de la ville, et c'est la
+# seule chose qui se lise à 1 200 m d'étendue.
+GRAVATS = "#4B463E"
+
 # ----------------------------------------------------------------- minéral
 # Un seul gris pour tout le réseau : la hiérarchie s'exprime par la LARGEUR,
 # ce qui est le sujet du troisième critère de réussite et économise quatre
@@ -300,6 +320,15 @@ def couleur_mur(sous_type, graine):
     r = random.Random(graine ^ 0x3D0C)
     bases = ENDUITS.get(sous_type, ENDUITS_DEFAUT)
     return _varier(bases[r.randrange(len(bases))], r, 0.05)
+
+
+def salir(base, hauteur_eau, force=0.14, plafond=0.55):
+    """Ce que la crue a laissé sur une surface : `force` de limon par mètre
+    d'eau, plafonné. Sert au mur ET au sol, d'où les deux paramètres — un sol
+    reste sale plus longtemps qu'une façade, que la pluie lave, et un jardin
+    ravagé n'a plus d'herbe du tout, ce qu'aucun plafond commun ne dirait."""
+    return melanger(base, LIMON,
+                    min(plafond, max(0.0, hauteur_eau) * force))
 
 
 def couleur_champ(graine, impermeabilise=0.0):
