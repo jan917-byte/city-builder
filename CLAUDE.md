@@ -1,7 +1,7 @@
 # CLAUDE.md — les règles du projet
 
 > Chargé à chaque session. Ici, **ce qui ne change pas**. Où on en est → [ETAT.md](ETAT.md).
-> **Plafond : 80 lignes.** Ce qui déborde est de l'histoire, et l'histoire va dans [HISTORIQUE.md](HISTORIQUE.md).
+> **Plafond : 100 lignes.** Ce qui déborde est de l'histoire, et l'histoire va dans [HISTORIQUE.md](HISTORIQUE.md).
 
 ## 1. Le projet
 
@@ -15,7 +15,7 @@ City-builder PC de **transformation urbaine**. Le joueur ne construit pas, il **
 
 | Fichier | Ce qu'il porte | Plafond |
 |---|---|---|
-| **CLAUDE.md** | les règles | 80 l. |
+| **CLAUDE.md** | les règles | 100 l. |
 | **[ETAT.md](ETAT.md)** | le signet : étape ouverte · prochaine action · ce qui attend l'auteur | **40 l.** |
 | **[HISTORIQUE.md](HISTORIQUE.md)** | **3 lignes par session** | on y cherche, on ne le lit pas |
 | `Vault - Jeu urbanisme/` | 🧠 le design — idées, arbitrages, références | — |
@@ -49,6 +49,7 @@ Dans le vault, quatre notes commandent les autres : `00 - Index.md` · `Méta/D�
 
 Fait de départ, pas une préférence. Il juge sur ce qu'il voit. Donc **rien n'est expliqué tant que ça n'est pas montré autrement que par du code**.
 
+- 🔴 **Court et simple, toujours.** Une réponse tient en quelques lignes : ce qui a changé, quoi regarder, ce qui reste. Pas de survol des options écartées, pas de récit de ce que j'ai essayé, pas de jargon quand un mot ordinaire suffit. Si c'est long, c'est que je n'ai pas fini de trier.
 - 🔴 **Jamais de code dans mes réponses.** Pour désigner un endroit, je le nomme (fichier + à quoi il sert), je ne le recopie pas.
 - **Montrer, dans cet ordre** : ① à l'écran — la maquette, une capture, un avant/après ; ② un tableau ; ③ un schéma ; ④ deux phrases en français, en dernier recours.
 - **Après une modification** : dire quoi lancer, quoi regarder, ce qui doit avoir changé, **et ce qui prouverait que c'est cassé**. Pas « c'est fait ».
@@ -66,6 +67,8 @@ Un **retour en arrière se signale** au lieu de s'effacer ; un commentaire deven
 ## 6. Deux machines, un dépôt
 
 Windows principal, Mac occasionnel, **à égalité**. `git pull` en début de session, `git push` en fin. Dépôt : `jan917-byte/city-builder` (privé).
+
+**Un commit se nomme comme on le cherchera** : un titre **factuel**, préfixé par la zone touchée (`chaine:` `godot:` `proto:` `vault:` `doc:`), qui dit **ce qui change** ; puis **une ligne** en dessous, qui dit **pourquoi** et porte les chiffres mesurés. Pas de titre imagé — le `git log` sert à retrouver, pas à relire.
 
 > 🔴 **La source est du texte** — `QGIS/data/source/*.geojson`, une entité par ligne, triée par `fid`, donc git la fusionne. **Tout GeoPackage est un dérivé, et aucun n'est suivi par git.**
 > `python QGIS/scripts/chaine.py` refait tout en 0,7 s. **Si un fichier est calculé, ne pas le committer.**
