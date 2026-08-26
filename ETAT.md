@@ -3,7 +3,7 @@
 > **Signet, pas source.** Design → le vault · carte → `QGIS/data/source/` · détail de l'étape → sa note · ce qui s'est passé → [HISTORIQUE.md](HISTORIQUE.md).
 > **Plafond : ~40 lignes.** Ce qui ne tient pas ici tient ailleurs.
 
-**2026-08-26 (session 65).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder* — **jamais jugé à l'écran**. L'étape 4 est en pause. Godot est installé sur le Mac : la passe `--essai` compile, tourne et sort ses images **ici**, y compris les deux vues de la session 61. → [Trafic](Prototype/Trafic.md) § Les deux vues
+**2026-08-26 (session 67).** Étape ouverte : **5 — [Le trafic visible](Prototype/Trafic.md)**, critère *une rue à `charge = 1,00` est désagréable à regarder* — **jamais jugé à l'écran**. L'étape 4 est en pause. L'interface est passée au papier : pictogrammes et nombres en bandeau, fiche locale à droite, vues à gauche ; `--interface` sort ses deux captures de contrôle. → [Trafic](Prototype/Trafic.md) § Les deux vues
 🌊 **La berge est devenue un objet du jeu** (73) : **8 morceaux**, un par rive et par bief, **trois états francs** (asphalte → quai apaisé → berge renaturée). Le mur de quai n'appartient plus à la rue. Une berge rendue au fleuve **abaisse la prochaine crue dans son bief, sur les deux rives** (74) : l'aléa, la reprise annoncée et *la prochaine crue au pire* suivent. Restent le trafic et le sol → [Décisions arrêtées](Vault%20-%20Jeu%20urbanisme/M%C3%A9ta/D%C3%A9cisions%20arr%C3%AAt%C3%A9es.md) 73 · [Questions ouvertes](Vault%20-%20Jeu%20urbanisme/M%C3%A9ta/Questions%20ouvertes.md) n°24
 
 ## Prochaine action — juger le trafic à l'écran

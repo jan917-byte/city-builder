@@ -202,7 +202,8 @@ func _ready() -> void:
 	moniteur_performances.name = "MoniteurPerformances"
 	add_child(moniteur_performances)
 	# Les captures jugent la ville, pas l'ordinateur qui les prend.
-	moniteur_performances.batir(not "--essai" in OS.get_cmdline_user_args())
+	moniteur_performances.batir(not ("--essai" in OS.get_cmdline_user_args()
+		or "--interface" in OS.get_cmdline_user_args()))
 
 	_batir_contour()
 
@@ -213,8 +214,24 @@ func _ready() -> void:
 		int(c["triangles"])])
 	_rafraichir(true)
 
-	if "--essai" in OS.get_cmdline_user_args():
+	if "--interface" in OS.get_cmdline_user_args():
+		await _essai_interface()
+	elif "--essai" in OS.get_cmdline_user_args():
 		await _essai()
+
+
+## Deux images rapides pour juger l'interface sans rejouer toute la partie.
+func _essai_interface() -> void:
+	vitesse = 0.0
+	_viser_route(55, 90.0)
+	pivot.caler(35.0, 28.0)
+	interface.montrer("r", 55, false)
+	await get_tree().process_frame
+	await _capturer("interface_rue")
+	_sur_theme("trafic")
+	await get_tree().process_frame
+	await _capturer("interface_diagnostic")
+	get_tree().quit()
 
 
 ## Une passe sans souris, pour juger sur des captures plutôt que de mémoire.

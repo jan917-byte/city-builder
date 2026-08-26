@@ -44,7 +44,7 @@ Pourquoi ça compte pour cette étape : le critère se juge **sans thème**, sur
 
 Ce qui prouverait que c'est cassé : une voiture ou un arbre sur une image de diagnostic · `essai_retour_ville` qui diffère de `essai_materiaux` · deux signaux sur le même objet · un carton si clair que les couleurs de thème s'y perdent — le seul réglage qu'aucun contrôle n'attrape, il tient à un nombre du shader.
 
-🔴 **Écrit sur un Mac sans Godot** : ni compilé, ni lancé, ni vu. Les touches `C` `D` `H` `X` ont été retirées avec l'ancien mécanisme — si le menu ne s'ouvre pas, il n'y a plus de chemin de secours au clavier.
+✅ **L'interface papier est compilée et vue sur Mac** : bandeau d'indicateurs à pictogrammes, fiche locale à droite, thèmes en onglets à gauche. `--interface` sort les deux cadrages courts `wehrau_interface_rue.png` et `wehrau_interface_diagnostic.png`.
 🔴 **La décision « deux vues » n'existe pas dans le vault** : à ouvrir dans `Questions ouvertes.md` et fermer dans `Décisions arrêtées.md`.
 
 ## Ce qui reste

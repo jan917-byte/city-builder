@@ -18,14 +18,15 @@ signal berge_demandee(fid: int, cible: int)
 const Ville := preload("res://scripts/ville.gd")
 const Apercu := preload("res://scripts/apercu.gd")
 
-const FOND := Color(0.106, 0.118, 0.141, 0.94)
-const BORD := Color(0.173, 0.192, 0.227)
-const TEXTE := Color(0.902, 0.910, 0.925)
-const GRIS := Color(0.604, 0.635, 0.694)
-const ACCENT := Color(0.910, 0.769, 0.416)
+const FOND := Color8(239, 234, 216, 247)
+const FOND_FORT := Color8(229, 222, 199, 250)
+const BORD := Color8(104, 96, 72, 155)
+const TEXTE := Color8(31, 57, 65)
+const GRIS := Color8(96, 96, 82)
+const ACCENT := Color8(132, 112, 53)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
-const ALERTE := Color(0.878, 0.451, 0.376)
+const ALERTE := Color8(194, 74, 53)
 # 🔧 LES TROIS COULEURS DE LA VUE CHANTIERS, aussi dans le shader
 # (`materiaux.objet`, en linéaire) : n'en changer qu'une fait mentir la légende.
 const CASSE := Color8(220, 58, 48)
@@ -37,10 +38,10 @@ const FAIT := Color8(91, 174, 117)
 ## nombre : il en faut deux pour distinguer « 40 % posés » de « 40 % en route
 ## vers 72 % ». Elle ne se touche pas — le réglage est le curseur d'en dessous.
 class Jauge extends Control:
-	const RESTE := Color(0.153, 0.169, 0.204)   # le toit encore nu
-	const VISEE := Color(0.404, 0.349, 0.212)   # l'objectif demandé, pas encore atteint
-	const POSE := Color(0.957, 0.867, 0.596)    # le jaune clair des panneaux réellement en place
-	const CADRE := Color(0.290, 0.318, 0.373)   # le filet qui dessine la jauge quand elle est vide
+	const RESTE := Color8(205, 201, 183)         # le toit encore nu
+	const VISEE := Color8(174, 147, 74)          # l'objectif demandé, pas encore atteint
+	const POSE := Color8(221, 171, 49)           # les panneaux réellement en place
+	const CADRE := Color8(116, 108, 83)          # le filet qui dessine la jauge quand elle est vide
 
 	var pose := 0.0   # 0 → 1
 	var cible := 0.0  # 0 → 1, toujours ≥ pose
@@ -154,9 +155,12 @@ var _solaire_choix := -1.0
 # Vrai pendant que la fiche écrit dans le curseur : une montée de `min_value`
 # déplacerait la valeur et émettrait le signal, donc inventerait un choix.
 var _ecrit_curseur := false
+var _theme_ui: Theme
+var _icones := {}
 
 
 func batir() -> void:
+	_theme_ui = _creer_theme()
 	_panneau_ville()
 	_panneau_ilot()
 	_panneau_menu()
@@ -172,9 +176,103 @@ func _boite() -> StyleBoxFlat:
 	sb.bg_color = FOND
 	sb.border_color = BORD
 	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(8)
+	sb.set_corner_radius_all(9)
 	sb.set_content_margin_all(12)
+	sb.shadow_color = Color(0.10, 0.11, 0.09, 0.18)
+	sb.shadow_size = 3
 	return sb
+
+
+func _creer_theme() -> Theme:
+	var t := Theme.new()
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color8(248, 244, 229, 210)
+	normal.border_color = BORD
+	normal.set_border_width_all(1)
+	normal.set_corner_radius_all(5)
+	normal.set_content_margin_all(7)
+	var survol := normal.duplicate()
+	survol.bg_color = Color8(224, 215, 185, 245)
+	var presse := normal.duplicate()
+	presse.bg_color = TEXTE
+	var inactif := normal.duplicate()
+	inactif.bg_color = Color8(218, 214, 198, 170)
+	t.set_stylebox("normal", "Button", normal)
+	t.set_stylebox("hover", "Button", survol)
+	t.set_stylebox("pressed", "Button", presse)
+	t.set_stylebox("hover_pressed", "Button", presse)
+	t.set_stylebox("disabled", "Button", inactif)
+	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
+	t.set_color("font_color", "Button", TEXTE)
+	t.set_color("font_hover_color", "Button", TEXTE)
+	t.set_color("font_pressed_color", "Button", FOND)
+	t.set_color("font_disabled_color", "Button", GRIS.lightened(0.15))
+	t.set_font_size("font_size", "Button", 14)
+	t.set_constant("icon_max_width", "Button", 25)
+	var ligne := StyleBoxFlat.new()
+	ligne.bg_color = Color(0, 0, 0, 0)
+	ligne.border_color = Color(BORD, 0.72)
+	ligne.border_width_top = 1
+	ligne.content_margin_top = 5
+	ligne.content_margin_bottom = 5
+	t.set_stylebox("separator", "HSeparator", ligne)
+	return t
+
+
+func _icone(nom: String, taille := 25) -> Texture2D:
+	var cle := "%s_%d" % [nom, taille]
+	if _icones.has(cle):
+		return _icones[cle]
+	var dessins := {
+		"ville": "<path d='M3 21h18M5 21V9h5v12M10 21V4h6v17M16 21v-9h4v9M7 12h1m-1 3h1m-1 3h1m5-11h1m-1 4h1m-1 4h1m4 0h1m-1 3h1'/>",
+		"diagnostic": "<path d='M4 20h16M6 18v-6h3v6m3 0V6h3v12m3 0v-9h3v9'/>",
+		"adaptation": "<path d='M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3zM8 12c2-2 6-2 8 0m-8 3c2-2 6-2 8 0'/>",
+		"reduction": "<path d='M20 4C10 4 5 9 5 15c0 3 2 5 5 5 7 0 10-8 10-16zM5 20c3-6 7-9 12-12'/>",
+		"conso": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
+		"production": "<circle cx='12' cy='12' r='4'/><path d='M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2M19 5l-2 2M7 17l-2 2'/>",
+		"achat": "<path d='M9 3v7m6-7v7m-8 0h10v2a5 5 0 01-5 5v4m-3 0h6'/>",
+		"co2": "<path d='M7 18h11a4 4 0 000-8 6 6 0 00-11-2 5 5 0 000 10z'/>",
+		"caisse": "<circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/>",
+		"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
+		"chantiers": "<path d='M4 21h16M7 21V6h10m-10 4h12l-4-4m1 4v5m-2 0h4'/>",
+		"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
+		"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
+		"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
+		"retour": "<path d='M9 7l-5 5 5 5M5 12h9a6 6 0 016 6'/>",
+	}
+	var corps: String = dessins.get(nom, dessins["diagnostic"])
+	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [TEXTE.to_html(false), corps]
+	var img := Image.new()
+	var erreur := img.load_svg_from_string(svg, float(taille) / 24.0)
+	if erreur != OK:
+		return null
+	var texture := ImageTexture.create_from_image(img)
+	_icones[cle] = texture
+	return texture
+
+
+func _tuile(parent: HBoxContainer, icone: String, titre: String, largeur: float) -> VBoxContainer:
+	var p := PanelContainer.new()
+	p.theme = _theme_ui
+	p.add_theme_stylebox_override("panel", _boite())
+	p.custom_minimum_size = Vector2(largeur, 64)
+	parent.add_child(p)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	p.add_child(h)
+	var pic := TextureRect.new()
+	pic.texture = _icone(icone, 27)
+	pic.custom_minimum_size = Vector2(27, 27)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(pic)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	v.add_child(_label(titre.to_upper(), 10, GRIS))
+	return v
 
 
 ## Le curseur par défaut de Godot est un trait gris sans remplissage : on y lit
@@ -219,77 +317,75 @@ func _label(txt: String, taille: int, coul: Color) -> Label:
 
 func _panneau_ville() -> void:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", _boite())
-	p.offset_left = 16
-	p.offset_top = 16
-	p.custom_minimum_size = Vector2(245, 0)
+	p.theme = _theme_ui
+	p.anchor_right = 1.0
+	p.offset_left = 12
+	p.offset_right = -12
+	p.offset_top = 10
+	p.custom_minimum_size.y = 66
+	p.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	add_child(p)
 	_ville_panneau = p
 
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
-	p.add_child(v)
-	v.add_child(_label("WEHRAU", 12, ACCENT))
-	v.add_child(_label("Toute la ville", 20, TEXTE))
-	# La seule porte vers la deuxième vue. Elle rend le dernier thème regardé.
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	p.add_child(h)
+	var ville_tuile := _tuile(h, "ville", "Ville", 150)
+	ville_tuile.add_child(_label("WEHRAU", 18, TEXTE))
+
+	var diag_cadre := PanelContainer.new()
+	diag_cadre.theme = _theme_ui
+	diag_cadre.add_theme_stylebox_override("panel", _boite())
+	diag_cadre.custom_minimum_size = Vector2(145, 64)
+	h.add_child(diag_cadre)
 	var diag := Button.new()
-	diag.text = "Diagnostic"
-	diag.tooltip_text = "Quitter la ville vivante : dangers, chantiers, énergie, trafic, tissu."
+	diag.text = "DIAGNOSTIC"
+	diag.icon = _icone("diagnostic", 27)
+	diag.tooltip_text = "Dangers, chantiers, énergie, trafic et tissu."
 	diag.pressed.connect(func() -> void: theme_demande.emit(_dernier_theme))
-	v.add_child(diag)
-	v.add_child(HSeparator.new())
-	v.add_child(_label("DURABILITÉ", 12, ACCENT))
-	var adaptation := _jauge_climat(v, "Adaptation", Color8(38, 157, 196))
+	diag_cadre.add_child(diag)
+
+	var adaptation_parent := _tuile(h, "adaptation", "Adaptation", 150)
+	var adaptation := _jauge_climat(adaptation_parent, Color8(55, 133, 157))
 	_adaptation_jauge = adaptation["jauge"]
 	_adaptation_valeur = adaptation["valeur"]
 	_adaptation_etat = adaptation["etat"]
-	var reduction := _jauge_climat(v, "Réduction", Color8(91, 174, 117))
+	var reduction_parent := _tuile(h, "reduction", "Réduction", 145)
+	var reduction := _jauge_climat(reduction_parent, Color8(104, 136, 73))
 	_reduction_jauge = reduction["jauge"]
 	_reduction_valeur = reduction["valeur"]
 	_reduction_etat = reduction["etat"]
-	v.add_child(HSeparator.new())
 
 	for ligne in [
-		["conso", "Consommation"],
-		["production", "Production solaire"],
-		["achat", "Énergie achetée"],
-		["co2", "CO₂"],
-		# La petite économie APRÈS l'énergie : c'est elle qu'on transforme,
-		# l'argent ne fait que limiter le rythme.
-		["caisse", "Caisse"],
-		["recette", "Recette solaire"],
+		["conso", "conso", "Conso.", 125.0],
+		["production", "production", "Solaire", 125.0],
+		["achat", "achat", "Achat", 125.0],
+		["co2", "co2", "CO₂", 105.0],
+		["caisse", "caisse", "Caisse", 125.0],
 	]:
-		if ligne[0] == "caisse":
-			v.add_child(HSeparator.new())
-		var h := HBoxContainer.new()
-		h.add_child(_label(ligne[1], 12, GRIS))
-		var valeur := _label("", 14, TEXTE)
-		valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		valeur.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(valeur)
+		var tuile := _tuile(h, ligne[1], ligne[2], ligne[3])
+		var valeur := _label("—", 15, TEXTE)
+		tuile.add_child(valeur)
 		_ville_valeurs[ligne[0]] = valeur
-		v.add_child(h)
-
-	# Le seul nombre de l'écran qui puisse dire non : couleur d'accent.
+	# La recette reste le petit écart de la caisse, comme dans la référence.
+	var recette := _label("", 10, Color8(78, 121, 67))
+	(_ville_valeurs["caisse"] as Label).get_parent().add_child(recette)
+	_ville_valeurs["recette"] = recette
 	(_ville_valeurs["caisse"] as Label).add_theme_color_override("font_color", ACCENT)
 
 
-func _jauge_climat(parent: VBoxContainer, titre: String, couleur: Color) -> Dictionary:
+func _jauge_climat(parent: VBoxContainer, couleur: Color) -> Dictionary:
 	var h := HBoxContainer.new()
-	h.add_child(_label(titre, 13, TEXTE))
-	var valeur := _label("0 %", 13, TEXTE)
-	valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	valeur.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var valeur := _label("0 %", 15, TEXTE)
 	h.add_child(valeur)
 	parent.add_child(h)
 	var jauge := Jauge.new()
-	jauge.custom_minimum_size = Vector2(0, 13)
+	jauge.custom_minimum_size = Vector2(0, 7)
 	jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jauge.colorer(couleur)
 	parent.add_child(jauge)
 	var etat := _label("", 11, GRIS)
-	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	parent.add_child(etat)
+	etat.visible = false
 	return {"jauge": jauge, "valeur": valeur, "etat": etat}
 
 
@@ -302,53 +398,56 @@ func _jauge_climat(parent: VBoxContainer, titre: String, couleur: Color) -> Dict
 
 func _panneau_menu() -> void:
 	_menu_panneau = PanelContainer.new()
+	_menu_panneau.theme = _theme_ui
 	_menu_panneau.add_theme_stylebox_override("panel", _boite())
 	_menu_panneau.offset_left = 16
-	_menu_panneau.offset_top = 16
-	_menu_panneau.custom_minimum_size = Vector2(245, 0)
+	_menu_panneau.offset_top = 92
+	_menu_panneau.custom_minimum_size = Vector2(218, 0)
 	_menu_panneau.visible = false
 	add_child(_menu_panneau)
 
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	_menu_panneau.add_child(v)
-	v.add_child(_label("DIAGNOSTIC", 12, ACCENT))
-	v.add_child(_label("Ce que la ville ne montre pas", 20, TEXTE))
-	v.add_child(HSeparator.new())
+	v.add_child(_label("VUES", 12, ACCENT))
 	# ⚠️ `allow_unpress` à false : sans lui, recliquer le thème actif l'éteint
 	# À L'ÉCRAN alors que la ville reste peinte — le menu mentirait.
 	var groupe := ButtonGroup.new()
 	groupe.allow_unpress = false
 	for t in themes:
 		var b := Button.new()
-		b.text = str(t["nom"])
+		var id := str(t["id"])
+		b.text = {"dangers": "Dangers", "chantiers": "Chantiers",
+			"energie": "Énergie", "trafic": "Trafic", "tissu": "Tissu"}.get(
+			id, str(t["nom"]))
+		b.icon = _icone(id, 27)
 		b.toggle_mode = true
 		b.button_group = groupe
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.tooltip_text = str(t.get("resume", ""))
-		var id := str(t["id"])
 		b.pressed.connect(func() -> void: theme_demande.emit(id))
 		v.add_child(b)
 		_menu_boutons[id] = b
 	v.add_child(HSeparator.new())
 	var retour := Button.new()
-	retour.text = "← Revenir à la ville"
+	retour.text = "VILLE"
+	retour.icon = _icone("retour", 25)
 	retour.tooltip_text = "Retrouver la matière, les arbres et les voitures."
 	retour.pressed.connect(func() -> void: theme_demande.emit(""))
 	v.add_child(retour)
-	v.add_child(_label("Le temps continue, et la fiche reste : cliquer un îlot\nmarche ici aussi.", 11, GRIS))
 
 
 ## Le panneau des thèmes CONTINUS — énergie, trafic — et du tissu. Un thème
 ## neuf n'écrit rien de plus : il tombe ici par son `genre`.
 func _panneau_calque() -> void:
 	_calque_panneau = PanelContainer.new()
+	_calque_panneau.theme = _theme_ui
 	_calque_panneau.add_theme_stylebox_override("panel", _boite())
 	_calque_panneau.anchor_left = 0.5
 	_calque_panneau.anchor_right = 0.5
 	_calque_panneau.offset_left = -205
 	_calque_panneau.offset_right = 205
-	_calque_panneau.offset_top = 16
+	_calque_panneau.offset_top = 92
 	_calque_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_calque_panneau.visible = false
 	add_child(_calque_panneau)
@@ -412,7 +511,7 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 	if id != "":
 		_dernier_theme = id
 	var genre := str(t.get("genre", ""))
-	_ville_panneau.visible = id == ""
+	_ville_panneau.visible = true
 	_menu_panneau.visible = id != ""
 	for cle in _menu_boutons:
 		(_menu_boutons[cle] as Button).set_pressed_no_signal(cle == id)
@@ -439,12 +538,13 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 
 func _panneau_diagnostic() -> void:
 	_diagnostic_panneau = PanelContainer.new()
+	_diagnostic_panneau.theme = _theme_ui
 	_diagnostic_panneau.add_theme_stylebox_override("panel", _boite())
 	_diagnostic_panneau.anchor_left = 0.5
 	_diagnostic_panneau.anchor_right = 0.5
 	_diagnostic_panneau.offset_left = -205
 	_diagnostic_panneau.offset_right = 205
-	_diagnostic_panneau.offset_top = 16
+	_diagnostic_panneau.offset_top = 92
 	_diagnostic_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_diagnostic_panneau.visible = false
 	add_child(_diagnostic_panneau)
@@ -503,12 +603,13 @@ const CHANTIERS_LIGNES := 7
 
 func _panneau_chantiers() -> void:
 	_chantiers_panneau = PanelContainer.new()
+	_chantiers_panneau.theme = _theme_ui
 	_chantiers_panneau.add_theme_stylebox_override("panel", _boite())
 	_chantiers_panneau.anchor_left = 0.5
 	_chantiers_panneau.anchor_right = 0.5
 	_chantiers_panneau.offset_left = -205
 	_chantiers_panneau.offset_right = 205
-	_chantiers_panneau.offset_top = 16
+	_chantiers_panneau.offset_top = 92
 	_chantiers_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_chantiers_panneau.visible = false
 	add_child(_chantiers_panneau)
@@ -592,21 +693,22 @@ func _ligne_chantier(c: Dictionary) -> String:
 func _panneau_ilot() -> void:
 	var p := PanelContainer.new()
 	_fiche_panneau = p
+	p.theme = _theme_ui
 	p.add_theme_stylebox_override("panel", _boite())
 	p.anchor_left = 1.0
 	p.anchor_right = 1.0
 	p.offset_left = -336
 	p.offset_right = -16
-	p.offset_top = 16
+	p.offset_top = 92
 	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
 
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	p.add_child(v)
-	_fiche_entete = _label("ÎLOT CLIQUÉ", 12, ACCENT)
+	_fiche_entete = _label("ÎLOT", 12, ACCENT)
 	v.add_child(_fiche_entete)
-	_fiche_titre = _label("Aucun îlot", 20, TEXTE)
+	_fiche_titre = _label("Sélection", 20, TEXTE)
 	v.add_child(_fiche_titre)
 
 	# 🔎 LA MINIATURE (décision 12). Elle montre l'objet dans l'état qui SERA
@@ -632,7 +734,7 @@ func _panneau_ilot() -> void:
 	vue.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vue.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_apercu_cadre.add_child(vue)
-	_fiche_vide = _label("Clique un îlot pour voir ses informations et régler ses panneaux solaires.", 13, GRIS)
+	_fiche_vide = _label("Cliquez un îlot.", 13, GRIS)
 	_fiche_vide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_fiche_vide)
 
@@ -640,16 +742,17 @@ func _panneau_ilot() -> void:
 	_fiche_grille.columns = 2
 	_fiche_grille.add_theme_constant_override("h_separation", 14)
 	_fiche_grille.add_theme_constant_override("v_separation", 4)
+	_fiche_grille.visible = false
 	v.add_child(_fiche_grille)
 	for ligne in [
-		["tissu", "Tissu"],
+		["tissu", "Type"],
 		["logements", "Logements"],
-		["conso", "Consommation"],
-		["production", "Production"],
-		["toit", "Toit équipable"],
+		["conso", "Conso."],
+		["production", "Solaire"],
+		["toit", "Toit"],
 		# L'amortissement est une propriété de l'îlot, pas de la part visée
 		# (`energie.rentabilite_annees`) : sa place est dans la grille.
-		["retour", "Se rembourse en"],
+		["retour", "Retour"],
 	]:
 		_fiche_grille.add_child(_label(ligne[1], 12, GRIS))
 		var valeur := _label("", 12, TEXTE)
@@ -710,7 +813,7 @@ func _panneau_ilot() -> void:
 	_berge_bloc.visible = false
 	v.add_child(_berge_bloc)
 	_berge_bloc.add_child(HSeparator.new())
-	_berge_bloc.add_child(_label("Transformer la berge", 13, ACCENT))
+	_berge_bloc.add_child(_label("BERGE", 12, ACCENT))
 	_berge_texte = _label("", 12, TEXTE)
 	_berge_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_berge_bloc.add_child(_berge_texte)
@@ -727,7 +830,7 @@ func _panneau_ilot() -> void:
 	_repare_bloc.visible = false
 	v.add_child(_repare_bloc)
 	_repare_bloc.add_child(HSeparator.new())
-	_repare_bloc.add_child(_label("Après la crue", 13, ACCENT))
+	_repare_bloc.add_child(_label("CRUE", 12, ACCENT))
 	_repare_texte = _label("", 12, TEXTE)
 	_repare_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_repare_bloc.add_child(_repare_texte)
@@ -741,14 +844,15 @@ func _panneau_ilot() -> void:
 	_trafic_bloc.visible = false
 	v.add_child(_trafic_bloc)
 	_trafic_bloc.add_child(HSeparator.new())
-	_trafic_bloc.add_child(_label("Transformer la rue", 13, ACCENT))
+	_trafic_bloc.add_child(_label("RUE", 12, ACCENT))
 	_trafic_stationnement = Button.new()
-	_trafic_stationnement.text = "Supprimer le stationnement"
+	_trafic_stationnement.text = "Retirer les places"
+	_trafic_stationnement.icon = _icone("trafic", 22)
 	_trafic_stationnement.pressed.connect(func() -> void:
 		trafic_demande.emit("stationnement", _fiche_fid))
 	_trafic_bloc.add_child(_trafic_stationnement)
 	_trafic_axe = Button.new()
-	_trafic_axe.text = "Retirer la voiture de cet axe"
+	_trafic_axe.text = "Fermer aux voitures"
 	_trafic_axe.pressed.connect(func() -> void:
 		trafic_demande.emit("axe", _fiche_fid))
 	_trafic_bloc.add_child(_trafic_axe)
@@ -758,7 +862,7 @@ func _panneau_ilot() -> void:
 	_solaire_bloc.visible = false
 	v.add_child(_solaire_bloc)
 	_solaire_bloc.add_child(HSeparator.new())
-	_solaire_bloc.add_child(_label("Panneaux solaires", 13, ACCENT))
+	_solaire_bloc.add_child(_label("SOLAIRE", 12, ACCENT))
 	_solaire_valeur = _label("", 13, TEXTE)
 	_solaire_bloc.add_child(_solaire_valeur)
 
@@ -769,7 +873,7 @@ func _panneau_ilot() -> void:
 	_solaire_jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_solaire_bloc.add_child(_solaire_jauge)
 
-	_solaire_bloc.add_child(_label("Objectif", 11, GRIS))
+	_solaire_bloc.add_child(_label("CIBLE", 10, GRIS))
 
 	_solaire_curseur = HSlider.new()
 	# 🔴 Échelle FIXE 0→100. Monter `min_value` avec la pose faisait changer un
@@ -812,6 +916,7 @@ func _panneau_camera() -> void:
 	# Les gestes de caméra ne se devinent pas, et un jeu qui oblige à ouvrir un
 	# fichier pour les connaître n'en est pas un.
 	var p := PanelContainer.new()
+	p.theme = _theme_ui
 	p.add_theme_stylebox_override("panel", _boite())
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
@@ -821,19 +926,14 @@ func _panneau_camera() -> void:
 	add_child(p)
 
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
+	v.add_theme_constant_override("separation", 3)
 	p.add_child(v)
-	v.add_child(_label("Caméra", 12, ACCENT))
+	v.add_child(_label("CAMÉRA", 11, ACCENT))
 	_camera_vue = _label("", 14, TEXTE)
 	v.add_child(_camera_vue)
-	v.add_child(HSeparator.new())
 	for ligne in [
-		"clic droit glissé : tourner autour de la ville",
-		"clic milieu glissé : déplacer · molette : zoom",
-		"Q E : quart de tour · flèches : ajuster",
-		"T : vue de dessus · V B R I G O M : les repères",
-		"C : recolorer par tissu · H : charge · D : diagnostic de crue",
-		"X : chantiers — cassé, en travaux, fait",
+		"Molette : zoom · clic droit : tourner",
+		"V : ville · T : dessus · Q E : quart de tour",
 	]:
 		v.add_child(_label(ligne, 11, GRIS))
 
@@ -848,6 +948,7 @@ func maj_camera(lacet: float, hauteur: float) -> void:
 
 func _controles_temps() -> void:
 	var p := PanelContainer.new()
+	p.theme = _theme_ui
 	p.add_theme_stylebox_override("panel", _boite())
 	p.anchor_left = 0.5
 	p.anchor_right = 0.5
@@ -855,8 +956,8 @@ func _controles_temps() -> void:
 	p.anchor_bottom = 1.0
 	# 430 de large : le contenu occupe 409 px marges comprises, mesuré sur
 	# `wehrau_essai_reset.png` après l'ajout du bouton de retour à zéro.
-	p.offset_left = -215
-	p.offset_right = 215
+	p.offset_left = -195
+	p.offset_right = 195
 	p.offset_top = -66
 	p.offset_bottom = -16
 	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -866,10 +967,10 @@ func _controles_temps() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	_temps_label = _label("Mois 0", 13, TEXTE)
-	_temps_label.custom_minimum_size.x = 92
+	_temps_label = _label("MOIS 0", 13, TEXTE)
+	_temps_label.custom_minimum_size.x = 82
 	h.add_child(_temps_label)
-	for choix in [["Pause", 0.0], ["×1", 1.0], ["×4", 4.0], ["×12", 12.0]]:
+	for choix in [["Ⅱ", 0.0], ["▶", 1.0], ["×4", 4.0], ["×12", 12.0]]:
 		var b := Button.new()
 		b.text = choix[0]
 		var v: float = choix[1]
@@ -881,7 +982,7 @@ func _controles_temps() -> void:
 	# le temps ET la ville : un temps qui recule seul laisserait des toits noirs
 	# sous un compteur à « Mois 0 ».
 	var raz := Button.new()
-	raz.text = "Recommencer"
+	raz.text = "↺"
 	raz.tooltip_text = "Remet le temps au mois 0 et annule les poses décidées."
 	raz.pressed.connect(func() -> void: temps_remis.emit())
 	h.add_child(raz)
@@ -907,7 +1008,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_ville_valeurs["caisse"].text = _milliers(_caisse_ke) + " k€"
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
 	_maj_durabilite(indic)
-	_temps_label.text = "Mois %s" % _nb(mois, 1)
+	_temps_label.text = "MOIS %s" % _nb(mois, 1)
 	maj_degats(ville.degats(mois))
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
@@ -921,10 +1022,10 @@ func _maj_durabilite(indic: Dictionary) -> void:
 	var adaptation := float(indic["adaptation_part"])
 	_adaptation_jauge.regler(adaptation, adaptation)
 	_adaptation_valeur.text = "%d %%" % int(roundf(adaptation * 100.0))
-	_adaptation_etat.text = "%d logements à relever · %d ponts coupés" % [
+	_adaptation_etat.text = "%d logements · %d ponts" % [
 		int(ceil(float(indic["adaptation_logements"]))),
 		int(indic["adaptation_ponts"])] if adaptation < 0.9995 else \
-		"La ville tient de nouveau."
+		"Ville relevée"
 
 	_reduction_verrouillee = bool(indic["reduction_verrouillee"])
 	var reduction := float(indic["reduction_part"])
@@ -932,10 +1033,10 @@ func _maj_durabilite(indic: Dictionary) -> void:
 		else Color8(91, 174, 117))
 	_reduction_jauge.regler(0.0 if _reduction_verrouillee else reduction,
 		0.0 if _reduction_verrouillee else reduction)
-	_reduction_valeur.text = "VERROUILLÉE" if _reduction_verrouillee else \
+	_reduction_valeur.text = "—" if _reduction_verrouillee else \
 		"%d %%" % int(roundf(reduction * 100.0))
 	if _reduction_verrouillee:
-		_reduction_etat.text = "Urgence : relever les logements et les ponts."
+		_reduction_etat.text = "Après l'urgence"
 	else:
 		var ecart := float(indic["reduction_ecart_kt"])
 		_reduction_etat.text = "%s kt/an évitées depuis le mois 0." % _nb(ecart, 1) \
@@ -957,8 +1058,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_fiche_grille.visible = couche == "i"
 	_rue_grille.visible = couche == "r"
 	_berge_grille.visible = couche == "b"
-	_fiche_entete.text = {"i": "ÎLOT CLIQUÉ", "r": "RUE CLIQUÉE",
-		"b": "BERGE CLIQUÉE"}[couche]
+	_fiche_entete.text = {"i": "ÎLOT", "r": "RUE", "b": "BERGE"}[couche]
 	_solaire_bloc.visible = couche == "i" and not _reduction_verrouillee
 	_trafic_bloc.visible = couche == "r"
 	_berge_bloc.visible = couche == "b"
@@ -1024,28 +1124,28 @@ func _maj_fiche() -> void:
 	var recette := ville.valeur("i", _fiche_fid, "_recette_ke_an", _mois)
 	_alerter_cout(false)
 	if _reduction_verrouillee:
-		_solaire_valeur.text = "Réduction verrouillée pendant l'urgence."
-		_solaire_cout.text = "Relevez les logements sinistrés et rétablissez les ponts d'abord."
-		_solaire_bouton.text = "Urgence en cours"
+		_solaire_valeur.text = "Disponible après l'urgence."
+		_solaire_cout.text = "Relevez logements et ponts."
+		_solaire_bouton.text = "Urgence"
 		_solaire_bouton.disabled = true
 	elif toit <= 0.0:
-		_solaire_valeur.text = "Église protégée — panneaux solaires interdits." \
-			if int(o.get("solaire_possible", 1)) == 0 else "Aucun toit équipable."
+		_solaire_valeur.text = "Bâtiment protégé." \
+			if int(o.get("solaire_possible", 1)) == 0 else "Aucun toit."
 		_solaire_cout.text = ""
 		_solaire_bouton.text = "Augmenter"
 		_solaire_bouton.disabled = true
 	elif _solaire_choix >= 0.0:
 		_afficher_choix(pct, _solaire_choix)
 	elif etat["en_cours"]:
-		_solaire_valeur.text = "%d %% posés → cible %d %% · encore %s" % [
+		_solaire_valeur.text = "%d %% → %d %% · %s" % [
 			int(roundf(pct)), int(roundf(cible_pct)), _duree(float(etat["reste_mois"]))]
-		_solaire_cout.text = "Travaux engagés : %s k€ payés" % _milliers(float(etat["cout_ke"]))
-		_solaire_bouton.text = "Chantier en cours"
+		_solaire_cout.text = "%s k€ engagés" % _milliers(float(etat["cout_ke"]))
+		_solaire_bouton.text = "En chantier"
 		_solaire_bouton.disabled = true
 	else:
-		_solaire_valeur.text = "%d %% du toit équipé" % int(roundf(pct))
-		_solaire_cout.text = "Rapporte %s k€/an" % _milliers(recette) if pct > 0.0 \
-			else "Aucun panneau posé."
+		_solaire_valeur.text = "%d %% équipé" % int(roundf(pct))
+		_solaire_cout.text = "+%s k€/an" % _milliers(recette) if pct > 0.0 \
+			else "Aucun panneau."
 		if etat["a_commence"]:
 			_message.text = "Pose terminée. Les toits et les totaux ont atteint leur cible."
 		_solaire_bouton.text = "Toit entièrement équipé" if pct >= 99.95 else "Augmenter"
@@ -1058,18 +1158,18 @@ func _maj_fiche() -> void:
 func _afficher_choix(actuel: float, cible: float) -> void:
 	var duree := ville.duree_solaire_mois(actuel / 100.0, cible / 100.0)
 	var cout := ville.cout_solaire_ke(_fiche_fid, cible / 100.0, _mois)
-	_solaire_valeur.text = "%d %% posés → cible %d %% · durée : %s" % [
+	_solaire_valeur.text = "%d %% → %d %% · %s" % [
 		int(roundf(actuel)), int(roundf(cible)), _duree(duree)]
-	_solaire_bouton.text = "Augmenter à %d %%" % int(roundf(cible))
+	_solaire_bouton.text = "VALIDER · %d %%" % int(roundf(cible))
 	_solaire_bouton.disabled = cible <= actuel + 0.01
 
 	var manque := cout - _caisse_ke
 	if manque > 0.001:
-		_solaire_cout.text = "Coût %s k€ · il manque %s k€ en caisse" % [
+		_solaire_cout.text = "%s k€ · manque %s k€" % [
 			_milliers(cout), _milliers(manque)]
 		_solaire_bouton.disabled = true
 	else:
-		_solaire_cout.text = "Coût %s k€ · reste %s k€ en caisse" % [
+		_solaire_cout.text = "%s k€ · reste %s k€" % [
 			_milliers(cout), _milliers(_caisse_ke - cout)]
 	_alerter_cout(manque > 0.001)
 
@@ -1191,14 +1291,14 @@ func _maj_fiche_rue() -> void:
 	var axe_ferme: bool = trafic != null and trafic.axe_ferme(_fiche_fid)
 	var stationnement_fini := stationnement_engage and ville.valeur(
 		"r", _fiche_fid, "stationnement", _mois) < 0.5
-	_trafic_stationnement.text = ("Stationnement supprimé" if stationnement_fini \
-		else "Suppression en cours · 2 mois") if stationnement_engage \
-		else "Supprimer le stationnement"
+	_trafic_stationnement.text = ("Places retirées" if stationnement_fini \
+		else "Places · 2 mois") if stationnement_engage \
+		else "Retirer les places"
 	_trafic_stationnement.disabled = stationnement_engage or ville.valeur(
 		"r", _fiche_fid, "stationnement", _mois) < 0.5
-	_trafic_axe.text = ("Axe fermé · report en cours" if trafic.report_en_cours(
-		_fiche_fid, _mois) else "Axe fermé") if axe_ferme \
-		else "Retirer la voiture de cet axe"
+	_trafic_axe.text = ("Fermée · report" if trafic.report_en_cours(
+		_fiche_fid, _mois) else "Fermée") if axe_ferme \
+		else "Fermer aux voitures"
 	_trafic_axe.disabled = axe_ferme or not ville.route_praticable(_fiche_fid, _mois) \
 		or ville.valeur("r", _fiche_fid, "charge", _mois) < 0.20
 	(_rue_valeurs["etat"] as Label).text = {
@@ -1287,18 +1387,18 @@ func _maj_reparation(o: Dictionary) -> void:
 	var engage: bool = ville.est_repare(couche, _fiche_fid)
 	var verbe := _verbe_reparation(couche, o)
 	if fini:
-		_repare_texte.text = "%s : fait." % verbe
+		_repare_texte.text = "Réparé."
 		_repare_bouton.text = "Terminé"
 		_repare_bouton.disabled = true
 		return
 	if engage:
-		_repare_texte.text = "Chantier en cours · encore %s" % _duree(
+		_repare_texte.text = "En chantier · %s" % _duree(
 			ville.reste_reparation_mois(couche, _fiche_fid, _mois))
 		_repare_bouton.text = "Chantier en cours"
 		_repare_bouton.disabled = true
 		return
 	var manque := prix - _caisse_ke
-	var phrase := "%s coûte %s k€, et le chantier dure %s." % [
+	var phrase := "%s · %s k€ · %s." % [
 		verbe, _milliers(prix),
 		_duree(ville.duree_reparation_mois(couche, _fiche_fid))]
 	_repare_texte.text = _degat_en_clair(couche, o) + "  " + phrase

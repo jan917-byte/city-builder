@@ -12,7 +12,7 @@ python QGIS/scripts/chaine.py --godot
 
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
-
+`Godot --path Godot -- --interface` sort rapidement les deux captures de contrôle de l'interface, avec une rue choisie puis son diagnostic.
 ## Le clavier
 
 | | |
@@ -115,7 +115,6 @@ La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai 
 Ce qui reste sont des contrôles **d'un moteur contre lui-même** : la caisse tombe exactement du coût annoncé · l'îlot que la caisse ne peut pas payer reste refusé sans qu'un centime bouge · un chantier en cours n'accepte pas de seconde commande. Ils attrapent une formule qui dérive, **pas deux implémentations qui divergent**.
 
 Concrètement : une formule fausse dans le noyau ne sera plus attrapée par personne avant qu'on la voie à l'écran. Si le classeur doit rester le banc d'essai, c'est lui qu'il faudra étendre — sinon il devient une archive, et il faut le dire.
-
 ---
 
 **Voir aussi** — `Prototype/` pour l'étape en cours et ses défauts · `ETAT.md` pour ce qui attend l'auteur · `archive/LISEZ-MOI.md` pour ce qui a été retiré · le vault : `Technique/Moteur et architecture.md` · `Technique/Direction artistique.md`.
