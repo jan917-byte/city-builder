@@ -52,6 +52,10 @@ from importlib import import_module                        # noqa: E402
 D4 = import_module("04_deriver_attributs")
 D4B = import_module("04b_emprises_baties")   # `retracter`, le décalage d'arêtes
 D4C = import_module("04c_parcelles")         # `couper`, la coupe par une droite
+# 🌊 Les deux nombres du modèle de crue, JAMAIS recopiés ici : `ville.gd` retire
+# des mètres à une hauteur d'eau, il lui faut le niveau annoncé et les paliers
+# de la courbe. Un doublon se serait tu le jour où `04e` change de niveau.
+D4E = import_module("04e_crue")
 
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
@@ -269,6 +273,23 @@ Y_TABLIER = Y_SOL - TABLIER_EP
 # au quai de glisser dessous sans ressortir par la chaussée.
 Y_QUAI = Y_SOL - 0.01
 
+# 🌊 LA BERGE EST UN OBJET (2026-08-26). Jusqu'ici elle n'était que le bord des
+# six îlots d'eau : ni cliquable, ni transformable. Elle est découpée AUX
+# FRANCHISSEMENTS — un morceau par rive et par bief. C'est la seule coupe que
+# le joueur voit, et la seule qui laisse le mur d'un seul tenant (2026-08-19).
+BERGE_MIN_M = 15.0         # plus court, c'est un bout sous un pont, pas une berge
+# 🔴 LA BANDE DOIT SE VOIR, sinon la décision n'a pas d'effet à l'écran. Le
+# couronnement du mur fait 1 m de large et passe SOUS le trottoir du quai : à
+# lui seul il ne donnait qu'un filet vert. La bande reprend donc les mètres que
+# le quai a pris au fleuve, et se pose 2 cm au-dessus de ce qu'elle recouvre —
+# le trottoir en ville (Y_TROTTOIR), le talus en campagne (Y_SOL + relief).
+BERGE_BANDE_M = 3.5        # la largeur de rive que la transformation rend
+BERGE_Y = 0.02             # de combien elle passe au-dessus de son support
+# De combien la bande de campagne s'ENFOUIT sous le talus. 4 cm ne suffisaient
+# pas : entre deux stations le quad est droit, le talus courbe, et il ressortait
+# en dents grises tout le long des deux rives — vu à l'écran le 2026-08-26.
+BERGE_ENFOUIE = 0.60
+
 # 🌊 LA CRUE, CÔTÉ RENDU (04e · décision 23b). Deux constantes, et elles ne
 # décident rien du jeu : `04e` dit QUI est ruiné, celles-ci disent à quoi ça
 # ressemble.
@@ -314,6 +335,10 @@ COLS_ILOTS = [
     "desserte_tc",
     "alea", "hauteur_eau_max", "part_ruinee", "part_ruinee_apres",
     "part_sinistree", "logements_sinistres",
+    # 🌊 CE QUE LA BERGE RACHÈTE (question 24) : la hauteur d'eau annoncée en
+    # mètres, et la part ruinée sous une crue plus basse de 0 à 2,50 m. Godot
+    # n'a pas le profil de terrain de `04e` — il lit cette courbe.
+    "hauteur_eau_annonce", "ruine_apres_baisse",
     # 🔧 CE QUE LA RÉPARATION COÛTE, calculé par `04e` et jamais ici : le prix
     # est du level design, il vit avec les sept nombres de la crue.
     "batiments_ruines", "cout_reparation_ke",
@@ -806,6 +831,13 @@ class Chenal(object):
 
     def dans_eau(self, p):
         return any(dedans(r, p) for r in self.rivieres)
+
+    def fil(self, y):
+        """La position le long de l'eau, 0 à l'amont et 1 à l'aval — même
+        définition qu'en `04` (`position_fil_eau`), sur les mêmes sommets."""
+        ysud, ynord = self._y_rive
+        return 0.0 if ynord <= ysud else max(0.0, min(1.0,
+            (ynord - y) / (ynord - ysud)))
 
     def niveau_rive(self, x, y, eau_plate=True):
         """Décalage vertical des deux rives ; l'eau reste horizontale.
@@ -1321,6 +1353,9 @@ def lire(con):
     ilots = {}
     for r in con.execute("SELECT %s FROM ilots ORDER BY fid" % ",".join(COLS_ILOTS)):
         d = dict(zip(COLS_ILOTS, r))
+        d["ruine_apres_baisse"] = [float(v) for v in
+                                   (d["ruine_apres_baisse"] or "").split(",")
+                                   if v]
         ilots[d["fid"]] = d
 
     def anneau_ouvert(geom):
@@ -2062,6 +2097,16 @@ def main():
 
     # ----------------------------------------------------------- la voirie
     voirie = Maillage()
+    # 🌊 LA BERGE A SON MAILLAGE, donc ses groupes, donc ses nœuds cliquables
+    # dans Godot. Son corps est le mur de quai là où il y en a un, la bande de
+    # rive ailleurs — les deux dans le MÊME groupe, sinon cliquer un parapet et
+    # cliquer l'herbe deux mètres plus loin ouvriraient deux fiches.
+    berges_m = Maillage()
+    # Deux teintes, et ce sont celles de ce qu'elle recouvre : à l'état
+    # « asphalte » la bande ne doit RIEN changer au rendu de la ville.
+    coul_berge = (PAL.vers_lineaire(PAL.TROTTOIR),
+                  PAL.vers_lineaire(PAL.melanger(PAL.MINERAL_CLAIR, "#000000",
+                                                 0.10)))
     coul_ch = PAL.vers_lineaire(PAL.MINERAL)
     coul_tr = PAL.vers_lineaire(PAL.TROTTOIR)
     # La bordure est le trottoir assombri, pas une couleur de plus : c'est une
@@ -2121,6 +2166,12 @@ def main():
     # tabliers (sinon un muret pousse sous un pont). Il s'émet ensuite dans la
     # boucle, tronçon par tronçon, pour tomber dans le bon groupe cliquable.
     tabliers = []
+    # 🔴 UN PONT EMPORTÉ RESTE UN FRANCHISSEMENT. `franchis` part des axes
+    # ENTIERS, pas des morceaux amputés par la crue : c'est lui qui coupe les
+    # berges, et une berge ne doit pas fusionner avec sa voisine le jour où un
+    # tablier tombe. `tabliers`, lui, ne connaît que ce qui est bâti — sans
+    # quoi un muret pousserait sous un pont qui n'existe plus.
+    franchis = []
     for d in routes:
         if not (d["largeur_m"] or 0.0) > 0.0:
             continue
@@ -2129,8 +2180,10 @@ def main():
         for ip in range(len(d["parts"])):
             for axe_ in morceaux_voirie[d["fid"]][ip]:
                 tabliers.extend(_tabliers(axe_, ch, chenal, relief))
-    plan_quai, st_quai, plat_quai, murs_quai = _quais(
-        chenal, relief, GrilleChaussee(chaussees), tabliers)
+            for axe_ in axes_voirie.get(d["fid"], ())[ip:ip + 1]:
+                franchis.extend(_tabliers(axe_, ch, chenal, relief))
+    plan_quai, st_quai, plat_quai, murs_quai, berges = _quais(
+        chenal, relief, GrilleChaussee(chaussees), tabliers, franchis)
     plateformes.extend(plat_quai)
     murs_eau.extend(murs_quai)
     # Le pont a besoin du quai pour savoir ou finir son parapet ; le quai a
@@ -2252,11 +2305,6 @@ def main():
                 plat.append(round(g[0], 2))
                 plat.append(round(g[2], 2))
             axes.append(plat)
-        # 🌊 Le quai de CE tronçon, dans SON groupe : le parapet se clique et
-        # se repeint comme son trottoir. La ligne, elle, a été taillée d'un
-        # seul tenant le long de la berge — le découpage ne se voit pas.
-        st_bord["tri"] += _emettre_quai(voirie, plan_quai.get(d["fid"], ()),
-                                        coul_quai, coul_chap, G)
         couloirs[str(d["fid"])] = [round(larg + MARGE_COULOIR, 2), axes]
         # 🚶 Le trottoir de ce tronçon a été fabriqué par les ÎLOTS qui le
         # bordent, pas par lui — mais il est rangé sous SON fid, dans son
@@ -2348,6 +2396,18 @@ def main():
           " passage · %d passages refusés au-dessus de l'Ilse · %d triangles"
           % (st_marq["sans_trottoir"], st_marq["sur_eau"],
              st_marq["tri"]))
+    # 🌊 LE CORPS DES BERGES, groupe par groupe. Hors de la boucle des routes :
+    # une berge n'appartient à aucun tronçon, c'est justement ce qui en fait un
+    # objet. 🔄 Le mur tombait dans le groupe de la RUE jusqu'au 2026-08-26 —
+    # cliquer un parapet ouvrait la fiche du tronçon.
+    for b in berges:
+        berges_m.marque(b["fid"])
+        b["tri"] = _emettre_quai(berges_m, plan_quai.get(b["fid"], ()),
+                                 coul_quai, coul_chap, G)
+        b["tri"] += _bande_berge(berges_m, b, coul_berge, G, relief)
+    berges_m.fermer()
+    st_bord["tri"] += sum(b["tri"] for b in berges)
+
     # 🌊 LE BORD DE L'EAU. Le compte rendu tient en trois lignes parce que la
     # règle tient en trois lignes : qui traverse prend un pont, qui longe prend
     # un mur, et le contrôle dit combien d'asphalte reste en l'air.
@@ -2387,6 +2447,23 @@ def main():
              st_quai["campagne"], st_quai["campagne"] * QUAI_PAS,
              QUAI_PORTEE,
              st_quai["tablier"], st_quai["tablier"] * QUAI_PAS))
+    # 🌊 LES BERGES, ET LE CONTRÔLE EST LEUR NOMBRE : trois franchissements
+    # coupent chaque rive en quatre biefs, donc HUIT berges. Moins, c'est qu'un
+    # bief est tombé sous les 15 m et a rejoint sa voisine ; plus, c'est que la
+    # recousue des arêtes s'est brisée ailleurs qu'à un tablier.
+    attendu = 2 * (len(franchis) + 1)
+    print("  berges : %d objets cliquables — %d franchissements coupent chaque"
+          " rive en %d, donc %d attendues · %d biefs courts rattachés  %s"
+          % (st_quai["berges"], len(franchis), len(franchis) + 1, attendu,
+             st_quai["rattachees"],
+             "✅" if st_quai["berges"] == attendu
+             else "⚠️ vérifier la coupe aux franchissements"))
+    for b in berges:
+        print("        %2d  rive %-7s %6.0f m  mur %5.0f m  asphalte sur l'eau"
+              " %6.0f m² (max %.1f m)  rues : %s"
+              % (b["fid"], b["rive"], b["longueur_m"], b["mur_m"],
+                 b["debord_m2"], b["debord_max_m"],
+                 ", ".join(str(f) for f in b["rues"]) or "aucune"))
     print("        asphalte au-dessus du chenal : %.0f m², porté à %.1f %% ·"
           " %.0f m² masqués derrière un parapet · %.0f m² au-delà"
           " (dépassement max %.2f m)  %s"
@@ -2481,6 +2558,13 @@ def main():
             "y_terrain": Y_TERRAIN,
         },
         "palette": PAL.pour_json(),
+        # 🌊 LE CONTRAT DE LA CRUE. `04e` dit la hauteur d'eau, `07` la bande de
+        # rive qu'une berge rend ; `ville.gd` n'a plus qu'à multiplier.
+        "crue": {
+            "niveau_annonce_m": D4E.NIVEAU_ANNONCE_M,
+            "baisses_m": list(D4E.BAISSES_M),
+            "berge_bande_m": BERGE_BANDE_M,
+        },
         # 🔄 C'ÉTAIT UN CHAMP D'ALTITUDE (`x0, z0, pas, nx, nz, alt`) que Godot
         # dépliait en grille. La carte étant plate, c'est un maillage comme les
         # autres : Godot n'a plus qu'UNE façon de lire de la géométrie.
@@ -2494,6 +2578,9 @@ def main():
         "repare_voirie": repare_voirie.json(),
         "sols": sols.json(),
         "eau": eau.json(),
+        # 🌊 Le corps des berges : mur de quai et bande de rive, un groupe par
+        # berge. Godot en fait des nœuds cliquables, comme des îlots.
+        "berges": berges_m.json(),
         "voirie": voirie.json(),
         # Déjà en repère Godot : [x, y, z, échelle, lacet]. Godot ne fait
         # aucune conversion de coordonnées, c'est la règle du contrat.
@@ -2515,6 +2602,19 @@ def main():
                       for f, d in ilots.items()},
             "routes": {str(d["fid"]): {c: d[c] for c in FICHE_ROUTES}
                        for d in routes},
+            # 🌊 La fiche d'une berge : ce qui est MESURÉ sur la carte, rien de
+            # plus. `debord_m2` est l'asphalte que le quai a pris à l'Ilse —
+            # c'est lui que la transformation rend au fleuve.
+            "berges": {str(b["fid"]): {
+                "rive": b["rive"],
+                "longueur_m": round(b["longueur_m"], 1),
+                "mur_m": round(b["mur_m"], 1),
+                "debord_m2": b["debord_m2"],
+                "debord_max_m": b["debord_max_m"],
+                "rues": b["rues"],
+                "fil_amont": round(b["fil_amont"], 3),
+                "fil_aval": round(b["fil_aval"], 3),
+            } for b in berges},
         },
         # L'axe et la largeur façade à façade de chaque tronçon, déjà en
         # repère Godot : [largeur, [[x, z, x, z…], …]]. Godot n'en fait pas une
@@ -2528,6 +2628,7 @@ def main():
         "reperes": _reperes(ilots, routes, cx, cy, relief, ponts_vus),
         "controles": {
             "ilots": len(ilots), "routes": len(routes),
+            "berges": len(berges),
             "masses": n_masse, "sols": n_sol, "eau": n_eau,
             "triangles": (len(terre) + len(masses) + len(sols) + len(eau)
                           + len(voirie)),
@@ -4685,7 +4786,7 @@ def _entre(pa, pb, t):
     return (pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t)
 
 
-def _quais(chenal, relief, grille, tabliers):
+def _quais(chenal, relief, grille, tabliers, franchis=None):
     """LE QUAI, TENU PAR LA BERGE — le PLAN, pas l'émission.
 
     Renvoie (plan, compte, plateformes, murs), où `plan` est
@@ -4698,14 +4799,21 @@ def _quais(chenal, relief, grille, tabliers):
     L'ordre : on recoud les berges, on demande à chaque station ce que
     l'asphalte fait par ici, on lisse le nu du mur, on découpe par tronçon."""
     st = {"quai_m": 0.0, "avance_m": 0.0, "parapet_m": 0.0, "talus": 0,
-          "campagne": 0, "tablier": 0, "morceaux": 0, "runs": 0}
-    plan, murs, plateformes = {}, [], []
+          "campagne": 0, "tablier": 0, "morceaux": 0, "runs": 0,
+          "berges": 0, "rattachees": 0, "traverses": 0}
+    plan, murs, plateformes, berges = {}, [], [], []
     boites = _boites(tabliers)
+    # Les franchissements de la CARTE : ce qui coupe les berges. Par défaut ce
+    # sont les tabliers bâtis — donc rien, le jour où la crue les a tous pris.
+    boites_franchis = _boites(tabliers if franchis is None else franchis)
 
     def sous_tablier(p):
         return _dans_boites(p, boites)
 
-    for chaine in _chaines_berge(chenal):
+    def sous_franchissement(p):
+        return _dans_boites(p, boites_franchis)
+
+    for ic, chaine in enumerate(_chaines_berge(chenal)):
         net = _densifier(chaine, QUAI_PAS)
         n = len(net)
         if n < 3:
@@ -4746,6 +4854,58 @@ def _quais(chenal, relief, grille, tabliers):
             # il retombe à zéro — le mur se pose alors sur la berge elle-même,
             # et c'est le mur du chenal qui fait la paroi.
             off[i] = max(0.0, d + BANDE_QUAI)
+        # 🌊 LA COUPE DE LA BERGE, et elle ne coupe qu'aux TABLIERS. `fids`
+        # portait le tronçon qui longe ; il porte désormais la BERGE, donc
+        # `_decouper_quai` taille le mur par bief et non plus par rue — cliquer
+        # un parapet ouvre la berge. Les rues sont gardées pour la fiche.
+        rues = list(fids)
+        fids[:] = [None] * n
+        # 🔴 LA DEUXIÈME COUPE, ET SANS ELLE LES BERGES SE REJOIGNENT PAR LE
+        # BOUT. Les six îlots d'eau forment UN anneau : la rive gauche descend,
+        # traverse l'Ilse au bout de la carte et remonte en rive droite. Le
+        # bord où l'anneau traverse est la seule arête qui change de rive — on
+        # y coupe, et chaque berge appartient alors à une rive et une seule.
+        rives = [chenal.niveau_rive(p[0], p[1], False) for p in net]
+        coupe = [sous_franchissement(p) for p in net]
+        for i in range(1, n):
+            if rives[i] != rives[i - 1]:
+                coupe[i] = True
+        st["traverses"] += sum(1 for i in range(1, n)
+                               if rives[i] != rives[i - 1])
+        runs = _plages([not c for c in coupe])
+        longs = [j for j, (a, b) in enumerate(runs)
+                 if _longueur(net, a, b) >= BERGE_MIN_M]
+        # 🌉 Un bout de moins de 15 m entre deux tabliers n'est pas une berge :
+        # il rejoint la voisine, sinon son mur de quai disparaîtrait avec lui.
+        for j, (a, b) in enumerate(runs):
+            if not longs:
+                break
+            jj = min(longs, key=lambda k: abs(k - j))
+            if jj != j:
+                st["rattachees"] += 1
+            for i in range(a, b + 1):
+                fids[i] = (ic, jj)
+        for j in longs:
+            a, b = runs[j]
+            mil = net[(a + b) // 2]
+            berges.append({
+                "cle": (ic, j), "i0": a, "i1": b,
+                # Les tableaux sont pris PAR RÉFÉRENCE : `prendre` et `off` sont
+                # encore retouchés plus bas, et c'est leur état final qui dit où
+                # un mur tient la berge et où il faut poser la bande.
+                "net": net, "eau": eau, "prendre": prendre, "sous": sous,
+                "bord": bord,
+                "longueur_m": _longueur(net, a, b),
+                "rues": sorted({f for f in rues[a:b + 1] if f is not None}),
+                "rive": "gauche" if rives[(a + b) // 2] == RIVE_GAUCHE_Y
+                        else "droite",
+                "amont": max(p[1] for p in net[a:b + 1]),
+                # 🌊 LE BIEF QU'ELLE BORDE, en fil d'eau. Élargir la section
+                # abaisse la crue sur toute la traversée, LES DEUX RIVES : c'est
+                # ce couple, et pas la liste des rues, qui dit qui en profite.
+                "fil_amont": chenal.fil(max(p[1] for p in net[a:b + 1])),
+                "fil_aval": chenal.fil(min(p[1] for p in net[a:b + 1])),
+            })
         _combler(prendre)
         # ⚠️ LA CORDE PEND. Entre deux stations de berge (2 m), le mur est une
         # droite alors que le bord de l'asphalte, lui, tourne : quatre quais en
@@ -4785,7 +4945,27 @@ def _quais(chenal, relief, grille, tabliers):
                 off[i] = max(off[i], off[i + 1] - QUAI_PENTE)
             _decouper_quai(net, eau, off, bord, fids, sous, i0, i1,
                            plan, st, murs, plateformes)
-    return plan, st, plateformes, murs
+    # 🔢 LE NUMÉRO D'UNE BERGE SE LIT : rive gauche d'abord, puis de l'amont
+    # vers l'aval. L'Ilse coule vers le sud, donc l'amont est le grand y. Un
+    # numéro tiré de l'ordre de recousage des arêtes n'aurait rien voulu dire.
+    berges.sort(key=lambda b: (b["rive"] != "gauche", -b["amont"]))
+    renum = {}
+    for k, b in enumerate(berges):
+        b["fid"] = k + 1
+        renum[b["cle"]] = k + 1
+    plan = {renum[c]: v for c, v in plan.items() if c in renum}
+    st["berges"] = len(berges)
+    for b in berges:
+        # Mesuré sur la ligne, pas compté en stations : le mur glisse sous
+        # les tabliers, et un comptage donnait 316 m de mur sur 302 m de berge.
+        b["mur_m"] = sum(
+            _longueur(b["net"], b["i0"] + j0, b["i0"] + j1)
+            for j0, j1 in _plages(b["prendre"][b["i0"]:b["i1"] + 1]))
+        pris = [i for i in range(b["i0"], b["i1"] + 1) if b["prendre"][i]]
+        b["debord_max_m"] = round(max([b["bord"][i] for i in pris] or [0.0]), 2)
+        b["debord_m2"] = round(sum(max(0.0, b["bord"][i]) for i in pris)
+                               * QUAI_PAS, 1)
+    return plan, st, plateformes, murs, berges
 
 
 def _decouper_quai(net, eau, off, bord, fids, sous, i0, i1, plan, st, murs,
@@ -4870,6 +5050,59 @@ def _emettre_quai(m, morceaux, coul_mur, coul_chap, G):
             tri += _parapet(m, ext[j0:j1 + 1], inte[j0:j1 + 1], dehors,
                             coul_mur, coul_chap, G, Y_QUAI)
     return tri
+
+
+def _bande_berge(m, b, coul, G, relief):
+    """La BANDE de rive : le corps de la berge là où aucun mur ne la tient.
+
+    Sur un quai, le mur et son parapet SONT la berge — il y a de quoi cliquer.
+    En campagne il n'y a qu'un talus d'herbe, et une berge sans corps ne serait
+    ni cliquable ni transformable. La bande suit le talus (`relief`) : posée à
+    plat elle flotterait au-dessus de la pente à 22 % des champs riverains."""
+    net, eau, i0, i1 = b["net"], b["eau"], b["i0"], b["i1"]
+    tri = 0
+    # Un tablier coupe la bande : elle ne passe pas sous un pont. Le reste se
+    # découpe selon qu'un mur tient la rive — c'est ce qui dit sur QUOI la
+    # bande se pose, donc à quelle hauteur et de quelle couleur.
+    for d0, d1 in _plages([not b["sous"][i] for i in range(i0, i1 + 1)]):
+        k = i0 + d0
+        drapeaux = [b["prendre"][i] for i in range(i0 + d0, i0 + d1 + 1)]
+        for a, z in _tranches(drapeaux):
+            if z - a < 1:
+                continue
+            quai = drapeaux[a]
+            A, B = [], []
+            for i in range(k + a, k + z + 1):
+                p = net[i]
+                # Côté TERRE, donc à l'opposé de la normale eau.
+                q = (p[0] - eau[i][0] * BERGE_BANDE_M,
+                     p[1] - eau[i][1] * BERGE_BANDE_M)
+                # 🔴 EN CAMPAGNE, LA BANDE PASSE SOUS LE TALUS. Posée dessus
+                # elle y traçait un ruban vert à dents de scie le long des deux
+                # rives — un décor que personne n'a demandé, sur des berges
+                # déjà naturelles. Le terrain n'a AUCUN corps de collision
+                # (`maquette._fusionne`) : cachée, elle reste cliquable.
+                d = BERGE_Y if quai else -BERGE_ENFOUIE
+                ya = Y_TROTTOIR if quai else Y_SOL + relief.z(p[0], p[1])
+                yb = Y_TROTTOIR if quai else Y_SOL + relief.z(q[0], q[1])
+                A.append((p[0], p[1], ya + d))
+                B.append((q[0], q[1], yb + d))
+            tri += _bande3d(m, A, B, coul[0] if quai else coul[1], G,
+                            (0.0, 1.0, 0.0))
+    return tri
+
+
+def _tranches(drapeaux):
+    """Les plages [a, b] où le drapeau ne change pas — `_plages` ne rend que
+    les vraies, et ici les deux valeurs portent chacune une bande."""
+    out, i, n = [], 0, len(drapeaux)
+    while i < n:
+        j = i
+        while j + 1 < n and drapeaux[j + 1] == drapeaux[i]:
+            j += 1
+        out.append((i, j))
+        i = j + 1
+    return out
 
 
 def _bord_eau(m, axe, ch, chenal, relief, coul_mur, coul_chap, G, quais=()):

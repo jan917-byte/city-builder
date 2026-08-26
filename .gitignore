@@ -16,6 +16,8 @@ QGIS/data/archive/
 
 # Godot : cache d'import local, jamais partagé entre deux machines
 Godot/.godot/
+# Raccourci de lancement, fabriqué sur place par chaque machine (équivalent Mac du .lnk)
+Godot/Ouvrir Wehrau.app/
 # L'export vers Godot est un DÉRIVÉ : 1,4 Mo régénérés en 3 s par 07. Le
 # versionner ferait grossir l'historique à chaque relance de la chaîne, pour
 # un fichier illisible en diff. On le régénère, on ne le transporte pas.

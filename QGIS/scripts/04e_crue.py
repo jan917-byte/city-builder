@@ -82,6 +82,14 @@ SEUIL_RUINE = 2.60
 SEUIL_SINISTRE = 0.85           # l'eau passe le seuil de la porte : RDC à refaire
 SEUIL_MOUILLE = 0.10
 
+# 🌊 CE QU'UNE BAISSE DU NIVEAU ANNONCÉ RACHÈTE (question 24). Rendre une
+# rive au fleuve élargit la section : le niveau de la prochaine crue baisse, et
+# c'est la SEULE façon qu'a une berge de changer autre chose que la caisse.
+# Combien de mètres une berge achète est du level design et se règle dans
+# `ville.gd` ; ici on exporte la COURBE, parce qu'elle se mesure bâtiment par
+# bâtiment et que Godot n'a pas le profil de terrain.
+BAISSES_M = tuple(0.25 * k for k in range(11))   # 0 à 2,50 m
+
 # 🎚️ LES PONTS. Level design pur : la liste se corrige à la main, jamais par
 # un calcul. Trois franchissements restent après 30c (145, 168, 169).
 # 🔄 LES TROIS SONT COUPÉS depuis le 2026-08-21, demande de l'auteur : la rive
@@ -247,9 +255,11 @@ def main():
         if not stot:
             h_a = hauteur_eau(d["d"], d["fil"], d["rive"], NIVEAU_ANNONCE_M)
             d.update({"alea": round(D4.borne(h_a / NIVEAU_ANNONCE_M), 3),
+                      "h_annonce": h_a,
                       "h_max": hauteur_eau(d["d"], d["fil"], d["rive"],
                                            NIVEAU_OUVERTURE_M),
                       "part_ruinee": 0.0, "part_ruinee_apres": 0.0,
+                      "ruine_apres_baisse": [0.0] * len(BAISSES_M),
                       "part_sinistree": 0.0, "log_sinistres": 0})
             continue
         d["h_max"] = max(b["h"] for b in d["bats"])
@@ -266,9 +276,17 @@ def main():
         # le nombre que « reconstruire » doit regarder en face.
         d["part_ruinee_apres"] = sum(b["surf"] for b in d["bats"]
                                      if b["h_annonce"] >= SEUIL_RUINE) / stot
-        d["alea"] = round(D4.borne(
-            sum(b["surf"] * b["h_annonce"] for b in d["bats"])
-            / stot / NIVEAU_ANNONCE_M), 3)
+        # La même part, sous une crue annoncée plus basse de tant de mètres :
+        # c'est ce que la berge rendue au fleuve rachète, bâtiment par bâtiment.
+        d["ruine_apres_baisse"] = [
+            round(sum(b["surf"] for b in d["bats"]
+                      if b["h_annonce"] - v >= SEUIL_RUINE) / stot, 3)
+            for v in BAISSES_M]
+        # La hauteur d'eau annoncée MOYENNE, pondérée par la surface : c'est le
+        # numérateur d'`alea`, et Godot en a besoin en mètres pour lui retirer
+        # la baisse. La déduire d'`alea` mentirait le jour où il saturerait à 1.
+        d["h_annonce"] = sum(b["surf"] * b["h_annonce"] for b in d["bats"]) / stot
+        d["alea"] = round(D4.borne(d["h_annonce"] / NIVEAU_ANNONCE_M), 3)
 
     # --- les rues -----------------------------------------------------------
     # 🌊 UNE RUE NOYÉE GARDE SON LIMON, et c'est elle qui DESSINE l'emprise de
@@ -424,6 +442,21 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None, TRAFIC=None):
                   % (r, len(v), sum(v) / len(v),
                      "0,75" if r == "gauche" else "0,43"))
 
+    # 🌊 CE QU'UNE BERGE RENDUE AU FLEUVE PEUT RACHETER. La courbe est
+    # exportée îlot par îlot ; ce tableau en donne le total de ville, qui est
+    # le seul repère pour régler le prix du mètre de rive dans `ville.gd`.
+    print("\nSI LA CRUE ANNONCÉE BAISSAIT  (ce qu'une berge rendue au fleuve"
+          " rachète)")
+    # ⚠️ En bâtiments, pas en logements : `logements` a déjà été amputé des
+    # sinistrés par le passage précédent, un compte de ville y tomberait à zéro.
+    print("  baisse   bâtiments repris par la prochaine   épargnés")
+    base_n = None
+    for v in BAISSES_M:
+        n = sum(1 for b in bats if b["h_annonce"] - v >= SEUIL_RUINE)
+        if base_n is None:
+            base_n = n
+        print("  %4.2f m %30d %14d" % (v, n, base_n - n))
+
     print("\nLES RUES NOYÉES  (une hauteur par tronçon, prise à son milieu)")
     hs = [h for h, _ in RUES]
     print("  %d tronçons sur %d ont gardé du limon, jusqu'à %.2f m"
@@ -528,6 +561,8 @@ def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic):
                                  ("hauteur_eau_annoncee", "REAL"),
                                  ("etat_crue", "TEXT")])
     _colonnes(cur, "ilots", [("hauteur_eau_max", "REAL"),
+                             ("hauteur_eau_annonce", "REAL"),
+                             ("ruine_apres_baisse", "TEXT"),
                              ("part_ruinee", "REAL"),
                              ("part_ruinee_apres", "REAL"),
                              ("part_sinistree", "REAL"),
@@ -554,10 +589,13 @@ def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic):
         [(d["log_sinistres"], f) for f, d in ilots.items()
          if d["log_sinistres"]])
     cur.executemany(
-        "UPDATE ilots SET alea=?, hauteur_eau_max=?, part_ruinee=?,"
+        "UPDATE ilots SET alea=?, hauteur_eau_max=?, hauteur_eau_annonce=?,"
+        " ruine_apres_baisse=?, part_ruinee=?,"
         " part_ruinee_apres=?, part_sinistree=?, logements_sinistres=?,"
         " batiments_ruines=?, cout_reparation_ke=? WHERE fid=?",
-        [(d["alea"], round(d["h_max"], 2), round(d["part_ruinee"], 3),
+        [(d["alea"], round(d["h_max"], 2), round(d["h_annonce"], 3),
+          ",".join("%.3f" % v for v in d["ruine_apres_baisse"]),
+          round(d["part_ruinee"], 3),
           round(d["part_ruinee_apres"], 3), round(d["part_sinistree"], 3),
           d["log_sinistres"], d["n_ruines"], d["cout_ke"], f)
          for f, d in ilots.items()])

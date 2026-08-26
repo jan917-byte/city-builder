@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins) et n°23 (le seuil du prologue)
-maj: 2026-08-21
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue) et n°24 (ce que la berge change, hors crue)
+maj: 2026-08-26
 ---
 
 # Questions ouvertes
@@ -287,6 +287,16 @@ Ce n'est pas la ville qui est frappée, c'est le **faubourg de rive gauche** —
 Ce que la carte porte : à +2 m, **23 îlots et 935 logements** touchés (37 % du parc) ; à +3 m, 30 îlots et 1 320 logements (52 %).
 
 Ce qui reste à écrire, et qui est le travail de la semaine 2 : quelles décisions le premier tour propose, et laquelle est « rendre à l'eau ». → [[Décisions arrêtées]] 23b · [[Wehrau]] · [[Décisions]]
+
+### 24. Que fait une berge transformée au reste de la ville ? — **la crue est tranchée, le reste non**
+
+**Ouverte le 2026-08-26** avec la décision 73, **répondue le même jour sur sa troisième piste** : *« la berge doit changer quelque chose, par exemple la résilience à la prochaine crue »*. C'est fait → [[Décisions arrêtées]] 74. Les deux autres pistes restent entières :
+
+- **Le trafic.** Une berge porte des voies — la 6 en porte huit (101, 102, 106, 109, 110, 111, 128, 130). Apaiser le quai, est-ce leur retirer des files, leur stationnement, ou rien ?
+- **Le sol.** `impermeabilise` et `canopee` sont des taux d'îlot, et une berge n'est pas un îlot : à quelle entité la rive rendue s'ajoute-t-elle ? (63 : *un indicateur vit sur l'entité qui porte sa donnée*.)
+- ~~**La crue.**~~ ✅ Une berge renaturée élargit la section : le niveau de la crue annoncée baisse dans son bief, sur les deux rives.
+
+🔴 **Ce que la réponse laisse en suspens** : l'`alea` bouge partout dans le bief, mais **l'îlot le plus enfoncé garde 100 % de reprise** quoi qu'on paie — il lui faudrait 3 m de baisse. Une berge sauve les bords du faubourg, pas son cœur. C'est défendable ; ce n'est pas choisi. → [[Décisions arrêtées]] 73 · 74 · `Prototype/Trafic.md`
 
 ## 🟢 Peut attendre (réversible)
 

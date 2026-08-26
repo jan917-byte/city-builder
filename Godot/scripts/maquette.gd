@@ -24,7 +24,8 @@ extends Node3D
 # 2026-08-12.
 #
 # ⚠️ Les 6 îlots de rivière ne sont pas cliquables : fusionnés dans le maillage
-# d'eau, avec son matériau.
+# d'eau, avec son matériau. La BERGE, elle, est un objet depuis le 2026-08-26 —
+# 8 morceaux, un par rive et par bief, couche "b".
 
 const Donnees := preload("res://scripts/donnees.gd")
 const Constructeur := preload("res://scripts/constructeur.gd")
@@ -35,6 +36,7 @@ const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
 const Trafic := preload("res://scripts/trafic.gd")
+const Apercu := preload("res://scripts/apercu.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
 
@@ -55,6 +57,11 @@ const SURVOL := Color(1.15, 1.15, 1.08)
 # 🔄 Moins jaune depuis le 2026-08-18 : sur un enduit gris neutre l'ancien
 # 1,42/1,38/1,06 virait à l'olive, et l'îlot avait l'air d'un autre matériau
 # au lieu d'avoir l'air éclairé.
+## 🌊 LES TROIS CRANS D'UNE BERGE, et l'asphalte n'en porte aucune : à l'état de
+## départ le mur de quai garde le minéral que 07 lui a donné. Une teinte de plus
+## aurait fait croire à une quatrième chose à faire.
+const BERGE_TEINTES := [Color(1.0, 1.0, 1.0, 0.0),
+	Color8(214, 198, 168, 235), Color8(126, 158, 96, 255)]
 const CHOISI := Color(1.34, 1.32, 1.16)
 
 # ✏️ LE TRAIT AUTOUR DE L'OBJET CHOISI — 2026-08-18. L'éclaircissement seul ne
@@ -98,16 +105,19 @@ var maille_emprise: MeshInstance3D
 var rect_contour: ColorRect
 var _contour_fid := -1
 var _contour_couche := ""
+var apercu: Apercu
+var _apercu_fid := -1
+var _apercu_couche := ""
 var _couloirs := {}
 var _plaques := {}
 var _diagnostic_marqueurs: Node3D
 
-var noeuds := {"i": {}, "r": {}}
+var noeuds := {"i": {}, "r": {}, "b": {}}
 # 🔧 LA VILLE RÉPARÉE, cachée au chargement. Un nœud par îlot ruiné et par
 # tronçon abîmé ; il apparaît quand le chantier payé arrive à son terme. C'est
 # la seule géométrie qui se montre en cours de partie — elle est CALCULÉE par
 # 07 comme tout le reste, Godot ne fabrique rien.
-var reparations := {"i": {}, "r": {}}
+var reparations := {"i": {}, "r": {}, "b": {}}
 var mois := 0.0
 var vitesse := 1.0
 var _derniere_vitesse := 1.0
@@ -153,10 +163,19 @@ func _ready() -> void:
 	selection.choisi.connect(_sur_choix)
 	add_child(selection)
 
+	# 🔎 Avant l'interface : c'est sa TEXTURE que la fiche affiche.
+	apercu = Apercu.new()
+	apercu.name = "Apercu"
+	add_child(apercu)
+	apercu.batir(mat_objet, Donnees.teinte(donnees, "_mineral"),
+		Donnees.teinte(donnees, "_ciel"), Donnees.teinte(donnees, "_ambiant"),
+		Donnees.teinte(donnees, "_soleil"))
+
 	interface = Interface.new()
 	interface.name = "Interface"
 	interface.ville = ville
 	interface.trafic = trafic
+	interface.apercu = apercu.get_texture()
 	# Passées plutôt que preloadées : `interface.gd` importerait `maquette.gd`,
 	# qui l'importe déjà.
 	interface.themes = THEMES
@@ -169,6 +188,7 @@ func _ready() -> void:
 	interface.theme_demande.connect(_sur_theme)
 	interface.reparation_demandee.connect(_sur_reparation)
 	interface.trafic_demande.connect(_sur_trafic)
+	interface.berge_demandee.connect(_sur_berge)
 	pivot.vue_changee.connect(interface.maj_camera)
 	pivot.vue_changee.connect(_sur_vue_changee)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
@@ -189,7 +209,8 @@ func _ready() -> void:
 	var c: Dictionary = donnees["controles"]
 	print("Wehrau — %d îlots, %d tronçons, %d cliquables, %d triangles"
 		% [int(c["ilots"]), int(c["routes"]),
-		noeuds["i"].size() + noeuds["r"].size(), int(c["triangles"])])
+		noeuds["i"].size() + noeuds["r"].size() + noeuds["b"].size(),
+		int(c["triangles"])])
 	_rafraichir(true)
 
 	if "--essai" in OS.get_cmdline_user_args():
@@ -279,6 +300,8 @@ ESSAI — la ville, sans décision")
 	print("  retrait de l'axe 55 : charge %.2f → %.2f ✅"
 		% [ville.base("r", 55, "charge"), ville.valeur("r", 55, "charge", mois)])
 	_sur_reset()
+
+	await _essai_berge()
 
 	# De près, sur la barre de 1974 : les volumes tiennent-ils après le
 	# découpage en nœuds, et le clic retrouve-t-il l'objet sous le curseur.
@@ -573,6 +596,134 @@ ESSAI — la ville, sans décision")
 ## Déverrouille la réduction sans passe-droit : au mois 600 la dotation peut
 ## payer les réparations essentielles, puis on attend leur vraie durée. Ce
 ## mois n'est pas du level design ; c'est seulement la caisse de l'essai.
+## 🌊 CE QUE LA BERGE CHANGE À LA CRUE, en une ligne : l'îlot témoin et la ville.
+## ❌ si la berge renaturée ne déplace RIEN — c'est exactement le défaut que la
+## question 24 nommait.
+func _journal_crue(bief: Array, quand: String) -> void:
+	var d: Dictionary = ville.degats(mois)
+	if bief.is_empty():
+		print("  %-16s ville : la prochaine crue monte à %.2f m"
+			% [quand, float(d["eau_prochaine_m"])])
+		return
+	# ⚠️ DEUX ÎLOTS, PAS UN. Le plus enfoncé garde 100 % quoi qu'on fasse — il
+	# faudrait 3 m de baisse pour l'en sortir. C'est celui qui BASCULE qui dit
+	# si la berge sert à quelque chose.
+	var temoin: int = int(bief[0])
+	var bascule := temoin
+	var chute := -1.0
+	for f in bief:
+		var v := ville.base("i", int(f), "part_ruinee_apres") \
+			- ville.valeur("i", int(f), "part_ruinee_apres", mois)
+		if v > chute:
+			chute = v
+			bascule = int(f)
+	print(("  %-16s îlot %d : eau %.2f m · aléa %.2f · reprise %3.0f %%"
+		+ "   |   îlot %d : reprise %3.0f %%   |   ville %.2f m")
+		% [quand, temoin,
+		ville.valeur("i", temoin, "hauteur_eau_annonce", mois),
+		ville.valeur("i", temoin, "alea", mois),
+		100.0 * ville.valeur("i", temoin, "part_ruinee_apres", mois),
+		bascule, 100.0 * ville.valeur("i", bascule, "part_ruinee_apres", mois),
+		float(d["eau_prochaine_m"])])
+
+
+## 🌊 LE CRITÈRE DE LA BERGE : cliquer une berge, la passer d'asphalte à berge
+## renaturée, et voir la rive changer. Trois captures au MÊME cadrage — c'est
+## l'écart entre elles qui juge, pas leur beauté.
+func _essai_berge() -> void:
+	print("
+BERGE — trois états francs")
+	# La plus minéralisée : celle qui a le plus d'asphalte au-dessus de l'Ilse.
+	var fid := -1
+	for f in ville.berges:
+		if fid < 0 or ville.base("b", f, "debord_m2") \
+				> ville.base("b", fid, "debord_m2"):
+			fid = f
+	if fid < 0:
+		push_error("aucune berge : la couche `b` est vide")
+		get_tree().quit(1)
+		return
+	var mi: MeshInstance3D = noeuds["b"][fid]
+	# 🔴 UN SOMMET DU MAILLAGE, PAS LE CENTRE DE SA BOÎTE : une berge est une
+	# ligne courbe, et le centre de son AABB tombe au milieu de l'Ilse — le
+	# rayon du contrôle n'y touchait rien du tout.
+	var sommets: PackedVector3Array = (mi.mesh as ArrayMesh).surface_get_arrays(
+		0)[Mesh.ARRAY_VERTEX]
+	# ⚠️ Le sommet le plus proche du barycentre, et pas « celui du milieu » :
+	# l'ordre des sommets suit l'émission (mur, puis bande), donc le milieu du
+	# tableau tombait ailleurs dès qu'on ajoutait une surface.
+	var moy := Vector3.ZERO
+	for v in sommets:
+		moy += v
+	moy /= float(sommets.size())
+	var c: Vector3 = sommets[0]
+	for v in sommets:
+		if v.distance_squared_to(moy) < c.distance_squared_to(moy):
+			c = v
+	c += mi.global_position
+	pivot.viser(Vector2(c.x, c.z), 260.0)
+	# ⚠️ PAS DE PROFIL ICI. À 14° le rayon du centre de l'écran traverse la rive
+	# d'EN FACE avant d'arriver sur celle qu'on vise : le contrôle du clic
+	# renvoyait la berge 2 en visant la 6. À 34°, il tombe sur ce qu'on regarde.
+	pivot.caler(200.0, 34.0)
+	selection.sel_couche = "b"
+	selection.sel_fid = fid
+	interface.montrer("b", fid, false)
+	await get_tree().process_frame
+	await get_tree().physics_frame
+	# Le clic doit tomber sur la berge visée : sans ce contrôle, une capture
+	# verte ne prouverait que la peinture, pas l'objet.
+	var touche: Array = selection.sonder(
+		get_viewport().get_visible_rect().size * 0.5)
+	print(("  berge %d · rive %s · %.0f m dont %.0f m de mur · %.0f m²"
+		+ " d'asphalte sur l'eau")
+		% [fid, ville.berges[fid].get("rive", "?"),
+		ville.base("b", fid, "longueur_m"), ville.base("b", fid, "mur_m"),
+		ville.base("b", fid, "debord_m2")])
+	print("  clic au centre → %s %d %s"
+		% [touche[0], touche[1],
+		"✅" if touche == ["b", fid] else "❌ attendu b %d" % fid])
+	# 🌊 CE QU'ELLE RACHÈTE, avant/après. Sans ces trois lignes, la seule
+	# contrepartie visible d'une berge resterait la caisse — question 24.
+	var bief: Array = ville.ilots_du_bief(fid)
+	print("  bief : %d îlots exposés, le plus enfoncé est le %d"
+		% [bief.size(), int(bief[0]) if not bief.is_empty() else -1])
+	_journal_crue(bief, "avant")
+	await _capturer("essai_berge_asphalte")
+
+	for cible in [Ville.BERGE_APAISEE, Ville.BERGE_RENATUREE]:
+		# 🔴 On ATTEND que la caisse suive au lieu de la remplir : le prix d'une
+		# berge est le seul chiffre qui dise si la décision est jouable.
+		var cout := ville.cout_berge_ke(fid, cible, mois)
+		while ville.caisse_ke(mois) < cout and mois < Ville.HORIZON_MOIS:
+			mois += 1.0
+		if not ville.transformer_berge(fid, cible, mois):
+			push_error("berge %d : %s refusée au mois %.0f"
+				% [fid, Ville.BERGE_NOMS[cible], mois])
+			get_tree().quit(1)
+			return
+		print("  mois %3.0f · %-16s %5.0f k€ · %2.0f mois · caisse %.0f k€"
+			% [mois, Ville.BERGE_NOMS[cible], cout,
+			ville.berge_reste_mois(fid, mois), ville.caisse_ke(mois)])
+		mois += ville.berge_reste_mois(fid, mois) + 0.1
+		var vu := ville.berge_etat(fid, mois)
+		if vu != cible:
+			push_error("berge %d livrée au mois %.0f mais toujours en %s"
+				% [fid, mois, Ville.BERGE_NOMS[vu]])
+			get_tree().quit(1)
+			return
+		_dernier_peint = -1.0
+		_rafraichir(true)
+		await get_tree().process_frame
+		_journal_crue(bief, Ville.BERGE_NOMS[cible])
+		await _capturer("essai_berge_%s" % ["", "apaisee", "renaturee"][cible])
+	print("  livrée au mois %.0f — 3 captures au même cadrage" % mois)
+	_sur_reset()
+	mois = 0.0
+	_rafraichir(true)
+	pivot.caler(30.0, 32.0)
+
+
 func _essai_deverrouiller_reduction() -> float:
 	var debut := 600.0
 	for fid in ville.ilots:
@@ -797,6 +948,9 @@ func _construire() -> void:
 
 	# Un nœud par objet, donc une ville cliquable : 5 draw calls deviennent
 	# ~250, invisible sur 40 000 triangles.
+	# 🌊 La berge avant les îlots, pour que l'ordre des nœuds suive celui du
+	# terrain : son corps est le mur de quai, et il borde tout le reste.
+	_par_objet("Berges", [donnees["berges"]], "b")
 	_par_objet("Ilots", [donnees["masses"], donnees["sols"]], "i")
 	_par_objet("Routes", [donnees["voirie"]], "r")
 	_par_reparation("Reparation", donnees["repare"], "i")
@@ -869,7 +1023,7 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 			var gr: Array = g
 			var fid := int(gr[0])
 			var mi := MeshInstance3D.new()
-			mi.name = "%s%d" % ["I" if couche == "i" else "R", fid]
+			mi.name = "%s%d" % [{"i": "I", "r": "R", "b": "B"}[couche], fid]
 			mi.mesh = Constructeur.maillage_groupe(d, int(gr[1]), int(gr[2]))
 			mi.material_override = mat_objet
 			mi.set_meta("fid", fid)
@@ -949,19 +1103,8 @@ func _decor() -> void:
 		Donnees.teinte(donnees, "_ciel"), Donnees.teinte(donnees, "_ambiant"))
 	add_child(we)
 
-	var l := DirectionalLight3D.new()
-	l.name = "Soleil"
-	# Assez haute pour qu'aucune ombre ne noie un îlot, assez basse pour que
-	# les volumes se détachent.
-	l.rotation_degrees = Vector3(-48.0, -125.0, 0.0)
-	l.light_color = Donnees.teinte(donnees, "_soleil")
-	# 🔄 Monté le 2026-08-18 pendant que l'ambiant baissait : la somme ne bouge
-	# presque pas, c'est le PARTAGE soleil/ciel qui change. Ce contraste est ce
-	# qui fait lire un enduit crème comme crème et non comme gris.
-	l.light_energy = 1.45
-	l.shadow_enabled = true
-	l.directional_shadow_max_distance = 3000.0
-	add_child(l)
+	# 🔎 La même recette que la miniature de la fiche : voir `Materiaux.soleil`.
+	add_child(Materiaux.soleil(Donnees.teinte(donnees, "_soleil")))
 
 
 # ------------------------------------------------------------------ le temps
@@ -989,6 +1132,7 @@ func _rafraichir(force: bool) -> void:
 	# Hors du raccourci ci-dessous : le trait suit la CAMÉRA, qui bouge même
 	# quand le temps est en pause.
 	_maj_contour()
+	_maj_apercu()
 	if not force and absf(mois - _dernier_peint) < 0.002:
 		interface.maj(ville.indicateurs(mois), mois, vitesse)
 		return
@@ -1169,7 +1313,7 @@ func _val(couche: String, fid: int, t: float) -> float:
 func _peindre() -> void:
 	var genre := _genre()
 	var blanche := theme != ""
-	for couche in ["i", "r"]:
+	for couche in ["i", "r", "b"]:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
 			var diagnostic_sol := 0.0
@@ -1185,7 +1329,12 @@ func _peindre() -> void:
 					diagnostic_sol = 2.0 if str(o.get("etat_crue", "")) == "coupe" \
 						else (1.0 if float(o.get("hauteur_eau", 0.0)) > 0.10 else 0.0)
 			var c := Color(1.0, 1.0, 1.0, 0.0)
-			if genre == "tissu" and couche == "i":
+			# 🌊 L'ÉTAT D'UNE BERGE SE VOIT SANS OUVRIR SA FICHE, et c'est tout
+			# l'intérêt d'en avoir fait un objet. Le calque est libre sur cette
+			# couche : aucun thème ne la peint.
+			if couche == "b":
+				c = BERGE_TEINTES[ville.berge_etat(fid, mois)]
+			elif genre == "tissu" and couche == "i":
 				c = _teintes_tissu.get(fid, Color.MAGENTA)
 				# 1,0 et pas 0,88 : ce thème REMPLACE le carton. Une opacité
 				# partielle laisserait le gris teinter chaque sous_type.
@@ -1210,6 +1359,13 @@ func _peindre() -> void:
 				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
 				mj.set_instance_shader_parameter("calque", c)
 				mj.set_instance_shader_parameter("teinte", _teinte(couche, fid))
+				if couche == "b":
+					# 🔴 LA TEINTE DIT UN CHANGEMENT, PAS UN ÉTAT. Une berge de
+					# campagne naît « renaturée » : la peindre en vert dessinait
+					# un ruban le long des champs, alors que rien n'a été fait.
+					var e := ville.berge_etat(fid, mois)
+					mj.set_instance_shader_parameter("etat_berge",
+						0.0 if e == ville.berge_depart(fid) else float(e))
 				if couche == "i":
 					# La preuve que quelque chose s'est passé sans ouvrir un
 					# menu : les toits se couvrent au fil de la pose.
@@ -1405,6 +1561,40 @@ func _maj_contour() -> void:
 	cam_masque.far = pivot.camera.far
 
 
+## 🔎 LA MINIATURE SUIT LA FICHE, PAS LA SÉLECTION : c'est la fiche qui porte le
+## réglage pas encore validé, et c'est lui que la miniature doit montrer.
+##
+## 🔴 Elle ne reçoit que des maillages DÉJÀ construits — celui de la ville, celui
+## de la reconstruction, la plaque de l'emprise. Rien n'est fabriqué ici.
+func _maj_apercu() -> void:
+	if apercu == null or interface == null:
+		return
+	var d := interface.apercu_demande()
+	var couche: String = d["couche"]
+	var fid: int = d["fid"]
+	if fid < 0 or not noeuds.has(couche) or not noeuds[couche].has(fid):
+		apercu.eteindre()
+		_apercu_fid = -1
+		_apercu_couche = ""
+		return
+	if fid != _apercu_fid or couche != _apercu_couche:
+		_apercu_fid = fid
+		_apercu_couche = couche
+		var neuf: MeshInstance3D = reparations[couche].get(fid)
+		# La plaque : l'emprise pour un îlot, le couloir façade à façade pour une
+		# rue — les deux existent déjà pour le trait de sélection. Une berge n'en
+		# a pas : son mur de quai EST son sol.
+		var plaque: Mesh = null
+		if couche == "i":
+			plaque = _emprise(fid)
+		elif couche == "r":
+			plaque = _silhouette(couche, fid)
+		apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
+			neuf.mesh if neuf != null else null, plaque)
+	apercu.viser(pivot.lacet)
+	apercu.regler(float(d["equipe"]), bool(d["futur"]), float(d["berge"]))
+
+
 func _teinte(couche: String, fid: int) -> Color:
 	if selection and couche == selection.sel_couche and fid == selection.sel_fid:
 		return CHOISI
@@ -1454,6 +1644,20 @@ func _sur_reparation(couche: String, fid: int) -> void:
 	print("%s %d · réparation engagée : %.0f k€ · %.0f mois · caisse %.0f k€"
 		% ["îlot" if couche == "i" else "rue", fid, cout,
 		ville.duree_reparation_mois(couche, fid), ville.caisse_ke(mois)])
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
+## 🌊 La berge change d'état ; sa géométrie, elle, ne bouge pas encore — c'est
+## la teinte qui porte les trois crans. Le jour où le mur se démolira pour de
+## bon, c'est ici que le maillage neuf se découvrira, comme les réparations.
+func _sur_berge(fid: int, cible: int) -> void:
+	var cout := ville.cout_berge_ke(fid, cible, mois)
+	if not ville.transformer_berge(fid, cible, mois):
+		return
+	print("berge %d · %s engagé : %.0f k€ · %.0f mois · caisse %.0f k€"
+		% [fid, Ville.BERGE_NOMS[cible], cout,
+		ville.berge_reste_mois(fid, mois), ville.caisse_ke(mois)])
 	_dernier_peint = -1.0
 	_rafraichir(true)
 

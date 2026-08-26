@@ -37,6 +37,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "instance uniform float diagnostic_bati = 0.0;\n" \
 		+ "instance uniform float chantier_etat = 0.0;\n" \
 		+ "instance uniform float equipe = 0.0;\n" \
+		+ "instance uniform float etat_berge = 0.0;\n" \
 		+ "varying vec3 pos_monde;\n" \
 		+ "// Choix de LISIBILITÉ, pas des mesures de toiture. ⚠ Mesuré le\n" \
 		+ "// 2026-08-17 : à 0,10 de liseré le toit se lit BLANC semé de bleu.\n" \
@@ -215,6 +216,15 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tbase = mix(base, VITRE * mix(1.0, 0.45, ombre) * COLOR.a, vitre);\n" \
 		+ "\t\trugosite = mix(rugosite, 0.18, vitre * net);\n" \
 		+ "\t}\n" \
+		+ "\t// 🌊 L'ÉTAT D'UNE BERGE, DANS LA VILLE VIVANTE. `calque` ne\n" \
+		+ "\t// peint que la maquette blanche ; une rive rendue au fleuve doit se\n" \
+		+ "\t// voir SANS ouvrir le diagnostic, sinon la décision n'a pas d'effet.\n" \
+		+ "\tif (etat_berge > 0.5) {\n" \
+		+ "\t\tvec3 rive = etat_berge > 1.5 ? vec3(0.128, 0.318, 0.096)\n" \
+		+ "\t\t\t: vec3(0.620, 0.548, 0.398);\n" \
+		+ "\t\tbase = mix(base, rive * COLOR.a, etat_berge > 1.5 ? 0.88 : 0.66);\n" \
+		+ "\t\trugosite = 1.0;\n" \
+		+ "\t}\n" \
 		+ "\t// 🩶 LA MAQUETTE BLANCHE — la vue diagnostic. La ville perd sa\n" \
 		+ "\t// matière et ne garde que son VOLUME (COLOR.a = l'AO bakée) :\n" \
 		+ "\t// seul le thème est en couleur, donc tout thème est lisible.\n" \
@@ -346,6 +356,28 @@ static func contour(masque_tex: Texture2D, couleur: Color) -> ShaderMaterial:
 	m.set_shader_parameter("masque", masque_tex)
 	m.set_shader_parameter("couleur", couleur)
 	return m
+
+
+## ☀ LE SOLEIL DE LA VILLE, et celui de la miniature de la fiche : deux images
+## éclairées autrement ne se compareraient pas.
+##
+## Assez haut pour qu'aucune ombre ne noie un îlot, assez bas pour que les
+## volumes se détachent.
+## 🔴 `portee_ombre` n'est pas un réglage de goût : la carte d'ombre couvre
+## cette distance, et l'étaler sur 3 km pour un objet de 100 m fait s'ombrer
+## l'objet lui-même — murs noirs dans la miniature.
+static func soleil(teinte: Color, portee_ombre := 3000.0) -> DirectionalLight3D:
+	var l := DirectionalLight3D.new()
+	l.name = "Soleil"
+	l.rotation_degrees = Vector3(-48.0, -125.0, 0.0)
+	l.light_color = teinte
+	# 🔄 Monté le 2026-08-18 pendant que l'ambiant baissait : la somme ne bouge
+	# presque pas, c'est le PARTAGE soleil/ciel qui change. Ce contraste est ce
+	# qui fait lire un enduit crème comme crème et non comme gris.
+	l.light_energy = 1.45
+	l.shadow_enabled = true
+	l.directional_shadow_max_distance = portee_ombre
+	return l
 
 
 ## Lumière fixe et calme (Direction artistique l.69). Ce qui creuse les volumes

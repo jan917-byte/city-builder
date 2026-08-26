@@ -8,6 +8,7 @@ const CHEMIN := "res://data/wehrau.json"
 # Comptes connus, donc vérifiables : s'ils bougent, la carte a changé.
 const N_ILOTS := 71
 const N_ROUTES := 178      # source moins les deux ponts supprimés par la décision 30c
+const N_BERGES := 8        # 3 franchissements coupent chaque rive en 4 (07)
 
 
 static func charger(chemin: String = CHEMIN) -> Dictionary:
@@ -29,31 +30,37 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 		return {}
 
 	var d: Dictionary = brut
-	for cle in ["meta", "palette", "terrain", "masses", "sols", "eau",
+	for cle in ["meta", "palette", "terrain", "masses", "sols", "eau", "berges",
 			"voirie", "repare", "repare_voirie",
 			"arbres", "alignements", "couloirs", "emprises", "objets", "riverains",
-			"reperes", "controles"]:
+			"crue", "reperes", "controles"]:
 		if not d.has(cle):
 			_fatal("clé absente du JSON : `%s`\n" % cle
 				+ "Relancer :  python QGIS/scripts/07_exporter_godot.py")
 			return {}
 
 	var o: Dictionary = d["objets"]
-	if not o.has("ilots") or not o.has("routes"):
-		_fatal("`objets` doit porter `ilots` et `routes`")
+	if not o.has("ilots") or not o.has("routes") or not o.has("berges"):
+		_fatal("`objets` doit porter `ilots`, `routes` et `berges`")
 		return {}
 	if (o["ilots"] as Dictionary).size() != N_ILOTS:
 		push_warning("objets.ilots : %d fiches pour %d îlots"
 			% [(o["ilots"] as Dictionary).size(), N_ILOTS])
 
 	var c: Dictionary = d["controles"]
+	# 🌊 Les berges ne sont pas dans la source : elles sont DÉCOUPÉES par 07 aux
+	# franchissements. Leur nombre est donc le contrôle de cette découpe.
+	if int(c.get("berges", 0)) != N_BERGES:
+		push_warning("berges : %d objets au lieu de %d — voir la coupe aux"
+			% [int(c.get("berges", 0)), N_BERGES]
+			+ " franchissements dans 07_exporter_godot.py")
 	if int(c["ilots"]) != N_ILOTS or int(c["routes"]) != N_ROUTES:
 		push_warning("La carte a changé : %d îlots et %d tronçons au lieu de %d et %d."
 			% [int(c["ilots"]), int(c["routes"]), N_ILOTS, N_ROUTES])
 
 	# 🔄 `terrain` se contrôlait à part quand c'était un champ d'altitude ;
 	# la carte étant plate, c'est un maillage comme les autres.
-	for nom in ["terrain", "masses", "sols", "eau", "voirie",
+	for nom in ["terrain", "masses", "sols", "eau", "berges", "voirie",
 			"repare", "repare_voirie"]:
 		var e: String = _valider_maillage(d[nom] as Dictionary, nom)
 		if e != "":

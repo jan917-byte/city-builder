@@ -57,6 +57,7 @@ scripts/
                        avec le thème « chantiers », qui vit dans ville.gd
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la ville ou le menu à gauche, l'îlot et son curseur à droite
+  apercu.gd            la miniature de la fiche : l'objet choisi, dans son état livré
   moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
   materiaux.gd         les matériaux, zéro texture
   camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°

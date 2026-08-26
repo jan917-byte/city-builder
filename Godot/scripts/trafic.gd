@@ -30,6 +30,7 @@ var _node_roule: MultiMeshInstance3D
 var _node_gare: MultiMeshInstance3D
 var _actif := true
 var _visibles_roule := PackedByteArray()
+var _visibles_gare := PackedByteArray()
 var _dernier_etat := -1.0
 var _derniere_charge := -1.0
 var _graphe := {}
@@ -107,6 +108,8 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	for k in _garees.size():
 		var gris := 0.62 + 0.16 * float(k % 5) / 4.0
 		_mm_gare.set_instance_color(k, Color(gris, gris * 1.01, gris * 0.98))
+	_visibles_gare.resize(_garees.size())
+	_visibles_gare.fill(0)
 	_maj_garees(0.0, true)
 	print(("  trafic : %d voitures roulantes visibles sur %d positions,"
 		+ " %d garées sur 3310 places, 2 appels, animation GPU à l'écran")
@@ -186,9 +189,8 @@ func voitures_visibles_sur(fid: int) -> Array:
 			roulantes += int(_visibles_roule[k])
 	var garees := 0
 	for k in _garees.size():
-		if int(_garees[k]["fid"]) == fid \
-				and absf(_mm_gare.get_instance_transform(k).basis.determinant()) > 0.001:
-			garees += 1
+		if int(_garees[k]["fid"]) == fid:
+			garees += int(_visibles_gare[k])
 	return [roulantes, garees]
 
 
@@ -339,6 +341,11 @@ func _maj_garees(mois: float, force: bool) -> void:
 		var visibles := 0 if not ville.route_praticable(fid, mois) else \
 			int(roundf(ville.valeur("r", fid, "stationnement", mois)
 			* ECHANTILLON_STATIONNEMENT))
+		# 🔄 LE CONTRÔLE NE RELIT PLUS LA MATRICE — corrigé le 2026-08-26. Une
+		# base mise à zéro ressortait de `get_instance_transform` en IDENTITÉ,
+		# donc l'essai voyait 5 voitures garées sur une rue noyée qui n'en
+		# dessinait aucune. On note ce qu'on écrit, comme pour les roulantes.
+		_visibles_gare[k] = 1 if rang < visibles else 0
 		_mm_gare.set_instance_transform(k, a["t"] if rang < visibles else Transform3D(
 			Basis().scaled(Vector3.ZERO), Vector3.ZERO))
 

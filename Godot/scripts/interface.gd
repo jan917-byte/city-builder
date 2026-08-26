@@ -13,8 +13,10 @@ signal theme_demande(id: String)
 # prix, pas l'interface.
 signal reparation_demandee(couche: String, fid: int)
 signal trafic_demande(action: String, fid: int)
+signal berge_demandee(fid: int, cible: int)
 
 const Ville := preload("res://scripts/ville.gd")
+const Apercu := preload("res://scripts/apercu.gd")
 
 const FOND := Color(0.106, 0.118, 0.141, 0.94)
 const BORD := Color(0.173, 0.192, 0.227)
@@ -75,6 +77,8 @@ class Jauge extends Control:
 
 var ville: Ville
 var trafic
+## 🔎 La texture de la miniature, posée par `maquette.gd` avant `batir()`.
+var apercu: Texture2D
 var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
 var rampe := []      # `maquette.RAMPE`, en sRGB
 
@@ -87,6 +91,7 @@ var _reduction_valeur: Label
 var _reduction_etat: Label
 var _fiche_valeurs := {}
 var _fiche_titre: Label
+var _fiche_entete: Label
 var _fiche_vide: Label
 var _fiche_grille: GridContainer
 var _solaire_bloc: VBoxContainer
@@ -118,6 +123,7 @@ var _dernier_theme := "dangers"
 var _chantiers_valeurs := {}
 var _chantiers_lignes := []
 var _fiche_panneau: PanelContainer
+var _apercu_cadre: PanelContainer
 
 var _fiche_fid := -1
 var _fiche_couche := "i"
@@ -129,6 +135,11 @@ var _repare_bouton: Button
 var _trafic_bloc: VBoxContainer
 var _trafic_stationnement: Button
 var _trafic_axe: Button
+var _berge_grille: GridContainer
+var _berge_valeurs := {}
+var _berge_bloc: VBoxContainer
+var _berge_texte: Label
+var _berge_boutons := []
 var _degats := {}
 var _degats_valeurs := {}
 var _mois := 0.0
@@ -450,10 +461,12 @@ func _panneau_diagnostic() -> void:
 	# 🔧 CE QUE LA CRUE COÛTE ENCORE. Ces trois nombres BAISSENT quand on
 	# répare : sans eux, reconstruire un îlot ne changerait rien de visible
 	# ailleurs que sur cet îlot, et la décision n'aurait pas de contrepartie.
+	# 🌊 Le quatrième regarde DEVANT, et c'est le seul que la berge déplace.
 	for ligne in [
 		["logements", "Logements perdus"],
 		["ponts", "Franchissements coupés"],
 		["reste", "Reste à réparer"],
+		["eau", "La prochaine crue, au pire"],
 	]:
 		var h := HBoxContainer.new()
 		h.add_child(_label(ligne[1], 12, GRIS))
@@ -566,6 +579,7 @@ func _ligne_chantier(c: Dictionary) -> String:
 		"pont": "Rue %d · tablier",
 		"deblaiement": "Rue %d · déblaiement",
 		"solaire": "Îlot %d · panneaux",
+		"berge": "Berge %d · transformation",
 	}.get(str(c["genre"]), "%d")
 	return "%s · encore %s" % [modele % int(c["fid"]),
 		_duree(float(c["reste_mois"]))]
@@ -590,9 +604,34 @@ func _panneau_ilot() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	p.add_child(v)
-	v.add_child(_label("ÎLOT CLIQUÉ", 12, ACCENT))
+	_fiche_entete = _label("ÎLOT CLIQUÉ", 12, ACCENT)
+	v.add_child(_fiche_entete)
 	_fiche_titre = _label("Aucun îlot", 20, TEXTE)
 	v.add_child(_fiche_titre)
+
+	# 🔎 LA MINIATURE (décision 12). Elle montre l'objet dans l'état qui SERA
+	# livré — le réglage suit le curseur avant même d'être validé — pendant que
+	# la ville derrière garde son état réel.
+	_apercu_cadre = PanelContainer.new()
+	var fond := StyleBoxFlat.new()
+	fond.bg_color = Color(0.071, 0.082, 0.102)
+	fond.border_color = BORD
+	fond.set_border_width_all(1)
+	fond.set_corner_radius_all(6)
+	_apercu_cadre.add_theme_stylebox_override("panel", fond)
+	_apercu_cadre.visible = false
+	v.add_child(_apercu_cadre)
+	var vue := TextureRect.new()
+	vue.texture = apercu
+	# 🔴 `EXPAND_IGNORE_SIZE` : sans lui le rectangle EXIGE la taille de sa
+	# texture — rendue trois fois plus grande — et la miniature déborde la fiche
+	# au lieu d'y être réduite.
+	vue.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vue.custom_minimum_size = Vector2(0, Apercu.TAILLE.y)
+	# ⚠️ Sans ça, la miniature avale les clics destinés à la ville derrière.
+	vue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vue.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_apercu_cadre.add_child(vue)
 	_fiche_vide = _label("Clique un îlot pour voir ses informations et régler ses panneaux solaires.", 13, GRIS)
 	_fiche_vide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_fiche_vide)
@@ -638,6 +677,49 @@ func _panneau_ilot() -> void:
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_rue_grille.add_child(val)
 		_rue_valeurs[ligne[0]] = val
+
+	# 🌊 LA FICHE D'UNE BERGE. `rendu` est le nombre qui porte la décision :
+	# les m² d'asphalte que le quai a pris à l'Ilse et qu'on lui rendrait.
+	_berge_grille = GridContainer.new()
+	_berge_grille.columns = 2
+	_berge_grille.add_theme_constant_override("h_separation", 14)
+	_berge_grille.add_theme_constant_override("v_separation", 4)
+	_berge_grille.visible = false
+	v.add_child(_berge_grille)
+	for ligne in [
+		["rive", "Rive"],
+		["longueur", "Longueur"],
+		["mur", "Mur de quai"],
+		["rendu", "Asphalte sur l'eau"],
+		["rues", "Voies portées"],
+		["bief", "Le bief qu'elle borde"],
+		["crue", "Crue annoncée ici"],
+		["etat", "État"],
+	]:
+		_berge_grille.add_child(_label(ligne[1], 12, GRIS))
+		var vb := _label("", 12, TEXTE)
+		vb.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_berge_grille.add_child(vb)
+		_berge_valeurs[ligne[0]] = vb
+
+	# 🔴 DEUX BOUTONS, PAS TROIS : l'asphalte est l'état de départ et on n'y
+	# revient pas. Démolir un mur de quai est irréversible dans le jeu comme
+	# sur le terrain — c'est ce qui donne son poids à la décision.
+	_berge_bloc = VBoxContainer.new()
+	_berge_bloc.add_theme_constant_override("separation", 6)
+	_berge_bloc.visible = false
+	v.add_child(_berge_bloc)
+	_berge_bloc.add_child(HSeparator.new())
+	_berge_bloc.add_child(_label("Transformer la berge", 13, ACCENT))
+	_berge_texte = _label("", 12, TEXTE)
+	_berge_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_berge_bloc.add_child(_berge_texte)
+	for cible in [Ville.BERGE_APAISEE, Ville.BERGE_RENATUREE]:
+		var b := Button.new()
+		b.pressed.connect(func() -> void:
+			berge_demandee.emit(_fiche_fid, cible))
+		_berge_bloc.add_child(b)
+		_berge_boutons.append(b)
 
 	# 🔧 LE BLOC DE RÉPARATION, le même pour un îlot et pour une rue.
 	_repare_bloc = VBoxContainer.new()
@@ -864,23 +946,31 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# 🔄 LA FICHE S'OUVRE AUSSI SUR UNE RUE depuis le 2026-08-21. Elle
 	# n'appartenait qu'à l'îlot ; la crue a mis deux décisions sur la voirie —
 	# déblayer, rebâtir — et une décision qu'on ne peut pas cliquer n'existe pas.
-	if fid < 0 or (couche != "i" and couche != "r"):
+	if fid < 0 or (couche != "i" and couche != "r" and couche != "b"):
 		return
 	if fid != _fiche_fid or couche != _fiche_couche:
 		_solaire_choix = -1.0  # changer d'objet abandonne le réglage non validé
 	_fiche_fid = fid
 	_fiche_couche = couche
 	_fiche_vide.visible = false
+	_apercu_cadre.visible = apercu != null
 	_fiche_grille.visible = couche == "i"
 	_rue_grille.visible = couche == "r"
+	_berge_grille.visible = couche == "b"
+	_fiche_entete.text = {"i": "ÎLOT CLIQUÉ", "r": "RUE CLIQUÉE",
+		"b": "BERGE CLIQUÉE"}[couche]
 	_solaire_bloc.visible = couche == "i" and not _reduction_verrouillee
 	_trafic_bloc.visible = couche == "r"
+	_berge_bloc.visible = couche == "b"
 	_maj_fiche()
 
 
 func _maj_fiche() -> void:
 	if _fiche_couche == "r":
 		_maj_fiche_rue()
+		return
+	if _fiche_couche == "b":
+		_maj_fiche_berge()
 		return
 	var o: Dictionary = ville.ilots.get(_fiche_fid, {})
 	if o.is_empty():
@@ -982,6 +1072,33 @@ func _afficher_choix(actuel: float, cible: float) -> void:
 		_solaire_cout.text = "Coût %s k€ · reste %s k€ en caisse" % [
 			_milliers(cout), _milliers(_caisse_ke - cout)]
 	_alerter_cout(manque > 0.001)
+
+
+## 🔎 CE QUE LA MINIATURE DOIT MONTRER (décision 12) : l'ÉTAT QUI SERA LIVRÉ.
+## Le réglage en cours passe devant le chantier engagé, qui passe devant l'état
+## réel — et survoler un bouton montre ce qu'il livrerait, avant de le presser.
+## Lu à chaque image par `maquette._maj_apercu` : ne rien y calculer de lourd.
+func apercu_demande() -> Dictionary:
+	var equipe := 0.0
+	var futur := false
+	var berge := 0.0
+	if _fiche_fid >= 0 and _fiche_couche == "i":
+		var etat := ville.etat_solaire(_fiche_fid, _mois)
+		equipe = maxf(float(etat["cible"]),
+			_solaire_choix / 100.0 if _solaire_choix >= 0.0 else 0.0)
+	if _fiche_fid >= 0 and _fiche_couche != "b":
+		futur = ville.est_repare(_fiche_couche, _fiche_fid) \
+			or _repare_bouton.is_hovered()
+	if _fiche_fid >= 0 and _fiche_couche == "b":
+		var e := ville.berge_cible(_fiche_fid)
+		for k in _berge_boutons.size():
+			if (_berge_boutons[k] as Button).is_hovered():
+				e = k + Ville.BERGE_APAISEE
+		# La même règle que la ville : une berge de campagne naît renaturée, et la
+		# teinte dit un CHANGEMENT, pas un état.
+		berge = 0.0 if e == ville.berge_depart(_fiche_fid) else float(e)
+	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
+		"futur": futur, "berge": berge}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait
@@ -1093,6 +1210,68 @@ func _maj_fiche_rue() -> void:
 	_maj_reparation(o)
 
 
+## 🌊 LA FICHE D'UNE BERGE. Le bloc de réparation ne s'ouvre pas ici : la crue
+## n'a rien chiffré sur une berge, et un bouton grisé de plus n'apprendrait rien.
+func _maj_fiche_berge() -> void:
+	var o: Dictionary = ville.berges.get(_fiche_fid, {})
+	if o.is_empty():
+		return
+	var etat := ville.berge_etat(_fiche_fid, _mois)
+	var rendu := float(o.get("debord_m2", 0.0))
+	_fiche_titre.text = "Berge %d" % _fiche_fid
+	(_berge_valeurs["rive"] as Label).text = str(o.get("rive", "?"))
+	(_berge_valeurs["longueur"] as Label).text = "%s m" % _nb(
+		float(o.get("longueur_m", 0.0)), 0)
+	(_berge_valeurs["mur"] as Label).text = "%s m" % _nb(
+		float(o.get("mur_m", 0.0)), 0)
+	(_berge_valeurs["rendu"] as Label).text = "%s m²" % _milliers(rendu)
+	var rues: Array = o.get("rues", [])
+	(_berge_valeurs["rues"] as Label).text = "aucune" if rues.is_empty() 		else ", ".join(rues.map(func(f): return str(int(f))))
+	# 🌊 CE QU'ELLE RACHÈTE. Le bief se lit en îlots, pas en fil d'eau : « 7
+	# îlots » décide, « 0,31 à 0,61 » n'est qu'une coordonnée.
+	var bief: Array = ville.ilots_du_bief(_fiche_fid)
+	(_berge_valeurs["bief"] as Label).text = "aucun îlot exposé" if bief.is_empty() \
+		else "%d îlots, dont le %d" % [bief.size(), int(bief[0])]
+	var pire := 0.0
+	for f in bief:
+		pire = maxf(pire, ville.valeur("i", int(f), "hauteur_eau_annonce", _mois))
+	(_berge_valeurs["crue"] as Label).text = "%s m au pire" % _nb(pire, 2)
+	var reste := ville.berge_reste_mois(_fiche_fid, _mois)
+	(_berge_valeurs["etat"] as Label).text = Ville.BERGE_NOMS[etat] if reste <= 0.0 		else "%s · encore %s" % [Ville.BERGE_NOMS[ville.berge_cible(_fiche_fid)],
+			_duree(reste)]
+
+	if etat == Ville.BERGE_RENATUREE:
+		_berge_texte.text = "Rive rendue au fleuve. Rien à démolir ici." 			if float(o.get("mur_m", 0.0)) <= 1.0 			else "Berge renaturée. Aucun retour en arrière."
+	elif reste > 0.0:
+		_berge_texte.text = "Chantier engagé. La rive change à la livraison."
+	else:
+		_berge_texte.text = "%s m² d'asphalte sont posés au-dessus de l'Ilse." 			% _milliers(rendu)
+	for k in _berge_boutons.size():
+		var cible: int = Ville.BERGE_APAISEE + k
+		var bouton: Button = _berge_boutons[k]
+		var cout := ville.cout_berge_ke(_fiche_fid, cible, _mois)
+		var nom: String = Ville.BERGE_NOMS[cible]
+		bouton.disabled = cible <= etat or reste > 0.0 or cout > _caisse_ke
+		# ⚠️ Pas de `capitalize()` : il met une majuscule à CHAQUE mot, et le
+		# bouton sortait « Quai Apaisé ».
+		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
+		if cible <= etat:
+			bouton.text = "%s — fait" % titre
+		elif cout > _caisse_ke:
+			bouton.text = "%s — il manque %s k€" % [titre,
+				_milliers(cout - _caisse_ke)]
+		else:
+			# 🌊 Le prix seul ne dit rien : c'est la baisse de crue qui fait
+			# choisir entre finir un bief et effleurer les quatre.
+			var gagne := (ville.berge_largeur_rendue_m(_fiche_fid, cible)
+				- ville.berge_largeur_rendue_m(_fiche_fid, etat)) \
+				* Ville.BERGE_BAISSE_M_PAR_M
+			bouton.text = "%s — %s k€ · %s · crue −%s m" % [titre,
+				_milliers(cout),
+				_duree(Ville.BERGE_MOIS[cible] - Ville.BERGE_MOIS[etat]),
+				_nb(gagne, 2)]
+
+
 ## LE BLOC DE RÉPARATION, et c'est le seul endroit où le jeu dit non deux fois :
 ## une fois parce que la caisse ne suit pas, une fois parce qu'il n'y a rien à
 ## réparer. Un bouton grisé sans phrase est une panne ; sous « il manque 214 k€ »
@@ -1140,7 +1319,10 @@ func _verbe_reparation(couche: String, o: Dictionary) -> String:
 ## pas de contrepartie et le joueur choisit à l'aveugle.
 func _degat_en_clair(couche: String, o: Dictionary) -> String:
 	if couche == "i":
-		var apres := int(roundf(float(o.get("part_ruinee_apres", 0.0)) * 100.0))
+		# 🌊 Par le noyau, pas par la fiche : une berge livrée en aval a pu
+		# faire baisser ce pourcentage depuis l'export.
+		var apres := int(roundf(100.0 * ville.valeur(
+			"i", _fiche_fid, "part_ruinee_apres", _mois)))
 		return "%d bâtiments détruits, %d logements perdus. La crue annoncée en reprendrait %d %%." % [
 			int(o.get("batiments_ruines", 0)),
 			int(o.get("logements_sinistres", 0)), apres]
@@ -1163,3 +1345,5 @@ func maj_degats(d: Dictionary) -> void:
 		d["franchissements_coupes"])
 	(_degats_valeurs["reste"] as Label).text = _milliers(
 		float(d["a_reparer_ke"])) + " k€"
+	(_degats_valeurs["eau"] as Label).text = "%s m" % _nb(
+		float(d.get("eau_prochaine_m", 0.0)), 2)

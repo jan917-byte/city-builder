@@ -39,6 +39,7 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 | les sept nombres de la crue | haut de `04e_crue.py` | qui est ruiné, qui est mouillé, quel pont est coupé — **branche `crue`** |
 | `TOITURES` · `ENDUITS` | `palette.py` | les matériaux du bâti — la couleur de la ville depuis le 2026-08-18 |
 | `BATI` | `07_exporter_godot.py` | **la pente du toit seulement** |
+| les six nombres de la berge | haut de `ville.gd` | prix au mètre et durée des trois états, et **combien de crue un mètre de rive rendue rachète** |
 
 🔴 Dans `04d.TISSU`, le retrait latéral à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (61).
 

@@ -26,12 +26,15 @@ const DOTATION_KE_MOIS := 30.0             # 360 k€/an votés pour la transiti
 
 var ilots := {}            # fid:int -> {champ: float|String}
 var routes := {}
+var berges := {}           # 8 objets : une par rive et par bief (07)
+var crue := {}             # le contrat de `04e` : niveau annoncé, paliers, bande
 var riverains := {}        # fid tronçon -> [fid îlot]
 var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 var _solaire := {}         # fid -> {debut, duree, cible, cout_ke}
 var _stationnement_supprime := {}  # fid -> mois d'engagement
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
+var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
 var _adaptation_total_ke := 0.0
 var _co2_depart_kt := 0.0
@@ -74,8 +77,36 @@ const DEBLAIEMENT_MOIS := 1.0        # la vase enlevée d'une rue
 const PONT_MOIS := 18.0              # un franchissement rebâti
 
 
+# ==========================================================================
+# LA BERGE — trois états francs (2026-08-26)
+# ==========================================================================
+# 🎚️ LEVEL DESIGN, les cinq nombres : ce sont EUX qui disent si rendre l'Ilse à
+# la ville tient dans un mandat ou dans vingt ans. Le prix est CUMULÉ depuis
+# l'asphalte, donc passer par le quai apaisé ne coûte pas plus cher que d'aller
+# droit à la berge renaturée — sinon le jeu punirait la prudence.
+# 🌊 CE QU'ELLE CHANGE (question 24, tranchée le 2026-08-26) : la RÉSILIENCE À
+# LA PROCHAINE CRUE, et rien d'autre pour l'instant. Rendre une rive au fleuve
+# élargit la section : le niveau de la crue annoncée baisse sur toute la
+# traversée du bief, LES DEUX RIVES — donc l'aléa des îlots, et la part que la
+# prochaine reprendrait. Le trafic de la voie de berge, la canopée et
+# l'imperméabilisation restent à trancher.
+# 🎚️ LE SIXIÈME NOMBRE, et c'est le plus lourd : combien de crue un mètre de
+# rive rendue rachète. Repère mesuré par `04e` — sous 0,75 m de baisse, PAS UN
+# bâtiment du faubourg ne sort de la ruine ; à 2,00 m, 56 des 135 en sortent.
+const BERGE_ASPHALTE := 0
+const BERGE_APAISEE := 1
+const BERGE_RENATUREE := 2
+const BERGE_NOMS := ["asphalte", "quai apaisé", "berge renaturée"]
+const BERGE_PRIX_KE_M := [0.0, 1.2, 3.4]     # k€ par mètre de rive, cumulés
+const BERGE_MOIS := [0.0, 6.0, 18.0]         # depuis l'asphalte, cumulés aussi
+const BERGE_BAISSE_M_PAR_M := 0.12          # de crue en moins par mètre de rive rendue
+
+
 func charger(d: Dictionary) -> void:
 	var o: Dictionary = d["objets"]
+	crue = d.get("crue", {})
+	for cle in (o.get("berges", {}) as Dictionary):
+		berges[int(cle)] = (o["berges"] as Dictionary)[cle]
 	for cle in (o["ilots"] as Dictionary):
 		ilots[int(cle)] = (o["ilots"] as Dictionary)[cle]
 	for cle in (o["routes"] as Dictionary):
@@ -100,7 +131,154 @@ func charger(d: Dictionary) -> void:
 
 
 func objets(couche: String) -> Dictionary:
-	return ilots if couche == "i" else routes
+	match couche:
+		"i": return ilots
+		"b": return berges
+	return routes
+
+
+## 🌊 L'état de DÉPART se mesure, il ne se choisit pas : une berge que nul mur
+## ne tient ne porte pas d'asphalte — elle est déjà rendue au fleuve.
+func berge_depart(fid: int) -> int:
+	return BERGE_ASPHALTE if base("b", fid, "mur_m") > 1.0 else BERGE_RENATUREE
+
+
+## L'état VU : la cible une fois le chantier livré, l'état d'avant tant qu'il
+## dure. Une berge qui verdirait à l'engagement dirait qu'on plante en un jour.
+func berge_etat(fid: int, t: float) -> int:
+	if not _berge.has(fid):
+		return berge_depart(fid)
+	var c: Dictionary = _berge[fid]
+	return int(c["cible"]) if t >= float(c["debut"]) + float(c["duree"]) 		else int(c["depuis"])
+
+
+func berge_cible(fid: int) -> int:
+	return int(_berge[fid]["cible"]) if _berge.has(fid) else berge_depart(fid)
+
+
+func berge_reste_mois(fid: int, t: float) -> float:
+	if not _berge.has(fid):
+		return 0.0
+	var c: Dictionary = _berge[fid]
+	return maxf(0.0, float(c["debut"]) + float(c["duree"]) - t)
+
+
+func berge_en_cours(fid: int, t: float) -> bool:
+	return berge_reste_mois(fid, t) > 0.0
+
+
+## En k€. La différence des deux prix cumulés, sur la longueur de la rive.
+func cout_berge_ke(fid: int, cible: int, t: float) -> float:
+	var de := berge_etat(fid, t)
+	if cible <= de:
+		return 0.0
+	return (BERGE_PRIX_KE_M[cible] - BERGE_PRIX_KE_M[de]) 		* base("b", fid, "longueur_m")
+
+
+## `false` si rien à faire, si un chantier court déjà, ou si la caisse ne suit
+## pas. Même partage que `lancer_solaire` : l'interface explique, ici le verrou.
+## 🔴 UNE BERGE NE REVIENT PAS EN ARRIÈRE. Rendre l'asphalte au fleuve démolit
+## un mur ; le refaire serait une autre décision, et elle n'existe pas.
+func transformer_berge(fid: int, cible: int, t: float) -> bool:
+	if not berges.has(fid) or berge_en_cours(fid, t):
+		return false
+	var de := berge_etat(fid, t)
+	if cible <= de or cible > BERGE_RENATUREE:
+		return false
+	var cout := cout_berge_ke(fid, cible, t)
+	if cout > caisse_ke(t):
+		return false
+	_berge[fid] = {"cible": cible, "depuis": de, "debut": t,
+		"duree": BERGE_MOIS[cible] - BERGE_MOIS[de], "cout_ke": cout}
+	_depense_ke += cout
+	return true
+
+
+## 🌊 CE QU'UNE BERGE REND AU FLEUVE, en mètres de largeur : l'asphalte posé
+## au-dessus de l'Ilse dès le quai apaisé, la bande de rive en plus une fois
+## renaturée. Les deux sont MESURÉS sur la carte — aucun n'est un réglage, et
+## c'est ce qui fait qu'une berge large rachète plus qu'une berge étroite.
+func berge_largeur_rendue_m(fid: int, etat: int) -> float:
+	if etat <= BERGE_ASPHALTE:
+		return 0.0
+	var lg := base("b", fid, "longueur_m")
+	var l := (base("b", fid, "debord_m2") / lg) if lg > 0.0 else 0.0
+	if etat >= BERGE_RENATUREE:
+		l += float(crue.get("berge_bande_m", 0.0))
+	return l
+
+
+## En mètres de crue annoncée en moins, une fois le chantier LIVRÉ : `berge_etat`
+## ne bascule qu'à la livraison, donc la protection non plus.
+## 🔴 DEPUIS L'ÉTAT DE DÉPART, jamais depuis l'asphalte. Les berges 4 et 8 n'ont
+## pas de mur : elles partent renaturées, et l'`alea` exporté par `04e` les
+## compte déjà. Les créditer au mois 0 protègerait la ville d'une crue qui a
+## déjà eu lieu.
+func berge_baisse_m(fid: int, t: float) -> float:
+	return (berge_largeur_rendue_m(fid, berge_etat(fid, t))
+		- berge_largeur_rendue_m(fid, berge_depart(fid))) * BERGE_BAISSE_M_PAR_M
+
+
+## Ce que les berges livrées retirent à la crue annoncée SUR CET ÎLOT. Une berge
+## ne soulage que le bief qu'elle borde — mais sur les DEUX rives, car c'est la
+## même section qui s'élargit. Les deux berges d'un bief s'additionnent : finir
+## un bief vaut mieux qu'effleurer les quatre.
+func baisse_crue_m(fid: int, t: float) -> float:
+	var fil := base("i", fid, "position_fil_eau")
+	var v := 0.0
+	for b in berges:
+		if fil >= base("b", b, "fil_amont") - 0.001 \
+				and fil <= base("b", b, "fil_aval") + 0.001:
+			v += berge_baisse_m(b, t)
+	return v
+
+
+## Les îlots qu'une berge soulage, du plus exposé au moins. La fiche en a besoin
+## AVANT de décider : sans eux, 763 k€ s'engagent sans contrepartie lisible.
+func ilots_du_bief(fid_berge: int) -> Array:
+	var a0 := base("b", fid_berge, "fil_amont") - 0.001
+	var a1 := base("b", fid_berge, "fil_aval") + 0.001
+	var out := []
+	for f in ilots:
+		var fil := base("i", f, "position_fil_eau")
+		if fil >= a0 and fil <= a1 and base("i", f, "part_ruinee_apres") > 0.0:
+			out.append(f)
+	out.sort_custom(func(x, y): return base("i", x, "alea") > base("i", y, "alea"))
+	return out
+
+
+## 🌊 LES TROIS CHAMPS QUE LA BERGE DÉPLACE. La hauteur d'eau annoncée perd les
+## mètres rachetés, `alea` la suit, et `part_ruinee_apres` se lit sur la courbe
+## que `04e` a mesurée bâtiment par bâtiment — le profil de terrain n'existe pas
+## ici, on ne le réinvente pas.
+func _crue_apres_berges(fid: int, champ: String, t: float) -> float:
+	var baisse := baisse_crue_m(fid, t)
+	if champ == "part_ruinee_apres":
+		return _sur_la_courbe(fid, baisse)
+	var h := maxf(0.0, base("i", fid, "hauteur_eau_annonce") - baisse)
+	if champ == "hauteur_eau_annonce":
+		return h
+	var niveau := float(crue.get("niveau_annonce_m", 0.0))
+	return 0.0 if niveau <= 0.0 else clampf(h / niveau, 0.0, 1.0)
+
+
+## Les 11 paliers de `04e`, interpolés. Au-delà du dernier on garde le dernier :
+## une baisse plus forte que tout ce qui a été mesuré ne doit pas sortir un
+## nombre inventé.
+func _sur_la_courbe(fid: int, baisse: float) -> float:
+	var c: Array = ilots.get(fid, {}).get("ruine_apres_baisse", [])
+	var paliers: Array = crue.get("baisses_m", [])
+	if c.is_empty() or paliers.size() != c.size():
+		return base("i", fid, "part_ruinee_apres")
+	if baisse <= float(paliers[0]):
+		return float(c[0])
+	for k in range(1, c.size()):
+		var p0 := float(paliers[k - 1])
+		var p1 := float(paliers[k])
+		if baisse <= p1:
+			return lerpf(float(c[k - 1]), float(c[k]),
+				0.0 if p1 <= p0 else (baisse - p0) / (p1 - p0))
+	return float(c[c.size() - 1])
 
 
 func base(couche: String, fid: int, champ: String) -> float:
@@ -119,6 +297,11 @@ func base(couche: String, fid: int, champ: String) -> float:
 func valeur(couche: String, fid: int, champ: String, t: float) -> float:
 	if champ.begins_with("_"):
 		return Energie.derive(self, fid, champ, t) if couche == "i" else 0.0
+	# 🌊 La berge passe AVANT les rampes : ces trois champs n'en portent aucune,
+	# et c'est ici que la seule contrepartie non monétaire du jeu entre.
+	if couche == "i" and champ in ["alea", "part_ruinee_apres",
+			"hauteur_eau_annonce"]:
+		return _crue_apres_berges(fid, champ, t)
 	var v := base(couche, fid, champ)
 	for r in _rampes[couche].get(fid, []):
 		if r["champ"] == champ:
@@ -186,6 +369,7 @@ func route_praticable(fid: int, t: float) -> bool:
 func reinitialiser() -> void:
 	_solaire.clear()
 	_stationnement_supprime.clear()
+	_berge.clear()
 	_depense_ke = 0.0
 	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
 	# donnée que `reparer` écrit en base, donc la seule à défaire.
@@ -463,7 +647,18 @@ func degats(t: float) -> Dictionary:
 	var perdus := 0.0
 	var a_reparer := 0.0
 	var coupes := 0
+	# 🌊 LE NOMBRE QUE LA BERGE FAIT BOUGER, et le seul indicateur de ville qui
+	# ne soit pas de l'argent : la crue annoncée sur l'îlot le plus enfoncé. Un
+	# MAXIMUM, pas une moyenne — une moyenne de ville dilue le faubourg dans les
+	# 58 îlots que l'eau n'atteint pas, et ne bougerait pas de 5 cm.
+	# ⚠️ Sur les îlots BÂTIS que la prochaine ruinerait, pas sur toute la ville :
+	# les quatre champs riverains prennent 5 m d'eau et c'est leur rôle — ils
+	# tenaient le maximum à eux seuls, et rien ne l'aurait fait bouger.
+	var eau_prochaine := 0.0
 	for fid in ilots:
+		if base("i", fid, "part_ruinee_apres") > 0.0:
+			eau_prochaine = maxf(eau_prochaine,
+				valeur("i", fid, "hauteur_eau_annonce", t))
 		if est_repare("i", fid):
 			continue
 		perdus += base("i", fid, "logements_sinistres")
@@ -478,6 +673,7 @@ func degats(t: float) -> Dictionary:
 		"logements_perdus": perdus,
 		"a_reparer_ke": a_reparer,
 		"franchissements_coupes": coupes,
+		"eau_prochaine_m": eau_prochaine,
 		"caisse_ke": caisse_ke(t),
 	}
 
@@ -542,6 +738,14 @@ func chantiers(t: float) -> Dictionary:
 			continue
 		en_cours.append({"couche": "i", "fid": fid, "genre": "solaire",
 			"cout_ke": float(e["cout_ke"]), "reste_mois": float(e["reste_mois"])})
+	# La transformation d'une berge dure 6 à 18 mois : c'est le chantier le plus
+	# long du jeu après un pont, et il doit se voir dans la liste.
+	for fid in _berge:
+		if not berge_en_cours(fid, t):
+			continue
+		en_cours.append({"couche": "b", "fid": fid, "genre": "berge",
+			"cout_ke": float(_berge[fid]["cout_ke"]),
+			"reste_mois": berge_reste_mois(fid, t)})
 	# Le plus proche de sa fin en tête : c'est l'ordre dans lequel on lit une
 	# liste qui ne tient pas entière à l'écran.
 	en_cours.sort_custom(func(a, b): return a["reste_mois"] < b["reste_mois"])
