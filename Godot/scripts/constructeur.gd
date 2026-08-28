@@ -166,6 +166,9 @@ static func emprise(anneau: Array) -> ArrayMesh:
 ## bout de trottoir par riverain) : la détourer donne des bandes parallèles.
 ## Ce ruban va de façade à façade.
 ##
+## Il est aussi la PLAQUE au sol de la miniature de la fiche, seul endroit où il
+## est vraiment dessiné : d'où son sens de parcours, qui n'est plus indifférent.
+##
 ## Les quadrilatères SE CHEVAUCHENT aux coudes, et c'est voulu : chaque segment
 ## est rallongé d'une demi-largeur à ses jointures INTERNES, ce qui remplit
 ## l'angle sans onglet — un masque ne compte que sa couverture. Les deux BOUTS
@@ -195,12 +198,15 @@ static func couloir(axes: Array, largeur: float, y: float) -> ArrayMesh:
 			v.append(Vector3(p.x - t.x, y, p.y - t.y))
 			v.append(Vector3(q.x - t.x, y, q.y - t.y))
 			v.append(Vector3(q.x + t.x, y, q.y + t.y))
+			# 🔴 EN SENS HORAIRE, comme tout le reste (piège 1 du README) : le
+			# ruban n'était qu'un masque, où le sens est indifférent, et il
+			# regardait vers le BAS — la plaque de la miniature était invisible.
 			idx.append(b)
+			idx.append(b + 2)
 			idx.append(b + 1)
-			idx.append(b + 2)
 			idx.append(b)
-			idx.append(b + 2)
 			idx.append(b + 3)
+			idx.append(b + 2)
 	if v.size() == 0:
 		return null
 	# Inutiles au masque (non éclairé, sans élimination) mais `_surface` les
@@ -212,6 +218,145 @@ static func couloir(axes: Array, largeur: float, y: float) -> ArrayMesh:
 	co.resize(v.size())
 	co.fill(Color.WHITE)
 	return _surface(v, nm, co, idx)
+
+
+## 🧱 LE SOCLE DE LA MINIATURE — la plaque de la fiche, mais ÉPAISSE. Sans jupe,
+## l'objet de la fiche est une découpe posée sur du papier ; avec, c'est un
+## morceau de ville qu'on a soulevé.
+##
+## 🔴 PAS LE MAILLAGE DU MASQUE, et les deux ne se remplacent pas : le couloir
+## du masque chevauche ses quadrilatères aux coudes — ça sèmerait des murs À
+## L'INTÉRIEUR de la dalle — et une jupe déborderait le trait de sélection.
+## Celui-ci est donc à ONGLET, et il est dessiné : son sens de parcours compte.
+## La tranche est un peu plus sombre que le dessus : c'est ce qui la fait lire
+## comme une épaisseur. 🔴 Pas plus bas : elle tombe presque toujours du côté à
+## l'ombre, où la lumière la fonce déjà — à 0,72 elle sortait noire.
+const TRANCHE := 0.88
+
+
+static func socle_ruban(axes: Array, largeur: float, epaisseur: float) -> ArrayMesh:
+	var h := largeur / 2.0
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var idx := PackedInt32Array()
+	for a in axes:
+		var plat: Array = a
+		var pts := PackedVector2Array()
+		for k in range(0, plat.size(), 2):
+			var p := Vector2(float(plat[k]), float(plat[k + 1]))
+			if pts.is_empty() or pts[-1].distance_squared_to(p) > 1e-6:
+				pts.append(p)
+		if pts.size() < 2:
+			continue
+		var gauche := PackedVector2Array()
+		var droite := PackedVector2Array()
+		for k in pts.size():
+			var t1 := Vector2.ZERO
+			var t2 := Vector2.ZERO
+			if k > 0:
+				var u1 := (pts[k] - pts[k - 1]).normalized()
+				t1 = Vector2(u1.y, -u1.x)
+			if k < pts.size() - 1:
+				var u2 := (pts[k + 1] - pts[k]).normalized()
+				t2 = Vector2(u2.y, -u2.x)
+			var t := (t1 + t2).normalized() if k > 0 and k < pts.size() - 1 \
+				else (t2 if k == 0 else t1)
+			# 🔴 L'ONGLET : au coude le décalage vaut h / cos(demi-angle), et le
+			# cosinus est PLAFONNÉ — sans ça un angle aigu envoie la dalle à
+			# quarante mètres de la rue.
+			var d := h / maxf(t.dot(t1 if k > 0 else t2), 0.35)
+			gauche.append(pts[k] + t * d)
+			droite.append(pts[k] - t * d)
+		_jupe(v, n, c, idx, gauche, droite, epaisseur)
+	if v.is_empty():
+		return null
+	return _surface(v, n, c, idx)
+
+
+## Le même socle sous un îlot : son emprise, plus la jupe le long de l'anneau.
+static func socle_anneau(anneau: Array, epaisseur: float) -> ArrayMesh:
+	var dessus := emprise(anneau)
+	if dessus == null:
+		return null
+	var arr: Array = dessus.surface_get_arrays(0)
+	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var c: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+	var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	var plan := PackedVector2Array()
+	for p in anneau:
+		var pt: Array = p
+		plan.append(Vector2(float(pt[0]), float(pt[2])))
+	# 🔴 L'ANNEAU EST REMIS DANS LE SENS TRIGONOMÉTRIQUE : 04b ne le garantit
+	# pas, et la jupe d'un anneau retourné éclaire ses murs par l'intérieur.
+	var aire := 0.0
+	for k in plan.size():
+		var q := plan[(k + 1) % plan.size()]
+		aire += plan[k].x * q.y - q.x * plan[k].y
+	if aire < 0.0:
+		plan.reverse()
+	var teinte := Color(TRANCHE, TRANCHE, TRANCHE)
+	for k in plan.size():
+		var a := plan[k]
+		var b := plan[(k + 1) % plan.size()]
+		if a.distance_squared_to(b) < 1e-6:
+			continue
+		var u := (b - a).normalized()
+		_face(v, n, c, idx, [_p(a, 0.0), _p(b, 0.0), _p(b, -epaisseur),
+			_p(a, -epaisseur)], Vector3(u.y, 0.0, -u.x), teinte)
+	return _surface(v, n, c, idx)
+
+
+## Le dessus d'un ruban, puis les murs qui descendent de ses deux bords et de
+## ses deux bouts.
+##
+## 🔴 Sens HORAIRE partout (piège 1 du README) : chaque face est émise
+## `0, 2, 1` puis `0, 3, 2`, donc elle regarde à l'OPPOSÉ de la normale de la
+## main droite de ses trois premiers points.
+static func _jupe(v: PackedVector3Array, n: PackedVector3Array,
+		c: PackedColorArray, idx: PackedInt32Array, gauche: PackedVector2Array,
+		droite: PackedVector2Array, epaisseur: float) -> void:
+	var teinte := Color(TRANCHE, TRANCHE, TRANCHE)
+	var y1 := -epaisseur
+	for k in gauche.size() - 1:
+		_face(v, n, c, idx, [_p(gauche[k], 0.0), _p(droite[k], 0.0),
+			_p(droite[k + 1], 0.0), _p(gauche[k + 1], 0.0)], Vector3.UP,
+			Color.WHITE)
+		var u := (gauche[k + 1] - gauche[k]).normalized()
+		_face(v, n, c, idx, [_p(gauche[k], 0.0), _p(gauche[k + 1], 0.0),
+			_p(gauche[k + 1], y1), _p(gauche[k], y1)],
+			Vector3(u.y, 0.0, -u.x), teinte)
+		var w := (droite[k + 1] - droite[k]).normalized()
+		_face(v, n, c, idx, [_p(droite[k], 0.0), _p(droite[k], y1),
+			_p(droite[k + 1], y1), _p(droite[k + 1], 0.0)],
+			Vector3(-w.y, 0.0, w.x), teinte)
+	var d := (gauche[1] - gauche[0]).normalized()
+	_face(v, n, c, idx, [_p(gauche[0], 0.0), _p(gauche[0], y1),
+		_p(droite[0], y1), _p(droite[0], 0.0)], Vector3(-d.x, 0.0, -d.y), teinte)
+	var f := (gauche[-1] - gauche[-2]).normalized()
+	_face(v, n, c, idx, [_p(gauche[-1], 0.0), _p(droite[-1], 0.0),
+		_p(droite[-1], y1), _p(gauche[-1], y1)], Vector3(f.x, 0.0, f.y), teinte)
+
+
+static func _p(a: Vector2, y: float) -> Vector3:
+	return Vector3(a.x, y, a.y)
+
+
+static func _face(v: PackedVector3Array, n: PackedVector3Array,
+		c: PackedColorArray, idx: PackedInt32Array, quatre: Array,
+		normale: Vector3, teinte: Color) -> void:
+	var b := v.size()
+	for p in quatre:
+		v.append(p)
+		n.append(normale)
+		c.append(teinte)
+	idx.append(b)
+	idx.append(b + 2)
+	idx.append(b + 1)
+	idx.append(b)
+	idx.append(b + 3)
+	idx.append(b + 2)
 
 
 ## UNE instance multiple par ESSENCE, pas un nœud par objet — « le geste se

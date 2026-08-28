@@ -181,6 +181,44 @@ func _compter_visibles() -> int:
 	return n
 
 
+## 🔎 LES VOITURES D'UN SEUL TRONÇON, POUR LA MINIATURE DE LA FICHE. `places` et
+## `roule` sont l'état QU'ON VEUT MONTRER, pas celui de la ville : survoler
+## « Retirer les places » vide la bordure avant qu'on ait cliqué (décision 12).
+##
+## 🔴 On recopie les instances de la ville, transformation, teinte ET donnée
+## d'animation : les voitures de la fiche roulent au même pas que les siennes.
+## Rend le nombre écrit dans chacun des deux MultiMesh.
+func remplir(mm_gare: MultiMesh, mm_roule: MultiMesh, fid: int, mois: float,
+		places: bool, roule: bool) -> Array:
+	var g := []
+	if places:
+		var reste := int(roundf(ville.valeur("r", fid, "stationnement", mois)
+			* ECHANTILLON_STATIONNEMENT))
+		for k in _garees.size():
+			if int((_garees[k] as Dictionary)["fid"]) != fid:
+				continue
+			if reste <= 0:
+				break
+			reste -= 1
+			g.append(k)
+	var r := []
+	if roule:
+		for k in _roulantes.size():
+			if int((_roulantes[k] as Dictionary)["fid"]) == fid \
+					and _visibles_roule[k] == 1:
+				r.append(k)
+	mm_gare.instance_count = g.size()
+	for j in g.size():
+		mm_gare.set_instance_transform(j, (_garees[g[j]] as Dictionary)["t"])
+		mm_gare.set_instance_color(j, _mm_gare.get_instance_color(g[j]))
+	mm_roule.instance_count = r.size()
+	for j in r.size():
+		mm_roule.set_instance_transform(j, _mm_roule.get_instance_transform(r[j]))
+		mm_roule.set_instance_color(j, _mm_roule.get_instance_color(r[j]))
+		mm_roule.set_instance_custom_data(j, _mm_roule.get_instance_custom_data(r[j]))
+	return [g.size(), r.size()]
+
+
 ## Contrôle de l'essai : roulantes puis garées réellement dessinées sur un fid.
 func voitures_visibles_sur(fid: int) -> Array:
 	var roulantes := 0

@@ -342,6 +342,11 @@ func vider_rampes() -> void:
 	_rampes = {"i": {}, "r": {}}
 
 
+## Le temps qu'on met à enlever des places : deux mois de peinture et de
+## panneaux. C'est la barre de la fiche qui le lit aussi (`chantier`).
+const STATIONNEMENT_MOIS := 2.0
+
+
 func supprimer_stationnement(fid: int, t: float) -> bool:
 	if _stationnement_supprime.has(fid):
 		return false
@@ -349,7 +354,7 @@ func supprimer_stationnement(fid: int, t: float) -> bool:
 	if actuel <= 0.0:
 		return false
 	_stationnement_supprime[fid] = t
-	ajouter_rampe("r", fid, "stationnement", -actuel, t, 0.0, 2.0)
+	ajouter_rampe("r", fid, "stationnement", -actuel, t, 0.0, STATIONNEMENT_MOIS)
 	return true
 
 
@@ -699,6 +704,37 @@ func etat_chantier(couche: String, fid: int, t: float) -> int:
 	if reparation_finie(couche, fid, t):
 		return CHANTIER_FAIT
 	return CHANTIER_EN_COURS if est_repare(couche, fid) else CHANTIER_CASSE
+
+
+## 🔧 OÙ EN EST LE CHANTIER DE CET OBJET-LÀ — ce que la barre de la fiche
+## montre. Quand deux courent ensemble, celui qui finit le DERNIER : l'objet
+## reste en travaux jusque-là. Mêmes mots que `chantiers()`, l'interface traduit.
+func chantier(couche: String, fid: int, t: float) -> Dictionary:
+	var out := {"actif": false, "part": 0.0, "reste_mois": 0.0, "quoi": ""}
+	if fid < 0:
+		return out
+	var lot := []   # [quoi, durée totale, ce qui reste]
+	if est_repare(couche, fid) and not reparation_finie(couche, fid, t):
+		lot.append([_genre_chantier(couche, fid),
+			duree_reparation_mois(couche, fid),
+			reste_reparation_mois(couche, fid, t)])
+	if couche == "i" and _solaire.has(fid) and etat_solaire(fid, t)["en_cours"]:
+		lot.append(["solaire", float(_solaire[fid]["duree"]),
+			float(etat_solaire(fid, t)["reste_mois"])])
+	if couche == "b" and berge_en_cours(fid, t):
+		lot.append(["berge", float(_berge[fid]["duree"]),
+			berge_reste_mois(fid, t)])
+	if couche == "r" and _stationnement_supprime.has(fid):
+		var reste: float = maxf(0.0,
+			float(_stationnement_supprime[fid]) + STATIONNEMENT_MOIS - t)
+		if reste > 0.0:
+			lot.append(["stationnement", STATIONNEMENT_MOIS, reste])
+	for c in lot:
+		if float(c[2]) <= float(out["reste_mois"]):
+			continue
+		out = {"actif": true, "quoi": str(c[0]), "reste_mois": float(c[2]),
+			"part": clampf(1.0 - float(c[2]) / maxf(float(c[1]), 0.001), 0.0, 1.0)}
+	return out
 
 
 ## Ce qui est cassé, ce qui se répare, ce qui est fait — à cet instant.

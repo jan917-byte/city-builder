@@ -91,6 +91,9 @@ ENFOUISSEMENT = 0.5        # de combien la base d'une masse plonge sous le sol
 Y_TERRAIN = -0.10
 Y_CHAUSSEE = -0.02
 Y_SOL = 0.05
+# Le sol nu d'un îlot bâti : 2 cm SOUS les jardins, venelles et accès
+# qui se posent dessus, 13 cm au-dessus de la plaque de terrain.
+Y_SOL_ILOT = Y_SOL - 0.02
 HAUTEUR_BORDURE = 0.14     # la marche : mesure réelle d'une bordure de rue
 Y_TROTTOIR = Y_CHAUSSEE + HAUTEUR_BORDURE
 # 🔄 LE TROTTOIR EST PASSÉ AU-DESSUS DE LA CHAUSSÉE, le 2026-08-18. Il était
@@ -1582,6 +1585,7 @@ def main():
     aire_chemin = 0.0
     n_champ = n_bande = n_maille_talus = 0
     n_neuf = 0                 # bâtiments préparés pour la reconstruction
+    aire_sol_ilot = 0.0        # le sol nu rendu aux îlots bâtis
 
     for fid in sorted(ilots):
         d = ilots[fid]
@@ -1656,6 +1660,17 @@ def main():
                     PAL.couleur_sol("jardins_familiaux", 0.10), eau_ilot,
                     0.26, 0.88))
             coul_haie_i = tuple(c * 0.68 for c in coul_jardin_i)
+            # 🔲 LE SOL NU D'UN ÎLOT BÂTI LUI APPARTIENT. Cour, délaissé,
+            # fond de parcelle non planté : rien n'y était dessiné, donc on
+            # voyait la plaque de terrain — qui n'est à personne. Ces parties
+            # grises sortaient du clic, du calque et du thème « tissu ».
+            # La même teinte que le terrain, donc l'image ne bouge pas ; ce
+            # qui change est l'APPARTENANCE, et elle passe par le groupe.
+            _sol(masses, an,
+                 PAL.vers_lineaire(PAL.salir(PAL.MINERAL_CLAIR, eau_ilot,
+                                             0.26, 0.88)),
+                 G, y=Y_SOL_ILOT)
+            aire_sol_ilot += abs(D4C.aire_signee(an))
             # ⚠️ TOUTES les parcelles d'un îlot tombent dans LE MÊME groupe.
             # C'est ce qui permet d'avoir mille bâtiments sans passer de 237 à
             # 1 200 nœuds cliquables : la géométrie descend à la parcelle, la
@@ -1985,6 +2000,9 @@ def main():
         print("  couche `batiments` : %d volumes sur %d parcelles bâties"
               " (%d parcelles non bâties)"
               % (n_vol, n_parc_batie, n_parc - n_parc_batie))
+        print("  sol d'îlot bâti : %.2f ha posés sous les %d pâtés — la cour"
+              " et le délaissé se cliquent et se teintent avec leur îlot"
+              % (aire_sol_ilot / 1e4, n_masse))
         if n_chemin:
             print("  chemins %d → %.0f m² de venelle pavée, dans le groupe de"
                   " leur îlot" % (n_chemin, aire_chemin))
@@ -2735,10 +2753,11 @@ def _chenal_eau(m_eau, m_dur, anneau, chenal, coul_eau, coul_mur, G,
     return ok, tot
 
 
-def _sol(m, anneau, coul, G, relief=None):
+def _sol(m, anneau, coul, G, relief=None, y=Y_SOL):
     """Un cap posé sur la plaque, SANS AUCUN MUR — donc impossible à lire
-    comme un bâtiment raté. Les seize îlots à hauteur nulle sont des
-    surfaces : champs, parc, jardins, et la place du marché.
+    comme un bâtiment raté. Il sert les îlots à hauteur nulle (champs, parc,
+    jardins, la place du marché), les jardins et venelles d'un pâté, et le
+    sol nu de l'îlot bâti lui-même, posé plus bas par `y`.
 
     🔄 Il était SUBDIVISÉ pour suivre un champ d'altitude, puis strictement
     plat une fois la carte aplatie. Il redevient échantillonné — mais sur le
@@ -2746,7 +2765,7 @@ def _sol(m, anneau, coul, G, relief=None):
     pile partout ailleurs, donc la ville ne bouge pas d'un millimètre."""
     for ia, ib, ic in trianguler(anneau):
         a, b, c = anneau[ia], anneau[ib], anneau[ic]
-        ya = yb = yc = Y_SOL
+        ya = yb = yc = y
         if relief is not None:
             ya += relief.z(a[0], a[1])
             yb += relief.z(b[0], b[1])

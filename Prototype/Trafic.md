@@ -44,7 +44,9 @@ Pourquoi ça compte pour cette étape : le critère se juge **sans thème**, sur
 
 Ce qui prouverait que c'est cassé : une voiture ou un arbre sur une image de diagnostic · `essai_retour_ville` qui diffère de `essai_materiaux` · deux signaux sur le même objet · un carton si clair que les couleurs de thème s'y perdent — le seul réglage qu'aucun contrôle n'attrape, il tient à un nombre du shader.
 
-✅ **L'interface papier est compilée et vue sur Mac** : bandeau d'indicateurs à pictogrammes, fiche locale à droite, thèmes en onglets à gauche. `--interface` sort les deux cadrages courts `wehrau_interface_rue.png` et `wehrau_interface_diagnostic.png`.
+✅ **L'interface papier est compilée et vue sur Mac** : bandeau d'indicateurs à pictogrammes, fiche locale à droite, thèmes en onglets à gauche. `--interface` sort les cadrages courts : la fiche d'une rue, le diagnostic, la fiche d'un îlot, celle d'une berge et **une fiche en chantier**, plus **la miniature seule** (`wehrau_apercu_rue/ilot/berge.png`) — à 296 px dans une capture d'écran, son cadrage ne se juge pas.
+🛣️ **La miniature d'une rue ou d'une berge ne montre plus de virage** : elle cherche le plus long morceau qui ne tourne pas de plus de 6°, et n'en montre que celui-là. La rue s'appuie sur **l'axe exporté par 07** (le tronçon 55 : 10 points, 86 m de ligne droite, cadre de 39 m) ; la berge, qui n'en exporte pas, se fait un axe en rangeant ses sommets par tranches de 4 m (cadre de 18 m). **Ce qui prouverait que c'est cassé** : un coude, un bout de trottoir seul, ou un cadre si large que l'objet n'est plus qu'un fil.
+🔧 **La fiche porte une barre de chantier** sous la miniature — reconstruction, tablier, déblaiement, pose de panneaux, rive, retrait des places : celui qui finit le dernier. Elle n'apparaît qu'en travaux. À juger sur `wehrau_interface_chantier.png` (berge 6 au mois 3 sur 6 : barre à moitié, « encore 3,0 mois »).
 🔴 **La décision « deux vues » n'existe pas dans le vault** : à ouvrir dans `Questions ouvertes.md` et fermer dans `Décisions arrêtées.md`.
 
 ## Ce qui reste

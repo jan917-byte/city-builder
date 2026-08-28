@@ -12,7 +12,7 @@ python QGIS/scripts/chaine.py --godot
 
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
-`Godot --path Godot -- --interface` sort rapidement les deux captures de contrôle de l'interface, avec une rue choisie puis son diagnostic.
+`Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, plus chaque miniature seule à sa taille de rendu.
 ## Le clavier
 
 | | |
@@ -57,7 +57,9 @@ scripts/
                        avec le thème « chantiers », qui vit dans ville.gd
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la ville ou le menu à gauche, l'îlot et son curseur à droite
-  apercu.gd            la miniature de la fiche : l'objet choisi, dans son état livré
+  apercu.gd            la miniature de la fiche : l'objet choisi, dans son état
+                       livré, de trois quarts — une rue par un BOUT, avec ses
+                       voitures et l'épaisseur de sa dalle
   moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
   materiaux.gd         les matériaux, zéro texture
   camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°
@@ -82,6 +84,8 @@ outils/
 Les îlots bâtis et les tronçons sont **un nœud chacun**, avec leur `StaticBody3D`. C'est un choix, pas un oubli : un maillage fusionné ne se sélectionne pas, ne se surligne pas et ne se reteinte pas objet par objet. Toutes les parcelles d'un îlot tombent dans le même groupe : **la géométrie descend à la parcelle, la sélection reste à l'îlot.**
 
 L'occlusion voyage dans `COLOR.a` — la teinte occluse est dans `COLOR.rgb`, le facteur seul dans l'alpha. C'est ce qui permet de repeindre un îlot en calque sans perdre ce qui le pose au sol. Aucun matériau du projet n'active la transparence : ce canal était libre.
+
+🔎 **La miniature de la fiche est une vue à part**, en isométrie : l'objet y est toujours vu **de trois quarts** — le lacet se cale sur le quart de tour le plus proche de la ville, jamais de face —, et un objet long (une rue, une berge) est montré par **un bout** pris en son milieu, sinon il n'est qu'un ruban. Sa dalle a une épaisseur : sans elle, l'objet est une découpe posée sur du papier. Ses voitures sont **celles du trafic**, recopiées instance par instance, dans l'état que la fiche promet et non celui de la ville.
 
 ✏️ **Le trait de sélection n'est pas de la géométrie.** L'objet choisi est redessiné seul, en blanc plat, dans une petite vue à part ; un shader plein écran allume les pixels vides proches de ce masque. Le trait épouse donc les pignons et les débords, et garde la même épaisseur à tous les zooms.
 

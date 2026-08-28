@@ -32,6 +32,12 @@ const ALERTE := Color8(194, 74, 53)
 const CASSE := Color8(220, 58, 48)
 const EN_TRAVAUX := Color8(232, 170, 48)
 const FAIT := Color8(91, 174, 117)
+## Les genres de `ville.chantier` en clair, pour la barre de la fiche.
+const CHANTIER_MOTS := {
+	"reconstruction": "Reconstruction", "pont": "Tablier rebâti",
+	"deblaiement": "Déblaiement", "solaire": "Pose de panneaux",
+	"berge": "Rive transformée", "stationnement": "Retrait des places",
+}
 
 
 ## Ce qui est POSÉ, et vers quoi ça va. Un `ProgressBar` ne montre qu'un
@@ -95,6 +101,10 @@ var _fiche_titre: Label
 var _fiche_entete: Label
 var _fiche_vide: Label
 var _fiche_grille: GridContainer
+var _chantier_bloc: VBoxContainer
+var _chantier_quoi: Label
+var _chantier_reste: Label
+var _chantier_jauge: Jauge
 var _solaire_bloc: VBoxContainer
 var _solaire_valeur: Label
 var _solaire_cout: Label
@@ -169,6 +179,18 @@ func batir() -> void:
 	_panneau_calque()
 	_panneau_camera()
 	_controles_temps()
+	_sans_focus(self)
+
+
+## 🔴 Un bouton qui garde le focus MANGE le clavier du jeu : Espace le
+## represse au lieu de mettre en pause, les flèches sautent au bouton voisin
+## au lieu de tourner la caméra. Aucun champ de saisie ici — personne n'a
+## besoin du focus.
+func _sans_focus(n: Node) -> void:
+	if n is Control:
+		(n as Control).focus_mode = Control.FOCUS_NONE
+	for e in n.get_children():
+		_sans_focus(e)
 
 
 func _boite() -> StyleBoxFlat:
@@ -716,9 +738,11 @@ func _panneau_ilot() -> void:
 	# la ville derrière garde son état réel.
 	_apercu_cadre = PanelContainer.new()
 	var fond := StyleBoxFlat.new()
-	fond.bg_color = Color(0.071, 0.082, 0.102)
-	fond.border_color = BORD
-	fond.set_border_width_all(1)
+	# Du papier, pas une lucarne noire : la miniature a un fond transparent et
+	# l'objet s'y pose comme sur le reste de la fiche.
+	# 🔄 SANS FILET depuis le 2026-08-28 : le trait fermait la miniature comme
+	# une vignette collée, au lieu de la laisser être un dessin sur la page.
+	fond.bg_color = FOND_FORT
 	fond.set_corner_radius_all(6)
 	_apercu_cadre.add_theme_stylebox_override("panel", fond)
 	_apercu_cadre.visible = false
@@ -734,6 +758,28 @@ func _panneau_ilot() -> void:
 	vue.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vue.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_apercu_cadre.add_child(vue)
+
+	# 🔧 L'AVANCEMENT, SOUS LA MINIATURE : celle-ci montre l'objet LIVRÉ, la
+	# barre dit combien il reste à attendre avant que la ville le montre aussi.
+	# Ambre de la vue chantiers : la même chose se dit de la même couleur.
+	_chantier_bloc = VBoxContainer.new()
+	_chantier_bloc.add_theme_constant_override("separation", 2)
+	_chantier_bloc.visible = false
+	v.add_child(_chantier_bloc)
+	var chantier_ligne := HBoxContainer.new()
+	_chantier_bloc.add_child(chantier_ligne)
+	_chantier_quoi = _label("Chantier", 11, ACCENT)
+	_chantier_quoi.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chantier_ligne.add_child(_chantier_quoi)
+	_chantier_reste = _label("", 11, GRIS)
+	_chantier_reste.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	chantier_ligne.add_child(_chantier_reste)
+	_chantier_jauge = Jauge.new()
+	_chantier_jauge.custom_minimum_size = Vector2(0, 9)
+	_chantier_jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_chantier_jauge.colorer(EN_TRAVAUX)
+	_chantier_bloc.add_child(_chantier_jauge)
+
 	_fiche_vide = _label("Cliquez un îlot.", 13, GRIS)
 	_fiche_vide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_fiche_vide)
@@ -1066,6 +1112,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 
 
 func _maj_fiche() -> void:
+	_maj_chantier()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()
 		return
@@ -1197,8 +1244,16 @@ func apercu_demande() -> Dictionary:
 		# La même règle que la ville : une berge de campagne naît renaturée, et la
 		# teinte dit un CHANGEMENT, pas un état.
 		berge = 0.0 if e == ville.berge_depart(_fiche_fid) else float(e)
+	# Les deux boutons de la rue : survoler vide la bordure, ou la chaussée,
+	# avant qu'on ait cliqué. Un bouton grisé ne promet rien.
+	var places := true
+	var roule := true
+	if _fiche_fid >= 0 and _fiche_couche == "r":
+		places = _trafic_stationnement.disabled \
+			or not _trafic_stationnement.is_hovered()
+		roule = _trafic_axe.disabled or not _trafic_axe.is_hovered()
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
-		"futur": futur, "berge": berge}
+		"futur": futur, "berge": berge, "places": places, "roule": roule}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait
@@ -1274,6 +1329,19 @@ static func _milliers(v: float) -> String:
 # ------------------------------------------------- après la crue (04e · 23b)
 
 ## La fiche d'une rue. Elle n'a qu'un sujet : ce que la crue lui a fait.
+## La barre du haut de fiche. Elle vaut pour les trois couches : c'est
+## `ville.chantier` qui sait lequel des chantiers de l'objet finit le dernier.
+func _maj_chantier() -> void:
+	var c := ville.chantier(_fiche_couche, _fiche_fid, _mois)
+	_chantier_bloc.visible = bool(c["actif"])
+	if not _chantier_bloc.visible:
+		return
+	_chantier_quoi.text = CHANTIER_MOTS.get(str(c["quoi"]), "Chantier")
+	_chantier_reste.text = "encore %s" % _duree(float(c["reste_mois"]))
+	var part := float(c["part"])
+	_chantier_jauge.regler(part, part)
+
+
 func _maj_fiche_rue() -> void:
 	var o: Dictionary = ville.routes.get(_fiche_fid, {})
 	if o.is_empty():

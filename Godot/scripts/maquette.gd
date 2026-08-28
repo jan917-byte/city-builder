@@ -108,11 +108,16 @@ var _contour_couche := ""
 var apercu: Apercu
 var _apercu_fid := -1
 var _apercu_couche := ""
+var _apercu_voitures := ""
 var _couloirs := {}
 var _plaques := {}
 var _diagnostic_marqueurs: Node3D
 
 var noeuds := {"i": {}, "r": {}, "b": {}}
+## L'épaisseur de la dalle de la miniature, en mètres. Assez pour se voir dans
+## une fenêtre de 35 m, assez peu pour ne pas faire un gâteau sous un îlot.
+const EPAISSEUR_SOCLE := 1.6
+var _socles := {}
 # 🔧 LA VILLE RÉPARÉE, cachée au chargement. Un nœud par îlot ruiné et par
 # tronçon abîmé ; il apparaît quand le chantier payé arrive à son terme. C'est
 # la seule géométrie qui se montre en cours de partie — elle est CALCULÉE par
@@ -220,18 +225,47 @@ func _ready() -> void:
 		await _essai()
 
 
-## Deux images rapides pour juger l'interface sans rejouer toute la partie.
+## Des images rapides pour juger l'interface sans rejouer toute la partie : la
+## fiche entière, puis la MINIATURE SEULE — à 296 px dans une capture d'écran,
+## son cadrage ne se juge pas.
 func _essai_interface() -> void:
 	vitesse = 0.0
 	_viser_route(55, 90.0)
 	pivot.caler(35.0, 28.0)
-	interface.montrer("r", 55, false)
-	await get_tree().process_frame
+	await _fiche("r", 55)
 	await _capturer("interface_rue")
+	await _capturer_apercu("apercu_rue")
 	_sur_theme("trafic")
 	await get_tree().process_frame
 	await _capturer("interface_diagnostic")
+	_sur_theme("")
+	# Les trois formes que la miniature doit tenir : une rue, un îlot bâti, une
+	# berge. Même cadrage voulu, trois objets aux proportions incomparables.
+	_viser_objet("i", 49, 150.0)
+	await _fiche("i", 49)
+	await _capturer("interface_ilot")
+	await _capturer_apercu("apercu_ilot")
+	_viser_objet("b", 6, 260.0)
+	await _fiche("b", 6)
+	await _capturer("interface_berge")
+	await _capturer_apercu("apercu_berge")
+	# 🔧 LA BARRE DE CHANTIER ne se voit qu'en travaux : on en engage un et on se
+	# place à mi-parcours. La berge 6 met 6 mois à devenir un quai apaisé.
+	ville.transformer_berge(6, Ville.BERGE_APAISEE, 0.0)
+	mois = 3.0
+	await _fiche("b", 6)
+	await _capturer("interface_chantier")
 	get_tree().quit()
+
+
+## Ouvre la fiche ET pose la sélection : sans elle, la capture n'a pas le trait.
+func _fiche(couche: String, fid: int) -> void:
+	selection.sel_couche = couche
+	selection.sel_fid = fid
+	interface.montrer(couche, fid, false)
+	_rafraichir(true)
+	await get_tree().process_frame
+	await get_tree().process_frame
 
 
 ## Une passe sans souris, pour juger sur des captures plutôt que de mémoire.
@@ -660,25 +694,7 @@ BERGE — trois états francs")
 		push_error("aucune berge : la couche `b` est vide")
 		get_tree().quit(1)
 		return
-	var mi: MeshInstance3D = noeuds["b"][fid]
-	# 🔴 UN SOMMET DU MAILLAGE, PAS LE CENTRE DE SA BOÎTE : une berge est une
-	# ligne courbe, et le centre de son AABB tombe au milieu de l'Ilse — le
-	# rayon du contrôle n'y touchait rien du tout.
-	var sommets: PackedVector3Array = (mi.mesh as ArrayMesh).surface_get_arrays(
-		0)[Mesh.ARRAY_VERTEX]
-	# ⚠️ Le sommet le plus proche du barycentre, et pas « celui du milieu » :
-	# l'ordre des sommets suit l'émission (mur, puis bande), donc le milieu du
-	# tableau tombait ailleurs dès qu'on ajoutait une surface.
-	var moy := Vector3.ZERO
-	for v in sommets:
-		moy += v
-	moy /= float(sommets.size())
-	var c: Vector3 = sommets[0]
-	for v in sommets:
-		if v.distance_squared_to(moy) < c.distance_squared_to(moy):
-			c = v
-	c += mi.global_position
-	pivot.viser(Vector2(c.x, c.z), 260.0)
+	_viser_objet("b", fid, 260.0)
 	# ⚠️ PAS DE PROFIL ICI. À 14° le rayon du centre de l'écran traverse la rive
 	# d'EN FACE avant d'arriver sur celle qu'on vise : le contrôle du clic
 	# renvoyait la berge 2 en visant la 6. À 34°, il tombe sur ce qu'on regarde.
@@ -1533,6 +1549,28 @@ func _emprise(fid: int) -> Mesh:
 	return m
 
 
+## 🧱 LE SOCLE DE LA MINIATURE : la plaque de la fiche, épaisse. Gardé À PART de
+## celle du masque — une jupe déborderait le trait de sélection — et gardé tout
+## court : il ne dépend que de la carte. Une berge n'en a pas.
+func _socle(couche: String, fid: int) -> Mesh:
+	var cle := "%s%d" % [couche, fid]
+	if _socles.has(cle):
+		return _socles[cle]
+	var m: Mesh = null
+	if couche == "i":
+		var tous: Dictionary = donnees["emprises"]
+		if tous.has(str(fid)):
+			m = Constructeur.socle_anneau(tous[str(fid)], EPAISSEUR_SOCLE)
+	elif couche == "r":
+		var tous: Dictionary = donnees["couloirs"]
+		if tous.has(str(fid)):
+			var c: Array = tous[str(fid)]
+			m = Constructeur.socle_ruban(c[1] as Array, float(c[0]),
+				EPAISSEUR_SOCLE)
+	_socles[cle] = m
+	return m
+
+
 ## Appelé à chaque image. Ce qui coûte est la vue à part, d'où son extinction
 ## complète (`UPDATE_DISABLED` + rectangle caché) sans sélection.
 func _maj_contour() -> void:
@@ -1599,17 +1637,42 @@ func _maj_apercu() -> void:
 		_apercu_couche = couche
 		var neuf: MeshInstance3D = reparations[couche].get(fid)
 		# La plaque : l'emprise pour un îlot, le couloir façade à façade pour une
-		# rue — les deux existent déjà pour le trait de sélection. Une berge n'en
-		# a pas : son mur de quai EST son sol.
-		var plaque: Mesh = null
-		if couche == "i":
-			plaque = _emprise(fid)
-		elif couche == "r":
-			plaque = _silhouette(couche, fid)
+		# rue. Une berge n'en a pas : son mur de quai EST son sol.
+		var plaque: Mesh = _socle(couche, fid)
+		# Une rue et une berge sont montrées par un BOUT, pas en entier : un
+		# tronçon de 273 m cadré d'un bout à l'autre n'est plus qu'un ruban.
+		# L'axe exporté par 07 quand il existe : c'est lui qui dit où la rue est
+		# droite. Une berge n'en a pas, la miniature le déduit de ses sommets.
+		var axe := PackedVector2Array()
+		var largeur := 0.0
+		var tous: Dictionary = donnees["couloirs"]
+		if couche == "r" and tous.has(str(fid)):
+			var c: Array = tous[str(fid)]
+			largeur = float(c[0])
+			# La plus longue des parties : un tronçon coupé en deux se cadre sur
+			# le morceau qui a de quoi montrer une rue.
+			var brut := []
+			for partie in (c[1] as Array):
+				if brut.is_empty() or (partie as Array).size() > brut.size():
+					brut = partie
+			for k in range(0, brut.size() - 1, 2):
+				axe.append(Vector2(float(brut[k]), float(brut[k + 1])))
 		apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
-			neuf.mesh if neuf != null else null, plaque)
+			neuf.mesh if neuf != null else null, plaque, couche != "i",
+			axe, largeur)
 	apercu.viser(pivot.lacet)
 	apercu.regler(float(d["equipe"]), bool(d["futur"]), float(d["berge"]))
+	# Les voitures du tronçon montré. La signature évite de recopier les
+	# instances à chaque image : elles ne changent qu'au survol ou au mois.
+	if couche != "r" or trafic == null:
+		return
+	var signe := "%d %d %d %d" % [fid, int(d["places"]), int(d["roule"]),
+		int(mois * 4.0)]
+	if signe == _apercu_voitures:
+		return
+	_apercu_voitures = signe
+	trafic.remplir(apercu.mm_gare, apercu.mm_roule, fid, mois,
+		bool(d["places"]), bool(d["roule"]))
 
 
 func _teinte(couche: String, fid: int) -> Color:
@@ -1721,6 +1784,28 @@ func _repere(nom: String) -> void:
 	pivot.viser(Vector2(float(c[0]), float(c[1])), float(d["taille"]))
 
 
+## 🔴 UN SOMMET DU MAILLAGE, PAS LE CENTRE DE SA BOÎTE : une berge est une ligne
+## courbe, et le centre de son AABB tombe au milieu de l'Ilse — le rayon du
+## contrôle du clic n'y touchait rien du tout.
+## ⚠️ Le sommet le plus proche du barycentre, et pas « celui du milieu » :
+## l'ordre des sommets suit l'émission (mur, puis bande), donc le milieu du
+## tableau tombait ailleurs dès qu'on ajoutait une surface.
+func _viser_objet(couche: String, fid: int, taille: float) -> void:
+	var mi: MeshInstance3D = noeuds[couche][fid]
+	var sommets: PackedVector3Array = (mi.mesh as ArrayMesh).surface_get_arrays(
+		0)[Mesh.ARRAY_VERTEX]
+	var moy := Vector3.ZERO
+	for v in sommets:
+		moy += v
+	moy /= float(sommets.size())
+	var c: Vector3 = sommets[0]
+	for v in sommets:
+		if v.distance_squared_to(moy) < c.distance_squared_to(moy):
+			c = v
+	c += mi.global_position
+	pivot.viser(Vector2(c.x, c.z), taille)
+
+
 func _viser_route(fid: int, taille: float) -> void:
 	var parties: Array = donnees["couloirs"][str(fid)][1]
 	var axe: Array = parties[0]
@@ -1758,6 +1843,22 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_F3: moniteur_performances.basculer()
 		KEY_P: _capturer("vue")
 		KEY_ESCAPE: get_tree().quit()
+
+
+## La miniature de la fiche, à sa taille de rendu.
+func _capturer_apercu(nom: String) -> void:
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var img := apercu.get_texture().get_image()
+	var dossier := ProjectSettings.globalize_path(RENDUS)
+	DirAccess.make_dir_recursive_absolute(dossier)
+	var chemin := dossier + "wehrau_%s.png" % nom
+	var err := img.save_png(chemin)
+	if err != OK:
+		push_error("capture impossible : %s (erreur %d)" % [chemin, err])
+	else:
+		print("capture → %s" % chemin)
 
 
 func _capturer(nom: String) -> void:
