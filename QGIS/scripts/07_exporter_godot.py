@@ -221,11 +221,13 @@ TALUS_DESSOUS = 0.25
 BANDE_QUAI = 1.10          # de l'asphalte au nu extérieur du mur
 PARAPET_H = 1.00           # le mètre demandé par l'auteur
 PARAPET_EP = 0.40
-# Au-delà de cette distance entre le bord de la chaussée et le bord de l'eau,
-# la rue n'est plus au bord de l'eau : elle passe derrière quelque chose, et
-# poser une barrière à 6 m d'elle ne voudrait rien dire. 4 m, c'est la largeur
-# d'un trottoir plus sa bande libre.
-QUAI_PORTEE = 4.00
+# Jusqu'où on cherche la chaussée, CÔTÉ TERRE, pour dire qu'il y a un quai ici.
+# 🔄 4 m jusqu'au 2026-08-31, quand l'asphalte touchait encore l'eau. Depuis que
+# le corridor se colle aux façades (§ COLLE_MIN) la chaussée s'écarte de la rive
+# de 1,4 m (une voie `rive`) à 9,4 m (le boulevard de quai) : à 4 m le mur de
+# quai disparaissait sur tout le linéaire. Au-delà de 14 m, la rue passe
+# derrière quelque chose et une barrière n'y voudrait rien dire.
+QUAI_PORTEE = 14.00
 QUAI_PAS = 2.00            # le débit de la ligne de mur
 # 🔄 LE MUR SUIT LA BERGE, PAS LA ROUTE — refait le 2026-08-19 devant l'image.
 # L'auteur : « les murs au bord des routes au bord du fleuve ne fonctionnent pas
@@ -281,12 +283,33 @@ Y_QUAI = Y_SOL - 0.01
 # FRANCHISSEMENTS — un morceau par rive et par bief. C'est la seule coupe que
 # le joueur voit, et la seule qui laisse le mur d'un seul tenant (2026-08-19).
 BERGE_MIN_M = 15.0         # plus court, c'est un bout sous un pont, pas une berge
+
+# 🌊 UNE RUE QUI LONGE L'ILSE POSE TOUT SON CORRIDOR SUR LA TERRE (2026-08-31,
+# demandé devant l'image : « route | berge | rivière »). `04b` recule déjà
+# l'îlot riverain de la LARGEUR ENTIÈRE du corridor — la chaussée, elle, restait
+# centrée sur l'axe de la source, c'est-à-dire SUR la ligne d'eau. D'où les deux
+# défauts vus le même jour : 4 819 m² d'asphalte au-dessus de l'Ilse d'un bord,
+# et jusqu'à 15 m de sol nu entre l'asphalte et le trottoir de l'autre.
+# 🔴 SEUL L'AXE DESSINÉ BOUGE. La source garde le tracé de l'auteur (level
+# design), et le décalage se MESURE sur l'emprise bâtie au lieu de recopier la
+# règle de `04b` — même piège que `_rue_le_long`.
+COLLE_MIN = 0.75           # en deçà, le décalage ne se verrait pas
+COLLE_PAS = 0.50           # le pas de la sonde qui cherche la façade
+COLLE_SONDE = 4.0          # une station tous les 4 m le long du tronçon
+COLLE_EAU = 1.50           # de combien la sonde dépasse le bord de l'asphalte
+COLLE_PART = 0.55          # part des stations qui doivent longer l'eau
+COLLE_PORTEE = 32.0        # jusqu'où chercher l'emprise bâtie, côté terre
+# En deçà, pas de trottoir de quai : la bande de berge prend tout ce qui reste.
+QUAI_PROMENADE_MIN = 0.80
 # 🔴 LA BANDE DOIT SE VOIR, sinon la décision n'a pas d'effet à l'écran. Le
 # couronnement du mur fait 1 m de large et passe SOUS le trottoir du quai : à
 # lui seul il ne donnait qu'un filet vert. La bande reprend donc les mètres que
 # le quai a pris au fleuve, et se pose 2 cm au-dessus de ce qu'elle recouvre —
 # le trottoir en ville (Y_TROTTOIR), le talus en campagne (Y_SOL + relief).
 BERGE_BANDE_M = 3.5        # la largeur de rive que la transformation rend
+# En deçà, la bande n'est plus qu'un filet : les voies `rive` de 10 m ne
+# laissent que 1,4 m entre leur chaussée et l'eau, et c'est tout ce qu'elles ont.
+BERGE_BANDE_MIN = 1.0
 BERGE_Y = 0.02             # de combien elle passe au-dessus de son support
 # De combien la bande de campagne s'ENFOUIT sous le talus. 4 cm ne suffisaient
 # pas : entre deux stations le quad est droit, le talus courbe, et il ressortait
@@ -349,6 +372,7 @@ COLS_ILOTS = [
 COLS_ROUTES = ["fid", "hierarchie", "largeur_m", "emprise_libre_m", "charge",
                "canopee", "stationnement", "etat_crue", "hauteur_eau",
                "cout_reparation_ke"]
+# 🅿️ Calculé, pas lu : l'écart à l'axe où `trafic.gd` pose une voiture garée.
 
 # Ce qui part dans `objets` : la fiche qu'on lit en cliquant, et l'état de
 # départ du noyau. Tout ce qui n'est pas là ne peut ni s'afficher ni évoluer.
@@ -357,7 +381,8 @@ FICHE_ILOTS = [c for c in COLS_ILOTS if c != "fid"]
 # surface réelle, pente, et le drapeau « toit plat ». L'ombrage, lui, est déjà
 # là — c'est `canopee`.
 TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat", "toit_m2_neuf"]
-FICHE_ROUTES = [c for c in COLS_ROUTES if c != "fid"] + ["longueur_m"]
+FICHE_ROUTES = ([c for c in COLS_ROUTES if c != "fid"]
+                + ["longueur_m", "bord_places_m"])
 
 # La canopée d'un tronçon PLANTÉ DE BOUT EN BOUT — un arbre tous les
 # ESPACEMENT_ALIGNEMENT mètres. C'est l'échelle de lecture de `routes.canopee`,
@@ -694,6 +719,10 @@ JEU_MARQUAGE = 0.60              # le blanc laissé autour d'une zone interdite
 # pour SURFACE_PAR_PLACE, alors que les deux ne se sont jamais parlé.
 PLACE_LARGEUR = 2.50             # une place : 2,50 m…
 PLACE_LONGUEUR = 5.00            # …sur 5,00 m
+# 🅿️ La place DE RUE est plus longue : on s'y range en marche arrière, le long
+# du trottoir. Même valeur que `trafic.gd` (LONGUEUR_PLACE), qui y pose les
+# voitures — les deux dessinent la même file.
+PLACE_RUE_LONGUEUR = 5.50
 ALLEE_PARKING = 6.00             # l'allée de desserte : ressortir en une manœuvre
 MODULE_PARKING = ALLEE_PARKING + 2 * PLACE_LONGUEUR
 BORD_PARKING = 3.00              # ce que la trame laisse tout autour
@@ -2120,6 +2149,11 @@ def main():
     # rive ailleurs — les deux dans le MÊME groupe, sinon cliquer un parapet et
     # cliquer l'herbe deux mètres plus loin ouvriraient deux fiches.
     berges_m = Maillage()
+    # 🅿️ LES PLACES ONT LEUR MAILLAGE, donc leurs nœuds : « retirer les places »
+    # doit les effacer de la ville, pas seulement en retirer les voitures.
+    # C'est la même recette que la ville réparée, à un détail près : ces nœuds
+    # partent VISIBLES et se cachent, au lieu de l'inverse.
+    places_m = Maillage()
     # Deux teintes, et ce sont celles de ce qu'elle recouvre : à l'état
     # « asphalte » la bande ne doit RIEN changer au rendu de la ville.
     coul_berge = (PAL.vers_lineaire(PAL.TROTTOIR),
@@ -2131,6 +2165,29 @@ def main():
     # tranche de la même dalle, et l'œil ne doit y lire qu'une ombre d'arête.
     coul_bord = PAL.vers_lineaire(PAL.melanger(PAL.TROTTOIR, "#000000", 0.22))
     coul_marq = PAL.vers_lineaire(PAL.MARQUAGE)
+    # 🌊 LE CORRIDOR DES RUES DE BERGE SE POSE SUR LA TERRE, AVANT TOUT LE
+    # RESTE : coudes, chaussée, marquage, quai, alignements et couloir de
+    # sélection lisent tous `parts`, et n'ont donc rien à savoir de la berge.
+    st_colle = _coller_aux_facades(routes, ilots, chenal)
+    if st_colle["n"]:
+        print("  berge : %d tronçons collés aux façades sur %.0f m — décalé de"
+              " %.1f à %.1f m, il reste %.1f à %.1f m entre l'asphalte et l'eau"
+              "  ·  %d rues perpendiculaires arrêtées à la rive"
+              % (st_colle["n"], st_colle["m"],
+                 min(st_colle["decals"]), max(st_colle["decals"]),
+                 min(st_colle["libres"]), max(st_colle["libres"]),
+                 st_colle["bouts"]))
+    else:
+        print("  ⚠️  aucune rue de berge collée aux façades — sonde ou emprise ?")
+    # 🅿️ OÙ SE GARE UNE VOITURE, en mètres depuis l'axe : le milieu de la file
+    # peinte. Mesuré ici, où la coupe en travers est connue, et lu tel quel par
+    # `trafic.gd` — deux recettes parallèles auraient dérivé dès le premier
+    # tronçon de berge, dont le corridor n'est plus celui de la source.
+    for d in routes:
+        larg_ = d["largeur_m"] or 0.0
+        ch_ = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg_)
+        d["bord_places_m"] = (round(_bord_libre(d, ch_) - PLACE_LARGEUR / 2.0, 2)
+                              if larg_ > 0.0 else 0.0)
     coudes, (n_coude, n_marque, n_rond) = _coudes(routes)
     axes_voirie, chaussees = _index_chaussees(routes, coudes)
     # 🌊 LE PONT EMPORTÉ (04e · 23b). On ampute son axe UNE FOIS, ici, et tout
@@ -2211,6 +2268,10 @@ def main():
 
     n_seg = 0
     n_tri_tr = 0
+    # Deux compteurs de contrôle, en liste pour rester écrivables dans la
+    # boucle : la promenade de quai et les places de rue peintes.
+    n_promenade = [0]
+    n_places = [0]
     # 🔲 LE COULOIR DE CHAQUE TRONÇON, pour la silhouette de sélection.
     #
     # Un tronçon n'est PAS une surface : c'est la chaussée, plus les mètres
@@ -2233,6 +2294,10 @@ def main():
             continue                            # 4 tronçons `rive` à 0 m
         ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
         voirie.marque(d["fid"])
+        # ⚠️ UN SEUL GROUPE PAR TRONÇON, ouvert ici et pas dans la boucle des
+        # morceaux : deux groupes de même fid donneraient deux nœuds de même
+        # nom dans Godot, et un seul des deux se cacherait.
+        places_m.marque(d["fid"])
         axes = []
         # 🌊 Un pont FRAGILE (04e) garde toute sa géométrie et prend le limon :
         # il passe encore, et il se voit qu'il a bu. Le pont EMPORTÉ, lui, a
@@ -2283,15 +2348,48 @@ def main():
                        if eau_rue > 0.10 else coul_marq)
         for ip, part in enumerate(d["parts"]):
             axe = axes_voirie[d["fid"]][ip]
+            # 🅿️ LES MÈTRES LIBRES : ce qui reste entre le bord de l'asphalte
+            # et le trottoir — 0,2 m sur une rue de 13 m, 1,65 m sur un
+            # boulevard de 18. Une bande de sol nu que rien n'expliquait, et
+            # c'est là que les voitures se garent.
+            libre = _bord_libre(d, ch) - ch / 2.0
             for axe_ in morceaux_voirie[d["fid"]][ip]:
                 _ruban(voirie, axe_, ch, coul_ch_d, G)
                 n_seg += len(axe_) - 1
+                # Ils reçoivent l'asphalte : même teinte, même hauteur que la
+                # chaussée — la file peinte suffit à dire ce que c'est.
+                if libre > 0.05:
+                    for sens in (-1.0, 1.0):
+                        _ruban(voirie, axe_, libre, coul_ch_d, G,
+                               decal=sens * (ch / 2.0 + libre / 2.0))
+                # 🌊 LA PROMENADE DE QUAI : ce qui reste entre l'asphalte et la
+                # bande de berge. Sans elle la rive redeviendrait le sol nu de
+                # la plaque — la bande grise qu'on vient justement de retirer
+                # du côté des façades.
+                promenade = d.get("berge_libre_m", 0.0) - BERGE_BANDE_M
+                if promenade >= QUAI_PROMENADE_MIN:
+                    n_promenade[0] += _ruban(
+                        voirie, axe_, promenade, coul_tr_d, G, y=Y_TROTTOIR,
+                        decal=d["berge_cote"] * (ch / 2.0 + promenade / 2.0))
+                # 🅿️ Les places peintes vont dans LEUR maillage, un groupe par
+                # tronçon (ouvert plus haut) : Godot les efface quand la rue
+                # n'a plus de stationnement.
+                n_places[0] += _places_de_rue(places_m, d, axe_, ch,
+                                              coul_marq_d, G)
+                if lavage:
+                    _places_de_rue(repare_voirie, d, axe_, ch, coul_marq, G,
+                                   RELEVE)
                 # 🔧 LA MÊME RUE, LAVÉE, dans le maillage caché. Elle ne coûte
                 # que sur les 36 tronçons envasés — ailleurs `lavage` est faux
                 # et rien n'est émis.
                 if lavage:
                     _ruban(repare_voirie, axe_, ch, coul_ch, G,
                            y=Y_CHAUSSEE + RELEVE)
+                    for sens in (-1.0, 1.0):
+                        if libre > 0.05:
+                            _ruban(repare_voirie, axe_, libre, coul_ch, G,
+                                   y=Y_CHAUSSEE + RELEVE,
+                                   decal=sens * (ch / 2.0 + libre / 2.0))
                     _marquage(repare_voirie, d, axe_, ip, ch, nd_marq,
                               chenal, coul_marq, G, dy=RELEVE)
                 # 🎨 Le marquage se pose SUR la chaussée qu'on vient d'émettre,
@@ -2323,7 +2421,8 @@ def main():
                 plat.append(round(g[0], 2))
                 plat.append(round(g[2], 2))
             axes.append(plat)
-        couloirs[str(d["fid"])] = [round(larg + MARGE_COULOIR, 2), axes]
+        couloirs[str(d["fid"])] = [
+            round(d.get("corridor_m", larg) + MARGE_COULOIR, 2), axes]
         # 🚶 Le trottoir de ce tronçon a été fabriqué par les ÎLOTS qui le
         # bordent, pas par lui — mais il est rangé sous SON fid, dans son
         # groupe : cliquer un trottoir ouvre la fiche de la rue.
@@ -2395,6 +2494,13 @@ def main():
     print("        courbes : %d coudes internes, %d marqués (≥ %.0f°),"
           " %d arrondis — les %d carrefours gardent leur angle"
           % (n_coude, n_marque, COUDE_MIN_DEG, n_rond, len(noeuds)))
+    print("        places de rue : %d peintes sur %d annoncées par `04`"
+          "  %s"
+          % (n_places[0], sum(int(d["stationnement"] or 0) for d in routes),
+             "✅" if n_places[0] else "❌ aucune file peinte"))
+    if n_promenade[0]:
+        print("        promenade de quai : %d triangles entre l'asphalte et la"
+              " bande de berge" % n_promenade[0])
     print("        trottoir : %d îlots bordés, %.2f km de bordure,"
           " marche de %.0f cm, %d triangles"
           % (st_tr["ilots"], st_tr["long"] / 1000.0,
@@ -2478,9 +2584,9 @@ def main():
              else "⚠️ vérifier la coupe aux franchissements"))
     for b in berges:
         print("        %2d  rive %-7s %6.0f m  mur %5.0f m  asphalte sur l'eau"
-              " %6.0f m² (max %.1f m)  rues : %s"
+              " %6.0f m² (max %.1f m) · rive libre %4.1f m  rues : %s"
               % (b["fid"], b["rive"], b["longueur_m"], b["mur_m"],
-                 b["debord_m2"], b["debord_max_m"],
+                 b["debord_m2"], b["debord_max_m"], b["rive_m"],
                  ", ".join(str(f) for f in b["rues"]) or "aucune"))
     print("        asphalte au-dessus du chenal : %.0f m², porté à %.1f %% ·"
           " %.0f m² masqués derrière un parapet · %.0f m² au-delà"
@@ -2488,7 +2594,12 @@ def main():
           % (aire_eau,
              100.0 * (aire_eau - aire_cache - aire_dela) / max(aire_eau, 1e-9),
              aire_cache, aire_dela, depasse,
-             "✅" if aire_dela <= 0.002 * aire_eau else "❌ à regarder"))
+             # 🔄 Le seuil était relatif seul, et il ne veut plus rien dire :
+             # depuis que le corridor se colle aux façades il ne reste que
+             # 13 m² d'asphalte au-dessus du chenal, dont 1 m² au bout d'une
+             # amorce. 2 m² sur toute la ville ne se voient pas.
+             "✅" if aire_dela <= max(2.0, 0.002 * aire_eau)
+             else "❌ à regarder"))
     print("        %d triangles" % st_bord["tri"])
     if n_champ:
         print("  champs : %d îlots, chacun sa teinte, découpés en %d bandes"
@@ -2557,7 +2668,7 @@ def main():
           % (canopee_perdue / 1e4))
 
     # -------------------------------------------------------------- écrire
-    for m in (masses, sols, eau, voirie):
+    for m in (masses, sols, eau, voirie, places_m):
         m.fermer()
     n_groupes = sum(len(m.groupes) for m in (masses, sols, eau, voirie))
     n_gi = len(masses.groupes) + len(sols.groupes) + len(eau.groupes)
@@ -2594,6 +2705,9 @@ def main():
         # partie, et elles sont calculées ici comme tout le reste.
         "repare": repare.json(),
         "repare_voirie": repare_voirie.json(),
+        # 🅿️ Les places peintes, un groupe par tronçon : Godot les cache quand
+        # la rue n'en a plus.
+        "places": places_m.json(),
         "sols": sols.json(),
         "eau": eau.json(),
         # 🌊 Le corps des berges : mur de quai et bande de rive, un groupe par
@@ -2621,14 +2735,20 @@ def main():
             "routes": {str(d["fid"]): {c: d[c] for c in FICHE_ROUTES}
                        for d in routes},
             # 🌊 La fiche d'une berge : ce qui est MESURÉ sur la carte, rien de
-            # plus. `debord_m2` est l'asphalte que le quai a pris à l'Ilse —
-            # c'est lui que la transformation rend au fleuve.
+            # plus. `debord_m2` est l'asphalte que le quai a pris à l'Ilse ;
+            # `rive_m`, la largeur de rive qui reste entre la chaussée et
+            # l'eau. 🔴 Depuis le 2026-08-31 le premier est tombé à ~0 sur les
+            # huit berges — la rue ne vole plus le fleuve, elle le longe — et
+            # `ville.berge_largeur_rendue_m` en dépend encore : le quai apaisé
+            # ne rachète plus rien. Le nombre de remplacement est du LEVEL
+            # DESIGN, il est mesuré ici et il attend l'auteur.
             "berges": {str(b["fid"]): {
                 "rive": b["rive"],
                 "longueur_m": round(b["longueur_m"], 1),
                 "mur_m": round(b["mur_m"], 1),
                 "debord_m2": b["debord_m2"],
                 "debord_max_m": b["debord_max_m"],
+                "rive_m": b["rive_m"],
                 "rues": b["rues"],
                 "fil_amont": round(b["fil_amont"], 3),
                 "fil_aval": round(b["fil_aval"], 3),
@@ -4092,6 +4212,237 @@ def _rayon_coude(theta, demi, marge, L1, L2):
     return R if R >= RAYON_MIN else 0.0
 
 
+def _grille_emprises(ilots):
+    """Les emprises bâties rangées par maille : de quoi mesurer, en un point,
+    à quelle distance commence le bâti."""
+    g = {}
+    for d in ilots.values():
+        an = d.get("anneau") or []
+        if d["sous_type"] == "riviere" or len(an) < 3:
+            continue
+        ferme = list(an) + [an[0]]
+        xs = [p[0] for p in an]
+        ys = [p[1] for p in an]
+        for cx in range(int(min(xs) // GRILLE_VOIRIE),
+                        int(max(xs) // GRILLE_VOIRIE) + 1):
+            for cy in range(int(min(ys) // GRILLE_VOIRIE),
+                            int(max(ys) // GRILLE_VOIRIE) + 1):
+                g.setdefault((cx, cy), []).append(ferme)
+    return g
+
+
+def _recul_facade(grille, p, n, portee):
+    """À quelle distance de `p`, dans la direction `n`, commence l'emprise
+    bâtie — ou None si on n'en rencontre aucune."""
+    d = COLLE_PAS
+    while d <= portee:
+        q = (p[0] + n[0] * d, p[1] + n[1] * d)
+        for an in grille.get((int(q[0] // GRILLE_VOIRIE),
+                              int(q[1] // GRILLE_VOIRIE)), ()):
+            if dedans(an, q):
+                return d
+        d += COLLE_PAS
+    return None
+
+
+def _coller_aux_facades(routes, ilots, chenal):
+    """🌊 LE CORRIDOR D'UNE RUE DE BERGE SE POSE ENTIER SUR LA TERRE.
+
+    Une station de tronçon LONGE l'eau si la rivière est sous un bord de la
+    chaussée et pas sous l'autre — la même règle que le quai et le pont, et
+    elle ne nomme aucune rue. Un tronçon qui longe sur plus de la moitié de sa
+    longueur se décale vers ses façades, d'un seul écart : celui qui met son
+    trottoir au nu de l'emprise bâtie. Ce qui reste entre l'asphalte et l'eau
+    est la berge.
+
+        AVANT   façade │ trottoir │ 15 m de sol nu │ ███ chaussée ███ │ Ilse
+        APRÈS   façade │ trottoir │ ███ chaussée ███ │ promenade │ berge │ Ilse
+
+    ⚠️ Les tronçons qui TRAVERSENT ne bougent pas : sous leurs deux bords il y
+    a de l'eau, aucune station ne longe, et un pont décalé serait un pont à
+    côté de sa culée."""
+    grille = _grille_emprises(ilots)
+    st = {"n": 0, "m": 0.0, "bouts": 0, "decals": [], "libres": []}
+    for d in routes:
+        larg = d["largeur_m"] or 0.0
+        if larg <= 0.0:
+            continue
+        ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
+        n_tot, cotes, reculs = 0, [], []
+        for part in d["parts"]:
+            net = _densifier(part, COLLE_SONDE)
+            for i, p in enumerate(net):
+                u = _unite(net[max(0, i - 1)], net[min(len(net) - 1, i + 1)])
+                if u is None:
+                    continue
+                n_tot += 1
+                nl = (-u[1], u[0])
+                w = ch / 2.0 + COLLE_EAU
+                gauche = chenal.dans_eau((p[0] + nl[0] * w, p[1] + nl[1] * w))
+                droite = chenal.dans_eau((p[0] - nl[0] * w, p[1] - nl[1] * w))
+                if gauche == droite:
+                    continue                # on traverse, ou on est loin de l'eau
+                cote = -1.0 if gauche else 1.0      # la TERRE, en signe d'onglet
+                cotes.append(cote)
+                r = _recul_facade(grille, p, (nl[0] * cote, nl[1] * cote),
+                                  COLLE_PORTEE)
+                if r is not None:
+                    reculs.append((cote, r))
+        if n_tot == 0 or len(cotes) < COLLE_PART * n_tot:
+            continue
+        cote = 1.0 if sum(cotes) > 0 else -1.0
+        rs = sorted(r for c, r in reculs if c == cote)
+        if not rs:
+            continue
+        recul = rs[len(rs) // 2]            # la médiane, pas le minimum : un
+        # débouché de rue perpendiculaire ouvre l'emprise sur 12 m.
+        ecart = recul - LARGEUR_TROTTOIR - JEU_CHAUSSEE - ch / 2.0
+        if ecart < COLLE_MIN:
+            continue
+        parts = []
+        for part in d["parts"]:
+            dec = _onglets(part)
+            parts.append([(p[0] + dec[i][0] * ecart * cote,
+                           p[1] + dec[i][1] * ecart * cote)
+                          for i, p in enumerate(part)])
+        d["parts"] = parts
+        d["decal_m"] = round(ecart, 2)
+        # Le côté EAU, en signe d'onglet : c'est celui-là que la promenade et
+        # la bande de berge attendent.
+        d["berge_cote"] = -cote
+        d["berge_libre_m"] = round(recul - LARGEUR_TROTTOIR - JEU_CHAUSSEE - ch,
+                                   2)
+        # Le couloir de sélection n'est plus l'emprise de la source : la moitié
+        # côté eau n'appartient plus à la rue, elle appartient à la berge.
+        d["corridor_m"] = round(ch + 2.0 * (LARGEUR_TROTTOIR + JEU_CHAUSSEE), 2)
+        st["n"] += 1
+        st["m"] += d["longueur_m"] or 0.0
+        st["decals"].append(ecart)
+        st["libres"].append(d["berge_libre_m"])
+    # Les rues qui n'ont pas bougé, elles, arrivaient au carrefour de la rue de
+    # quai — qui vient de reculer de 5 à 15 m. Celles qui débouchent dans l'eau
+    # s'arrêtent maintenant à la rive.
+    for d in routes:
+        larg = d["largeur_m"] or 0.0
+        if larg <= 0.0 or "decal_m" in d:
+            continue
+        ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
+        parts = [_bouts_hors_eau(part, ch, chenal) for part in d["parts"]]
+        st["bouts"] += sum(1 for a, b in zip(d["parts"], parts) if a != b)
+        d["parts"] = parts
+    return st
+
+
+def _sans_le_bout(axe, coupe):
+    """La polyligne amputée de ses `coupe` derniers mètres."""
+    L = sum(math.hypot(b[0] - a[0], b[1] - a[1])
+            for a, b in zip(axe, axe[1:]))
+    return _debut_axe(axe, L - coupe) if L > coupe + 1.0 else list(axe)
+
+
+def _bouts_hors_eau(part, ch, chenal):
+    """🌊 UNE RUE QUI DÉBOUCHE DANS L'ILSE S'ARRÊTE À LA RIVE.
+
+    Son axe finit SUR la ligne d'eau — c'était le carrefour avec la rue de
+    quai, qui vient de reculer. Le ruban, lui, se rallonge d'une demi-largeur
+    pour remplir les carrefours (`_ruban`, § `bouts`) : sans ce
+    raccourcissement, 428 m² d'asphalte restaient en l'air au-dessus de l'eau,
+    sans mur pour les porter."""
+    for _ in (0, 1):
+        u = _unite(part[-2], part[-1]) if len(part) >= 2 else None
+        if u is not None and chenal.dans_eau(
+                (part[-1][0] + u[0] * COLLE_EAU,
+                 part[-1][1] + u[1] * COLLE_EAU)):
+            part = _sans_le_bout(part, ch / 2.0)
+        part = part[::-1]
+    return part
+
+
+def _debut_axe(axe, fin):
+    """Le début de la polyligne, coupé à `fin` mètres."""
+    out, reste = [axe[0]], fin
+    for a, b in zip(axe, axe[1:]):
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L <= 1e-9:
+            continue
+        if L >= reste:
+            out.append((a[0] + (b[0] - a[0]) * reste / L,
+                        a[1] + (b[1] - a[1]) * reste / L))
+            return out
+        out.append(b)
+        reste -= L
+    return out
+
+
+def _stations_le_long(axe, pas):
+    """(point, unité) tous les `pas` mètres le long de la polyligne."""
+    out, reste = [], 0.0
+    for a, b in zip(axe, axe[1:]):
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L <= 1e-9:
+            continue
+        u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+        while reste <= L:
+            out.append(((a[0] + u[0] * reste, a[1] + u[1] * reste), u))
+            reste += pas
+        reste -= L
+    return out
+
+
+def _bord_libre(d, ch):
+    """Le nu du trottoir, compté depuis l'axe : c'est là que s'arrête tout ce
+    qui est roulable. Sur une rue de berge le corridor a été refait à la
+    mesure du collage (`corridor_m`), donc la formule vaut des deux côtés."""
+    emprise = d.get("corridor_m", d["largeur_m"] or 0.0)
+    return max(ch / 2.0, emprise / 2.0 - LARGEUR_TROTTOIR - JEU_CHAUSSEE)
+
+
+def _places_de_rue(m, d, axe, ch, coul, G, dy=0.0):
+    """🅿️ LES PLACES DE RUE, PEINTES — la file, sa ligne et ses tirets.
+
+    🔄 `routes.stationnement` en comptait 3 310 qu'aucune ligne ne montrait :
+    les voitures se garaient sur un asphalte nu, la bande entre le trottoir et
+    la chaussée n'était rien, et retirer le stationnement ne changeait que les
+    voitures. La file se prend DANS la chaussée — les mètres libres du corridor
+    ne font que 0,2 m sur une rue de 13 m, mesuré : il n'y a pas la place
+    dehors.
+
+    La file part du début du tronçon et alterne les deux bords, comme les
+    voitures de `trafic.gd` : les tirets tombent donc sous elles."""
+    n = int(d.get("stationnement") or 0)
+    total = max(float(d.get("longueur_m") or 0.0), 1.0)
+    if n <= 0 or ch < 2.0 * PLACE_LARGEUR + 2.0:
+        return 0
+    L = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(axe, axe[1:]))
+    n = int(round(n * L / total))               # la part de ce morceau d'axe
+    par_cote = min(int(math.ceil(n / 2.0)), int(L / PLACE_RUE_LONGUEUR))
+    if par_cote <= 0:
+        return 0
+    file = _debut_axe(axe, par_cote * PLACE_RUE_LONGUEUR)
+    if len(file) < 2:
+        return 0
+    bord = _bord_libre(d, ch) - PLACE_LARGEUR
+    y = Y_MARQUAGE + dy
+    for cote in (-1.0, 1.0):
+        # La ligne qui sépare la file de la voie roulée.
+        _ruban(m, file, LARGEUR_LIGNE, coul, G, y=y,
+               decal=cote * bord, bouts=False)
+        # Un tiret par place, en travers de la file.
+        for p, u in _stations_le_long(file, PLACE_RUE_LONGUEUR):
+            nl = (-u[1] * cote, u[0] * cote)
+            a = (p[0] + nl[0] * bord, p[1] + nl[1] * bord)
+            b = (p[0] + nl[0] * (bord + PLACE_LARGEUR),
+                 p[1] + nl[1] * (bord + PLACE_LARGEUR))
+            h = (u[0] * LARGEUR_LIGNE / 2.0, u[1] * LARGEUR_LIGNE / 2.0)
+            m.triangle(G(a[0] - h[0], a[1] - h[1], y),
+                       G(b[0] - h[0], b[1] - h[1], y),
+                       G(b[0] + h[0], b[1] + h[1], y), coul)
+            m.triangle(G(a[0] - h[0], a[1] - h[1], y),
+                       G(b[0] + h[0], b[1] + h[1], y),
+                       G(a[0] + h[0], a[1] + h[1], y), coul)
+    return 2 * par_cote
+
+
 def _coudes(routes):
     """Le rayon retenu à chaque coude INTERNE de la voirie.
 
@@ -4984,6 +5335,12 @@ def _quais(chenal, relief, grille, tabliers, franchis=None):
         b["debord_max_m"] = round(max([b["bord"][i] for i in pris] or [0.0]), 2)
         b["debord_m2"] = round(sum(max(0.0, b["bord"][i]) for i in pris)
                                * QUAI_PAS, 1)
+        # 🌊 CE QU'ELLE A ENCORE À RENDRE : la rive entre la chaussée et l'eau,
+        # depuis que le corridor se colle aux façades. La médiane, parce
+        # qu'elle passe d'une voie `rive` (1,9 m) à un boulevard de quai
+        # (9,9 m) le long d'une même berge.
+        libres = sorted(-b["bord"][i] for i in pris if b["bord"][i] < 0.0)
+        b["rive_m"] = round(libres[len(libres) // 2], 2) if libres else 0.0
     return plan, st, plateformes, murs, berges
 
 
@@ -5093,9 +5450,18 @@ def _bande_berge(m, b, coul, G, relief):
             A, B = [], []
             for i in range(k + a, k + z + 1):
                 p = net[i]
+                # 🌊 LA BANDE NE MONTE PAS SUR LA CHAUSSÉE. `bord` est la
+                # distance de la berge à l'asphalte, négative depuis que le
+                # corridor se colle aux façades : les voies `rive` de 10 m ne
+                # laissent que 1,4 m de rive, et 3,5 m y passeraient par-dessus
+                # la file de stationnement.
+                large = BERGE_BANDE_M
+                if quai:
+                    large = min(BERGE_BANDE_M,
+                                max(BERGE_BANDE_MIN, -b["bord"][i]))
                 # Côté TERRE, donc à l'opposé de la normale eau.
-                q = (p[0] - eau[i][0] * BERGE_BANDE_M,
-                     p[1] - eau[i][1] * BERGE_BANDE_M)
+                q = (p[0] - eau[i][0] * large,
+                     p[1] - eau[i][1] * large)
                 # 🔴 EN CAMPAGNE, LA BANDE PASSE SOUS LE TALUS. Posée dessus
                 # elle y traçait un ruban vert à dents de scie le long des deux
                 # rives — un décor que personne n'a demandé, sur des berges

@@ -37,6 +37,7 @@ const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
 const Trafic := preload("res://scripts/trafic.gd")
 const Apercu := preload("res://scripts/apercu.gd")
+const Echantillon := preload("res://scripts/echantillon.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
 
@@ -123,6 +124,9 @@ var _socles := {}
 # la seule géométrie qui se montre en cours de partie — elle est CALCULÉE par
 # 07 comme tout le reste, Godot ne fabrique rien.
 var reparations := {"i": {}, "r": {}, "b": {}}
+# 🅿️ Les files de stationnement peintes, un nœud par tronçon : elles se cachent
+# quand la rue n'a plus de places (fid de tronçon -> MeshInstance3D).
+var places_rue := {}
 var mois := 0.0
 var vitesse := 1.0
 var _derniere_vitesse := 1.0
@@ -172,9 +176,7 @@ func _ready() -> void:
 	apercu = Apercu.new()
 	apercu.name = "Apercu"
 	add_child(apercu)
-	apercu.batir(mat_objet, Donnees.teinte(donnees, "_mineral"),
-		Donnees.teinte(donnees, "_ciel"), Donnees.teinte(donnees, "_ambiant"),
-		Donnees.teinte(donnees, "_soleil"))
+	apercu.batir(mat_objet, donnees["palette"])
 
 	interface = Interface.new()
 	interface.name = "Interface"
@@ -249,6 +251,11 @@ func _essai_interface() -> void:
 	await _fiche("b", 6)
 	await _capturer("interface_berge")
 	await _capturer_apercu("apercu_berge")
+	# 🌊 LES DEUX TYPES DE RIVE, et c'est un contrôle : la 4 n'a pas un mètre de
+	# mur, son échantillon doit sortir en talus d'herbe, sans voie ni parapet.
+	_viser_objet("b", 4, 260.0)
+	await _fiche("b", 4)
+	await _capturer_apercu("apercu_berge_talus")
 	# 🔧 LA BARRE DE CHANTIER ne se voit qu'en travaux : on en engage un et on se
 	# place à mi-parcours. La berge 6 met 6 mois à devenir un quai apaisé.
 	ville.transformer_berge(6, Ville.BERGE_APAISEE, 0.0)
@@ -988,6 +995,7 @@ func _construire() -> void:
 	_par_objet("Routes", [donnees["voirie"]], "r")
 	_par_reparation("Reparation", donnees["repare"], "i")
 	_par_reparation("ReparationVoirie", donnees["repare_voirie"], "r")
+	_par_places(donnees["places"])
 
 	var liste: Array = (donnees["arbres"] as Array).duplicate()
 
@@ -1070,6 +1078,30 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 			var t3: int = int(gr[2]) / 3
 			tris += t3
 	print("  %-8s %3d objets, %6d triangles" % [nom, parent.get_child_count(), tris])
+
+
+## 🅿️ LES PLACES PEINTES, un nœud par tronçon. Elles partent VISIBLES et se
+## cachent quand la rue n'a plus de stationnement (`_peindre`) : sans elles,
+## « retirer les places » ne retirait que les voitures, et la rue gardait ses
+## tirets. Aucun corps de collision — cliquer une place, c'est cliquer la rue.
+func _par_places(source: Dictionary) -> void:
+	if _ignore("Routes"):
+		return
+	var parent := Node3D.new()
+	parent.name = "PlacesRue"
+	monde.add_child(parent)
+	for g in (source["g"] as Array):
+		var gr: Array = g
+		var fid := int(gr[0])
+		var mi := MeshInstance3D.new()
+		mi.name = "P%d" % fid
+		mi.mesh = Constructeur.maillage_groupe(source, int(gr[1]), int(gr[2]))
+		mi.material_override = mat_objet
+		mi.set_meta("fid", fid)
+		mi.set_meta("couche", "r")
+		parent.add_child(mi)
+		places_rue[fid] = mi
+	print("  %-8s %3d rues marquées" % ["Places", parent.get_child_count()])
 
 
 ## Les nœuds de réparation. Même recette que `_par_objet`, trois différences :
@@ -1382,7 +1414,13 @@ func _peindre() -> void:
 			# recouvre : sans ça un îlot reconstruit sortirait du thème, ne se
 			# surlignerait plus au survol, n'accepterait plus de panneaux — et
 			# sortirait vert par le dessus, rouge par le dessous.
-			for mj in [mi, reparations[couche].get(fid)]:
+			# 🅿️ La file peinte s'efface AVEC la décision, pas à la livraison :
+			# `stationnement` descend en rampe, et la rue se dégarnit.
+			if couche == "r" and places_rue.has(fid):
+				(places_rue[fid] as MeshInstance3D).visible = \
+					ville.valeur("r", fid, "stationnement", mois) > 0.5
+			for mj in [mi, reparations[couche].get(fid),
+					places_rue.get(fid) if couche == "r" else null]:
 				if mj == null:
 					continue
 				mj.set_instance_shader_parameter("maquette_blanche",
@@ -1635,44 +1673,47 @@ func _maj_apercu() -> void:
 	if fid != _apercu_fid or couche != _apercu_couche:
 		_apercu_fid = fid
 		_apercu_couche = couche
-		var neuf: MeshInstance3D = reparations[couche].get(fid)
-		# La plaque : l'emprise pour un îlot, le couloir façade à façade pour une
-		# rue. Une berge n'en a pas : son mur de quai EST son sol.
-		var plaque: Mesh = _socle(couche, fid)
-		# Une rue et une berge sont montrées par un BOUT, pas en entier : un
-		# tronçon de 273 m cadré d'un bout à l'autre n'est plus qu'un ruban.
-		# L'axe exporté par 07 quand il existe : c'est lui qui dit où la rue est
-		# droite. Une berge n'en a pas, la miniature le déduit de ses sommets.
-		var axe := PackedVector2Array()
-		var largeur := 0.0
-		var tous: Dictionary = donnees["couloirs"]
-		if couche == "r" and tous.has(str(fid)):
-			var c: Array = tous[str(fid)]
-			largeur = float(c[0])
-			# La plus longue des parties : un tronçon coupé en deux se cadre sur
-			# le morceau qui a de quoi montrer une rue.
-			var brut := []
-			for partie in (c[1] as Array):
-				if brut.is_empty() or (partie as Array).size() > brut.size():
-					brut = partie
-			for k in range(0, brut.size() - 1, 2):
-				axe.append(Vector2(float(brut[k]), float(brut[k + 1])))
-		apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
-			neuf.mesh if neuf != null else null, plaque, couche != "i",
-			axe, largeur)
+		_apercu_voitures = ""   # changer d'objet repose les voitures
+		# 🔧 UN PONT CASSÉ RESTE MONTRÉ PAR LA VILLE : un morceau droit ne sait
+		# pas dire une travée tombée, et c'est justement ce que la fiche propose
+		# de rebâtir. Tout le reste de la voirie passe par l'échantillon.
+		var casse: bool = couche == "r" \
+			and str(ville.routes[fid].get("etat_crue", "")) == "coupe"
+		if couche == "i" or casse:
+			var neuf: MeshInstance3D = reparations[couche].get(fid)
+			apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
+				neuf.mesh if neuf != null else null, _socle(couche, fid))
+		else:
+			apercu.echantillon(couche, ville.objets(couche).get(fid, {}),
+				_voie_de_berge(fid) if couche == "b" else 0.0)
 	apercu.viser(pivot.lacet)
 	apercu.regler(float(d["equipe"]), bool(d["futur"]), float(d["berge"]))
-	# Les voitures du tronçon montré. La signature évite de recopier les
-	# instances à chaque image : elles ne changent qu'au survol ou au mois.
-	if couche != "r" or trafic == null:
+	# Les voitures du morceau montré. La signature évite de les reposer à chaque
+	# image : elles ne changent qu'au survol ou au mois. Un pont cassé n'en a
+	# pas — sa miniature est un bout de ville, pas un échantillon.
+	if couche != "r" or trafic == null or apercu.ech_longueur <= 0.0:
 		return
 	var signe := "%d %d %d %d" % [fid, int(d["places"]), int(d["roule"]),
 		int(mois * 4.0)]
 	if signe == _apercu_voitures:
 		return
 	_apercu_voitures = signe
-	trafic.remplir(apercu.mm_gare, apercu.mm_roule, fid, mois,
-		bool(d["places"]), bool(d["roule"]))
+	trafic.remplir_droit(apercu.mm_gare, apercu.mm_roule, fid, mois,
+		bool(d["places"]), bool(d["roule"]), apercu.ech_longueur,
+		apercu.ech_chaussee)
+
+
+## 🌊 La chaussée de la voie qu'une berge porte : la moyenne de ses tronçons.
+## C'est elle que l'échantillon pose derrière la rive — mesurée, pas choisie.
+func _voie_de_berge(fid: int) -> float:
+	var total := 0.0
+	var n := 0
+	for r in (ville.berges.get(fid, {}).get("rues", []) as Array):
+		if ville.routes.has(int(r)):
+			total += Echantillon.chaussee(ville.routes[int(r)])
+			n += 1
+	return total / float(n) if n > 0 else float(
+		Echantillon.EMPRISE_CIRCULATION["rive"])
 
 
 func _teinte(couche: String, fid: int) -> Color:

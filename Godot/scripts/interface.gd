@@ -827,8 +827,10 @@ func _panneau_ilot() -> void:
 		_rue_grille.add_child(val)
 		_rue_valeurs[ligne[0]] = val
 
-	# 🌊 LA FICHE D'UNE BERGE. `rendu` est le nombre qui porte la décision :
-	# les m² d'asphalte que le quai a pris à l'Ilse et qu'on lui rendrait.
+	# 🌊 LA FICHE D'UNE BERGE. 🔄 Le nombre qui portait la décision était les m²
+	# d'asphalte posés au-dessus de l'Ilse ; il est tombé à ~0 le 2026-08-31,
+	# quand le corridor des rues de berge est passé sur la terre. Ce qui reste
+	# à montrer, c'est la RIVE : les mètres de quai entre la chaussée et l'eau.
 	_berge_grille = GridContainer.new()
 	_berge_grille.columns = 2
 	_berge_grille.add_theme_constant_override("h_separation", 14)
@@ -836,10 +838,10 @@ func _panneau_ilot() -> void:
 	_berge_grille.visible = false
 	v.add_child(_berge_grille)
 	for ligne in [
-		["rive", "Rive"],
+		["bord", "Rive"],
 		["longueur", "Longueur"],
 		["mur", "Mur de quai"],
-		["rendu", "Asphalte sur l'eau"],
+		["rive", "Rive entre la rue et l'eau"],
 		["rues", "Voies portées"],
 		["bief", "Le bief qu'elle borde"],
 		["crue", "Crue annoncée ici"],
@@ -1385,14 +1387,14 @@ func _maj_fiche_berge() -> void:
 	if o.is_empty():
 		return
 	var etat := ville.berge_etat(_fiche_fid, _mois)
-	var rendu := float(o.get("debord_m2", 0.0))
 	_fiche_titre.text = "Berge %d" % _fiche_fid
-	(_berge_valeurs["rive"] as Label).text = str(o.get("rive", "?"))
+	(_berge_valeurs["bord"] as Label).text = str(o.get("rive", "?"))
 	(_berge_valeurs["longueur"] as Label).text = "%s m" % _nb(
 		float(o.get("longueur_m", 0.0)), 0)
 	(_berge_valeurs["mur"] as Label).text = "%s m" % _nb(
 		float(o.get("mur_m", 0.0)), 0)
-	(_berge_valeurs["rendu"] as Label).text = "%s m²" % _milliers(rendu)
+	(_berge_valeurs["rive"] as Label).text = "%s m" % _nb(
+		float(o.get("rive_m", 0.0)), 1)
 	var rues: Array = o.get("rues", [])
 	(_berge_valeurs["rues"] as Label).text = "aucune" if rues.is_empty() 		else ", ".join(rues.map(func(f): return str(int(f))))
 	# 🌊 CE QU'ELLE RACHÈTE. Le bief se lit en îlots, pas en fil d'eau : « 7
@@ -1413,7 +1415,7 @@ func _maj_fiche_berge() -> void:
 	elif reste > 0.0:
 		_berge_texte.text = "Chantier engagé. La rive change à la livraison."
 	else:
-		_berge_texte.text = "%s m² d'asphalte sont posés au-dessus de l'Ilse." 			% _milliers(rendu)
+		_berge_texte.text = "%s m de quai minéral séparent la chaussée de l'Ilse." 			% _nb(float(o.get("rive_m", 0.0)), 1)
 	for k in _berge_boutons.size():
 		var cible: int = Ville.BERGE_APAISEE + k
 		var bouton: Button = _berge_boutons[k]

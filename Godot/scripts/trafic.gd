@@ -3,6 +3,7 @@ extends Node3D
 # ne navigue. Deux MultiMesh couvrent toute la ville (décision 62).
 
 const Constructeur := preload("res://scripts/constructeur.gd")
+const Echantillon := preload("res://scripts/echantillon.gd")
 
 const Y_ROULE := 0.72
 const Y_GARE := 0.66
@@ -10,6 +11,8 @@ const ESPACEMENT_CALME := 48.0
 const ESPACEMENT_CHARGE := 7.0
 const ESPACEMENT_RESERVE := 12.0
 const LONGUEUR_PLACE := 5.5
+## La largeur d'une place de rue — la même que `07` (PLACE_LARGEUR).
+const LARGEUR_PLACE := 2.5
 const ECHANTILLON_STATIONNEMENT := 0.30
 const TAILLE_VISIBLE_MAX := 700.0
 const PALETTE := [
@@ -37,6 +40,13 @@ var _graphe := {}
 var _fermees := {}
 var _calibration := [1.0, 1.0]
 var _indisponibles_connues := ""
+
+
+## 🅿️ L'écart à l'axe d'une voiture garée : le milieu de la file peinte, MESURÉ
+## PAR 07 (`bord_places_m`). Le recalculer ici dériverait sur les rues de berge,
+## dont le corridor n'est plus celui de la source.
+static func _bord_gare(route: Dictionary) -> float:
+	return maxf(1.45, float(route.get("bord_places_m", 0.0)))
 
 
 func batir(donnees: Dictionary, etat_ville) -> void:
@@ -79,8 +89,11 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 			var cote := -1.0 if k % 2 else 1.0
 			var s := fmod((int(k / 2) % maxi(par_cote, 1) + 0.5) * LONGUEUR_PLACE,
 				float(chemin[1]))
+			# 🅿️ SUR LA PLACE PEINTE, pas à 30 % de l'emprise : `07` prend la
+			# file DANS la chaussée, au bord (§ `_places_de_rue`), et les deux
+			# doivent tomber au même endroit.
 			_garees.append({"fid": fid, "t": _transforme(chemin[0], chemin[2],
-				chemin[1], s, cote * maxf(2.7, largeur * 0.30), Y_GARE)})
+				chemin[1], s, cote * _bord_gare(route), Y_GARE)})
 
 	_mm_roule = Constructeur.voitures(_roulantes.size(), true)
 	_mm_gare = Constructeur.voitures(_garees.size())
@@ -181,42 +194,68 @@ func _compter_visibles() -> int:
 	return n
 
 
-## 🔎 LES VOITURES D'UN SEUL TRONÇON, POUR LA MINIATURE DE LA FICHE. `places` et
+## 🧩 LES VOITURES DU MORCEAU DROIT, POUR LA MINIATURE DE LA FICHE. `places` et
 ## `roule` sont l'état QU'ON VEUT MONTRER, pas celui de la ville : survoler
 ## « Retirer les places » vide la bordure avant qu'on ait cliqué (décision 12).
 ##
-## 🔴 On recopie les instances de la ville, transformation, teinte ET donnée
-## d'animation : les voitures de la fiche roulent au même pas que les siennes.
+## 🔄 ON NE RECOPIE PLUS LES INSTANCES DE LA VILLE (2026-08-31) : la fiche ne
+## montre plus un bout de rue réel mais un échantillon droit, où aucune voiture
+## de la ville ne passe. Les RÈGLES, elles, ne bougent pas — même espacement
+## selon la charge, mêmes teintes, même animation. Une seule différence, et
+## elle est voulue : la fiche pose TOUTES les places du tronçon au mètre, quand
+## la ville n'en échantillonne qu'une sur trois. De près, la bordure doit être
+## pleine — c'est ce que « Retirer les places » enlève.
 ## Rend le nombre écrit dans chacun des deux MultiMesh.
-func remplir(mm_gare: MultiMesh, mm_roule: MultiMesh, fid: int, mois: float,
-		places: bool, roule: bool) -> Array:
-	var g := []
-	if places:
-		var reste := int(roundf(ville.valeur("r", fid, "stationnement", mois)
-			* ECHANTILLON_STATIONNEMENT))
-		for k in _garees.size():
-			if int((_garees[k] as Dictionary)["fid"]) != fid:
-				continue
-			if reste <= 0:
-				break
-			reste -= 1
-			g.append(k)
-	var r := []
-	if roule:
-		for k in _roulantes.size():
-			if int((_roulantes[k] as Dictionary)["fid"]) == fid \
-					and _visibles_roule[k] == 1:
-				r.append(k)
-	mm_gare.instance_count = g.size()
-	for j in g.size():
-		mm_gare.set_instance_transform(j, (_garees[g[j]] as Dictionary)["t"])
-		mm_gare.set_instance_color(j, _mm_gare.get_instance_color(g[j]))
-	mm_roule.instance_count = r.size()
-	for j in r.size():
-		mm_roule.set_instance_transform(j, _mm_roule.get_instance_transform(r[j]))
-		mm_roule.set_instance_color(j, _mm_roule.get_instance_color(r[j]))
-		mm_roule.set_instance_custom_data(j, _mm_roule.get_instance_custom_data(r[j]))
-	return [g.size(), r.size()]
+func remplir_droit(mm_gare: MultiMesh, mm_roule: MultiMesh, fid: int,
+		mois: float, places: bool, roule: bool, longueur: float,
+		chaussee: float) -> Array:
+	var axe := PackedVector2Array([Vector2(-longueur * 0.5, 0.0),
+		Vector2(longueur * 0.5, 0.0)])
+	var cum := PackedFloat32Array([0.0, longueur])
+	# 🔴 DEUX ÉTATS, ET C'EST LE PARTAGE DES DEUX DÉCISIONS : une rue noyée n'a
+	# plus rien, une rue FERMÉE n'a plus que ses places — les retirer se paie à
+	# part, la miniature ne doit pas les faire disparaître d'elle-même.
+	var praticable: bool = ville.route_praticable(fid, mois)
+	var roulable := praticable and not _fermees.has(fid)
+	var hier := str(ville.routes[fid].get("hierarchie", "rue"))
+
+	var n_g := 0
+	if places and praticable:
+		# La densité de places AU MÈTRE, mesurée sur le tronçon : c'est elle qui
+		# fait qu'une rue à 49 places sur 134 m en montre quinze sur quarante.
+		var lg := maxf(float(ville.routes[fid].get("longueur_m", 0.0)), 1.0)
+		n_g = int(roundf(ville.valeur("r", fid, "stationnement", mois)
+			/ lg * longueur))
+		n_g = mini(n_g, 2 * int(longueur / LONGUEUR_PLACE))
+	mm_gare.instance_count = n_g
+	var par_cote := int(ceil(n_g / 2.0))
+	var depart := (longueur - par_cote * LONGUEUR_PLACE) * 0.5
+	var bord := _bord_gare(ville.routes[fid])
+	for k in n_g:
+		@warning_ignore("integer_division")
+		var rang: int = k / 2
+		var cote := -1.0 if k % 2 else 1.0
+		mm_gare.set_instance_transform(k, _transforme(axe, cum, longueur,
+			depart + (rang + 0.5) * LONGUEUR_PLACE, cote * bord, Y_GARE))
+		var gris := 0.62 + 0.16 * float(k % 5) / 4.0
+		mm_gare.set_instance_color(k, Color(gris, gris * 1.01, gris * 0.98))
+
+	var q := float(ville.valeur("r", fid, "charge", mois))
+	var esp: float = lerpf(ESPACEMENT_CALME, ESPACEMENT_CHARGE,
+		pow(clampf(q / 0.65, 0.0, 1.0), 0.72))
+	var n_r := maxi(1, int(floor(longueur / esp))) if roule and roulable else 0
+	var vitesse: float = maxf(1.1, float(VITESSES.get(hier, 30.0)) / 3.6
+		* (1.0 - 0.92 * q * q))
+	mm_roule.instance_count = n_r
+	for k in n_r:
+		var segment := _segment(axe, cum, longueur,
+			fmod((k + 0.35) * longueur / n_r, longueur),
+			maxf(1.35, chaussee * 0.25), -1.0 if k % 2 else 1.0)
+		mm_roule.set_instance_transform(k, segment[0])
+		mm_roule.set_instance_color(k, PALETTE[(k * 5 + 1) % PALETTE.size()])
+		mm_roule.set_instance_custom_data(k, Color(float(segment[1]), vitesse,
+			float(segment[2]), 1.0))
+	return [n_g, n_r]
 
 
 ## Contrôle de l'essai : roulantes puis garées réellement dessinées sur un fid.
