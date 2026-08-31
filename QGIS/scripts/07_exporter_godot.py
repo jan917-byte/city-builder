@@ -437,8 +437,8 @@ BATI = {
     "front_commercant":        (0.0,  0.0,   13.0,     0.70),  # sur rue, vitrines
     "pavillonnaire":           (5.5,  2.5,   10.0,     0.60),  # détaché, jardin derrière
     "barre_1970":              (6.0,  5.0,   13.0,     0.00),  # toit plat, 1974
-    "collectif_1995":          (5.0,  4.0,   13.0,     0.55),  # deux pentes, plus plates qu'en ville ancienne
-    "ilot_compact":            (1.0,  0.0,   12.0,     0.12),  # quasi plat : du panneau, pas du comble
+    "collectif_1995":          (5.0,  4.0,   13.0,     0.00),  # toit plat (auteur, 2026-08-25)
+    "ilot_compact":            (1.0,  0.0,   12.0,     0.00),  # toit plat (auteur, 2026-08-25)
     "equipement":              (4.0,  3.0,   22.0,     0.25),
     "friche_industrielle":     (3.0,  2.5,   35.0,     0.00),  # des halles
 }
@@ -2057,8 +2057,8 @@ def main():
             print("           pic de mitre sur angle rentrant — borné par le recul"
                   " du tissu, à reprendre")
         plats = [f for f, x in ilots.items() if x.get("toit_plat")]
-        print("        dont %d îlots à toit plat — barre et friches"
-              % len(plats))
+        print("        dont %d îlots à toit plat — barre, friches,"
+              " collectif 1995 et îlot compact" % len(plats))
         print("  empreintes : lues directement dans 04d, aucune forme recalculée"
               " par l'export Godot")
         # 🌊 CE QUE LA CRUE DOIT AVOIR CHANGÉ À L'ÉCRAN. Deux nombres, et ils
@@ -6570,6 +6570,10 @@ def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):
                   "libelle": "La barre de 1974 (ilot 32)"},
         "pans_solaire": {"cible": centre(22), "taille": 115.0,
                          "libelle": "Les panneaux, pan par pan"},
+        # Les deux époques récentes ont le toit PLAT : de haut, c'est la seule
+        # vue où ça se voit, et les cinq percées du 49 avec.
+        "compact": {"cible": centre(49), "taille": 170.0,
+                    "libelle": "L'ilot compact, toit plat et percees"},
         "quai": {"cible": qp, "taille": 160.0,
                  "libelle": "Les rues a 20 et 22 m"},
         "ilse": {"cible": ip, "taille": 260.0,
