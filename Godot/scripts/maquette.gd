@@ -258,6 +258,20 @@ func _essai_interface() -> void:
 	_viser_objet("b", 4, 260.0)
 	await _fiche("b", 4)
 	await _capturer_apercu("apercu_berge_talus")
+	# 🌿 LES DEUX CURSEURS SE PARTAGENT UN 100 %, et ça se prouve PAR LE DOIGT,
+	# pas par le noyau : l'îlot compact est plat de bout en bout, on demande
+	# 70 % de panneaux puis 60 % de sédum — le second se rabote à 30.
+	_viser_objet("i", 49, 150.0)
+	await _fiche("i", 49)
+	interface.viser(70.0)
+	interface.viser_vert(60.0)
+	await _fiche("i", 49)
+	var d49: Dictionary = interface.apercu_demande()
+	print("  îlot 49 · 70 % de panneaux puis 60 % de sédum demandés : le toit"
+		+ " en accepte %.0f %%  %s" % [float(d49["verdi"]) * 100.0,
+		"✅" if absf(float(d49["verdi"]) - 0.30) < 0.011 else "❌"])
+	await _capturer("interface_toit_partage")
+	await _capturer_apercu("apercu_toit_partage")
 	# 🎚️ LES RÉGLAGES POSÉS, ET L'AVANT/APRÈS (2026-08-31). Trois captures au
 	# MÊME cadrage : la fiche réglée, puis la miniature dans ses deux états.
 	# C'est le critère du geste — si les deux images se ressemblent, il n'y a
@@ -560,18 +574,17 @@ ESSAI — la ville, sans décision")
 		_dernier_peint = -1.0
 		_rafraichir(true)
 
-	# Le noyau refuse la réduction pendant l'urgence, même si une ancienne
-	# interface essayait encore de l'appeler.
-	var caisse_verrou := ville.caisse_ke(mois)
-	if ville.lancer_solaire(32, 1.0, mois) \
-			or absf(ville.caisse_ke(mois) - caisse_verrou) > 0.001:
-		push_error("la réduction est disponible pendant l'urgence")
+	# 🔄 Le verrou d'urgence est tombé le 2026-08-31, et c'est l'inverse qu'il
+	# faut prouver : la pose est disponible AU MOIS 0, la ville encore en ruine,
+	# et elle se dispute la caisse avec les réparations.
+	var degats0: Dictionary = ville.degats(mois)
+	if float(degats0["logements_perdus"]) <= 0.0 \
+			or ville.part_solaire_max(32, mois) < 0.999:
+		push_error("la pose devrait être disponible dès le mois 0, ville en ruine")
 		get_tree().quit(1)
 		return
-	print("  réduction verrouillée pendant l'urgence ✅")
-	mois = _essai_deverrouiller_reduction()
-	if mois < 0.0:
-		return
+	print("  pose disponible au mois 0 : %d logements encore à terre, caisse %.0f k€ ✅"
+		% [int(degats0["logements_perdus"]), ville.caisse_ke(mois)])
 
 	# Le seul geste du prototype, vérifié sur la barre : mi-pose puis 100 %.
 	var caisse_avant := ville.caisse_ke(mois)
@@ -653,9 +666,6 @@ ESSAI — la ville, sans décision")
 	selection.sel_couche = "i"
 	selection.sel_fid = 22
 	interface.montrer("i", 22, false)
-	mois = _essai_deverrouiller_reduction()
-	if mois < 0.0:
-		return
 	if not ville.lancer_solaire(22, 1.0, mois):
 		push_error("l'îlot 22 refuse la pose de contrôle pan par pan")
 		get_tree().quit(1)
@@ -667,6 +677,54 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_solaire_pans")
 	print("  contrôle visuel : îlot 22 à 50 % — premier pan entier, second nu")
+	# 🌿 LE PLAFOND DE LA PENTE, sur ce même îlot : 4 volumes concaves sur 22
+	# retombent au toit plat, donc le cœur ancien peut verdir un cinquième de
+	# son toit et pas un mètre de plus.
+	var plat22 := ville.valeur("i", 22, "_part_plate", mois)
+	if plat22 <= 0.01 or plat22 >= 0.99:
+		push_error("l'îlot 22 devrait être partiellement plat, il est à %.2f" % plat22)
+		get_tree().quit(1)
+		return
+	print("  îlot 22 : %.0f %% de toit plat — le reste ne peut pas verdir ✅"
+		% (plat22 * 100.0))
+	_sur_reset()
+
+	# 🌿 LE TOIT PARTAGÉ. La barre 32 est plate de bout en bout : c'est la seule
+	# image où les deux poses se voient côte à côte, et où l'on peut vérifier
+	# qu'aucun mètre carré n'est compté deux fois.
+	selection.sel_couche = "i"
+	selection.sel_fid = 32
+	interface.montrer("i", 32, false)
+	if not ville.lancer_solaire(32, 0.6, mois):
+		push_error("l'îlot 32 refuse 60 % de panneaux")
+		get_tree().quit(1)
+		return
+	# LE partage : ce que les panneaux ont pris n'est plus offert au sédum.
+	var reste_vert := ville.part_vert_max(32, mois)
+	if absf(reste_vert - 0.4) > 0.001:
+		push_error("le toit devrait laisser 40 %% au vert, il en laisse %.2f" % reste_vert)
+		get_tree().quit(1)
+		return
+	# On en demande 90 % : le noyau rabote à ce qui reste, il ne refuse pas.
+	if not ville.lancer_vert(32, 0.9, mois):
+		push_error("l'îlot 32 refuse le toit vert")
+		get_tree().quit(1)
+		return
+	var cible_v: float = ville.etat_vert(32, mois)["cible"]
+	if absf(cible_v - 0.4) > 0.001:
+		push_error("le toit vert a dépassé le partage : %.2f" % cible_v)
+		get_tree().quit(1)
+		return
+	mois += Ville.TOIT_VERT_MOIS_POUR_100
+	print("  îlot 32 : 60 % de panneaux + 40 % de sédum = 100 % du toit ✅")
+	print("  %.0f m² verdis dans la ville · la prochaine crue baisse de %.0f cm"
+		% [ville.toit_vert_ha(mois) * 10000.0,
+		ville.baisse_crue_toits_m(mois) * 100.0])
+	_repere("barre")
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_toit_vert")
 	_sur_reset()
 
 	# 🩶 LES DEUX VUES, DEPUIS LE MÊME POINT DE VUE. Une image de la ville
@@ -841,31 +899,6 @@ BERGE — trois états francs")
 	mois = 0.0
 	_rafraichir(true)
 	pivot.caler(30.0, 32.0)
-
-
-func _essai_deverrouiller_reduction() -> float:
-	var debut := 600.0
-	for fid in ville.ilots:
-		if ville.base("i", fid, "logements_sinistres") <= 0.0:
-			continue
-		if not ville.reparer("i", fid, debut):
-			push_error("l'essai ne peut pas relever l'îlot %d" % fid)
-			get_tree().quit(1)
-			return -1.0
-	for fid in ville.routes:
-		if str(ville.routes[fid].get("etat_crue", "")) != "coupe":
-			continue
-		if not ville.reparer("r", fid, debut):
-			push_error("l'essai ne peut pas rebâtir le pont %d" % fid)
-			get_tree().quit(1)
-			return -1.0
-	var fin := debut + maxf(Ville.RECONSTRUCTION_MOIS, Ville.PONT_MOIS) + 0.1
-	if not ville.reduction_deverrouillee(fin):
-		push_error("la réduction reste verrouillée après les réparations essentielles")
-		get_tree().quit(1)
-		return -1.0
-	print("  adaptation terminée : réduction déverrouillée ✅")
-	return fin
 
 
 ## 🎚️ LE compte rendu qui sert à régler `CAISSE_DEPART_KE` et
@@ -1359,11 +1392,9 @@ const THEMES := [
 	{"id": "trafic", "nom": "Trafic", "genre": "calque",
 		"couche": "r", "champ": "charge",
 		"resume": "La charge des rues, après la crue",
-		"bas": "Rue calme", "haut": "Saturée",
-		"note": "Un diagnostic : si l'axe ne se voit QUE là, le rendu a raté."},
+		"bas": "Rue calme", "haut": "Saturée"},
 	{"id": "tissu", "nom": "Tissu urbain", "genre": "tissu",
-		"resume": "Une teinte par type de tissu",
-		"note": "La palette d'avant le rendu par matériau (2026-08-18)."},
+		"resume": "Une teinte par type de tissu"},
 ]
 
 ## "" = la ville vivante. Sinon l'`id` d'un thème de THEMES.
@@ -1537,6 +1568,13 @@ func _peindre() -> void:
 					# menu : les toits se couvrent au fil de la pose.
 					mj.set_instance_shader_parameter("equipe",
 						ville.valeur("i", fid, "part_toit_equipe", mois))
+					# 🌿 Le second usage du même toit. `part_plate` dit au
+					# shader ce qui est plat dans CET îlot : sans elle il
+					# poserait du substrat sur les versants.
+					mj.set_instance_shader_parameter("verdi",
+						ville.valeur("i", fid, "part_toit_vert", mois))
+					mj.set_instance_shader_parameter("part_plate",
+						ville.valeur("i", fid, "_part_plate", mois))
 
 
 
@@ -1800,7 +1838,8 @@ func _maj_apercu() -> void:
 			apercu.echantillon(couche, ville.objets(couche).get(fid, {}),
 				_voie_de_berge(fid) if couche == "b" else 0.0)
 	apercu.viser(pivot.lacet)
-	apercu.regler(float(d["equipe"]), bool(d["futur"]), float(d["berge"]))
+	apercu.regler(float(d["equipe"]), float(d["verdi"]), float(d["plate"]),
+		bool(d["futur"]), float(d["berge"]))
 	# Les voitures du morceau montré. La signature évite de les reposer à chaque
 	# image : elles ne changent qu'au survol ou au mois. Un pont cassé n'en a
 	# pas — sa miniature est un bout de ville, pas un échantillon.

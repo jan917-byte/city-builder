@@ -6,6 +6,10 @@ extends RefCounted
 # Aucun nœud, aucune couleur, aucun signal. Tout se dérive d'attributs existants
 # (décision 56) ; `toit_m2` et `canopee` sont lus sans savoir qui les fabrique
 # (décisions 41 · 64 · 64b).
+#
+# 🌿 LE TOIT VERT EST ICI POUR SON PRIX ET SA SURFACE, PAS POUR SON ÉNERGIE : il
+# ne produit rien et n'isole rien dans ce prototype. Ce qu'il rachète — la crue
+# — se calcule dans `ville.gd`, qui est le seul à connaître le fleuve.
 
 # ==========================================================================
 # LA TABLE — 🎚️ c'est ici que l'auteur règle le jeu, pas dans les formules
@@ -63,6 +67,12 @@ const CO2_GRIS_ISOLATION_KG_LOG := 4000.0 # modeste : remboursé en ~2 ans
 const COUT_PANNEAU_EUR_M2 := 260.0    # panneau + structure + pose sur toiture existante
 const PRIX_ENERGIE_EUR_MWH := 150.0   # ce que vaut le MWh produit plutôt qu'acheté
 
+# 🌿 LE TOIT VERT — étanchéité reprise, substrat, sédum. 🎚️ Level design : il ne
+# rapporte RIEN, donc son prix seul décide s'il vaut de renoncer à des panneaux
+# sur le même mètre carré. Mesuré : verdir les 1,58 ha plats et équipables de
+# Wehrau coûte ~1 800 k€, cinq ans de dotation.
+const COUT_TOIT_VERT_EUR_M2 := 140.0
+
 # ⏸️ Ancienne économie en points (PLAN §5, §6 bis b), hors boucle jouable depuis
 # le 2026-08-17 ; seuls `chantiers.gd` et `outils/essai_energie.gd` la lisent.
 # ⚠️ Ne pas rebrancher les dérives : composées, elles rongeaient l'amortissement
@@ -100,6 +110,36 @@ static func toit_equipable_m2(v, fid: int) -> float:
 	if v.base("i", fid, "solaire_possible") <= 0.0:
 		return 0.0
 	return v.base("i", fid, "toit_m2") * ligne(v, fid)["equip"]
+
+
+## 🌿 CE QUI PEUT PORTER UN SUBSTRAT : la part plate du toit équipable. Un
+## versant est exclu par la géométrie, pas par une table — `toit_plat_m2` est
+## mesuré volume par volume par `07`.
+static func toit_plat_equipable_m2(v, fid: int) -> float:
+	if v.base("i", fid, "solaire_possible") <= 0.0:
+		return 0.0
+	return v.base("i", fid, "toit_plat_m2") * ligne(v, fid)["equip"]
+
+
+## 🌿 LE PLAFOND DU CURSEUR VERT, en part du toit équipable — donc dans la même
+## échelle que les panneaux, puisque les deux se partagent le même 100 %.
+## `equip` s'annule entre les deux surfaces : c'est la part plate du TOIT.
+static func part_plate(v, fid: int) -> float:
+	var toit: float = v.base("i", fid, "toit_m2")
+	return 0.0 if toit <= 0.0 else clampf(
+		v.base("i", fid, "toit_plat_m2") / toit, 0.0, 1.0)
+
+
+## En m² réellement verdis au mois `t`.
+static func toit_vert_m2(v, fid: int, t: float) -> float:
+	return toit_equipable_m2(v, fid) * v.valeur("i", fid, "part_toit_vert", t)
+
+
+## En k€. Même `cout_x` que les panneaux : ce qui coûte cher, c'est monter sur
+## le toit, et ça ne dépend pas de ce qu'on y pose.
+static func cout_vert_ke(v, fid: int, de: float, vers: float) -> float:
+	return toit_equipable_m2(v, fid) * maxf(vers - de, 0.0) \
+		* COUT_TOIT_VERT_EUR_M2 * ligne(v, fid)["cout_x"] / 1000.0
 
 
 ## Le toit entièrement équipé, en MWh/an. L'ombrage de la canopée s'applique
@@ -225,6 +265,12 @@ static func derive(v, fid: int, champ: String, t: float) -> float:
 		# Le toit EN ENTIER : de quoi comparer deux îlots avant tout curseur.
 		"_cout_total_ke":
 			return cout_pose_ke(v, fid, 0.0, 1.0)
+		"_toit_plat_equipable_m2":
+			return toit_plat_equipable_m2(v, fid)
+		"_part_plate":
+			return part_plate(v, fid)
+		"_toit_vert_m2":
+			return toit_vert_m2(v, fid, t)
 		# Lus par NOM DE CHAMP par les chantiers, qui ignorent qu'ils parlent
 		# d'énergie — c'est ce qui les garde génériques (décision 64).
 		"_cout_x_solaire":

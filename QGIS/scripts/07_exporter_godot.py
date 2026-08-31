@@ -380,7 +380,8 @@ FICHE_ILOTS = [c for c in COLS_ILOTS if c != "fid"]
 # 🔗 L'interface du toit (41 · 64), calculée et non lue dans le `.gpkg` :
 # surface réelle, pente, et le drapeau « toit plat ». L'ombrage, lui, est déjà
 # là — c'est `canopee`.
-TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat", "toit_m2_neuf"]
+TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat", "toit_plat_m2",
+               "toit_m2_neuf"]
 FICHE_ROUTES = ([c for c in COLS_ROUTES if c != "fid"]
                 + ["longueur_m", "bord_places_m"])
 
@@ -1365,7 +1366,7 @@ class Maillage(object):
         }
         # Un maillage sans un seul mur percé n'emporte pas la colonne : Godot
         # laisse alors UV2 à zéro, ce qui est exactement « pas une façade ».
-        if any(g[0] for g in self.uv2):
+        if any(g[0] or g[1] for g in self.uv2):
             d["uv2"] = [[round(c, 3) for c in s] for s in self.uv2]
         return d
 
@@ -1571,6 +1572,7 @@ def main():
     n_masse = n_sol = n_eau = 0
     n_parc = n_parc_batie = n_vol = 0
     n_pentu = n_plat_force = 0
+    n_range = n_ilot_grossier = 0
     n_deborde = 0
     n_ruine = n_sali = 0
     deb_max = 0.0
@@ -1709,6 +1711,7 @@ def main():
             pente = BATI.get(st, BATI_DEFAUT)[3]
             toit_ilot = 0.0
             toit_neuf_ilot = 0.0
+            toit_plat_ilot = 0.0
             volumes = []
             batiments_par_parcelle = {}
             # 🚶 LA VENELLE NE SE BÂTIT PAS, ET ELLE EST UNE ADRESSE. Deux
@@ -1744,6 +1747,11 @@ def main():
             # 🪟 L'index des murs de TOUT l'îlot, bâti une fois : c'est lui
             # qui dira, mur par mur, lesquels sont mitoyens — donc aveugles.
             idx_murs = _index_murs([v[0] for v in volumes])
+            rangs_verts = _rangs_verts(volumes, pente)
+            n_range += len(rangs_verts)
+            # ⚠️ UN TOIT NE SE VERDIT PAS À MOITIÉ : moins de trois toits plats
+            # et le curseur vert de cet îlot n'a plus que deux ou trois crans.
+            n_ilot_grossier += 1 if 0 < len(rangs_verts) <= 2 else 0
             for k_vol, (emp, niv, faite, parcelle, crue, eau_m) in \
                     enumerate(volumes):
                 # ⚠️ TOIT À DEUX PENTES SUR EMPREINTE CONVEXE SEULEMENT, et
@@ -1752,11 +1760,11 @@ def main():
                 # dans un renfoncement et le versant qu'elle porte se retourne.
                 pente_v = 0.0
                 if pente > 0.0:
-                    if faite is not None and _convexe(emp):
+                    if _toit_plat(pente, faite, emp):
+                        n_plat_force += 1
+                    else:
                         pente_v = pente
                         n_pentu += 1
-                    else:
-                        n_plat_force += 1
                 # La surface de toit se compte VOLUME PAR VOLUME, avec la pente
                 # de ce volume-là : un toit plat ne porte pas les 1,4 m² de
                 # couverture par m² d'emprise d'un toit à 45°. C'est ce nombre
@@ -1769,6 +1777,12 @@ def main():
                 toit_neuf_ilot += aire_toit
                 if crue != "ruine":
                     toit_ilot += aire_toit
+                    # 🌿 CE QUI PEUT PORTER UN TOIT VERT, et rien d'autre : un
+                    # substrat ne tient pas sur un versant. Mesuré ici plutôt
+                    # que déduit du tissu, parce que les empreintes concaves
+                    # d'un tissu à versants retombent AUSSI au toit plat.
+                    if pente_v <= 0.0:
+                        toit_plat_ilot += aire_toit
                 # ⚠️ Les chemins sont ÉCARTÉS de ce contrôle : un bâtiment qui
                 # mord sur la venelle est exactement le défaut qu'on cherche à
                 # voir, et le compter « dans une parcelle » le masquerait.
@@ -1820,10 +1834,11 @@ def main():
                     n_neuf += 1
                     _masse(repare, emp, d, PAL.vers_lineaire(mur_neuf), G, niv,
                            pente_v, faite, PAL.vers_lineaire(toit_neuf),
-                           genres, alea)
+                           genres, alea, rangs_verts.get(k_vol, 1.0))
                 else:
                     a, b, c, e = _masse(masses, emp, d, c_mur, G, niv,
-                                        pente_v, faite, c_toit, genres, alea)
+                                        pente_v, faite, c_toit, genres, alea,
+                                        rangs_verts.get(k_vol, 1.0))
                 murs_ok += a
                 murs_tot += b
                 toits_ok += c
@@ -1944,6 +1959,10 @@ def main():
             d["toit_m2_neuf"] = round(toit_neuf_ilot, 1)
             d["toit_pente"] = round(pente, 2)
             d["toit_plat"] = 1 if pente <= 0.0 else 0
+            # 🌿 Le drapeau ci-dessus dit ce que le TISSU veut ; ce m² dit ce
+            # que la ville a vraiment de plat. Les deux divergent, et c'est le
+            # second qui plafonne les toits verts.
+            d["toit_plat_m2"] = round(toit_plat_ilot, 1)
             toit_total += toit_ilot
             # La canopée d'un îlot bâti n'est pas représentable dans une
             # maquette de masses : le pâté est plein, il n'y a pas de sol
@@ -2059,6 +2078,20 @@ def main():
         plats = [f for f, x in ilots.items() if x.get("toit_plat")]
         print("        dont %d îlots à toit plat — barre, friches,"
               " collectif 1995 et îlot compact" % len(plats))
+        # 🌿 LE PLAFOND DES TOITS VERTS, et il ne se devine pas depuis le
+        # tissu : les empreintes concaves ajoutent du plat dans des îlots à
+        # versants. C'est ce nombre que l'énergie lit.
+        plat_m2 = sum(x.get("toit_plat_m2") or 0.0 for x in ilots.values())
+        porteurs = [f for f, x in ilots.items() if (x.get("toit_plat_m2") or 0.0) > 0.0]
+        print("        surface plate : %.1f ha, %.0f %% du toit, sur %d îlots"
+              " (%d que le tissu veut plats)"
+              % (plat_m2 / 1e4, 100.0 * plat_m2 / max(toit_total, 1.0),
+                 len(porteurs), len(plats)))
+        # 🌿 UN TOIT EST SOLAIRE OU VERT : le curseur vert avance donc par
+        # TOITS ENTIERS, et c'est ce que la finesse coûte.
+        print("        %d toits plats rangés pour le vert ; %d îlots n'en ont"
+              " qu'un ou deux, leur curseur est un interrupteur"
+              % (n_range, n_ilot_grossier))
         print("  empreintes : lues directement dans 04d, aucune forme recalculée"
               " par l'export Godot")
         # 🌊 CE QUE LA CRUE DOIT AVOIR CHANGÉ À L'ÉCRAN. Deux nombres, et ils
@@ -3347,8 +3380,44 @@ def _facades(k, emp, parcelle, idx_bord, idx_murs, st):
     return out
 
 
+def _toit_plat(pente, faite, emp):
+    """Le toit de CE volume est-il plat ? Le tissu donne une pente, la
+    géométrie la refuse : même test qu'à l'émission, appelé aux deux endroits
+    pour qu'ils ne puissent pas diverger."""
+    return not (pente > 0.0 and faite is not None and _convexe(emp))
+
+
+def _rangs_verts(volumes, pente):
+    """k_vol -> la place de ce toit sur [0,1[ dans l'aire PLATE de l'îlot.
+
+    🌿 UN TOIT EST SOLAIRE OU VERT, JAMAIS LES DEUX (2026-08-31) : le partage
+    ne peut donc plus se jouer au mètre carré, il se joue volume par volume.
+    Le shader verdit un toit ENTIER dès que son rang passe sous le curseur ;
+    le rang est pris au MILIEU du segment d'aire du volume, donc la surface
+    verdie à l'écran retombe sur celle que l'îlot annonce, à un toit près.
+    L'ordre est tiré du LIEU (35) : la même ville verdit les mêmes toits.
+    ⚠️ Versants et ruines n'y sont pas — `toit_plat_m2` ne les compte pas non
+    plus, et c'est lui qui plafonne le curseur."""
+    plats = []
+    for k, (emp, _niv, faite, _parc, crue, _eau) in enumerate(volumes):
+        if crue == "ruine" or not _toit_plat(pente, faite, emp):
+            continue
+        plats.append((random.Random(_graine_lieu(emp) ^ 0x5EDA).random(), k,
+                      abs(D4C.aire_signee(emp))))
+    total = sum(a for _t, _k, a in plats)
+    if total <= 0.0:
+        return {}
+    plats.sort()
+    rangs = {}
+    cumul = 0.0
+    for _t, k, a in plats:
+        rangs[k] = (cumul + a / 2.0) / total
+        cumul += a
+    return rangs
+
+
 def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
-           coul_toit=None, genres=None, alea=0.0):
+           coul_toit=None, genres=None, alea=0.0, rang_vert=1.0):
     """Un prisme à deux plans horizontaux, base enterrée.
 
     🔄 `y_haut` ajoutait `altitude_relative` — le bâtiment se posait sur le
@@ -3454,7 +3523,12 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
         pa = G(a[0], a[1], y_haut)
         pb = G(b[0], b[1], y_haut)
         pc = G(c[0], c[1], y_haut)
-        m.triangle(pa, pb, pc, coul_toit, axe_toit=axe_uv)
+        # 🌿 UV2 = (0, rang) sur un toit : 0 n'est pas une façade, donc les
+        # fenêtres ne s'y percent pas, et `rang` dit au shader si CE toit-ci
+        # verdit en entier. Les versants gardent (0, 0) : ils ne verdissent
+        # jamais.
+        m.triangle(pa, pb, pc, coul_toit, axe_toit=axe_uv,
+                   genre=(0.0, rang_vert))
         if normale(pa, pb, pc)[1] > 0.0:
             haut_ok += 1
     # L'acrotère est posé sur TOUS les toits plats, y compris les 159 qui le

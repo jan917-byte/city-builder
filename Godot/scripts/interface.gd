@@ -1,6 +1,6 @@
 extends CanvasLayer
 # L'interface du prologue climatique : adaptation, puis réduction.
-# Tant que l'urgence tient, aucune décision solaire n'apparaît ; les
+# 🔄 Le verrou de l'urgence est tombé le 2026-08-31 (voir `ville.lancer_solaire`). Les
 # réparations font avancer la jauge d'adaptation.
 
 signal vitesse_demandee(vitesse: float)
@@ -97,7 +97,6 @@ var _reduction_valeur: Label
 var _reduction_etat: Label
 var _fiche_valeurs := {}
 var _fiche_titre: Label
-var _fiche_entete: Label
 var _fiche_vide: Label
 var _fiche_grille: GridContainer
 var _chantier_bloc: VBoxContainer
@@ -108,6 +107,12 @@ var _solaire_bloc: VBoxContainer
 var _solaire_valeur: Label
 var _solaire_curseur: HSlider
 var _solaire_jauge: Jauge
+## 🌿 Le second usage du même toit. Bloc jumeau du solaire — même curseur, même
+## jauge, même mémoire de position — parce que les deux se partagent un 100 %.
+var _vert_bloc: VBoxContainer
+var _vert_valeur: Label
+var _vert_curseur: HSlider
+var _vert_jauge: Jauge
 var _arbres_bloc: VBoxContainer
 var _arbres_valeur: Label
 var _arbres_curseur: HSlider
@@ -176,12 +181,13 @@ var _degats_valeurs := {}
 var _mois := 0.0
 var _caisse_ke := Ville.CAISSE_DEPART_KE
 var _cout_en_alerte := false
-var _reduction_verrouillee := true
 
 # La position posée par l'auteur et pas encore validée ; -1 = la fiche commande.
 # ⚠️ Sans ce souvenir, `_maj_fiche()` (à chaque image) reposait la valeur sous
 # le doigt et la barre était intraînable (défaut du 2026-08-17).
 var _solaire_choix := -1.0
+## Même mémoire, même raison, pour le curseur des toits verts.
+var _vert_choix := -1.0
 ## Même mémoire, même raison, pour le curseur des arbres.
 var _arbres_choix := -1.0
 # Vrai pendant que la fiche écrit dans le curseur : une montée de `min_value`
@@ -315,7 +321,9 @@ func _tuile(parent: HBoxContainer, icone: String, titre: String, largeur: float)
 	v.add_theme_constant_override("separation", 1)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(v)
-	v.add_child(_label(titre.to_upper(), 10, GRIS))
+	# Un titre vide = pas de ligne : la tuile de la ville porte son nom, pas son genre.
+	if titre != "":
+		v.add_child(_label(titre, 10, GRIS))
 	return v
 
 
@@ -374,8 +382,8 @@ func _panneau_ville() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	var ville_tuile := _tuile(h, "ville", "Ville", 150)
-	ville_tuile.add_child(_label("WEHRAU", 18, TEXTE))
+	var ville_tuile := _tuile(h, "ville", "", 150)
+	ville_tuile.add_child(_label("Wehrau", 18, TEXTE))
 
 	var diag_cadre := PanelContainer.new()
 	diag_cadre.theme = _theme_ui
@@ -383,7 +391,7 @@ func _panneau_ville() -> void:
 	diag_cadre.custom_minimum_size = Vector2(145, 64)
 	h.add_child(diag_cadre)
 	var diag := Button.new()
-	diag.text = "DIAGNOSTIC"
+	diag.text = "Diagnostic"
 	diag.icon = _icone("diagnostic", 27)
 	diag.tooltip_text = "Dangers, chantiers, énergie, trafic et tissu."
 	diag.pressed.connect(func() -> void: theme_demande.emit(_dernier_theme))
@@ -416,6 +424,22 @@ func _panneau_ville() -> void:
 	(_ville_valeurs["caisse"] as Label).get_parent().add_child(recette)
 	_ville_valeurs["recette"] = recette
 	(_ville_valeurs["caisse"] as Label).add_theme_color_override("font_color", ACCENT)
+	# 🧪 LE BOUTON D'ESSAI, ET IL DIT QU'IL EN EST UN. Il sert à atteindre en un
+	# clic un état que vingt ans de dotation mettraient à payer — donc à juger
+	# une ville équipée, pas à juger l'économie. Sa propre tuile et pas un
+	# troisième étage dans celle de la caisse, qui est haute de 64 px.
+	# À retirer en même temps que `ville.crediter_essai_ke`.
+	var triche := Button.new()
+	triche.text = "Essai\n+1 000 k€"
+	triche.theme = _theme_ui
+	triche.focus_mode = Control.FOCUS_NONE
+	triche.custom_minimum_size = Vector2(92, 64)
+	triche.add_theme_font_size_override("font_size", 11)
+	triche.tooltip_text = "Outil d'essai : remplit la caisse, hors règles du jeu."
+	triche.pressed.connect(func() -> void:
+		ville.crediter_essai_ke(1000.0)
+		_message.text = "Essai : 1 000 k€ versés.")
+	h.add_child(triche)
 
 
 func _jauge_climat(parent: VBoxContainer, couleur: Color) -> Dictionary:
@@ -453,7 +477,7 @@ func _panneau_menu() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	_menu_panneau.add_child(v)
-	v.add_child(_label("VUES", 12, ACCENT))
+	v.add_child(_label("Vues", 12, ACCENT))
 	# ⚠️ `allow_unpress` à false : sans lui, recliquer le thème actif l'éteint
 	# À L'ÉCRAN alors que la ville reste peinte — le menu mentirait.
 	var groupe := ButtonGroup.new()
@@ -474,7 +498,7 @@ func _panneau_menu() -> void:
 		_menu_boutons[id] = b
 	v.add_child(HSeparator.new())
 	var retour := Button.new()
-	retour.text = "VILLE"
+	retour.text = "Ville"
 	retour.icon = _icone("retour", 25)
 	retour.tooltip_text = "Retrouver la matière, les arbres et les voitures."
 	retour.pressed.connect(func() -> void: theme_demande.emit(""))
@@ -528,7 +552,7 @@ func _entete(parent: VBoxContainer) -> Array:
 
 
 func _ecrire_entete(e: Array, t: Dictionary) -> void:
-	(e[0] as Label).text = str(t["nom"]).to_upper()
+	(e[0] as Label).text = str(t["nom"])
 	(e[1] as Label).text = str(t.get("resume", ""))
 
 
@@ -708,7 +732,7 @@ func maj_chantiers(d: Dictionary) -> void:
 		if liste.is_empty():
 			texte = "Aucun chantier en cours." if i == 0 else ""
 		elif i == CHANTIERS_LIGNES - 1 and liste.size() > CHANTIERS_LIGNES:
-			texte = "… et %d autre(s)" % (liste.size() - i)
+			texte = "… et %d de plus" % (liste.size() - i)
 		elif i < liste.size():
 			texte = _ligne_chantier(liste[i])
 		var l: Label = _chantiers_lignes[i]
@@ -750,8 +774,6 @@ func _panneau_ilot() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	p.add_child(v)
-	_fiche_entete = _label("ÎLOT", 12, ACCENT)
-	v.add_child(_fiche_entete)
 	_fiche_titre = _label("Sélection", 20, TEXTE)
 	v.add_child(_fiche_titre)
 
@@ -838,6 +860,9 @@ func _panneau_ilot() -> void:
 		["conso", "Conso."],
 		["production", "Solaire"],
 		["toit", "Toit"],
+		# 🌿 La part PLATE se lit ici et nulle part ailleurs : c'est elle qui
+		# décide si le bloc des toits verts existe sur cet îlot.
+		["plat", "Dont plat"],
 		# L'amortissement est une propriété de l'îlot, pas de la part visée
 		# (`energie.rentabilite_annees`) : sa place est dans la grille.
 		["retour", "Retour"],
@@ -883,10 +908,10 @@ func _panneau_ilot() -> void:
 		["bord", "Rive"],
 		["longueur", "Longueur"],
 		["mur", "Mur de quai"],
-		["rive", "Rive entre la rue et l'eau"],
+		["rive", "Rive minérale"],
 		["rues", "Voies portées"],
-		["bief", "Le bief qu'elle borde"],
-		["crue", "Crue annoncée ici"],
+		["bief", "Bief"],
+		["crue", "Crue annoncée"],
 		["etat", "État"],
 	]:
 		_berge_grille.add_child(_label(ligne[1], 12, GRIS))
@@ -903,7 +928,6 @@ func _panneau_ilot() -> void:
 	_berge_bloc.visible = false
 	v.add_child(_berge_bloc)
 	_berge_bloc.add_child(HSeparator.new())
-	_berge_bloc.add_child(_label("BERGE", 12, ACCENT))
 	_berge_texte = _label("", 12, TEXTE)
 	_berge_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_berge_bloc.add_child(_berge_texte)
@@ -920,7 +944,7 @@ func _panneau_ilot() -> void:
 	_repare_bloc.visible = false
 	v.add_child(_repare_bloc)
 	_repare_bloc.add_child(HSeparator.new())
-	_repare_bloc.add_child(_label("CRUE", 12, ACCENT))
+	_repare_bloc.add_child(_label("Crue", 12, ACCENT))
 	_repare_texte = _label("", 12, TEXTE)
 	_repare_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_repare_bloc.add_child(_repare_texte)
@@ -933,7 +957,7 @@ func _panneau_ilot() -> void:
 	_trafic_bloc.visible = false
 	v.add_child(_trafic_bloc)
 	_trafic_bloc.add_child(HSeparator.new())
-	_trafic_bloc.add_child(_label("RUE", 12, ACCENT))
+	_trafic_bloc.add_child(_label("Voitures", 12, ACCENT))
 	_trafic_stationnement = Button.new()
 	_trafic_stationnement.text = "Retirer les places"
 	_trafic_stationnement.icon = _icone("trafic", 22)
@@ -953,7 +977,7 @@ func _panneau_ilot() -> void:
 	_arbres_bloc.visible = false
 	v.add_child(_arbres_bloc)
 	_arbres_bloc.add_child(HSeparator.new())
-	_arbres_bloc.add_child(_label("ARBRES", 12, ACCENT))
+	_arbres_bloc.add_child(_label("Arbres", 12, ACCENT))
 	_arbres_valeur = _label("", 13, TEXTE)
 	_arbres_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_arbres_bloc.add_child(_arbres_valeur)
@@ -978,7 +1002,7 @@ func _panneau_ilot() -> void:
 	_solaire_bloc.visible = false
 	v.add_child(_solaire_bloc)
 	_solaire_bloc.add_child(HSeparator.new())
-	_solaire_bloc.add_child(_label("SOLAIRE", 12, ACCENT))
+	_solaire_bloc.add_child(_label("Solaire", 12, ACCENT))
 	_solaire_valeur = _label("", 13, TEXTE)
 	_solaire_bloc.add_child(_solaire_valeur)
 
@@ -988,8 +1012,6 @@ func _panneau_ilot() -> void:
 	_solaire_jauge.custom_minimum_size = Vector2(0, 15)
 	_solaire_jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_solaire_bloc.add_child(_solaire_jauge)
-
-	_solaire_bloc.add_child(_label("CIBLE", 10, GRIS))
 
 	_solaire_curseur = HSlider.new()
 	# 🔴 Échelle FIXE 0→100. Monter `min_value` avec la pose faisait changer un
@@ -1004,6 +1026,35 @@ func _panneau_ilot() -> void:
 	_habiller_curseur(_solaire_curseur)
 	_solaire_curseur.value_changed.connect(_sur_curseur)
 	_solaire_bloc.add_child(_solaire_curseur)
+
+	# 🌿 LE MÊME TOIT, L'AUTRE USAGE. Bloc jumeau du solaire, à trois détails
+	# près : il ne rapporte rien, il est borné par la part plate du toit, et son
+	# effet est celui de TOUTE la ville — d'où le total affiché en dessous.
+	_vert_bloc = VBoxContainer.new()
+	_vert_bloc.add_theme_constant_override("separation", 6)
+	_vert_bloc.visible = false
+	v.add_child(_vert_bloc)
+	_vert_bloc.add_child(HSeparator.new())
+	_vert_bloc.add_child(_label("Toits verts", 12, ACCENT))
+	_vert_valeur = _label("", 13, TEXTE)
+	_vert_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_vert_bloc.add_child(_vert_valeur)
+	_vert_jauge = Jauge.new()
+	_vert_jauge.custom_minimum_size = Vector2(0, 15)
+	_vert_jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vert_jauge.colorer(FAIT)
+	_vert_bloc.add_child(_vert_jauge)
+	_vert_curseur = HSlider.new()
+	# 🔴 Échelle FIXE 0→100, la même que le solaire, et c'est tout le propos :
+	# les deux curseurs mesurent LE MÊME toit, donc le même pixel dit la même
+	# surface. Les plafonds se rattrapent dans les deux `_sur_curseur`.
+	_vert_curseur.min_value = 0.0
+	_vert_curseur.max_value = 100.0
+	_vert_curseur.step = 1.0
+	_vert_curseur.focus_mode = Control.FOCUS_NONE
+	_habiller_curseur(_vert_curseur)
+	_vert_curseur.value_changed.connect(_sur_curseur_vert)
+	_vert_bloc.add_child(_vert_curseur)
 
 	# 🔴 LE RÉCAPITULATIF ET LE BOUTON, EN BAS ET UNE SEULE FOIS. Tous les
 	# réglages posés y arrivent : un prix, une durée, un refus. C'est aussi le
@@ -1049,7 +1100,6 @@ func _panneau_camera() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 3)
 	p.add_child(v)
-	v.add_child(_label("CAMÉRA", 11, ACCENT))
 	_camera_vue = _label("", 14, TEXTE)
 	v.add_child(_camera_vue)
 	for ligne in [
@@ -1088,7 +1138,7 @@ func _controles_temps() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	_temps_label = _label("MOIS 0", 13, TEXTE)
+	_temps_label = _label("Mois 0", 13, TEXTE)
 	_temps_label.custom_minimum_size.x = 82
 	h.add_child(_temps_label)
 	for choix in [["Ⅱ", 0.0], ["▶", 1.0], ["×4", 4.0], ["×12", 12.0]]:
@@ -1129,7 +1179,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_ville_valeurs["caisse"].text = _milliers(_caisse_ke) + " k€"
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
 	_maj_durabilite(indic)
-	_temps_label.text = "MOIS %s" % _nb(mois, 1)
+	_temps_label.text = "Mois %s" % _nb(mois, 1)
 	maj_degats(ville.degats(mois))
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
@@ -1148,20 +1198,13 @@ func _maj_durabilite(indic: Dictionary) -> void:
 		int(indic["adaptation_ponts"])] if adaptation < 0.9995 else \
 		"Ville relevée"
 
-	_reduction_verrouillee = bool(indic["reduction_verrouillee"])
 	var reduction := float(indic["reduction_part"])
-	_reduction_jauge.colorer(GRIS.darkened(0.25) if _reduction_verrouillee \
-		else Color8(91, 174, 117))
-	_reduction_jauge.regler(0.0 if _reduction_verrouillee else reduction,
-		0.0 if _reduction_verrouillee else reduction)
-	_reduction_valeur.text = "—" if _reduction_verrouillee else \
-		"%d %%" % int(roundf(reduction * 100.0))
-	if _reduction_verrouillee:
-		_reduction_etat.text = "Après l'urgence"
-	else:
-		var ecart := float(indic["reduction_ecart_kt"])
-		_reduction_etat.text = "%s kt/an évitées depuis le mois 0." % _nb(ecart, 1) \
-			if ecart >= 0.0 else "Émissions +%s kt/an depuis le mois 0." % _nb(-ecart, 1)
+	_reduction_jauge.colorer(Color8(91, 174, 117))
+	_reduction_jauge.regler(reduction, reduction)
+	_reduction_valeur.text = "%d %%" % int(roundf(reduction * 100.0))
+	var ecart := float(indic["reduction_ecart_kt"])
+	_reduction_etat.text = "%s kt/an évitées depuis le mois 0." % _nb(ecart, 1) \
+		if ecart >= 0.0 else "Émissions +%s kt/an depuis le mois 0." % _nb(-ecart, 1)
 
 
 func montrer(couche: String, fid: int, _garder := true) -> void:
@@ -1179,8 +1222,11 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_fiche_grille.visible = couche == "i"
 	_rue_grille.visible = couche == "r"
 	_berge_grille.visible = couche == "b"
-	_fiche_entete.text = {"i": "ÎLOT", "r": "RUE", "b": "BERGE"}[couche]
-	_solaire_bloc.visible = couche == "i" and not _reduction_verrouillee
+	_solaire_bloc.visible = couche == "i"
+	# 🌿 Un îlot tout en versants ne verra JAMAIS ce bloc : un curseur qui ne
+	# peut rien poser n'est pas une décision grisée, c'est du bruit.
+	_vert_bloc.visible = couche == "i" \
+		and ville.valeur("i", fid, "_part_plate", _mois) > 0.001
 	_trafic_bloc.visible = couche == "r"
 	# 🌳 Seulement là où il y a la place d'un arbre entre la chaussée et la
 	# limite d'emprise : `07` l'a tranché, les ruelles du cœur ancien n'en ont
@@ -1203,10 +1249,6 @@ func _maj_fiche() -> void:
 		return
 	_fiche_titre.text = "Îlot %d" % _fiche_fid
 	_maj_reparation(o)
-	# Avant le passage Adaptation → Réduction, il n'y a pas de décision solaire
-	# grisée : elle n'existe pas encore dans le langage du jeu. La jauge de
-	# gauche suffit à annoncer ce qui viendra.
-	_solaire_bloc.visible = not _reduction_verrouillee
 
 	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _mois)
 	var prod := ville.valeur("i", _fiche_fid, "_production_mwh", _mois)
@@ -1223,6 +1265,8 @@ func _maj_fiche() -> void:
 	(_fiche_valeurs["conso"] as Label).text = _nb(conso, 0) + " MWh/an"
 	(_fiche_valeurs["production"] as Label).text = _nb(prod, 0) + " MWh/an"
 	(_fiche_valeurs["toit"] as Label).text = _nb(toit, 0) + " m²"
+	var plate := ville.valeur("i", _fiche_fid, "_part_plate", _mois)
+	(_fiche_valeurs["plat"] as Label).text = "%d %%" % int(roundf(plate * 100.0))
 	var ans := ville.valeur("i", _fiche_fid, "_rentabilite_annees", _mois)
 	(_fiche_valeurs["retour"] as Label).text = \
 		"—" if is_inf(ans) else "%d ans" % int(roundf(ans))
@@ -1233,13 +1277,19 @@ func _maj_fiche() -> void:
 	# ⚠️ Il se VERROUILLE pendant les travaux : une pose engagée est payée, et
 	# ce verrou permet aux rampes de s'additionner sans réécrire l'histoire
 	# d'un toit (`ville.lancer_solaire`).
+	# 🌿 LE PLAFOND, ET IL BOUGE : ce que les toits verts prennent, les panneaux
+	# ne l'ont plus. Il compte la CIBLE et non le réalisé, donc un chantier vert
+	# engagé ferme la part tout de suite.
+	var plafond_pct := ville.part_solaire_max(_fiche_fid, _mois) * 100.0
+	if _vert_choix >= 0.0:
+		plafond_pct = minf(plafond_pct, 100.0 - _vert_choix)
 	_ecrit_curseur = true
-	_solaire_curseur.editable = not _reduction_verrouillee \
-		and toit > 0.0 and pct < 100.0 and not etat["en_cours"]
+	_solaire_curseur.editable = toit > 0.0 and pct < plafond_pct - 0.5 \
+		and not etat["en_cours"]
 	if _solaire_choix < 0.0:
 		_solaire_curseur.set_value_no_signal(maxf(pct, cible_pct))
 	else:
-		_solaire_choix = maxf(_solaire_choix, pct)
+		_solaire_choix = clampf(_solaire_choix, pct, maxf(plafond_pct, pct))
 		_solaire_curseur.set_value_no_signal(_solaire_choix)
 	_ecrit_curseur = false
 	# L'objectif visé est celui du curseur tant qu'il n'est pas validé, celui de
@@ -1248,9 +1298,7 @@ func _maj_fiche() -> void:
 		maxf(pct, _solaire_choix if _solaire_choix >= 0.0 else cible_pct) / 100.0)
 
 	var recette := ville.valeur("i", _fiche_fid, "_recette_ke_an", _mois)
-	if _reduction_verrouillee:
-		_solaire_valeur.text = "Disponible après l'urgence. Relevez logements et ponts."
-	elif toit <= 0.0:
+	if toit <= 0.0:
 		_solaire_valeur.text = "Bâtiment protégé." \
 			if int(o.get("solaire_possible", 1)) == 0 else "Aucun toit."
 	elif _solaire_choix >= 0.0:
@@ -1263,7 +1311,8 @@ func _maj_fiche() -> void:
 		_solaire_valeur.text = "%d %% équipé · +%s k€/an" % [int(roundf(pct)),
 			_milliers(recette)] if pct > 0.0 else "Aucun panneau."
 		if etat["a_commence"]:
-			_message.text = "Pose terminée. Les toits et les totaux ont atteint leur cible."
+			_message.text = "Pose terminée."
+	_maj_vert()
 	_maj_recap()
 
 
@@ -1276,6 +1325,51 @@ func _maj_fiche() -> void:
 ## dans un bouton déjà chargé de trois nombres.
 func _posee(cle: String, texte: String, valeur := true) -> String:
 	return ("✓ " + texte) if _pose.get(cle) == valeur else texte
+
+
+## 🌿 Le bloc des toits verts. Même mécanique que le solaire, à une chose près :
+## ce qu'il annonce est l'effet de TOUTE la ville, parce que c'est là qu'il a
+## lieu — un toit seul rachète des centimètres, le programme rachète des mètres.
+func _maj_vert() -> void:
+	if not _vert_bloc.visible:
+		return
+	var etat := ville.etat_vert(_fiche_fid, _mois)
+	var pct := float(etat["actuel"]) * 100.0
+	var cible_pct := float(etat["cible"]) * 100.0
+	var plafond_pct := ville.part_vert_max(_fiche_fid, _mois) * 100.0
+	if _solaire_choix >= 0.0:
+		plafond_pct = minf(plafond_pct, 100.0 - _solaire_choix)
+	_ecrit_curseur = true
+	_vert_curseur.editable = pct < plafond_pct - 0.5 and not etat["en_cours"]
+	if _vert_choix < 0.0:
+		_vert_curseur.set_value_no_signal(maxf(pct, cible_pct))
+	else:
+		_vert_choix = clampf(_vert_choix, pct, maxf(plafond_pct, pct))
+		_vert_curseur.set_value_no_signal(_vert_choix)
+	_ecrit_curseur = false
+	_vert_jauge.regler(pct / 100.0,
+		maxf(pct, _vert_choix if _vert_choix >= 0.0 else cible_pct) / 100.0)
+
+	var ville_m := ville.baisse_crue_toits_m(_mois)
+	var reste := "%s m² de toit plat libre" % _milliers(
+		ville.valeur("i", _fiche_fid, "_toit_plat_equipable_m2", _mois)
+		- ville.valeur("i", _fiche_fid, "_toit_vert_m2", _mois))
+	if _vert_choix >= 0.0 and _vert_choix > pct + 0.01:
+		_vert_valeur.text = "%d %% → %d %% · %s" % [int(roundf(pct)),
+			int(roundf(_vert_choix)),
+			_duree(ville.duree_vert_mois(pct / 100.0, _vert_choix / 100.0))]
+	elif etat["en_cours"]:
+		_vert_valeur.text = "%d %% → %d %% · %s · %s k€ engagés" % [
+			int(roundf(pct)), int(roundf(cible_pct)),
+			_duree(float(etat["reste_mois"])), _milliers(float(etat["cout_ke"]))]
+	elif pct > 0.0:
+		_vert_valeur.text = "%s m² verdis. La ville retient %s cm de crue." % [
+			_milliers(ville.valeur("i", _fiche_fid, "_toit_vert_m2", _mois)),
+			_nb(ville_m * 100.0, 0)]
+	elif plafond_pct < 0.5:
+		_vert_valeur.text = "Les panneaux prennent tout le toit plat."
+	else:
+		_vert_valeur.text = "%s." % reste
 
 
 ## 🌳 Le curseur des arbres, remis à jour à chaque image comme celui du solaire
@@ -1324,6 +1418,10 @@ func _reglages() -> Dictionary:
 		var actuel := ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois) * 100.0
 		if _solaire_choix > actuel + 0.01:
 			r["solaire"] = _solaire_choix / 100.0
+	if _fiche_couche == "i" and _vert_choix >= 0.0:
+		var actuel_v := ville.valeur("i", _fiche_fid, "part_toit_vert", _mois) * 100.0
+		if _vert_choix > actuel_v + 0.01:
+			r["vert"] = _vert_choix / 100.0
 	if _fiche_couche == "r" and _arbres_choix >= 0.0:
 		var cible := _arbres_choix / 100.0 * Ville.PLANTATION_CANOPEE_MAX
 		if ville.arbres_a(_fiche_fid, cible) > ville.arbres_a(
@@ -1347,6 +1445,7 @@ func _basculer(cle: String, valeur) -> void:
 func _vider_pose() -> void:
 	_pose.clear()
 	_solaire_choix = -1.0
+	_vert_choix = -1.0
 	_arbres_choix = -1.0
 	_apercu_avant = false
 
@@ -1384,6 +1483,8 @@ func _maj_recap() -> void:
 	var quoi := []
 	if r.has("solaire"):
 		quoi.append("panneaux %d %%" % int(roundf(float(r["solaire"]) * 100.0)))
+	if r.has("vert"):
+		quoi.append("toit vert %d %%" % int(roundf(float(r["vert"]) * 100.0)))
 	if r.has("arbres"):
 		quoi.append("%d arbres" % (ville.arbres_a(_fiche_fid, float(r["arbres"]))
 			- ville.arbres_a(_fiche_fid,
@@ -1398,12 +1499,14 @@ func _maj_recap() -> void:
 		quoi.append(_verbe_reparation(_fiche_couche,
 			ville.objets(_fiche_couche).get(_fiche_fid, {})).to_lower())
 	var phrase := ", ".join(quoi)
-	_recap_texte.text = "%s.\n%s k€ · %s · %s" % [
+	# Le prix est sur le bouton et nulle part ailleurs : deux fois le même
+	# nombre à deux lignes d'écart se lit comme deux nombres.
+	_recap_texte.text = "%s · %s · %s" % [
 		phrase.substr(0, 1).to_upper() + phrase.substr(1),
-		_milliers(cout), _duree(duree),
-		("manque %s k€" % _milliers(manque)) if manque > 0.001
-			else ("reste %s k€" % _milliers(_caisse_ke - cout))]
-	_recap_bouton.text = "Mettre en place · %s k€" % _milliers(cout)
+		_duree(duree),
+		("manque %s k€" % _milliers(manque)) if manque > 0.001
+			else ("reste %s k€" % _milliers(_caisse_ke - cout))]
+	_recap_bouton.text = "Mettre en place · %s k€" % _milliers(cout)
 	_recap_bouton.disabled = manque > 0.001
 	_alerter_cout(manque > 0.001)
 
@@ -1425,6 +1528,8 @@ func _afficher_choix(actuel: float, cible: float) -> void:
 ## Lu à chaque image par `maquette._maj_apercu` : ne rien y calculer de lourd.
 func apercu_demande() -> Dictionary:
 	var equipe := 0.0
+	var verdi := 0.0
+	var plate := 0.0
 	var futur := false
 	var berge := 0.0
 	var places := true
@@ -1432,14 +1537,19 @@ func apercu_demande() -> Dictionary:
 	var arbres := 0.0
 	if _fiche_fid < 0:
 		return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
+			"verdi": verdi, "plate": plate,
 			"futur": futur, "berge": berge, "places": places, "roule": roule,
 			"arbres": arbres}
 	var r: Dictionary = {} if _apercu_avant else _reglages()
 	if _fiche_couche == "i":
 		equipe = ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois)
+		verdi = ville.valeur("i", _fiche_fid, "part_toit_vert", _mois)
+		plate = ville.valeur("i", _fiche_fid, "_part_plate", _mois)
 		if not _apercu_avant:
 			equipe = maxf(ville.etat_solaire(_fiche_fid, _mois)["cible"],
 				float(r.get("solaire", 0.0)))
+			verdi = maxf(ville.etat_vert(_fiche_fid, _mois)["cible"],
+				float(r.get("vert", 0.0)))
 	if _fiche_couche != "b":
 		futur = not _apercu_avant \
 			and (ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
@@ -1474,6 +1584,7 @@ func apercu_demande() -> Dictionary:
 		if not _apercu_avant:
 			arbres = maxf(arbres, float(r.get("arbres", 0.0)))
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
+		"verdi": verdi, "plate": plate,
 		"futur": futur, "berge": berge, "places": places, "roule": roule,
 		"arbres": arbres}
 
@@ -1494,6 +1605,10 @@ func viser(pct: float) -> void:
 	_solaire_curseur.value = pct
 
 
+func viser_vert(pct: float) -> void:
+	_vert_curseur.value = pct
+
+
 func viser_arbres(pct: float) -> void:
 	_arbres_curseur.value = pct
 
@@ -1508,19 +1623,43 @@ func regarder_avant(avant: bool) -> void:
 
 
 func _sur_curseur(v: float) -> void:
-	if _fiche_fid < 0 or _ecrit_curseur or _reduction_verrouillee:
+	if _fiche_fid < 0 or _ecrit_curseur:
 		return
 	var actuel := ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois) * 100.0
 	# Déposer des panneaux n'est pas une décision de ce prototype (`Énergie` §1).
 	# Rattrapé ici plutôt qu'en montant `min_value`, pour garder l'échelle fixe.
-	if v < actuel:
-		v = actuel
+	# 🌿 Deux rattrapages et non un : on ne DÉPLANTE pas de panneaux, et on ne
+	# pose rien sur un mètre carré que les toits verts ont déjà pris.
+	var plafond := ville.part_solaire_max(_fiche_fid, _mois) * 100.0
+	if _vert_choix >= 0.0:
+		plafond = minf(plafond, 100.0 - _vert_choix)
+	v = clampf(v, actuel, maxf(plafond, actuel))
+	if not is_equal_approx(v, _solaire_curseur.value):
 		_ecrit_curseur = true
 		_solaire_curseur.set_value_no_signal(v)
 		_ecrit_curseur = false
 	_solaire_choix = v
 	_solaire_jauge.regler(actuel / 100.0, v / 100.0)
 	_afficher_choix(actuel, v)
+	_maj_recap()
+
+
+## 🌿 Le curseur des toits verts. Même règle que le solaire, plus le plafond de
+## la pente : un substrat ne tient pas sur un versant.
+func _sur_curseur_vert(v: float) -> void:
+	if _fiche_fid < 0 or _ecrit_curseur:
+		return
+	var actuel := ville.valeur("i", _fiche_fid, "part_toit_vert", _mois) * 100.0
+	var plafond := ville.part_vert_max(_fiche_fid, _mois) * 100.0
+	if _solaire_choix >= 0.0:
+		plafond = minf(plafond, 100.0 - _solaire_choix)
+	v = clampf(v, actuel, maxf(plafond, actuel))
+	if not is_equal_approx(v, _vert_curseur.value):
+		_ecrit_curseur = true
+		_vert_curseur.set_value_no_signal(v)
+		_ecrit_curseur = false
+	_vert_choix = v
+	_vert_jauge.regler(actuel / 100.0, v / 100.0)
 	_maj_recap()
 
 
@@ -1544,7 +1683,7 @@ func _sur_curseur_arbres(v: float) -> void:
 ## Après un retour au mois 0 : réglages posés et compte rendu périmés.
 func remis_a_zero() -> void:
 	_vider_pose()
-	_message.text = "Retour au mois 0. La ville est comme au premier jour, caisse à %s k€." \
+	_message.text = "Retour au mois 0, caisse à %s k€." \
 		% _milliers(Ville.CAISSE_DEPART_KE)
 	if _fiche_fid >= 0:
 		_maj_fiche()
@@ -1555,15 +1694,17 @@ func remis_a_zero() -> void:
 ## 2026-08-31. Le nom reste : `--essai` l'appelle.
 func confirmer_solaire(cout_ke := 0.0) -> void:
 	_vider_pose()   # la commande est partie : la fiche reprend la main
-	_message.text = "Le chantier a commencé — %s k€ engagés. Accélérez le temps pour le suivre." \
-		% _milliers(cout_ke)
+	_message.text = "Chantier engagé, %s k€." % _milliers(cout_ke)
 	_maj_fiche()
 
 
 static func _duree(mois: float) -> String:
 	if mois < 1.0:
-		return "%d jour(s)" % int(ceil(mois * 30.0))
-	return "%s mois" % _nb(mois, 1)
+		var j := int(ceil(mois * 30.0))
+		return "1 jour" if j <= 1 else "%d jours" % j
+	# Le dixième ne s'écrit que s'il n'est pas nul : « 6,0 mois » annonce une
+	# précision qu'on n'a pas.
+	return "%s mois" % _nb(mois, 0 if is_equal_approx(mois, roundf(mois)) else 1)
 
 
 static func _nb(v: float, dec: int) -> String:
@@ -1652,7 +1793,7 @@ func _maj_fiche_berge() -> void:
 	(_berge_valeurs["rive"] as Label).text = "%s m" % _nb(
 		float(o.get("rive_m", 0.0)), 1)
 	var rues: Array = o.get("rues", [])
-	(_berge_valeurs["rues"] as Label).text = "aucune" if rues.is_empty() 		else ", ".join(rues.map(func(f): return str(int(f))))
+	(_berge_valeurs["rues"] as Label).text = "aucune" if rues.is_empty() 		else "%d" % rues.size()
 	# 🌊 CE QU'ELLE RACHÈTE. Le bief se lit en îlots, pas en fil d'eau : « 7
 	# îlots » décide, « 0,31 à 0,61 » n'est qu'une coordonnée.
 	var bief: Array = ville.ilots_du_bief(_fiche_fid)
@@ -1663,15 +1804,17 @@ func _maj_fiche_berge() -> void:
 		pire = maxf(pire, ville.valeur("i", int(f), "hauteur_eau_annonce", _mois))
 	(_berge_valeurs["crue"] as Label).text = "%s m au pire" % _nb(pire, 2)
 	var reste := ville.berge_reste_mois(_fiche_fid, _mois)
-	(_berge_valeurs["etat"] as Label).text = Ville.BERGE_NOMS[etat] if reste <= 0.0 		else "%s · encore %s" % [Ville.BERGE_NOMS[ville.berge_cible(_fiche_fid)],
-			_duree(reste)]
+	# 🔎 L'état RÉALISÉ, et lui seul : la barre du haut de fiche porte déjà le
+	# chantier en cours et ce qu'il reste à attendre.
+	(_berge_valeurs["etat"] as Label).text = Ville.BERGE_NOMS[etat]
 
 	if etat == Ville.BERGE_RENATUREE:
 		_berge_texte.text = "Rive rendue au fleuve. Rien à démolir ici." 			if float(o.get("mur_m", 0.0)) <= 1.0 			else "Berge renaturée. Aucun retour en arrière."
 	elif reste > 0.0:
-		_berge_texte.text = "Chantier engagé. La rive change à la livraison."
+		_berge_texte.text = ""   # la barre du haut de fiche le dit déjà
 	else:
 		_berge_texte.text = "%s m de quai minéral séparent la chaussée de l'Ilse." 			% _nb(float(o.get("rive_m", 0.0)), 1)
+	_berge_texte.visible = _berge_texte.text != ""
 	for k in _berge_boutons.size():
 		var cible: int = Ville.BERGE_APAISEE + k
 		var bouton: Button = _berge_boutons[k]
@@ -1682,14 +1825,14 @@ func _maj_fiche_berge() -> void:
 		# bouton sortait « Quai Apaisé ».
 		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
 		if cible <= etat:
-			bouton.text = "%s — fait" % titre
+			bouton.text = "%s · fait" % titre
 		else:
 			# 🌊 Le prix seul ne dit rien : c'est la baisse de crue qui fait
 			# choisir entre finir un bief et effleurer les quatre.
 			var gagne := (ville.berge_largeur_rendue_m(_fiche_fid, cible)
 				- ville.berge_largeur_rendue_m(_fiche_fid, etat)) \
 				* Ville.BERGE_BAISSE_M_PAR_M
-			bouton.text = _posee("berge", "%s — %s k€ · %s · crue −%s m" % [titre,
+			bouton.text = _posee("berge", "%s · %s k€ · %s · crue −%s m" % [titre,
 				_milliers(cout),
 				_duree(Ville.BERGE_MOIS[cible] - Ville.BERGE_MOIS[etat]),
 				_nb(gagne, 2)], cible)

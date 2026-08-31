@@ -37,6 +37,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "instance uniform float diagnostic_bati = 0.0;\n" \
 		+ "instance uniform float chantier_etat = 0.0;\n" \
 		+ "instance uniform float equipe = 0.0;\n" \
+		+ "instance uniform float verdi = 0.0;\n" \
+		+ "instance uniform float part_plate = 0.0;\n" \
 		+ "instance uniform float etat_berge = 0.0;\n" \
 		+ "varying vec3 pos_monde;\n" \
 		+ "// Choix de LISIBILITÉ, pas des mesures de toiture. ⚠ Mesuré le\n" \
@@ -51,6 +53,12 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// 92 % de sRGB, sinon le liseré brûle et mange le bleu au dézoom.\n" \
 		+ "const vec3 BLEU = vec3(0.013, 0.119, 0.570);\n" \
 		+ "const vec3 BLANC = vec3(0.83);\n" \
+		+ "// 🌿 LINÉAIRE. #4C6B3C et #7A8A4E en sRGB : un sédum en juin et le\n" \
+		+ "// même en août. ⚠ Mesuré le 2026-08-31 : deux tons clairs (#6F8455)\n" \
+		+ "// sortaient KHAKI sur un enduit crème — il faut descendre sous la\n" \
+		+ "// valeur du mur pour qu'un toit se lise planté.\n" \
+		+ "const vec3 SEDUM = vec3(0.072, 0.147, 0.045);\n" \
+		+ "const vec3 SEDUM_SEC = vec3(0.194, 0.254, 0.076);\n" \
 		+ "// 🪟 LA FENÊTRE — cotes d'un logement ordinaire. Ne se règlent pas\n" \
 		+ "// à l'œil : c'est leur justesse qui fait qu'un volume annonce sa\n" \
 		+ "// taille sans rien à côté pour comparer.\n" \
@@ -96,7 +104,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat visible = clamp(1.3 - 4.0 * ar, 0.0, 1.0);\n" \
 		+ "\t\tbase *= mix(1.0, mix(0.80, 1.0, joint), visible);\n" \
 		+ "\t}\n" \
-		+ "\tif (equipe > 0.0 && vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5) {\n" \
+		+ "\tif ((equipe > 0.0 || verdi > 0.0) && vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5) {\n" \
 		+ "\t\t// 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter) : le panneau était un\n" \
 		+ "\t\t// ASSOMBRISSEMENT du toit, indiscernable d'une ombre. Bleu franc\n" \
 		+ "\t\t// + liseré blanc depuis le 2026-08-17 — un MOTIF, donc une grille.\n" \
@@ -118,17 +126,53 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t// De loin le tirage devient du bruit : `net` rend la main au\n" \
 		+ "\t\t// fondu continu sous ~7 px de case.\n" \
 		+ "\t\tfloat net = clamp(1.15 - 5.0 * aa, 0.0, 1.0);\n" \
-		+ "\t\t// PAN PAR PAN : le versant le mieux exposé au sud se remplit en\n" \
-		+ "\t\t// premier (l'est départage un faîtage nord-sud). Un toit plat\n" \
-		+ "\t\t// est un seul pan.\n" \
-		+ "\t\tfloat pan = equipe;\n" \
+		+ "\t\t// 🌿 LE PARTAGE DU TOIT, ET IL SE JOUE ICI. `equipe` et `verdi`\n" \
+		+ "\t\t// sont des parts du toit ENTIER de l'îlot ; ce pan-ci n'en est\n" \
+		+ "\t\t// qu'un morceau. Le substrat ne tient que sur le plat, donc les\n" \
+		+ "\t\t// panneaux prennent les VERSANTS D'ABORD et ne redescendent sur\n" \
+		+ "\t\t// le plat qu'une fois les versants pleins. `part_plate` vient de\n" \
+		+ "\t\t// 07, mesurée volume par volume — la somme retombe juste.\n" \
+		+ "\t\tfloat p = clamp(part_plate, 0.0, 1.0);\n" \
+		+ "\t\tfloat pan = 0.0;\n" \
+		+ "\t\tfloat pan_vert = 0.0;\n" \
 		+ "\t\tif (vers_le_ciel < 0.995) {\n" \
+		+ "\t\t\t// PAN PAR PAN : le versant le mieux exposé au sud se remplit\n" \
+		+ "\t\t\t// en premier (l'est départage un faîtage nord-sud).\n" \
+		+ "\t\t\tfloat sur_pente = clamp(equipe / max(1.0 - p, 0.001), 0.0, 1.0);\n" \
 		+ "\t\t\tbool premier = normale_monde.z > 0.01 || (abs(normale_monde.z) <= 0.01 && normale_monde.x > 0.0);\n" \
-		+ "\t\t\tpan = clamp(equipe * 2.0 - (premier ? 0.0 : 1.0), 0.0, 1.0);\n" \
+		+ "\t\t\tpan = clamp(sur_pente * 2.0 - (premier ? 0.0 : 1.0), 0.0, 1.0);\n" \
+		+ "\t\t} else {\n" \
+		+ "\t\t\t// 🌿 UN TOIT EST SOLAIRE OU VERT, JAMAIS LES DEUX, et le grain\n" \
+		+ "\t\t\t// de cette règle est le BÂTIMENT. UV2.y porte la place de CE\n" \
+		+ "\t\t\t// toit-ci dans l'aire plate de l'îlot, posée par 07 : il\n" \
+		+ "\t\t\t// verdit en entier dès qu'elle passe sous le curseur.\n" \
+		+ "\t\t\tfloat plat = max(p, 0.001);\n" \
+		+ "\t\t\tfloat part_v = clamp(verdi / plat, 0.0, 1.0);\n" \
+		+ "\t\t\tpan_vert = (part_v > 0.0 && UV2.y < part_v) ? 1.0 : 0.0;\n" \
+		+ "\t\t\t// Les panneaux se reportent sur les toits restés nus, à la\n" \
+		+ "\t\t\t// densité qu'il faut pour que leur aire retombe sur `equipe`.\n" \
+		+ "\t\t\tfloat sur_plat = clamp((equipe - (1.0 - p)) / plat, 0.0, 1.0);\n" \
+		+ "\t\t\tpan = (1.0 - pan_vert)\n" \
+		+ "\t\t\t\t* clamp(sur_plat / max(1.0 - part_v, 0.001), 0.0, 1.0);\n" \
 		+ "\t\t}\n" \
-		+ "\t\tfloat posee = mix(pan, step(h, pan), net);\n" \
-		+ "\t\t// COLOR.a garde le volume sous le motif.\n" \
-		+ "\t\tbase = mix(base, mix(BLEU, BLANC, bord) * COLOR.a, posee);\n" \
+		+ "\t\t// 🔄 RETOUR EN ARRIÈRE SIGNALÉ (2026-08-31) : le sédum se posait\n" \
+		+ "\t\t// par NAPPES de 3 cases, donc un même toit sortait moitié bleu,\n" \
+		+ "\t\t// moitié vert. Le partage est monté d'un cran — au BÂTIMENT :\n" \
+		+ "\t\t// un toit verdi l'est de bout en bout, et le semis de panneaux\n" \
+		+ "\t\t// ne tombe que sur les autres. Sans vert, rien ne change du\n" \
+		+ "\t\t// semis de 2026-08-17.\n" \
+		+ "\t\tfloat posee = mix(pan, step(h, pan), net) * (1.0 - pan_vert);\n" \
+		+ "\t\tfloat posee_v = pan_vert;\n" \
+		+ "\t\t// Sans liseré : deux cases voisines doivent se souder. La\n" \
+		+ "\t\t// variation est un tirage de la case, pas de la nappe.\n" \
+		+ "\t\tfloat hv = fract(sin(dot(floor(g), vec2(11.917, 57.301))) * 15731.113);\n" \
+		+ "\t\tvec3 c_pan = mix(BLEU, BLANC, bord) * COLOR.a;\n" \
+		+ "\t\tvec3 c_vert = mix(SEDUM, SEDUM_SEC, hv) * COLOR.a;\n" \
+		+ "\t\t// COLOR.a garde le volume sous les deux motifs. Somme et non\n" \
+		+ "\t\t// deux `mix` enchaînés : au loin le second rendrait du carton\n" \
+		+ "\t\t// visible sous un toit pourtant couvert de bout en bout.\n" \
+		+ "\t\tbase = base * max(1.0 - posee - posee_v, 0.0)\n" \
+		+ "\t\t\t+ c_pan * posee + c_vert * posee_v;\n" \
 		+ "\t\trugosite = mix(0.95, 0.35, posee);\n" \
 		+ "\t}\n" \
 		+ "\t// 🪟 LES FENÊTRES — une recette de surface, pas un triangle de\n" \

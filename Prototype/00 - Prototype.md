@@ -19,7 +19,7 @@
 ## Ce qui commande le prototype
 
 - 🎯 **Une seule décision testée** (68), mais elle a un prix et un rendement qui dépendent du tissu (69) : le prototype teste le lien **local → global**, et « où investir ? ».
-- 🔗 **La 3D et l'énergie se rejoignent sur le toit** (41 · 56 · 64) : la 3D produit `toit_m2`, `toit_pente`, `toit_plat` et l'ombrage ; l'énergie les lit sans savoir qui parle. 🔴 **L'énergie n'attend jamais la 3D** — le prototype reste jouable avec les toits estimés.
+- 🔗 **La 3D et l'énergie se rejoignent sur le toit** (41 · 56 · 64) : la 3D produit `toit_m2`, `toit_pente`, `toit_plat_m2` et l'ombrage ; l'énergie les lit sans savoir qui parle. 🔴 **L'énergie n'attend jamais la 3D** — le prototype reste jouable avec les toits estimés.
 - 🏘️ **Le prototype est Wehrau**, une ville entière qu'on voit en entier (13b · 13d) : elle a un amont et un aval, un quartier n'en a pas.
 - 🎨 **Townscaper pour le rendu** (42b), **Wehrau pastel au sol minéral** (42c) — le pastel étant celui des **murs** seulement depuis le 2026-08-18.
 - 🗺️ **La carte est plate**, dans l'image et dans la donnée. Le seul relief est le chenal de l'Ilse (fond à −2,85 m, nappe à −2 m) et le talus des 4 champs riverains. La voirie reste à 0 : **aucune ligne de code ne parle de pont**.
@@ -39,7 +39,7 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 | les sept nombres de la crue | haut de `04e_crue.py` | qui est ruiné, qui est mouillé, quel pont est coupé — **branche `crue`** |
 | `TOITURES` · `ENDUITS` | `palette.py` | les matériaux du bâti — la couleur de la ville depuis le 2026-08-18 |
 | `BATI` | `07_exporter_godot.py` | **la pente du toit seulement** |
-| les six nombres de la berge | haut de `ville.gd` | prix au mètre et durée des trois états, et **combien de crue un mètre de rive rendue rachète** |
+| les six nombres de la berge, **les deux du toit vert** | haut de `ville.gd` | prix et durée, et **combien de crue rachètent un mètre de rive rendue et un hectare verdi** |
 | les quatre nombres de la plantation | haut de `ville.gd` | prix de l'arbre, durée de reprise, plafond de canopée, et **ce qu'un arbre épargne** |
 
 🔴 Dans `04d.TISSU`, le retrait latéral à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (61).

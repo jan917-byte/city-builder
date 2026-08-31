@@ -287,15 +287,20 @@ func viser(lacet: float) -> void:
 
 
 ## 🔴 L'EFFET INSTANTANÉ (décision 12) : ces trois nombres sont l'état VISÉ, pas
-## l'état de la ville. `equipe` est la part de toit couverte, `futur` découvre
+## l'état de la ville. `equipe` et `verdi` sont les deux parts de toit posées
+## — elles se partagent un 100 %, et `plate` dit ce que la pente autorise au
+## vert. `futur` découvre
 ## la géométrie reconstruite, `berge` pousse les trois crans de la rive — et
 ## sur un échantillon il en REFAIT la coupe : le quai recule, la rive s'ouvre.
-func regler(equipe: float, futur: bool, berge: float) -> void:
+func regler(equipe: float, verdi: float, plate: float, futur: bool,
+		berge: float) -> void:
 	if _ech_couche == "b" and int(berge) != _ech_etat:
 		_batir_echantillon(int(berge))
 	_futur.visible = futur and _futur.mesh != null
 	for mi in [_objet, _futur]:
 		mi.set_instance_shader_parameter("equipe", equipe)
+		mi.set_instance_shader_parameter("verdi", verdi)
+		mi.set_instance_shader_parameter("part_plate", plate)
 		mi.set_instance_shader_parameter("etat_berge", berge)
 
 

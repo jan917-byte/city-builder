@@ -1,6 +1,6 @@
 # Godot — la maquette de Wehrau
 
-On relève d'abord la ville après la crue ; les décisions solaires n'apparaissent que lorsque les logements sinistrés et les franchissements sont rétablis. Deux jauges rendent ce passage **adaptation → réduction** visible. Godot **4.7.1**, aucun plugin, aucune dépendance.
+Relever la ville après la crue et équiper ses toits se disputent la même caisse dès le premier mois. Deux jauges suivent les deux fronts, **adaptation** et **réduction**. Godot **4.7.1**, aucun plugin, aucune dépendance.
 🔴 **Aucun chiffre mesuré dans ce fichier.** Ils sont dans `Prototype/`, à l'étape qui les porte, et l'export les réimprime à chaque passage. Le design est dans le vault, ce qui reste à faire dans `ETAT.md`.
 **Toute la géométrie est calculée en Python**, dans `07_exporter_godot.py`. Godot ne prend aucune décision géométrique : il lit des tableaux et les passe à `ArrayMesh`. L'« interface propre » de `Moteur et architecture:18` n'est pas une hiérarchie de classes, **c'est le contrat JSON**.
 

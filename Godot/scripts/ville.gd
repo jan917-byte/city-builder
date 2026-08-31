@@ -31,8 +31,13 @@ var crue := {}             # le contrat de `04e` : niveau annoncé, paliers, ban
 var riverains := {}        # fid tronçon -> [fid îlot]
 var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 var _solaire := {}         # fid -> {debut, duree, cible, cout_ke}
+var _vert := {}            # fid -> idem, pour les toits verts
 var _stationnement_supprime := {}  # fid -> mois d'engagement
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
+## 🧪 OUTIL D'ESSAI, PAS UNE RÈGLE DU JEU : de l'argent tombé du ciel, pour
+## atteindre en un clic un état que vingt ans de dotation mettraient à payer.
+## Le jour où la boucle se juge pour de bon, ce champ et son bouton sautent.
+var _credit_essai_ke := 0.0
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
@@ -55,12 +60,30 @@ var _co2_depart_kt := 0.0
 # les annonce EN JOURS.
 const SOLAIRE_MOIS_POUR_100 := 1.0
 
+# ==========================================================================
+# LE TOIT VERT — le second usage du même toit (2026-08-31)
+# ==========================================================================
+# 🌿 LES DEUX DÉCISIONS SE PARTAGENT UN SEUL 100 % : un TOIT porte des panneaux
+# OU du substrat, jamais les deux — la règle est au bâtiment, et c'est 07 qui
+# range les volumes pour que la maquette la tienne. Le vert est en plus borné
+# par la part PLATE du toit — `Energie.part_plate`, mesurée volume par volume.
+# 🌿 CE QU'IL FAIT, et rien d'autre : il retient la pluie, donc il abaisse la
+# prochaine crue — DANS TOUTE LA VILLE, pas dans un bief. C'est ce qui le
+# distingue de la berge, qui ne soulage que la section qu'elle élargit.
+# 🎚️ LEVEL DESIGN, et c'est LE nombre du jeu : verdir les 1,58 ha plats et
+# équipables de Wehrau rachète 0,40 m de crue pour ~1 800 k€. Les deux repères
+# qui le tiennent — renaturer les huit berges coûte 8 166 k€ pour ~0,84 m par
+# bief, et sous 0,75 m PAS UN bâtiment du faubourg ne sort de la ruine. Le toit
+# vert est donc le mètre le moins cher, et le seul qui ne se voie pas d'en bas.
+const TOIT_VERT_MOIS_POUR_100 := 2.0        # étanchéité reprise, puis substrat
+const TOIT_VERT_BAISSE_M_PAR_HA := 0.25     # de crue en moins, par hectare verdi
+
 # Ce qui change dans le temps ; tout le reste est figé volontairement.
 # ⚠️ `canopee` reste ici bien que son indicateur soit retiré : c'est elle qui
 # fait l'OMBRAGE des toits. Une donnée n'est pas un indicateur.
 const CHAMPS_MOBILES := {
 	"i": ["canopee", "impermeabilise", "riverain", "logements",
-		"part_toit_equipe", "part_isolee"],
+		"part_toit_equipe", "part_toit_vert", "part_isolee"],
 	"r": ["canopee", "emprise_libre_m", "stationnement", "charge"],
 }
 
@@ -272,7 +295,9 @@ func berge_baisse_m(fid: int, t: float) -> float:
 ## un bief vaut mieux qu'effleurer les quatre.
 func baisse_crue_m(fid: int, t: float) -> float:
 	var fil := base("i", fid, "position_fil_eau")
-	var v := 0.0
+	# 🌿 Les toits verts entrent ICI, et pour toute la ville : ce qui n'est pas
+	# tombé dans les gouttières n'arrive pas dans l'Ilse, où que soit le toit.
+	var v := baisse_crue_toits_m(t)
 	for b in berges:
 		if fil >= base("b", b, "fil_amont") - 0.001 \
 				and fil <= base("b", b, "fil_aval") + 0.001:
@@ -359,7 +384,7 @@ func valeur(couche: String, fid: int, champ: String, t: float) -> float:
 static func _borner(champ: String, v: float) -> float:
 	match champ:
 		"canopee", "impermeabilise", "riverain", "alea", "charge", "desserte_tc", \
-		"part_toit_equipe", "part_isolee":
+		"part_toit_equipe", "part_toit_vert", "part_isolee":
 			return clampf(v, 0.0, 1.0)
 		"emprise_libre_m", "stationnement", "logements", "emplois":
 			return maxf(v, 0.0)
@@ -490,10 +515,12 @@ func route_praticable(fid: int, t: float) -> bool:
 ## défaire — et ni géométrie ni caméra ne sont concernées.
 func reinitialiser() -> void:
 	_solaire.clear()
+	_vert.clear()
 	_stationnement_supprime.clear()
 	_plantation.clear()
 	_berge.clear()
 	_depense_ke = 0.0
+	_credit_essai_ke = 0.0
 	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
 	# donnée que `reparer` écrit en base, donc la seule à défaire.
 	for fid in _toit_avant:
@@ -518,17 +545,18 @@ func cout_solaire_ke(fid: int, part: float, t: float) -> float:
 ## 🔴 La rampe s'AJOUTE. Réécrire l'histoire de la pose fausserait la recette
 ## encaissée, qui en est l'intégrale — d'où le prix payé : une pose engagée ne
 ## se révise plus.
+## 🔄 RETOUR EN ARRIÈRE SIGNALÉ (2026-08-31) : la décision 72 verrouillait TOUTE
+## décision de réduction tant que les logements sinistrés et les trois ponts
+## n'étaient pas relevés. Mesuré : 14 445 k€ de seuil pour 8 000 k€ de caisse en
+## vingt ans — le solaire n'existait plus dans la partie. Réparer et équiper se
+## disputent maintenant la même caisse dès le mois 0, et c'est ça, l'arbitrage.
 func lancer_solaire(fid: int, part: float, t: float) -> bool:
-	# Décision 72 : tant que la ville ne tient pas de nouveau, la réduction
-	# n'est pas une décision disponible — même un appel qui contourne l'UI est
-	# refusé ici.
-	if not reduction_deverrouillee(t) \
-			or not ilots.has(fid) or etat_solaire(fid, t)["en_cours"]:
+	if not ilots.has(fid) or etat_solaire(fid, t)["en_cours"]:
 		return false
 	if Energie.toit_equipable_m2(self, fid) <= 0.0:
 		return false
 	var actuelle := valeur("i", fid, "part_toit_equipe", t)
-	var cible := clampf(part, 0.0, 1.0)
+	var cible := clampf(minf(part, part_solaire_max(fid, t)), 0.0, 1.0)
 	if cible <= actuelle + 0.0001:
 		return false
 
@@ -563,6 +591,86 @@ func etat_solaire(fid: int, t: float) -> Dictionary:
 		"a_commence": not c.is_empty(),
 		"cout_ke": float(c.get("cout_ke", 0.0)),   # celui du DERNIER chantier
 	}
+
+
+# ------------------------------------------------------------- le toit vert
+
+## 🌿 LE PARTAGE DU TOIT, écrit UNE FOIS et lu par les deux curseurs. Ce que
+## l'autre décision a posé ou vise est retiré du plafond : le 100 % est celui du
+## TOIT, pas celui d'un curseur.
+func part_solaire_max(fid: int, t: float) -> float:
+	return clampf(1.0 - etat_vert(fid, t)["cible"], 0.0, 1.0)
+
+
+## Ce que la pente laisse, moins ce que les panneaux prennent. Un îlot tout en
+## versants rend 0, et la fiche n'affiche alors pas le bloc.
+func part_vert_max(fid: int, t: float) -> float:
+	return clampf(minf(Energie.part_plate(self, fid),
+		1.0 - etat_solaire(fid, t)["cible"]), 0.0, 1.0)
+
+
+## En k€, depuis la part atteinte au mois `t`.
+func cout_vert_ke(fid: int, part: float, t: float) -> float:
+	if not ilots.has(fid):
+		return 0.0
+	return Energie.cout_vert_ke(self, fid,
+		valeur("i", fid, "part_toit_vert", t), clampf(part, 0.0, 1.0))
+
+
+## Même partage que `lancer_solaire` : l'interface pré-vérifie et explique, ici
+## le verrou seul — et la rampe s'AJOUTE, pour la même raison.
+func lancer_vert(fid: int, part: float, t: float) -> bool:
+	if not ilots.has(fid) or etat_vert(fid, t)["en_cours"]:
+		return false
+	if Energie.toit_plat_equipable_m2(self, fid) <= 0.0:
+		return false
+	var actuelle := valeur("i", fid, "part_toit_vert", t)
+	var cible := clampf(minf(part, part_vert_max(fid, t)), 0.0, 1.0)
+	if cible <= actuelle + 0.0001:
+		return false
+	var cout := Energie.cout_vert_ke(self, fid, actuelle, cible)
+	if cout > caisse_ke(t) + 0.001:
+		return false
+	var duree := duree_vert_mois(actuelle, cible)
+	ajouter_rampe("i", fid, "part_toit_vert", cible - actuelle, t, 0.0, duree)
+	_vert[fid] = {"debut": t, "duree": duree, "cible": cible, "cout_ke": cout}
+	_depense_ke += cout
+	return true
+
+
+func duree_vert_mois(depart: float, cible: float) -> float:
+	return maxf(cible - depart, 0.0) * TOIT_VERT_MOIS_POUR_100
+
+
+func etat_vert(fid: int, t: float) -> Dictionary:
+	var actuel := valeur("i", fid, "part_toit_vert", t)
+	var c: Dictionary = _vert.get(fid, {})
+	var cible: float = maxf(actuel, float(c.get("cible", actuel)))
+	var fin: float = float(c.get("debut", t)) + float(c.get("duree", 0.0))
+	return {
+		"actuel": actuel,
+		"cible": cible,
+		"reste_mois": maxf(fin - t, 0.0),
+		"en_cours": cible > actuel + 0.0001 and t < fin,
+		"a_commence": not c.is_empty(),
+		"cout_ke": float(c.get("cout_ke", 0.0)),
+	}
+
+
+## 🌿 EN HECTARES VERDIS DANS TOUTE LA VILLE — le seul terme de la crue qui ne
+## vienne pas du fleuve. La pluie retenue sur un toit du plateau soulage l'Ilse
+## autant que celle d'un toit de berge : ici, aucun bief.
+func toit_vert_ha(t: float) -> float:
+	var m2 := 0.0
+	for fid in fids_batis():
+		m2 += Energie.toit_vert_m2(self, fid, t)
+	return m2 / 10000.0
+
+
+## En mètres de crue annoncée en moins, partout. Sur ce qui est LIVRÉ :
+## `part_toit_vert` monte en rampe, donc la protection aussi.
+func baisse_crue_toits_m(t: float) -> float:
+	return toit_vert_ha(t) * TOIT_VERT_BAISSE_M_PAR_HA
 
 
 # ==================================================================== la caisse
@@ -610,7 +718,12 @@ func recette_cumulee_ke(t: float) -> float:
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
-		+ recette_cumulee_ke(t) - _depense_ke
+		+ recette_cumulee_ke(t) + _credit_essai_ke - _depense_ke
+
+
+## 🧪 Le bouton d'essai. Rendu à zéro par « Recommencer », comme tout le reste.
+func crediter_essai_ke(montant: float) -> void:
+	_credit_essai_ke += maxf(montant, 0.0)
 
 
 func fids_batis() -> Array:
@@ -685,23 +798,10 @@ func reparation_finie(couche: String, fid: int, t: float) -> bool:
 	return est_repare(couche, fid) and reste_reparation_mois(couche, fid, t) <= 0.0
 
 
-## Le seuil visible du prologue : les logements sinistrés sont relevés et les
-## franchissements rouverts. Les rues encore sales restent une dette, pas une
-## serrure sur tout le reste du jeu.
-func reduction_deverrouillee(t: float) -> bool:
-	for fid in ilots:
-		if base("i", fid, "logements_sinistres") > 0.0 \
-				and not reparation_finie("i", fid, t):
-			return false
-	for fid in routes:
-		if str(routes[fid].get("etat_crue", "")) == "coupe" \
-				and not reparation_finie("r", fid, t):
-			return false
-	return _adaptation_total_ke > 0.0
-
-
 ## Les deux jauges de durabilité. L'adaptation avance au rythme réel des
 ## chantiers essentiels ; la réduction mesure le CO₂ évité depuis t0.
+## 🔄 Elles avancent ENSEMBLE depuis le 2026-08-31 : la réduction n'attend plus
+## la fin de l'urgence (voir `lancer_solaire`).
 func durabilite(t: float, co2_kt: float) -> Dictionary:
 	var reste_ke := 0.0
 	var logements := 0.0
@@ -732,7 +832,6 @@ func durabilite(t: float, co2_kt: float) -> Dictionary:
 		"adaptation_part": adaptation,
 		"reduction_part": reduction,
 		"reduction_ecart_kt": _co2_depart_kt - co2_kt,
-		"reduction_verrouillee": not reduction_deverrouillee(t),
 		"adaptation_logements": logements,
 		"adaptation_ponts": ponts,
 	}
@@ -817,6 +916,7 @@ func degats(t: float) -> Dictionary:
 #
 # Les réglages reconnus, tous facultatifs :
 #   solaire  float  la part de toit visée          (îlot)
+#   vert     float  la part de toit verdie visée   (îlot)
 #   reparer  true   relever, déblayer ou rebâtir   (îlot, rue)
 #   arbres   float  la canopée visée               (rue)
 #   places   true   retirer le stationnement       (rue)
@@ -831,6 +931,8 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 	var ke := 0.0
 	if r.has("solaire"):
 		ke += cout_solaire_ke(fid, float(r["solaire"]), t)
+	if r.has("vert"):
+		ke += cout_vert_ke(fid, float(r["vert"]), t)
 	if r.has("arbres"):
 		ke += cout_plantation_ke(fid, float(r["arbres"]), t)
 	if r.has("berge"):
@@ -847,6 +949,9 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 	if r.has("solaire"):
 		m = maxf(m, duree_solaire_mois(valeur("i", fid, "part_toit_equipe", t),
 			float(r["solaire"])))
+	if r.has("vert"):
+		m = maxf(m, duree_vert_mois(valeur("i", fid, "part_toit_vert", t),
+			float(r["vert"])))
 	if r.has("arbres"):
 		m = maxf(m, PLANTATION_MOIS)
 	if r.has("places"):
@@ -875,6 +980,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 	var faits := []
 	if r.has("solaire") and lancer_solaire(fid, float(r["solaire"]), t):
 		faits.append("solaire")
+	if r.has("vert") and lancer_vert(fid, float(r["vert"]), t):
+		faits.append("toit vert")
 	if r.has("arbres") and planter(fid, float(r["arbres"]), t):
 		faits.append("plantation")
 	if r.has("places") and supprimer_stationnement(fid, t):
@@ -901,7 +1008,8 @@ const CHANTIER_FAIT := 3
 
 func etat_chantier(couche: String, fid: int, t: float) -> int:
 	# La pose passe devant : sur un îlot déjà relevé, c'est elle le chantier.
-	if couche == "i" and _solaire.has(fid) and etat_solaire(fid, t)["en_cours"]:
+	if couche == "i" and ((_solaire.has(fid) and etat_solaire(fid, t)["en_cours"])
+			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])):
 		return CHANTIER_EN_COURS
 	if base(couche, fid, "cout_reparation_ke") <= 0.0:
 		return CHANTIER_INTACT
@@ -925,6 +1033,9 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "i" and _solaire.has(fid) and etat_solaire(fid, t)["en_cours"]:
 		lot.append(["solaire", float(_solaire[fid]["duree"]),
 			float(etat_solaire(fid, t)["reste_mois"])])
+	if couche == "i" and _vert.has(fid) and etat_vert(fid, t)["en_cours"]:
+		lot.append(["toit vert", float(_vert[fid]["duree"]),
+			float(etat_vert(fid, t)["reste_mois"])])
 	if couche == "b" and berge_en_cours(fid, t):
 		lot.append(["berge", float(_berge[fid]["duree"]),
 			berge_reste_mois(fid, t)])
@@ -981,6 +1092,12 @@ func chantiers(t: float) -> Dictionary:
 			continue
 		en_cours.append({"couche": "i", "fid": fid, "genre": "solaire",
 			"cout_ke": float(e["cout_ke"]), "reste_mois": float(e["reste_mois"])})
+	for fid in _vert:
+		var ev := etat_vert(fid, t)
+		if not ev["en_cours"]:
+			continue
+		en_cours.append({"couche": "i", "fid": fid, "genre": "toit vert",
+			"cout_ke": float(ev["cout_ke"]), "reste_mois": float(ev["reste_mois"])})
 	# La transformation d'une berge dure 6 à 18 mois : c'est le chantier le plus
 	# long du jeu après un pont, et il doit se voir dans la liste.
 	for fid in _berge:
