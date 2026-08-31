@@ -345,7 +345,10 @@ func _fiche(couche: String, fid: int) -> void:
 ##   Godot_console.exe --path Godot -- --essai
 func _essai() -> void:
 	# Des mois reproductibles, quelle que soit la vitesse de la machine.
+	# `mois` AUSSI : l'horloge tourne pendant le chargement, et deux passes de
+	# la même version tombaient sur 417 puis 508 logements perdus « au mois 0 ».
 	vitesse = 0.0
+	mois = 0.0
 	print("
 ESSAI — la ville, sans décision")
 	var routes_endommagees := 0
@@ -385,7 +388,9 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_axe")
 	var calme := _route_calme()
-	_viser_route(calme, 70.0)
+	# 45 m et non 70 : à 70 la bordure vidée ne pesait que 8 % de l'image et
+	# l'avant/après du stationnement ne se voyait pas (mesuré le 2026-08-25).
+	_viser_route(calme, 45.0)
 	interface.montrer("r", calme, false)
 	await get_tree().process_frame
 	await _capturer("essai_rue_calme")
@@ -395,6 +400,9 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_stationnement_retire")
 	_sur_reset()
+	# La charge VUE à l'écran, pas `base` : au chargement l'affectation reporte
+	# déjà les 37 rues coupées, et 55 y monte à 1,00 quand la source dit 0,88.
+	var charge_avant := ville.valeur("r", 55, "charge", mois)
 	trafic.retirer_axe(55, 0.0)
 	trafic.avancer(0.0)
 	var fermees: Array = trafic.voitures_visibles_sur(55)
@@ -417,7 +425,7 @@ ESSAI — la ville, sans décision")
 	await get_tree().process_frame
 	await _capturer("essai_report_trafic")
 	print("  retrait de l'axe 55 : charge %.2f → %.2f ✅"
-		% [ville.base("r", 55, "charge"), ville.valeur("r", 55, "charge", mois)])
+		% [charge_avant, ville.valeur("r", 55, "charge", mois)])
 	_sur_reset()
 
 	await _essai_berge()
@@ -500,6 +508,15 @@ ESSAI — la ville, sans décision")
 	pivot.caler(30.0, 68.0)
 	await get_tree().process_frame
 	await _capturer("essai_place")
+	pivot.caler(30.0, 32.0)
+
+	# 🏢 LES DEUX ÉPOQUES RÉCENTES, À TOIT PLAT (auteur, 2026-08-25). Une
+	# terrasse ne se lit que d'en haut : à 32° elle passe pour un pan court.
+	# 62° montre aussi les cinq percées de 9 m du mur mitoyen.
+	_repere("compact")
+	pivot.caler(30.0, 62.0)
+	await get_tree().process_frame
+	await _capturer("essai_compact")
 	pivot.caler(30.0, 32.0)
 
 	# 🪟 LA CAPTURE QUI JUGE LES FENÊTRES (2026-08-18) : les six autres
@@ -690,7 +707,7 @@ ESSAI — la ville, sans décision")
 		# Un thème qui ne peint RIEN sort une ville de carton uni, et ça ne se
 		# voit pas sur une capture qu'on ne compare à rien. « dangers » a déjà
 		# ses trois comptes ci-dessus, d'où le −1 qui le laisse passer.
-		var peints := -1
+		var peints := -1    # −1 = compté autrement, jamais « rien de peint »
 		if _genre() == "tissu":
 			peints = _teintes_tissu.size()
 		elif _genre() == "calque":
@@ -703,8 +720,9 @@ ESSAI — la ville, sans décision")
 			return
 		await get_tree().process_frame
 		await _capturer("essai_diag_%s" % id)
-		print("  thème %-9s : %4d objets peints → essai_diag_%s.png"
-			% [id, peints, id])
+		print("  thème %-9s : %s → essai_diag_%s.png" % [id,
+			"%4d objets peints" % peints if peints >= 0
+			else "compté par ses trois signaux", id])
 	_sur_theme("")
 	await get_tree().process_frame
 	await _capturer("essai_retour_ville")
@@ -1963,6 +1981,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		KEY_G: _repere("berge")
 		KEY_O: _repere("pont")
 		KEY_M: _repere("place")
+		KEY_K: _repere("compact")
 		# 🌊 La crue (23b) : le faubourg sinistré, et le pont qu'elle a emporté.
 		KEY_F: _repere("faubourg")
 		KEY_N: _repere("pont_casse")
