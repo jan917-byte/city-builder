@@ -58,8 +58,10 @@ scripts/
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
   interface.gd         la ville ou le menu à gauche, l'îlot et son curseur à droite
   apercu.gd            la miniature de la fiche : l'objet choisi, dans son état
-                       livré, de trois quarts — une rue par un BOUT, avec ses
-                       voitures et l'épaisseur de sa dalle
+                       livré, de trois quarts, sur une dalle épaisse
+  echantillon.gd       le morceau droit d'une rue ou d'une berge : la coupe en
+                       bandes, aux largeurs mesurées   ← la seule géométrie
+                       fabriquée dans Godot
   moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
   materiaux.gd         les matériaux, zéro texture
   camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°
@@ -85,7 +87,7 @@ Les îlots bâtis et les tronçons sont **un nœud chacun**, avec leur `StaticBo
 
 L'occlusion voyage dans `COLOR.a` — la teinte occluse est dans `COLOR.rgb`, le facteur seul dans l'alpha. C'est ce qui permet de repeindre un îlot en calque sans perdre ce qui le pose au sol. Aucun matériau du projet n'active la transparence : ce canal était libre.
 
-🔎 **La miniature de la fiche est une vue à part**, en isométrie : l'objet y est toujours vu **de trois quarts** — le lacet se cale sur le quart de tour le plus proche de la ville, jamais de face —, et un objet long (une rue, une berge) est montré par **un bout** pris en son milieu, sinon il n'est qu'un ruban. Sa dalle a une épaisseur : sans elle, l'objet est une découpe posée sur du papier. Ses voitures sont **celles du trafic**, recopiées instance par instance, dans l'état que la fiche promet et non celui de la ville.
+🔎 **La miniature de la fiche est une vue à part**, en isométrie, l'objet toujours vu **de trois quarts** et posé sur une dalle épaisse — sans épaisseur, c'est une découpe sur du papier. Un **îlot** y est le maillage de la ville, et le lacet se cale sur le quart de tour le plus proche de la vue. Une **rue** et une **berge**, non : elles sont montrées par un **morceau droit fabriqué** (`echantillon.gd`), à la largeur et du type mesurés, sous un angle fixe — il n'est nulle part dans la ville, il n'y a rien à y reconnaître, et la berge doit garder son eau du côté du regard. Ses voitures suivent les règles du trafic, dans l'état que la fiche promet et non celui de la ville.
 
 ✏️ **Le trait de sélection n'est pas de la géométrie.** L'objet choisi est redessiné seul, en blanc plat, dans une petite vue à part ; un shader plein écran allume les pixels vides proches de ce masque. Le trait épouse donc les pignons et les débords, et garde la même épaisseur à tous les zooms.
 

@@ -3,14 +3,20 @@ extends SubViewport
 # l'état qui SERA livré. La ville, elle, garde son état réel jusqu'à la fin du
 # chantier — c'est tout le partage entre les deux images.
 #
-# 🔴 AUCUNE GÉOMÉTRIE N'EST RECRÉÉE : les maillages sont CEUX de la ville,
-# repris par référence, avec le même matériau et les mêmes uniformes
-# d'instance. Une vignette dessinée à part mentirait dès la recette suivante.
+# 🔴 UN ÎLOT EST LE MAILLAGE DE LA VILLE, repris par référence, avec le même
+# matériau et les mêmes uniformes d'instance : une vignette dessinée à part
+# mentirait dès la recette suivante.
+# 🔄 UNE RUE ET UNE BERGE, NON, depuis le 2026-08-31 : elles sont montrées par
+# un ÉCHANTILLON droit (`echantillon.gd`), aux largeurs mesurées et du bon
+# type. Un morceau de ville en tenait mal la promesse — un ruban qui tourne,
+# une berge sans eau ni sol autour. Ce qui est montré n'est plus l'endroit,
+# c'est l'aménagement.
 #
 # Son monde est à lui (`own_world_3d`) : ni ville autour, ni thème, ni contour.
 
 const Materiaux := preload("res://scripts/materiaux.gd")
 const Constructeur := preload("res://scripts/constructeur.gd")
+const Echantillon := preload("res://scripts/echantillon.gd")
 
 ## Le format de la miniature dans la fiche : 320 px de panneau moins ses deux
 ## marges de 12 px. La fiche s'y accorde — elle lit cette constante.
@@ -33,54 +39,45 @@ const MARGE := 1.15      # l'objet ne touche pas le bord du cadre
 ## 2026-08-26 : 110 m de diamètre à la médiane, 220 m au neuvième décile. Au-delà,
 ## l'îlot est montré par son milieu.
 const CADRE_MAX_M := 240.0
-## 🛣️ UNE RUE ET UNE BERGE NE SE CADRENT PAS EN ENTIER — c'est le seul moyen d'y
-## lire un aménagement. Mesuré le 2026-08-28 : le tronçon médian fait 63 m de
-## long pour 14,6 m de large (max 273 m), une berge 400 m sur quelques mètres ;
-## cadrés en entier, ce sont des rubans. Le cadre prend donc une fenêtre carrée
-## posée au MILIEU de l'objet, large de sa largeur en travers × ce facteur.
-const ETALEMENT := 1.8
-const FENETRE_MIN_M := 18.0
-## 🔴 40 ET NON 60 : au-delà, aucun morceau de berge ne reste droit — le cadre
-## remontrerait le virage qu'il cherche justement à éviter.
-const FENETRE_MAX_M := 40.0
-## 🛣️ CE QU'ON APPELLE DROIT : deux bouts d'axe ne s'écartent pas de plus de
-## ça. Le cadre ne montre jamais un morceau qui tourne davantage — il montre un
-## morceau plus court.
-const ANGLE_DROIT := 6.0
-## La tranche dans laquelle on range les sommets QUAND ON N'A PAS L'AXE — une
-## berge n'en exporte pas. Plus fine, elle tombe sur des tranches vides ; plus
-## large, elle avale le coude qu'elle doit voir.
-const TRANCHE_M := 4.0
 ## La plaque passe SOUS le sol dessiné par 07 : au-dessus elle le raye.
 const SOUS_LE_SOL := -0.20
 
 var _cam: Camera3D
 var _soleil: DirectionalLight3D
-## Les voitures du tronçon montré. Deux MultiMesh posés une fois, remplis par
-## `trafic.remplir` : la fiche n'invente ni recette ni teinte.
+## Les voitures du morceau montré. Deux MultiMesh posés une fois, remplis par
+## `trafic.remplir_droit` : la fiche n'invente ni recette ni teinte.
 var mm_gare: MultiMesh
 var mm_roule: MultiMesh
 var _sol: MeshInstance3D
 var _objet: MeshInstance3D
 var _futur: MeshInstance3D
+## 🧩 L'ÉCHANTILLON : ce qui n'est pas l'objet cliquable — l'eau, le sol, la
+## voie de berge — et qui n'est donc jamais teinté par la fiche.
+var _decor: MeshInstance3D
+var _eau: MeshInstance3D
+var _palette := {}
 var _lacet := 0.0
 var _vise := false       # le premier appel cadre toujours
-## Un bout d'objet plutôt que l'objet entier : vrai pour une rue et une berge.
-var _bout := false
-var _centre := Vector3.ZERO   # le milieu de la fenêtre, en monde
-var _fenetre := 0.0           # sa largeur au sol, en mètres
-var _cap := 0.0               # le cap de l'objet au sol, en degrés
+## L'échantillon en cours : sa couche, sa fiche, la chaussée de sa voie, et
+## l'état de berge déjà bâti — la géométrie d'une berge dépend de son état.
+var _ech_couche := ""
+var _ech_fiche := {}
+var _ech_voie := 0.0
+var _ech_etat := -1
+## Les deux cotes du morceau bâti, lues par la maquette pour y poser les
+## voitures. À zéro, la miniature ne montre pas d'échantillon.
+var ech_longueur := 0.0
+var ech_chaussee := 0.0
 ## Ce que le cadre doit contenir. Les points de la PLAQUE, montés au faîtage :
 ## les huit coins de la boîte englobante cadrent un îlot en biais sur sa
 ## diagonale, et l'objet ne remplit plus que la moitié du cadre.
 var _points := PackedVector3Array()
-## L'axe de l'objet quand 07 l'exporte (une rue), et sa largeur façade à façade.
-var _axe := PackedVector2Array()
-var _largeur := 0.0
+## Le cap de l'objet au sol, en degrés : il commande la vue de trois quarts.
+var _cap := 0.0
 
 
-func batir(mat_objet: Material, mineral: Color, ciel: Color, ambiant: Color,
-		soleil: Color) -> void:
+func batir(mat_objet: Material, palette: Dictionary) -> void:
+	_palette = palette
 	size = TAILLE * SURECHANTILLON
 	own_world_3d = true
 	transparent_bg = true
@@ -90,7 +87,7 @@ func batir(mat_objet: Material, mineral: Color, ciel: Color, ambiant: Color,
 	render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 	var we := WorldEnvironment.new()
-	we.environment = Materiaux.environnement(ciel, ambiant)
+	we.environment = Materiaux.environnement(_teinte("_ciel"), _teinte("_ambiant"))
 	# 🔴 SANS SSAO. Il travaille en espace vue : dans un cadre de 100 m son
 	# rayon de 2 m couvre le tiers de l'image et noircit les façades entières.
 	# L'occlusion bakée par 07 dans la couleur de sommet tient seule.
@@ -100,7 +97,7 @@ func batir(mat_objet: Material, mineral: Color, ciel: Color, ambiant: Color,
 	# d'ombre part de la caméra et couvre toujours la même distance : figée sur
 	# le plus grand cadre, ses texels font des mètres, et dans une fenêtre de
 	# 35 m la plaque plate se marbrait de son propre relief.
-	_soleil = Materiaux.soleil(soleil, RECUL + 2.0 * CADRE_MAX_M)
+	_soleil = Materiaux.soleil(_teinte("_soleil"), RECUL + 2.0 * CADRE_MAX_M)
 	add_child(_soleil)
 
 	_cam = Camera3D.new()
@@ -110,13 +107,14 @@ func batir(mat_objet: Material, mineral: Color, ciel: Color, ambiant: Color,
 	_cam.far = 4000.0
 	add_child(_cam)
 
-	# La plaque au sol. Le sol d'un îlot bâti n'est dessiné nulle part — c'est
-	# le terrain qui passe dessous —, et sans elle l'objet flotte sur du vide.
+	# La plaque au sol d'un îlot. Le sol d'un îlot bâti n'est dessiné nulle
+	# part — c'est le terrain qui passe dessous —, et sans elle l'objet flotte
+	# sur du vide. Un échantillon, lui, porte son propre sol.
 	_sol = MeshInstance3D.new()
 	_sol.name = "Plaque"
 	_sol.position.y = SOUS_LE_SOL
 	var m := Materiaux.surface()
-	m.albedo_color = mineral
+	m.albedo_color = _teinte("_mineral")
 	# 🔴 ELLE NE REÇOIT PAS L'OMBRE. Posée 20 cm sous la chaussée, elle prenait
 	# celle du bord de rue sur toute sa longueur — deux bandes noires le long du
 	# trottoir. Ce qu'elle doit faire, c'est fermer le vide, pas se dessiner.
@@ -146,31 +144,81 @@ func batir(mat_objet: Material, mineral: Color, ciel: Color, ambiant: Color,
 	_futur.material_override = mat_objet
 	add_child(_futur)
 
+	_decor = MeshInstance3D.new()
+	_decor.name = "Decor"
+	_decor.material_override = mat_objet
+	add_child(_decor)
+
+	_eau = MeshInstance3D.new()
+	_eau.name = "Eau"
+	_eau.material_override = Materiaux.eau(_teinte("riviere"))
+	add_child(_eau)
+
 	# La miniature ne joue ni le thème, ni le calque, ni la sélection : elle
 	# montre l'objet tel qu'il sera. Posé une fois, jamais repeint.
-	for mi in [_objet, _futur]:
+	for mi in [_objet, _futur, _decor]:
 		mi.set_instance_shader_parameter("teinte", Color.WHITE)
 		mi.set_instance_shader_parameter("calque", Color(1.0, 1.0, 1.0, 0.0))
 		mi.set_instance_shader_parameter("maquette_blanche", 0.0)
 
 
-## Change d'objet. `sol` peut être nul : une berge n'a pas d'emprise. `ligne`
-## dit un objet long et étroit — une rue, une berge —, montré par un bout.
-## `axe` est la ligne exportée par 07 quand elle existe : une rue en a une, une
-## berge non. Sans elle, l'axe se déduit des sommets, et c'est moins sûr.
-func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ligne := false,
-		axe := PackedVector2Array(), largeur := 0.0) -> void:
-	_bout = ligne
-	_axe = axe
-	_largeur = largeur
-	if not ligne:
-		vider_voitures()
+## 🏘️ UN ÎLOT : les maillages de la ville, tels quels. `sol` est sa plaque.
+func montrer(objet: Mesh, futur: Mesh, sol: Mesh) -> void:
+	_vider_echantillon()
 	_objet.mesh = objet
 	_futur.mesh = futur
 	_sol.mesh = sol
 	render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_semer_points()
 	_cadrer()
+
+
+## 🧩 UNE RUE, UNE BERGE : le morceau droit. `voie_m` n'est lu que pour une
+## berge — c'est la chaussée de la voie qu'elle porte, mesurée sur ses rues.
+## L'état de la berge arrive juste après par `regler`, à la même image.
+func echantillon(couche: String, fiche: Dictionary, voie_m := 0.0) -> void:
+	_ech_couche = couche
+	_ech_fiche = fiche
+	_ech_voie = voie_m
+	_ech_etat = -1
+	_sol.mesh = null
+	_futur.mesh = null
+	# 🔴 Les voitures du morceau précédent ne suivent pas : elles se sont déjà
+	# retrouvées garées le long d'une berge.
+	vider_voitures()
+	_batir_echantillon(0)
+	render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# 🔴 CADRÉ UNE FOIS, sur l'état d'asphalte : les trois états d'une berge
+	# n'ont pas la même hauteur (un parapet, puis une pente), et un cadre qui
+	# bougerait au survol rendrait les trois captures incomparables.
+	_semer_points()
+	_cadrer()
+
+
+func _batir_echantillon(etat: int) -> void:
+	var e := {}
+	if _ech_couche == "r":
+		e = Echantillon.rue(_ech_fiche, _palette)
+	elif _ech_couche == "b":
+		e = Echantillon.berge(_ech_fiche, _ech_voie, _palette, etat)
+	else:
+		return
+	_ech_etat = etat
+	_objet.mesh = e["objet"]
+	_decor.mesh = e["decor"]
+	_eau.mesh = e["eau"]
+	ech_longueur = float(e["longueur"])
+	ech_chaussee = float(e["chaussee"])
+
+
+func _vider_echantillon() -> void:
+	_ech_couche = ""
+	_ech_etat = -1
+	ech_longueur = 0.0
+	ech_chaussee = 0.0
+	_decor.mesh = null
+	_eau.mesh = null
+	vider_voitures()
 
 
 ## Ce qui coûte est la vue à part : sans sélection, elle s'éteint entièrement.
@@ -182,7 +230,7 @@ func vider_voitures() -> void:
 func eteindre() -> void:
 	if render_target_update_mode == SubViewport.UPDATE_DISABLED:
 		return
-	vider_voitures()
+	_vider_echantillon()
 	_objet.mesh = null
 	_futur.mesh = null
 	_sol.mesh = null
@@ -201,8 +249,11 @@ func viser(lacet: float) -> void:
 
 ## 🔴 L'EFFET INSTANTANÉ (décision 12) : ces trois nombres sont l'état VISÉ, pas
 ## l'état de la ville. `equipe` est la part de toit couverte, `futur` découvre
-## la géométrie reconstruite, `berge` pousse les trois crans de la rive.
+## la géométrie reconstruite, `berge` pousse les trois crans de la rive — et
+## sur un échantillon il en REFAIT la coupe : le quai recule, la rive s'ouvre.
 func regler(equipe: float, futur: bool, berge: float) -> void:
+	if _ech_couche == "b" and int(berge) != _ech_etat:
+		_batir_echantillon(int(berge))
 	_futur.visible = futur and _futur.mesh != null
 	for mi in [_objet, _futur]:
 		mi.set_instance_shader_parameter("equipe", equipe)
@@ -213,23 +264,31 @@ func regler(equipe: float, futur: bool, berge: float) -> void:
 ## chaque quart de tour, il ne peut pas relire des milliers de sommets.
 func _semer_points() -> void:
 	_points = PackedVector3Array()
-	if _objet.mesh == null:
+	_cap = 0.0
+	var b := AABB()
+	var premier := true
+	for mi in [_objet, _futur, _sol, _decor, _eau]:
+		if mi.mesh == null:
+			continue
+		var a: AABB = (mi.mesh as Mesh).get_aabb()
+		b = a if premier else b.merge(a)
+		premier = false
+	if premier:
 		return
-	var b: AABB = _objet.mesh.get_aabb()
-	if _sol.mesh != null:
-		b = b.merge((_sol.mesh as Mesh).get_aabb())
-	if _futur.mesh != null:
-		b = b.merge((_futur.mesh as Mesh).get_aabb())
+	# 🧩 L'échantillon est bâti le long de X, centré sur l'origine : sa boîte
+	# EST son cadre, et son cap vaut zéro. Rien à chercher.
+	if _ech_couche != "":
+		for k in 8:
+			_points.append(b.get_endpoint(k))
+		return
 	var bas := b.position.y
 	var haut := b.position.y + b.size.y
-	# La plaque quand il y en a une — c'est le couloir façade à façade pour une
-	# rue. Sinon le maillage lui-même : une berge n'a pas de plaque, et ses huit
-	# coins ne diraient rien de son tracé, qui suit l'Ilse en biais.
+	# La plaque de l'îlot quand il y en a une, sinon le maillage lui-même.
 	var source: Mesh = _sol.mesh if _sol.mesh != null else _objet.mesh
-	if source.get_surface_count() > 0:
+	if source != null and source.get_surface_count() > 0:
 		var som: PackedVector3Array = source.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-		# 🔴 UN SOMMET SUR `pas` : une berge en porte 1 200 et ces points ne
-		# servent qu'à cadrer — l'axe et le milieu n'en bougent pas d'un mètre.
+		# 🔴 UN SOMMET SUR `pas` : ces points ne servent qu'à cadrer — l'axe et
+		# le milieu n'en bougent pas d'un mètre.
 		var pas: int = maxi(1, som.size() / 1200)
 		for k in range(0, som.size(), pas):
 			var v: Vector3 = som[k]
@@ -238,144 +297,20 @@ func _semer_points() -> void:
 	if _points.is_empty():
 		for k in 8:
 			_points.append(b.get_endpoint(k))
-	_mesurer()
+	_cap = _direction(_points)
 
 
-## Le cap de l'objet au sol, le milieu de sa longueur et sa largeur en travers.
-## Calculé une fois par objet, comme les points.
-##
-## 🛣️ UN OBJET LONG SE MONTRE PAR SON MORCEAU LE PLUS DROIT (2026-08-28,
-## demandé : « pas de virages »). La première passe donne l'axe d'ensemble et
-## la hauteur ; la seconde cherche, LE LONG de la ligne, le plus long morceau
-## qui ne tourne pas, et n'en montre que celui-là.
-func _mesurer() -> void:
-	_cap = 0.0
-	_fenetre = 0.0
-	_centre = Vector3.ZERO
-	if _points.is_empty():
-		return
-	var a := _analyser(_points)
-	_poser(a)
-	if not _bout:
-		return
-	if _axe.size() >= 2:
-		_poser_ligne(_axe, _largeur)
-		return
-	var trace := _ligne_des_tranches(a)
-	_poser_ligne(trace[0] as PackedVector2Array, float(trace[1]))
-
-
-## 🛣️ LE PLUS LONG MORCEAU DROIT DE LA LIGNE, et le cadre s'y pose. Un morceau
-## s'arrête au premier bout d'axe qui s'écarte de plus de `ANGLE_DROIT` : le
-## coude reste dehors, quitte à montrer moins de rue.
-func _poser_ligne(ligne: PackedVector2Array, largeur: float) -> void:
-	if ligne.size() < 2:
-		return
-	var dirs := PackedVector2Array()
-	var lgs := PackedFloat64Array()
-	for i in ligne.size() - 1:
-		var v := ligne[i + 1] - ligne[i]
-		lgs.append(v.length())
-		dirs.append(v.normalized() if v.length() > 0.001 else Vector2(1.0, 0.0))
-	var droit := cos(deg_to_rad(ANGLE_DROIT))
-	# Au-delà de la fenêtre voulue, un morceau plus droit n'apporterait rien.
-	var vise := clampf(largeur * ETALEMENT, FENETRE_MIN_M, FENETRE_MAX_M)
-	var debut := 0
-	var fin := 0
-	var tenu := -1.0
-	for i in dirs.size():
-		var a := i
-		var b := i
-		var lg: float = lgs[i]
-		while lg < vise:
-			var pris := false
-			if a > 0 and dirs[a - 1].dot(dirs[i]) >= droit:
-				a -= 1
-				lg += lgs[a]
-				pris = true
-			if b < dirs.size() - 1 and dirs[b + 1].dot(dirs[i]) >= droit:
-				b += 1
-				lg += lgs[b]
-				pris = true
-			if not pris:
-				break
-		if lg > tenu:
-			tenu = lg
-			debut = a
-			fin = b + 1
-	var d := ligne[debut]
-	var f := ligne[fin]
-	var axe := (f - d).normalized()
-	_cap = rad_to_deg(atan2(axe.y, axe.x))
-	var c := (d + f) * 0.5
-	# La hauteur reste celle de la première passe : la ligne est au sol.
-	_centre = Vector3(c.x, _centre.y, c.y)
-	_fenetre = clampf(minf(tenu, vise), FENETRE_MIN_M, FENETRE_MAX_M)
-
-
-## 🔴 QUAND L'AXE MANQUE, ON LE DESSINE — les sommets sont trop rares pour ça
-## un par un (116 pour un tronçon entier, et un voisinage peut n'attraper qu'un
-## seul bord). On les range en tranches le long de l'axe d'ensemble, et le
-## milieu des tranches fait la ligne. Vrai tant que l'objet ne se replie pas
-## sur lui-même — une berge suit un fleuve, elle ne revient pas.
-##
-## Renvoie la ligne ET la largeur de l'objet, prise à la MÉDIANE des tranches :
-## la largeur d'ensemble est celle du fleuve entier, elle cadrerait de trop loin.
-func _ligne_des_tranches(a: Dictionary) -> Array:
-	var dir: Vector2 = a["dir"]
-	var nor: Vector2 = a["nor"]
-	var moy: Vector3 = a["moy"]
-	var sacs := {}   # tranche -> [somme t, somme s, compte, s mini, s maxi]
-	for p in _points:
-		var d := Vector2(p.x - moy.x, p.z - moy.z)
-		var t := d.dot(dir)
-		var u := d.dot(nor)
-		var i := int(floor(t / TRANCHE_M))
-		if sacs.has(i):
-			var v: Array = sacs[i]
-			v[0] += t
-			v[1] += u
-			v[2] += 1.0
-			v[3] = minf(v[3], u)
-			v[4] = maxf(v[4], u)
-		else:
-			sacs[i] = [t, u, 1.0, u, u]
-	var cles := sacs.keys()
-	cles.sort()
-	var ligne := PackedVector2Array()
-	var larges := []
-	var base := Vector2(moy.x, moy.z)
-	for i in cles:
-		var v: Array = sacs[i]
-		ligne.append(base + dir * (float(v[0]) / float(v[2]))
-			+ nor * (float(v[1]) / float(v[2])))
-		larges.append(float(v[4]) - float(v[3]))
-	# 🔴 LE PREMIER QUART, PAS LA MÉDIANE. Une berge est faite de deux rubans —
-	# le quai et le talus — et la tranche mesure du bord de l'un au bord de
-	# l'autre, VIDE COMPRIS : la médiane cadrait de 40 m de haut, deux fils dans
-	# du blanc. Les tranches les plus étroites, elles, sont l'ouvrage seul.
-	larges.sort()
-	var large := 1.0 if larges.is_empty() \
-		else maxf(float(larges[larges.size() / 4]), 1.0)
-	return [ligne, large]
-
-
-## Direction principale d'un nuage au sol — vecteur propre dominant de sa
-## covariance 2×2, qui se résout sans itération —, son barycentre, et son
-## étendue le long des deux axes. Sur le couloir d'une rue, c'est l'axe de la
-## rue ; sur un îlot carré la direction est indifférente, et n'importe laquelle
-## fait alors l'affaire.
-func _analyser(lot: PackedVector3Array) -> Dictionary:
+## Le cap d'un nuage au sol, en degrés : direction principale, vecteur propre
+## dominant de sa covariance 2×2, qui se résout sans itération. Sur un îlot
+## carré la direction est indifférente, et n'importe laquelle fait l'affaire.
+static func _direction(lot: PackedVector3Array) -> float:
 	var n := float(lot.size())
 	var mx := 0.0
-	var my := 0.0
 	var mz := 0.0
 	for p in lot:
 		mx += p.x
-		my += p.y
 		mz += p.z
 	mx /= n
-	my /= n
 	mz /= n
 	var sxx := 0.0
 	var szz := 0.0
@@ -386,53 +321,26 @@ func _analyser(lot: PackedVector3Array) -> Dictionary:
 		sxx += dx * dx
 		szz += dz * dz
 		sxz += dx * dz
-	var dir := Vector2(1.0, 0.0)
-	if absf(sxz) > 1e-6 or absf(sxx - szz) > 1e-6:
-		var t := 0.5 * atan2(2.0 * sxz, sxx - szz)
-		dir = Vector2(cos(t), sin(t))
-	var nor := Vector2(-dir.y, dir.x)
-	var t0 := INF
-	var t1 := -INF
-	var s0 := INF
-	var s1 := -INF
-	for p in lot:
-		var d := Vector2(p.x - mx, p.z - mz)
-		t0 = minf(t0, d.dot(dir))
-		t1 = maxf(t1, d.dot(dir))
-		s0 = minf(s0, d.dot(nor))
-		s1 = maxf(s1, d.dot(nor))
-	return {"lot": lot, "dir": dir, "nor": nor, "moy": Vector3(mx, my, mz),
-		"t": (t0 + t1) * 0.5, "large": s1 - s0}
-
-
-func _poser(a: Dictionary) -> void:
-	var dir: Vector2 = a["dir"]
-	var nor: Vector2 = a["nor"]
-	var moy: Vector3 = a["moy"]
-	var tm: float = a["t"]
-	_cap = rad_to_deg(atan2(dir.y, dir.x))
-	_fenetre = clampf(float(a["large"]) * ETALEMENT, FENETRE_MIN_M, FENETRE_MAX_M)
-	# En travers, le milieu des seuls points QUI SONT LÀ — sur une berge courbe,
-	# le barycentre du nuage tombe dans l'Ilse.
-	var sm := 0.0
-	var compte := 0
-	for p in (a["lot"] as PackedVector3Array):
-		var d := Vector2(p.x - moy.x, p.z - moy.z)
-		if absf(d.dot(dir) - tm) <= _fenetre * 0.5:
-			sm += d.dot(nor)
-			compte += 1
-	if compte > 0:
-		sm /= float(compte)
-	var c := Vector2(moy.x, moy.z) + dir * tm + nor * sm
-	_centre = Vector3(c.x, moy.y, c.y)
+	if absf(sxz) <= 1e-6 and absf(sxx - szz) <= 1e-6:
+		return 0.0
+	return rad_to_deg(0.5 * atan2(2.0 * sxz, sxx - szz))
 
 
 ## 🔷 TOUJOURS DE TROIS QUARTS. Le lacet vaut `45° − cap` modulo 90° : dans le
 ## plan, l'objet croise alors l'écran en diagonale, jamais de face. Sans ça, les
 ## quatre vues cardinales de `Q`/`E` mettaient la rue et la façade à plat.
 ## On garde le quart de tour le plus proche de la ville : le panneau montre donc
-## l'objet du côté d'où on le regarde, à moins d'un huitième de tour près.
+## l'îlot du côté d'où on le regarde, à moins d'un huitième de tour près.
+##
+## 🔴 UN ÉCHANTILLON NE TOURNE PAS. Il n'est nulle part dans la ville, il n'y a
+## donc rien à reconnaître — et un quart de tour sur deux mettait la berge de
+## dos : le mur de quai regarde l'eau, et l'eau serait passée derrière le bloc.
+const QUART_ECHANTILLON := 135.0
+
+
 func _trois_quarts() -> float:
+	if _ech_couche != "":
+		return QUART_ECHANTILLON
 	var vise := 45.0 - _cap
 	return vise + 90.0 * roundf((_lacet - vise) / 90.0)
 
@@ -442,17 +350,6 @@ func _cadrer() -> void:
 		return
 	_cam.rotation_degrees = Vector3(-HAUTEUR, _trois_quarts(), 0.0)
 	var base := _cam.transform.basis
-	if _bout and _fenetre > 0.0:
-		var zz := -INF
-		for p in _points:
-			zz = maxf(zz, p.dot(base.z))
-		# 🔴 En ortho, `size` est la hauteur VUE : la profondeur de sol qu'elle
-		# couvre vaut `size / sin(hauteur)` (`Godot/README.md`). L'inverse ici,
-		# et le format donne une fenêtre au sol à peu près carrée.
-		_cam.size = _fenetre * sin(deg_to_rad(HAUTEUR))
-		_cam.position = _centre + base.z * (zz + RECUL - _centre.dot(base.z))
-		_regler_ombre()
-		return
 	# Le centre est celui de l'IMAGE, pas celui du volume : un objet cadré sur
 	# le milieu de sa boîte se décale dès qu'on le regarde en biais.
 	var x0 := INF
@@ -483,3 +380,10 @@ func _regler_ombre() -> void:
 	var etendue := maxf(_cam.size * float(TAILLE.x) / float(TAILLE.y),
 		_cam.size / sin(deg_to_rad(HAUTEUR)))
 	_soleil.directional_shadow_max_distance = RECUL + 2.0 * etendue
+
+
+func _teinte(role: String) -> Color:
+	if not _palette.has(role):
+		push_error("miniature : rôle `%s` absent de la palette" % role)
+		return Color.MAGENTA
+	return Color(_palette[role] as String)
