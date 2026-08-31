@@ -3,17 +3,16 @@ extends CanvasLayer
 # Tant que l'urgence tient, aucune décision solaire n'apparaît ; les
 # réparations font avancer la jauge d'adaptation.
 
-signal solaire_demande(fid: int, part: float)
 signal vitesse_demandee(vitesse: float)
 signal temps_remis()
 ## "" ramène à la ville vivante, sinon c'est un `id` de `maquette.THEMES`.
 signal theme_demande(id: String)
-# 🔧 Une seule demande pour les trois réparations : reconstruire un îlot,
-# déblayer une rue, rebâtir un tablier. C'est `04e` qui les distingue par le
-# prix, pas l'interface.
-signal reparation_demandee(couche: String, fid: int)
-signal trafic_demande(action: String, fid: int)
-signal berge_demandee(fid: int, cible: int)
+## 🔴 UNE SEULE DEMANDE, ET C'EST TOUT CE QUE LA FICHE ÉMET (2026-08-31). On
+## règle, on compare l'avant et l'après, puis on met en place : les réglages
+## posés partent ensemble, au format que `ville.commander` lit.
+## 🔄 Cinq boutons émettaient cinq demandes AU CLIC — rien à essayer, rien à
+## reprendre, et chacun disait « il manque 214 k€ » de son côté.
+signal commande_demandee(couche: String, fid: int, reglages: Dictionary)
 
 const Ville := preload("res://scripts/ville.gd")
 const Apercu := preload("res://scripts/apercu.gd")
@@ -107,10 +106,23 @@ var _chantier_reste: Label
 var _chantier_jauge: Jauge
 var _solaire_bloc: VBoxContainer
 var _solaire_valeur: Label
-var _solaire_cout: Label
 var _solaire_curseur: HSlider
 var _solaire_jauge: Jauge
-var _solaire_bouton: Button
+var _arbres_bloc: VBoxContainer
+var _arbres_valeur: Label
+var _arbres_curseur: HSlider
+var _arbres_jauge: Jauge
+## Le récapitulatif et LE bouton : ce que la commande coûte, ce qu'elle dure, et
+## le seul refus du jeu quand la caisse ne suit pas.
+var _recap_bloc: VBoxContainer
+var _recap_texte: Label
+var _recap_bouton: Button
+## Les deux boutons de la miniature. 🔎 Ils n'apparaissent que lorsque les deux
+## images DIFFÈRENT : sans réglage posé ni chantier en cours, « avant » et
+## « après » montreraient la même chose et le geste ne voudrait rien dire.
+var _apercu_boutons: HBoxContainer
+var _avant_bouton: Button
+var _apres_bouton: Button
 var _message: Label
 var _camera_vue: Label
 var _temps_label: Label
@@ -143,6 +155,14 @@ var _rue_valeurs := {}
 var _repare_bloc: VBoxContainer
 var _repare_texte: Label
 var _repare_bouton: Button
+## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
+## deux curseurs gardent leur propre mémoire, plus bas, parce qu'ils doivent
+## survivre à une image sans se replacer sous le doigt ; `_reglages()` réunit
+## les trois et c'est LUI seul que la commande et la miniature lisent.
+var _pose := {}
+## Vrai quand la miniature montre la ville d'AUJOURD'HUI au lieu de ce qui sera
+## livré. Retombe à faux dès qu'on change d'objet : on veut voir sa promesse.
+var _apercu_avant := false
 var _trafic_bloc: VBoxContainer
 var _trafic_stationnement: Button
 var _trafic_axe: Button
@@ -162,6 +182,8 @@ var _reduction_verrouillee := true
 # ⚠️ Sans ce souvenir, `_maj_fiche()` (à chaque image) reposait la valeur sous
 # le doigt et la barre était intraînable (défaut du 2026-08-17).
 var _solaire_choix := -1.0
+## Même mémoire, même raison, pour le curseur des arbres.
+var _arbres_choix := -1.0
 # Vrai pendant que la fiche écrit dans le curseur : une montée de `min_value`
 # déplacerait la valeur et émettrait le signal, donc inventerait un choix.
 var _ecrit_curseur := false
@@ -733,6 +755,26 @@ func _panneau_ilot() -> void:
 	_fiche_titre = _label("Sélection", 20, TEXTE)
 	v.add_child(_fiche_titre)
 
+	# 🔎 AVANT / APRÈS (2026-08-31). La miniature est la seule image où les deux
+	# états d'un même objet peuvent se comparer : la ville, elle, ne peut montrer
+	# que celui du jour. Deux boutons plutôt qu'un rideau ou une bascule
+	# automatique — on s'arrête sur le détail qu'on veut regarder.
+	_apercu_boutons = HBoxContainer.new()
+	_apercu_boutons.add_theme_constant_override("separation", 4)
+	_apercu_boutons.visible = false
+	v.add_child(_apercu_boutons)
+	for choix in [["Avant", true], ["Après", false]]:
+		var b := Button.new()
+		b.text = choix[0]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var avant: bool = choix[1]
+		b.pressed.connect(func() -> void: _apercu_avant = avant)
+		_apercu_boutons.add_child(b)
+		if avant:
+			_avant_bouton = b
+		else:
+			_apres_bouton = b
+
 	# 🔎 LA MINIATURE (décision 12). Elle montre l'objet dans l'état qui SERA
 	# livré — le réglage suit le curseur avant même d'être validé — pendant que
 	# la ville derrière garde son état réel.
@@ -867,8 +909,8 @@ func _panneau_ilot() -> void:
 	_berge_bloc.add_child(_berge_texte)
 	for cible in [Ville.BERGE_APAISEE, Ville.BERGE_RENATUREE]:
 		var b := Button.new()
-		b.pressed.connect(func() -> void:
-			berge_demandee.emit(_fiche_fid, cible))
+		# Exclusives : une berge n'a qu'un état visé. Reposer le même l'enlève.
+		b.pressed.connect(func() -> void: _basculer("berge", cible))
 		_berge_bloc.add_child(b)
 		_berge_boutons.append(b)
 
@@ -883,8 +925,7 @@ func _panneau_ilot() -> void:
 	_repare_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_repare_bloc.add_child(_repare_texte)
 	_repare_bouton = Button.new()
-	_repare_bouton.pressed.connect(func() -> void:
-		reparation_demandee.emit(_fiche_couche, _fiche_fid))
+	_repare_bouton.pressed.connect(func() -> void: _basculer("reparer", true))
 	_repare_bloc.add_child(_repare_bouton)
 
 	_trafic_bloc = VBoxContainer.new()
@@ -896,14 +937,41 @@ func _panneau_ilot() -> void:
 	_trafic_stationnement = Button.new()
 	_trafic_stationnement.text = "Retirer les places"
 	_trafic_stationnement.icon = _icone("trafic", 22)
-	_trafic_stationnement.pressed.connect(func() -> void:
-		trafic_demande.emit("stationnement", _fiche_fid))
+	_trafic_stationnement.pressed.connect(func() -> void: _basculer("places", true))
 	_trafic_bloc.add_child(_trafic_stationnement)
 	_trafic_axe = Button.new()
 	_trafic_axe.text = "Fermer aux voitures"
-	_trafic_axe.pressed.connect(func() -> void:
-		trafic_demande.emit("axe", _fiche_fid))
+	_trafic_axe.pressed.connect(func() -> void: _basculer("axe", true))
 	_trafic_bloc.add_child(_trafic_axe)
+
+	# 🌳 PLANTER. Le curseur compte des ARBRES, pas des pourcents : c'est ce
+	# qu'on paie et c'est exactement ce qui apparaît à l'écran. Il est ici et
+	# pas sur l'îlot parce qu'un îlot bâti n'a pas de sol visible sous lui —
+	# 8,78 ha de canopée que la maquette de masses ne peut pas dessiner.
+	_arbres_bloc = VBoxContainer.new()
+	_arbres_bloc.add_theme_constant_override("separation", 6)
+	_arbres_bloc.visible = false
+	v.add_child(_arbres_bloc)
+	_arbres_bloc.add_child(HSeparator.new())
+	_arbres_bloc.add_child(_label("ARBRES", 12, ACCENT))
+	_arbres_valeur = _label("", 13, TEXTE)
+	_arbres_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_arbres_bloc.add_child(_arbres_valeur)
+	_arbres_jauge = Jauge.new()
+	_arbres_jauge.custom_minimum_size = Vector2(0, 15)
+	_arbres_jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_arbres_jauge.colorer(FAIT)
+	_arbres_bloc.add_child(_arbres_jauge)
+	_arbres_curseur = HSlider.new()
+	# Échelle fixe 0 → tous les emplacements, même raison que le solaire : un
+	# même pixel doit garder son sens d'un bout à l'autre de la partie.
+	_arbres_curseur.min_value = 0.0
+	_arbres_curseur.max_value = 100.0
+	_arbres_curseur.step = 1.0
+	_arbres_curseur.focus_mode = Control.FOCUS_NONE
+	_habiller_curseur(_arbres_curseur)
+	_arbres_curseur.value_changed.connect(_sur_curseur_arbres)
+	_arbres_bloc.add_child(_arbres_curseur)
 
 	_solaire_bloc = VBoxContainer.new()
 	_solaire_bloc.add_theme_constant_override("separation", 6)
@@ -937,17 +1005,22 @@ func _panneau_ilot() -> void:
 	_solaire_curseur.value_changed.connect(_sur_curseur)
 	_solaire_bloc.add_child(_solaire_curseur)
 
-	# Hors de la grille parce qu'elle suit le curseur : elle parle de la CIBLE,
-	# pas de l'îlot.
-	_solaire_cout = _label("", 12, GRIS)
-	_solaire_cout.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_solaire_bloc.add_child(_solaire_cout)
-
-	_solaire_bouton = Button.new()
-	_solaire_bouton.text = "Augmenter"
-	_solaire_bouton.pressed.connect(func() -> void:
-		solaire_demande.emit(_fiche_fid, _solaire_curseur.value / 100.0))
-	_solaire_bloc.add_child(_solaire_bouton)
+	# 🔴 LE RÉCAPITULATIF ET LE BOUTON, EN BAS ET UNE SEULE FOIS. Tous les
+	# réglages posés y arrivent : un prix, une durée, un refus. C'est aussi le
+	# seul endroit où le jeu dit non — un bouton grisé sans phrase est une
+	# panne, sous « il manque 214 k€ » c'est une règle.
+	_recap_bloc = VBoxContainer.new()
+	_recap_bloc.add_theme_constant_override("separation", 6)
+	_recap_bloc.visible = false
+	v.add_child(_recap_bloc)
+	_recap_bloc.add_child(HSeparator.new())
+	_recap_texte = _label("", 12, GRIS)
+	_recap_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_recap_bloc.add_child(_recap_texte)
+	_recap_bouton = Button.new()
+	_recap_bouton.text = "Mettre en place"
+	_recap_bouton.pressed.connect(_mettre_en_place)
+	_recap_bloc.add_child(_recap_bouton)
 
 	_message = _label("", 12, GRIS)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1098,7 +1171,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	if fid < 0 or (couche != "i" and couche != "r" and couche != "b"):
 		return
 	if fid != _fiche_fid or couche != _fiche_couche:
-		_solaire_choix = -1.0  # changer d'objet abandonne le réglage non validé
+		_vider_pose()   # changer d'objet abandonne tout ce qui était posé
 	_fiche_fid = fid
 	_fiche_couche = couche
 	_fiche_vide.visible = false
@@ -1109,6 +1182,10 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_fiche_entete.text = {"i": "ÎLOT", "r": "RUE", "b": "BERGE"}[couche]
 	_solaire_bloc.visible = couche == "i" and not _reduction_verrouillee
 	_trafic_bloc.visible = couche == "r"
+	# 🌳 Seulement là où il y a la place d'un arbre entre la chaussée et la
+	# limite d'emprise : `07` l'a tranché, les ruelles du cœur ancien n'en ont
+	# aucune. Un curseur qui ne planterait rien n'a pas à s'afficher.
+	_arbres_bloc.visible = couche == "r" and ville.arbres_plantables(fid) > 0
 	_berge_bloc.visible = couche == "b"
 	_maj_fiche()
 
@@ -1171,91 +1248,234 @@ func _maj_fiche() -> void:
 		maxf(pct, _solaire_choix if _solaire_choix >= 0.0 else cible_pct) / 100.0)
 
 	var recette := ville.valeur("i", _fiche_fid, "_recette_ke_an", _mois)
-	_alerter_cout(false)
 	if _reduction_verrouillee:
-		_solaire_valeur.text = "Disponible après l'urgence."
-		_solaire_cout.text = "Relevez logements et ponts."
-		_solaire_bouton.text = "Urgence"
-		_solaire_bouton.disabled = true
+		_solaire_valeur.text = "Disponible après l'urgence. Relevez logements et ponts."
 	elif toit <= 0.0:
 		_solaire_valeur.text = "Bâtiment protégé." \
 			if int(o.get("solaire_possible", 1)) == 0 else "Aucun toit."
-		_solaire_cout.text = ""
-		_solaire_bouton.text = "Augmenter"
-		_solaire_bouton.disabled = true
 	elif _solaire_choix >= 0.0:
 		_afficher_choix(pct, _solaire_choix)
 	elif etat["en_cours"]:
-		_solaire_valeur.text = "%d %% → %d %% · %s" % [
-			int(roundf(pct)), int(roundf(cible_pct)), _duree(float(etat["reste_mois"]))]
-		_solaire_cout.text = "%s k€ engagés" % _milliers(float(etat["cout_ke"]))
-		_solaire_bouton.text = "En chantier"
-		_solaire_bouton.disabled = true
+		_solaire_valeur.text = "%d %% → %d %% · %s · %s k€ engagés" % [
+			int(roundf(pct)), int(roundf(cible_pct)),
+			_duree(float(etat["reste_mois"])), _milliers(float(etat["cout_ke"]))]
 	else:
-		_solaire_valeur.text = "%d %% équipé" % int(roundf(pct))
-		_solaire_cout.text = "+%s k€/an" % _milliers(recette) if pct > 0.0 \
-			else "Aucun panneau."
+		_solaire_valeur.text = "%d %% équipé · +%s k€/an" % [int(roundf(pct)),
+			_milliers(recette)] if pct > 0.0 else "Aucun panneau."
 		if etat["a_commence"]:
 			_message.text = "Pose terminée. Les toits et les totaux ont atteint leur cible."
-		_solaire_bouton.text = "Toit entièrement équipé" if pct >= 99.95 else "Augmenter"
-		_solaire_bouton.disabled = true
+	_maj_recap()
 
 
-## Tant que le réglage n'est pas validé.
-## 🔴 Le seul endroit où le jeu dit non : un bouton grisé sans phrase est une
-## panne, sous « il manque 214 k€ » c'est une règle.
-func _afficher_choix(actuel: float, cible: float) -> void:
-	var duree := ville.duree_solaire_mois(actuel / 100.0, cible / 100.0)
-	var cout := ville.cout_solaire_ke(_fiche_fid, cible / 100.0, _mois)
-	_solaire_valeur.text = "%d %% → %d %% · %s" % [
-		int(roundf(actuel)), int(roundf(cible)), _duree(duree)]
-	_solaire_bouton.text = "VALIDER · %d %%" % int(roundf(cible))
-	_solaire_bouton.disabled = cible <= actuel + 0.01
+# ==========================================================================
+# LES RÉGLAGES POSÉS — on essaie, puis on met en place (2026-08-31)
+# ==========================================================================
 
-	var manque := cout - _caisse_ke
-	if manque > 0.001:
-		_solaire_cout.text = "%s k€ · manque %s k€" % [
-			_milliers(cout), _milliers(manque)]
-		_solaire_bouton.disabled = true
+## Le libellé d'une bascule, marqué quand le réglage est posé. Une coche plutôt
+## qu'une couleur : elle survit à une capture en noir et blanc, et elle se lit
+## dans un bouton déjà chargé de trois nombres.
+func _posee(cle: String, texte: String, valeur := true) -> String:
+	return ("✓ " + texte) if _pose.get(cle) == valeur else texte
+
+
+## 🌳 Le curseur des arbres, remis à jour à chaque image comme celui du solaire
+## et avec le même verrou : sans choix en cours la fiche commande, sinon on
+## garde la position de l'auteur, remontée au nombre déjà en terre.
+func _maj_arbres() -> void:
+	if not _arbres_bloc.visible:
+		return
+	var plafond := Ville.PLANTATION_CANOPEE_MAX
+	var cano := ville.valeur("r", _fiche_fid, "canopee", _mois)
+	var pct := cano / plafond * 100.0
+	var en_terre := ville.arbres_a(_fiche_fid, cano)
+	var tous := ville.arbres_plantables(_fiche_fid)
+	var en_cours := ville.plantation_en_cours(_fiche_fid, _mois)
+	_ecrit_curseur = true
+	_arbres_curseur.editable = not en_cours and en_terre < tous
+	if _arbres_choix < 0.0:
+		_arbres_curseur.set_value_no_signal(pct)
 	else:
-		_solaire_cout.text = "%s k€ · reste %s k€" % [
-			_milliers(cout), _milliers(_caisse_ke - cout)]
+		_arbres_choix = maxf(_arbres_choix, pct)
+		_arbres_curseur.set_value_no_signal(_arbres_choix)
+	_ecrit_curseur = false
+	var vise: float = maxf(pct, _arbres_choix if _arbres_choix >= 0.0 else pct)
+	_arbres_jauge.regler(pct / 100.0, vise / 100.0)
+	if en_cours:
+		_arbres_valeur.text = "%d arbres · reprise dans %s" % [
+			ville.arbres_a(_fiche_fid, _arbres_choix / 100.0 * plafond) if
+			_arbres_choix >= 0.0 else en_terre,
+			_duree(ville.plantation_reste_mois(_fiche_fid, _mois))]
+	elif _arbres_choix >= 0.0 and _arbres_choix > pct + 0.01:
+		var cible := _arbres_choix / 100.0 * plafond
+		_arbres_valeur.text = "%d arbres → %d · %s" % [en_terre,
+			ville.arbres_a(_fiche_fid, cible), _duree(Ville.PLANTATION_MOIS)]
+	elif en_terre >= tous:
+		_arbres_valeur.text = "%d arbres · la rue est plantée de bout en bout" % en_terre
+	else:
+		_arbres_valeur.text = "%d arbres sur %d emplacements" % [en_terre, tous]
+
+
+## Ce que l'objet courant a de posé, au format que `ville.commander` lit. UN
+## SEUL endroit l'assemble : la miniature, le récapitulatif et la commande
+## doivent parler du même réglage, sinon l'image promet autre chose que le prix.
+func _reglages() -> Dictionary:
+	var r: Dictionary = _pose.duplicate()
+	if _fiche_couche == "i" and _solaire_choix >= 0.0:
+		var actuel := ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois) * 100.0
+		if _solaire_choix > actuel + 0.01:
+			r["solaire"] = _solaire_choix / 100.0
+	if _fiche_couche == "r" and _arbres_choix >= 0.0:
+		var cible := _arbres_choix / 100.0 * Ville.PLANTATION_CANOPEE_MAX
+		if ville.arbres_a(_fiche_fid, cible) > ville.arbres_a(
+				_fiche_fid, ville.valeur("r", _fiche_fid, "canopee", _mois)):
+			r["arbres"] = cible
+	return r
+
+
+## Une bascule : reposer le même réglage l'enlève. C'est ce qui rend l'essai
+## réversible — et la berge est exclusive, un seul état visé à la fois.
+func _basculer(cle: String, valeur) -> void:
+	if _pose.get(cle) == valeur:
+		_pose.erase(cle)
+	else:
+		_pose[cle] = valeur
+	_maj_fiche()
+
+
+## Changer d'objet, ou avoir commandé : rien ne se garde. Un réglage posé sur
+## l'îlot 32 qui survivrait au clic sur le 33 se paierait sur le mauvais toit.
+func _vider_pose() -> void:
+	_pose.clear()
+	_solaire_choix = -1.0
+	_arbres_choix = -1.0
+	_apercu_avant = false
+
+
+func _mettre_en_place() -> void:
+	var r := _reglages()
+	if r.is_empty():
+		return
+	commande_demandee.emit(_fiche_couche, _fiche_fid, r)
+
+
+## 🔴 LE RÉCAPITULATIF, et le seul refus du jeu. Il porte le total de TOUS les
+## réglages posés : le prix se calcule dans le noyau (`cout_commande_ke`), pas
+## ici — deux additions dans deux fichiers finissent par diverger.
+func _maj_recap() -> void:
+	var r := _reglages()
+	_recap_bloc.visible = not r.is_empty()
+	# Les deux boutons de la miniature n'ont de sens que si les deux images
+	# diffèrent : un réglage posé, ou un chantier qui court.
+	var chantier: Dictionary = ville.chantier(_fiche_couche, _fiche_fid, _mois)
+	_apercu_boutons.visible = _apercu_cadre.visible \
+		and (not r.is_empty() or bool(chantier["actif"]))
+	if not _apercu_boutons.visible:
+		_apercu_avant = false
+	_avant_bouton.disabled = _apercu_avant
+	_apres_bouton.disabled = not _apercu_avant
+	if r.is_empty():
+		_alerter_cout(false)
+		return
+	var cout := ville.cout_commande_ke(_fiche_couche, _fiche_fid, r, _mois)
+	var duree := ville.duree_commande_mois(_fiche_couche, _fiche_fid, r, _mois)
+	var manque := cout - _caisse_ke
+	# « 3 réglages » ne dit rien ; les nommer, si. C'est la phrase qu'on relit
+	# avant d'engager trois ans de dotation.
+	var quoi := []
+	if r.has("solaire"):
+		quoi.append("panneaux %d %%" % int(roundf(float(r["solaire"]) * 100.0)))
+	if r.has("arbres"):
+		quoi.append("%d arbres" % (ville.arbres_a(_fiche_fid, float(r["arbres"]))
+			- ville.arbres_a(_fiche_fid,
+				ville.valeur("r", _fiche_fid, "canopee", _mois))))
+	if r.has("places"):
+		quoi.append("places retirées")
+	if r.has("axe"):
+		quoi.append("fermeture aux voitures")
+	if r.has("berge"):
+		quoi.append(Ville.BERGE_NOMS[int(r["berge"])])
+	if r.has("reparer"):
+		quoi.append(_verbe_reparation(_fiche_couche,
+			ville.objets(_fiche_couche).get(_fiche_fid, {})).to_lower())
+	var phrase := ", ".join(quoi)
+	_recap_texte.text = "%s.\n%s k€ · %s · %s" % [
+		phrase.substr(0, 1).to_upper() + phrase.substr(1),
+		_milliers(cout), _duree(duree),
+		("manque %s k€" % _milliers(manque)) if manque > 0.001
+			else ("reste %s k€" % _milliers(_caisse_ke - cout))]
+	_recap_bouton.text = "Mettre en place · %s k€" % _milliers(cout)
+	_recap_bouton.disabled = manque > 0.001
 	_alerter_cout(manque > 0.001)
 
 
-## 🔎 CE QUE LA MINIATURE DOIT MONTRER (décision 12) : l'ÉTAT QUI SERA LIVRÉ.
-## Le réglage en cours passe devant le chantier engagé, qui passe devant l'état
-## réel — et survoler un bouton montre ce qu'il livrerait, avant de le presser.
+## Ce que le curseur solaire annonce. 🔄 Le prix et le refus ont quitté cette
+## fonction le 2026-08-31 : ils sont dans le récapitulatif, où ils portent aussi
+## les autres réglages.
+func _afficher_choix(actuel: float, cible: float) -> void:
+	_solaire_valeur.text = "%d %% → %d %% · %s" % [
+		int(roundf(actuel)), int(roundf(cible)),
+		_duree(ville.duree_solaire_mois(actuel / 100.0, cible / 100.0))]
+
+
+## 🔎 CE QUE LA MINIATURE DOIT MONTRER (décision 12) : l'ÉTAT QUI SERA LIVRÉ —
+## les réglages posés devant le chantier engagé, lui-même devant l'état réel.
+## Survoler un bouton montre en plus ce qu'il livrerait, avant qu'on le presse.
+## 🔎 SAUF EN MODE « AVANT », où elle montre la ville d'aujourd'hui, réglages
+## ignorés : c'est la moitié gauche de la comparaison.
 ## Lu à chaque image par `maquette._maj_apercu` : ne rien y calculer de lourd.
 func apercu_demande() -> Dictionary:
 	var equipe := 0.0
 	var futur := false
 	var berge := 0.0
-	if _fiche_fid >= 0 and _fiche_couche == "i":
-		var etat := ville.etat_solaire(_fiche_fid, _mois)
-		equipe = maxf(float(etat["cible"]),
-			_solaire_choix / 100.0 if _solaire_choix >= 0.0 else 0.0)
-	if _fiche_fid >= 0 and _fiche_couche != "b":
-		futur = ville.est_repare(_fiche_couche, _fiche_fid) \
-			or _repare_bouton.is_hovered()
-	if _fiche_fid >= 0 and _fiche_couche == "b":
-		var e := ville.berge_cible(_fiche_fid)
-		for k in _berge_boutons.size():
-			if (_berge_boutons[k] as Button).is_hovered():
-				e = k + Ville.BERGE_APAISEE
+	var places := true
+	var roule := true
+	var arbres := 0.0
+	if _fiche_fid < 0:
+		return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
+			"futur": futur, "berge": berge, "places": places, "roule": roule,
+			"arbres": arbres}
+	var r: Dictionary = {} if _apercu_avant else _reglages()
+	if _fiche_couche == "i":
+		equipe = ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois)
+		if not _apercu_avant:
+			equipe = maxf(ville.etat_solaire(_fiche_fid, _mois)["cible"],
+				float(r.get("solaire", 0.0)))
+	if _fiche_couche != "b":
+		futur = not _apercu_avant \
+			and (ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
+				or r.has("reparer") or _repare_bouton.is_hovered())
+		if _apercu_avant:
+			futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
+	if _fiche_couche == "b":
+		var e := ville.berge_etat(_fiche_fid, _mois) if _apercu_avant \
+			else ville.berge_cible(_fiche_fid)
+		if not _apercu_avant:
+			e = maxi(e, int(r.get("berge", 0)))
+			for k in _berge_boutons.size():
+				if (_berge_boutons[k] as Button).is_hovered():
+					e = k + Ville.BERGE_APAISEE
 		# La même règle que la ville : une berge de campagne naît renaturée, et la
 		# teinte dit un CHANGEMENT, pas un état.
 		berge = 0.0 if e == ville.berge_depart(_fiche_fid) else float(e)
-	# Les deux boutons de la rue : survoler vide la bordure, ou la chaussée,
-	# avant qu'on ait cliqué. Un bouton grisé ne promet rien.
-	var places := true
-	var roule := true
-	if _fiche_fid >= 0 and _fiche_couche == "r":
-		places = _trafic_stationnement.disabled \
-			or not _trafic_stationnement.is_hovered()
-		roule = _trafic_axe.disabled or not _trafic_axe.is_hovered()
+	if _fiche_couche == "r":
+		# La bordure se vide et la chaussée aussi — au survol comme une fois le
+		# réglage posé. Un bouton grisé, lui, ne promet rien.
+		places = ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5
+		roule = trafic == null or not trafic.axe_ferme(_fiche_fid)
+		if not _apercu_avant:
+			places = places and not r.has("places") \
+				and (_trafic_stationnement.disabled
+					or not _trafic_stationnement.is_hovered())
+			roule = roule and not r.has("axe") \
+				and (_trafic_axe.disabled or not _trafic_axe.is_hovered())
+		# 🌳 La canopée du moment, ou celle que la commande livrerait : c'est
+		# elle qui décide combien d'arbres l'échantillon plante.
+		arbres = ville.valeur("r", _fiche_fid, "canopee", _mois)
+		if not _apercu_avant:
+			arbres = maxf(arbres, float(r.get("arbres", 0.0)))
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
-		"futur": futur, "berge": berge, "places": places, "roule": roule}
+		"futur": futur, "berge": berge, "places": places, "roule": roule,
+		"arbres": arbres}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait
@@ -1264,14 +1484,27 @@ func _alerter_cout(alerte: bool) -> void:
 	if alerte == _cout_en_alerte:
 		return
 	_cout_en_alerte = alerte
-	_solaire_cout.add_theme_color_override("font_color", ALERTE if alerte else GRIS)
+	_recap_texte.add_theme_color_override("font_color", ALERTE if alerte else GRIS)
 
 
-## L'entrée de l'essai automatisé dans le curseur. Passe par `value_changed`,
-## donc par le même chemin qu'un doigt : la capture prouve ce que le joueur
-## verra, pas ce que le code croit.
+## Les trois entrées de l'essai automatisé. Elles passent toutes par le chemin
+## d'un doigt — `value_changed` pour un curseur, `_basculer` pour une bascule :
+## la capture prouve ce que le joueur verra, pas ce que le code croit.
 func viser(pct: float) -> void:
 	_solaire_curseur.value = pct
+
+
+func viser_arbres(pct: float) -> void:
+	_arbres_curseur.value = pct
+
+
+func poser(cle: String, valeur := true) -> void:
+	_basculer(cle, valeur)
+
+
+func regarder_avant(avant: bool) -> void:
+	_apercu_avant = avant
+	_maj_fiche()
 
 
 func _sur_curseur(v: float) -> void:
@@ -1288,20 +1521,41 @@ func _sur_curseur(v: float) -> void:
 	_solaire_choix = v
 	_solaire_jauge.regler(actuel / 100.0, v / 100.0)
 	_afficher_choix(actuel, v)
+	_maj_recap()
 
 
-## Après un retour au mois 0 : réglage non validé et compte rendu périmés.
+## 🌳 Le curseur des arbres. Même règle que le solaire : on ne DÉPLANTE pas, et
+## le rattrapage se fait ici pour garder une échelle fixe de bout en bout.
+func _sur_curseur_arbres(v: float) -> void:
+	if _fiche_fid < 0 or _ecrit_curseur:
+		return
+	var plafond := Ville.PLANTATION_CANOPEE_MAX
+	var actuel := ville.valeur("r", _fiche_fid, "canopee", _mois) / plafond * 100.0
+	if v < actuel:
+		v = actuel
+		_ecrit_curseur = true
+		_arbres_curseur.set_value_no_signal(v)
+		_ecrit_curseur = false
+	_arbres_choix = v
+	_arbres_jauge.regler(actuel / 100.0, v / 100.0)
+	_maj_recap()
+
+
+## Après un retour au mois 0 : réglages posés et compte rendu périmés.
 func remis_a_zero() -> void:
-	_solaire_choix = -1.0
+	_vider_pose()
 	_message.text = "Retour au mois 0. La ville est comme au premier jour, caisse à %s k€." \
 		% _milliers(Ville.CAISSE_DEPART_KE)
 	if _fiche_fid >= 0:
 		_maj_fiche()
 
 
+## Le compte rendu d'une commande partie. 🔄 S'appelait `confirmer_solaire` et
+## ne parlait que des panneaux ; elle vaut pour les cinq réglages depuis le
+## 2026-08-31. Le nom reste : `--essai` l'appelle.
 func confirmer_solaire(cout_ke := 0.0) -> void:
-	_solaire_choix = -1.0  # la demande est partie : la fiche reprend la main
-	_message.text = "La pose a commencé — %s k€ engagés. Accélérez le temps pour la suivre." \
+	_vider_pose()   # la commande est partie : la fiche reprend la main
+	_message.text = "Le chantier a commencé — %s k€ engagés. Accélérez le temps pour le suivre." \
 		% _milliers(cout_ke)
 	_maj_fiche()
 
@@ -1363,14 +1617,15 @@ func _maj_fiche_rue() -> void:
 		"r", _fiche_fid, "stationnement", _mois) < 0.5
 	_trafic_stationnement.text = ("Places retirées" if stationnement_fini \
 		else "Places · 2 mois") if stationnement_engage \
-		else "Retirer les places"
+		else _posee("places", "Retirer les places")
 	_trafic_stationnement.disabled = stationnement_engage or ville.valeur(
 		"r", _fiche_fid, "stationnement", _mois) < 0.5
 	_trafic_axe.text = ("Fermée · report" if trafic.report_en_cours(
 		_fiche_fid, _mois) else "Fermée") if axe_ferme \
-		else "Fermer aux voitures"
+		else _posee("axe", "Fermer aux voitures")
 	_trafic_axe.disabled = axe_ferme or not ville.route_praticable(_fiche_fid, _mois) \
 		or ville.valeur("r", _fiche_fid, "charge", _mois) < 0.20
+	_maj_arbres()
 	(_rue_valeurs["etat"] as Label).text = {
 		"coupe": "franchissement emporté",
 		"fragile": "pile déchaussée",
@@ -1378,6 +1633,7 @@ func _maj_fiche_rue() -> void:
 	}.get(etat, "%s m d'eau" % _nb(float(o.get("hauteur_eau", 0.0)), 1)
 		if float(o.get("hauteur_eau", 0.0)) > 0.1 else "intacte")
 	_maj_reparation(o)
+	_maj_recap()
 
 
 ## 🌊 LA FICHE D'UNE BERGE. Le bloc de réparation ne s'ouvre pas ici : la crue
@@ -1421,25 +1677,23 @@ func _maj_fiche_berge() -> void:
 		var bouton: Button = _berge_boutons[k]
 		var cout := ville.cout_berge_ke(_fiche_fid, cible, _mois)
 		var nom: String = Ville.BERGE_NOMS[cible]
-		bouton.disabled = cible <= etat or reste > 0.0 or cout > _caisse_ke
+		bouton.disabled = cible <= etat or reste > 0.0
 		# ⚠️ Pas de `capitalize()` : il met une majuscule à CHAQUE mot, et le
 		# bouton sortait « Quai Apaisé ».
 		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
 		if cible <= etat:
 			bouton.text = "%s — fait" % titre
-		elif cout > _caisse_ke:
-			bouton.text = "%s — il manque %s k€" % [titre,
-				_milliers(cout - _caisse_ke)]
 		else:
 			# 🌊 Le prix seul ne dit rien : c'est la baisse de crue qui fait
 			# choisir entre finir un bief et effleurer les quatre.
 			var gagne := (ville.berge_largeur_rendue_m(_fiche_fid, cible)
 				- ville.berge_largeur_rendue_m(_fiche_fid, etat)) \
 				* Ville.BERGE_BAISSE_M_PAR_M
-			bouton.text = "%s — %s k€ · %s · crue −%s m" % [titre,
+			bouton.text = _posee("berge", "%s — %s k€ · %s · crue −%s m" % [titre,
 				_milliers(cout),
 				_duree(Ville.BERGE_MOIS[cible] - Ville.BERGE_MOIS[etat]),
-				_nb(gagne, 2)]
+				_nb(gagne, 2)], cible)
+	_maj_recap()
 
 
 ## LE BLOC DE RÉPARATION, et c'est le seul endroit où le jeu dit non deux fois :
@@ -1467,15 +1721,15 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_bouton.text = "Chantier en cours"
 		_repare_bouton.disabled = true
 		return
-	var manque := prix - _caisse_ke
+	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
+	# récapitulatif, où il porte le TOTAL. Réparer et poser des panneaux séparément
+	# tenaient dans la caisse ; ensemble, non — et seul le total peut le dire.
 	var phrase := "%s · %s k€ · %s." % [
 		verbe, _milliers(prix),
 		_duree(ville.duree_reparation_mois(couche, _fiche_fid))]
 	_repare_texte.text = _degat_en_clair(couche, o) + "  " + phrase
-	if manque > 0.0:
-		_repare_texte.text += "  Il manque %s k€." % _milliers(manque)
-	_repare_bouton.text = "%s · %s k€" % [verbe, _milliers(prix)]
-	_repare_bouton.disabled = manque > 0.0
+	_repare_bouton.text = _posee("reparer", "%s · %s k€" % [verbe, _milliers(prix)])
+	_repare_bouton.disabled = false
 
 
 func _verbe_reparation(couche: String, o: Dictionary) -> String:

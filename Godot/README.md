@@ -56,7 +56,8 @@ scripts/
   chantiers.gd         ancien prototype, conservé comme trace — RIEN à voir
                        avec le thème « chantiers », qui vit dans ville.gd
   selection.gd         le raycast. Rend un (couche, fid), rien de plus
-  interface.gd         la ville ou le menu à gauche, l'îlot et son curseur à droite
+  interface.gd         la ville ou le menu à gauche, la fiche à droite. Elle
+                       n'émet QU'UNE demande : la commande
   apercu.gd            la miniature de la fiche : l'objet choisi, dans son état
                        livré, de trois quarts, sur une dalle épaisse
   echantillon.gd       le morceau droit d'une rue ou d'une berge : la coupe en
@@ -86,6 +87,8 @@ outils/
 Les îlots bâtis et les tronçons sont **un nœud chacun**, avec leur `StaticBody3D`. C'est un choix, pas un oubli : un maillage fusionné ne se sélectionne pas, ne se surligne pas et ne se reteinte pas objet par objet. Toutes les parcelles d'un îlot tombent dans le même groupe : **la géométrie descend à la parcelle, la sélection reste à l'îlot.**
 
 L'occlusion voyage dans `COLOR.a` — la teinte occluse est dans `COLOR.rgb`, le facteur seul dans l'alpha. C'est ce qui permet de repeindre un îlot en calque sans perdre ce qui le pose au sol. Aucun matériau du projet n'active la transparence : ce canal était libre.
+
+🎚️ **On règle, on compare, puis on met en place.** Une décision ne part pas au clic : les réglages se posent sur l'objet, se retirent d'un second clic, et **un seul bouton** les engage ensemble. Prix, durée et refus se calculent **une fois, sur le total** — deux décisions qui tiennent séparément ne tiennent pas forcément ensemble. Une commande fait **un chantier**, et c'est le noyau qui refuse, jamais l'interface. La miniature porte l'**avant** et l'**après** sur deux boutons : rien n'y est rendu deux fois, l'état du jour est un autre jeu de paramètres passé au même objet, et les boutons se cachent quand les deux images seraient identiques.
 
 🔎 **La miniature de la fiche est une vue à part**, en isométrie, l'objet toujours vu **de trois quarts** et posé sur une dalle épaisse — sans épaisseur, c'est une découpe sur du papier. Un **îlot** y est le maillage de la ville, et le lacet se cale sur le quart de tour le plus proche de la vue. Une **rue** et une **berge**, non : elles sont montrées par un **morceau droit fabriqué** (`echantillon.gd`), à la largeur et du type mesurés, sous un angle fixe — il n'est nulle part dans la ville, il n'y a rien à y reconnaître, et la berge doit garder son eau du côté du regard. Ses voitures suivent les règles du trafic, dans l'état que la fiche promet et non celui de la ville.
 

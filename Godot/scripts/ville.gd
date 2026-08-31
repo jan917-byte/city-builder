@@ -36,6 +36,10 @@ var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
+var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbres}
+## Les seuils de canopée des emplacements d'alignement, triés, un tableau par
+## tronçon. C'est `07` qui les pose ; ici on ne fait que les compter.
+var _seuils := {}          # fid tronçon -> [seuil]
 var _adaptation_total_ke := 0.0
 var _co2_depart_kt := 0.0
 
@@ -102,6 +106,34 @@ const BERGE_MOIS := [0.0, 6.0, 18.0]         # depuis l'asphalte, cumulés aussi
 const BERGE_BAISSE_M_PAR_M := 0.12          # de crue en moins par mètre de rive rendue
 
 
+# ==========================================================================
+# PLANTER UNE RUE — quatre nombres (2026-08-31)
+# ==========================================================================
+# 🌳 OÙ, ET POURQUOI PAS AILLEURS : un îlot bâti porte 8,78 ha de canopée que
+# la maquette de masses ne peut pas montrer — le pâté est plein, il n'y a pas
+# de sol dessous. La rue, si : `07` tient 821 emplacements en réserve, chacun
+# avec son seuil, et sait déjà n'en révéler aucun dans l'Ilse ni sur la
+# chaussée. La décision est donc SUR LA RUE, et elle se voit.
+# 🎚️ LEVEL DESIGN, les quatre : ce sont eux qui disent si planter vaut mieux
+# que poser des panneaux avec le même argent.
+## Planté de bout en bout, un arbre tous les 12 m. 🔴 LE MÊME NOMBRE que
+## `CANOPEE_ALIGNEMENT_MAX` dans `07_exporter_godot.py` — écrit deux fois,
+## contrôlé au chargement. Aucun tronçon de Wehrau ne dépasse 0,20 aujourd'hui.
+const PLANTATION_CANOPEE_MAX := 0.40
+## Un arbre de rue, fosse et reprise comprises. À discuter avec quelqu'un qui
+## en a fait planter, comme les 260 €/m² du panneau.
+const PLANTATION_PRIX_KE_ARBRE := 1.5
+## Planter est rapide, l'ombre ne l'est pas. 🔄 La montée de D07 est de 60 mois
+## dans le classeur : trop long pour qu'on voie la concurrence se jouer dans une
+## partie, c'est une dette nommée du prototype.
+const PLANTATION_MOIS := 24.0
+## 🎚️ CE QU'UN ARBRE ÉPARGNE, et c'est le nombre qui décide si la plantation est
+## une décision ou une décoration : l'ombre portée sur les façades qu'il borde,
+## en MWh/an de moins à consommer. Repère : les 821 emplacements de Wehrau tous
+## occupés font 821 fois ce nombre, à comparer aux ~51 GWh de la ville.
+const PLANTATION_MWH_ARBRE_AN := 0.25
+
+
 func charger(d: Dictionary) -> void:
 	var o: Dictionary = d["objets"]
 	crue = d.get("crue", {})
@@ -116,6 +148,21 @@ func charger(d: Dictionary) -> void:
 		for f in (d["riverains"] as Dictionary)[cle]:
 			liste.append(int(f))
 		riverains[int(cle)] = liste
+
+	# 🌳 Les emplacements d'alignement, réduits à leur seuil : c'est tout ce que
+	# le noyau a besoin de savoir pour compter des arbres et les faire payer.
+	for cle in (d.get("alignements", {}) as Dictionary):
+		var s := PackedFloat32Array()
+		for a in ((d["alignements"] as Dictionary)[cle] as Array):
+			s.append(float(a[5]))
+		s.sort()
+		_seuils[int(cle)] = s
+		# 🔴 CONTRÔLE NOMMÉ : le plafond d'ici et `CANOPEE_ALIGNEMENT_MAX` de
+		# `07` sont le MÊME nombre écrit deux fois. S'ils divergent, le curseur
+		# promet des arbres qui n'existent pas dans l'export.
+		if s.size() > 0 and s[s.size() - 1] > PLANTATION_CANOPEE_MAX + 0.001:
+			push_error("plantation : le tronçon %d a un seuil à %.2f, au-dessus du plafond %.2f — voir CANOPEE_ALIGNEMENT_MAX dans 07_exporter_godot.py"
+				% [int(cle), s[s.size() - 1], PLANTATION_CANOPEE_MAX])
 
 	# La jauge d'adaptation porte l'urgence vitale : logements à relever et
 	# franchissements à rétablir. Le déblaiement des rues reste visible dans le
@@ -362,6 +409,76 @@ func stationnement_en_suppression(fid: int) -> bool:
 	return _stationnement_supprime.has(fid)
 
 
+# ------------------------------------------------------------ planter une rue
+
+## Combien d'arbres sont en terre à cette canopée-là. Un COMPTE, pas une part :
+## c'est ce qu'on paie, et c'est exactement ce qu'on voit à l'écran — les mêmes
+## seuils servent au prix, à l'économie d'énergie et au rendu.
+func arbres_a(fid: int, canopee: float) -> int:
+	var n := 0
+	for seuil in _seuils.get(fid, PackedFloat32Array()):
+		if seuil <= canopee:
+			n += 1
+	return n
+
+
+## Ce que la rue porterait plantée de bout en bout. 0 = pas la place d'un arbre
+## entre la chaussée et la limite d'emprise ; `07` l'a déjà tranché.
+func arbres_plantables(fid: int) -> int:
+	return arbres_a(fid, PLANTATION_CANOPEE_MAX)
+
+
+func cout_plantation_ke(fid: int, cible: float, t: float) -> float:
+	var neufs := arbres_a(fid, cible) - arbres_a(fid, valeur("r", fid, "canopee", t))
+	return maxf(neufs, 0) * PLANTATION_PRIX_KE_ARBRE
+
+
+## `false` si la rue n'est pas plantable, si un chantier y court déjà, si la
+## cible ne dépasse pas l'existant ou si la caisse ne suit pas. Même partage que
+## `lancer_solaire` : l'interface pré-vérifie et explique, ici le verrou seul.
+func planter(fid: int, cible: float, t: float) -> bool:
+	if not routes.has(fid) or _plantation.has(fid):
+		return false
+	var actuelle := valeur("r", fid, "canopee", t)
+	var c := clampf(cible, 0.0, PLANTATION_CANOPEE_MAX)
+	var neufs := arbres_a(fid, c) - arbres_a(fid, actuelle)
+	if neufs <= 0:
+		return false
+	var cout := float(neufs) * PLANTATION_PRIX_KE_ARBRE
+	if cout > caisse_ke(t) + 0.001:
+		return false
+	ajouter_rampe("r", fid, "canopee", c - actuelle, t, 0.0, PLANTATION_MOIS)
+	_plantation[fid] = {"debut": t, "duree": PLANTATION_MOIS, "cible": c,
+		"cout_ke": cout, "arbres": neufs}
+	_depense_ke += cout
+	return true
+
+
+func plantation_reste_mois(fid: int, t: float) -> float:
+	if not _plantation.has(fid):
+		return 0.0
+	return maxf(float(_plantation[fid]["debut"])
+		+ float(_plantation[fid]["duree"]) - t, 0.0)
+
+
+func plantation_en_cours(fid: int, t: float) -> bool:
+	return plantation_reste_mois(fid, t) > 0.0
+
+
+## 🌳 CE QUE LES ARBRES ÉPARGNENT À LA VILLE, en MWh/an, DEPUIS LE MOIS 0 — pas
+## en absolu : la canopée de départ est déjà dans la consommation de base, et la
+## compter deux fois ferait bouger le t0 sans qu'on ait rien décidé.
+## ⚠️ Un ESCALIER, pas une courbe : on compte les arbres réellement en terre à
+## la canopée du moment. C'est ce qui fait que le chiffre et l'image disent la
+## même chose — un arbre de plus à l'écran, un arbre de plus au compteur.
+func economie_plantation_mwh(t: float) -> float:
+	var n := 0
+	for fid in _plantation:
+		n += arbres_a(fid, valeur("r", fid, "canopee", t)) \
+			- arbres_a(fid, base("r", fid, "canopee"))
+	return float(n) * PLANTATION_MWH_ARBRE_AN
+
+
 ## Une rue envasée ou un tablier emporté ne redevient praticable qu'à la fin
 ## de son chantier. Le prix exporté est le seul marqueur commun aux deux cas.
 func route_praticable(fid: int, t: float) -> bool:
@@ -374,6 +491,7 @@ func route_praticable(fid: int, t: float) -> bool:
 func reinitialiser() -> void:
 	_solaire.clear()
 	_stationnement_supprime.clear()
+	_plantation.clear()
 	_berge.clear()
 	_depense_ke = 0.0
 	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
@@ -474,8 +592,10 @@ static func _integrale_avancement(t: float, d: float, L: float, M: float) -> flo
 
 
 ## En k€ depuis le mois 0.
-## ⚠️ Le potentiel est sorti de l'intégrale : la canopée ne bouge pas dans ce
-## prototype. À reprendre le jour où une décision plantera des arbres.
+## ⚠️ Le potentiel est sorti de l'intégrale : c'est la canopée de L'ÎLOT qui
+## ombre ses toits, et aucune décision ne la fait bouger. 🔄 Planter, depuis le
+## 2026-08-31, monte `routes.canopee` — une autre couche, sans effet ici. À
+## reprendre le jour où une décision plantera DANS un îlot.
 func recette_cumulee_ke(t: float) -> float:
 	var ke := 0.0
 	for fid in fids_batis():
@@ -683,6 +803,90 @@ func degats(t: float) -> Dictionary:
 	}
 
 
+# ==========================================================================
+# LA COMMANDE — on règle, puis on met en place (2026-08-31)
+# ==========================================================================
+# 🔴 UN OBJET, UNE COMMANDE, UN CHANTIER. La fiche laisse poser plusieurs
+# réglages sur le même objet ; ils partent ENSEMBLE, sur une seule caisse
+# vérifiée une seule fois. Sans ça, cinq boutons faisaient cinq fois « il
+# manque 214 k€ » et le joueur ne savait jamais ce qu'il pouvait s'offrir.
+#
+# 🔧 CE QUE LA COMMANDE NE FAIT PAS : fermer une rue aux voitures. Le report de
+# trafic vit dans `trafic.gd`, qui touche des nœuds — le noyau n'en sait rien et
+# le renvoie à l'appelant dans `axe`.
+#
+# Les réglages reconnus, tous facultatifs :
+#   solaire  float  la part de toit visée          (îlot)
+#   reparer  true   relever, déblayer ou rebâtir   (îlot, rue)
+#   arbres   float  la canopée visée               (rue)
+#   places   true   retirer le stationnement       (rue)
+#   axe      true   fermer aux voitures            (rue) — rendu à l'appelant
+#   berge    int    l'état visé                    (berge)
+
+
+## Le prix de l'ensemble, annoncé AVANT d'engager quoi que ce soit. C'est lui
+## que la fiche compare à la caisse, et c'est le seul endroit où le total se
+## calcule : deux additions dans deux fichiers finissent par diverger.
+func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> float:
+	var ke := 0.0
+	if r.has("solaire"):
+		ke += cout_solaire_ke(fid, float(r["solaire"]), t)
+	if r.has("arbres"):
+		ke += cout_plantation_ke(fid, float(r["arbres"]), t)
+	if r.has("berge"):
+		ke += cout_berge_ke(fid, int(r["berge"]), t)
+	if r.has("reparer"):
+		ke += cout_reparation_ke(couche, fid)
+	return ke
+
+
+## La durée de l'ensemble : LA PLUS LONGUE. L'objet reste en travaux jusqu'à ce
+## que le dernier corps de métier ait fini — même règle que `chantier()`.
+func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> float:
+	var m := 0.0
+	if r.has("solaire"):
+		m = maxf(m, duree_solaire_mois(valeur("i", fid, "part_toit_equipe", t),
+			float(r["solaire"])))
+	if r.has("arbres"):
+		m = maxf(m, PLANTATION_MOIS)
+	if r.has("places"):
+		m = maxf(m, STATIONNEMENT_MOIS)
+	if r.has("berge"):
+		m = maxf(m, BERGE_MOIS[int(r["berge"])] - BERGE_MOIS[berge_etat(fid, t)])
+	if r.has("reparer"):
+		m = maxf(m, duree_reparation_mois(couche, fid))
+	return m
+
+
+## Engage tout, ou rien. Rend ce qui s'est passé — `manque` non nul est le seul
+## refus du jeu, et la fiche l'écrit en toutes lettres.
+##
+## 🔴 L'ORDRE N'EST PAS LIBRE : réparer EN DERNIER, parce qu'il remplace
+## `toit_m2` par le toit d'un îlot relevé. Placé avant, la pose solaire aurait
+## coûté plus cher que le prix annoncé quelques lignes plus haut.
+## ⚠️ Le total étant déjà couvert par la caisse, chaque verrou individuel passe
+## forcément : ce qui reste après une dépense couvre toujours le reste à payer.
+func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
+	var cout := cout_commande_ke(couche, fid, r, t)
+	var caisse := caisse_ke(t)
+	if cout > caisse + 0.001:
+		return {"ok": false, "manque": cout - caisse, "cout_ke": cout,
+			"faits": [], "axe": false}
+	var faits := []
+	if r.has("solaire") and lancer_solaire(fid, float(r["solaire"]), t):
+		faits.append("solaire")
+	if r.has("arbres") and planter(fid, float(r["arbres"]), t):
+		faits.append("plantation")
+	if r.has("places") and supprimer_stationnement(fid, t):
+		faits.append("stationnement")
+	if r.has("berge") and transformer_berge(fid, int(r["berge"]), t):
+		faits.append("berge")
+	if r.has("reparer") and reparer(couche, fid, t):
+		faits.append("reparation")
+	return {"ok": not faits.is_empty() or r.has("axe"), "manque": 0.0,
+		"cout_ke": cout, "faits": faits, "axe": r.has("axe")}
+
+
 # ------------------------------------------------- la ville en travaux
 
 # 🔧 LA VUE CHANTIERS (touche X) lit ces deux fonctions et rien d'autre. Un
@@ -724,6 +928,9 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "b" and berge_en_cours(fid, t):
 		lot.append(["berge", float(_berge[fid]["duree"]),
 			berge_reste_mois(fid, t)])
+	if couche == "r" and plantation_en_cours(fid, t):
+		lot.append(["plantation", float(_plantation[fid]["duree"]),
+			plantation_reste_mois(fid, t)])
 	if couche == "r" and _stationnement_supprime.has(fid):
 		var reste: float = maxf(0.0,
 			float(_stationnement_supprime[fid]) + STATIONNEMENT_MOIS - t)
@@ -782,6 +989,14 @@ func chantiers(t: float) -> Dictionary:
 		en_cours.append({"couche": "b", "fid": fid, "genre": "berge",
 			"cout_ke": float(_berge[fid]["cout_ke"]),
 			"reste_mois": berge_reste_mois(fid, t)})
+	# 🌳 La plantation est le chantier le plus long après un pont : deux ans
+	# avant que l'ombre y soit. Elle se liste comme les autres.
+	for fid in _plantation:
+		if not plantation_en_cours(fid, t):
+			continue
+		en_cours.append({"couche": "r", "fid": fid, "genre": "plantation",
+			"cout_ke": float(_plantation[fid]["cout_ke"]),
+			"reste_mois": plantation_reste_mois(fid, t)})
 	# Le plus proche de sa fin en tête : c'est l'ordre dans lequel on lit une
 	# liste qui ne tient pas entière à l'écran.
 	en_cours.sort_custom(func(a, b): return a["reste_mois"] < b["reste_mois"])

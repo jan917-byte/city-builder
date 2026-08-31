@@ -172,12 +172,17 @@ static func classe_rentabilite(v, fid: int, t: float) -> int:
 
 ## En MWh/an. Achat = conso − production, pas un troisième chiffre (PLAN §3).
 ## Des sommes, pas des moyennes (décision 63).
+##
+## 🌳 LE SEUL TERME QUI NE VIENT PAS D'UN ÎLOT : l'ombre des arbres plantés le
+## long des rues, retranchée à la consommation. Compté DEPUIS LE MOIS 0 par le
+## noyau, donc nul au chargement — la ville de départ garde ses chiffres.
 static func ville_mwh(v, t: float) -> Dictionary:
 	var conso := 0.0
 	var prod := 0.0
 	for fid in v.fids_batis():
 		conso += conso_mwh(v, fid, t)
 		prod += production_mwh(v, fid, t)
+	conso = maxf(conso - v.economie_plantation_mwh(t), 0.0)
 	return {"conso": conso, "production": prod, "achat": conso - prod}
 
 

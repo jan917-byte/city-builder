@@ -169,35 +169,43 @@ static func emprise(anneau: Array) -> ArrayMesh:
 ## Il est aussi la PLAQUE au sol de la miniature de la fiche, seul endroit où il
 ## est vraiment dessiné : d'où son sens de parcours, qui n'est plus indifférent.
 ##
-## Les quadrilatères SE CHEVAUCHENT aux coudes, et c'est voulu : chaque segment
-## est rallongé d'une demi-largeur à ses jointures INTERNES, ce qui remplit
-## l'angle sans onglet — un masque ne compte que sa couverture. Les deux BOUTS
-## ne le sont pas, sinon la rue déborde dans le carrefour voisin.
+## Les deux bords sont continus et raccordés à onglet : des rectangles qui se
+## chevauchent laissaient une dent à chaque sommet dans le trait de sélection.
 static func couloir(axes: Array, largeur: float, y: float) -> ArrayMesh:
 	var h := largeur / 2.0
 	var v := PackedVector3Array()
 	var idx := PackedInt32Array()
 	for a in axes:
 		var plat: Array = a
-		@warning_ignore("integer_division")
-		var n: int = plat.size() / 2
-		for k in n - 1:
-			var p := Vector2(float(plat[k * 2]), float(plat[k * 2 + 1]))
-			var q := Vector2(float(plat[k * 2 + 2]), float(plat[k * 2 + 3]))
-			var u := (q - p)
-			if u.length_squared() < 1e-8:
-				continue
-			u = u.normalized()
+		var pts := PackedVector2Array()
+		for k in range(0, plat.size(), 2):
+			var p := Vector2(float(plat[k]), float(plat[k + 1]))
+			if pts.is_empty() or pts[-1].distance_squared_to(p) > 1e-6:
+				pts.append(p)
+		if pts.size() < 2:
+			continue
+		var gauche := PackedVector2Array()
+		var droite := PackedVector2Array()
+		for k in pts.size():
+			var t1 := Vector2.ZERO
+			var t2 := Vector2.ZERO
 			if k > 0:
-				p -= u * h
-			if k < n - 2:
-				q += u * h
-			var t := Vector2(u.y, -u.x) * h
+				var u1 := (pts[k] - pts[k - 1]).normalized()
+				t1 = Vector2(u1.y, -u1.x)
+			if k < pts.size() - 1:
+				var u2 := (pts[k + 1] - pts[k]).normalized()
+				t2 = Vector2(u2.y, -u2.x)
+			var t := (t1 + t2).normalized() if k > 0 and k < pts.size() - 1 \
+				else (t2 if k == 0 else t1)
+			var d := h / maxf(t.dot(t1 if k > 0 else t2), 0.35)
+			gauche.append(pts[k] + t * d)
+			droite.append(pts[k] - t * d)
+		for k in gauche.size() - 1:
 			var b := v.size()
-			v.append(Vector3(p.x + t.x, y, p.y + t.y))
-			v.append(Vector3(p.x - t.x, y, p.y - t.y))
-			v.append(Vector3(q.x - t.x, y, q.y - t.y))
-			v.append(Vector3(q.x + t.x, y, q.y + t.y))
+			v.append(Vector3(gauche[k].x, y, gauche[k].y))
+			v.append(Vector3(droite[k].x, y, droite[k].y))
+			v.append(Vector3(droite[k + 1].x, y, droite[k + 1].y))
+			v.append(Vector3(gauche[k + 1].x, y, gauche[k + 1].y))
 			# 🔴 EN SENS HORAIRE, comme tout le reste (piège 1 du README) : le
 			# ruban n'était qu'un masque, où le sens est indifférent, et il
 			# regardait vers le BAS — la plaque de la miniature était invisible.

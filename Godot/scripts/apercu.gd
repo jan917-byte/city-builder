@@ -48,6 +48,10 @@ var _soleil: DirectionalLight3D
 ## `trafic.remplir_droit` : la fiche n'invente ni recette ni teinte.
 var mm_gare: MultiMesh
 var mm_roule: MultiMesh
+## 🌳 Les arbres du morceau montré. Un MultiMesh refait quand leur nombre
+## change — c'est LA moitié visible de l'avant/après d'une rue plantée.
+var _arbres_mi: MultiMeshInstance3D
+var _arbres_n := -1
 var _sol: MeshInstance3D
 var _objet: MeshInstance3D
 var _futur: MeshInstance3D
@@ -131,6 +135,10 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 		# Comme dans la ville : une voiture ne porte pas d'ombre.
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mmi)
+
+	_arbres_mi = MultiMeshInstance3D.new()
+	_arbres_mi.name = "Arbres"
+	add_child(_arbres_mi)
 
 	_objet = MeshInstance3D.new()
 	_objet.name = "Objet"
@@ -221,10 +229,41 @@ func _vider_echantillon() -> void:
 	vider_voitures()
 
 
+## 🌳 LES ARBRES DU MORCEAU DROIT. `n` est un COMPTE, celui que la fiche
+## annonce : l'échantillon n'invente pas de densité, il place ce qu'on paie.
+## ⚠️ Alternés d'un côté puis de l'autre, alors que la ville tire le côté au
+## hasard : sur 40 m de rue, six arbres tous du même bord se liraient comme une
+## haie et non comme un alignement.
+func planter(n: int) -> void:
+	if _arbres_mi == null or ech_longueur <= 0.0:
+		return
+	if n == _arbres_n:
+		return
+	_arbres_n = n
+	var bord := ech_chaussee * 0.5 + 1.2
+	var liste := []
+	for k in n:
+		@warning_ignore("integer_division")
+		var rang: int = k / 2
+		var cote := -1.0 if k % 2 else 1.0
+		# Répartis sur la longueur, jamais sur les bouts de coupe : un tronc à
+		# cheval sur la tranche montrerait la moitié d'un arbre.
+		var x: float = (float(rang) + 0.5) / maxf(ceil(n / 2.0), 1.0) \
+			* ech_longueur - ech_longueur * 0.5
+		liste.append([x, 0.0, cote * bord, 0.95 + 0.2 * float(k % 3) / 2.0,
+			float(k) * 1.7, Constructeur.FEUILLU])
+	var vert := _teinte("_feuillage").srgb_to_linear()
+	_arbres_mi.multimesh = Constructeur.arbres(liste, Constructeur.FEUILLU,
+		vert, _teinte("_tronc"))
+
+
 ## Ce qui coûte est la vue à part : sans sélection, elle s'éteint entièrement.
 func vider_voitures() -> void:
 	mm_gare.instance_count = 0
 	mm_roule.instance_count = 0
+	_arbres_n = -1
+	if _arbres_mi != null:
+		_arbres_mi.multimesh = null
 
 
 func eteindre() -> void:

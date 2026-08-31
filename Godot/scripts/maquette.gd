@@ -80,11 +80,6 @@ const CHOISI := Color(1.34, 1.32, 1.16)
 #
 # L'épaisseur est en PIXELS et le reste : le trait vit dans l'image.
 const CONTOUR_PX := 3.0
-# 🔴 CE QUI FAIT QU'UN TRONÇON EST UN SEUL BLOC : une rue est faite de morceaux
-# disjoints (chaussée, trottoirs à 10 cm, un bout par riverain) et le trait
-# entourait chacun. Élargir le masque referme toute couture plus étroite.
-# Voir `Materiaux.contour`.
-const CONTOUR_BOUCHE_PX := 2.0
 # Légèrement jaune, comme l'éclaircissement (2026-08-18) : un blanc pur à côté
 # d'un îlot réchauffé se lisait comme deux retours pour une seule sélection.
 const CONTOUR_COULEUR := Color(1.0, 0.95, 0.66)
@@ -112,6 +107,7 @@ var _apercu_couche := ""
 var _apercu_voitures := ""
 var _couloirs := {}
 var _plaques := {}
+var _berges_contour := {}
 var _diagnostic_marqueurs: Node3D
 
 var noeuds := {"i": {}, "r": {}, "b": {}}
@@ -127,6 +123,15 @@ var reparations := {"i": {}, "r": {}, "b": {}}
 # 🅿️ Les files de stationnement peintes, un nœud par tronçon : elles se cachent
 # quand la rue n'a plus de places (fid de tronçon -> MeshInstance3D).
 var places_rue := {}
+# 🌳 LES ARBRES SE REBÂTISSENT quand la canopée bouge. Le semis des îlots est
+# figé ; les emplacements d'alignement portent leur tronçon et leur seuil, et
+# `_montrer_arbres` refait les deux MultiMesh quand le compte visible change.
+# ⚠️ Refait, pas mis à jour : un MultiMesh ne se réordonne pas, et 1 700 arbres
+# se reconstruisent en moins d'une image. Le compte sert de garde-fou.
+var _arbres_semis := []
+var _arbres_slots := []      # [x, y, z, échelle, lacet, fid tronçon, seuil]
+var _arbres_noeuds := {}     # essence -> MultiMeshInstance3D
+var _arbres_compte := -1
 var mois := 0.0
 var vitesse := 1.0
 var _derniere_vitesse := 1.0
@@ -189,13 +194,10 @@ func _ready() -> void:
 	interface.rampe = RAMPE
 	add_child(interface)
 	interface.batir()
-	interface.solaire_demande.connect(_sur_solaire)
+	interface.commande_demandee.connect(_sur_commande)
 	interface.vitesse_demandee.connect(_sur_vitesse)
 	interface.temps_remis.connect(_sur_reset)
 	interface.theme_demande.connect(_sur_theme)
-	interface.reparation_demandee.connect(_sur_reparation)
-	interface.trafic_demande.connect(_sur_trafic)
-	interface.berge_demandee.connect(_sur_berge)
 	pivot.vue_changee.connect(interface.maj_camera)
 	pivot.vue_changee.connect(_sur_vue_changee)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
@@ -256,6 +258,65 @@ func _essai_interface() -> void:
 	_viser_objet("b", 4, 260.0)
 	await _fiche("b", 4)
 	await _capturer_apercu("apercu_berge_talus")
+	# 🎚️ LES RÉGLAGES POSÉS, ET L'AVANT/APRÈS (2026-08-31). Trois captures au
+	# MÊME cadrage : la fiche réglée, puis la miniature dans ses deux états.
+	# C'est le critère du geste — si les deux images se ressemblent, il n'y a
+	# rien à comparer et la fiche ment.
+	_viser_route(55, 90.0)
+	pivot.caler(35.0, 28.0)
+	await _fiche("r", 55)
+	interface.poser("places")
+	interface.viser_arbres(100.0)
+	await _fiche("r", 55)
+	await _capturer("interface_reglages")
+	await _capturer_apercu("apercu_rue_apres")
+	interface.regarder_avant(true)
+	await _fiche("r", 55)
+	await _capturer_apercu("apercu_rue_avant")
+	interface.regarder_avant(false)
+
+	# 🔴 LE CONTRÔLE DE LA COMMANDE : deux réglages partent ENSEMBLE, la caisse
+	# tombe exactement du total annoncé, et l'objet n'a qu'UN chantier.
+	var av := ville.caisse_ke(0.0)
+	var reglages := {"places": true,
+		"arbres": Ville.PLANTATION_CANOPEE_MAX}
+	var total := ville.cout_commande_ke("r", 55, reglages, 0.0)
+	var r := ville.commander("r", 55, reglages, 0.0)
+	var chantier := ville.chantier("r", 55, 0.0)
+	print("  rue 55 · %d arbres + places : %.0f k€ annoncés, caisse %.0f → %.0f  %s"
+		% [ville.arbres_plantables(55) - ville.arbres_a(55,
+			ville.base("r", 55, "canopee")), total, av, ville.caisse_ke(0.0),
+		"✅" if absf(av - ville.caisse_ke(0.0) - total) < 0.01 else "❌"])
+	print("  un seul chantier · %s, encore %.1f mois  %s"
+		% [chantier["quoi"], chantier["reste_mois"],
+		"✅" if bool(chantier["actif"]) and (r["faits"] as Array).size() == 2
+			else "❌ %s" % str(r["faits"])])
+	_sur_reset()
+
+	# 🎚️ LE REPÈRE DE LEVEL DESIGN DE LA PLANTATION : ce que TOUTE la ville
+	# plantée coûterait et épargnerait. C'est ce rapport-là, et pas le prix d'une
+	# rue, qui dit si planter est une décision ou une décoration.
+	var fentes := 0
+	var t0 := 0
+	var plantables := 0
+	for f in ville.routes:
+		var tous := ville.arbres_plantables(f)
+		fentes += tous
+		t0 += ville.arbres_a(f, ville.base("r", f, "canopee"))
+		if tous > 0:
+			plantables += 1
+	var neufs := fentes - t0
+	var mwh := float(neufs) * Ville.PLANTATION_MWH_ARBRE_AN
+	var conso: float = ville.indicateurs(0.0)["conso_mwh"]
+	print("\nPLANTATION — le repère de level design")
+	print("  %d emplacements sur %d tronçons plantables, %d arbres en terre au mois 0"
+		% [fentes, plantables, t0])
+	print("  tout planter : %d arbres · %.0f k€ · %.0f mois"
+		% [neufs, float(neufs) * Ville.PLANTATION_PRIX_KE_ARBRE,
+		Ville.PLANTATION_MOIS])
+	print("  et cela épargnerait %.0f MWh/an sur %.0f — soit %.2f %% de la ville"
+		% [mwh, conso, 100.0 * mwh / maxf(conso, 1.0)])
+
 	# 🔧 LA BARRE DE CHANTIER ne se voit qu'en travaux : on en engage un et on se
 	# place à mi-parcours. La berge 6 met 6 mois à devenir un quai apaisé.
 	ville.transformer_berge(6, Ville.BERGE_APAISEE, 0.0)
@@ -997,41 +1058,30 @@ func _construire() -> void:
 	_par_reparation("ReparationVoirie", donnees["repare_voirie"], "r")
 	_par_places(donnees["places"])
 
-	var liste: Array = (donnees["arbres"] as Array).duplicate()
-
-	# 🌳 Les arbres d'alignement avaient disparu de l'écran avec D07 (66) alors
-	# qu'ils n'en dépendent pas : leur seuil se compare à `routes.canopee`, une
-	# donnée de départ. On n'affiche que ceux dont le seuil est atteint à t0.
-	var rts: Dictionary = donnees["objets"]["routes"]
+	# 🌳 Le semis des îlots de sol ne bouge pas : aucune décision ne plante DANS
+	# un îlot — un îlot bâti n'a pas de sol visible sous lui.
+	_arbres_semis = (donnees["arbres"] as Array).duplicate()
+	# Les emplacements d'alignement, avec le tronçon qui les porte et leur
+	# seuil : c'est cette liste-là que la plantation fait apparaître.
 	for f in (donnees["alignements"] as Dictionary):
-		var cano: float = float(rts[f]["canopee"]) if rts.has(f) else 0.0
 		for a in (donnees["alignements"][f] as Array):
-			if float(a[5]) <= cano:
-				# Un alignement est d'une seule essence, et feuillu : personne
-				# ne plante une haie d'épicéas en ville.
-				liste.append([a[0], a[1], a[2], a[3], a[4],
-					Constructeur.FEUILLU])
+			_arbres_slots.append([a[0], a[1], a[2], a[3], a[4], int(f),
+				float(a[5])])
 
-	if liste.size() > 0 and not _ignore("Arbres"):
-		var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
-		var brun := Donnees.teinte(donnees, "_tronc")
+	if not _ignore("Arbres"):
 		for essence in [Constructeur.FEUILLU, Constructeur.CONIFERE]:
-			# Variation de VALEUR sur la même teinte, pas une deuxième couleur
-			# dans la palette (Direction artistique l.67).
-			var t := vert if essence == Constructeur.FEUILLU \
-				else Color(vert.r * 0.70, vert.g * 0.80, vert.b * 0.76)
-			var mm := Constructeur.arbres(liste, essence, t, brun)
-			if mm.instance_count == 0:
-				continue
 			var mmi := MultiMeshInstance3D.new()
 			mmi.name = "Arbres%d" % essence
 			# ⚠️ PAS de `material_override` : il écraserait les deux surfaces
 			# de l'arbre et le tronc ressortirait vert.
-			mmi.multimesh = mm
 			monde.add_child(mmi)
+			_arbres_noeuds[essence] = mmi
+		_montrer_arbres()
+		for essence in _arbres_noeuds:
+			var mm: MultiMesh = (_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh
 			print("  arbres   %-8s %5d instances"
 				% ["conifère" if essence == Constructeur.CONIFERE
-					else "feuillu", mm.instance_count])
+					else "feuillu", 0 if mm == null else mm.instance_count])
 
 
 func _ignore(nom: String) -> bool:
@@ -1152,6 +1202,32 @@ func _montrer_reparations() -> void:
 			_corps(mi, fini)
 
 
+## 🌳 Un arbre planté sort de terre au rythme de la canopée de sa rue. Le
+## compte visible sert de signature : tant qu'il ne bouge pas, on ne refait
+## rien — et il ne bouge qu'aux mois où un seuil est franchi.
+func _montrer_arbres() -> void:
+	if _arbres_noeuds.is_empty():
+		return
+	var liste: Array = _arbres_semis.duplicate()
+	for a in _arbres_slots:
+		if float(a[6]) <= ville.valeur("r", int(a[5]), "canopee", mois):
+			# Un alignement est d'une seule essence, et feuillu : personne ne
+			# plante une haie d'épicéas en ville.
+			liste.append([a[0], a[1], a[2], a[3], a[4], Constructeur.FEUILLU])
+	if liste.size() == _arbres_compte:
+		return
+	_arbres_compte = liste.size()
+	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
+	var brun := Donnees.teinte(donnees, "_tronc")
+	for essence in _arbres_noeuds:
+		# Variation de VALEUR sur la même teinte, pas une deuxième couleur dans
+		# la palette (Direction artistique l.67).
+		var t := vert if essence == Constructeur.FEUILLU \
+			else Color(vert.r * 0.70, vert.g * 0.80, vert.b * 0.76)
+		(_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh = \
+			Constructeur.arbres(liste, essence, t, brun)
+
+
 func _dire(nom: String, m: ArrayMesh) -> void:
 	# Comme les scripts QGIS : un maillage vide ou hors cadre doit se voir dans
 	# la console, pas se deviner à l'écran.
@@ -1203,6 +1279,7 @@ func _rafraichir(force: bool) -> void:
 		return
 	_dernier_peint = mois
 	_montrer_reparations()
+	_montrer_arbres()
 	_peindre()
 	interface.maj(ville.indicateurs(mois), mois, vitesse)
 
@@ -1487,15 +1564,14 @@ func _disponible(couche: String, fid: int) -> bool:
 
 ## ✏️ LE CONTOUR DE SÉLECTION, en trois pièces.
 ##
-## ① une petite vue à part (`masque`) où l'îlot choisi est redessiné SEUL, en
+## ① une petite vue à part (`masque`) où l'objet choisi est redessiné SEUL, en
 ##   blanc plat sur du vide, avec la même caméra que l'image principale ;
 ## ② un rectangle plein écran (`rect_contour`) dont le shader allume les
 ##   pixels qui touchent le bord de ce masque — voir `Materiaux.contour` ;
 ## ③ la synchronisation de la caméra, faite à chaque image dans `_maj_contour`.
 ##
 ## ⚠️ La vue a SON PROPRE MONDE (`own_world_3d`) : ni ciel, ni lumière, ni
-## reste de la ville, donc un fond vraiment transparent. Le maillage n'est pas
-## copié — la même ressource, avec un matériau qui la peint en blanc.
+## reste de la ville, donc un fond vraiment transparent.
 ##
 ## 🔴 Calque à 0, sous l'interface (1) : un trait par-dessus les fiches se
 ## lirait comme un défaut d'affichage.
@@ -1542,8 +1618,8 @@ func _batir_contour() -> void:
 	calque.add_child(rect_contour)
 
 
-## Un îlot se détoure tel qu'il est rendu ; une RUE, non — seule exception du
-## fichier.
+## Un îlot se détoure tel qu'il est rendu ; les deux objets linéaires prennent
+## une emprise simple : le couloir pour une rue, la projection pour une berge.
 ##
 ## 🔴 Un tronçon n'est pas une surface : chaussée + mètres libres + un bout de
 ## trottoir par riverain, trois choses disjointes séparées de 2,6 m sur le
@@ -1554,6 +1630,11 @@ func _batir_contour() -> void:
 ## ⚠️ Pas rattrapable dans le shader : l'écart est en MÈTRES et le trait en
 ## PIXELS, donc un rebouchage tiendrait à un zoom et lâcherait au suivant.
 func _silhouette(couche: String, fid: int) -> Mesh:
+	if couche == "b":
+		if not _berges_contour.has(fid):
+			_berges_contour[fid] = _aplatir(
+				(noeuds[couche][fid] as MeshInstance3D).mesh)
+		return _berges_contour[fid]
 	if couche != "r":
 		return (noeuds[couche][fid] as MeshInstance3D).mesh
 	if _couloirs.has(fid):
@@ -1570,6 +1651,21 @@ func _silhouette(couche: String, fid: int) -> Mesh:
 	var m := Constructeur.couloir(c[1] as Array, float(c[0]), 0.0)
 	_couloirs[fid] = m
 	return m
+
+
+## Le mur et le parapet d'une berge se décalent à l'écran avec leur hauteur et
+## donnaient plusieurs traits. Leur projection au sol garde une seule emprise.
+func _aplatir(source: Mesh) -> ArrayMesh:
+	var resultat := ArrayMesh.new()
+	for surface in range(source.get_surface_count()):
+		var tableaux := source.surface_get_arrays(surface)
+		var sommets: PackedVector3Array = tableaux[Mesh.ARRAY_VERTEX]
+		for i in range(sommets.size()):
+			sommets[i].y = 0.0
+		tableaux[Mesh.ARRAY_VERTEX] = sommets
+		resultat.add_surface_from_arrays(
+			source.surface_get_primitive_type(surface), tableaux)
+	return resultat
 
 
 ## Posée à plat dans le masque À CÔTÉ de la silhouette rendue, elle ferme les
@@ -1644,7 +1740,6 @@ func _maj_contour() -> void:
 			Vector2(1.0 / maxf(float(taille.x), 1.0),
 			1.0 / maxf(float(taille.y), 1.0)))
 		rect_contour.material.set_shader_parameter("rayon", CONTOUR_PX)
-		rect_contour.material.set_shader_parameter("bouche", CONTOUR_BOUCHE_PX)
 
 	# LA caméra recopiée : c'est ça, et rien d'autre, qui fait que le trait
 	# épouse la vue.
@@ -1693,6 +1788,12 @@ func _maj_apercu() -> void:
 	# pas — sa miniature est un bout de ville, pas un échantillon.
 	if couche != "r" or trafic == null or apercu.ech_longueur <= 0.0:
 		return
+	# 🌳 Les arbres du morceau, à la MÊME densité au mètre que la rue réelle —
+	# la règle des places de stationnement, appliquée aux troncs. C'est ce qui
+	# fait que la miniature promet ce que la ville livrera.
+	var lg: float = maxf(float(ville.routes[fid].get("longueur_m", 0.0)), 1.0)
+	apercu.planter(int(roundf(float(ville.arbres_a(fid, float(d["arbres"])))
+		/ lg * apercu.ech_longueur)))
 	var signe := "%d %d %d %d" % [fid, int(d["places"]), int(d["roule"]),
 		int(mois * 4.0)]
 	if signe == _apercu_voitures:
@@ -1744,54 +1845,38 @@ func _sur_choix(couche: String, fid: int) -> void:
 	_dernier_peint = -1.0
 
 
-func _sur_solaire(fid: int, part: float) -> void:
-	if not ville.lancer_solaire(fid, part, mois):
+## 🔴 LE SEUL GESTE DE DÉCISION DU JEU. La fiche a laissé poser des réglages,
+## la miniature a montré l'avant et l'après ; ici on engage tout d'un coup. Le
+## noyau vérifie la caisse UNE FOIS et dit non une fois — c'est lui qui refuse,
+## jamais l'interface.
+##
+## 🔧 La géométrie neuve, elle, n'apparaît qu'à la FIN du chantier : c'est
+## `_montrer_reparations` qui la découvre, au fil du temps. Même règle pour la
+## berge, dont la teinte porte les trois crans, et pour les arbres, qui sortent
+## de terre au rythme de la canopée.
+func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
+	var r := ville.commander(couche, fid, reglages, mois)
+	if not bool(r["ok"]):
+		print("%s %d · refusé : %.0f k€ demandés, il manque %.0f k€"
+			% [_nom_couche(couche), fid, r["cout_ke"], r["manque"]])
 		return
-	var etat := ville.etat_solaire(fid, mois)
-	print("îlot %d · panneaux solaires → %.0f %% en %.1f mois · %.0f k€ · caisse %.0f k€"
-		% [fid, part * 100.0, etat["reste_mois"], etat["cout_ke"], ville.caisse_ke(mois)])
-	interface.confirmer_solaire(float(etat["cout_ke"]))
-	_dernier_peint = -1.0
-	_rafraichir(true)
-
-
-## 🔧 LES TROIS RÉPARATIONS PASSENT PAR ICI. Le noyau dit oui ou non ; la
-## géométrie neuve, elle, n'apparaîtra qu'à la FIN du chantier — c'est
-## `_montrer_reparations` qui la découvre, au fil du temps.
-func _sur_reparation(couche: String, fid: int) -> void:
-	var cout := ville.cout_reparation_ke(couche, fid)
-	if not ville.reparer(couche, fid, mois):
-		return
-	print("%s %d · réparation engagée : %.0f k€ · %.0f mois · caisse %.0f k€"
-		% ["îlot" if couche == "i" else "rue", fid, cout,
-		ville.duree_reparation_mois(couche, fid), ville.caisse_ke(mois)])
-	_dernier_peint = -1.0
-	_rafraichir(true)
-
-
-## 🌊 La berge change d'état ; sa géométrie, elle, ne bouge pas encore — c'est
-## la teinte qui porte les trois crans. Le jour où le mur se démolira pour de
-## bon, c'est ici que le maillage neuf se découvrira, comme les réparations.
-func _sur_berge(fid: int, cible: int) -> void:
-	var cout := ville.cout_berge_ke(fid, cible, mois)
-	if not ville.transformer_berge(fid, cible, mois):
-		return
-	print("berge %d · %s engagé : %.0f k€ · %.0f mois · caisse %.0f k€"
-		% [fid, Ville.BERGE_NOMS[cible], cout,
-		ville.berge_reste_mois(fid, mois), ville.caisse_ke(mois)])
-	_dernier_peint = -1.0
-	_rafraichir(true)
-
-
-func _sur_trafic(action: String, fid: int) -> void:
-	if action == "stationnement":
-		if ville.supprimer_stationnement(fid, mois):
-			print("rue %d · suppression du stationnement engagée · 2 mois" % fid)
-	elif action == "axe":
+	# ⚠️ Le report de trafic vit dans `trafic.gd`, qui touche des nœuds : le
+	# noyau le renvoie au lieu de l'appliquer.
+	if bool(r["axe"]):
 		trafic.retirer_axe(fid, mois)
-		print("rue %d · voiture retirée immédiatement, report sur 6 mois" % fid)
+	print("%s %d · %s engagé%s : %.0f k€ · %.0f mois · caisse %.0f k€"
+		% [_nom_couche(couche), fid, ", ".join(PackedStringArray(r["faits"]))
+			+ (", axe fermé" if bool(r["axe"]) else ""),
+		"s" if (r["faits"] as Array).size() + int(bool(r["axe"])) > 1 else "",
+		r["cout_ke"], ville.duree_commande_mois(couche, fid, reglages, mois),
+		ville.caisse_ke(mois)])
+	interface.confirmer_solaire(float(r["cout_ke"]))
 	_dernier_peint = -1.0
 	_rafraichir(true)
+
+
+static func _nom_couche(couche: String) -> String:
+	return {"i": "îlot", "r": "rue", "b": "berge"}.get(couche, couche)
 
 
 ## La pause est volontaire : sans elle, un retour demandé en ×12 recommence à

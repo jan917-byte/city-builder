@@ -310,13 +310,8 @@ static func masque() -> StandardMaterial3D:
 ## ancien ils le cachaient. Il faut la silhouette, donc la vue.
 ##
 ## Le trait est là où le masque est VIDE mais avec du masque à moins de `rayon`
-## pixels : il épouse la silhouette sous tout angle, ne recouvre jamais l'objet,
-## et son épaisseur est en PIXELS, donc constante au zoom.
-##
-## 🔴 `bouche` EST CE QUI FAIT QU'UN TRONÇON EST UN SEUL BLOC : une rue est
-## chaussée + trottoirs à 10 cm + un morceau par îlot riverain, et sans dilater
-## le masque le trait entoure chacun de ces morceaux (tronçon 120, 2026-08-18).
-## Prix payé : un jeu de `bouche` pixels entre l'objet et son trait.
+## pixels : il épouse la silhouette sous tout angle, touche l'objet sans le
+## recouvrir, et son épaisseur est en PIXELS, donc constante au zoom.
 ##
 ## 16 directions × 5 distances : une rue faisant quelques pixels de large, un
 ## sondage à la seule distance maximale la manquerait et troue le trait.
@@ -327,28 +322,22 @@ static func contour(masque_tex: Texture2D, couleur: Color) -> ShaderMaterial:
 		+ "uniform sampler2D masque : filter_linear, repeat_disable;\n" \
 		+ "uniform vec2 pas = vec2(0.001);\n" \
 		+ "uniform float rayon = 3.0;\n" \
-		+ "uniform float bouche = 2.0;\n" \
 		+ "uniform vec4 couleur : source_color = vec4(1.0);\n" \
 		+ "const int DIRS = 16;\n" \
 		+ "const int PALIERS = 5;\n" \
 		+ "void fragment() {\n" \
 		+ "  float au_centre = texture(masque, UV).a;\n" \
-		+ "  float dedans = au_centre;\n" \
 		+ "  float autour = au_centre;\n" \
-		+ "  float loin = bouche + rayon;\n" \
 		+ "  for (int k = 0; k < DIRS; k++) {\n" \
 		+ "    float a = float(k) * 6.2831853 / float(DIRS);\n" \
 		+ "    vec2 u = vec2(cos(a), sin(a)) * pas;\n" \
 		+ "    for (int j = 1; j <= PALIERS; j++) {\n" \
-		+ "      float d = loin * float(j) / float(PALIERS);\n" \
+		+ "      float d = rayon * float(j) / float(PALIERS);\n" \
 		+ "      float m = texture(masque, UV + u * d).a;\n" \
 		+ "      autour = max(autour, m);\n" \
-		+ "      if (d <= bouche) { dedans = max(dedans, m); }\n" \
 		+ "    }\n" \
 		+ "  }\n" \
-		+ "  // Un pixel a\u0300 peine couvert compte comme PLEIN : sinon la couture\n" \
-		+ "  // asphalte/trottoir rallume le trait au milieu de la rue.\n" \
-		+ "  float bord = smoothstep(0.0, 0.30, autour) - smoothstep(0.0, 0.30, dedans);\n" \
+		+ "  float bord = smoothstep(0.0, 0.30, autour) - smoothstep(0.0, 0.30, au_centre);\n" \
 		+ "  COLOR = vec4(couleur.rgb, clamp(bord, 0.0, 1.0) * couleur.a);\n" \
 		+ "}\n"
 	var m := ShaderMaterial.new()
