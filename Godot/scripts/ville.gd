@@ -403,6 +403,7 @@ static func avancement(t: float, d: float, L: float, M: float) -> float:
 
 func ajouter_rampe(couche: String, fid: int, champ: String, ecart: float,
 		d: float, L: float, M: float) -> void:
+	_vert_ha_mois = INF
 	if not _rampes[couche].has(fid):
 		_rampes[couche][fid] = []
 	_rampes[couche][fid].append({
@@ -411,6 +412,7 @@ func ajouter_rampe(couche: String, fid: int, champ: String, ecart: float,
 
 
 func vider_rampes() -> void:
+	_vert_ha_mois = INF
 	_rampes = {"i": {}, "r": {}}
 
 
@@ -634,6 +636,7 @@ func lancer_vert(fid: int, part: float, t: float) -> bool:
 	var duree := duree_vert_mois(actuelle, cible)
 	ajouter_rampe("i", fid, "part_toit_vert", cible - actuelle, t, 0.0, duree)
 	_vert[fid] = {"debut": t, "duree": duree, "cible": cible, "cout_ke": cout}
+	_vert_ha_mois = INF
 	_depense_ke += cout
 	return true
 
@@ -657,14 +660,26 @@ func etat_vert(fid: int, t: float) -> Dictionary:
 	}
 
 
+## La somme de ville du dernier mois demandé. `degats()` la redemandait une fois
+## PAR ÎLOT — 71 × 71 passages par image, 5,2 ms. La clé est le mois AU BIT PRÈS
+## et non « à peu près » : dans une image tous les appels partagent le même mois,
+## d'une image à l'autre il change, et toute décision qui verdit remet INF.
+var _vert_ha_mois := INF
+var _vert_ha := 0.0
+
+
 ## 🌿 EN HECTARES VERDIS DANS TOUTE LA VILLE — le seul terme de la crue qui ne
 ## vienne pas du fleuve. La pluie retenue sur un toit du plateau soulage l'Ilse
 ## autant que celle d'un toit de berge : ici, aucun bief.
 func toit_vert_ha(t: float) -> float:
+	if t == _vert_ha_mois:
+		return _vert_ha
 	var m2 := 0.0
 	for fid in fids_batis():
 		m2 += Energie.toit_vert_m2(self, fid, t)
-	return m2 / 10000.0
+	_vert_ha_mois = t
+	_vert_ha = m2 / 10000.0
+	return _vert_ha
 
 
 ## En mètres de crue annoncée en moins, partout. Sur ce qui est LIVRÉ :
@@ -861,6 +876,7 @@ func reparer(couche: String, fid: int, t: float) -> bool:
 		if neuf > 0.0:
 			_toit_avant[fid] = ilots[fid].get("toit_m2", 0.0)
 			ilots[fid]["toit_m2"] = neuf
+			_vert_ha_mois = INF
 	return true
 
 

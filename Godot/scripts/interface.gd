@@ -17,12 +17,15 @@ signal commande_demandee(couche: String, fid: int, reglages: Dictionary)
 const Ville := preload("res://scripts/ville.gd")
 const Apercu := preload("res://scripts/apercu.gd")
 
-const FOND := Color8(239, 234, 216, 247)
-const FOND_FORT := Color8(229, 222, 199, 250)
-const BORD := Color8(104, 96, 72, 155)
-const TEXTE := Color8(31, 57, 65)
-const GRIS := Color8(96, 96, 82)
-const ACCENT := Color8(132, 112, 53)
+const FOND := Color8(247, 243, 231, 252)
+const FOND_FORT := Color8(232, 224, 200, 255)
+const BORD := Color8(118, 108, 80, 90)
+const TEXTE := Color8(38, 44, 40)
+const GRIS := Color8(112, 108, 92)
+const ACCENT := Color8(146, 106, 30)
+## Le jaune des bandeaux, des filets et du bouton qui engage : c'est lui qui
+## fait « jeu » plutôt que « document ». Jamais sous du texte long.
+const ACCENT_VIF := Color8(226, 168, 44)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
 const ALERTE := Color8(194, 74, 53)
@@ -147,7 +150,6 @@ var _calque_note: Label
 var _entetes := {}
 ## Rouvrir le diagnostic doit rendre le thème qu'on regardait, pas le premier
 ## de la liste : sinon comparer deux mois coûte deux clics au lieu d'un.
-var _dernier_theme := "dangers"
 var _chantiers_valeurs := {}
 var _chantiers_lignes := []
 var _fiche_panneau: PanelContainer
@@ -194,10 +196,14 @@ var _arbres_choix := -1.0
 # déplacerait la valeur et émettrait le signal, donc inventerait un choix.
 var _ecrit_curseur := false
 var _theme_ui: Theme
+var _fonte_capitale: FontVariation
 var _icones := {}
 
 
 func batir() -> void:
+	_fonte_capitale = FontVariation.new()
+	_fonte_capitale.base_font = ThemeDB.fallback_font
+	_fonte_capitale.spacing_glyph = 1
 	_theme_ui = _creer_theme()
 	_panneau_ville()
 	_panneau_ilot()
@@ -226,27 +232,37 @@ func _boite() -> StyleBoxFlat:
 	sb.bg_color = FOND
 	sb.border_color = BORD
 	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(9)
-	sb.set_content_margin_all(12)
-	sb.shadow_color = Color(0.10, 0.11, 0.09, 0.18)
-	sb.shadow_size = 3
+	sb.set_corner_radius_all(14)
+	sb.set_content_margin_all(13)
+	# L'ombre portée est ce qui décolle le panneau de la ville : à 3 px elle
+	# n'existait pas, et tout avait l'air imprimé sur la carte.
+	sb.shadow_color = Color(0.14, 0.12, 0.07, 0.30)
+	sb.shadow_size = 11
+	sb.shadow_offset = Vector2(0, 4)
 	return sb
 
 
 func _creer_theme() -> Theme:
 	var t := Theme.new()
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color8(248, 244, 229, 210)
+	normal.bg_color = Color8(252, 249, 238, 235)
 	normal.border_color = BORD
 	normal.set_border_width_all(1)
-	normal.set_corner_radius_all(5)
-	normal.set_content_margin_all(7)
+	normal.set_corner_radius_all(9)
+	normal.set_content_margin_all(9)
+	normal.content_margin_left = 12
+	normal.content_margin_right = 12
 	var survol := normal.duplicate()
-	survol.bg_color = Color8(224, 215, 185, 245)
+	survol.bg_color = Color8(246, 231, 190, 255)
+	survol.border_color = Color(ACCENT_VIF, 0.85)
+	# 🔧 Un bouton ENFONCÉ est jaune, pas noir : c'est l'état actif de la barre
+	# du bas, et il doit se lire du coin de l'œil sans relire le mot.
 	var presse := normal.duplicate()
-	presse.bg_color = TEXTE
+	presse.bg_color = ACCENT_VIF
+	presse.border_color = Color8(178, 126, 26)
 	var inactif := normal.duplicate()
-	inactif.bg_color = Color8(218, 214, 198, 170)
+	inactif.bg_color = Color8(226, 221, 205, 150)
+	inactif.border_color = Color(BORD, 0.45)
 	t.set_stylebox("normal", "Button", normal)
 	t.set_stylebox("hover", "Button", survol)
 	t.set_stylebox("pressed", "Button", presse)
@@ -255,10 +271,11 @@ func _creer_theme() -> Theme:
 	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
 	t.set_color("font_color", "Button", TEXTE)
 	t.set_color("font_hover_color", "Button", TEXTE)
-	t.set_color("font_pressed_color", "Button", FOND)
+	t.set_color("font_pressed_color", "Button", Color8(52, 38, 8))
 	t.set_color("font_disabled_color", "Button", GRIS.lightened(0.15))
 	t.set_font_size("font_size", "Button", 14)
-	t.set_constant("icon_max_width", "Button", 25)
+	t.set_constant("h_separation", "Button", 8)
+	t.set_constant("icon_max_width", "Button", 30)
 	var ligne := StyleBoxFlat.new()
 	ligne.bg_color = Color(0, 0, 0, 0)
 	ligne.border_color = Color(BORD, 0.72)
@@ -269,8 +286,49 @@ func _creer_theme() -> Theme:
 	return t
 
 
-func _icone(nom: String, taille := 25) -> Texture2D:
-	var cle := "%s_%d" % [nom, taille]
+## Les petits titres sont en capitales espacées : c'est le seul écart de
+## typographie du prototype, et il suffit à séparer une étiquette d'un mot de
+## phrase. `FontVariation` est la seule façon d'espacer un glyphe dans Godot.
+func _capitale(txt: String, taille: int, coul: Color) -> Label:
+	var l := _label(txt.to_upper(), taille, coul)
+	l.add_theme_font_override("font", _fonte_capitale)
+	return l
+
+
+## Le bandeau qui coiffe un panneau : barre jaune à gauche, titre en capitales.
+func _bandeau(parent: Control, txt: String) -> Label:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = FOND_FORT
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(7)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.border_width_left = 4
+	sb.border_color = ACCENT_VIF
+	p.add_theme_stylebox_override("panel", sb)
+	parent.add_child(p)
+	var l := _capitale(txt, 13, ACCENT)
+	p.add_child(l)
+	return l
+
+
+## Le titre d'un bloc DANS la fiche : un filet jaune, puis le mot. Plus léger
+## qu'un bandeau, qui coifferait un panneau entier.
+func _titre_section(parent: Control, txt: String) -> void:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 7)
+	var filet := ColorRect.new()
+	filet.color = ACCENT_VIF
+	filet.custom_minimum_size = Vector2(3, 13)
+	filet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(filet)
+	h.add_child(_capitale(txt, 11, ACCENT))
+	parent.add_child(h)
+
+
+func _icone(nom: String, taille := 25, coul := TEXTE) -> Texture2D:
+	var cle := "%s_%d_%s" % [nom, taille, coul.to_html(false)]
 	if _icones.has(cle):
 		return _icones[cle]
 	var dessins := {
@@ -291,7 +349,7 @@ func _icone(nom: String, taille := 25) -> Texture2D:
 		"retour": "<path d='M9 7l-5 5 5 5M5 12h9a6 6 0 016 6'/>",
 	}
 	var corps: String = dessins.get(nom, dessins["diagnostic"])
-	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [TEXTE.to_html(false), corps]
+	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='2.0' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [coul.to_html(false), corps]
 	var img := Image.new()
 	var erreur := img.load_svg_from_string(svg, float(taille) / 24.0)
 	if erreur != OK:
@@ -301,17 +359,18 @@ func _icone(nom: String, taille := 25) -> Texture2D:
 	return texture
 
 
-func _tuile(parent: HBoxContainer, icone: String, titre: String, largeur: float) -> VBoxContainer:
+func _tuile(parent: HBoxContainer, icone: String, titre: String, largeur: float,
+		teinte := ACCENT) -> VBoxContainer:
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
 	p.add_theme_stylebox_override("panel", _boite())
-	p.custom_minimum_size = Vector2(largeur, 64)
+	p.custom_minimum_size = Vector2(largeur, 66)
 	parent.add_child(p)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
 	p.add_child(h)
 	var pic := TextureRect.new()
-	pic.texture = _icone(icone, 27)
+	pic.texture = _icone(icone, 27, teinte)
 	pic.custom_minimum_size = Vector2(27, 27)
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -323,7 +382,7 @@ func _tuile(parent: HBoxContainer, icone: String, titre: String, largeur: float)
 	h.add_child(v)
 	# Un titre vide = pas de ligne : la tuile de la ville porte son nom, pas son genre.
 	if titre != "":
-		v.add_child(_label(titre, 10, GRIS))
+		v.add_child(_capitale(titre, 10, GRIS))
 	return v
 
 
@@ -382,41 +441,33 @@ func _panneau_ville() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	var ville_tuile := _tuile(h, "ville", "", 150)
-	ville_tuile.add_child(_label("Wehrau", 18, TEXTE))
+	var ville_tuile := _tuile(h, "ville", "", 150, ACCENT)
+	ville_tuile.add_child(_label("Wehrau", 19, TEXTE))
 
-	var diag_cadre := PanelContainer.new()
-	diag_cadre.theme = _theme_ui
-	diag_cadre.add_theme_stylebox_override("panel", _boite())
-	diag_cadre.custom_minimum_size = Vector2(145, 64)
-	h.add_child(diag_cadre)
-	var diag := Button.new()
-	diag.text = "Diagnostic"
-	diag.icon = _icone("diagnostic", 27)
-	diag.tooltip_text = "Dangers, chantiers, énergie, trafic et tissu."
-	diag.pressed.connect(func() -> void: theme_demande.emit(_dernier_theme))
-	diag_cadre.add_child(diag)
-
-	var adaptation_parent := _tuile(h, "adaptation", "Adaptation", 150)
+	var adaptation_parent := _tuile(h, "adaptation", "Adaptation", 155,
+		Color8(46, 122, 146))
 	var adaptation := _jauge_climat(adaptation_parent, Color8(55, 133, 157))
 	_adaptation_jauge = adaptation["jauge"]
 	_adaptation_valeur = adaptation["valeur"]
 	_adaptation_etat = adaptation["etat"]
-	var reduction_parent := _tuile(h, "reduction", "Réduction", 145)
+	var reduction_parent := _tuile(h, "reduction", "Réduction", 150,
+		Color8(88, 128, 60))
 	var reduction := _jauge_climat(reduction_parent, Color8(104, 136, 73))
 	_reduction_jauge = reduction["jauge"]
 	_reduction_valeur = reduction["valeur"]
 	_reduction_etat = reduction["etat"]
 
+	# 🔧 UNE TEINTE PAR COMPTEUR, et c'est ce qui distingue un tableau de bord
+	# de jeu d'un tableau : on retrouve la caisse à la couleur, pas au mot.
 	for ligne in [
-		["conso", "conso", "Conso.", 125.0],
-		["production", "production", "Solaire", 125.0],
-		["achat", "achat", "Achat", 125.0],
-		["co2", "co2", "CO₂", 105.0],
-		["caisse", "caisse", "Caisse", 125.0],
+		["conso", "conso", "Conso.", 128.0, Color8(198, 126, 32)],
+		["production", "production", "Solaire", 128.0, Color8(214, 158, 44)],
+		["achat", "achat", "Achat", 128.0, Color8(122, 112, 96)],
+		["co2", "co2", "CO₂", 110.0, Color8(104, 116, 108)],
+		["caisse", "caisse", "Caisse", 128.0, Color8(78, 121, 67)],
 	]:
-		var tuile := _tuile(h, ligne[1], ligne[2], ligne[3])
-		var valeur := _label("—", 15, TEXTE)
+		var tuile := _tuile(h, ligne[1], ligne[2], ligne[3], ligne[4])
+		var valeur := _label("—", 17, TEXTE)
 		tuile.add_child(valeur)
 		_ville_valeurs[ligne[0]] = valeur
 	# La recette reste le petit écart de la caisse, comme dans la référence.
@@ -433,7 +484,7 @@ func _panneau_ville() -> void:
 	triche.text = "Essai\n+1 000 k€"
 	triche.theme = _theme_ui
 	triche.focus_mode = Control.FOCUS_NONE
-	triche.custom_minimum_size = Vector2(92, 64)
+	triche.custom_minimum_size = Vector2(92, 66)
 	triche.add_theme_font_size_override("font_size", 11)
 	triche.tooltip_text = "Outil d'essai : remplit la caisse, hors règles du jeu."
 	triche.pressed.connect(func() -> void:
@@ -464,45 +515,57 @@ func _jauge_climat(parent: VBoxContainer, couleur: Color) -> Dictionary:
 # l'écran en même temps. Le thème choisi commande le panneau du haut.
 
 
+## 🔄 LE MENU EST DEVENU LA BARRE D'OUTILS DU BAS (2026-09-01), et il ne se
+## cache plus : une liste qui n'existait qu'une fois le diagnostic ouvert
+## demandait de savoir qu'il fallait l'ouvrir. « Ville » y est le premier
+## bouton, dans le même groupe — donc la vue courante s'y voit toujours.
 func _panneau_menu() -> void:
 	_menu_panneau = PanelContainer.new()
 	_menu_panneau.theme = _theme_ui
 	_menu_panneau.add_theme_stylebox_override("panel", _boite())
-	_menu_panneau.offset_left = 16
-	_menu_panneau.offset_top = 92
-	_menu_panneau.custom_minimum_size = Vector2(218, 0)
-	_menu_panneau.visible = false
+	_menu_panneau.anchor_left = 0.5
+	_menu_panneau.anchor_right = 0.5
+	_menu_panneau.anchor_top = 1.0
+	_menu_panneau.anchor_bottom = 1.0
+	_menu_panneau.offset_top = -104
+	_menu_panneau.offset_bottom = -16
+	_menu_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_menu_panneau.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(_menu_panneau)
 
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
-	_menu_panneau.add_child(v)
-	v.add_child(_label("Vues", 12, ACCENT))
-	# ⚠️ `allow_unpress` à false : sans lui, recliquer le thème actif l'éteint
-	# À L'ÉCRAN alors que la ville reste peinte — le menu mentirait.
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	_menu_panneau.add_child(h)
+	# ⚠️ `allow_unpress` à false : sans lui, recliquer la vue active l'éteint
+	# À L'ÉCRAN alors que la ville reste peinte — la barre mentirait.
 	var groupe := ButtonGroup.new()
 	groupe.allow_unpress = false
+	var vues := [["", "retour", "Ville",
+		"Retrouver la matière, les arbres et les voitures."]]
 	for t in themes:
-		var b := Button.new()
 		var id := str(t["id"])
-		b.text = {"dangers": "Dangers", "chantiers": "Chantiers",
+		vues.append([id, id, {"dangers": "Dangers", "chantiers": "Chantiers",
 			"energie": "Énergie", "trafic": "Trafic", "tissu": "Tissu"}.get(
-			id, str(t["nom"]))
-		b.icon = _icone(id, 27)
+			id, str(t["nom"])), str(t.get("resume", ""))])
+	for vue in vues:
+		var id: String = vue[0]
+		var b := Button.new()
+		b.text = vue[2]
+		b.icon = _icone(vue[1], 28)
+		# L'icône AU-DESSUS du mot : c'est ce qui fait la tuile carrée d'une
+		# barre d'outils plutôt qu'une ligne de menu.
+		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.expand_icon = false
+		b.custom_minimum_size = Vector2(78, 62)
+		b.add_theme_font_size_override("font_size", 12)
 		b.toggle_mode = true
 		b.button_group = groupe
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.tooltip_text = str(t.get("resume", ""))
+		b.tooltip_text = vue[3]
 		b.pressed.connect(func() -> void: theme_demande.emit(id))
-		v.add_child(b)
+		h.add_child(b)
 		_menu_boutons[id] = b
-	v.add_child(HSeparator.new())
-	var retour := Button.new()
-	retour.text = "Ville"
-	retour.icon = _icone("retour", 25)
-	retour.tooltip_text = "Retrouver la matière, les arbres et les voitures."
-	retour.pressed.connect(func() -> void: theme_demande.emit(""))
-	v.add_child(retour)
+	(_menu_boutons[""] as Button).set_pressed_no_signal(true)
 
 
 ## Le panneau des thèmes CONTINUS — énergie, trafic — et du tissu. Un thème
@@ -544,15 +607,14 @@ func _panneau_calque() -> void:
 
 
 func _entete(parent: VBoxContainer) -> Array:
-	var titre := _label("", 12, ACCENT)
-	parent.add_child(titre)
+	var titre := _bandeau(parent, "")
 	var resume := _label("", 18, TEXTE)
 	parent.add_child(resume)
 	return [titre, resume]
 
 
 func _ecrire_entete(e: Array, t: Dictionary) -> void:
-	(e[0] as Label).text = str(t["nom"])
+	(e[0] as Label).text = str(t["nom"]).to_upper()
 	(e[1] as Label).text = str(t.get("resume", ""))
 
 
@@ -576,11 +638,8 @@ func _texture_rampe() -> Texture2D:
 ## L'unique entrée de la deuxième vue : `maquette` dit quel thème, l'interface
 ## en tire tout le reste. `id` vide = la ville vivante.
 func montrer_theme(id: String, t: Dictionary) -> void:
-	if id != "":
-		_dernier_theme = id
 	var genre := str(t.get("genre", ""))
 	_ville_panneau.visible = true
-	_menu_panneau.visible = id != ""
 	for cle in _menu_boutons:
 		(_menu_boutons[cle] as Button).set_pressed_no_signal(cle == id)
 	_diagnostic_panneau.visible = genre == "crue"
@@ -649,9 +708,12 @@ func _panneau_diagnostic() -> void:
 func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
-	var carre := ColorRect.new()
-	carre.color = couleur
-	carre.custom_minimum_size = Vector2(12, 12)
+	var carre := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = couleur
+	sb.set_corner_radius_all(4)
+	carre.add_theme_stylebox_override("panel", sb)
+	carre.custom_minimum_size = Vector2(15, 15)
 	carre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(carre)
 	h.add_child(_label(texte, 12, TEXTE))
@@ -774,8 +836,7 @@ func _panneau_ilot() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	p.add_child(v)
-	_fiche_titre = _label("Sélection", 20, TEXTE)
-	v.add_child(_fiche_titre)
+	_fiche_titre = _bandeau(v, "Sélection")
 
 	# 🔎 AVANT / APRÈS (2026-08-31). La miniature est la seule image où les deux
 	# états d'un même objet peuvent se comparer : la ville, elle, ne peut montrer
@@ -944,7 +1005,7 @@ func _panneau_ilot() -> void:
 	_repare_bloc.visible = false
 	v.add_child(_repare_bloc)
 	_repare_bloc.add_child(HSeparator.new())
-	_repare_bloc.add_child(_label("Crue", 12, ACCENT))
+	_titre_section(_repare_bloc, "Crue")
 	_repare_texte = _label("", 12, TEXTE)
 	_repare_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_repare_bloc.add_child(_repare_texte)
@@ -957,7 +1018,7 @@ func _panneau_ilot() -> void:
 	_trafic_bloc.visible = false
 	v.add_child(_trafic_bloc)
 	_trafic_bloc.add_child(HSeparator.new())
-	_trafic_bloc.add_child(_label("Voitures", 12, ACCENT))
+	_titre_section(_trafic_bloc, "Voitures")
 	_trafic_stationnement = Button.new()
 	_trafic_stationnement.text = "Retirer les places"
 	_trafic_stationnement.icon = _icone("trafic", 22)
@@ -977,7 +1038,7 @@ func _panneau_ilot() -> void:
 	_arbres_bloc.visible = false
 	v.add_child(_arbres_bloc)
 	_arbres_bloc.add_child(HSeparator.new())
-	_arbres_bloc.add_child(_label("Arbres", 12, ACCENT))
+	_titre_section(_arbres_bloc, "Arbres")
 	_arbres_valeur = _label("", 13, TEXTE)
 	_arbres_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_arbres_bloc.add_child(_arbres_valeur)
@@ -1002,7 +1063,7 @@ func _panneau_ilot() -> void:
 	_solaire_bloc.visible = false
 	v.add_child(_solaire_bloc)
 	_solaire_bloc.add_child(HSeparator.new())
-	_solaire_bloc.add_child(_label("Solaire", 12, ACCENT))
+	_titre_section(_solaire_bloc, "Solaire")
 	_solaire_valeur = _label("", 13, TEXTE)
 	_solaire_bloc.add_child(_solaire_valeur)
 
@@ -1035,7 +1096,7 @@ func _panneau_ilot() -> void:
 	_vert_bloc.visible = false
 	v.add_child(_vert_bloc)
 	_vert_bloc.add_child(HSeparator.new())
-	_vert_bloc.add_child(_label("Toits verts", 12, ACCENT))
+	_titre_section(_vert_bloc, "Toits verts")
 	_vert_valeur = _label("", 13, TEXTE)
 	_vert_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_vert_bloc.add_child(_vert_valeur)
@@ -1070,6 +1131,7 @@ func _panneau_ilot() -> void:
 	_recap_bloc.add_child(_recap_texte)
 	_recap_bouton = Button.new()
 	_recap_bouton.text = "Mettre en place"
+	_habiller_principal(_recap_bouton)
 	_recap_bouton.pressed.connect(_mettre_en_place)
 	_recap_bloc.add_child(_recap_bouton)
 
@@ -1084,6 +1146,28 @@ const AZIMUTS := ["du sud", "du sud-est", "de l'est", "du nord-est",
 	"du nord", "du nord-ouest", "de l'ouest", "du sud-ouest"]
 
 
+## LE bouton du jeu, et il se voit : jaune plein, texte sombre, pleine largeur.
+## Les autres boutons sont du papier ; celui-là engage la caisse.
+func _habiller_principal(b: Button) -> void:
+	var plein := StyleBoxFlat.new()
+	plein.bg_color = ACCENT_VIF
+	plein.border_color = Color8(178, 126, 26)
+	plein.set_border_width_all(1)
+	plein.set_corner_radius_all(9)
+	plein.set_content_margin_all(11)
+	var survol := plein.duplicate()
+	survol.bg_color = Color8(240, 186, 66)
+	var presse := plein.duplicate()
+	presse.bg_color = Color8(198, 142, 30)
+	b.add_theme_stylebox_override("normal", plein)
+	b.add_theme_stylebox_override("hover", survol)
+	b.add_theme_stylebox_override("pressed", presse)
+	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_color_override("font_color", Color8(52, 38, 8))
+	b.add_theme_color_override("font_hover_color", Color8(52, 38, 8))
+	b.add_theme_color_override("font_pressed_color", Color8(52, 38, 8))
+
+
 func _panneau_camera() -> void:
 	# Les gestes de caméra ne se devinent pas, et un jeu qui oblige à ouvrir un
 	# fichier pour les connaître n'en est pas un.
@@ -1093,7 +1177,8 @@ func _panneau_camera() -> void:
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
 	p.offset_left = 16
-	p.offset_bottom = -16
+	# Au-dessus de la barre du temps, qui tient le coin depuis le 2026-09-01.
+	p.offset_bottom = -88
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
 
@@ -1121,29 +1206,29 @@ func _controles_temps() -> void:
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
 	p.add_theme_stylebox_override("panel", _boite())
-	p.anchor_left = 0.5
-	p.anchor_right = 0.5
+	# 🔄 AU COIN BAS-GAUCHE depuis le 2026-09-01 : le centre du bas est pris
+	# par la barre des vues.
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
-	# 430 de large : le contenu occupe 409 px marges comprises, mesuré sur
-	# `wehrau_essai_reset.png` après l'ajout du bouton de retour à zéro.
-	p.offset_left = -195
-	p.offset_right = 195
-	p.offset_top = -66
+	p.offset_left = 16
+	p.offset_right = 412
+	p.offset_top = -72
 	p.offset_bottom = -16
-	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
 
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	_temps_label = _label("Mois 0", 13, TEXTE)
-	_temps_label.custom_minimum_size.x = 82
+	_temps_label = _capitale("Mois 0", 13, TEXTE)
+	_temps_label.custom_minimum_size.x = 86
+	_temps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(_temps_label)
 	for choix in [["Ⅱ", 0.0], ["▶", 1.0], ["×4", 4.0], ["×12", 12.0]]:
 		var b := Button.new()
 		b.text = choix[0]
+		b.custom_minimum_size = Vector2(52, 40)
+		b.add_theme_font_size_override("font_size", 15)
 		var v: float = choix[1]
 		b.pressed.connect(_demander_vitesse.bind(v))
 		h.add_child(b)
@@ -1154,6 +1239,7 @@ func _controles_temps() -> void:
 	# sous un compteur à « Mois 0 ».
 	var raz := Button.new()
 	raz.text = "↺"
+	raz.custom_minimum_size = Vector2(46, 40)
 	raz.tooltip_text = "Remet le temps au mois 0 et annule les poses décidées."
 	raz.pressed.connect(func() -> void: temps_remis.emit())
 	h.add_child(raz)
@@ -1179,7 +1265,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_ville_valeurs["caisse"].text = _milliers(_caisse_ke) + " k€"
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
 	_maj_durabilite(indic)
-	_temps_label.text = "Mois %s" % _nb(mois, 1)
+	_temps_label.text = "MOIS %s" % _nb(mois, 1)
 	maj_degats(ville.degats(mois))
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
@@ -1247,7 +1333,7 @@ func _maj_fiche() -> void:
 	var o: Dictionary = ville.ilots.get(_fiche_fid, {})
 	if o.is_empty():
 		return
-	_fiche_titre.text = "Îlot %d" % _fiche_fid
+	_fiche_titre.text = ("Îlot %d" % _fiche_fid).to_upper()
 	_maj_reparation(o)
 
 	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _mois)
@@ -1743,7 +1829,7 @@ func _maj_fiche_rue() -> void:
 	var o: Dictionary = ville.routes.get(_fiche_fid, {})
 	if o.is_empty():
 		return
-	_fiche_titre.text = "Rue %d" % _fiche_fid
+	_fiche_titre.text = ("Rue %d" % _fiche_fid).to_upper()
 	var etat := str(o.get("etat_crue", "intact"))
 	if ville.est_repare("r", _fiche_fid):
 		etat = "repare"
@@ -1784,7 +1870,7 @@ func _maj_fiche_berge() -> void:
 	if o.is_empty():
 		return
 	var etat := ville.berge_etat(_fiche_fid, _mois)
-	_fiche_titre.text = "Berge %d" % _fiche_fid
+	_fiche_titre.text = ("Berge %d" % _fiche_fid).to_upper()
 	(_berge_valeurs["bord"] as Label).text = str(o.get("rive", "?"))
 	(_berge_valeurs["longueur"] as Label).text = "%s m" % _nb(
 		float(o.get("longueur_m", 0.0)), 0)

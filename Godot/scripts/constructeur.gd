@@ -378,6 +378,10 @@ static func _face(v: PackedVector3Array, n: PackedVector3Array,
 const FEUILLU := 0
 const CONIFERE := 1
 
+## La teinte d'instance MULTIPLIE celle du sommet : au-dessus de 1, la tête
+## reste plus claire que le vêtement, quel que soit le vêtement tiré.
+const TETE := Color(1.18, 1.06, 0.98)
+
 
 ## Une recette unique pour voitures roulantes et garées. La teinte vient de
 ## l'instance ; 4 000 véhicules restent donc deux MultiMesh et deux appels.
@@ -390,24 +394,83 @@ static func voitures(nombre: int, anime := false) -> MultiMesh:
 	_boite(v, n, c, i, Vector3(1.48, 0.58, 2.05), Vector3(0.0, 0.90, -0.15),
 		Color(0.28, 0.33, 0.36))
 	var mesh := _surface(v, n, c, i)
-	if anime:
-		var shader := Shader.new()
-		shader.code = "shader_type spatial;\n" \
-			+ "varying vec4 teinte;\n" \
-			+ "void vertex() {\n" \
-			+ "  float longueur = max(INSTANCE_CUSTOM.z, 0.01);\n" \
-			+ "  VERTEX.z += mod(INSTANCE_CUSTOM.x + TIME * INSTANCE_CUSTOM.y, longueur);\n" \
-			+ "  teinte = COLOR;\n" \
-			+ "}\n" \
-			+ "void fragment() { ALBEDO = teinte.rgb; ROUGHNESS = 0.72; }\n"
-		var mat := ShaderMaterial.new()
-		mat.shader = shader
-		mesh.surface_set_material(0, mat)
-	else:
-		var mat := StandardMaterial3D.new()
-		mat.vertex_color_use_as_albedo = true
-		mat.roughness = 0.72
-		mesh.surface_set_material(0, mat)
+	mesh.surface_set_material(0, _glisse(anime))
+	return _instances(mesh, nombre, anime)
+
+
+## 🚶 UN PIÉTON — trois boîtes : jambes, buste, tête. 🔴 DEUX NE
+## SUFFISAIENT PAS : une seule boîte du sol aux épaules se lisait comme une
+## borne de trottoir. C'est l'étranglement des jambes qui fait la silhouette.
+## Il avance le long de son segment ; le balancement de la marche est dans le
+## shader, donc le CPU n'en sait rien.
+static func pietons(nombre: int) -> MultiMesh:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var i := PackedInt32Array()
+	_boite(v, n, c, i, Vector3(0.26, 0.84, 0.24), Vector3(0.0, 0.42, 0.0),
+		Color(0.46, 0.46, 0.50))
+	_boite(v, n, c, i, Vector3(0.42, 0.62, 0.28), Vector3(0.0, 1.13, 0.0),
+		Color.WHITE)
+	_boite(v, n, c, i, Vector3(0.22, 0.24, 0.22), Vector3(0.0, 1.57, 0.0),
+		TETE)
+	var mesh := _surface(v, n, c, i)
+	# 3,5 cm de balancement à 1,9 pas par seconde : à 45 m c'est le seul indice
+	# qui distingue un marcheur d'un plot posé sur le trottoir.
+	mesh.surface_set_material(0, _glisse(true, 0.035, 1.9))
+	return _instances(mesh, nombre, true)
+
+
+## 🚲 UN CYCLISTE — trois boîtes : le vélo, le buste penché, la tête.
+## Il roule dans la chaussée, à sa vitesse propre : la congestion des voitures
+## ne le ralentit pas, et c'est le sujet.
+static func cyclistes(nombre: int) -> MultiMesh:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var i := PackedInt32Array()
+	_boite(v, n, c, i, Vector3(0.16, 0.66, 1.68), Vector3(0.0, 0.33, 0.0),
+		Color(0.16, 0.17, 0.19))
+	_boite(v, n, c, i, Vector3(0.42, 0.74, 0.32), Vector3(0.0, 1.00, -0.06),
+		Color.WHITE)
+	_boite(v, n, c, i, Vector3(0.22, 0.23, 0.22), Vector3(0.0, 1.49, -0.10),
+		TETE)
+	var mesh := _surface(v, n, c, i)
+	# Le pédalage : deux fois plus rapide que le pas, deux fois moins ample.
+	mesh.surface_set_material(0, _glisse(true, 0.018, 3.6))
+	return _instances(mesh, nombre, true)
+
+
+## Le matériau de TOUT CE QUI GLISSE. `INSTANCE_CUSTOM` porte (phase, vitesse
+## en m/s, longueur du segment) : le vertex avance seul, à la fréquence de
+## l'écran, et le CPU ne déplace personne. Sans balancement, le code émis est
+## exactement celui des voitures — ne pas y ajouter de terme mort.
+static func _glisse(anime: bool, balance := 0.0, cadence := 0.0) -> Material:
+	if not anime:
+		var std := StandardMaterial3D.new()
+		std.vertex_color_use_as_albedo = true
+		std.roughness = 0.72
+		return std
+	var pas := ""
+	if balance > 0.0:
+		pas = "  VERTEX.y += %f * sin(TIME * %f + INSTANCE_CUSTOM.x);\n" \
+			% [balance, cadence * TAU]
+	var shader := Shader.new()
+	shader.code = "shader_type spatial;\n" \
+		+ "varying vec4 teinte;\n" \
+		+ "void vertex() {\n" \
+		+ "  float longueur = max(INSTANCE_CUSTOM.z, 0.01);\n" \
+		+ "  VERTEX.z += mod(INSTANCE_CUSTOM.x + TIME * INSTANCE_CUSTOM.y, longueur);\n" \
+		+ pas \
+		+ "  teinte = COLOR;\n" \
+		+ "}\n" \
+		+ "void fragment() { ALBEDO = teinte.rgb; ROUGHNESS = 0.72; }\n"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	return mat
+
+
+static func _instances(mesh: Mesh, nombre: int, anime: bool) -> MultiMesh:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true

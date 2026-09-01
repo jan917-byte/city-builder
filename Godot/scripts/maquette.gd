@@ -225,6 +225,8 @@ func _ready() -> void:
 
 	if "--interface" in OS.get_cmdline_user_args():
 		await _essai_interface()
+	elif "--banc" in OS.get_cmdline_user_args():
+		await _banc()
 	elif "--essai" in OS.get_cmdline_user_args():
 		await _essai()
 
@@ -357,6 +359,101 @@ func _fiche(couche: String, fid: int) -> void:
 ## Ce qui reste regarde la ville et vérifie qu'elle est cliquable.
 ##
 ##   Godot_console.exe --path Godot -- --essai
+## 📊 LE BANC — ce que coûte une image, et OÙ part le temps. Trois cadrages
+## qui n'ont pas la même charge, la pulsation du trafic mesurée à part, et le
+## verrou d'écran levé : sous vsync tout tient 60 ips et rien ne se voit.
+##   Godot --path Godot -- --banc
+const BANC_IMAGES := 180
+
+
+func _banc() -> void:
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	# 🔴 Un banc doit se rejouer à l'identique : la molette de la souris qui
+	# traîne au-dessus de la fenêtre changeait le cadrage en cours de mesure.
+	pivot.set_process_unhandled_input(false)
+	print("\n--- BANC · %s · %s ---" % [
+		RenderingServer.get_video_adapter_name(),
+		str(DisplayServer.window_get_size())])
+
+	var vues := [
+		["ville entière (trafic éteint)", 0], ["l'axe 55, de près", 55],
+		["le cœur ancien", -1], ["la place-parking", -2],
+	]
+	for v in vues:
+		var quoi: int = v[1]
+		if quoi == 0:
+			_repere("ville")
+		elif quoi == -1:
+			_repere("compact")
+		elif quoi == -2:
+			_repere("place")
+		else:
+			_viser_route(quoi, 90.0)
+			pivot.caler(35.0, 28.0)
+		_rafraichir(true)
+		for i in 10:
+			await get_tree().process_frame
+		var t0 := Time.get_ticks_usec()
+		for i in BANC_IMAGES:
+			await get_tree().process_frame
+		var ms := float(Time.get_ticks_usec() - t0) / 1000.0 / float(BANC_IMAGES)
+		print(("  %-30s %5.1f m de cadrage · %6.2f ms/image (%3d ips)"
+			+ " · %d appels · %d triangles") % [v[0], pivot.taille, ms,
+			roundi(1000.0 / maxf(ms, 0.001)),
+			int(Performance.get_monitor(
+				Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+			int(Performance.get_monitor(
+				Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
+
+	# Le trafic est mesuré de PRÈS : de loin ses familles sont éteintes et la
+	# pulsation sort tout de suite — on mesurerait zéro.
+	_viser_route(55, 90.0)
+	pivot.caler(35.0, 28.0)
+	await get_tree().process_frame
+	print("\n  la pulsation du trafic, en microsecondes par passage (4/s) :")
+	var b: Dictionary = trafic.banc(mois, 20)
+	for cle in b:
+		print("    %-26s %8.0f µs" % [cle, float(b[cle])])
+
+	# Ce que coûte une image HORS trafic, part par part. C'est `_process` qui
+	# paie ça, donc à l'image et non 4×/s : ce tableau est le vrai budget.
+	print("\n  ce que coûte une image, en microsecondes :")
+	for m in [["le contour de l'objet choisi", _maj_contour],
+			["la miniature de la fiche", _maj_apercu],
+			["les réparations livrées", _montrer_reparations],
+			["les arbres plantés", _montrer_arbres],
+			["repeindre les objets", _peindre]]:
+		var t2 := Time.get_ticks_usec()
+		for i in 20:
+			(m[1] as Callable).call()
+		print("    %-26s %8.0f µs" % [m[0],
+			float(Time.get_ticks_usec() - t2) / 20.0])
+	var t3 := Time.get_ticks_usec()
+	for i in 20:
+		ville.indicateurs(mois)
+	print("    %-26s %8.0f µs" % ["  les indicateurs de ville",
+		float(Time.get_ticks_usec() - t3) / 20.0])
+	t3 = Time.get_ticks_usec()
+	for i in 20:
+		ville.degats(mois)
+	print("    %-26s %8.0f µs" % ["  les dégâts de la crue",
+		float(Time.get_ticks_usec() - t3) / 20.0])
+	var indic := ville.indicateurs(mois)
+	t3 = Time.get_ticks_usec()
+	for i in 20:
+		interface.maj(indic, mois, vitesse)
+	print("    %-26s %8.0f µs" % ["le bandeau et la fiche",
+		float(Time.get_ticks_usec() - t3) / 20.0])
+	var t1 := Time.get_ticks_usec()
+	for i in 20:
+		_rafraichir(true)
+	print("    %-26s %8.0f µs" % ["— l'image entière",
+		float(Time.get_ticks_usec() - t1) / 20.0])
+	print("--- fin du banc ---\n")
+	get_tree().quit(0)
+
+
 func _essai() -> void:
 	# Des mois reproductibles, quelle que soit la vitesse de la machine.
 	# `mois` AUSSI : l'horloge tourne pendant le chargement, et deux passes de
@@ -376,7 +473,14 @@ ESSAI — la ville, sans décision")
 				% [fid, voitures[0], voitures[1]])
 			get_tree().quit(1)
 			return
-	print("  %d routes endommagées sans aucune voiture ✅" % routes_endommagees)
+		var doux: Array = trafic.doux_visibles_sur(fid)
+		if doux != [0, 0]:
+			push_error("rue endommagée %d : %d piéton(s), %d cycliste(s)" \
+				% [fid, doux[0], doux[1]])
+			get_tree().quit(1)
+			return
+	print("  %d routes endommagées sans aucune voiture ni usager ✅"
+		% routes_endommagees)
 	_repere("ville")
 	pivot.caler(30.0, 32.0)
 	await get_tree().process_frame
@@ -401,6 +505,9 @@ ESSAI — la ville, sans décision")
 	interface.montrer("r", 55, false)
 	await get_tree().process_frame
 	await _capturer("essai_axe")
+	var doux_charge: Array = trafic.doux_visibles_sur(55)
+	print("  axe 55 à charge %.2f : %d piétons et %d cyclistes visibles"
+		% [ville.valeur("r", 55, "charge", mois), doux_charge[0], doux_charge[1]])
 	var calme := _route_calme()
 	# 45 m et non 70 : à 70 la bordure vidée ne pesait que 8 % de l'image et
 	# l'avant/après du stationnement ne se voyait pas (mesuré le 2026-08-25).
@@ -417,6 +524,9 @@ ESSAI — la ville, sans décision")
 	# La charge VUE à l'écran, pas `base` : au chargement l'affectation reporte
 	# déjà les 37 rues coupées, et 55 y monte à 1,00 quand la source dit 0,88.
 	var charge_avant := ville.valeur("r", 55, "charge", mois)
+	var total_avant := 0.0
+	for f in ville.routes:
+		total_avant += float(ville.valeur("r", f, "charge", mois))
 	trafic.retirer_axe(55, 0.0)
 	trafic.avancer(0.0)
 	var fermees: Array = trafic.voitures_visibles_sur(55)
@@ -432,6 +542,14 @@ ESSAI — la ville, sans décision")
 	await _capturer("essai_axe_ferme")
 	mois = 6.1
 	trafic.avancer(mois)
+	# 🚶🚲 Ce que la fermeture LIVRE, au même cadrage que `essai_axe` : la
+	# charge est retombée, donc la foule est revenue. C'est là que se juge si
+	# les usagers doux disent quelque chose ou décorent.
+	await get_tree().process_frame
+	await _capturer("essai_axe_rendu")
+	var doux_55: Array = trafic.doux_visibles_sur(55)
+	print("  axe 55 rendu : %d piétons et %d cyclistes visibles ✅"
+		% [doux_55[0], doux_55[1]])
 	var ville_repere: Dictionary = donnees["reperes"]["ville"]
 	var centre: Array = ville_repere["cible"]
 	pivot.viser(Vector2(float(centre[0]), float(centre[1])), 650.0)
@@ -440,6 +558,18 @@ ESSAI — la ville, sans décision")
 	await _capturer("essai_report_trafic")
 	print("  retrait de l'axe 55 : charge %.2f → %.2f ✅"
 		% [charge_avant, ville.valeur("r", 55, "charge", mois)])
+	# 🚗 Ce que le report ne rattrape pas : la part qui renonce à la voiture.
+	var total_apres := 0.0
+	var montent := 0
+	for f in ville.routes:
+		var q := float(ville.valeur("r", f, "charge", mois))
+		total_apres += q
+		if f != 55 and q > float(ville.valeur("r", f, "charge", 0.0)) + 0.005:
+			montent += 1
+	print(("  report : %d rues voisines plus chargées, total de charge"
+		+ " %.1f → %.1f (−%.1f %% renoncent à la voiture) ✅")
+		% [montent, total_avant, total_apres,
+			100.0 * (total_avant - total_apres) / maxf(total_avant, 0.001)])
 	_sur_reset()
 
 	await _essai_berge()
@@ -1320,6 +1450,11 @@ func _sur_pulsation_trafic() -> void:
 	trafic.avancer(mois)
 
 
+## 🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-09-01 : le bandeau a été rafraîchi 10 fois
+## par seconde au lieu de 60, pour économiser les deux sommes de ville qu'il
+## demande. Ça ne gagnait RIEN à l'écran — l'image est tenue par la carte
+## graphique, pas par le script — et le contrôle du clic de `--essai` tombait à
+## côté de la berge 6. Ne pas le refaire sans avoir compris ce lien.
 func _rafraichir(force: bool) -> void:
 	# Hors du raccourci ci-dessous : le trait suit la CAMÉRA, qui bouge même
 	# quand le temps est en pause.
@@ -1856,7 +1991,8 @@ func _maj_apercu() -> void:
 	if signe == _apercu_voitures:
 		return
 	_apercu_voitures = signe
-	trafic.remplir_droit(apercu.mm_gare, apercu.mm_roule, fid, mois,
+	trafic.remplir_droit(apercu.mm_gare, apercu.mm_roule, apercu.mm_pieton,
+		apercu.mm_velo, fid, mois,
 		bool(d["places"]), bool(d["roule"]), apercu.ech_longueur,
 		apercu.ech_chaussee)
 

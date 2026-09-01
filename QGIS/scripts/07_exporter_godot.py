@@ -383,7 +383,7 @@ FICHE_ILOTS = [c for c in COLS_ILOTS if c != "fid"]
 TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat", "toit_plat_m2",
                "toit_m2_neuf"]
 FICHE_ROUTES = ([c for c in COLS_ROUTES if c != "fid"]
-                + ["longueur_m", "bord_places_m"])
+                + ["longueur_m", "bord_places_m", "bord_trottoir_m"])
 
 # La canopée d'un tronçon PLANTÉ DE BOUT EN BOUT — un arbre tous les
 # ESPACEMENT_ALIGNEMENT mètres. C'est l'échelle de lecture de `routes.canopee`,
@@ -724,6 +724,10 @@ PLACE_LONGUEUR = 5.00            # …sur 5,00 m
 # du trottoir. Même valeur que `trafic.gd` (LONGUEUR_PLACE), qui y pose les
 # voitures — les deux dessinent la même file.
 PLACE_RUE_LONGUEUR = 5.50
+# 🅿️ Ce que la file laisse libre devant un passage piéton et à l'entrée d'un
+# carrefour : la règle réelle des 5 m, et ce qu'il faut ici pour qu'une
+# voiture garée ne pose plus son capot sur la première bande blanche.
+PLACE_RECUL_PASSAGE = 5.00
 ALLEE_PARKING = 6.00             # l'allée de desserte : ressortir en une manœuvre
 MODULE_PARKING = ALLEE_PARKING + 2 * PLACE_LONGUEUR
 BORD_PARKING = 3.00              # ce que la trame laisse tout autour
@@ -2216,11 +2220,19 @@ def main():
     # peinte. Mesuré ici, où la coupe en travers est connue, et lu tel quel par
     # `trafic.gd` — deux recettes parallèles auraient dérivé dès le premier
     # tronçon de berge, dont le corridor n'est plus celui de la source.
+    # 🚶 OÙ MARCHE UN PIÉTON, même règle et même raison : le milieu du
+    # trottoir, depuis l'axe. 0 quand le corridor n'en laisse pas la place —
+    # `trafic.gd` fait alors marcher au bord de la chaussée, comme en ruelle.
     for d in routes:
         larg_ = d["largeur_m"] or 0.0
         ch_ = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg_)
         d["bord_places_m"] = (round(_bord_libre(d, ch_) - PLACE_LARGEUR / 2.0, 2)
                               if larg_ > 0.0 else 0.0)
+        nu_ = _bord_libre(d, ch_) + JEU_CHAUSSEE
+        dehors_ = d.get("corridor_m", larg_) / 2.0
+        d["bord_trottoir_m"] = (round((nu_ + dehors_) / 2.0, 2)
+                                if larg_ > 0.0 and dehors_ - nu_ >= TROTTOIR_MIN
+                                else 0.0)
     coudes, (n_coude, n_marque, n_rond) = _coudes(routes)
     axes_voirie, chaussees = _index_chaussees(routes, coudes)
     # 🌊 LE PONT EMPORTÉ (04e · 23b). On ampute son axe UNE FOIS, ici, et tout
@@ -2250,6 +2262,8 @@ def main():
     # tronçon. C'est plus riche que le `noeuds` d'à côté (qui ne sert qu'à
     # compter les carrefours) — il faut aussi savoir LEUR LARGEUR.
     nd_marq = _noeuds_voirie(routes)
+    passages_gardes, n_passage_croise = _passages_ville(
+        routes, morceaux_voirie, nd_marq, chenal)
     st_marq = {"passages": 0, "bandes": 0, "traits": 0, "pleins": 0,
                "rives": 0, "tri": 0, "sur_eau": 0, "sans_trottoir": 0}
     # 🌊 Le bord de l'eau. `coul_quai` est LA MÊME variable que celle des murs
@@ -2316,6 +2330,7 @@ def main():
     # chaussée, coudes arrondis compris) et la largeur FAÇADE À FAÇADE. Godot
     # en fait un ruban plat, invisible, qui ne sert qu'à être détouré.
     couloirs = {}
+    fentes_places = {}
     par_fid = {d["fid"]: d for d in routes}
     n_align_eau = 0
     n_align_chaussee = 0
@@ -2407,11 +2422,14 @@ def main():
                 # 🅿️ Les places peintes vont dans LEUR maillage, un groupe par
                 # tronçon (ouvert plus haut) : Godot les efface quand la rue
                 # n'a plus de stationnement.
-                n_places[0] += _places_de_rue(places_m, d, axe_, ch,
-                                              coul_marq_d, G)
+                n_places[0] += _places_de_rue(
+                    places_m, d, axe_, ip, ch, nd_marq, chenal, coul_marq_d, G,
+                    fentes=fentes_places.setdefault(str(d["fid"]), []),
+                    gardes=passages_gardes)
                 if lavage:
-                    _places_de_rue(repare_voirie, d, axe_, ch, coul_marq, G,
-                                   RELEVE)
+                    _places_de_rue(repare_voirie, d, axe_, ip, ch, nd_marq,
+                                   chenal, coul_marq, G, RELEVE,
+                                   gardes=passages_gardes)
                 # 🔧 LA MÊME RUE, LAVÉE, dans le maillage caché. Elle ne coûte
                 # que sur les 36 tronçons envasés — ailleurs `lavage` est faux
                 # et rien n'est émis.
@@ -2424,14 +2442,16 @@ def main():
                                    y=Y_CHAUSSEE + RELEVE,
                                    decal=sens * (ch / 2.0 + libre / 2.0))
                     _marquage(repare_voirie, d, axe_, ip, ch, nd_marq,
-                              chenal, coul_marq, G, dy=RELEVE)
+                              chenal, coul_marq, G, dy=RELEVE,
+                              gardes=passages_gardes)
                 # 🎨 Le marquage se pose SUR la chaussée qu'on vient d'émettre,
                 # et dans le même groupe : cliquer une ligne blanche ouvre la
                 # fiche de la rue, comme cliquer son trottoir.
                 # ⚠️ Sur un pont emporté il tombe de lui-même : le marquage se
                 # cale sur l'axe REÇU, et cet axe s'arrête au bord de l'eau.
                 for k_, v_ in _marquage(voirie, d, axe_, ip, ch, nd_marq,
-                                        chenal, coul_marq_d, G).items():
+                                        chenal, coul_marq_d, G,
+                                        gardes=passages_gardes).items():
                     st_marq[k_] += v_
                 # 🌊 Le mur de quai et le pont, dans le GROUPE DU TRONÇON :
                 # cliquer un parapet ou un tablier ouvre la fiche de la rue,
@@ -2545,13 +2565,18 @@ def main():
     print("        %d coins de trottoir, dont %d arrondis — %d coudes le sont"
           " des DEUX bords, donc à largeur de rue constante"
           % (st_tr["coins"], st_tr["arrondis"], st_tr["coudes_entiers"]))
+    tr_ = [d["bord_trottoir_m"] for d in routes if d["bord_trottoir_m"] > 0.0]
+    print("        %d tronçons sur %d où un piéton a un trottoir — il marche à"
+          " %.1f–%.1f m de l'axe ; les %d autres marchent au bord de la chaussée"
+          % (len(tr_), len(routes), min(tr_), max(tr_), len(routes) - len(tr_)))
     print("        marquage : %d passages piétons (%d bandes de %.2f m),"
           " %d traits d'axe, %d pleins de virage, %d lignes de rive"
           % (st_marq["passages"], st_marq["bandes"], PASSAGE_BANDE,
              st_marq["traits"], st_marq["pleins"], st_marq["rives"]))
     print("        %d tronçons trop étroits pour un trottoir, donc sans"
-          " passage · %d passages refusés au-dessus de l'Ilse · %d triangles"
-          % (st_marq["sans_trottoir"], st_marq["sur_eau"],
+          " passage · %d passages refusés au-dessus de l'Ilse · %d retirés"
+          " parce qu'ils en croisaient un autre · %d triangles"
+          % (st_marq["sans_trottoir"], st_marq["sur_eau"], n_passage_croise,
              st_marq["tri"]))
     # 🌊 LE CORPS DES BERGES, groupe par groupe. Hors de la boucle des routes :
     # une berge n'appartient à aucun tronçon, c'est justement ce qui en fait un
@@ -2791,6 +2816,7 @@ def main():
         # repère Godot : [largeur, [[x, z, x, z…], …]]. Godot n'en fait pas une
         # route — il en fait la SILHOUETTE qu'il détoure quand on la choisit.
         "couloirs": couloirs,
+        "places_rue": {f: v for f, v in fentes_places.items() if v},
         # L'emprise au sol de chaque îlot, déjà en repère Godot : [[x, y, z], …],
         # anneau OUVERT. Jamais affichée — c'est la moitié basse du masque de
         # sélection, celle que la silhouette rendue ne peut pas donner.
@@ -4471,7 +4497,8 @@ def _bord_libre(d, ch):
     return max(ch / 2.0, emprise / 2.0 - LARGEUR_TROTTOIR - JEU_CHAUSSEE)
 
 
-def _places_de_rue(m, d, axe, ch, coul, G, dy=0.0):
+def _places_de_rue(m, d, axe, ip, ch, nd, chenal, coul, G, dy=0.0,
+                   fentes=None, gardes=None):
     """🅿️ LES PLACES DE RUE, PEINTES — la file, sa ligne et ses tirets.
 
     🔄 `routes.stationnement` en comptait 3 310 qu'aucune ligne ne montrait :
@@ -4481,40 +4508,81 @@ def _places_de_rue(m, d, axe, ch, coul, G, dy=0.0):
     ne font que 0,2 m sur une rue de 13 m, mesuré : il n'y a pas la place
     dehors.
 
-    La file part du début du tronçon et alterne les deux bords, comme les
-    voitures de `trafic.gd` : les tirets tombent donc sous elles."""
+    🔴 LA FILE NE COMMENCE PLUS AU NŒUD. Elle partait du premier mètre du
+    tronçon : à un carrefour à quatre branches, huit files s'ouvraient sur le
+    même point et les voitures garées se croisaient en travers des passages
+    piétons. Elle ne se pose plus que dans ce que `_zones_interdites` laisse —
+    la même découpe que le marquage longitudinal.
+
+    `fentes` reçoit chaque place posée (x, z de son milieu, et sa direction,
+    en repère Godot) : `trafic.gd` y garde ses voitures au lieu de refaire le
+    calcul de son côté."""
     n = int(d.get("stationnement") or 0)
     total = max(float(d.get("longueur_m") or 0.0), 1.0)
     if n <= 0 or ch < 2.0 * PLACE_LARGEUR + 2.0:
         return 0
-    L = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(axe, axe[1:]))
+    cum = _cumul(axe)
+    L = cum[-1]
+    if L < PLACE_RUE_LONGUEUR:
+        return 0
     n = int(round(n * L / total))               # la part de ce morceau d'axe
-    par_cote = min(int(math.ceil(n / 2.0)), int(L / PLACE_RUE_LONGUEUR))
+    par_cote = int(math.ceil(n / 2.0))
     if par_cote <= 0:
         return 0
-    file = _debut_axe(axe, par_cote * PLACE_RUE_LONGUEUR)
-    if len(file) < 2:
-        return 0
+
+    r0, r1, tv, _st, _se = _zones_interdites(
+        d, axe, cum, ip, ch, nd, chenal, gardes)
+    bloques = [[0.0, r0 + PLACE_RECUL_PASSAGE],
+               [L - r1 - PLACE_RECUL_PASSAGE, L]]
+    for s in tv:
+        bloques.append([s - PASSAGE_PROFONDEUR / 2.0 - PLACE_RECUL_PASSAGE,
+                        s + PASSAGE_PROFONDEUR / 2.0 + PLACE_RECUL_PASSAGE])
+    libres = _complement(L, _fusionner(bloques))
+
     bord = _bord_libre(d, ch) - PLACE_LARGEUR
+    milieu = bord + PLACE_LARGEUR / 2.0
     y = Y_MARQUAGE + dy
-    for cote in (-1.0, 1.0):
-        # La ligne qui sépare la file de la voie roulée.
-        _ruban(m, file, LARGEUR_LIGNE, coul, G, y=y,
-               decal=cote * bord, bouts=False)
-        # Un tiret par place, en travers de la file.
-        for p, u in _stations_le_long(file, PLACE_RUE_LONGUEUR):
-            nl = (-u[1] * cote, u[0] * cote)
-            a = (p[0] + nl[0] * bord, p[1] + nl[1] * bord)
-            b = (p[0] + nl[0] * (bord + PLACE_LARGEUR),
-                 p[1] + nl[1] * (bord + PLACE_LARGEUR))
-            h = (u[0] * LARGEUR_LIGNE / 2.0, u[1] * LARGEUR_LIGNE / 2.0)
-            m.triangle(G(a[0] - h[0], a[1] - h[1], y),
-                       G(b[0] - h[0], b[1] - h[1], y),
-                       G(b[0] + h[0], b[1] + h[1], y), coul)
-            m.triangle(G(a[0] - h[0], a[1] - h[1], y),
-                       G(b[0] + h[0], b[1] + h[1], y),
-                       G(a[0] + h[0], a[1] + h[1], y), coul)
-    return 2 * par_cote
+    posees = 0
+    for a, b in libres:
+        if par_cote <= 0:
+            break
+        k = min(int((b - a) / PLACE_RUE_LONGUEUR), par_cote)
+        if k <= 0:
+            continue
+        file = _tronquer(axe, cum, a, a + k * PLACE_RUE_LONGUEUR)
+        if len(file) < 2:
+            continue
+        for cote in (-1.0, 1.0):
+            # La ligne qui sépare la file de la voie roulée.
+            _ruban(m, file, LARGEUR_LIGNE, coul, G, y=y,
+                   decal=cote * bord, bouts=False)
+            # Un tiret par place, en travers de la file.
+            for p, u in _stations_le_long(file, PLACE_RUE_LONGUEUR):
+                nl = (-u[1] * cote, u[0] * cote)
+                q = (p[0] + nl[0] * bord, p[1] + nl[1] * bord)
+                r = (p[0] + nl[0] * (bord + PLACE_LARGEUR),
+                     p[1] + nl[1] * (bord + PLACE_LARGEUR))
+                h = (u[0] * LARGEUR_LIGNE / 2.0, u[1] * LARGEUR_LIGNE / 2.0)
+                m.triangle(G(q[0] - h[0], q[1] - h[1], y),
+                           G(r[0] - h[0], r[1] - h[1], y),
+                           G(r[0] + h[0], r[1] + h[1], y), coul)
+                m.triangle(G(q[0] - h[0], q[1] - h[1], y),
+                           G(r[0] + h[0], r[1] + h[1], y),
+                           G(q[0] + h[0], q[1] + h[1], y), coul)
+            if fentes is None:
+                continue
+            for j in range(k):
+                p, u = _le_long(axe, cum, a + (j + 0.5) * PLACE_RUE_LONGUEUR)
+                nl = (-u[1] * cote, u[0] * cote)
+                c = (p[0] + nl[0] * milieu, p[1] + nl[1] * milieu)
+                g0 = G(c[0], c[1], 0.0)
+                g1 = G(c[0] + u[0], c[1] + u[1], 0.0)
+                fentes.extend([round(g0[0], 2), round(g0[2], 2),
+                               round(g1[0] - g0[0], 3),
+                               round(g1[2] - g0[2], 3)])
+        par_cote -= k
+        posees += k
+    return 2 * posees
 
 
 def _coudes(routes):
@@ -6005,7 +6073,148 @@ def _passage_pieton(m, pts, cum, s, ch, coul, G, dy=0.0):
     return k, tri
 
 
-def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G, dy=0.0):
+def _cle_passage(p):
+    return (round(p[0] / 0.25), round(p[1] / 0.25))
+
+
+def _ecart_segments(a0, a1, b0, b1):
+    """La distance entre deux segments du plan. 0 s'ils se coupent."""
+    def _pt_seg(p, q0, q1):
+        vx, vy = q1[0] - q0[0], q1[1] - q0[1]
+        L2 = vx * vx + vy * vy
+        t = 0.0 if L2 < 1e-12 else max(0.0, min(
+            1.0, ((p[0] - q0[0]) * vx + (p[1] - q0[1]) * vy) / L2))
+        return math.hypot(p[0] - (q0[0] + vx * t), p[1] - (q0[1] + vy * t))
+    d0 = (a1[0] - a0[0], a1[1] - a0[1])
+    d1 = (b1[0] - b0[0], b1[1] - b0[1])
+    den = d0[0] * d1[1] - d0[1] * d1[0]
+    if abs(den) > 1e-12:
+        w = (b0[0] - a0[0], b0[1] - a0[1])
+        t = (w[0] * d1[1] - w[1] * d1[0]) / den
+        u = (w[0] * d0[1] - w[1] * d0[0]) / den
+        if -1e-9 <= t <= 1.0 + 1e-9 and -1e-9 <= u <= 1.0 + 1e-9:
+            return 0.0
+    return min(_pt_seg(a0, b0, b1), _pt_seg(a1, b0, b1),
+               _pt_seg(b0, a0, a1), _pt_seg(b1, a0, a1))
+
+
+def _trame_passage(p, u, ch):
+    """Les deux bouts de la ligne que le passage suit en travers de la rue."""
+    demi = ch / 2.0 - PASSAGE_JEU_BORD
+    n = (-u[1], u[0])
+    return ((p[0] - n[0] * demi, p[1] - n[1] * demi),
+            (p[0] + n[0] * demi, p[1] + n[1] * demi))
+
+
+def _passages_ville(routes, morceaux, nd, chenal):
+    """🚶 QUELS PASSAGES PIÉTONS LA VILLE GARDE, une fois les branches
+    confrontées entre elles.
+
+    🔴 Les règles ⑤ ⑥ ⑦ regardent UN tronçon à la fois, et à un nœud où deux
+    branches repartent sous un angle serré leurs deux passages se recouvrent :
+    une croix de peinture au milieu du carrefour, vue à l'écran le 2026-09-01.
+    On les trie de la rue la plus large à la plus étroite et on retire celui
+    qui vient toucher un passage déjà retenu — la traversée du boulevard reste,
+    celle de la contre-allée saute.
+
+    Renvoie (les clés retenues, le nombre de retirés)."""
+    cand = []
+    for d in routes:
+        larg = d["largeur_m"] or 0.0
+        if larg <= 0.0:
+            continue
+        ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
+        for ip, ms in enumerate(morceaux.get(d["fid"], ())):
+            for axe in ms:
+                cum = _cumul(axe)
+                if cum[-1] < 1.0:
+                    continue
+                r0 = _zone_echange(nd, axe[0], d["fid"], ip)
+                r1 = _zone_echange(nd, axe[-1], d["fid"], ip)
+                tv, _sans, _eau = _candidats_passage(
+                    d, axe, cum, ch, nd, r0, r1, chenal)
+                for t in tv:
+                    p, u = _le_long(axe, cum, t)
+                    cand.append((ch, d["fid"], p, u))
+    cand.sort(key=lambda c: (-c[0], c[1]))
+    gardes, tenus, retires = set(), [], 0
+    for ch, _fid, p, u in cand:
+        a0, a1 = _trame_passage(p, u, ch)
+        heurte = False
+        for b0, b1 in tenus:
+            if _ecart_segments(a0, a1, b0, b1) < PASSAGE_PROFONDEUR + JEU_MARQUAGE:
+                heurte = True
+                break
+        if heurte:
+            retires += 1
+            continue
+        tenus.append((a0, a1))
+        gardes.add(_cle_passage(p))
+    return gardes, retires
+
+
+def _zones_interdites(d, axe, cum, ip, ch, nd, chenal, gardes=None):
+    """Où la chaussée est prise : la zone d'échange à chaque bout, et les
+    traversées. Renvoie (recul début, recul fin, abscisses des passages,
+    sans trottoir, passages refusés au-dessus de l'eau).
+
+    🅿️ Partagée avec `_places_de_rue` : une place peinte au carrefour mettait
+    huit voitures garées en travers du même nœud, chaque branche ouvrant sa
+    file sur le point de rencontre.
+
+    `gardes` est le verdict de `_passages_ville` : sans lui, chaque branche
+    garde le passage que ses seules règles lui donnent.
+    """
+    r0 = _zone_echange(nd, axe[0], d["fid"], ip)
+    r1 = _zone_echange(nd, axe[-1], d["fid"], ip)
+    tv, sans_trottoir, sur_eau = _candidats_passage(
+        d, axe, cum, ch, nd, r0, r1, chenal)
+    if gardes is not None:
+        tv = [t for t in tv
+              if _cle_passage(_le_long(axe, cum, t)[0]) in gardes]
+    return r0, r1, tv, sans_trottoir, sur_eau
+
+
+def _candidats_passage(d, axe, cum, ch, nd, r0, r1, chenal):
+    """Les passages que les règles ⑤ ⑥ ⑦ posent sur cette part, avant qu'on
+    regarde ce que font les branches voisines."""
+    L = cum[-1]
+
+    # ⑤ les passages piétons. Ils demandent un trottoir des DEUX côtés : on
+    # applique le test de `_largeur_trottoir` à la demi-largeur du tronçon,
+    # c'est-à-dire exactement ce que `_trottoirs` ira poser plus loin.
+    if _largeur_trottoir((d["largeur_m"] or 0.0) / 2.0, ch) <= 0.0:
+        return [], 1, 0
+    tv = []
+    marge = PASSAGE_RECUL + PASSAGE_PROFONDEUR / 2.0
+    if _est_carrefour(nd, axe[0]):
+        tv.append(r0 + marge)
+    if _est_carrefour(nd, axe[-1]):
+        tv.append(L - r1 - marge)
+    # ⑥ un tronçon long sans traversée : on en pose au milieu, autant
+    # qu'il en faut pour rester sous ESPACEMENT_TRAVERSEE.
+    bornes = sorted(set([0.0] + tv + [L]))
+    for i in range(len(bornes) - 1):
+        trou = bornes[i + 1] - bornes[i]
+        if trou <= ESPACEMENT_TRAVERSEE:
+            continue
+        k = int(trou / ESPACEMENT_TRAVERSEE)
+        for j in range(1, k + 1):
+            tv.append(bornes[i] + trou * j / (k + 1.0))
+    # ⑦ et jamais sur un pont : le chenal passe dessous, la peinture non.
+    garde, sur_eau = [], 0
+    for s in tv:
+        if s < PASSAGE_PROFONDEUR or s > L - PASSAGE_PROFONDEUR:
+            continue
+        pt, _ = _le_long(axe, cum, s)
+        if chenal.dans_eau(pt):
+            sur_eau += 1
+            continue
+        garde.append(s)
+    return sorted(garde), 0, sur_eau
+
+
+def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G, dy=0.0, gardes=None):
     """Tout le marquage d'une part de tronçon. Renvoie un compte.
 
     L'ordre compte : on place d'abord les PASSAGES (ce sont eux qui décident
@@ -6020,43 +6229,10 @@ def _marquage(m, d, axe, ip, ch, nd, chenal, coul, G, dy=0.0):
     if L < 1.0:
         return st
 
-    r0 = _zone_echange(nd, axe[0], d["fid"], ip)
-    r1 = _zone_echange(nd, axe[-1], d["fid"], ip)
-
-    # ⑤ les passages piétons. Ils demandent un trottoir des DEUX côtés : on
-    # applique le test de `_largeur_trottoir` à la demi-largeur du tronçon,
-    # c'est-à-dire exactement ce que `_trottoirs` ira poser plus loin.
-    a_trottoir = _largeur_trottoir((d["largeur_m"] or 0.0) / 2.0, ch) > 0.0
-    tv = []
-    if a_trottoir:
-        marge = PASSAGE_RECUL + PASSAGE_PROFONDEUR / 2.0
-        if _est_carrefour(nd, axe[0]):
-            tv.append(r0 + marge)
-        if _est_carrefour(nd, axe[-1]):
-            tv.append(L - r1 - marge)
-        # ⑥ un tronçon long sans traversée : on en pose au milieu, autant
-        # qu'il en faut pour rester sous ESPACEMENT_TRAVERSEE.
-        bornes = sorted(set([0.0] + tv + [L]))
-        for i in range(len(bornes) - 1):
-            trou = bornes[i + 1] - bornes[i]
-            if trou <= ESPACEMENT_TRAVERSEE:
-                continue
-            k = int(trou / ESPACEMENT_TRAVERSEE)
-            for j in range(1, k + 1):
-                tv.append(bornes[i] + trou * j / (k + 1.0))
-        # ⑦ et jamais sur un pont : le chenal passe dessous, la peinture non.
-        garde = []
-        for s in tv:
-            if s < PASSAGE_PROFONDEUR or s > L - PASSAGE_PROFONDEUR:
-                continue
-            pt, _ = _le_long(axe, cum, s)
-            if chenal.dans_eau(pt):
-                st["sur_eau"] += 1
-                continue
-            garde.append(s)
-        tv = sorted(garde)
-    else:
-        st["sans_trottoir"] = 1
+    r0, r1, tv, sans_trottoir, sur_eau = _zones_interdites(
+        d, axe, cum, ip, ch, nd, chenal, gardes)
+    st["sur_eau"] += sur_eau
+    st["sans_trottoir"] = sans_trottoir
 
     for s in tv:
         k, tri = _passage_pieton(m, axe, cum, s, ch, coul, G, dy)

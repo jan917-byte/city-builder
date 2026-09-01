@@ -48,6 +48,8 @@ var _soleil: DirectionalLight3D
 ## `trafic.remplir_droit` : la fiche n'invente ni recette ni teinte.
 var mm_gare: MultiMesh
 var mm_roule: MultiMesh
+var mm_pieton: MultiMesh
+var mm_velo: MultiMesh
 ## 🌳 Les arbres du morceau montré. Un MultiMesh refait quand leur nombre
 ## change — c'est LA moitié visible de l'avant/après d'une rue plantée.
 var _arbres_mi: MultiMeshInstance3D
@@ -128,11 +130,13 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 
 	mm_gare = Constructeur.voitures(0)
 	mm_roule = Constructeur.voitures(0, true)
-	for mm in [mm_gare, mm_roule]:
+	mm_pieton = Constructeur.pietons(0)
+	mm_velo = Constructeur.cyclistes(0)
+	for mm in [mm_gare, mm_roule, mm_pieton, mm_velo]:
 		var mmi := MultiMeshInstance3D.new()
-		mmi.name = "Voitures"
+		mmi.name = "Usagers"
 		mmi.multimesh = mm
-		# Comme dans la ville : une voiture ne porte pas d'ombre.
+		# Comme dans la ville : un usager ne porte pas d'ombre.
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mmi)
 
@@ -261,6 +265,8 @@ func planter(n: int) -> void:
 func vider_voitures() -> void:
 	mm_gare.instance_count = 0
 	mm_roule.instance_count = 0
+	mm_pieton.instance_count = 0
+	mm_velo.instance_count = 0
 	_arbres_n = -1
 	if _arbres_mi != null:
 		_arbres_mi.multimesh = null
