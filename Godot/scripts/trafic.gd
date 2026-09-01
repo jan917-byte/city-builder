@@ -13,6 +13,8 @@ const ESPACEMENT_RESERVE := 12.0
 const LONGUEUR_PLACE := 5.5
 ## La largeur d'une place de rue — la même que `07` (PLACE_LARGEUR).
 const LARGEUR_PLACE := 2.5
+## L'écart à l'axe de la file qui roule, à droite du sens de marche.
+const DECAL_FILE := 1.35
 const ECHANTILLON_STATIONNEMENT := 0.30
 const TAILLE_VISIBLE_MAX := 700.0
 const PALETTE := [
@@ -114,6 +116,31 @@ var _roues := Famille.new()
 var _vide := Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO)
 var _mois := 0.0
 
+# --- 🔄 le circuit : ce que la voiture fait au bout de son segment ---------
+## Un arc = UN segment droit ORIENTÉ, sa file déjà décalée à droite. Chaque arc
+## en désigne un seul suivant, donc les arcs forment des circuits fermés : la
+## voiture tourne sans fin et ne cherche jamais son chemin (décision 62).
+var _arc_t: Array[Transform3D] = []
+var _arc_L := PackedFloat32Array()
+var _arc_fid := PackedInt32Array()
+var _arc_dir := PackedVector2Array()
+var _arc_tete := PackedInt32Array()     # arc → nœud d'arrivée
+var _arc_inverse := PackedInt32Array()
+var _arc_suivant := PackedInt32Array()  # la continuation la plus droite
+var _sortie_deb := PackedInt32Array()   # nœud → sa première sortie (CSR)
+var _sortie_arc := PackedInt32Array()
+var _rang_noeud := {}
+var _arc_par_paire := {}
+## Le balayage de chaque image ne lit QUE ça : 963 comparaisons de flottants,
+## et le dictionnaire de la voiture n'est ouvert que si elle change d'arc.
+var _arrivee := PackedFloat32Array()
+var _arc_vu := PackedInt32Array()       # l'arc écrit dans le MultiMesh
+## L'horloge partagée avec le GPU (`Constructeur.HORLOGE`) : sans elle, le CPU
+## ne sait pas où le shader a posé la voiture.
+var _temps_trafic := 0.0
+var _indispo_courant := {}
+var _long_fid := {}
+
 
 ## 🅿️ L'écart à l'axe d'une voiture garée SUR LE MORCEAU DROIT DE LA FICHE : le
 ## milieu de la file peinte, MESURÉ PAR 07 (`bord_places_m`). Le recalculer ici
@@ -128,6 +155,7 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	var couloirs: Dictionary = donnees["couloirs"]
 	var fentes: Dictionary = donnees.get("places_rue", {})
 	_batir_graphe(couloirs)
+	_batir_arcs(couloirs)
 	var indisponibles := _indisponibles(0.0)
 	# La passe de référence tourne sur le réseau ENTIER OUVERT — ponts compris :
 	# c'est l'étalon du détour, pas l'état de départ.
@@ -155,13 +183,17 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 			var chemin := _chemin(brut)
 			if chemin[1] < 8.0:
 				continue
+			_long_fid[fid] = float(_long_fid.get(fid, 0.0)) + float(chemin[1])
 			var n := maxi(1, int(floor(float(chemin[1]) / ESPACEMENT_RESERVE)))
 			for k in n:
-				_roulantes.append({"fid": fid, "p": chemin[0], "cum": chemin[2],
-					"L": chemin[1], "s": fmod((k + 0.35) * float(chemin[1]) / n,
-					float(chemin[1])), "sens": -1.0 if k % 2 else 1.0,
-					"decal": 1.35,
-					"rang": k, "max": n})
+				var pose := _poser(chemin[0], chemin[2],
+					fmod((k + 0.35) * float(chemin[1]) / n, float(chemin[1])),
+					-1.0 if k % 2 else 1.0)
+				if int(pose[0]) < 0:
+					continue
+				_roulantes.append({"arc": int(pose[0]), "arc0": int(pose[0]),
+					"offset0": float(pose[1]), "v": 1.1, "phase": 0.0,
+					"arrivee": 0.0})
 			if foule <= 0.0:
 				continue
 			_semer(_pieds, chemin, bord_pieton, y_pieton, RESERVE_PIETON,
@@ -188,7 +220,7 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 				float(f[i * 4]), Y_GARE, float(f[i * 4 + 1])))})
 			i += pas
 
-	_mm_roule = Constructeur.voitures(_roulantes.size(), true)
+	_mm_roule = Constructeur.voitures(_roulantes.size(), true, true)
 	_mm_gare = Constructeur.voitures(_garees.size())
 	_node_roule = MultiMeshInstance3D.new()
 	_node_roule.name = "VoituresRoulantes"
@@ -202,14 +234,12 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	add_child(_node_gare)
 	for k in _roulantes.size():
 		_mm_roule.set_instance_color(k, PALETTE[(k * 5 + 1) % PALETTE.size()])
-		var a: Dictionary = _roulantes[k]
-		var segment := _segment(a["p"], a["cum"], a["L"], a["s"],
-			float(a["decal"]), float(a["sens"]))
-		a["t"] = segment[0]
-		a["phase"] = segment[1]
-		a["segment_m"] = segment[2]
 	_visibles_roule.resize(_roulantes.size())
 	_visibles_roule.fill(0)
+	_arc_vu.resize(_roulantes.size())
+	_arc_vu.fill(-1)
+	_arrivee.resize(_roulantes.size())
+	_semer_circuit()
 	_maj_roulantes(0.0, true)
 	for k in _garees.size():
 		var gris := 0.62 + 0.16 * float(k % 5) / 4.0
@@ -228,7 +258,7 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	for cle in fentes:
 		@warning_ignore("integer_division")
 		peintes += (fentes[cle] as Array).size() / 4
-	print(("  trafic : %d voitures roulantes visibles sur %d positions,"
+	print(("  trafic : %d voitures roulantes visibles sur %d en circuit,"
 		+ " %d garées sur %d places peintes, 2 appels, animation GPU à l'écran")
 		% [_compter_visibles(), _roulantes.size(), _garees.size(), peintes])
 	print(("  usagers doux : %d piétons visibles sur %d créneaux (%d rues avec"
@@ -298,13 +328,19 @@ func _reveiller(fam: Famille, actif: bool) -> void:
 			ESPACEMENT_VELO_RARE, _impraticables(_mois))
 
 
+## 🔴 LA DENSITÉ RESTE UNE PROPRIÉTÉ DE LA RUE, pas de la voiture. Depuis que
+## les voitures circulent, ce n'est plus leur rang de semis qui décide de leur
+## visibilité — c'est un QUOTA par tronçon, tenu ici : la rue à `charge = 1,00`
+## en montre autant qu'avant, mais celles qui ne tiennent pas dedans s'effacent
+## AU CARREFOUR au lieu du milieu de la rue.
 func _maj_roulantes(mois: float, force: bool) -> void:
 	_derniere_charge = mois
 	# La charge est une propriété de 178 rues, pas de milliers de voitures.
-	var etat_routes := {}
-	var indisponibles := _indisponibles(mois)
+	var vitesses := {}
+	var quota := {}
+	_indispo_courant = _indisponibles(mois)
 	for fid in ville.routes:
-		var praticable := not indisponibles.has(fid)
+		var praticable := not _indispo_courant.has(fid)
 		var q := float(ville.valeur("r", fid, "charge", mois)) if praticable else 0.0
 		var hier := str(ville.routes[fid].get("hierarchie", "rue"))
 		var libre := float(VITESSES.get(hier, 30.0)) / 3.6
@@ -312,31 +348,31 @@ func _maj_roulantes(mois: float, force: bool) -> void:
 		# ne court, elle est identique d'une pulsation à l'autre et ne vaut pas
 		# 329 écritures de plus.
 		var v := maxf(1.1, libre * (1.0 - 0.92 * q * q))
-		var bouge := force or not is_equal_approx(
-			float(_vitesse_vue.get(fid, -1.0)), v)
-		if bouge:
-			_vitesse_vue[fid] = v
-		etat_routes[fid] = [q, v, praticable, bouge]
-	for k in _roulantes.size():
-		var a: Dictionary = _roulantes[k]
-		var etat: Array = etat_routes[a["fid"]]
-		var q: float = etat[0]
+		_vitesse_vue[fid] = v
+		vitesses[fid] = v
 		var esp: float = lerpf(ESPACEMENT_CALME, ESPACEMENT_CHARGE,
 			pow(clampf(q / 0.65, 0.0, 1.0), 0.72))
-		var visibles: int = maxi(1, int(floor(float(a["L"]) / esp))) \
-			if etat[2] else 0
-		if int(a["rang"]) >= visibles:
-			if force or _visibles_roule[k] == 1:
-				_mm_roule.set_instance_transform(k, _vide)
-				_visibles_roule[k] = 0
-			continue
-		var apparait := _visibles_roule[k] == 0
-		_visibles_roule[k] = 1
-		if force or apparait:
-			_mm_roule.set_instance_transform(k, a["t"])
-		if force or apparait or bool(etat[3]):
-			_mm_roule.set_instance_custom_data(k, Color(float(a["phase"]),
-				float(etat[1]), float(a["segment_m"]), 1.0))
+		quota[fid] = maxi(1, int(floor(float(_long_fid.get(fid, 0.0)) / esp))) \
+			if praticable else 0
+	var occupe := {}
+	for k in _roulantes.size():
+		var a: Dictionary = _roulantes[k]
+		var e: int = a["arc"]
+		var fid := _arc_fid[e]
+		var n := int(occupe.get(fid, 0))
+		var place := n < int(quota[fid])
+		if place:
+			occupe[fid] = n + 1
+		elif _visibles_roule[k] == 1 or force:
+			_mm_roule.set_instance_transform(k, _vide)
+			_arc_vu[k] = -1
+		_visibles_roule[k] = 1 if place else 0
+		var v: float = vitesses[fid]
+		var change := not is_equal_approx(v, float(a["v"]))
+		if change:
+			_recaler(k, a, v)
+		if place and (force or change or _arc_vu[k] != e):
+			_ecrire(k, a)
 
 
 func _compter_visibles() -> int:
@@ -487,6 +523,13 @@ func banc(mois: float, n: int) -> Dictionary:
 	for i in n:
 		avancer(mois)
 	out["la pulsation entière"] = float(Time.get_ticks_usec() - t0) / float(n)
+
+	# Le seul coût par IMAGE du trafic : le balayage des arrivées et les deux
+	# ou trois voitures qui changent d'arc. Tout le reste est sur le GPU.
+	t0 = Time.get_ticks_usec()
+	for i in n:
+		_process(1.0 / 60.0)
+	out["le circuit (chaque image)"] = float(Time.get_ticks_usec() - t0) / float(n)
 
 	t0 = Time.get_ticks_usec()
 	_affectation(_indisponibles(mois))
@@ -643,7 +686,7 @@ func _doux_droit(mm: MultiMesh, axe: PackedVector2Array,
 func voitures_visibles_sur(fid: int) -> Array:
 	var roulantes := 0
 	for k in _roulantes.size():
-		if int(_roulantes[k]["fid"]) == fid:
+		if _arc_fid[int((_roulantes[k] as Dictionary)["arc"])] == fid:
 			roulantes += int(_visibles_roule[k])
 	var garees := 0
 	for k in _garees.size():
@@ -712,6 +755,7 @@ static func _signature(indisponibles: Dictionary) -> String:
 
 func reinitialiser() -> void:
 	_fermees.clear()
+	_semer_circuit()
 	var indisponibles := _indisponibles(0.0)
 	_reaffecter(0.0, 0.0, indisponibles)
 	_dernier_etat = -1.0
@@ -821,6 +865,237 @@ func _batir_graphe(couloirs: Dictionary) -> void:
 	@warning_ignore("integer_division")
 	print("  réseau : %d nœuds et %d arêtes ramenés à %d et %d par contraction"
 		% [total, elementaires / 2, ancres.size(), _poids.size() / 2])
+
+
+## 🔄 LE CIRCUIT, calculé UNE FOIS. Le réseau élémentaire — pas le contracté de
+## Dijkstra, qui a perdu les coudes — devient des arcs orientés, et chaque arc
+## reçoit UN suivant. Aucune voiture ne décide rien : elles suivent la table.
+##
+## 🔴 LA TABLE EST UNE PERMUTATION, et c'est ce qui tient tout. À chaque nœud,
+## les arcs qui ENTRENT sont appariés un à un à ceux qui SORTENT — donc les
+## circuits sont fermés et couvrent tous les arcs, et une rue ne peut pas se
+## vider au profit d'une autre. « Le plus droit devant » seul ne le garantit
+## pas : deux entrées choisiraient la même sortie, et tout le trafic finirait
+## par se vider dans une poignée de boucles.
+func _batir_arcs(couloirs: Dictionary) -> void:
+	var sorties := []
+	var entrees := []
+	for cle in couloirs:
+		var fid := int(cle)
+		for brut in (couloirs[cle][1] as Array):
+			for k in range(0, brut.size() - 2, 2):
+				var a := Vector2(float(brut[k]), float(brut[k + 1]))
+				var b := Vector2(float(brut[k + 2]), float(brut[k + 3]))
+				var na := _noeud(sorties, entrees, a)
+				var nb := _noeud(sorties, entrees, b)
+				# Le demi-mètre de raccord de `_batir_graphe` : sous lui, les
+				# deux bouts sont le même nœud et le segment n'existe pas.
+				if na == nb:
+					continue
+				var e := _arc_L.size()
+				_ajouter_arc(a, b, na, nb, fid, sorties, entrees)
+				_ajouter_arc(b, a, nb, na, fid, sorties, entrees)
+				_arc_inverse[e] = e + 1
+				_arc_inverse[e + 1] = e
+
+	_sortie_deb.resize(sorties.size() + 1)
+	for u in sorties.size():
+		_sortie_deb[u] = _sortie_arc.size()
+		for e in (sorties[u] as Array):
+			_sortie_arc.append(int(e))
+	_sortie_deb[sorties.size()] = _sortie_arc.size()
+	_arc_suivant.resize(_arc_L.size())
+	_arc_suivant.fill(-1)
+	for u in sorties.size():
+		_apparier(entrees[u], sorties[u])
+	var demi_tours := 0
+	for e in _arc_L.size():
+		if _arc_suivant[e] == _arc_inverse[e]:
+			demi_tours += 1
+	print("  circuit : %d arcs orientés, %d culs-de-sac où la voiture"
+		% [_arc_L.size(), demi_tours] + " fait demi-tour")
+
+
+## L'appariement d'un nœud, exact : les degrés vont de 1 à 5 ici, donc au pire
+## 120 combinaisons. Le demi-tour est pénalisé, pas interdit — au bout d'une
+## impasse il est le seul mouvement possible.
+func _apparier(ins: Array, outs: Array) -> void:
+	var pris := PackedByteArray()
+	pris.resize(outs.size())
+	var choix := PackedInt32Array()
+	choix.resize(ins.size())
+	var garde := PackedInt32Array()
+	garde.resize(ins.size())
+	var meilleur := [-INF]
+	_essayer(ins, outs, 0, 0.0, pris, choix, garde, meilleur)
+	for i in ins.size():
+		_arc_suivant[int(ins[i])] = int(outs[garde[i]])
+
+
+func _essayer(ins: Array, outs: Array, i: int, score: float,
+		pris: PackedByteArray, choix: PackedInt32Array,
+		garde: PackedInt32Array, meilleur: Array) -> void:
+	if i == ins.size():
+		if score > float(meilleur[0]):
+			meilleur[0] = score
+			for j in choix.size():
+				garde[j] = choix[j]
+		return
+	var e := int(ins[i])
+	for j in outs.size():
+		if pris[j] == 1:
+			continue
+		var f := int(outs[j])
+		var d := -10.0 if f == _arc_inverse[e] else _arc_dir[e].dot(_arc_dir[f])
+		pris[j] = 1
+		choix[i] = j
+		_essayer(ins, outs, i + 1, score + d, pris, choix, garde, meilleur)
+		pris[j] = 0
+
+
+func _noeud(sorties: Array, entrees: Array, p: Vector2) -> int:
+	var cle := roundi(p.x * 2.0) * 8388608 + roundi(p.y * 2.0)
+	var u := int(_rang_noeud.get(cle, -1))
+	if u < 0:
+		u = sorties.size()
+		_rang_noeud[cle] = u
+		sorties.append([])
+		entrees.append([])
+	return u
+
+
+func _ajouter_arc(a: Vector2, b: Vector2, na: int, nb: int, fid: int,
+		sorties: Array, entrees: Array) -> void:
+	var e := _arc_L.size()
+	var u := (b - a).normalized()
+	var pos := a + Vector2(u.y, -u.x) * DECAL_FILE
+	_arc_t.append(Transform3D(Basis(Vector3.UP, atan2(u.x, u.y)),
+		Vector3(pos.x, Y_ROULE, pos.y)))
+	_arc_L.append(maxf(a.distance_to(b), 0.01))
+	_arc_fid.append(fid)
+	_arc_dir.append(u)
+	_arc_tete.append(nb)
+	_arc_inverse.append(e)
+	_arc_par_paire[na * 65536 + nb] = e
+	(sorties[na] as Array).append(e)
+	(entrees[nb] as Array).append(e)
+
+
+## Le détour du clic, et lui seul : une rue qu'on vient de fermer se vide au
+## coin suivant au lieu d'avaler les voitures. Il sort de la permutation, donc
+## il ne sert JAMAIS au réseau ouvert — sinon les circuits se déforment.
+func _droit_devant(e: int, interdits: Dictionary) -> int:
+	var mieux := -1
+	var score := -2.0
+	var u := _arc_dir[e]
+	var tete := _arc_tete[e]
+	for i in range(_sortie_deb[tete], _sortie_deb[tete + 1]):
+		var f := _sortie_arc[i]
+		if f == _arc_inverse[e] or interdits.has(_arc_fid[f]):
+			continue
+		var d := u.dot(_arc_dir[f])
+		if d > score:
+			score = d
+			mieux = f
+	return mieux if mieux >= 0 else _arc_inverse[e]
+
+
+func _suivant(e: int) -> int:
+	var f := _arc_suivant[e]
+	if not _indispo_courant.has(_arc_fid[f]):
+		return f
+	return _droit_devant(e, _indispo_courant)
+
+
+## De (chemin, abscisse, sens) à (arc, distance parcourue dessus). Rend un arc
+## négatif quand le morceau a été avalé par le raccord d'un demi-mètre.
+func _poser(pts: PackedVector2Array, cum: PackedFloat32Array, s: float,
+		sens: float) -> Array:
+	var j := 1
+	while j < cum.size() - 1 and cum[j] < s:
+		j += 1
+	var na := int(_rang_noeud.get(
+		roundi(pts[j - 1].x * 2.0) * 8388608 + roundi(pts[j - 1].y * 2.0), -1))
+	var nb := int(_rang_noeud.get(
+		roundi(pts[j].x * 2.0) * 8388608 + roundi(pts[j].y * 2.0), -1))
+	if na < 0 or nb < 0 or na == nb:
+		return [-1, 0.0]
+	var e := int(_arc_par_paire.get(
+		(na * 65536 + nb) if sens > 0.0 else (nb * 65536 + na), -1))
+	if e < 0:
+		return [-1, 0.0]
+	var offset: float = (s - cum[j - 1]) if sens > 0.0 else (cum[j] - s)
+	return [e, clampf(offset, 0.0, _arc_L[e])]
+
+
+## Engager la voiture au DÉBUT d'un arc : le shader repart de zéro, et la phase
+## est calée sur l'horloge partagée pour que rien ne saute.
+func _engager(k: int, e: int, v: float) -> void:
+	var a: Dictionary = _roulantes[k]
+	a["arc"] = e
+	a["v"] = v
+	a["phase"] = -_temps_trafic * v
+	a["arrivee"] = _temps_trafic + _arc_L[e] / v
+	_arrivee[k] = float(a["arrivee"])
+	if _visibles_roule[k] == 1:
+		_ecrire(k, a)
+
+
+## La vitesse a changé : la voiture repart D'OÙ ELLE EST, pas du bord de l'arc
+## — sinon toute la file saute d'un coup à chaque pulsation.
+func _recaler(k: int, a: Dictionary, v: float) -> void:
+	var e: int = a["arc"]
+	var offset := clampf(float(a["phase"]) + _temps_trafic * float(a["v"]),
+		0.0, _arc_L[e])
+	a["v"] = v
+	a["phase"] = offset - _temps_trafic * v
+	a["arrivee"] = _temps_trafic + (_arc_L[e] - offset) / v
+	_arrivee[k] = float(a["arrivee"])
+
+
+## Remettre toutes les voitures là où le semis les avait posées : sans ça, une
+## partie relancée ne repart pas de la même image que la précédente.
+func _semer_circuit() -> void:
+	for k in _roulantes.size():
+		var a: Dictionary = _roulantes[k]
+		var e := int(a["arc0"])
+		var offset := float(a["offset0"])
+		var v := _vitesse_de(_arc_fid[e])
+		a["arc"] = e
+		a["v"] = v
+		a["phase"] = offset - _temps_trafic * v
+		a["arrivee"] = _temps_trafic + (_arc_L[e] - offset) / v
+		_arrivee[k] = float(a["arrivee"])
+		_arc_vu[k] = -1
+
+
+func _ecrire(k: int, a: Dictionary) -> void:
+	var e: int = a["arc"]
+	_mm_roule.set_instance_transform(k, _arc_t[e])
+	_mm_roule.set_instance_custom_data(k, Color(float(a["phase"]),
+		float(a["v"]), _arc_L[e], 1.0))
+	_arc_vu[k] = e
+
+
+## 🔴 LE SEUL TRAVAIL PAR IMAGE DE TOUT LE TRAFIC. Une voiture parcourt un
+## segment médian de 19,9 m : à 8 m/s elle change d'arc toutes les 2,5 s, donc
+## deux ou trois voitures par image sur les 963. Le reste est un balayage de
+## flottants, et l'animation est toujours sur le GPU.
+func _process(delta: float) -> void:
+	if _arrivee.is_empty():
+		return
+	_temps_trafic += delta
+	RenderingServer.global_shader_parameter_set(Constructeur.HORLOGE,
+		_temps_trafic)
+	for k in _arrivee.size():
+		if _temps_trafic < _arrivee[k]:
+			continue
+		var e := _suivant(int((_roulantes[k] as Dictionary)["arc"]))
+		_engager(k, e, _vitesse_de(_arc_fid[e]))
+
+
+func _vitesse_de(fid: int) -> float:
+	return maxf(1.1, float(_vitesse_vue.get(fid, 8.3)))
 
 
 func _affectation(fermees: Dictionary, memoriser := false) -> Array:

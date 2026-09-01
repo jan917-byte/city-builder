@@ -385,7 +385,10 @@ const TETE := Color(1.18, 1.06, 0.98)
 
 ## Une recette unique pour voitures roulantes et garées. La teinte vient de
 ## l'instance ; 4 000 véhicules restent donc deux MultiMesh et deux appels.
-static func voitures(nombre: int, anime := false) -> MultiMesh:
+## `circuit` = la voiture de la VILLE : elle ne reboucle pas sur son segment,
+## elle s'arrête au bout et c'est `trafic.gd` qui l'engage sur le suivant. La
+## fiche, elle, montre un morceau droit sans suite : elle reboucle.
+static func voitures(nombre: int, anime := false, circuit := false) -> MultiMesh:
 	var v := PackedVector3Array()
 	var n := PackedVector3Array()
 	var c := PackedColorArray()
@@ -394,7 +397,7 @@ static func voitures(nombre: int, anime := false) -> MultiMesh:
 	_boite(v, n, c, i, Vector3(1.48, 0.58, 2.05), Vector3(0.0, 0.90, -0.15),
 		Color(0.28, 0.33, 0.36))
 	var mesh := _surface(v, n, c, i)
-	mesh.surface_set_material(0, _glisse(anime))
+	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, circuit))
 	return _instances(mesh, nombre, anime)
 
 
@@ -441,11 +444,21 @@ static func cyclistes(nombre: int) -> MultiMesh:
 	return _instances(mesh, nombre, true)
 
 
+## L'horloge que le CPU et le GPU partagent. Sans elle, `trafic.gd` ne saurait
+## pas OÙ le shader a posé la voiture, donc pas quand l'engager sur le segment
+## suivant : `TIME` n'est lisible que du GPU.
+const HORLOGE := "temps_trafic"
+
+
 ## Le matériau de TOUT CE QUI GLISSE. `INSTANCE_CUSTOM` porte (phase, vitesse
 ## en m/s, longueur du segment) : le vertex avance seul, à la fréquence de
 ## l'écran, et le CPU ne déplace personne. Sans balancement, le code émis est
-## exactement celui des voitures — ne pas y ajouter de terme mort.
-static func _glisse(anime: bool, balance := 0.0, cadence := 0.0) -> Material:
+## exactement celui des usagers doux — ne pas y ajouter de terme mort.
+## `circuit` change UNE chose : la course s'arrête au bout du segment au lieu
+## d'y reboucler, et un retard d'une image se voit comme un arrêt, pas comme un
+## saut en arrière.
+static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
+		circuit := false) -> Material:
 	if not anime:
 		var std := StandardMaterial3D.new()
 		std.vertex_color_use_as_albedo = true
@@ -455,12 +468,21 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0) -> Material:
 	if balance > 0.0:
 		pas = "  VERTEX.y += %f * sin(TIME * %f + INSTANCE_CUSTOM.x);\n" \
 			% [balance, cadence * TAU]
+	var horloge := "TIME"
+	var course := "mod(INSTANCE_CUSTOM.x + %s * INSTANCE_CUSTOM.y, longueur)"
+	var entete := ""
+	if circuit:
+		_declarer_horloge()
+		horloge = HORLOGE
+		course = "clamp(INSTANCE_CUSTOM.x + %s * INSTANCE_CUSTOM.y, 0.0, longueur)"
+		entete = "global uniform float %s;\n" % HORLOGE
 	var shader := Shader.new()
 	shader.code = "shader_type spatial;\n" \
+		+ entete \
 		+ "varying vec4 teinte;\n" \
 		+ "void vertex() {\n" \
 		+ "  float longueur = max(INSTANCE_CUSTOM.z, 0.01);\n" \
-		+ "  VERTEX.z += mod(INSTANCE_CUSTOM.x + TIME * INSTANCE_CUSTOM.y, longueur);\n" \
+		+ "  VERTEX.z += " + (course % horloge) + ";\n" \
 		+ pas \
 		+ "  teinte = COLOR;\n" \
 		+ "}\n" \
@@ -468,6 +490,20 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0) -> Material:
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	return mat
+
+
+## ⚠️ On ne DEMANDE pas au serveur si l'horloge existe : la liste des uniformes
+## globaux n'est lisible que dans l'éditeur, et hors éditeur elle imprime une
+## erreur. Un drapeau de classe suffit — le matériau n'est bâti qu'une fois.
+static var _horloge_posee := false
+
+
+static func _declarer_horloge() -> void:
+	if _horloge_posee:
+		return
+	_horloge_posee = true
+	RenderingServer.global_shader_parameter_add(HORLOGE,
+		RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 
 
 static func _instances(mesh: Mesh, nombre: int, anime: bool) -> MultiMesh:

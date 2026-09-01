@@ -505,6 +505,11 @@ ESSAI — la ville, sans décision")
 	interface.montrer("r", 55, false)
 	await get_tree().process_frame
 	await _capturer("essai_axe")
+	# 🔄 LE MÊME CADRAGE DEUX SECONDES PLUS TARD, et rien d'autre n'a bougé :
+	# c'est la seule image qui montre qu'une voiture PASSE le carrefour au lieu
+	# de revenir au début de son segment.
+	await _laisser_rouler(2.0)
+	await _capturer("essai_axe_2s")
 	var doux_charge: Array = trafic.doux_visibles_sur(55)
 	print("  axe 55 à charge %.2f : %d piétons et %d cyclistes visibles"
 		% [ville.valeur("r", 55, "charge", mois), doux_charge[0], doux_charge[1]])
@@ -2123,6 +2128,15 @@ func _viser_objet(couche: String, fid: int, taille: float) -> void:
 			c = v
 	c += mi.global_position
 	pivot.viser(Vector2(c.x, c.z), taille)
+
+
+## Laisser passer du temps D'ÉCRAN sans avancer le mois : les voitures roulent,
+## la ville ne change pas.
+func _laisser_rouler(secondes: float) -> void:
+	var reste := secondes
+	while reste > 0.0:
+		await get_tree().process_frame
+		reste -= get_process_delta_time()
 
 
 func _viser_route(fid: int, taille: float) -> void:
