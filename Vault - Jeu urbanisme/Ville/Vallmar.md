@@ -1,12 +1,14 @@
 ---
 tags: [ville, level-design]
 statut: proposé — à valider ou renommer
-habitants: 112000
+habitants: 25000  # ordre de grandeur, à confirmer au tracé
 ---
 
 # Vallmar
 
-**112 000 habitants. Une rivière : la Vals. Une usine qui vient de fermer.**
+**~25 000 habitants, beaucoup de campagne autour. Une rivière : la Vals. Une usine qui vient de fermer.**
+
+> **Échelle arrêtée le 2026-09-02** (décision 77) : Vallmar fait **2 à 3 fois [[Wehrau]]**, pas plus. Elle portait 112 000 habitants ; au-delà de cette taille, le jeu devient trop grand pour être joué. 🔴 **Surface, îlots et hectares se fixeront quand Vallmar sera dessinée** — elle n'a pas encore de carte. Les chiffres sont **plausibles, pas réalistes** (décision 78). La **campagne autour reste dans le périmètre et fait partie du jeu** (décision 77b) : un stock de sol libre qui **se transforme** — alimentaire, éolien, solaire au sol, forêt, zone humide, peut-être logement — où **un hectare porte un usage et un seul**, l'éolien excepté puisqu'il laisse le champ dessous (décisions 77c · 77d).
 
 > Ville d'exemple pour le prototype. Les noms peuvent changer — **c'est la structure qui compte**.
 
@@ -30,7 +32,7 @@ C'est **une seule cause avec plusieurs entrées** : on peut l'attaquer par l'eau
 |---|---|---|
 | [[Altstadt]] | Centre historique minéral | Beau et invivable en août · 🎯 **périmètre du prototype** |
 | [[Les Vergnes]] | Grand ensemble en aval | Subit l'inondation, n'a pas de voix |
-| [[La Fonderie]] | Friche industrielle 40 ha | Le foncier qui change tout |
+| [[La Fonderie]] | Friche industrielle | Le foncier qui change tout |
 | [[Quartier Gare]] | Bureaux et parkings | La solution facile — donc suspecte |
 | [[Hochfeld]] | Pavillonnaire sur coteau | Le plus dur, le plus à gagner |
 | [[Le Ried]] | Zone commerciale en amont | Cause les crues, rapporte des recettes |

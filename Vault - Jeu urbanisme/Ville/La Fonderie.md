@@ -1,12 +1,14 @@
 ---
 tags: [quartier, vallmar, friche]
 ville: Vallmar
-surface: 40 ha
+surface: à fixer au tracé
 ---
 
 # La Fonderie
 
-**La friche industrielle. 40 hectares, en bord de rivière, à dix minutes de la gare. Sol pollué.**
+**La friche industrielle. En bord de rivière, à dix minutes de la gare. Sol pollué.**
+
+> **Elle faisait 40 ha jusqu'au 2026-09-02.** À l'échelle arrêtée par la décision 77, ça prenait une part absurde de la ville : la friche **rétrécit**. De combien se décidera au tracé — elle doit rester « le foncier qui change tout », un quartier complet à inventer, sans manger la partie.
 
 ## Profil
 

@@ -1,7 +1,7 @@
 ---
 tags: [production, périmètre]
 statut: tranché pour le prototype — ⚠️ le périmètre a grandi le 2026-08-12
-maj: 2026-08-12
+maj: 2026-09-02
 ---
 
 # Périmètre et coupes
@@ -31,9 +31,9 @@ La coupe est la même en coût — une carte d'un kilomètre carré, 69 polygone
 - **Le contraste de pouvoir entre quartiers** — [[Hochfeld]] qui vote contre. Wehrau est trop petite pour avoir des quartiers qui s'opposent
 - **La question la plus lourde du jeu** : que faire de [[La Fonderie]]. Les deux friches de Wehrau en sont une version miniature, pas l'équivalent
 - **Le pluralisme des fins** → [[Fins et pluralisme]]
-- **Le changement d'échelle lui-même** : ce qui hésite dans une petite ville hésitera-t-il à 112 000 ?
+- ~~**Le changement d'échelle lui-même**~~ ✅ **rayé le 2026-09-02** : il n'y en a plus. [[Vallmar]] fait 2 à 3 fois Wehrau (décision 77), donc ce qui hésite ici hésitera là-bas
 
-**Conséquence à assumer** : le prototype valide la maille fine **et une partie de la thèse**. Il ne valide pas le passage à l'échelle. C'est un risque plus petit que celui qu'on avait avant.
+**Conséquence à assumer** : le prototype valide la maille fine **et une partie de la thèse**. 🔄 **Depuis 77, il valide aussi l'échelle** — il reste à ne pas valider le contraste entre quartiers, la Fonderie et le pluralisme des fins.
 
 ## Liste des coupes restantes, par ordre de rendement
 

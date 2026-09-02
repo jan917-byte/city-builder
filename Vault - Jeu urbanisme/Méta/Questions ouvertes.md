@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue) et n°24 (ce que la berge change, hors crue)
-maj: 2026-08-26
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue) n°25 (les menus qui ont un lieu) et n°26 (le logement en campagne) — n°11 close le 2026-09-02
+maj: 2026-09-02
 ---
 
 # Questions ouvertes
@@ -241,8 +241,11 @@ Trois villes = trois fois le contenu. Test décisif : **si les structures urbain
 ### 10. Vallmar : je garde les noms ou je réécris ?
 La structure est validée. Les noms sont à moi.
 
-### ~~11. Quand tracer le deuxième quartier ?~~ 🟢 **détendue le 2026-08-10**
-La question naissait de ce qu'un quartier seul ne peut pas tester « le lieu change le résultat ». [[Wehrau]] le teste : amont, aval, ville, campagne. Ce qui reste ouvert n'est plus le deuxième quartier mais **le changement d'échelle** : ce qui hésite dans une petite ville hésitera-t-il à 112 000 ? Ça se tranche au mois 3, pas maintenant. → [[Périmètre et coupes]]
+### ~~11. Quand tracer le deuxième quartier ? puis : le changement d'échelle~~ ✅ **close le 2026-09-02**
+
+**Il n'y a pas de changement d'échelle.** [[Vallmar]] fait 2 à 3 fois [[Wehrau]] — et pas 112 000 habitants : *« sinon c'est trop grand pour le jeu »*. Ce qui hésite dans une petite ville est donc ce qui hésitera dans le jeu complet, et le test de Wehrau devient concluant au lieu d'être indicatif.
+
+*L'énoncé d'origine (détendu le 2026-08-10)* : la question naissait de ce qu'un quartier seul ne peut pas tester « le lieu change le résultat ». [[Wehrau]] le teste : amont, aval, ville, campagne. Ce qui restait ouvert n'était plus le deuxième quartier mais le changement d'échelle. → [[Décisions arrêtées]] 77 · [[Périmètre et coupes]]
 
 ### ~~12. Combien de franchissements pour l'Ilse ?~~ ✅ **close le 2026-08-12**
 
@@ -260,7 +263,7 @@ Le vault visait « deux ponts au maximum » pour que la rivière soit une vraie 
 
 **~5 350 habitants — pour le prototype.** La géométrie tranche : 38,3 ha bâtis ne portent pas 18 000 personnes, il y faudrait 470 hab/ha bâti quand un centre allemand dense plafonne vers 350. La carte est la source de vérité (décision 31b), et le chiffre annoncé s'aligne sur elle, pas l'inverse.
 
-La décision ne concerne **que [[Wehrau]]** : [[Vallmar]] garde ses 112 000 habitants, la question de l'échelle du jeu complet reste entière (n°11).
+La décision ne concernait alors **que [[Wehrau]]**. 🔄 **Dépassée le 2026-09-02** : [[Vallmar]] ne garde pas ses 112 000 habitants — elle fait 2 à 3 fois Wehrau, et la question n°11 est close. → [[Décisions arrêtées]] 77
 
 Ce que ça engage, et qui reste à écrire : le lycée devient une Realschule et la barre de 1974 un petit Neubau. La galerie prévue alors a disparu avec la restructuration 71. → [[Décisions arrêtées]] 13d · 71
 
@@ -297,6 +300,53 @@ Ce qui reste à écrire, et qui est le travail de la semaine 2 : quelles décisi
 - ~~**La crue.**~~ ✅ Une berge renaturée élargit la section : le niveau de la crue annoncée baisse dans son bief, sur les deux rives.
 
 🔴 **Ce que la réponse laisse en suspens** : l'`alea` bouge partout dans le bief, mais **l'îlot le plus enfoncé garde 100 % de reprise** quoi qu'on paie — il lui faudrait 3 m de baisse. Une berge sauve les bords du faubourg, pas son cœur. C'est défendable ; ce n'est pas choisi. → [[Décisions arrêtées]] 73 · 74 · `Prototype/Trafic.md`
+
+### 25. Un menu a un lieu : lesquels, et alimentés par quoi ? — **les lieux sont tranchés, les rôles non**
+
+### L'université — îlot 36 (75)
+
+**Ouverte le 2026-09-02** avec la décision 75. L'îlot 36 est l'université et le menu des déblocages a un lieu ; reste **d'où vient ce qui s'y débloque**. Trois formes, très différentes :
+
+| | Ce que ça fait | Ce que ça coûte à écrire | |
+|---|---|---|---|
+| **A · Une jauge de recherche** | on finance l'université, on attend, un palier s'ouvre | une ressource de plus, un écran de plus | 🔴 le joueur paie une jauge pour ouvrir un menu, et la récompense n'est pas dans la ville. Remet la rareté dans les **règles**, quand [[Milestones]] la met dans le **calendrier** |
+| **B · Le savoir vient de ce que la ville a déjà fait** | une décision tentée **sur un îlot** ouvre sa version ville ; l'université est où le pilote est suivi, un an, puis rendu public — bon **ou** mauvais | un champ de plus sur la décision, un état « pilote » sur le chantier | ⭐ c'est le `condition_deblocage` de [[Décisions]] avec une cause nommée, et l'hésitation est réelle : essayer petit et lent, ou généraliser tout de suite, cher et aveugle |
+| **C · Les deux** | le pilote ouvre, l'université **accélère** | A + B | ❓ à ne regarder que si B seul est trop lent |
+
+⚠️ **Deux points que la décision 75 laisse en l'air, et qui se ferment ici ou ailleurs** : le **nom** — une université de plein exercice n'existe pas à 5 350 habitants, une antenne / Hochschule oui, et **13d** avait prévu l'inverse (le lycée descendait en Realschule) ; et l'**emploi** — 50b tenait le moulin et la brasserie pour le seul levier d'emploi de la ville.
+
+**Et une question de forme** : si le menu a un lieu, que se passe-t-il quand ce lieu est **touché** — inondé, coupé de la ville, fermé ? Un menu qui peut être endommagé est une mécanique ; un menu invulnérable est un décor.
+
+### La mairie — îlot 20 (76)
+
+Le lieu est tranché, **le rôle non**. Deux, et un refus :
+
+| | Ce que la mairie porte | |
+|---|---|---|
+| **Engager** | c'est là qu'une décision se signe, avec sa liste de chantiers en cours | ✅ quelques dizaines de fois par partie : assez rare pour qu'un lieu soit un moment, assez fréquent pour qu'un détour soit lourd. À juger sur le geste, pas sur le principe |
+| **La qualité de ce qu'on voit** | les calques restent lisibles en permanence, mais leur **précision et leur fraîcheur** viennent d'ici — sans service technique, on lit sa ville avec une carte grossière ou vieille de trois ans | ⭐ le lieu pèse sans ajouter un clic, et c'est le métier : *une donnée a un service qui la produit* |
+| ~~**Diagnostiquer**~~ | 🔴 **refusé** — [[Diagnostic et calques]] (arrêté) fait du diagnostic l'activité continue entre deux décisions et interdit *« cliquer 40 bâtiments pour comprendre quelque chose »* ; **53** rend le bandeau permanent et en fait le sommaire des calques. Un lieu taxerait le geste le plus fréquent du jeu | |
+
+⚠️ **Et son toit** : `solaire_possible = 1`, quand l'église mitoyenne est protégée (71). À trancher avec le reste.
+
+### Ce qui vaut pour les deux — un menu qu'on peut abîmer
+
+Si un menu a un lieu, que se passe-t-il quand ce lieu est **inondé, coupé, fermé** ? Un menu invulnérable est un décor. Mais **le jeu s'ouvre sur une crue** (15 · 72) : une mairie noyée qui empêche d'engager des décisions au premier mois est punitive, pas tendue. La piste tenable est le **ralentissement**, pas le blocage.
+
+
+### 26. Le logement fait-il partie des usages de la campagne ? — **resserrée le 2026-09-02**
+
+**Ce qui n'est plus en question** (décisions 77b · 77c) : la campagne est dans le périmètre, elle **se transforme**, et ses usages se disputent le même sol — un hectare, un usage. Reste **le seul usage qui construit de la ville** : le logement.
+
+| | Ce que ça fait | |
+|---|---|---|
+| **A · Le logement n'est pas un usage de campagne** | on cultive, on produit, on reboise, on inonde volontairement — on ne lotit pas | 🔴 le joueur n'a **qu'une** réponse à la croissance, densifier : pas d'arbitrage, et la campagne n'est jamais menacée par la ville elle-même |
+| **B · Lotir est offert, et se paie plus tard** | ouvrir un lotissement en périphérie : moins cher au logement, et ça coûte de la desserte, des kilomètres de voiture, du ruissellement, du sol nourricier | ⭐ le premier système qui pousse **contre** la densification, et il pousse dans le sens où le joueur est tenté |
+| **C · L'étalement est subi** | la croissance sort en périphérie toute seule si la ville ne l'absorbe pas | ❓ punitif : le joueur perd du sol sans l'avoir choisi |
+
+🔴 **Le piège de B, à nommer maintenant** : un étalement qui coûte cher **tout de suite** n'est jamais choisi, donc n'est pas une tentation ; un étalement qui ne coûte jamais rien est la stratégie dominante. Il n'est une mécanique que si le prix arrive **après** — c'est-à-dire s'il exploite précisément l'horizon de 20 ans du jeu.
+
+**Ce qui est du level design et attend le tracé de [[Vallmar]]** : la liste exacte des usages, leurs prix, leurs délais, et ce que chacun retire aux autres. Ne se tranche pas avant que Wehrau soit jugé — Wehrau n'a pas de campagne jouable, et la question ne coûte rien à laisser ouverte. → [[Décisions arrêtées]] 77b · 77c · [[Vallmar]]
 
 ## 🟢 Peut attendre (réversible)
 

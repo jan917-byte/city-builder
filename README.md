@@ -4,7 +4,7 @@ Un city-builder PC où le joueur ne construit pas : il **décide**. Une ville mo
 
 En développement solo, Godot 4, moteur de simulation écrit à la main. → `Vault - Jeu urbanisme/Vision/Vision et prémisses.md`
 
-**Deux villes, ne pas les confondre** : le **prototype** est **Wehrau**, une petite ville qu'on voit en entier — c'est elle qui est cartographiée dans `QGIS/`. **Vallmar** (112 000 hab.) est la ville du jeu complet, dessinée dans le vault et en réserve.
+**Deux villes, ne pas les confondre** : le **prototype** est **Wehrau**, une petite ville qu'on voit en entier — c'est elle qui est cartographiée dans `QGIS/`. **Vallmar** (~25 000 hab., 2 à 3 fois Wehrau) est la ville du jeu complet, dessinée dans le vault et en réserve.
 
 ## Où est quoi
 

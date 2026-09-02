@@ -5,7 +5,7 @@
 
 ## 1. Le projet
 
-City-builder PC de **transformation urbaine**. Le joueur ne construit pas, il **décide**. Une ville moyenne fictive et voiture-dépendante — **Vallmar**, 112 000 hab. — qu'on transforme sur 20 ans. But : inspirer, pas simuler la bureaucratie. Ton : ***dur mais possible, jamais cynique***.
+City-builder PC de **transformation urbaine**. Le joueur ne construit pas, il **décide**. Une petite ville fictive et voiture-dépendante — **Vallmar**, ~25 000 hab., 2 à 3 fois Wehrau (77) — qu'on transforme sur 20 ans. But : inspirer, pas simuler la bureaucratie. Ton : ***dur mais possible, jamais cynique***.
 
 **Prototype : Wehrau**, une petite ville entière (~5 350 hab., 0,93 km², 71 îlots) — pas un quartier de Vallmar (13b · 13d). Cadre : solo, 3–5 ans, ~15 000 €, Godot 4.
 

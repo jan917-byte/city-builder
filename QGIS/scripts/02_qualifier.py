@@ -58,10 +58,9 @@ FRICHES = [31, 65]          # le moulin et la brasserie, en aval
 BERGE_VOIE_RAPIDE = [15, 55, 58]
 
 # --- les points fixes de la ville -----------------------------------------
-EQUIPEMENTS = [16, 36]      # église protégée · lycée
-# 🔄 L'îlot 17 était le Rathaus ; repassé en `coeur_ancien` le 2026-08-18.
-# Wehrau n'a plus de mairie, et c'est un choix. Pour la remettre : ajouter un
-# fid ici ET le retirer de COEUR_ANCIEN (20 ou 22, voisins de l'église).
+EQUIPEMENTS = [16, 20, 36]  # église protégée · mairie · université (75 · 76)
+# 🔄 L'îlot 17 était le Rathaus, repassé en `coeur_ancien` le 2026-08-18 ;
+# la mairie revient le 2026-09-02 sur l'îlot 20, en face de l'église (76).
 PATRIMOINE_PROTEGE = [16]   # l'église : aucun panneau solaire en toiture
 # L'hôpital a été retiré : il était sur l'îlot 26. Pour le remettre ailleurs,
 # ajouter un fid ici — 35 (bord ouest) ou 30 (accès par l'axe sud) conviennent.
@@ -71,7 +70,7 @@ JARDINS = [48]              # les jardins familiaux, au nord-ouest
 
 # --- le tissu -------------------------------------------------------------
 FRONT_COMMERCANT = [12, 21, 24, 45, 72] # dont les deux moitiés de l'ancienne dalle
-COEUR_ANCIEN = [13, 14, 15, 17, 18, 20, 22, 34, 37, 38, 53, 55, 56]
+COEUR_ANCIEN = [13, 14, 15, 17, 18, 22, 34, 37, 38, 53, 55, 56]
 # 70 et 71 : moitiés neuves du 26 et du 42, coupées le 2026-08-13 par les rues
 # 179 et 180 (l'ancien 27 a été fusionné dans le 26).
 # 73 et 74 : les ÎLOTS DE LISIÈRE de `00b_ilots_lisiere.py`, rubans d'une seule

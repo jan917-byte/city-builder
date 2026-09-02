@@ -1,7 +1,7 @@
 ---
 tags: [ville, prototype, level-design]
 statut: 🎯 périmètre du prototype
-maj: 2026-08-18
+maj: 2026-09-02
 habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 ---
 
@@ -97,12 +97,12 @@ Ce n'est pas la ville industrielle sinistrée du brainstorm d'origine : c'est **
 | `sous_type` | `fonction` | n | Ce que ça joue |
 |---|---|---|---|
 | `maisons_de_ville` | habitation | 20 | le tissu ordinaire, la matière de fond |
-| `coeur_ancien` | mixte | 13 | parcellaire fin, mitoyen, cours minérales |
+| `coeur_ancien` | mixte | 12 | parcellaire fin, mitoyen, cours minérales |
 | `pavillonnaire` | habitation | 12 | la frange, la plus dure à faire bouger |
 | `champ` | freiraum | 7 | hors les murs — ce qui peut recevoir l'eau |
 | `riviere` | riviere | 6 | l'Ilse, canalisée |
 | `front_commercant` | mixte | 5 | les commerçants organisés, dont les nouveaux îlots 45 et 72 |
-| `equipement` | mixte | 2 | église protégée · lycée |
+| `equipement` | mixte | 3 | église protégée · mairie · université |
 | `friche_industrielle` | industrie | 2 | le moulin et la brasserie, en aval |
 | `place_minerale` | freiraum | 1 | 🔴 la place du marché, devenue parking |
 | `barre_1970` | habitation | 1 | 🔴 le grand ensemble en aval |
@@ -114,6 +114,18 @@ Ce n'est pas la ville industrielle sinistrée du brainstorm d'origine : c'est **
 > ⛪ **L'îlot 16 est l'église du village.** Il est classé équipement et protégé :
 > son toit existe dans la géométrie (**172 m²**), mais expose **0 m² équipable** au système
 > énergie. Le jeu refuse donc toute pose et en donne la raison. → [[Décisions arrêtées]] 71
+
+> 🏛️ **L'îlot 20 est la mairie**, en face de l'église — la mairie revient dans la ville le
+> 2026-09-02, après avoir été retirée de l'îlot 17 le 2026-08-18. **1 637 m²**, un seul
+> bâtiment détaché de **252 m² au sol sur 3 niveaux**, avec son recul tout autour : un
+> Rathaus de village sur son parvis, pas une barre administrative. Ce qu'elle coûte au
+> cœur ancien : **28 logements et 5 emplois** (2 225 → 2 197 · 943 → 938).
+> Son rôle dans le jeu n'est pas tranché. → [[Décisions arrêtées]] 76 · [[Questions ouvertes]] n°25
+
+> 🎓 **L'îlot 36 est l'université**, et c'est **le lieu du menu** : les nouvelles façons de
+> transformer la ville s'ouvrent là, sur la carte, pas dans un panneau flottant.
+> **1,14 ha**, mitoyen du cœur ancien, à 160 m de l'église. Ce qui l'alimente n'est pas
+> tranché. → [[Décisions arrêtées]] 75 · [[Questions ouvertes]] n°25
 
 > 🔴 **La voie rapide de berge n'est pas un type d'îlot.** Elle a d'abord été encodée comme tel (`quai_voie_rapide`), à tort : c'est une propriété de la **rue** — 22 m de largeur sur les tronçons de rive de la rive gauche. Les îlots derrière sont du tissu ordinaire. La plaie est entière, elle est juste au bon endroit dans les données.
 
@@ -145,8 +157,8 @@ C'est le pilier « le lieu change le résultat », testable dès le mois 1. → 
 
 ## Rapport à Vallmar
 
-[[Vallmar]] reste la ville du jeu complet : 112 000 habitants, six quartiers, une structure qui encode des injustices que Wehrau ne peut qu'esquisser. Rien de ce qui suit n'est annulé — c'est du design en réserve.
+[[Vallmar]] reste la ville du jeu complet : **~25 000 habitants, 2 à 3 fois Wehrau** (décision 77), six quartiers, une structure qui encode des injustices que Wehrau ne peut qu'esquisser. Rien de ce qui suit n'est annulé — c'est du design en réserve.
 
-Ce que Wehrau sert à savoir : **est-ce que la forme des décisions tient ?** Si elle tient à cette échelle, on la porte à 112 000. Si elle ne tient pas, on n'a pas perdu six quartiers dessinés pour rien.
+Ce que Wehrau sert à savoir : **est-ce que la forme des décisions tient ?** 🔄 **Depuis le 2026-09-02, la réponse porte plus loin qu'avant** : Vallmar n'est plus dix fois Wehrau mais deux à trois fois, donc ce qui tient ici tient là-bas — le prototype ne valide plus « une partie » de la thèse, il valide l'échelle du jeu.
 
 **Voir aussi** : [[Vallmar]] · [[Pipeline QGIS]] · [[Périmètre et coupes]] · [[Décisions]]

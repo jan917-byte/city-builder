@@ -1,7 +1,7 @@
 ---
 tags: [moc, projet]
 statut: vivant
-maj: 2026-08-12
+maj: 2026-09-02
 ---
 
 # 🏙️ Projet jeu — city-builder de transformation urbaine
@@ -42,7 +42,7 @@ maj: 2026-08-12
 ## 🗺️ La ville
 
 - [[Wehrau]] 🎯 — ~5 350 hab., **le prototype** : une petite ville qu'on voit en entier
-- [[Vallmar]] — 112 000 hab., la ville du jeu complet. Design en réserve
+- [[Vallmar]] — ~25 000 hab., 2 à 3 fois Wehrau. La ville du jeu complet, design en réserve
   - [[Altstadt]] · [[Les Vergnes]] · [[La Fonderie]] · [[Quartier Gare]] · [[Hochfeld]] · [[Le Ried]]
 
 ## 🔧 Technique
