@@ -16,6 +16,8 @@ signal commande_demandee(couche: String, fid: int, reglages: Dictionary)
 
 const Ville := preload("res://scripts/ville.gd")
 const Apercu := preload("res://scripts/apercu.gd")
+const Recherche := preload("res://scripts/recherche.gd")
+const Politiques := preload("res://scripts/politiques.gd")
 
 const FOND := Color8(247, 243, 231, 252)
 const FOND_FORT := Color8(232, 224, 200, 255)
@@ -138,6 +140,15 @@ var _vitesses := {}
 var _ville_panneau: PanelContainer
 var _menu_panneau: PanelContainer
 var _menu_boutons := {}
+## 🎓🏛️ LES DEUX MENUS QUI ONT UN LIEU (décision 81). `_lieu_ouvert` vaut ""
+## quand la fiche d'îlot est en place : les deux ne s'affichent jamais ensemble.
+var _lieu_panneau: PanelContainer
+var _lieu_titre: Label
+var _lieu_intro: Label
+var _lieu_message: Label
+var _lieu_lignes := {}
+var _lieu_ouvert := ""
+var _lieu_bouton: Button
 var _diagnostic_panneau: PanelContainer
 var _chantiers_panneau: PanelContainer
 var _calque_panneau: PanelContainer
@@ -207,6 +218,7 @@ func batir() -> void:
 	_theme_ui = _creer_theme()
 	_panneau_ville()
 	_panneau_ilot()
+	_panneau_lieu()
 	_panneau_menu()
 	_panneau_diagnostic()
 	_panneau_chantiers()
@@ -475,6 +487,21 @@ func _panneau_ville() -> void:
 	(_ville_valeurs["caisse"] as Label).get_parent().add_child(recette)
 	_ville_valeurs["recette"] = recette
 	(_ville_valeurs["caisse"] as Label).add_theme_color_override("font_color", ACCENT)
+	# 🎓🏛️ LES DEUX PORTES PERMANENTES (décision 81) : un menu s'ouvre sans
+	# aller sur place. L'autre porte est le bouton de la fiche d'îlot ; le lieu
+	# est un raccourci, jamais le seul chemin.
+	for lieu in LIEUX_ORDRE:
+		var b := Button.new()
+		b.text = LIEUX[lieu]["nom"] + "\nîlot %d" % int(LIEUX[lieu]["fid"])
+		b.theme = _theme_ui
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(96, 66)
+		b.add_theme_font_size_override("font_size", 12)
+		b.tooltip_text = String(LIEUX[lieu]["quoi"])
+		var cle: String = lieu
+		b.pressed.connect(func() -> void: ouvrir_lieu(cle))
+		h.add_child(b)
+
 	# 🧪 LE BOUTON D'ESSAI, ET IL DIT QU'IL EN EST UN. Il sert à atteindre en un
 	# clic un état que vingt ans de dotation mettraient à payer — donc à juger
 	# une ville équipée, pas à juger l'économie. Sa propre tuile et pas un
@@ -838,6 +865,17 @@ func _panneau_ilot() -> void:
 	p.add_child(v)
 	_fiche_titre = _bandeau(v, "Sélection")
 
+	# 🎓🏛️ LA DEUXIÈME PORTE (81), et elle ne change rien à la fiche : celle-ci
+	# reste la fiche de L'ÎLOT — surface, logements, toits, curseurs. Le menu
+	# est une autre fiche, qui prend la place de celle-ci.
+	_lieu_bouton = Button.new()
+	_lieu_bouton.visible = false
+	_lieu_bouton.theme = _theme_ui
+	_lieu_bouton.focus_mode = Control.FOCUS_NONE
+	_lieu_bouton.pressed.connect(func() -> void:
+		ouvrir_lieu(String(_lieu_du_fid(_fiche_fid))))
+	v.add_child(_lieu_bouton)
+
 	# 🔎 AVANT / APRÈS (2026-08-31). La miniature est la seule image où les deux
 	# états d'un même objet peuvent se comparer : la ville, elle, ne peut montrer
 	# que celui du jour. Deux boutons plutôt qu'un rideau ou une bascule
@@ -1168,6 +1206,205 @@ func _habiller_principal(b: Button) -> void:
 	b.add_theme_color_override("font_pressed_color", Color8(52, 38, 8))
 
 
+# ==========================================================================
+# 🎓🏛️ L'UNIVERSITÉ ET LA MAIRIE — deux menus, deux portes (79 · 80 · 81)
+# ==========================================================================
+# Les deux îlots restent des îlots ordinaires : leurs toits, leurs curseurs et
+# leur part dans les totaux ne changent pas. Seul un bouton s'ajoute à leur
+# fiche, et le menu qu'il ouvre est une AUTRE fiche.
+
+const LIEUX := {
+	"mairie": {"fid": 20, "nom": "Mairie",
+		"quoi": "Une politique n'est pas un chantier : elle dure, et elle se paie tous les mois tant qu'elle tient."},
+	"universite": {"fid": 36, "nom": "Université",
+		"quoi": "On finance un sujet, on attend, le palier tombe — et il vaut pour toute la ville, panneaux déjà posés compris."},
+}
+const LIEUX_ORDRE := ["mairie", "universite"]
+
+
+func _lieu_du_fid(fid: int) -> String:
+	for cle in LIEUX_ORDRE:
+		if int(LIEUX[cle]["fid"]) == fid:
+			return cle
+	return ""
+
+
+func _panneau_lieu() -> void:
+	# Même gabarit et même place que la fiche d'îlot : c'est une fiche, et elle
+	# prend la place de l'autre plutôt que de s'ajouter à côté (53).
+	var p := PanelContainer.new()
+	_lieu_panneau = p
+	p.theme = _theme_ui
+	p.add_theme_stylebox_override("panel", _boite())
+	p.anchor_left = 1.0
+	p.anchor_right = 1.0
+	p.offset_left = -336
+	p.offset_right = -16
+	p.offset_top = 92
+	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	p.visible = false
+	add_child(p)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	p.add_child(v)
+	_lieu_titre = _bandeau(v, "Mairie")
+	_lieu_intro = _label("", 12, GRIS)
+	_lieu_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_lieu_intro)
+
+	for cle in Politiques.ORDRE:
+		_lieu_lignes[cle] = _ligne_lieu(v, "politique",
+			String(Politiques.POLITIQUES[cle]["nom"]),
+			String(Politiques.POLITIQUES[cle]["quoi"]))
+	for cle in Recherche.ORDRE:
+		_lieu_lignes[cle] = _ligne_lieu(v, "recherche",
+			String(Recherche.SUJETS[cle]["nom"]),
+			String(Recherche.SUJETS[cle]["quoi"]))
+
+	_lieu_message = _label("", 11, GRIS)
+	_lieu_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_lieu_message)
+
+	var retour := Button.new()
+	retour.text = "Fermer"
+	retour.theme = _theme_ui
+	retour.focus_mode = Control.FOCUS_NONE
+	retour.pressed.connect(_fermer_lieu)
+	v.add_child(retour)
+
+
+## Une ligne de menu : ce que c'est, ce que ça fait, où ça en est, et LE bouton.
+func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
+		quoi: String) -> Dictionary:
+	var bloc := VBoxContainer.new()
+	bloc.add_theme_constant_override("separation", 3)
+	parent.add_child(bloc)
+	bloc.add_child(HSeparator.new())
+	bloc.add_child(_label(nom, 14, TEXTE))
+	var l_quoi := _label(quoi, 11, GRIS)
+	l_quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bloc.add_child(l_quoi)
+	var jauge := Jauge.new()
+	jauge.custom_minimum_size = Vector2(0, 9)
+	jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	jauge.colorer(ACCENT_VIF)
+	jauge.visible = genre == "recherche"
+	bloc.add_child(jauge)
+	var etat := _label("", 12, TEXTE)
+	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bloc.add_child(etat)
+	var b := Button.new()
+	_habiller_principal(b)
+	b.focus_mode = Control.FOCUS_NONE
+	bloc.add_child(b)
+	return {"bloc": bloc, "genre": genre, "etat": etat, "jauge": jauge, "bouton": b}
+
+
+func ouvrir_lieu(cle: String) -> void:
+	if not LIEUX.has(cle):
+		return
+	_lieu_ouvert = cle
+	_lieu_panneau.visible = true
+	_fiche_panneau.visible = false
+	_lieu_titre.text = String(LIEUX[cle]["nom"]).to_upper()
+	_lieu_intro.text = String(LIEUX[cle]["quoi"])
+	_brancher_lieu()
+	_maj_lieu()
+
+
+func _fermer_lieu() -> void:
+	_lieu_ouvert = ""
+	_lieu_panneau.visible = false
+	_fiche_panneau.visible = true
+
+
+## Les boutons ne se rebranchent qu'au changement de menu : une connexion posée
+## à chaque image en empilerait soixante par seconde.
+func _brancher_lieu() -> void:
+	for cle in _lieu_lignes:
+		var l: Dictionary = _lieu_lignes[cle]
+		var b: Button = l["bouton"]
+		for c in b.pressed.get_connections():
+			b.pressed.disconnect(c["callable"])
+		var k: String = cle
+		if String(l["genre"]) == "recherche":
+			b.pressed.connect(func() -> void:
+				ville.financer_recherche(k, _mois)
+				_maj_lieu())
+		else:
+			b.pressed.connect(func() -> void:
+				ville.basculer_politique(k, _mois)
+				_maj_lieu())
+
+
+func _maj_lieu() -> void:
+	if _lieu_ouvert == "":
+		return
+	var universite := _lieu_ouvert == "universite"
+	for cle in _lieu_lignes:
+		var l: Dictionary = _lieu_lignes[cle]
+		var bloc: VBoxContainer = l["bloc"]
+		bloc.visible = (String(l["genre"]) == "recherche") == universite
+		if not bloc.visible:
+			continue
+		if universite:
+			_maj_ligne_recherche(String(cle), l)
+		else:
+			_maj_ligne_politique(String(cle), l)
+	# 🔴 Ce qui manque est DIT, pas simulé à moitié : les règles se paient en
+	# capital politique, qui vit encore dans le classeur et pas ici.
+	_lieu_message.text = "" if universite else \
+		"Les règles — stationnement payant, toit vert obligatoire au neuf — " \
+		+ "attendent le capital politique, qui n'est pas encore dans la maquette."
+
+
+func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
+	var s: Dictionary = Recherche.SUJETS[cle]
+	var etat: Label = l["etat"]
+	var b: Button = l["bouton"]
+	var jauge: Jauge = l["jauge"]
+	if Recherche.acquis(ville, cle, _mois):
+		jauge.regler(1.0, 1.0)
+		etat.text = "Acquis au mois %d · vaut pour toute la ville." % \
+			int(roundf(Recherche.mois_palier(ville, cle)))
+		b.visible = false
+	elif ville.recherche_engagee(cle):
+		var reste: float = Recherche.reste_mois(ville, cle, _mois)
+		jauge.regler(1.0 - reste / float(s["mois"]), 1.0)
+		etat.text = "En cours · %s · %s k€/mois" % [
+			_duree(reste), _milliers(float(s["ke_mois"]))]
+		b.visible = false
+	else:
+		jauge.regler(0.0, 0.0)
+		etat.text = "%s k€/mois pendant %d mois · %s k€ en tout" % [
+			_milliers(float(s["ke_mois"])), int(float(s["mois"])),
+			_milliers(Recherche.cout_total_ke(cle))]
+		b.visible = true
+		b.disabled = _caisse_ke < float(s["ke_mois"])
+		b.text = "Financer" if not b.disabled else "Caisse insuffisante"
+
+
+func _maj_ligne_politique(cle: String, l: Dictionary) -> void:
+	var pol: Dictionary = Politiques.POLITIQUES[cle]
+	var etat: Label = l["etat"]
+	var b: Button = l["bouton"]
+	var ke_mois := float(pol["ke_mois"])
+	var verse := Politiques.mois_actifs(ville, cle, _mois) * ke_mois
+	b.visible = true
+	if Politiques.active(ville, cle):
+		etat.text = "En vigueur · %s k€/mois · %s k€ déjà versés" % [
+			_milliers(ke_mois), _milliers(verse)]
+		b.disabled = false
+		b.text = "Retirer"
+	else:
+		etat.text = "%s k€/mois dès la signature" % _milliers(ke_mois)
+		if verse > 0.0:
+			etat.text += " · %s k€ versés avant retrait" % _milliers(verse)
+		b.disabled = _caisse_ke < ke_mois
+		b.text = "Signer" if not b.disabled else "Caisse insuffisante"
+
+
 func _panneau_camera() -> void:
 	# Les gestes de caméra ne se devinent pas, et un jeu qui oblige à ouvrir un
 	# fichier pour les connaître n'en est pas un.
@@ -1273,6 +1510,8 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		(_vitesses[v] as Button).disabled = is_equal_approx(float(v), vitesse)
 	if _fiche_fid >= 0:
 		_maj_fiche()
+	if _lieu_ouvert != "":
+		_maj_lieu()
 
 
 func _maj_durabilite(indic: Dictionary) -> void:
@@ -1299,6 +1538,13 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# déblayer, rebâtir — et une décision qu'on ne peut pas cliquer n'existe pas.
 	if fid < 0 or (couche != "i" and couche != "r" and couche != "b"):
 		return
+	# 🎓🏛️ Cliquer la ville referme le menu : jamais deux fiches ensemble (81).
+	_fermer_lieu()
+	var lieu := _lieu_du_fid(fid) if couche == "i" else ""
+	_lieu_bouton.visible = lieu != ""
+	if lieu != "":
+		_lieu_bouton.text = "Ouvrir %s" % ("la mairie" if lieu == "mairie" \
+			else "l'université")
 	if fid != _fiche_fid or couche != _fiche_couche:
 		_vider_pose()   # changer d'objet abandonne tout ce qui était posé
 	_fiche_fid = fid
@@ -1769,6 +2015,7 @@ func _sur_curseur_arbres(v: float) -> void:
 ## Après un retour au mois 0 : réglages posés et compte rendu périmés.
 func remis_a_zero() -> void:
 	_vider_pose()
+	_fermer_lieu()
 	_message.text = "Retour au mois 0, caisse à %s k€." \
 		% _milliers(Ville.CAISSE_DEPART_KE)
 	if _fiche_fid >= 0:

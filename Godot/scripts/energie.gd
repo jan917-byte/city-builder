@@ -137,9 +137,11 @@ static func toit_vert_m2(v, fid: int, t: float) -> float:
 
 ## En k€. Même `cout_x` que les panneaux : ce qui coûte cher, c'est monter sur
 ## le toit, et ça ne dépend pas de ce qu'on y pose.
-static func cout_vert_ke(v, fid: int, de: float, vers: float) -> float:
+## 🏛️🎓 `facteur` porte la prime de la mairie et le palier de l'université (80 · 79).
+static func cout_vert_ke(v, fid: int, de: float, vers: float, t: float) -> float:
 	return toit_equipable_m2(v, fid) * maxf(vers - de, 0.0) \
-		* COUT_TOIT_VERT_EUR_M2 * ligne(v, fid)["cout_x"] / 1000.0
+		* COUT_TOIT_VERT_EUR_M2 * ligne(v, fid)["cout_x"] / 1000.0 \
+		* v.facteur("cout_vert_x", t)
 
 
 ## Le toit entièrement équipé, en MWh/an. L'ombrage de la canopée s'applique
@@ -153,8 +155,12 @@ static func potentiel_mwh(v, fid: int, t: float) -> float:
 
 ## ⚠️ Jamais bornée à la consommation : une friche peut exporter
 ## (PLAN §3, le piège du bornage).
+## 🎓 Le palier de rendement (79) s'applique ICI et pas dans `potentiel_mwh` :
+## le potentiel reste le toit physique, et `ville.recette_cumulee_ke` intègre le
+## palier marche par marche pour ne pas repayer le passé.
 static func production_mwh(v, fid: int, t: float) -> float:
-	return potentiel_mwh(v, fid, t) * v.valeur("i", fid, "part_toit_equipe", t)
+	return potentiel_mwh(v, fid, t) * v.valeur("i", fid, "part_toit_equipe", t) \
+		* v.facteur("rendement_x", t)
 
 
 # ---------------------------------------------------------- la consommation
@@ -179,9 +185,11 @@ static func gain_isolation_mwh(v, fid: int, t: float) -> float:
 
 ## En k€. `cout_x` fait qu'un toit de cœur ancien coûte plus du double d'un
 ## toit de barre au m².
-static func cout_pose_ke(v, fid: int, de: float, vers: float) -> float:
+## 🏛️🎓 `facteur` porte la subvention de la mairie et le palier de l'université.
+static func cout_pose_ke(v, fid: int, de: float, vers: float, t: float) -> float:
 	return toit_equipable_m2(v, fid) * maxf(vers - de, 0.0) \
-		* COUT_PANNEAU_EUR_M2 * ligne(v, fid)["cout_x"] / 1000.0
+		* COUT_PANNEAU_EUR_M2 * ligne(v, fid)["cout_x"] / 1000.0 \
+		* v.facteur("cout_panneau_x", t)
 
 
 ## Les panneaux DÉJÀ posés, en k€/an.
@@ -193,10 +201,10 @@ static func recette_ke_an(v, fid: int, t: float) -> float:
 ## proportionnels aux m² posés. C'est un critère de CHOIX D'ÎLOT, pas de dosage.
 ## INF sans toit : à ne jamais peindre ni afficher tel quel.
 static func rentabilite_annees(v, fid: int, t: float) -> float:
-	var pot := potentiel_mwh(v, fid, t)
+	var pot: float = potentiel_mwh(v, fid, t) * v.facteur("rendement_x", t)
 	if pot <= 0.0:
 		return INF
-	return cout_pose_ke(v, fid, 0.0, 1.0) / (pot * PRIX_ENERGIE_EUR_MWH / 1000.0)
+	return cout_pose_ke(v, fid, 0.0, 1.0, t) / (pot * PRIX_ENERGIE_EUR_MWH / 1000.0)
 
 
 ## 0 vite · 1 dans la partie · 2 tout juste · 3 jamais.
@@ -264,7 +272,7 @@ static func derive(v, fid: int, champ: String, t: float) -> float:
 			return recette_ke_an(v, fid, t)
 		# Le toit EN ENTIER : de quoi comparer deux îlots avant tout curseur.
 		"_cout_total_ke":
-			return cout_pose_ke(v, fid, 0.0, 1.0)
+			return cout_pose_ke(v, fid, 0.0, 1.0, t)
 		"_toit_plat_equipable_m2":
 			return toit_plat_equipable_m2(v, fid)
 		"_part_plate":

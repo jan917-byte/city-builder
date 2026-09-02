@@ -37,6 +37,7 @@ const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
 const Trafic := preload("res://scripts/trafic.gd")
 const Apercu := preload("res://scripts/apercu.gd")
+const Recherche := preload("res://scripts/recherche.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
 
 const RENDUS := "res://../QGIS/rendus/"
@@ -350,6 +351,45 @@ func _essai_interface() -> void:
 		Ville.PLANTATION_MOIS])
 	print("  et cela épargnerait %.0f MWh/an sur %.0f — soit %.2f %% de la ville"
 		% [mwh, conso, 100.0 * mwh / maxf(conso, 1.0)])
+
+	# 🎓🏛️ LES DEUX MENUS ET LEURS DEUX PORTES (79 · 80 · 81). Trois captures :
+	# la fiche de l'îlot 36, qui reste une fiche d'ÎLOT avec un bouton en plus,
+	# puis les deux menus, qui sont d'AUTRES fiches et prennent sa place.
+	_viser_objet("i", 36, 150.0)
+	await _fiche("i", 36)
+	await _capturer("interface_ilot_universite")
+	interface.ouvrir_lieu("universite")
+	await get_tree().process_frame
+	await _capturer("interface_universite")
+	interface.ouvrir_lieu("mairie")
+	await get_tree().process_frame
+	await _capturer("interface_mairie")
+
+	print("\nMAIRIE ET UNIVERSITÉ — ce que les deux menus changent")
+	# 🏛️ La subvention change un PRIX, et elle se paie tous les mois.
+	var pose_avant := ville.cout_solaire_ke(49, 1.0, 0.0)
+	ville.basculer_politique("subv_solaire", 0.0)
+	var pose_apres := ville.cout_solaire_ke(49, 1.0, 0.0)
+	print("  subvention signée · îlot 49 à 100 %% : %.0f → %.0f k€, "
+		% [pose_avant, pose_apres]
+		+ "et la mairie prélève %.0f k€/mois  %s"
+		% [ville.charge_mensuelle_ke(0.0),
+		"✅" if absf(pose_apres / maxf(pose_avant, 0.01) - 0.80) < 0.01 else "❌"])
+
+	# 🎓 LE PALIER EST RÉTROACTIF, et c'est LE contrôle de 79 : le toit est posé
+	# au mois 0, le palier tombe au 24, et c'est CE toit-là qui produit plus au
+	# 25 — sans qu'on y retouche. (La caisse est remplie par l'outil d'essai.)
+	ville.crediter_essai_ke(5000.0)
+	var pose := ville.lancer_solaire(49, 1.0, 0.0)
+	ville.financer_recherche("rendement", 0.0)
+	var prod_23: float = ville.indicateurs(23.0)["production_mwh"]
+	var prod_25: float = ville.indicateurs(25.0)["production_mwh"]
+	print("  palier de rendement au mois %.0f · la ville passe de %.0f à %.0f MWh/an "
+		% [Recherche.mois_palier(ville, "rendement"), prod_23, prod_25]
+		+ "sans qu'un toit bouge  %s"
+		% ["✅" if pose and absf(prod_25 / maxf(prod_23, 0.01) - 1.08) < 0.01
+			else "❌"])
+	_sur_reset()
 
 	# 🔧 LA BARRE DE CHANTIER ne se voit qu'en travaux : on en engage un et on se
 	# place à mi-parcours. La berge 6 met 6 mois à devenir un quai apaisé.

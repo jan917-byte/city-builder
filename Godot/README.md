@@ -12,7 +12,7 @@ python QGIS/scripts/chaine.py --godot
 
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
-`Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, plus chaque miniature seule à sa taille de rendu.
+`Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, les deux menus de lieu, plus chaque miniature seule à sa taille de rendu.
 ## Le clavier
 
 | | |
@@ -87,6 +87,8 @@ outils/
 Les îlots bâtis et les tronçons sont **un nœud chacun**, avec leur `StaticBody3D`. C'est un choix, pas un oubli : un maillage fusionné ne se sélectionne pas, ne se surligne pas et ne se reteinte pas objet par objet. Toutes les parcelles d'un îlot tombent dans le même groupe : **la géométrie descend à la parcelle, la sélection reste à l'îlot.**
 
 L'occlusion voyage dans `COLOR.a` — la teinte occluse est dans `COLOR.rgb`, le facteur seul dans l'alpha. C'est ce qui permet de repeindre un îlot en calque sans perdre ce qui le pose au sol. Aucun matériau du projet n'active la transparence : ce canal était libre.
+
+🎓🏛️ **Deux menus ont un lieu** : la **mairie** (îlot 20) signe les politiques de la ville, l'**université** (îlot 36) finance la recherche. Chacun s'ouvre par son bouton du bandeau **ou** par un bouton dans la fiche de son îlot — le lieu est un raccourci, jamais le seul chemin. La fiche d'un îlot reste **la fiche de l'îlot** : le menu est une autre fiche, et il prend sa place. Leurs tables se règlent en haut de `recherche.gd` et `politiques.gd`.
 
 🎚️ **On règle, on compare, puis on met en place.** Une décision ne part pas au clic : les réglages se posent sur l'objet, se retirent d'un second clic, et **un seul bouton** les engage ensemble. Prix, durée et refus se calculent **une fois, sur le total** — deux décisions qui tiennent séparément ne tiennent pas forcément ensemble. Une commande fait **un chantier**, et c'est le noyau qui refuse, jamais l'interface. La miniature porte l'**avant** et l'**après** sur deux boutons : rien n'y est rendu deux fois, l'état du jour est un autre jeu de paramètres passé au même objet, et les boutons se cachent quand les deux images seraient identiques.
 

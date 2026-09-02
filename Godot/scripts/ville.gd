@@ -7,6 +7,8 @@ extends RefCounted
 # décrit dans le README de Godot.
 
 const Energie := preload("res://scripts/energie.gd")
+const Recherche := preload("res://scripts/recherche.gd")
+const Politiques := preload("res://scripts/politiques.gd")
 
 const HORIZON_MOIS := 240                  # 20 ans. Le classeur s'arrête à 60.
 
@@ -33,6 +35,10 @@ var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 var _solaire := {}         # fid -> {debut, duree, cible, cout_ke}
 var _vert := {}            # fid -> idem, pour les toits verts
 var _stationnement_supprime := {}  # fid -> mois d'engagement
+## 🎓 Sujet de recherche -> mois d'engagement. Un sujet engagé ne s'arrête plus.
+var _recherche := {}
+## 🏛️ Politique -> [[début, fin], …] ; fin = -1 tant qu'elle est en vigueur.
+var _politiques := {}
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
 ## 🧪 OUTIL D'ESSAI, PAS UNE RÈGLE DU JEU : de l'argent tombé du ciel, pour
 ## atteindre en un clic un état que vingt ans de dotation mettraient à payer.
@@ -517,6 +523,8 @@ func route_praticable(fid: int, t: float) -> bool:
 ## défaire — et ni géométrie ni caméra ne sont concernées.
 func reinitialiser() -> void:
 	_solaire.clear()
+	_recherche.clear()
+	_politiques.clear()
 	_vert.clear()
 	_stationnement_supprime.clear()
 	_plantation.clear()
@@ -538,7 +546,7 @@ func cout_solaire_ke(fid: int, part: float, t: float) -> float:
 	if not ilots.has(fid):
 		return 0.0
 	return Energie.cout_pose_ke(self, fid,
-		valeur("i", fid, "part_toit_equipe", t), clampf(part, 0.0, 1.0))
+		valeur("i", fid, "part_toit_equipe", t), clampf(part, 0.0, 1.0), t)
 
 
 ## `false` si rien n'est lancé (cible trop basse, chantier en cours, caisse
@@ -564,7 +572,7 @@ func lancer_solaire(fid: int, part: float, t: float) -> bool:
 
 	# ⚠️ Le coût se lit AVANT la rampe : `caisse_ke` intègre les rampes
 	# existantes, et la nouvelle n'a encore rien rapporté.
-	var cout := Energie.cout_pose_ke(self, fid, actuelle, cible)
+	var cout := Energie.cout_pose_ke(self, fid, actuelle, cible, t)
 	if cout > caisse_ke(t) + 0.001:
 		return false
 
@@ -616,7 +624,7 @@ func cout_vert_ke(fid: int, part: float, t: float) -> float:
 	if not ilots.has(fid):
 		return 0.0
 	return Energie.cout_vert_ke(self, fid,
-		valeur("i", fid, "part_toit_vert", t), clampf(part, 0.0, 1.0))
+		valeur("i", fid, "part_toit_vert", t), clampf(part, 0.0, 1.0), t)
 
 
 ## Même partage que `lancer_solaire` : l'interface pré-vérifie et explique, ici
@@ -630,7 +638,7 @@ func lancer_vert(fid: int, part: float, t: float) -> bool:
 	var cible := clampf(minf(part, part_vert_max(fid, t)), 0.0, 1.0)
 	if cible <= actuelle + 0.0001:
 		return false
-	var cout := Energie.cout_vert_ke(self, fid, actuelle, cible)
+	var cout := Energie.cout_vert_ke(self, fid, actuelle, cible, t)
 	if cout > caisse_ke(t) + 0.001:
 		return false
 	var duree := duree_vert_mois(actuelle, cible)
@@ -688,6 +696,57 @@ func baisse_crue_toits_m(t: float) -> float:
 	return toit_vert_ha(t) * TOIT_VERT_BAISSE_M_PAR_HA
 
 
+# ================================== l'université et la mairie (décisions 79 · 80)
+
+## Le coefficient d'un prix ou d'un rendement : les paliers acquis ET les
+## politiques en vigueur, multipliés. Le seul point d'entrée — `energie.gd` ne
+## sait pas d'où vient le coefficient.
+func facteur(effet: String, t: float) -> float:
+	return Recherche.facteur(self, effet, t) * Politiques.facteur(self, effet, t)
+
+
+## `false` si le sujet est déjà financé, ou si la caisse ne tient pas le premier
+## mois. Une fois engagé, il court jusqu'au palier : c'est un chantier.
+func financer_recherche(cle: String, t: float) -> bool:
+	if not Recherche.SUJETS.has(cle) or _recherche.has(cle):
+		return false
+	if caisse_ke(t) < float(Recherche.SUJETS[cle]["ke_mois"]):
+		return false
+	_recherche[cle] = t
+	return true
+
+
+## Signer, ou retirer. 🔴 Retirer arrête la dépense et ne rembourse rien ;
+## re-signer ouvre une nouvelle période.
+func basculer_politique(cle: String, t: float) -> bool:
+	if not Politiques.POLITIQUES.has(cle):
+		return false
+	if not _politiques.has(cle):
+		_politiques[cle] = []
+	var p: Array = _politiques[cle]
+	if Politiques.active(self, cle):
+		p[-1][1] = t
+	else:
+		p.append([t, -1.0])
+	return true
+
+
+func recherche_engagee(cle: String) -> bool:
+	return _recherche.has(cle)
+
+
+## Ce que l'université et la mairie prélèvent CE mois-ci, en k€.
+func charge_mensuelle_ke(t: float) -> float:
+	var ke := 0.0
+	for cle in _recherche:
+		if not Recherche.acquis(self, cle, t):
+			ke += float(Recherche.SUJETS[cle]["ke_mois"])
+	for cle in _politiques:
+		if Politiques.active(self, cle):
+			ke += float(Politiques.POLITIQUES[cle]["ke_mois"])
+	return ke
+
+
 # ==================================================================== la caisse
 
 ## ∫ `part_toit_equipe` de 0 à `t`, en « part × mois » : combien de temps chaque
@@ -724,16 +783,33 @@ func recette_cumulee_ke(t: float) -> float:
 	for fid in fids_batis():
 		var pot := Energie.potentiel_mwh(self, fid, t)
 		if pot > 0.0:
-			ke += pot * _integrale_part(fid, t) / 12.0 \
+			ke += pot * _integrale_part_rendue(fid, t) / 12.0 \
 				* Energie.PRIX_ENERGIE_EUR_MWH / 1000.0
 	return ke
+
+
+## ∫ `part` × le rendement du moment. 🔴 C'est ici que le palier de 79 est
+## RÉTROACTIF sans être un cadeau : il vaut pour tout ce qui est déjà posé, à
+## partir du mois où il tombe — jamais pour les MWh vendus avant lui.
+func _integrale_part_rendue(fid: int, t: float) -> float:
+	var m := Recherche.marches(self, "rendement_x")
+	if m.size() == 1:
+		return _integrale_part(fid, t)
+	var s := 0.0
+	for i in m.size():
+		var bas: float = minf(float(m[i][0]), t)
+		var haut: float = minf(float(m[i + 1][0]), t) if i + 1 < m.size() else t
+		if haut > bas:
+			s += float(m[i][1]) * (_integrale_part(fid, haut) - _integrale_part(fid, bas))
+	return s
 
 
 ## En k€. Fonction PURE du temps et des chantiers engagés : « Recommencer »
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
-		+ recette_cumulee_ke(t) + _credit_essai_ke - _depense_ke
+		+ recette_cumulee_ke(t) + _credit_essai_ke - _depense_ke \
+		- Recherche.depense_ke(self, t) - Politiques.depense_ke(self, t)
 
 
 ## 🧪 Le bouton d'essai. Rendu à zéro par « Recommencer », comme tout le reste.
