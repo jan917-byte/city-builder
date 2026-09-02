@@ -1,6 +1,6 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue) n°25 (les menus qui ont un lieu) et n°26 (le logement en campagne) — n°11 close le 2026-09-02
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue) et n°26 (le logement en campagne) — n°11 et n°25 closes le 2026-09-02
 maj: 2026-09-02
 ---
 
@@ -301,38 +301,22 @@ Ce qui reste à écrire, et qui est le travail de la semaine 2 : quelles décisi
 
 🔴 **Ce que la réponse laisse en suspens** : l'`alea` bouge partout dans le bief, mais **l'îlot le plus enfoncé garde 100 % de reprise** quoi qu'on paie — il lui faudrait 3 m de baisse. Une berge sauve les bords du faubourg, pas son cœur. C'est défendable ; ce n'est pas choisi. → [[Décisions arrêtées]] 73 · 74 · `Prototype/Trafic.md`
 
-### 25. Un menu a un lieu : lesquels, et alimentés par quoi ? — **les lieux sont tranchés, les rôles non**
+### 25. Un menu a un lieu : lesquels, et alimentés par quoi ? — ✅ **les rôles sont tranchés le 2026-09-02**
 
-### L'université — îlot 36 (75)
+**Ce qui est fermé** (**79** · **80**) : l'université est un **labo qu'on finance** — une liste de sujets, de l'argent posé chaque mois, un palier qui profite à toute la ville, déjà-posé compris. La mairie porte des **politiques de ville** — des **règles** payées en capital politique, des **subventions** payées tous les mois. Le détail vit désormais dans [[Université et recherche]] et [[Mairie et politiques]].
 
-**Ouverte le 2026-09-02** avec la décision 75. L'îlot 36 est l'université et le menu des déblocages a un lieu ; reste **d'où vient ce qui s'y débloque**. Trois formes, très différentes :
+**Ce qui reste ouvert, et où ça se ferme** :
 
-| | Ce que ça fait | Ce que ça coûte à écrire | |
-|---|---|---|---|
-| **A · Une jauge de recherche** | on finance l'université, on attend, un palier s'ouvre | une ressource de plus, un écran de plus | 🔴 le joueur paie une jauge pour ouvrir un menu, et la récompense n'est pas dans la ville. Remet la rareté dans les **règles**, quand [[Milestones]] la met dans le **calendrier** |
-| **B · Le savoir vient de ce que la ville a déjà fait** | une décision tentée **sur un îlot** ouvre sa version ville ; l'université est où le pilote est suivi, un an, puis rendu public — bon **ou** mauvais | un champ de plus sur la décision, un état « pilote » sur le chantier | ⭐ c'est le `condition_deblocage` de [[Décisions]] avec une cause nommée, et l'hésitation est réelle : essayer petit et lent, ou généraliser tout de suite, cher et aveugle |
-| **C · Les deux** | le pilote ouvre, l'université **accélère** | A + B | ❓ à ne regarder que si B seul est trop lent |
-
-⚠️ **Deux points que la décision 75 laisse en l'air, et qui se ferment ici ou ailleurs** : le **nom** — une université de plein exercice n'existe pas à 5 350 habitants, une antenne / Hochschule oui, et **13d** avait prévu l'inverse (le lycée descendait en Realschule) ; et l'**emploi** — 50b tenait le moulin et la brasserie pour le seul levier d'emploi de la ville.
-
-**Et une question de forme** : si le menu a un lieu, que se passe-t-il quand ce lieu est **touché** — inondé, coupé de la ville, fermé ? Un menu qui peut être endommagé est une mécanique ; un menu invulnérable est un décor.
-
-### La mairie — îlot 20 (76)
-
-Le lieu est tranché, **le rôle non**. Deux, et un refus :
-
-| | Ce que la mairie porte | |
+| | Ce qui reste | Où |
 |---|---|---|
-| **Engager** | c'est là qu'une décision se signe, avec sa liste de chantiers en cours | ✅ quelques dizaines de fois par partie : assez rare pour qu'un lieu soit un moment, assez fréquent pour qu'un détour soit lourd. À juger sur le geste, pas sur le principe |
-| **La qualité de ce qu'on voit** | les calques restent lisibles en permanence, mais leur **précision et leur fraîcheur** viennent d'ici — sans service technique, on lit sa ville avec une carte grossière ou vieille de trois ans | ⭐ le lieu pèse sans ajouter un clic, et c'est le métier : *une donnée a un service qui la produit* |
-| ~~**Diagnostiquer**~~ | 🔴 **refusé** — [[Diagnostic et calques]] (arrêté) fait du diagnostic l'activité continue entre deux décisions et interdit *« cliquer 40 bâtiments pour comprendre quelque chose »* ; **53** rend le bandeau permanent et en fait le sommaire des calques. Un lieu taxerait le geste le plus fréquent du jeu | |
-
-⚠️ **Et son toit** : `solaire_possible = 1`, quand l'église mitoyenne est protégée (71). À trancher avec le reste.
-
-### Ce qui vaut pour les deux — un menu qu'on peut abîmer
-
-Si un menu a un lieu, que se passe-t-il quand ce lieu est **inondé, coupé, fermé** ? Un menu invulnérable est un décor. Mais **le jeu s'ouvre sur une crue** (15 · 72) : une mairie noyée qui empêche d'engager des décisions au premier mois est punitive, pas tendue. La piste tenable est le **ralentissement**, pas le blocage.
-
+| 🔴 **La subvention n'a personne à convaincre** | la ville possède tout (**70**) : subventionner déplace de l'argent d'un poste à l'autre dans une seule caisse. ⓐ la subvention vise le **programme** ⭐, ou ⓑ **70 se rouvre** et d'autres propriétaires apparaissent | **ici**, avant qu'une seule politique soit écrite |
+| 🟠 **Retirer une politique** | gratuit, ou payé en capital politique ? Une subvention qu'on coupe sans conséquence n'engage à rien | ici |
+| 🟠 **L'éolienne volante** | écartée des paliers par **78** (plausible à vingt ans) : reste la preview du futur (**12 précisée**) ou la fin *solarpunk high-tech* | [[Fins et pluralisme]] |
+| 🟠 **Le nom de l'établissement** | antenne / Hochschule ; **13d** avait prévu l'inverse — le lycée descendait en Realschule | ici ou [[Wehrau]] |
+| 🟠 **L'emploi** | **50b** tenait le moulin et la brasserie pour le seul levier d'emploi ; un labo en est un deuxième | ici |
+| 🟠 **Le toit de la mairie** | `solaire_possible = 1`, quand l'église mitoyenne est protégée (**71**) | ici |
+| 🟠 **Un menu qu'on peut abîmer** | îlot 20 ou 36 inondé, coupé, fermé : la piste tenable est le **ralentissement**, jamais le blocage — le jeu s'ouvre sur une crue (**15** · **72**) | les deux notes |
+| 🟢 **Les listes, les prix, les durées** | sujets de recherche, politiques signables — du level design | l'auteur, devant l'écran |
 
 ### 26. Le logement fait-il partie des usages de la campagne ? — **resserrée le 2026-09-02**
 

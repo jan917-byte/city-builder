@@ -31,6 +31,8 @@ maj: 2026-09-02
 - [[Indicateurs globaux]] 🆕 — les sept chiffres du bandeau, et la règle *un chiffre, un calque*
 - [[Ressources]] — argent + capital politique. Le budget tient en **deux formules** depuis le 2026-08-12
 - [[Décisions]] — l'anatomie d'une décision, l'exemple de référence
+- [[Université et recherche]] 🆕 — l'îlot 36 : un labo qu'on finance, et un palier qui profite à toute la ville
+- [[Mairie et politiques]] 🆕 — l'îlot 20 : des règles payées en capital politique, des subventions payées tous les mois
 - [[Chantiers et temps]] — temps continu, délai, montée en charge
 - [[Happenings]] — canicule, crue, révolte : urgence contre vision
 - [[Adaptation et réduction]] — d'abord relever la ville ; les émissions entrent après l'urgence
