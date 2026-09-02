@@ -54,6 +54,9 @@ var mm_velo: MultiMesh
 ## change — c'est LA moitié visible de l'avant/après d'une rue plantée.
 var _arbres_mi: MultiMeshInstance3D
 var _arbres_n := -1
+## 🌿 Ce qui pousse sur la rive du morceau montré. Deux nœuds, une essence
+## chacun : un MultiMesh ne répète qu'un seul maillage.
+var _rives := {}
 var _sol: MeshInstance3D
 var _objet: MeshInstance3D
 var _futur: MeshInstance3D
@@ -144,6 +147,12 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 	_arbres_mi.name = "Arbres"
 	add_child(_arbres_mi)
 
+	for essence in [Constructeur.ROSEAU, Constructeur.BUISSON]:
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Rives%d" % essence
+		add_child(mmi)
+		_rives[essence] = mmi
+
 	_objet = MeshInstance3D.new()
 	_objet.name = "Objet"
 	_objet.material_override = mat_objet
@@ -221,6 +230,44 @@ func _batir_echantillon(etat: int) -> void:
 	_eau.mesh = e["eau"]
 	ech_longueur = float(e["longueur"])
 	ech_chaussee = float(e["chaussee"])
+	_semer_rive(e.get("rive", []) as Array)
+
+
+## 🌿 LE SEMIS DE LA MINIATURE : la même touffe et le même buisson que la
+## ville. Sans lui, la fiche montrerait un aplat vert là où l'écran montre une
+## rive plantée, et l'AVANT/APRÈS ne dirait plus la même chose que la ville.
+##
+## 🔴 TIRAGE FIXE (nombre d'or) : deux captures du même état doivent être
+## identiques au pixel, sinon les trois images de contrôle ne se comparent pas.
+func _semer_rive(rive: Array) -> void:
+	if _rives.is_empty():
+		return
+	var liste := []
+	if rive.size() == 4 and ech_longueur > 0.0:
+		var z0 := float(rive[0])
+		var y0 := float(rive[1])
+		var z1 := float(rive[2])
+		var y1 := float(rive[3])
+		# Les mêmes pas qu'à l'export : 2,2 m de roseaux, 7,5 m de buissons.
+		for genre in [Constructeur.ROSEAU, Constructeur.BUISSON]:
+			var pas := 2.2 if genre == Constructeur.ROSEAU else 7.5
+			var n := maxi(1, int(ech_longueur / pas))
+			for k in n:
+				var x := (float(k) + 0.5) / float(n) * ech_longueur \
+					- ech_longueur * 0.5
+				var t: float = fmod(float(k) * 0.6180339887, 1.0)
+				t = 0.10 + 0.50 * t if genre == Constructeur.ROSEAU \
+					else 0.55 + 0.35 * t
+				liste.append([x, lerpf(y0, y1, t), lerpf(z0, z1, t),
+					0.85 + 0.35 * fmod(float(k) * 0.3819660113, 1.0),
+					float(k) * 1.7, genre])
+	var vert := _teinte("_feuillage").srgb_to_linear()
+	var brun := _teinte("_tronc")
+	for essence in _rives:
+		var f: float = 1.22 if essence == Constructeur.ROSEAU else 0.74
+		(_rives[essence] as MultiMeshInstance3D).multimesh = \
+			Constructeur.arbres(liste, essence,
+				Color(vert.r * f, vert.g * f, vert.b * f), brun)
 
 
 func _vider_echantillon() -> void:
@@ -230,6 +277,7 @@ func _vider_echantillon() -> void:
 	ech_chaussee = 0.0
 	_decor.mesh = null
 	_eau.mesh = null
+	_semer_rive([])
 	vider_voitures()
 
 

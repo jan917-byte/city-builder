@@ -159,6 +159,35 @@ static func emprise(anneau: Array) -> ArrayMesh:
 	return _surface(v, nm, co, idx)
 
 
+## 🔲 LE RUBAN D'UNE BERGE — deux rails donnés par 07, station par station, et
+## un quad entre deux stations. Un couloir de largeur constante mordait sur le
+## cœur ancien là où la rive se resserre.
+## ⚠️ Des quads qui se recouvrent dans un angle rentrant sont SANS EFFET : le
+## masque de sélection est une union de pixels, pas un polygone à trianguler.
+static func ruban(rails: Array) -> ArrayMesh:
+	if rails.size() < 2:
+		return null
+	var v := PackedVector3Array()
+	var idx := PackedInt32Array()
+	for k in rails.size() - 1:
+		var a: Array = rails[k]
+		var b: Array = rails[k + 1]
+		var base := v.size()
+		v.append(Vector3(float(a[0]), 0.0, float(a[1])))
+		v.append(Vector3(float(a[2]), 0.0, float(a[3])))
+		v.append(Vector3(float(b[2]), 0.0, float(b[3])))
+		v.append(Vector3(float(b[0]), 0.0, float(b[1])))
+		idx.append_array(PackedInt32Array([base, base + 1, base + 2,
+			base, base + 2, base + 3]))
+	var nm := PackedVector3Array()
+	nm.resize(v.size())
+	nm.fill(Vector3.UP)
+	var co := PackedColorArray()
+	co.resize(v.size())
+	co.fill(Color.WHITE)
+	return _surface(v, nm, co, idx)
+
+
 ## 🔲 LE COULOIR D'UN TRONÇON — ruban plat jamais affiché, qui donne une
 ## SILHOUETTE D'UN SEUL TENANT à la rue choisie.
 ##
@@ -377,6 +406,11 @@ static func _face(v: PackedVector3Array, n: PackedVector3Array,
 ## ne soit pas un cercle, une sous-face sombre — trois recettes, aucun asset.
 const FEUILLU := 0
 const CONIFERE := 1
+## 🌿 Les deux plantes d'une rive rendue au fleuve. Mêmes tableaux, même
+## MultiMesh, même semis que les arbres : une berge renaturée ne demande pas un
+## deuxième système, elle demande deux recettes de plus.
+const ROSEAU := 2
+const BUISSON := 3
 
 ## La teinte d'instance MULTIPLIE celle du sommet : au-dessus de 1, la tête
 ## reste plus claire que le vêtement, quel que soit le vêtement tiré.
@@ -581,7 +615,19 @@ static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 	var c := PackedColorArray()
 	var i := PackedInt32Array()
 
-	if essence == CONIFERE:
+	if essence == ROSEAU:
+		# La touffe : trois brins penchés en éventail. Ce qui la fait lire de
+		# loin est qu'ils ne sont ni de la même hauteur ni du même côté.
+		_brin(v, n, c, i, Vector3(0.00, 0.0, 0.00), 2.05, 0.16, 0.0)
+		_brin(v, n, c, i, Vector3(0.26, 0.0, -0.15), 1.70, 0.30, 2.1)
+		_brin(v, n, c, i, Vector3(-0.20, 0.0, 0.22), 1.42, 0.26, 4.3)
+		_brin(v, n, c, i, Vector3(0.13, 0.0, 0.30), 1.15, 0.34, 5.5)
+		_brin(v, n, c, i, Vector3(-0.28, 0.0, -0.10), 0.92, 0.30, 1.0)
+	elif essence == BUISSON:
+		# Deux lobes bas et décentrés : un buisson, pas un arbre nain.
+		_lobe(v, n, c, i, Vector3(0.0, 0.72, 0.0), 0.86, 0.52, 1.02)
+		_lobe(v, n, c, i, Vector3(0.52, 0.50, 0.34), 0.60, 0.48, 0.94)
+	elif essence == CONIFERE:
 		# Un épicéa se lit à sa SILHOUETTE, pas à son détail : budget
 		# polygonal, le détail va dans le matériau.
 		_cone(v, n, c, i, 1.90, 1.10, 3.20, 6, 0.62, 0.86)
@@ -596,6 +642,11 @@ static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 	m.add_surface_from_arrays(PRIM, _emballer(v, n, c, i))
 	m.surface_set_material(0, Materiaux.feuillage())
 
+	# 🔴 Ni roseau ni buisson n'a de tronc : une deuxième surface pour un fût
+	# de 3 cm coûterait un matériau et ne se verrait jamais.
+	if essence == ROSEAU or essence == BUISSON:
+		return m
+
 	var tv := PackedVector3Array()
 	var tn := PackedVector3Array()
 	var tc := PackedColorArray()
@@ -605,6 +656,28 @@ static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 	m.add_surface_from_arrays(PRIM, _emballer(tv, tn, tc, ti))
 	m.surface_set_material(1, Materiaux.bois(tronc))
 	return m
+
+
+## 🌿 UN BRIN DE ROSEAU : un cône très effilé, penché de `inclinaison` radians
+## dans la direction `cap`. Posé sur son PIED, comme l'arbre — le semis donne
+## un point au sol, pas un centre.
+static func _brin(v: PackedVector3Array, n: PackedVector3Array,
+		c: PackedColorArray, i: PackedInt32Array,
+		pied: Vector3, hauteur: float, inclinaison: float,
+		cap: float) -> void:
+	var cy := CylinderMesh.new()
+	cy.bottom_radius = 0.115
+	cy.top_radius = 0.012
+	cy.height = hauteur
+	# 🔴 TROIS CÔTÉS ET AUCUN CHAPEAU : un brin fait deux pixels, et il y en a
+	# cinq par touffe pour 1 091 touffes si les huit berges sont rendues.
+	cy.radial_segments = 3
+	cy.rings = 0
+	cy.cap_bottom = false
+	cy.cap_top = false
+	var b := Basis(Vector3.UP, cap) * Basis(Vector3(0.0, 0.0, 1.0), inclinaison)
+	var t := Transform3D(b, pied + b * Vector3(0.0, hauteur * 0.5, 0.0))
+	_fondre(v, n, c, i, cy, t, pied.y, pied.y + hauteur, 0.58, 1.16)
 
 
 ## Une sphère à six méridiens, dégradé vertical bakké en couleur de sommet :

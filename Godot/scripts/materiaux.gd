@@ -75,6 +75,23 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// d'architecte. Assez clair pour que les quatre signaux\n" \
 		+ "// saturés ressortent, assez gris pour ne pas brûler au soleil.\n" \
 		+ "const vec3 PAPIER = vec3(0.624, 0.605, 0.560);\n" \
+		+ "// 🌿 LE GRAIN D'UNE RIVE RENDUE — deux teintes de vert en linéaire.\n" \
+		+ "// ⚠ Le premier est celui d'avant le semis : la valeur moyenne de la\n" \
+		+ "// bande ne bouge pas, c'est son UNIFORMITÉ qui disparaît.\n" \
+		+ "const vec3 RIVE_VERTE = vec3(0.128, 0.318, 0.096);\n" \
+		+ "const vec3 RIVE_SABLE = vec3(0.620, 0.548, 0.398);\n" \
+		+ "float alea_pt(vec2 p) {\n" \
+		+ "\treturn fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.545);\n" \
+		+ "}\n" \
+		+ "// Bruit de valeur bilinéaire, en MÈTRES : deux octaves suffisent à\n" \
+		+ "// casser un aplat, et rien ici n'a besoin d'un vrai Perlin.\n" \
+		+ "float bruit(vec2 p) {\n" \
+		+ "\tvec2 c = floor(p);\n" \
+		+ "\tvec2 f = fract(p);\n" \
+		+ "\tf = f * f * (3.0 - 2.0 * f);\n" \
+		+ "\treturn mix(mix(alea_pt(c), alea_pt(c + vec2(1.0, 0.0)), f.x),\n" \
+		+ "\t\tmix(alea_pt(c + vec2(0.0, 1.0)), alea_pt(c + vec2(1.0, 1.0)), f.x), f.y);\n" \
+		+ "}\n" \
 		+ "void vertex() {\n" \
 		+ "\tpos_monde = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n" \
 		+ "}\n" \
@@ -264,9 +281,18 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// peint que la maquette blanche ; une rive rendue au fleuve doit se\n" \
 		+ "\t// voir SANS ouvrir le diagnostic, sinon la décision n'a pas d'effet.\n" \
 		+ "\tif (etat_berge > 0.5) {\n" \
-		+ "\t\tvec3 rive = etat_berge > 1.5 ? vec3(0.128, 0.318, 0.096)\n" \
-		+ "\t\t\t: vec3(0.620, 0.548, 0.398);\n" \
-		+ "\t\tbase = mix(base, rive * COLOR.a, etat_berge > 1.5 ? 0.88 : 0.66);\n" \
+		+ "\t\t// 🔴 UNE VARIATION DE VALEUR, PAS UNE DEUXIÈME TEINTE (DA l.67) :\n" \
+		+ "\t\t// deux octaves de 2,2 m et 0,5 m, l'herbe rase et l'herbe grasse.\n" \
+		+ "\t\tfloat grain = 0.64 * bruit(pos_monde.xz * 0.45)\n" \
+		+ "\t\t\t+ 0.36 * bruit(pos_monde.xz * 2.10);\n" \
+		+ "\t\tvec3 rive = (etat_berge > 1.5 ? RIVE_VERTE : RIVE_SABLE)\n" \
+		+ "\t\t\t* mix(0.62, 1.48, grain);\n" \
+		+ "\t\t// 🔴 LE MUR NE SE REPEINT PAS, IL VERDIT. À plat (la bande) la\n" \
+		+ "\t\t// rive prend tout ; sur la paroi du quai, la pierre reste\n" \
+		+ "\t\t// dessous — sinon renaturer badigeonne un mur de vert.\n" \
+		+ "\t\tfloat couche = mix(0.34, etat_berge > 1.5 ? 0.92 : 0.70,\n" \
+		+ "\t\t\tclamp(vers_le_ciel, 0.0, 1.0));\n" \
+		+ "\t\tbase = mix(base, rive * COLOR.a, couche);\n" \
 		+ "\t\trugosite = 1.0;\n" \
 		+ "\t}\n" \
 		+ "\t// 🩶 LA MAQUETTE BLANCHE — la vue diagnostic. La ville perd sa\n" \
@@ -353,13 +379,23 @@ static func masque() -> StandardMaterial3D:
 ## qui n'entourait que l'emprise — les bâtiments dépassaient, et dans le cœur
 ## ancien ils le cachaient. Il faut la silhouette, donc la vue.
 ##
-## Le trait est là où le masque est VIDE mais avec du masque à moins de `rayon`
-## pixels : il épouse la silhouette sous tout angle, touche l'objet sans le
-## recouvrir, et son épaisseur est en PIXELS, donc constante au zoom.
+## 🔄 REPRIS EN TROIS COUCHES (2026-09-02, « la sélection est moche ») : le
+## trait était un aplat d'une seule épaisseur, qui se perdait sur un toit clair
+## et se lisait comme un défaut d'affichage sur une berge d'un pixel de large.
+## Ce qui le pose maintenant, c'est ce qu'il y a AUTOUR de lui :
+##   ① un halo sombre dehors, qui le décolle de n'importe quel fond ;
+##   ② le trait clair, net, à `rayon` pixels du bord ;
+##   ③ une lueur DEDANS, qui dit quelle surface est choisie — indispensable
+##      pour un objet linéaire, dont les deux traits se touchent presque.
 ##
-## 16 directions × 5 distances : une rue faisant quelques pixels de large, un
-## sondage à la seule distance maximale la manquerait et troue le trait.
-static func contour(masque_tex: Texture2D, couleur: Color) -> ShaderMaterial:
+## Le shader ne mesure plus « y a-t-il du masque par ici » mais la DISTANCE au
+## bord, en pixels : c'est elle qui permet trois épaisseurs pour un seul
+## sondage. Tout est en pixels, donc constant au zoom.
+##
+## 16 directions × 6 distances : une berge faisant deux pixels de large, un
+## sondage plus grossier la manquerait et troue le trait.
+static func contour(masque_tex: Texture2D, couleur: Color,
+		ombre: Color) -> ShaderMaterial:
 	var sh := Shader.new()
 	sh.code = "shader_type canvas_item;\n" \
 		+ "render_mode unshaded;\n" \
@@ -367,27 +403,48 @@ static func contour(masque_tex: Texture2D, couleur: Color) -> ShaderMaterial:
 		+ "uniform vec2 pas = vec2(0.001);\n" \
 		+ "uniform float rayon = 3.0;\n" \
 		+ "uniform vec4 couleur : source_color = vec4(1.0);\n" \
+		+ "uniform vec4 ombre : source_color = vec4(0.0, 0.0, 0.0, 0.5);\n" \
 		+ "const int DIRS = 16;\n" \
-		+ "const int PALIERS = 5;\n" \
+		+ "const int PALIERS = 6;\n" \
+		+ "// Jusqu'où le halo et la lueur portent, en multiples du trait.\n" \
+		+ "const float PORTEE = 2.6;\n" \
 		+ "void fragment() {\n" \
-		+ "  float au_centre = texture(masque, UV).a;\n" \
-		+ "  float autour = au_centre;\n" \
+		+ "  float dedans = step(0.5, texture(masque, UV).a);\n" \
+		+ "  float portee = rayon * PORTEE;\n" \
+		+ "  // La distance au bord : le premier sondage qui change de côté.\n" \
+		+ "  float d = portee;\n" \
 		+ "  for (int k = 0; k < DIRS; k++) {\n" \
 		+ "    float a = float(k) * 6.2831853 / float(DIRS);\n" \
 		+ "    vec2 u = vec2(cos(a), sin(a)) * pas;\n" \
 		+ "    for (int j = 1; j <= PALIERS; j++) {\n" \
-		+ "      float d = rayon * float(j) / float(PALIERS);\n" \
-		+ "      float m = texture(masque, UV + u * d).a;\n" \
-		+ "      autour = max(autour, m);\n" \
+		+ "      float t = portee * float(j) / float(PALIERS);\n" \
+		+ "      if (step(0.5, texture(masque, UV + u * t).a) != dedans) {\n" \
+		+ "        d = min(d, t);\n" \
+		+ "        break;\n" \
+		+ "      }\n" \
 		+ "    }\n" \
 		+ "  }\n" \
-		+ "  float bord = smoothstep(0.0, 0.30, autour) - smoothstep(0.0, 0.30, au_centre);\n" \
-		+ "  COLOR = vec4(couleur.rgb, clamp(bord, 0.0, 1.0) * couleur.a);\n" \
+		+ "  vec3 rgb;\n" \
+		+ "  float a;\n" \
+		+ "  if (dedans > 0.5) {\n" \
+		+ "    // ③ la lueur intérieure : elle s'éteint vers le cœur de l'objet,\n" \
+		+ "    // sinon un îlot entier changerait de couleur au clic.\n" \
+		+ "    rgb = couleur.rgb;\n" \
+		+ "    a = (1.0 - smoothstep(0.0, rayon * 1.8, d)) * couleur.a * 0.15;\n" \
+		+ "  } else {\n" \
+		+ "    float trait = 1.0 - smoothstep(rayon - 0.9, rayon + 0.9, d);\n" \
+		+ "    // ① le halo décroît de la fin du trait jusqu'à la portée.\n" \
+		+ "    float halo = (1.0 - smoothstep(rayon, portee, d)) * ombre.a;\n" \
+		+ "    rgb = mix(ombre.rgb, couleur.rgb, trait);\n" \
+		+ "    a = max(halo, trait * couleur.a);\n" \
+		+ "  }\n" \
+		+ "  COLOR = vec4(rgb, clamp(a, 0.0, 1.0));\n" \
 		+ "}\n"
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	m.set_shader_parameter("masque", masque_tex)
 	m.set_shader_parameter("couleur", couleur)
+	m.set_shader_parameter("ombre", ombre)
 	return m
 
 

@@ -47,6 +47,9 @@ const Y_QUAI := Y_SOL - 0.01
 const PARAPET_H := 1.00
 const PARAPET_EP := 0.40
 const BERGE_BANDE_M := 3.5       # la largeur de rive que la transformation rend
+## `07.PENTE_RIVE_M` : le talus qui remplace le mur quand la rive est rendue.
+## Il descend au lit, et c'est la ligne d'eau qui coupe ses deux teintes.
+const PENTE_RIVE_M := 4.5
 ## Ce que la vignette montre du fleuve — un cadre, pas la largeur de l'Ilse.
 const EAU_VUE_M := 9.0
 ## De combien le lit ressort de l'eau au bord du bloc : le fleuve continue
@@ -155,21 +158,38 @@ static func berge(d: Dictionary, voie_m: float, pal: Dictionary,
 	var vert := _c(pal, "parc")
 	var bandes := []
 	var z_eau := 0.0
+	# 🌿 La coupe de la rive PLANTÉE : [z, y] au bord de l'eau, [z, y] en haut.
+	# La miniature y sème la même touffe que la ville — sinon elle ment.
+	var rive_semee := []
 	if mur:
 		# Le nu du quai : en avant de la rive tant que l'asphalte déborde.
 		var b := -debord if etat <= ASPHALTE else 0.0
 		var z0 := -(EAU_VUE_M + debord)
 		# 🔴 LE LIT REMONTE AU PLAN D'EAU au bord du bloc : à plat, la nappe
 		# passait par-dessus la tranche et flottait à côté du morceau.
-		bandes.append([z0, b, NAPPE + BORD_MOUILLE, FOND, lit, lit, DECOR])
+		bandes.append([z0, b - (PENTE_RIVE_M if etat >= RENATUREE else 0.0),
+			NAPPE + BORD_MOUILLE, FOND, lit, lit, DECOR])
 		z_eau = b
 		if etat >= RENATUREE:
-			# La rive rendue : la bande du bord devient la pente qui descend au
-			# fleuve, et il n'y a plus de mur du tout. Le quai qui reste
-			# derrière elle est toujours minéral — c'est la promenade.
-			bandes.append([b, b + bande, NAPPE - 0.15, Y_SOL, vert, vert,
-				OBJET])
-			z_eau = _croisement(b, NAPPE - 0.15, b + bande, Y_SOL, NAPPE)
+			# 🌿 LA RIVE RENDUE ENTRE DANS L'EAU. Plus de mur : un talus part du
+			# nu du quai et descend au lit, coupé à la ligne d'eau. La bande
+			# verte reste à plat derrière lui, et le quai qui subsiste est
+			# toujours minéral — c'est la promenade.
+			var part := (Y_SOL - NAPPE) / (Y_SOL - FOND)
+			var z_lit := b - PENTE_RIVE_M
+			z_eau = b - PENTE_RIVE_M * part
+			var z_mi := (z_eau + b) * 0.5
+			# 🔴 L'OMBRE QUI DESCEND À L'EAU, comme sur la ville (07,
+			# `PENTE_OMBRE`) : vue de dessus, une pente à 31° a la même valeur
+			# qu'un plat, et le talus resterait un aplat vert.
+			bandes.append([z_lit, z_eau, FOND, NAPPE, _ombre(lit, 0.37),
+				_ombre(lit, 0.37), DECOR])
+			bandes.append([z_eau, z_mi, NAPPE, (NAPPE + Y_SOL) * 0.5,
+				_ombre(vert, 0.68), _ombre(vert, 0.68), OBJET])
+			bandes.append([z_mi, b, (NAPPE + Y_SOL) * 0.5, Y_SOL,
+				_ombre(vert, 0.86), _ombre(vert, 0.86), OBJET])
+			bandes.append([b, b + bande, Y_SOL, Y_SOL, vert, vert, OBJET])
+			rive_semee = [z_eau, NAPPE, b + bande, Y_SOL]
 			if rive > bande:
 				bandes.append([b + bande, b + rive, Y_SOL, Y_SOL, dalle, quai,
 					OBJET])
@@ -198,13 +218,21 @@ static func berge(d: Dictionary, voie_m: float, pal: Dictionary,
 		bandes.append([TALUS_LARGEUR, TALUS_LARGEUR + FOND_DE_COUPE_M, Y_SOL,
 			Y_SOL, champ, champ, DECOR])
 		z_eau = _croisement(0.0, TALUS_BAS, haut, y_haut, NAPPE)
+		rive_semee = [z_eau, NAPPE, TALUS_LARGEUR, Y_SOL]
 
 	var large: float = float(bandes[-1][1]) - float(bandes[0][0])
 	var longueur := clampf(1.4 * large, LONGUEUR_MIN + 6.0, LONGUEUR_MAX)
 	var g := _emettre(bandes, longueur)
 	return {"decor": _mailler(g[DECOR]), "objet": _mailler(g[OBJET]),
 		"eau": _eau(longueur, float(bandes[0][0]) + 1.0, z_eau),
+		"rive": rive_semee,
 		"longueur": longueur, "chaussee": voie_m, "largeur": large}
+
+
+## L'ombre bakée d'une face : c'est l'ALPHA que le shader lit comme occlusion
+## (`materiaux.gd`), et c'est le seul canal qui survive à la teinte de rive.
+static func _ombre(c: Color, ao: float) -> Color:
+	return Color(c.r * ao, c.g * ao, c.b * ao, ao)
 
 
 ## Où une pente coupe le plan d'eau : le bord mouillé, donc le bout de la nappe.

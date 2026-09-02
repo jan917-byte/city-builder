@@ -301,6 +301,9 @@ COLLE_PART = 0.55          # part des stations qui doivent longer l'eau
 COLLE_PORTEE = 32.0        # jusqu'où chercher l'emprise bâtie, côté terre
 # En deçà, pas de trottoir de quai : la bande de berge prend tout ce qui reste.
 QUAI_PROMENADE_MIN = 0.80
+# De combien la promenade passe SOUS la bande de berge (2 cm plus haute). Ce
+# recouvrement est ce qui empêche la plaque nue d'apparaître entre les deux.
+QUAI_RECOUVREMENT = 1.00
 # 🔴 LA BANDE DOIT SE VOIR, sinon la décision n'a pas d'effet à l'écran. Le
 # couronnement du mur fait 1 m de large et passe SOUS le trottoir du quai : à
 # lui seul il ne donnait qu'un filet vert. La bande reprend donc les mètres que
@@ -310,11 +313,43 @@ BERGE_BANDE_M = 3.5        # la largeur de rive que la transformation rend
 # En deçà, la bande n'est plus qu'un filet : les voies `rive` de 10 m ne
 # laissent que 1,4 m entre leur chaussée et l'eau, et c'est tout ce qu'elles ont.
 BERGE_BANDE_MIN = 1.0
+# 🔴 SON BORD CÔTÉ TERRE EST UNE LIGNE (2026-09-02, demandé devant l'image).
+# La fenêtre de moyenne, puis la pente maximale du biseau, en mètres par
+# station de 2 m : 0,25 m, c'est 7° d'écart à la direction de la berge.
+BERGE_LISSE_M = 8.0
+BERGE_LISSE_PENTE = 0.25
 BERGE_Y = 0.02             # de combien elle passe au-dessus de son support
 # De combien la bande de campagne s'ENFOUIT sous le talus. 4 cm ne suffisaient
 # pas : entre deux stations le quad est droit, le talus courbe, et il ressortait
 # en dents grises tout le long des deux rives — vu à l'écran le 2026-08-26.
 BERGE_ENFOUIE = 0.60
+
+# 🌿 LE SEMIS D'UNE RIVE RENDUE AU FLEUVE. Une bande verte est un aplat, et un
+# aplat se lit comme de la peinture : ce qui fait lire une berge renaturée est
+# ce qui y POUSSE. Même format que les arbres — [x, y, alt, échelle, lacet,
+# genre] —, rangé par berge : Godot n'affiche que le semis des berges rendues.
+SEMIS_ROSEAU_PAS = 2.20    # au fil de l'eau, une touffe tous les 2,2 m
+SEMIS_BUISSON_PAS = 7.50   # en retrait, un buisson tous les 7,5 m
+# Sous cette largeur de bande, il n'y a de place que pour la ligne d'eau.
+SEMIS_BUISSON_LARGE = 1.60
+SEMIS_ROSEAU, SEMIS_BUISSON = 2, 3   # les essences de `constructeur.gd`
+# Ce que le ruban de sélection prend au quai en plus de la bande. Il entoure ce
+# que la décision CHANGE — la bande verte et le mur —, pas les 10 m de
+# promenade minérale : à la largeur de la rive libre, le trait traversait les
+# toits du cœur ancien.
+BERGE_TRAIT_MARGE = 1.5
+
+# 🌿 UNE RIVE RENDUE ENTRE DANS L'EAU (2026-09-02, demandé devant l'image :
+# « il faut qu'elle entre progressivement dans l'eau et non pas un mur »). Un
+# mur qui verdit reste un mur : la pente est de la GÉOMÉTRIE. D'où un deuxième
+# corps par berge, montré à la place du mur quand la rive est rendue.
+# 🔴 LE TALUS PREND SUR L'ILSE (~31 m de large), FAUTE DE POUVOIR CREUSER : la
+# plaque de sol est un maillage fusionné une fois pour toutes, un talus taillé
+# dans la bande de rive resterait enterré dessous. Il part donc du bord de la
+# bande et descend AU LIT — s'arrêter au-dessus laisserait une arête flottante.
+PENTE_RIVE_M = 4.50        # course horizontale moyenne → 31° sur 2,74 m
+PENTE_OMBRE = 0.68         # l'occlusion au fil de l'eau, 1,00 en haut du talus
+PENTE_OND = 0.14           # ce que le talus s'autorise en plus ou en moins
 
 # 🌊 LA CRUE, CÔTÉ RENDU (04e · décision 23b). Deux constantes, et elles ne
 # décident rien du jeu : `04e` dit QUI est ruiné, celles-ci disent à quoi ça
@@ -2182,10 +2217,13 @@ def main():
     # ----------------------------------------------------------- la voirie
     voirie = Maillage()
     # 🌊 LA BERGE A SON MAILLAGE, donc ses groupes, donc ses nœuds cliquables
-    # dans Godot. Son corps est le mur de quai là où il y en a un, la bande de
-    # rive ailleurs — les deux dans le MÊME groupe, sinon cliquer un parapet et
-    # cliquer l'herbe deux mètres plus loin ouvriraient deux fiches.
+    # dans Godot. Trois maillages, un fid par groupe dans chacun : la bande de
+    # rive, qui reste ; le MUR, que la rive rendue fait disparaître ; le TALUS,
+    # qui prend sa place. Cliquer l'un des trois ouvre la même fiche — c'est le
+    # fid du groupe qui le dit, pas le maillage.
     berges_m = Maillage()
+    murs_m = Maillage()
+    pentes_m = Maillage()
     # 🅿️ LES PLACES ONT LEUR MAILLAGE, donc leurs nœuds : « retirer les places »
     # doit les effacer de la ville, pas seulement en retirer les voitures.
     # C'est la même recette que la ville réparée, à un détail près : ces nœuds
@@ -2416,6 +2454,11 @@ def main():
                 # du côté des façades.
                 promenade = d.get("berge_libre_m", 0.0) - BERGE_BANDE_M
                 if promenade >= QUAI_PROMENADE_MIN:
+                    # 🔴 ELLE GLISSE SOUS LA BANDE. La promenade est parallèle
+                    # à la RUE, la bande à la BERGE : deux droites qui ne sont
+                    # pas parallèles laissaient entre elles un coin de plaque
+                    # nue, gris foncé, qu'on lisait comme la route sous l'herbe.
+                    promenade += QUAI_RECOUVREMENT
                     n_promenade[0] += _ruban(
                         voirie, axe_, promenade, coul_tr_d, G, y=Y_TROTTOIR,
                         decal=d["berge_cote"] * (ch / 2.0 + promenade / 2.0))
@@ -2582,12 +2625,50 @@ def main():
     # une berge n'appartient à aucun tronçon, c'est justement ce qui en fait un
     # objet. 🔄 Le mur tombait dans le groupe de la RUE jusqu'au 2026-08-26 —
     # cliquer un parapet ouvrait la fiche du tronçon.
+    rng_rive = random.Random(GRAINE ^ 0xB3E6)
+    berges_couloir = {}
+    coul_pente = (PAL.vers_lineaire(PAL.SOLS["parc"]),
+                  PAL.vers_lineaire(PAL.melanger(PAL.MINERAL_CLAIR,
+                                                 "#000000", 0.45)))
+    # Tout ce qui est POSÉ SUR LA RIVE prend le niveau de sa rive, y compris
+    # sur la ligne d'eau elle-même — voir `_cale_rive`.
+    def G_rive(x, y, alt):
+        return G(x, y, alt + _cale_rive(chenal, x, y))
+
     for b in berges:
+        murs_m.marque(b["fid"])
+        b["tri"] = _emettre_quai(murs_m, plan_quai.get(b["fid"], ()),
+                                 coul_quai, coul_chap, G_rive, chenal)
         berges_m.marque(b["fid"])
-        b["tri"] = _emettre_quai(berges_m, plan_quai.get(b["fid"], ()),
-                                 coul_quai, coul_chap, G)
-        b["tri"] += _bande_berge(berges_m, b, coul_berge, G, relief)
+        b["tri"] += _bande_berge(berges_m, b, coul_berge, G_rive, relief)
+        pentes_m.marque(b["fid"])
+        b["tri"] += _pente_berge(pentes_m, b, coul_pente[0], coul_pente[1],
+                                 G, chenal)
+        # 🌿 Le semis, pas le maillage : il ne rentre dans aucun groupe, c'est
+        # Godot qui en fait un MultiMesh quand la berge est rendue au fleuve.
+        # Son tirage est À PART — pris sur `rng`, il déplacerait les arbres.
+        b["semis"] = _semis_berge(b, rng_rive, relief, chenal)
+        # ✏️ LE RUBAN D'UNE BERGE — sa SILHOUETTE de sélection, pas sa
+        # géométrie. Même raison que pour un tronçon : mur, couronnement et
+        # bande sont trois surfaces disjointes et fines, et les détourer une à
+        # une donnait quatre traits parallèles pour un seul objet. Deux rails
+        # par station, tout entiers CÔTÉ TERRE : de la ligne d'eau au fond de
+        # la rive — ce que la chaussée laisse en ville, le talus en campagne.
+        # 🔴 IL SUIT LA BANDE, station par station : c'est elle que la décision
+        # change. En campagne, c'est le talus.
+        rails = []
+        for i in range(b["i0"], b["i1"] + 1):
+            pt, e = b["net"][i], b["eau"][i]
+            large = _large_berge(b, i) + BERGE_TRAIT_MARGE \
+                if b["prendre"][i] else TALUS_LARGEUR
+            g0 = G(pt[0], pt[1], 0.0)
+            g1 = G(pt[0] - e[0] * large, pt[1] - e[1] * large, 0.0)
+            rails.append([round(g0[0], 2), round(g0[2], 2),
+                          round(g1[0], 2), round(g1[2], 2)])
+        berges_couloir[str(b["fid"])] = rails
     berges_m.fermer()
+    murs_m.fermer()
+    pentes_m.fermer()
     st_bord["tri"] += sum(b["tri"] for b in berges)
 
     # 🌊 LE BORD DE L'EAU. Le compte rendu tient en trois lignes parce que la
@@ -2646,6 +2727,25 @@ def main():
               % (b["fid"], b["rive"], b["longueur_m"], b["mur_m"],
                  b["debord_m2"], b["debord_max_m"], b["rive_m"],
                  ", ".join(str(f) for f in b["rues"]) or "aucune"))
+    # 🌿 LE CONTRÔLE DE LA PENTE : une rive rendue doit ENTRER dans l'eau. Sans
+    # ce talus, renaturer ne faisait que verdir un mur vertical (2026-09-02).
+    y_haut = Y_TROTTOIR + BERGE_Y
+    pente_m = sum(
+        _longueur(b["net"], i, i + 1)
+        for b in berges for i in range(b["i0"], b["i1"])
+        if b["prendre"][i] and not b["sous"][i])
+    print("        talus des rives rendues : %.0f m de mur remplacés par une"
+          " pente de %.1f m à %.0f°  %s"
+          % (pente_m, PENTE_RIVE_M,
+             math.degrees(math.atan2(y_haut - FOND_ILSE, PENTE_RIVE_M)),
+             "✅" if pente_m > 100.0 else "⚠️ la rive rendue resterait un mur"))
+    n_ros = sum(1 for b in berges for a in b["semis"] if a[5] == SEMIS_ROSEAU)
+    n_bui = sum(1 for b in berges for a in b["semis"] if a[5] == SEMIS_BUISSON)
+    print("        semis des rives rendues : %d touffes de roseaux + %d buissons"
+          " sur %.0f m de berge  %s"
+          % (n_ros, n_bui, sum(b["longueur_m"] for b in berges),
+             "✅" if n_ros and n_bui
+             else "⚠️ une rive rendue sortirait en aplat vert"))
     print("        asphalte au-dessus du chenal : %.0f m², porté à %.1f %% ·"
           " %.0f m² masqués derrière un parapet · %.0f m² au-delà"
           " (dépassement max %.2f m)  %s"
@@ -2768,9 +2868,12 @@ def main():
         "places": places_m.json(),
         "sols": sols.json(),
         "eau": eau.json(),
-        # 🌊 Le corps des berges : mur de quai et bande de rive, un groupe par
-        # berge. Godot en fait des nœuds cliquables, comme des îlots.
+        # 🌊 Le corps des berges, un groupe par berge, en trois maillages :
+        # la bande de rive, le mur de quai, et le talus qui remplace le mur
+        # quand la rive est rendue au fleuve. Godot montre l'un OU l'autre.
         "berges": berges_m.json(),
+        "berges_mur": murs_m.json(),
+        "berges_pente": pentes_m.json(),
         "voirie": voirie.json(),
         # Déjà en repère Godot : [x, y, z, échelle, lacet]. Godot ne fait
         # aucune conversion de coordonnées, c'est la règle du contrat.
@@ -2785,6 +2888,19 @@ def main():
                 + [round(a[3], 3), round(a[4], 3), round(a[5], 4)] for a in v]
             for f, v in alignements.items()
         },
+        # 🌿 Ce qui pousse sur chaque berge une fois rendue au fleuve, déjà en
+        # repère Godot. Godot n'en montre que les berges renaturées : c'est le
+        # semis, et pas une teinte, qui fait lire la décision.
+        "berges_semis": {
+            str(b["fid"]): [[round(c, 2) for c in G(a[0], a[1], a[2])]
+                            + [round(a[3], 3), round(a[4], 3), int(a[5])]
+                            for a in b["semis"]]
+            for b in berges
+        },
+        # Les deux rails du ruban de rive, déjà en repère Godot :
+        # [[x_eau, z_eau, x_terre, z_terre], …]. Godot n'en fait pas une berge,
+        # il en fait la SILHOUETTE qu'il détoure quand on la choisit.
+        "berges_couloir": berges_couloir,
         # La fiche qu'on lit en cliquant, et l'état de départ du noyau.
         "objets": {
             "ilots": {str(f): dict({c: d[c] for c in FICHE_ILOTS},
@@ -4898,7 +5014,7 @@ def _etendre(net, i0, i1, marge):
     return a, b
 
 
-def _bande3d(m, A, B, coul, G, vers):
+def _bande3d(m, A, B, coul, G, vers, ao=None):
     """La surface réglée entre deux polylignes de même longueur, en (x, y, alt).
 
     ⚠️ LE SENS DE PARCOURS EST MESURÉ, PAS SUPPOSÉ. Le mur d'un quai de rive
@@ -4908,7 +5024,11 @@ def _bande3d(m, A, B, coul, G, vers):
     elle ne regarde pas où on lui demande.
 
     `vers` est donné dans le repère GODOT : l'inversion de Z change la
-    chiralité, donc raisonner dans le repère source se paierait deux fois."""
+    chiralité, donc raisonner dans le repère source se paierait deux fois.
+
+    `ao` : l'occlusion des deux rives, (côté A, côté B). Elle suit le
+    retournement, sinon une bande inversée sortirait son ombre à l'envers."""
+    oa, ob = ao if ao else (1.0, 1.0)
     quads = []
     for i in range(len(A) - 1):
         a0, a1, b1, b0 = A[i], A[i + 1], B[i + 1], B[i]
@@ -4929,9 +5049,10 @@ def _bande3d(m, A, B, coul, G, vers):
     nn = normale(G(*a0), G(*a1), G(*b1))
     if nn[0] * vers[0] + nn[1] * vers[1] + nn[2] * vers[2] < 0.0:
         quads = [(q[3], q[2], q[1], q[0]) for q in quads]
+        oa, ob = ob, oa
     for a0, a1, b1, b0 in quads:
-        m.triangle(G(*a0), G(*a1), G(*b1), coul)
-        m.triangle(G(*a0), G(*b1), G(*b0), coul)
+        m.triangle(G(*a0), G(*a1), G(*b1), coul, (oa, oa, ob))
+        m.triangle(G(*a0), G(*b1), G(*b0), coul, (oa, ob, ob))
     return 2 * len(quads)
 
 
@@ -5406,7 +5527,7 @@ def _quais(chenal, relief, grille, tabliers, franchis=None):
                 # encore retouchés plus bas, et c'est leur état final qui dit où
                 # un mur tient la berge et où il faut poser la bande.
                 "net": net, "eau": eau, "prendre": prendre, "sous": sous,
-                "bord": bord,
+                "bord": bord, "off": off,
                 "longueur_m": _longueur(net, a, b),
                 "rues": sorted({f for f in rues[a:b + 1] if f is not None}),
                 "rive": "gauche" if rives[(a + b) // 2] == RIVE_GAUCHE_Y
@@ -5547,9 +5668,29 @@ def _decouper_quai(net, eau, off, bord, fids, sous, i0, i1, plan, st, murs,
              (eau[i0 + a][0], 0.0, -eau[i0 + a][1]), avance, garde_fou))
 
 
-def _emettre_quai(m, morceaux, coul_mur, coul_chap, G):
+def _cale_rive(chenal, x, y):
+    """🔴 LE MÈTRE QUE `G` RETIRE À CE QUI EST POSÉ SUR LA LIGNE DE BERGE.
+
+    `G` cale l'altitude sur la rive, sauf au-dessus de l'eau où elle la remet à
+    plat — il le faut pour que la nappe reste horizontale. Mais la coupe qui
+    dit « au-dessus de l'eau » est calculée tous les 25 cm de y : un sommet de
+    la ligne de berge tombe du côté mouillé une station sur quatre, et le mur,
+    la bande et le haut du talus plongeaient alors d'un mètre sous la ville.
+    C'est par ces trous qu'on voyait la route sous la berge renaturée."""
+    return chenal.niveau_rive(x, y, False) - chenal.niveau_rive(x, y)
+
+
+def _rive_haut(chenal, p):
+    """Le haut du talus d'une rive rendue, à cette station — la lèvre de la
+    bande de berge, dont le talus et les roseaux partent."""
+    return Y_TROTTOIR + BERGE_Y + _cale_rive(chenal, p[0], p[1])
+
+
+def _emettre_quai(m, morceaux, coul_mur, coul_chap, G, chenal):
     """Les trois surfaces d'un morceau de quai : couronnement, paroi, parapet.
-    Appelé DANS le groupe du tronçon, d'où le fait qu'il ne marque rien."""
+    Le groupe est ouvert par l'appelant, d'où le fait qu'il ne marque rien.
+    🔴 C'est le corps que la rive rendue EFFACE — d'où son maillage à part.
+    `G` est celui de la RIVE (`_cale_rive`) : le quai est posé dessus."""
     tri = 0
     for ext, inte, interieur, dehors, avance, garde_fou in morceaux:
         tri += _bande3d(m, [(p[0], p[1], Y_QUAI) for p in interieur],
@@ -5562,7 +5703,11 @@ def _emettre_quai(m, morceaux, coul_mur, coul_chap, G):
         for j0, j1 in avance:
             tri += _bande3d(
                 m, [(p[0], p[1], Y_QUAI) for p in ext[j0:j1 + 1]],
-                [(p[0], p[1], FOND_ILSE) for p in ext[j0:j1 + 1]],
+                # Le pied est le seul sommet du quai qui appartienne à l'EAU :
+                # on lui reprend le mètre que `G` vient de donner à la rive,
+                # sinon la paroi s'arrête au-dessus de la nappe.
+                [(p[0], p[1], FOND_ILSE - _cale_rive(chenal, p[0], p[1]))
+                 for p in ext[j0:j1 + 1]],
                 coul_mur, G, dehors)
         for j0, j1 in garde_fou:
             tri += _parapet(m, ext[j0:j1 + 1], inte[j0:j1 + 1], dehors,
@@ -5592,15 +5737,7 @@ def _bande_berge(m, b, coul, G, relief):
             A, B = [], []
             for i in range(k + a, k + z + 1):
                 p = net[i]
-                # 🌊 LA BANDE NE MONTE PAS SUR LA CHAUSSÉE. `bord` est la
-                # distance de la berge à l'asphalte, négative depuis que le
-                # corridor se colle aux façades : les voies `rive` de 10 m ne
-                # laissent que 1,4 m de rive, et 3,5 m y passeraient par-dessus
-                # la file de stationnement.
-                large = BERGE_BANDE_M
-                if quai:
-                    large = min(BERGE_BANDE_M,
-                                max(BERGE_BANDE_MIN, -b["bord"][i]))
+                large = _large_berge(b, i)
                 # Côté TERRE, donc à l'opposé de la normale eau.
                 q = (p[0] - eau[i][0] * large,
                      p[1] - eau[i][1] * large)
@@ -5619,15 +5756,190 @@ def _bande_berge(m, b, coul, G, relief):
     return tri
 
 
+def _pente_berge(m, b, coul_haut, coul_lit, G, chenal):
+    """🌿 LE TALUS D'UNE RIVE RENDUE — ce qu'on montre À LA PLACE du mur.
+
+    Deux quads par station, coupés À LA LIGNE D'EAU : la limite mouillée est
+    une arête, pas une teinte devinée par le shader. Le haut part du bord de la
+    bande (même altitude, sinon une lèvre de 9 cm reste ouverte quand le
+    parapet disparaît) et le pied descend au lit.
+
+    Rien sous un tablier, rien en campagne : là, le talus est déjà le terrain."""
+    net, eau, i0, i1 = b["net"], b["eau"], b["i0"], b["i1"]
+    tri = 0
+    for a, z in _plages([b["prendre"][i] and not b["sous"][i]
+                         for i in range(i0, i1 + 1)]):
+        if z - a < 1:
+            continue
+        haut, ligne, pied = [], [], []
+        for i in range(i0 + a, i0 + z + 1):
+            p, e, o = net[i], eau[i], b["off"][i]
+            large = PENTE_RIVE_M * _ond_berge(b, i)
+            # Le HAUT tient à la rive, la ligne d'eau et le lit à la nappe :
+            # seul le premier reçoit le mètre que `G` lui retirerait. La rive
+            # droite est un mètre plus haut que la gauche, donc sa lèvre
+            # mouillée tombe plus loin sur la même course horizontale.
+            yh = _rive_haut(chenal, p)
+            part_eau = (yh - NAPPE_ILSE) / (yh - FOND_ILSE)
+            for dist, y, out in ((o, yh, haut),
+                                 (o + large * part_eau, NAPPE_ILSE, ligne),
+                                 (o + large, FOND_ILSE, pied)):
+                out.append((p[0] + e[0] * dist, p[1] + e[1] * dist, y))
+        # 🔴 LE DÉGRADÉ EST CE QUI FAIT LIRE LA PENTE. Vue de 34° au-dessus,
+        # une bande verte inclinée de 31° a la même valeur qu'une bande à plat :
+        # sans cette ombre qui descend vers l'eau, le talus reste un aplat.
+        tri += _bande3d(m, haut, ligne, coul_haut, G, (0.0, 1.0, 0.0),
+                        (1.0, PENTE_OMBRE))
+        tri += _bande3d(m, ligne, pied, coul_lit, G, (0.0, 1.0, 0.0),
+                        (PENTE_OMBRE, 0.55 * PENTE_OMBRE))
+    return tri
+
+
+def _arc_berge(b):
+    """L'abscisse curviligne de chaque station, en mètres depuis le début de la
+    berge. Calculée une fois : la bande et le semis doivent lire la MÊME."""
+    if "arc" not in b:
+        net, s, out = b["net"], 0.0, [0.0]
+        for i in range(b["i0"], b["i1"]):
+            s += math.hypot(net[i + 1][0] - net[i][0],
+                            net[i + 1][1] - net[i][1])
+            out.append(s)
+        b["arc"] = out
+    return b["arc"]
+
+
+def _ond_berge(b, i):
+    """L'ondulation du TALUS à cette station, 0,86 à 1,14.
+
+    🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-09-02 : elle allait de 0,72 à 1,28 sur
+    deux sinusoïdes de 23 et 9 m, et la bande la partageait. Une période de 9 m
+    échantillonnée tous les 2 m ne fait pas une rive, elle fait une scie —
+    l'auteur devant l'image : « je veux que ce soit plus smooth, moins
+    dentelé ». Deux périodes longues (29 et 61 m), quinze stations par vague,
+    et la bande n'y touche plus : son bord côté terre est une LIGNE."""
+    t = _arc_berge(b)[i - b["i0"]] + b["fid"] * 3.7
+    return 1.0 + PENTE_OND * (0.72 * math.sin(t / 4.6)
+                              + 0.28 * math.sin(t / 9.7 + 2.1))
+
+
+def _larges_berge(b):
+    """🌿 LA LARGEUR DE LA BANDE, station par station — calculée une fois.
+
+    `BERGE_BANDE_M` partout, sauf là où la chaussée est plus près que ça :
+    `bord` est la distance de la berge à l'asphalte, et rien ne monte sur la
+    rue. 🔴 CE RABOTAGE EST CE QUI DENTELAIT LE BORD — la sonde du quai répond
+    par pas de 0,35 m, donc le bord sautait d'une station à l'autre. Il est
+    moyenné sur `BERGE_LISSE_M`, puis interdit de MONTER de plus de
+    `BERGE_LISSE_PENTE` par station : la bande s'amincit en biseau au droit
+    d'une rue qui serre la rive, et redevient droite après."""
+    if "large" not in b:
+        brut = []
+        for i in range(b["i0"], b["i1"] + 1):
+            large = BERGE_BANDE_M
+            if b["prendre"][i]:
+                large = min(large, max(BERGE_BANDE_MIN, -b["bord"][i]))
+            brut.append(large)
+        k = max(1, int(round(BERGE_LISSE_M / QUAI_PAS)))
+        n = len(brut)
+        lisse = [sum(brut[max(0, j - k):j + k + 1])
+                 / len(brut[max(0, j - k):j + k + 1]) for j in range(n)]
+        # Le biseau, dans les deux sens : ce qui reste après ces deux passes ne
+        # remonte jamais plus vite que la pente, donc aucun angle rentrant.
+        for j in range(1, n):
+            lisse[j] = min(lisse[j], lisse[j - 1] + BERGE_LISSE_PENTE)
+        for j in range(n - 2, -1, -1):
+            lisse[j] = min(lisse[j], lisse[j + 1] + BERGE_LISSE_PENTE)
+        b["large"] = lisse
+    return b["large"]
+
+
+def _large_berge(b, i):
+    return _larges_berge(b)[i - b["i0"]]
+
+
+def _semis_berge(b, rng, relief, chenal):
+    """Ce qui pousse sur une rive rendue au fleuve : roseaux au fil de l'eau,
+    buissons en retrait. Sortie : [x, y, alt, échelle, lacet, genre].
+
+    🔴 SEMÉ SUR LA BANDE, JAMAIS AU-DELÀ. La largeur est celle que
+    `_bande_berge` donne à la station — 3,5 m en campagne, ce que la chaussée
+    laisse en ville —, donc rien ne pousse sur l'asphalte. Rien sous un tablier
+    non plus : la bande n'y passe pas.
+
+    🌊 EN VILLE, LES ROSEAUX SONT DANS L'EAU : ils se plantent sur le TALUS
+    (`_pente_berge`), au ras de la ligne d'eau. Sur la bande, ils poussaient
+    trois mètres au-dessus du fleuve, sur le nez du quai."""
+    net, eau, i0, i1 = b["net"], b["eau"], b["i0"], b["i1"]
+    out = []
+    # Décalés au tirage : deux berges qui se suivent ne doivent pas commencer
+    # leur file de roseaux au même mètre.
+    dr = rng.uniform(0.0, SEMIS_ROSEAU_PAS)
+    db = rng.uniform(0.0, SEMIS_BUISSON_PAS)
+    for i in range(i0, i1):
+        if b["sous"][i] or b["sous"][i + 1]:
+            continue
+        p, q = net[i], net[i + 1]
+        pas_m = math.hypot(q[0] - p[0], q[1] - p[1])
+        if pas_m < 1e-6:
+            continue
+        large = _large_berge(b, i)
+        dr += pas_m
+        db += pas_m
+        while dr >= SEMIS_ROSEAU_PAS:
+            dr -= SEMIS_ROSEAU_PAS
+            if b["prendre"][i]:
+                _poser_roseau(out, p, eau[i], b["off"][i],
+                              PENTE_RIVE_M * _ond_berge(b, i), rng,
+                              _rive_haut(chenal, p))
+            else:
+                _poser_plante(out, p, eau[i],
+                              rng.uniform(0.15, 0.30 + 0.30 * large),
+                              SEMIS_ROSEAU, rng, relief)
+        while db >= SEMIS_BUISSON_PAS:
+            db -= SEMIS_BUISSON_PAS
+            if large < SEMIS_BUISSON_LARGE:
+                continue
+            _poser_plante(out, p, eau[i],
+                          rng.uniform(0.55 * large, 0.90 * large),
+                          SEMIS_BUISSON, rng, relief)
+    return out
+
+
+def _poser_plante(out, p, e, recul, genre, rng, relief):
+    """Posée à `recul` mètres de la ligne de berge, CÔTÉ TERRE — donc à
+    l'opposé de la normale eau, comme la bande elle-même. Le pied suit le
+    talus : sans ça un roseau de champ flotterait au-dessus de la pente."""
+    x, y = p[0] - e[0] * recul, p[1] - e[1] * recul
+    out.append([x, y, relief.z(x, y),
+                rng.uniform(0.75, 1.30), rng.uniform(0.0, 6.2832), genre])
+
+
+def _poser_roseau(out, p, e, nu, large, rng, y_haut):
+    """Un roseau planté DANS le talus de la rive rendue, à quelques centimètres
+    d'eau : sa hauteur suit la pente, sinon il flotterait ou serait noyé.
+    `y_haut` est la lèvre de SA rive — les deux ne sont pas au même niveau."""
+    # De la lèvre mouillée à 25 cm de fond : la frange où poussent les roseaux.
+    f = (y_haut - NAPPE_ILSE + rng.uniform(-0.10, 0.25)) / (y_haut - FOND_ILSE)
+    d = nu + large * f
+    out.append([p[0] + e[0] * d, p[1] + e[1] * d,
+                y_haut + (FOND_ILSE - y_haut) * f,
+                rng.uniform(0.75, 1.30), rng.uniform(0.0, 6.2832),
+                SEMIS_ROSEAU])
+
+
 def _tranches(drapeaux):
     """Les plages [a, b] où le drapeau ne change pas — `_plages` ne rend que
-    les vraies, et ici les deux valeurs portent chacune une bande."""
+    les vraies, et ici les deux valeurs portent chacune une bande.
+
+    ⚠️ CHAQUE PLAGE MORD SUR LA STATION SUIVANTE, sans quoi le quad qui
+    enjambe le changement n'est émis par personne : la bande s'ouvrait sur 2 m
+    à chaque passage du quai au talus de campagne."""
     out, i, n = [], 0, len(drapeaux)
     while i < n:
         j = i
         while j + 1 < n and drapeaux[j + 1] == drapeaux[i]:
             j += 1
-        out.append((i, j))
+        out.append((i, min(j + 1, n - 1)))
         i = j + 1
     return out
 

@@ -31,8 +31,10 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 
 	var d: Dictionary = brut
 	for cle in ["meta", "palette", "terrain", "masses", "sols", "eau", "berges",
+			"berges_mur", "berges_pente",
 			"voirie", "repare", "repare_voirie",
-			"arbres", "alignements", "couloirs", "emprises", "objets", "riverains",
+			"arbres", "alignements", "berges_semis", "berges_couloir",
+			"couloirs", "emprises", "objets", "riverains",
 			"crue", "reperes", "controles"]:
 		if not d.has(cle):
 			_fatal("clé absente du JSON : `%s`\n" % cle
@@ -60,8 +62,8 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 
 	# 🔄 `terrain` se contrôlait à part quand c'était un champ d'altitude ;
 	# la carte étant plate, c'est un maillage comme les autres.
-	for nom in ["terrain", "masses", "sols", "eau", "berges", "voirie",
-			"repare", "repare_voirie"]:
+	for nom in ["terrain", "masses", "sols", "eau", "berges", "berges_mur",
+			"berges_pente", "voirie", "repare", "repare_voirie"]:
 		var e: String = _valider_maillage(d[nom] as Dictionary, nom)
 		if e != "":
 			_fatal(e)

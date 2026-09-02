@@ -79,10 +79,15 @@ const CHOISI := Color(1.34, 1.32, 1.16)
 # l'emprise exportée par 07 ; le trait suit leur union.
 #
 # L'épaisseur est en PIXELS et le reste : le trait vit dans l'image.
-const CONTOUR_PX := 3.0
+const CONTOUR_PX := 2.2
 # Légèrement jaune, comme l'éclaircissement (2026-08-18) : un blanc pur à côté
 # d'un îlot réchauffé se lisait comme deux retours pour une seule sélection.
 const CONTOUR_COULEUR := Color(1.0, 0.95, 0.66)
+# 🔄 2026-09-02 : le halo sombre qui passe SOUS le trait. Sans lui, le crème
+# se perdait sur un toit clair et sur le gris du quai — et c'est exactement là
+# qu'on choisit une berge. Bleu très sombre plutôt que noir : la ville n'a
+# aucun noir, un noir pur s'y lit comme un trou.
+const CONTOUR_OMBRE := Color(0.05, 0.08, 0.12, 0.50)
 
 var donnees: Dictionary
 var monde: Node3D
@@ -132,6 +137,19 @@ var _arbres_semis := []
 var _arbres_slots := []      # [x, y, z, échelle, lacet, fid tronçon, seuil]
 var _arbres_noeuds := {}     # essence -> MultiMeshInstance3D
 var _arbres_compte := -1
+# 🌿 CE QUI POUSSE SUR UNE RIVE RENDUE AU FLEUVE, rangé PAR BERGE : c'est
+# l'état de la berge, et lui seul, qui décide si on le montre. Même semis que
+# les arbres, donc le même MultiMesh — deux appels de rendu de plus, pas un
+# deuxième système.
+var _berges_semis := {}
+var _berges_plantes := {}    # essence -> MultiMeshInstance3D
+var _berges_rendues := ""    # la signature : les berges déjà renaturées
+# 🌊 LE CORPS QUE LA DÉCISION ÉCHANGE : le mur de quai s'efface, le talus prend
+# sa place. Un mur qui verdit reste un mur — la rive rendue se lit à la PENTE,
+# donc à de la géométrie (2026-09-02). Deux nœuds par berge de ville, calculés
+# par 07 comme le reste ; les berges de campagne n'en ont aucun.
+var _berges_mur := {}        # fid -> MeshInstance3D, visible tant qu'il y a un quai
+var _berges_pente := {}      # fid -> MeshInstance3D, montré quand la rive est rendue
 var mois := 0.0
 var vitesse := 1.0
 var _derniere_vitesse := 1.0
@@ -423,6 +441,7 @@ func _banc() -> void:
 			["la miniature de la fiche", _maj_apercu],
 			["les réparations livrées", _montrer_reparations],
 			["les arbres plantés", _montrer_arbres],
+			["les rives plantées", _montrer_rives],
 			["repeindre les objets", _peindre]]:
 		var t2 := Time.get_ticks_usec()
 		for i in 20:
@@ -1238,6 +1257,8 @@ func _construire() -> void:
 	# 🌊 La berge avant les îlots, pour que l'ordre des nœuds suive celui du
 	# terrain : son corps est le mur de quai, et il borde tout le reste.
 	_par_objet("Berges", [donnees["berges"]], "b")
+	_par_berge("MursQuai", donnees["berges_mur"], _berges_mur, true)
+	_par_berge("TalusRives", donnees["berges_pente"], _berges_pente, false)
 	_par_objet("Ilots", [donnees["masses"], donnees["sols"]], "i")
 	_par_objet("Routes", [donnees["voirie"]], "r")
 	_par_reparation("Reparation", donnees["repare"], "i")
@@ -1254,6 +1275,10 @@ func _construire() -> void:
 			_arbres_slots.append([a[0], a[1], a[2], a[3], a[4], int(f),
 				float(a[5])])
 
+	# 🌿 Le semis des rives, une liste par berge. `donnees.gd` l'exige : sans
+	# lui une berge rendue au fleuve resterait un aplat vert.
+	_berges_semis = donnees["berges_semis"]
+
 	if not _ignore("Arbres"):
 		for essence in [Constructeur.FEUILLU, Constructeur.CONIFERE]:
 			var mmi := MultiMeshInstance3D.new()
@@ -1268,6 +1293,16 @@ func _construire() -> void:
 			print("  arbres   %-8s %5d instances"
 				% ["conifère" if essence == Constructeur.CONIFERE
 					else "feuillu", 0 if mm == null else mm.instance_count])
+
+	if not _ignore("Rives"):
+		for essence in [Constructeur.ROSEAU, Constructeur.BUISSON]:
+			var mmi := MultiMeshInstance3D.new()
+			mmi.name = "Rives%d" % essence
+			monde.add_child(mmi)
+			_berges_plantes[essence] = mmi
+		_montrer_rives()
+		print("  rives    %5d emplacements semés sur %d berges"
+			% [_semis_total(), _berges_semis.size()])
 
 
 func _ignore(nom: String) -> bool:
@@ -1338,6 +1373,33 @@ func _par_places(source: Dictionary) -> void:
 		parent.add_child(mi)
 		places_rue[fid] = mi
 	print("  %-8s %3d rues marquées" % ["Places", parent.get_child_count()])
+
+
+## 🌊 LES DEUX CORPS ÉCHANGEABLES D'UNE BERGE — le mur de quai et le talus qui
+## le remplace. Même recette que `_par_objet` : fid et couche en méta, corps de
+## collision, donc cliquer un talus ouvre la fiche de sa berge.
+func _par_berge(nom: String, source: Dictionary, cible: Dictionary,
+		montre: bool) -> void:
+	if _ignore("Berges"):
+		return
+	var parent := Node3D.new()
+	parent.name = nom
+	monde.add_child(parent)
+	for g in (source["g"] as Array):
+		var gr: Array = g
+		var fid := int(gr[0])
+		var mi := MeshInstance3D.new()
+		mi.name = "%s%d" % [nom.substr(0, 1), fid]
+		mi.mesh = Constructeur.maillage_groupe(source, int(gr[1]), int(gr[2]))
+		mi.material_override = mat_objet
+		mi.set_meta("fid", fid)
+		mi.set_meta("couche", "b")
+		mi.visible = montre
+		parent.add_child(mi)
+		mi.create_trimesh_collision()
+		_corps(mi, montre)
+		cible[fid] = mi
+	print("  %-8s %3d berges" % [nom, parent.get_child_count()])
 
 
 ## Les nœuds de réparation. Même recette que `_par_objet`, trois différences :
@@ -1414,6 +1476,56 @@ func _montrer_arbres() -> void:
 			Constructeur.arbres(liste, essence, t, brun)
 
 
+## 🌿 UNE BERGE RENDUE AU FLEUVE SE PLANTE, et c'est ça qui la fait lire — un
+## aplat vert se lit comme de la peinture. La signature est la liste des berges
+## déjà renaturées : tant qu'elle ne bouge pas, aucun MultiMesh n'est refait.
+func _montrer_rives() -> void:
+	var rendues := PackedStringArray()
+	for cle in _berges_semis:
+		if ville.berge_etat(int(cle), mois) >= Ville.BERGE_RENATUREE:
+			rendues.append(str(cle))
+	var signature := ",".join(rendues)
+	if signature == _berges_rendues:
+		return
+	_berges_rendues = signature
+	# 🌊 LE MUR S'EFFACE, LE TALUS PREND SA PLACE — dans le même souffle que le
+	# semis : c'est la même décision, et elle doit se voir d'un seul coup.
+	for fid in _berges_mur:
+		# 🔴 L'ÉCHANGE DIT UN CHANGEMENT, PAS UN ÉTAT — même règle que la
+		# teinte : une berge de campagne naît « renaturée », et le bout de mur
+		# qu'elle porte sous un pont n'a aucune raison de disparaître.
+		var e: int = ville.berge_etat(fid, mois)
+		var rendue: bool = e >= Ville.BERGE_RENATUREE \
+			and e != ville.berge_depart(fid)
+		_corps(_berges_mur[fid], not rendue)
+		(_berges_mur[fid] as MeshInstance3D).visible = not rendue
+		var talus: MeshInstance3D = _berges_pente.get(fid)
+		if talus != null:
+			_corps(talus, rendue)
+			talus.visible = rendue
+	if _berges_plantes.is_empty():
+		return
+	var liste := []
+	for cle in rendues:
+		liste.append_array(_berges_semis[cle] as Array)
+	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
+	var brun := Donnees.teinte(donnees, "_tronc")
+	for essence in _berges_plantes:
+		# Variation de VALEUR sur la même teinte (Direction artistique l.67) :
+		# le roseau prend le soleil, le buisson est une masse sombre.
+		var f: float = 1.22 if essence == Constructeur.ROSEAU else 0.74
+		(_berges_plantes[essence] as MultiMeshInstance3D).multimesh = \
+			Constructeur.arbres(liste, essence,
+				Color(vert.r * f, vert.g * f, vert.b * f), brun)
+
+
+func _semis_total() -> int:
+	var n := 0
+	for cle in _berges_semis:
+		n += (_berges_semis[cle] as Array).size()
+	return n
+
+
 func _dire(nom: String, m: ArrayMesh) -> void:
 	# Comme les scripts QGIS : un maillage vide ou hors cadre doit se voir dans
 	# la console, pas se deviner à l'écran.
@@ -1471,6 +1583,7 @@ func _rafraichir(force: bool) -> void:
 	_dernier_peint = mois
 	_montrer_reparations()
 	_montrer_arbres()
+	_montrer_rives()
 	_peindre()
 	interface.maj(ville.indicateurs(mois), mois, vitesse)
 
@@ -1686,7 +1799,9 @@ func _peindre() -> void:
 				(places_rue[fid] as MeshInstance3D).visible = \
 					ville.valeur("r", fid, "stationnement", mois) > 0.5
 			for mj in [mi, reparations[couche].get(fid),
-					places_rue.get(fid) if couche == "r" else null]:
+					places_rue.get(fid) if couche == "r" else null,
+					_berges_mur.get(fid) if couche == "b" else null,
+					_berges_pente.get(fid) if couche == "b" else null]:
 				if mj == null:
 					continue
 				mj.set_instance_shader_parameter("maquette_blanche",
@@ -1810,26 +1925,30 @@ func _batir_contour() -> void:
 	rect_contour.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect_contour.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rect_contour.visible = false
-	rect_contour.material = Materiaux.contour(masque.get_texture(), CONTOUR_COULEUR)
+	rect_contour.material = Materiaux.contour(masque.get_texture(),
+		CONTOUR_COULEUR, CONTOUR_OMBRE)
 	calque.add_child(rect_contour)
 
 
 ## Un îlot se détoure tel qu'il est rendu ; les deux objets linéaires prennent
-## une emprise simple : le couloir pour une rue, la projection pour une berge.
+## leur COULOIR, un ruban plat jamais affiché — l'axe et la largeur viennent
+## de 07.
 ##
-## 🔴 Un tronçon n'est pas une surface : chaussée + mètres libres + un bout de
-## trottoir par riverain, trois choses disjointes séparées de 2,6 m sur le
-## tronçon 120, donc trois bandes parallèles au lieu d'une rue. `07` exporte
-## pour ça le COULOIR (axe et largeur façade à façade), dont on fait un ruban
-## plat jamais affiché. Le maillage est gardé : il ne dépend que de la carte.
+## 🔴 NI UN TRONÇON NI UNE BERGE N'EST UNE SURFACE. Une rue, c'est chaussée +
+## mètres libres + un bout de trottoir par riverain — trois choses disjointes
+## séparées de 2,6 m sur le tronçon 120. Une berge, c'est mur, couronnement et
+## bande, trois rubans fins. Détourés tels quels, ils donnent trois ou quatre
+## traits parallèles pour un objet. 🔄 La berge est passée au couloir le
+## 2026-09-02 ; c'était sa projection au sol, et le trait la recouvrait
+## entière. Les maillages sont gardés : ils ne dépendent que de la carte.
 ##
 ## ⚠️ Pas rattrapable dans le shader : l'écart est en MÈTRES et le trait en
 ## PIXELS, donc un rebouchage tiendrait à un zoom et lâcherait au suivant.
 func _silhouette(couche: String, fid: int) -> Mesh:
 	if couche == "b":
 		if not _berges_contour.has(fid):
-			_berges_contour[fid] = _aplatir(
-				(noeuds[couche][fid] as MeshInstance3D).mesh)
+			_berges_contour[fid] = Constructeur.ruban(
+				donnees["berges_couloir"][str(fid)] as Array)
 		return _berges_contour[fid]
 	if couche != "r":
 		return (noeuds[couche][fid] as MeshInstance3D).mesh
@@ -1847,21 +1966,6 @@ func _silhouette(couche: String, fid: int) -> Mesh:
 	var m := Constructeur.couloir(c[1] as Array, float(c[0]), 0.0)
 	_couloirs[fid] = m
 	return m
-
-
-## Le mur et le parapet d'une berge se décalent à l'écran avec leur hauteur et
-## donnaient plusieurs traits. Leur projection au sol garde une seule emprise.
-func _aplatir(source: Mesh) -> ArrayMesh:
-	var resultat := ArrayMesh.new()
-	for surface in range(source.get_surface_count()):
-		var tableaux := source.surface_get_arrays(surface)
-		var sommets: PackedVector3Array = tableaux[Mesh.ARRAY_VERTEX]
-		for i in range(sommets.size()):
-			sommets[i].y = 0.0
-		tableaux[Mesh.ARRAY_VERTEX] = sommets
-		resultat.add_surface_from_arrays(
-			source.surface_get_primitive_type(surface), tableaux)
-	return resultat
 
 
 ## Posée à plat dans le masque À CÔTÉ de la silhouette rendue, elle ferme les
