@@ -40,6 +40,8 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 | `TOITURES` · `ENDUITS` | `palette.py` | les matériaux du bâti — la couleur de la ville depuis le 2026-08-18 |
 | `BATI` | `07_exporter_godot.py` | **la pente du toit seulement** |
 | les six nombres de la berge, **les deux du toit vert** | haut de `ville.gd` | prix et durée, et **combien de crue rachètent un mètre de rive rendue et un hectare verdi** |
+| 🏢 les cinq nombres de la densification | haut de `ville.gd` | prix du logement posé, durée, loyer, entretien, plafond d'étages |
+| `DENSE_INTERDIT` · le m² brut par logement | haut de `07`, haut de `04d` | **qui a le droit de monter**, et combien de logements un étage ajoute |
 | les quatre nombres de la plantation | haut de `ville.gd` | prix de l'arbre, durée de reprise, plafond de canopée, et **ce qu'un arbre épargne** |
 
 🔴 Dans `04d.TISSU`, le retrait latéral à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (61).
@@ -48,8 +50,9 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 
 Aucune n'est sur le chemin critique, mais chacune fausse un chiffre.
 
-- 🔴 **Calibrer les deux formules de budget** (59) : recettes ∝ `logements`, charges ∝ mètres de voirie. Contrôle nommé — *une densification pure ne doit pas s'autofinancer*. Aujourd'hui le budget ne mord jamais (418/500, +152 de solde, aucune décision refusée sur trois parties).
-- 🔴 **`logements` est inventé, le plancher est mesuré** — densité × hectares d'un côté, emprise × niveaux de l'autre, et rien ne relie les deux : **ajouter un étage n'ajoute aucun habitant**. `04d` imprime maintenant les deux ; ils se recoupent à **101 m² bruts par logement**, donc inverser la causalité ne coûte rien à l'échelle de la ville et ne fait que redistribuer entre îlots. À trancher **avant** d'écrire la moindre ligne sur la densification.
+- 🔴 **Calibrer les deux formules de budget** (59) : recettes ∝ `logements`, charges ∝ mètres de voirie. Le contrôle nommé — *une densification pure ne doit pas s'autofinancer* — **tourne et passe** depuis le 2026-09-03 (`--essai`), mais sur les seuls logements neufs : le parc existant ne paie ni ne rapporte encore. Le budget ne mord toujours jamais (418/500, +152 de solde, aucune décision refusée sur trois parties).
+- ✅ **`logements` sort du plancher mesuré** (2026-09-03) — emprise bâtie × niveaux ÷ **101 m² bruts**, écrit par `04d`. La ville ne bouge presque pas (**2 705 → 2 645**), ça redistribue entre îlots, et **ajouter un étage ajoute enfin des habitants**. 04 garde QUI loge, la mesure dit COMBIEN. → [Densifier](Densifier.md)
+- 🟠 **La recette de fenêtres compte les étages depuis le zéro MONDE, pas depuis le pied du mur** — or les deux rives sont à **±1 m** (`RIVE_GAUCHE_Y`, `RIVE_DROITE_Y` dans `07`). Rive droite, l'allège du rez tombe **au niveau du sol** ; rive gauche, elle flotte **2 m au-dessus**. Trouvé le 2026-09-03 en posant la couture du bardage, qui doit se recaler sur cette trame pour ne pas couper une fenêtre en deux. Le jour où la fenêtre part du pied du mur, ce recalage saute.
 - 🔴 **Repondérer les trois moyennes** (63) : `canopee_moy` et `impermeabilise_moy` par la surface, `riverain_moy` par la population — dans `08_jouer.py` **et** `ville.gd`, puis refaire le recoupement.
 - 🔴 **`largeur_m >= 20`, la cible de D05, ne prend pas l'axe** : sur les **16 tronçons au-dessus de 0,80, 5 seulement font 20 m** ; les 11 autres en font 18. D05 ne ferme pas l'axe de transit, elle en ferme cinq bouts. **Deux mètres de seuil décident si la décision existe.** 🔄 Remesuré le 2026-08-24 : l'ancienne liste (13, 21, 54, 55) datait du comptage de charge corrigé depuis.
 - 🔴 **La montée de D07 est de 60 mois** : sur une partie, l'arbre ne reprend jamais ses mètres à la noue, donc la concurrence arbre/noue ne se joue pas.
