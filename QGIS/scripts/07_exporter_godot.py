@@ -56,6 +56,7 @@ D4C = import_module("04c_parcelles")         # `couper`, la coupe par une droite
 # des mètres à une hauteur d'eau, il lui faut le niveau annoncé et les paliers
 # de la courbe. Un doublon se serait tu le jour où `04e` change de niveau.
 D4E = import_module("04e_crue")
+D4D = import_module("04d_emprises_batiments")   # le m² brut par logement
 
 _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
@@ -417,6 +418,11 @@ FICHE_ILOTS = [c for c in COLS_ILOTS if c != "fid"]
 # là — c'est `canopee`.
 TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat", "toit_plat_m2",
                "toit_m2_neuf"]
+# 🏢 CE QU'UN ÉTAGE DE PLUS DONNE, mesuré ici et nulle part ailleurs :
+# combien de bâtiments de l'îlot ont le droit de monter, combien de logements
+# UN étage ajoute sur leurs emprises réunies, et le profil des paliers —
+# `dense_cumul[k]` = la part de cette emprise atteinte aux k+1 premiers.
+DENSE_ILOTS = ["dense_n", "dense_logements_etage", "dense_cumul"]
 FICHE_ROUTES = ([c for c in COLS_ROUTES if c != "fid"]
                 + ["longueur_m", "bord_places_m", "bord_trottoir_m"])
 
@@ -486,6 +492,12 @@ BATI_DEFAUT = (2.0, 1.0, 12.0, 0.50)
 # des années 1970 n'a jamais eus. On garde l'emprise au sol — le rectangle est
 # celui de la parcelle bâtie, pas une taille inventée.
 RECTANGULAIRE = {"barre_1970", "friche_industrielle"}
+
+# 🏢 LE PATRIMOINE NE MONTE PAS (auteur, 2026-09-03). Tout le reste du bâti
+# peut prendre un ou deux étages ; le cœur ancien et le front commerçant, non.
+# C'est du level design : une ligne de moins ici et la silhouette ancienne de
+# Wehrau change.
+DENSE_INTERDIT = {"coeur_ancien", "front_commercant"}
 
 # ✂️ LES POINTES. Un angle rentrant du parcellaire donne des empreintes en lame
 # de couteau : un coin à 20° est un mur de trois centimètres d'épaisseur vu de
@@ -1325,6 +1337,15 @@ class Maillage(object):
         # le JSON que si un mur l'a rempli — sans ça le terrain, les sols et
         # la voirie traîneraient chacun un tableau de zéros.
         self.uv2 = []
+        # 🏢 LE CANAL DE LA SURÉLÉVATION, (rang, monte, plafond). `rang` est
+        # la place du bâtiment dans l'ordre de montée de son îlot ; `monte` dit
+        # si CE sommet-ci suit le toit ou reste au sol ; `plafond` est l'égout
+        # D'ORIGINE en Y monde — c'est lui qui sépare l'ancien de l'ajouté, et
+        # donc ce que le shader peint en bardage. Rempli seulement pendant
+        # qu'un bâtiment s'émet, par `self.dense` — le reste du maillage (sols,
+        # jardins, haies, venelles) sort à zéro et ne bouge jamais.
+        self.d = []
+        self.dense = None
         self.i = []
         # Les plages d'indices, un groupe par objet. Godot en refait un nœud
         # par îlot et par tronçon — c'est ce qui rend la ville CLIQUABLE, et
@@ -1391,6 +1412,13 @@ class Maillage(object):
             else:
                 self.uv.append((0.0, 0.0) if axe_toit is None else axe_toit)
             self.uv2.append((0.0, 0.0) if genre is None else genre)
+            # Le seuil est en Y MONDE, posé par l'appelant un demi-mètre sous
+            # l'égout : entre le pied du mur et lui, un bâtiment n'a aucun
+            # sommet, donc le test ne peut pas se tromper de moitié de mur.
+            self.d.append((0.0, 0.0, 0.0) if self.dense is None
+                          else (self.dense[0],
+                                1.0 if s[1] >= self.dense[1] else 0.0,
+                                self.dense[2]))
         self.i.extend((base, base + 1, base + 2))
 
     def json(self, prec=2):
@@ -1407,6 +1435,9 @@ class Maillage(object):
         # laisse alors UV2 à zéro, ce qui est exactement « pas une façade ».
         if any(g[0] or g[1] for g in self.uv2):
             d["uv2"] = [[round(c, 3) for c in s] for s in self.uv2]
+        # Même règle : seul le maillage des masses porte la colonne.
+        if any(g[1] for g in self.d):
+            d["dense"] = [[round(c, 4) for c in s] for s in self.d]
         return d
 
     def __len__(self):
@@ -1655,6 +1686,7 @@ def main():
     aire_chemin = 0.0
     n_champ = n_bande = n_maille_talus = 0
     n_neuf = 0                 # bâtiments préparés pour la reconstruction
+    n_dense = 0                # bâtiments qui ont le droit de prendre un étage
     aire_sol_ilot = 0.0        # le sol nu rendu aux îlots bâtis
 
     for fid in sorted(ilots):
@@ -1788,6 +1820,13 @@ def main():
             idx_murs = _index_murs([v[0] for v in volumes])
             rangs_verts = _rangs_verts(volumes, pente)
             n_range += len(rangs_verts)
+            rangs_denses, emprise_dense, cumul_dense = _rangs_denses(
+                volumes, st, int(d["logements"] or 0))
+            d["dense_n"] = len(rangs_denses)
+            d["dense_logements_etage"] = int(round(
+                emprise_dense / D4D.M2_BRUT_PAR_LOGEMENT))
+            d["dense_cumul"] = [round(c, 4) for c in cumul_dense]
+            n_dense += d["dense_n"]
             # ⚠️ UN TOIT NE SE VERDIT PAS À MOITIÉ : moins de trois toits plats
             # et le curseur vert de cet îlot n'a plus que deux ou trois crans.
             n_ilot_grossier += 1 if 0 < len(rangs_verts) <= 2 else 0
@@ -1875,9 +1914,20 @@ def main():
                            pente_v, faite, PAL.vers_lineaire(toit_neuf),
                            genres, alea, rangs_verts.get(k_vol, 1.0))
                 else:
+                    # 🏢 Tout ce que le bâtiment émet à partir d'ici porte son
+                    # rang de montée : murs, toit, acrotère, souches.
+                    if k_vol in rangs_denses:
+                        # Le seuil des sommets qui montent, puis l'égout
+                        # lui-même : un demi-mètre plus haut, et c'est la
+                        # couture entre le bâtiment d'avant et ses étages neufs.
+                        seuil = G(emp[0][0], emp[0][1],
+                                  niv * ETAGE_M - 0.5)[1]
+                        masses.dense = (rangs_denses[k_vol], seuil,
+                                        seuil + 0.5)
                     a, b, c, e = _masse(masses, emp, d, c_mur, G, niv,
                                         pente_v, faite, c_toit, genres, alea,
                                         rangs_verts.get(k_vol, 1.0))
+                    masses.dense = None
                 murs_ok += a
                 murs_tot += b
                 toits_ok += c
@@ -2131,6 +2181,15 @@ def main():
         print("        %d toits plats rangés pour le vert ; %d îlots n'en ont"
               " qu'un ou deux, leur curseur est un interrupteur"
               % (n_range, n_ilot_grossier))
+        # 🏢 CE QUE LA DENSIFICATION A LE DROIT DE LEVER. Le patrimoine est
+        # dehors ; si ce compte tombe à zéro, aucun îlot ne peut monter.
+        montables = [f for f, x in ilots.items() if x.get("dense_n")]
+        log_etage = sum(x.get("dense_logements_etage", 0)
+                        for x in ilots.values())
+        print("  densification : %d bâtiments montables sur %d îlots ;"
+              " un étage partout ajouterait %d logements (parc : %d)"
+              % (n_dense, len(montables), log_etage,
+                 sum(int(x["logements"] or 0) for x in ilots.values())))
         print("  empreintes : lues directement dans 04d, aucune forme recalculée"
               " par l'export Godot")
         # 🌊 CE QUE LA CRUE DOIT AVOIR CHANGÉ À L'ÉCRAN. Deux nombres, et ils
@@ -2904,7 +2963,9 @@ def main():
         # La fiche qu'on lit en cliquant, et l'état de départ du noyau.
         "objets": {
             "ilots": {str(f): dict({c: d[c] for c in FICHE_ILOTS},
-                                   **{c: d[c] for c in TOIT_ILOTS if c in d})
+                                   **{c: d[c]
+                                      for c in TOIT_ILOTS + DENSE_ILOTS
+                                      if c in d})
                       for f, d in ilots.items()},
             "routes": {str(d["fid"]): {c: d[c] for c in FICHE_ROUTES}
                        for d in routes},
@@ -3556,6 +3617,45 @@ def _rangs_verts(volumes, pente):
         rangs[k] = (cumul + a / 2.0) / total
         cumul += a
     return rangs
+
+
+def _rangs_denses(volumes, st, loge):
+    """k_vol -> la place de ce bâtiment sur [0,1[ dans l'ordre de montée.
+
+    🏢 DU PLUS BAS AU PLUS HAUT (auteur, 2026-09-03) : un îlot qu'on
+    densifie monte bâtiment par bâtiment, en commençant par celui qui a le
+    moins d'étages. Le shader lève un bâtiment ENTIER dès que son rang passe
+    sous le curseur — même mécanique que les toits verts, sur les sommets
+    cette fois-ci.
+    ⚠️ Trois exclusions, et elles ne disent pas la même chose : le patrimoine
+    (DENSE_INTERDIT, level design), les ruines — une ruine se relève avant de
+    grandir —, et les îlots que la donnée ne LOGE PAS. Sans la dernière, une
+    halle et l'université gagnaient des appartements : `logements` dit qui loge
+    (04), le plancher dit combien (04d), et on n'ajoute que là où il y a déjà.
+    Rend aussi l'emprise réunie de ceux qui montent, dont sortent les logements
+    qu'un étage ajoute.
+    """
+    if st in DENSE_INTERDIT or loge <= 0:
+        return {}, 0.0, []
+    ordre = sorted((niv, abs(D4C.aire_signee(emp)), k)
+                   for k, (emp, niv, _f, _p, crue, _e) in enumerate(volumes)
+                   if crue != "ruine")
+    n = len(ordre)
+    if n == 0:
+        return {}, 0.0, []
+    total = sum(a for _niv, a, _k in ordre)
+    # 🪜 LE PROFIL DES PALIERS : ce que les k premiers bâtiments pèsent dans
+    # l'emprise qui monte. Le curseur de Godot compte des BÂTIMENTS, les
+    # logements sortent des EMPRISES, et les deux ne vont pas au même rythme —
+    # sans ce profil, monter le plus petit bâtiment logerait autant que le
+    # plus grand.
+    cumul = []
+    c = 0.0
+    for _niv, a, _k in ordre:
+        c += a
+        cumul.append(c / total if total > 0.0 else 0.0)
+    return ({k: i / float(n) for i, (_niv, _a, k) in enumerate(ordre)},
+            total, cumul)
 
 
 def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,

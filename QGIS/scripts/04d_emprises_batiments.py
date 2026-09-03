@@ -2023,12 +2023,18 @@ def _forme(env, ring, rues, retraits, cadre, a, famille, facade, prof, recul,
     return [[pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)]]
 
 
+# 🏢 LE M² BRUT PAR LOGEMENT. Mesuré le 2026-08-19 : c'est le point où le
+# plancher mesuré et les `logements` inventés de 04 se recoupaient à l'échelle
+# de la ville. La bascule ne change donc pas le total, elle redistribue.
+M2_BRUT_PAR_LOGEMENT = 101.0
+
+
 # --------------------------------------------------------------------- lire
 
 def lire(con):
     parcelles = []
-    # `niveaux` ne sert à AUCUNE forme ici : il n'entre que dans le contrôle du
-    # plancher, seul endroit où emprise mesurée et logements inventés se voient.
+    # `niveaux` ne sert à AUCUNE forme ici : il fait le plancher, et le plancher
+    # fait `logements` depuis le 2026-09-03 (`bascule_logements`).
     for fid, fid_ilot, st, origine, niveaux, geom in con.execute(
         "SELECT fid, fid_ilot, sous_type, origine, niveaux, geom FROM parcelles"
         " ORDER BY fid"
@@ -2043,7 +2049,9 @@ def lire(con):
             D4C.ouvrir(lire_wkb(gpkg_vers_wkb(geom))[0][0]))
     logements = dict(con.execute(
         "SELECT sous_type, SUM(logements) FROM ilots GROUP BY sous_type"))
-    return parcelles, emprises, logements
+    # Par îlot : c'est ce nombre-là que la bascule du plancher remplace.
+    log_ilot = dict(con.execute("SELECT fid, logements FROM ilots"))
+    return parcelles, emprises, logements, log_ilot
 
 
 # --------------------------------------------------------------------- main
@@ -2053,7 +2061,7 @@ def main():
         sys.exit("Introuvable : %s — lancer 02 → 03 → 04 → 04b → 04c d'abord."
                  % GPKG)
     con = sqlite3.connect("file:%s?mode=ro" % GPKG.replace("\\", "/"), uri=True)
-    parcelles, emprises, logements = lire(con)
+    parcelles, emprises, logements, log_ilot = lire(con)
     con.close()
 
     print("=" * 74)
@@ -2099,15 +2107,16 @@ def main():
                           "retraits": retraits, "note": note})
 
     controles(resultats, parcelles, refus, logements, emprises)
+    neufs = bascule_logements(resultats, log_ilot)
     if "--pourquoi" in sys.argv:
         pourquoi(detail)
 
     if BLANC:
         print("\nrien écrit (--blanc)")
         return
-    n = ecrire(resultats)
-    print("\n→ couche `batiments` (%d) écrite dans %s"
-          % (n, os.path.basename(GPKG)))
+    n = ecrire(resultats, neufs)
+    print("\n→ couche `batiments` (%d) et %d `logements` mesurés écrits dans %s"
+          % (n, len(neufs), os.path.basename(GPKG)))
 
 
 def controles(resultats, parcelles, refus, logements, emprises):
@@ -2315,10 +2324,9 @@ def controles(resultats, parcelles, refus, logements, emprises):
     print("\n  🌞 SURFACE DE TOIT — le chiffre qui rejoint l'énergie")
     print("     %.2f ha sur %d bâtiments." % (toit / 1e4, total))
 
-    # 🔴 LE PLANCHER EST MESURÉ, `logements` EST INVENTÉ (04 : densité × ha).
-    # Les deux nombres ne se parlent pas : tant que c'est le cas, ajouter un
-    # étage ne peut ajouter aucun habitant. Ce tableau est l'instrument de
-    # cette bascule — le m²/log est ce qu'elle coûterait aujourd'hui.
+    # 🔄 CE TABLEAU LIT L'ÉTAT D'AVANT LA BASCULE : `logements` y est encore
+    # celui de 04 (densité × ha), et le m²/log est ce que la bascule coûte,
+    # tissu par tissu. Ce qu'elle écrit est imprimé juste après.
     print("\n  🏢 LE PLANCHER, ET CE QU'IL DIT DES LOGEMENTS")
     print("     %-21s %11s %8s %9s %9s"
           % ("sous_type", "plancher m²", "niv.moy", "logements", "m²/log"))
@@ -2387,7 +2395,41 @@ def pourquoi(detail):
                  coins, rect, motif))
 
 
-def ecrire(resultats):
+def bascule_logements(resultats, log_ilot):
+    """🏢 `logements` CESSE D'ÊTRE INVENTÉ (dette du 2026-08-19). 04 le tirait
+    de densité × hectares : ajouter un étage n'ajoutait alors aucun habitant, et
+    la densification n'avait rien à déplacer. Il vient désormais du PLANCHER
+    mesuré — emprise bâtie × niveaux — divisé par M2_BRUT_PAR_LOGEMENT.
+
+    ⚠️ SEULS LES ÎLOTS QUE 04 LOGE DÉJÀ basculent : équipement et friche ont un
+    plancher sans locataire, leur en donner peuplerait une halle. 04 garde donc
+    QUI loge, la mesure dit COMBIEN."""
+    plancher = {}
+    for r in resultats:
+        p = r["parcelle"]
+        plancher[p["ilot"]] = plancher.get(p["ilot"], 0.0) + p["niveaux"] * sum(
+            abs(D4C.aire_signee(m)) for m in r["emps"])
+    neufs = {}
+    for fid, avant in log_ilot.items():
+        if not avant:
+            continue
+        neufs[fid] = max(1, int(round(plancher.get(fid, 0.0)
+                                      / M2_BRUT_PAR_LOGEMENT)))
+    avant_tot = sum(v for v in log_ilot.values() if v)
+    apres_tot = sum(neufs.values())
+    bouge = sorted(((abs(neufs[f] - log_ilot[f]), f) for f in neufs),
+                   reverse=True)[:3]
+    print("\n  🔄 LA BASCULE — `logements` vient maintenant du plancher")
+    print("     ville : %d → %d logements sur %d îlots logés (%+.1f %%)"
+          % (avant_tot, apres_tot, len(neufs),
+             100.0 * (apres_tot - avant_tot) / avant_tot if avant_tot else 0.0))
+    print("     les trois plus gros écarts : %s"
+          % ", ".join("îlot %d %d→%d" % (f, log_ilot[f], neufs[f])
+                      for _, f in bouge))
+    return neufs
+
+
+def ecrire(resultats, logements=None):
     """🔴 UNE SEULE COUCHE, `batiments`. La couche `jardins` a existé une demi-
     journée le 2026-08-17 et a été retirée le jour même : sans règle de
     profondeur (cœur ancien, maisons de ville), le fond de parcelle n'est plus
@@ -2448,6 +2490,8 @@ def ecrire(resultats):
     # afficher une couche vide.
     cur.execute("INSERT INTO gpkg_ogr_contents (table_name, feature_count)"
                 " VALUES ('batiments',?)", (n,))
+    for fid, log in sorted((logements or {}).items()):
+        cur.execute("UPDATE ilots SET logements=? WHERE fid=?", (log, fid))
     con.commit()
     con.close()
     return n

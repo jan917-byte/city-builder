@@ -268,9 +268,9 @@ def main():
         touche = sum(b["surf"] for b in d["bats"]
                      if b["etat"] in ("ruine", "sinistre")) / stot
         d["part_sinistree"] = touche
-        # 🔴 Les logements sinistrés se DÉDUISENT de la surface touchée : rien
-        # ne relie encore `logements` à l'emprise bâtie (dette du prototype), et
-        # inventer ici un second lien ferait diverger deux comptes du même parc.
+        # Les logements sinistrés se DÉDUISENT de la surface touchée au sol, et
+        # non du plancher : `logements` sort du plancher depuis le 2026-09-03
+        # (04d), mais un étage noyé ruine tout ce qui est au-dessus de lui.
         d["log_sinistres"] = int(round(d["log"] * touche))
         # Ce que la PROCHAINE emporterait si on remettait tout à l'identique :
         # le nombre que « reconstruire » doit regarder en face.
@@ -582,7 +582,7 @@ def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic):
     # 71 logements alors que ses 21 bâtiments sont des murs sans toit, et la
     # ville consommait pour un faubourg évacué. `logements_sinistres` garde la
     # trace de ce qui a été retiré : c'est lui que « reconstruire » rend.
-    # ⚠️ `04` recalcule `logements` au passage précédent — cette soustraction
+    # ⚠️ `04d` réécrit `logements` au passage précédent — cette soustraction
     # ne tient que parce que `chaine.py` fait passer 04e APRÈS.
     cur.executemany(
         "UPDATE ilots SET logements = MAX(0, logements - ?) WHERE fid=?",
