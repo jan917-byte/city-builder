@@ -35,6 +35,7 @@ var _rampes := {"i": {}, "r": {}}   # couche -> fid -> [rampe]
 var _solaire := {}         # fid -> {debut, duree, cible, cout_ke}
 var _vert := {}            # fid -> idem, pour les toits verts
 var _stationnement_supprime := {}  # fid -> mois d'engagement
+var _dense := {}           # fid -> {debut, duree, etages, logements, cout_ke}
 ## 🎓 Sujet de recherche -> mois d'engagement. Un sujet engagé ne s'arrête plus.
 var _recherche := {}
 ## 🏛️ Politique -> [[début, fin], …] ; fin = -1 tant qu'elle est en vigueur.
@@ -87,9 +88,16 @@ const TOIT_VERT_BAISSE_M_PAR_HA := 0.25     # de crue en moins, par hectare verd
 # Ce qui change dans le temps ; tout le reste est figé volontairement.
 # ⚠️ `canopee` reste ici bien que son indicateur soit retiré : c'est elle qui
 # fait l'OMBRAGE des toits. Une donnée n'est pas un indicateur.
+# 🪜 `part_rendue` est le JUMEAU de `part_toit_equipe` : l'une est la surface
+# couverte — ce que le shader peint —, l'autre le rendement obtenu, qui n'est
+# pas droit (`Energie.courbe_rendue`). Deux rampes plutôt qu'une courbe lue au
+# vol, pour que la recette encaissée reste une intégrale exacte.
+# 🏢 `part_dense` est la part des bâtiments montables déjà montés : le curseur
+# de la densification, et l'avancement que le shader compare aux rangs de 07.
 const CHAMPS_MOBILES := {
 	"i": ["canopee", "impermeabilise", "riverain", "logements",
-		"part_toit_equipe", "part_toit_vert", "part_isolee"],
+		"part_toit_equipe", "part_rendue", "part_toit_vert", "part_isolee",
+		"part_dense"],
 	"r": ["canopee", "emprise_libre_m", "stationnement", "charge"],
 }
 
@@ -390,7 +398,8 @@ func valeur(couche: String, fid: int, champ: String, t: float) -> float:
 static func _borner(champ: String, v: float) -> float:
 	match champ:
 		"canopee", "impermeabilise", "riverain", "alea", "charge", "desserte_tc", \
-		"part_toit_equipe", "part_toit_vert", "part_isolee":
+		"part_toit_equipe", "part_rendue", "part_toit_vert", "part_isolee", \
+		"part_dense":
 			return clampf(v, 0.0, 1.0)
 		"emprise_libre_m", "stationnement", "logements", "emplois":
 			return maxf(v, 0.0)
@@ -527,6 +536,7 @@ func reinitialiser() -> void:
 	_politiques.clear()
 	_vert.clear()
 	_stationnement_supprime.clear()
+	_dense.clear()
 	_plantation.clear()
 	_berge.clear()
 	_depense_ke = 0.0
@@ -578,6 +588,12 @@ func lancer_solaire(fid: int, part: float, t: float) -> bool:
 
 	var duree := duree_solaire_mois(actuelle, cible)
 	ajouter_rampe("i", fid, "part_toit_equipe", cible - actuelle, t, 0.0, duree)
+	# 🪜 LA SECONDE RAMPE, ET ELLE EST LE RENDEMENT. Ce chantier-ci gagne un
+	# écart FIXE de production ; posé comme une rampe droite, il s'intègre
+	# exactement, alors qu'une courbe relue chaque image ne s'intégrerait pas.
+	ajouter_rampe("i", fid, "part_rendue",
+		Energie.courbe_rendue(cible) - Energie.courbe_rendue(actuelle),
+		t, 0.0, duree)
 	_solaire[fid] = {"debut": t, "duree": duree, "cible": cible, "cout_ke": cout}
 	_depense_ke += cout
 	return true
@@ -696,6 +712,186 @@ func baisse_crue_toits_m(t: float) -> float:
 	return toit_vert_ha(t) * TOIT_VERT_BAISSE_M_PAR_HA
 
 
+# ============================================== densifier (auteur, 2026-09-03)
+
+# 🏢 UN ÉTAGE OU DEUX, DU BÂTIMENT LE PLUS BAS AU PLUS HAUT. Ces cinq nombres
+# sont du LEVEL DESIGN. Repère : la dotation est de 30 k€/mois, la caisse de
+# 800 k€, et 07 dit combien de logements un étage ajoute par îlot.
+# ⚠️ Le patrimoine ne monte pas, et c'est 07 qui le sait (DENSE_INTERDIT) : ici,
+# un îlot qui ne peut pas monter annonce simplement zéro bâtiment.
+const DENSE_ETAGES_MAX := 2
+const DENSE_ETAGE_M := 2.7                # le même étage que 07 (ETAGE_M)
+const DENSE_PRIX_KE_LOGEMENT := 95.0      # poser un logement sur de l'existant
+const DENSE_MOIS_PAR_ETAGE := 18.0        # les bâtiments montent l'un après l'autre
+# 🔴 LE CONTRÔLE NOMMÉ DE LA DETTE 59 — une densification pure ne doit pas
+# s'autofinancer. Loyer net moins entretien laisse 0,25 k€ par logement et par
+# mois : 380 mois pour rembourser une pose, contre 240 de partie.
+const DENSE_LOYER_KE_MOIS_LOGEMENT := 0.42
+const DENSE_CHARGE_KE_MOIS_LOGEMENT := 0.17
+
+
+## Combien de bâtiments de cet îlot ont le droit de monter. 0 = pas de menu,
+## et c'est aussi le NOMBRE DE CRANS du curseur : un cran, un bâtiment.
+func dense_batiments(fid: int) -> int:
+	return int(base("i", fid, "dense_n"))
+
+
+## Les logements qu'UN étage ajoute sur TOUS les bâtiments montables — mesuré
+## par 07 sur les emprises qui montent, au même m² brut par logement que le
+## plancher de 04d.
+func dense_logements_etage(fid: int) -> int:
+	return int(base("i", fid, "dense_logements_etage"))
+
+
+## 🪜 LE PROFIL DES PALIERS, posé par 07 : `[k]` = la part de l'emprise qui
+## monte atteinte aux k+1 premiers bâtiments. Un export d'avant le 2026-09-03
+## n'en a pas ; on retombe alors sur des bâtiments de poids égal.
+func dense_cumul(fid: int) -> Array:
+	var v: Variant = ilots.get(fid, {}).get("dense_cumul")
+	return v as Array if v is Array else []
+
+
+## La part des LOGEMENTS atteinte quand la part `part` des BÂTIMENTS est montée.
+## Les deux ne vont pas au même rythme : monter le plus petit bâtiment ne loge
+## pas autant que monter le plus grand.
+func dense_part_logements(fid: int, part: float) -> float:
+	var n := dense_batiments(fid)
+	if n <= 0:
+		return 0.0
+	var c := dense_cumul(fid)
+	var x := clampf(part, 0.0, 1.0) * float(n)
+	if c.size() != n:
+		return x / float(n)
+	var k := int(floor(x))
+	if k >= n:
+		return 1.0
+	return lerpf(0.0 if k == 0 else float(c[k - 1]), float(c[k]), x - float(k))
+
+
+## Le cran le plus proche : le curseur ne s'arrête qu'entre deux bâtiments.
+func dense_cran(fid: int, part: float) -> float:
+	var n := dense_batiments(fid)
+	if n <= 0:
+		return 0.0
+	return clampf(roundf(clampf(part, 0.0, 1.0) * float(n)) / float(n), 0.0, 1.0)
+
+
+## Les étages arrêtés pour cet îlot, 0 si rien n'est encore engagé. 🔴 Ils se
+## choisissent UNE FOIS : le shader n'a qu'une hauteur pour tout l'îlot, donc
+## deux bâtiments ne peuvent pas monter de deux nombres d'étages différents.
+func dense_etages(fid: int) -> int:
+	return int((_dense.get(fid, {}) as Dictionary).get("etages", 0))
+
+
+func dense_engage(fid: int) -> bool:
+	return _dense.has(fid)
+
+
+## En k€, de la part `de` à la part `vers` des bâtiments.
+## 🪜 Progressif comme les panneaux, et pour la même raison : 07 range les
+## bâtiments DU PLUS BAS AU PLUS HAUT, donc les premiers montés sont les moins
+## chers. Monter l'îlot ENTIER coûte le même prix qu'avant — seul l'ordre change.
+func cout_dense_ke(fid: int, de: float, vers: float, etages: int) -> float:
+	var e := mini(etages, DENSE_ETAGES_MAX)
+	if e <= 0:
+		return 0.0
+	return float(dense_logements_etage(fid)) * float(e) \
+		* maxf(Energie.courbe_payee(dense_part_logements(fid, vers))
+			- Energie.courbe_payee(dense_part_logements(fid, de)), 0.0) \
+		* DENSE_PRIX_KE_LOGEMENT
+
+
+## Les bâtiments montent l'un après l'autre : n'en monter que la moitié prend
+## la moitié du temps.
+func duree_dense_mois(etages: int, de: float, vers: float) -> float:
+	return DENSE_MOIS_PAR_ETAGE * float(mini(etages, DENSE_ETAGES_MAX)) \
+		* maxf(vers - de, 0.0)
+
+
+## Les logements ajoutés par la tranche, étages compris.
+func dense_logements_tranche(fid: int, de: float, vers: float, etages: int) -> float:
+	return (dense_part_logements(fid, vers) - dense_part_logements(fid, de)) \
+		* float(dense_logements_etage(fid)) * float(mini(etages, DENSE_ETAGES_MAX))
+
+
+## Engage une TRANCHE de bâtiments, et c'est définitif : un étage ne se
+## démolit pas. Le curseur repart ensuite du cran atteint — même partage que
+## `lancer_solaire` : l'interface pré-vérifie et explique, ici le verrou seul.
+## 🔴 `logements` monte en RAMPE, donc tout ce qui le lit suit la montée des
+## bâtiments et non l'engagement — la fiche, l'écart au mois 0, et la
+## consommation d'énergie, qui est proportionnelle aux logements. Densifier
+## est donc aussi ce qui fait remonter la facture de la ville.
+func densifier(fid: int, part: float, etages: int, t: float) -> bool:
+	if dense_batiments(fid) <= 0 or dense_logements_etage(fid) <= 0:
+		return false
+	var etat := etat_dense(fid, t)
+	if etat["en_cours"]:
+		return false
+	var e: int = int(etat["etages"]) if int(etat["etages"]) > 0 \
+		else mini(etages, DENSE_ETAGES_MAX)
+	if e <= 0:
+		return false
+	var de: float = float(etat["cible"])
+	var vers := clampf(dense_cran(fid, part), de, 1.0)
+	if vers <= de + 0.0001:
+		return false
+	var cout := cout_dense_ke(fid, de, vers, e)
+	if cout > caisse_ke(t) + 0.001:
+		return false
+	var duree := duree_dense_mois(e, de, vers)
+	var neufs := dense_logements_tranche(fid, de, vers, e)
+	var lots: Array = (_dense.get(fid, {}) as Dictionary).get("lots", []) as Array
+	lots.append({"debut": t, "duree": duree, "logements": neufs})
+	_dense[fid] = {"debut": t, "duree": duree, "etages": e, "cible": vers,
+		"cout_ke": cout, "lots": lots}
+	_depense_ke += cout
+	ajouter_rampe("i", fid, "part_dense", vers - de, t, 0.0, duree)
+	ajouter_rampe("i", fid, "logements", neufs, t, 0.0, duree)
+	return true
+
+
+## Ce que le shader a besoin de savoir — l'avancement, la part d'UN bâtiment et
+## les mètres gagnés — et ce que la fiche annonce.
+## 🪜 `avancement` est désormais la part LIVRÉE (`part_dense`), pas une rampe
+## reconstruite : un îlot densifié en trois fois a trois chantiers derrière lui,
+## et le shader n'en voit qu'un seul nombre.
+func etat_dense(fid: int, t: float) -> Dictionary:
+	var c: Dictionary = _dense.get(fid, {})
+	var n := dense_batiments(fid)
+	var etages := int(c.get("etages", 0))
+	var actuel := valeur("i", fid, "part_dense", t)
+	var cible: float = maxf(actuel, float(c.get("cible", actuel)))
+	var fin: float = float(c.get("debut", t)) + float(c.get("duree", 0.0))
+	return {
+		"etages": etages,
+		"batiments": n,
+		"actuel": actuel,
+		"cible": cible,
+		"montes": int(roundf(actuel * float(n))),
+		"vises": int(roundf(cible * float(n))),
+		"logements": dense_logements_tranche(fid, 0.0, actuel, etages),
+		"logements_vises": dense_logements_tranche(fid, 0.0, cible, etages),
+		"cout_ke": float(c.get("cout_ke", 0.0)),   # celui du DERNIER chantier
+		"avancement": actuel,
+		"pas": 1.0 / maxf(float(n), 1.0),
+		"metres": float(etages) * DENSE_ETAGE_M,
+		"reste_mois": maxf(fin - t, 0.0),
+		"en_cours": cible > actuel + 0.0001 and t < fin,
+		"a_commence": not c.is_empty(),
+	}
+
+
+## En k€ depuis le mois 0, sur ce qui est LIVRÉ : l'intégrale des rampes, donc
+## un logement ne paie qu'à partir du mois où il est habitable.
+func solde_dense_ke(t: float) -> float:
+	var s := 0.0
+	for fid in _dense:
+		for lot in ((_dense[fid] as Dictionary)["lots"] as Array):
+			s += float(lot["logements"]) * _integrale_avancement(
+				t, float(lot["debut"]), 0.0, float(lot["duree"]))
+	return s * (DENSE_LOYER_KE_MOIS_LOGEMENT - DENSE_CHARGE_KE_MOIS_LOGEMENT)
+
+
 # ================================== l'université et la mairie (décisions 79 · 80)
 
 ## Le coefficient d'un prix ou d'un rendement : les paliers acquis ET les
@@ -749,14 +945,15 @@ func charge_mensuelle_ke(t: float) -> float:
 
 # ==================================================================== la caisse
 
-## ∫ `part_toit_equipe` de 0 à `t`, en « part × mois » : combien de temps chaque
-## panneau a produit.
+## ∫ `part_rendue` de 0 à `t`, en « part × mois » : combien de temps chaque
+## panneau a produit. 🪜 `part_rendue` et non `part_toit_equipe` — c'est le
+## rendement qu'on encaisse, pas la surface.
 ## 🔴 Exacte, et c'est l'intérêt : le solde doit être le même à 5 ou 500 images
 ## par seconde, et l'essai saute 1,5 mois d'un coup.
 func _integrale_part(fid: int, t: float) -> float:
-	var s := base("i", fid, "part_toit_equipe") * t
+	var s := base("i", fid, "part_rendue") * t
 	for r in _rampes["i"].get(fid, []):
-		if r["champ"] == "part_toit_equipe":
+		if r["champ"] == "part_rendue":
 			s += float(r["ecart"]) * _integrale_avancement(t, r["d"], r["L"], r["M"])
 	return s
 
@@ -808,7 +1005,8 @@ func _integrale_part_rendue(fid: int, t: float) -> float:
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
-		+ recette_cumulee_ke(t) + _credit_essai_ke - _depense_ke \
+		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
+		- _depense_ke \
 		- Recherche.depense_ke(self, t) - Politiques.depense_ke(self, t)
 
 
@@ -1014,6 +1212,8 @@ func degats(t: float) -> Dictionary:
 #   places   true   retirer le stationnement       (rue)
 #   axe      true   fermer aux voitures            (rue) — rendu à l'appelant
 #   berge    int    l'état visé                    (berge)
+#   dense    dict   {part, etages} : la part des bâtiments visée et la
+#                   hauteur — 🪜 un cran du curseur = un bâtiment  (îlot)
 
 
 ## Le prix de l'ensemble, annoncé AVANT d'engager quoi que ce soit. C'est lui
@@ -1029,6 +1229,9 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 		ke += cout_plantation_ke(fid, float(r["arbres"]), t)
 	if r.has("berge"):
 		ke += cout_berge_ke(fid, int(r["berge"]), t)
+	if r.has("dense"):
+		ke += cout_dense_ke(fid, etat_dense(fid, t)["cible"],
+			float(r["dense"]["part"]), int(r["dense"]["etages"]))
 	if r.has("reparer"):
 		ke += cout_reparation_ke(couche, fid)
 	return ke
@@ -1048,6 +1251,9 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 		m = maxf(m, PLANTATION_MOIS)
 	if r.has("places"):
 		m = maxf(m, STATIONNEMENT_MOIS)
+	if r.has("dense"):
+		m = maxf(m, duree_dense_mois(int(r["dense"]["etages"]),
+			etat_dense(fid, t)["cible"], float(r["dense"]["part"])))
 	if r.has("berge"):
 		m = maxf(m, BERGE_MOIS[int(r["berge"])] - BERGE_MOIS[berge_etat(fid, t)])
 	if r.has("reparer"):
@@ -1078,6 +1284,9 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("plantation")
 	if r.has("places") and supprimer_stationnement(fid, t):
 		faits.append("stationnement")
+	if r.has("dense") and densifier(fid, float(r["dense"]["part"]),
+			int(r["dense"]["etages"]), t):
+		faits.append("densification")
 	if r.has("berge") and transformer_berge(fid, int(r["berge"]), t):
 		faits.append("berge")
 	if r.has("reparer") and reparer(couche, fid, t):
@@ -1101,7 +1310,8 @@ const CHANTIER_FAIT := 3
 func etat_chantier(couche: String, fid: int, t: float) -> int:
 	# La pose passe devant : sur un îlot déjà relevé, c'est elle le chantier.
 	if couche == "i" and ((_solaire.has(fid) and etat_solaire(fid, t)["en_cours"])
-			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])):
+			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])
+			or (_dense.has(fid) and etat_dense(fid, t)["en_cours"])):
 		return CHANTIER_EN_COURS
 	if base(couche, fid, "cout_reparation_ke") <= 0.0:
 		return CHANTIER_INTACT
@@ -1128,6 +1338,9 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "i" and _vert.has(fid) and etat_vert(fid, t)["en_cours"]:
 		lot.append(["toit vert", float(_vert[fid]["duree"]),
 			float(etat_vert(fid, t)["reste_mois"])])
+	if couche == "i" and _dense.has(fid) and etat_dense(fid, t)["en_cours"]:
+		lot.append(["densification", float(_dense[fid]["duree"]),
+			float(etat_dense(fid, t)["reste_mois"])])
 	if couche == "b" and berge_en_cours(fid, t):
 		lot.append(["berge", float(_berge[fid]["duree"]),
 			berge_reste_mois(fid, t)])

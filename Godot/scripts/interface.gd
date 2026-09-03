@@ -15,6 +15,9 @@ signal theme_demande(id: String)
 signal commande_demandee(couche: String, fid: int, reglages: Dictionary)
 
 const Ville := preload("res://scripts/ville.gd")
+## 🪜 Pour le seul remboursement de la tranche : la fiche annonce ce que la
+## progressivité change, et le nombre se calcule là où sont les deux courbes.
+const Energie := preload("res://scripts/energie.gd")
 const Apercu := preload("res://scripts/apercu.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Politiques := preload("res://scripts/politiques.gd")
@@ -31,6 +34,14 @@ const ACCENT_VIF := Color8(226, 168, 44)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
 const ALERTE := Color8(194, 74, 53)
+## 🌑 LE RAIL EST SOMBRE, LE PAPIER RESTE CLAIR (2026-09-03, image de l'auteur).
+## C'est le seul endroit du prototype qui n'est pas du papier : la barre d'outils
+## est la MACHINE, les panneaux sont le DOCUMENT. Sans ce contraste, une colonne
+## d'icônes crème sur une ville pastel disparaît.
+const RAIL_FOND := Color8(52, 44, 52, 252)
+const RAIL_TUILE := Color8(70, 60, 70, 255)
+const RAIL_SURVOL := Color8(92, 79, 90, 255)
+const RAIL_ICONE := Color8(238, 228, 205)
 # 🔧 LES TROIS COULEURS DE LA VUE CHANTIERS, aussi dans le shader
 # (`materiaux.objet`, en linéaire) : n'en changer qu'une fait mentir la légende.
 const CASSE := Color8(220, 58, 48)
@@ -41,6 +52,7 @@ const CHANTIER_MOTS := {
 	"reconstruction": "Reconstruction", "pont": "Tablier rebâti",
 	"deblaiement": "Déblaiement", "solaire": "Pose de panneaux",
 	"berge": "Rive transformée", "stationnement": "Retrait des places",
+	"densification": "Étages ajoutés",
 }
 
 
@@ -51,21 +63,37 @@ class Jauge extends Control:
 	const RESTE := Color8(205, 201, 183)         # le toit encore nu
 	const VISEE := Color8(174, 147, 74)          # l'objectif demandé, pas encore atteint
 	const POSE := Color8(221, 171, 49)           # les panneaux réellement en place
-	const CADRE := Color8(116, 108, 83)          # le filet qui dessine la jauge quand elle est vide
 
 	var pose := 0.0   # 0 → 1
 	var cible := 0.0  # 0 → 1, toujours ≥ pose
 	var couleur_reste := RESTE
 	var couleur_visee := VISEE
 	var couleur_pose := POSE
-	var couleur_cadre := CADRE
+	# 🔄 EN PILULE depuis le 2026-09-03, et le filet qui l'entourait est parti
+	# avec : sur le papier clair, la gouttière se voit toute seule. Les trois
+	# boîtes sont refaites à `colorer()`, jamais dans `_draw()`.
+	var _sb_reste: StyleBoxFlat
+	var _sb_visee: StyleBoxFlat
+	var _sb_pose: StyleBoxFlat
+
+	static func _pilule(coul: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = coul
+		sb.set_corner_radius_all(99)
+		return sb
+
+	func _refaire() -> void:
+		_sb_reste = _pilule(couleur_reste)
+		_sb_visee = _pilule(couleur_visee)
+		_sb_pose = _pilule(couleur_pose)
 
 	func colorer(rempli: Color, vide := RESTE) -> void:
-		if rempli == couleur_pose and vide == couleur_reste:
+		if rempli == couleur_pose and vide == couleur_reste and _sb_pose != null:
 			return
 		couleur_pose = rempli
 		couleur_visee = rempli.darkened(0.35)
 		couleur_reste = vide
+		_refaire()
 		queue_redraw()
 
 	func regler(p: float, c: float) -> void:
@@ -76,14 +104,56 @@ class Jauge extends Control:
 		queue_redraw()
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), couleur_reste)
+		if _sb_reste == null:
+			_refaire()
+		draw_style_box(_sb_reste, Rect2(Vector2.ZERO, size))
+		# ⚠️ Plancher à `size.y` : sous une largeur d'un rond, la pilule
+		# s'écrase en trait et 2 % ressemble à 0 %.
 		if cible > pose:
-			draw_rect(Rect2(0.0, 0.0, size.x * cible, size.y), couleur_visee)
+			draw_style_box(_sb_visee,
+				Rect2(0.0, 0.0, maxf(size.y, size.x * cible), size.y))
 		if pose > 0.0:
-			draw_rect(Rect2(0.0, 0.0, size.x * pose, size.y), couleur_pose)
-		# Sans ce filet, une jauge à 0 % est un rectangle sombre de plus dans un
-		# panneau sombre.
-		draw_rect(Rect2(Vector2.ZERO, size), couleur_cadre, false, 1.0)
+			draw_style_box(_sb_pose,
+				Rect2(0.0, 0.0, maxf(size.y, size.x * pose), size.y))
+
+
+## 🧭 LA COLONNE D'ICÔNES, ET LE PANNEAU QUI S'OUVRE À CÔTÉ (2026-09-03, demande
+## de l'auteur). Elle remplace le bandeau de neuf tuiles ET la barre du bas : le
+## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
+## nulle part ailleurs — un panneau qui s'ancre tout seul se décale du rail.
+const RAIL_X := 14.0
+const RAIL_LARGEUR := 76.0
+const DETAIL_X := RAIL_X + RAIL_LARGEUR + 10.0
+const DETAIL_LARGEUR := 312.0
+const HAUT := 14.0
+
+
+## Une quantité comptée en jetons plutôt qu'en phrase : dix pastilles, k
+## allumées. La texture est dessinée EN BLANC — c'est la teinte qui la colore,
+## sinon la modulation multiplierait deux couleurs.
+class Pictos extends Control:
+	const NB := 10
+	const PALE := Color8(212, 206, 188)
+
+	var texture: Texture2D
+	var teinte := Color.WHITE
+	var part := 0.0
+
+	func regler(p: float) -> void:
+		p = clampf(p, 0.0, 1.0)
+		if is_equal_approx(p, part):
+			return
+		part = p
+		queue_redraw()
+
+	func _draw() -> void:
+		if texture == null:
+			return
+		var allumes := int(roundf(part * float(NB)))
+		var pas := size.x / float(NB)
+		for i in NB:
+			draw_texture_rect(texture, Rect2(i * pas, 0.0, size.y, size.y),
+				false, teinte if i < allumes else PALE)
 
 
 var ville: Ville
@@ -94,12 +164,17 @@ var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
 var rampe := []      # `maquette.RAMPE`, en sRGB
 
 var _ville_valeurs := {}
+var _ville_jauges := {}
+## Le repère du mois 0 pour les deux seuls chiffres qui n'ont pas de part
+## naturelle — la conso et le CO₂ —, mémorisé au premier `maj()`.
+var _conso_zero := 0.0
+var _co2_zero := 0.0
 var _adaptation_jauge: Jauge
 var _adaptation_valeur: Label
-var _adaptation_etat: Label
+var _adaptation_pictos: Pictos
 var _reduction_jauge: Jauge
 var _reduction_valeur: Label
-var _reduction_etat: Label
+var _reduction_pictos: Pictos
 var _fiche_valeurs := {}
 var _fiche_titre: Label
 var _fiche_vide: Label
@@ -115,6 +190,11 @@ var _solaire_jauge: Jauge
 ## 🌿 Le second usage du même toit. Bloc jumeau du solaire — même curseur, même
 ## jauge, même mémoire de position — parce que les deux se partagent un 100 %.
 var _vert_bloc: VBoxContainer
+var _dense_bloc: VBoxContainer
+var _dense_valeur: Label
+var _dense_boutons: Array[Button] = []
+var _dense_curseur: HSlider
+var _dense_jauge: Jauge
 var _vert_valeur: Label
 var _vert_curseur: HSlider
 var _vert_jauge: Jauge
@@ -199,6 +279,9 @@ var _cout_en_alerte := false
 # ⚠️ Sans ce souvenir, `_maj_fiche()` (à chaque image) reposait la valeur sous
 # le doigt et la barre était intraînable (défaut du 2026-08-17).
 var _solaire_choix := -1.0
+## 🏢 En BÂTIMENTS, pas en pourcents : c'est ce que le curseur compte, et c'est
+## ce qui monte à l'écran. −1 = l'auteur n'y a pas touché.
+var _dense_choix := -1.0
 ## Même mémoire, même raison, pour le curseur des toits verts.
 var _vert_choix := -1.0
 ## Même mémoire, même raison, pour le curseur des arbres.
@@ -206,7 +289,14 @@ var _arbres_choix := -1.0
 # Vrai pendant que la fiche écrit dans le curseur : une montée de `min_value`
 # déplacerait la valeur et émettrait le signal, donc inventerait un choix.
 var _ecrit_curseur := false
+## La vue courante et son panneau. 🔴 Recliquer l'icône active REFERME le
+## panneau, et c'est ici que ça se décide : `maquette._sur_theme` sort tout de
+## suite quand le thème ne change pas, donc il ne rappellera pas `montrer_theme`.
+var _theme_courant := ""
+var _theme_actuel := {}
+var _detail_ouvert := true
 var _theme_ui: Theme
+var _fonte_grasse: FontVariation
 var _fonte_capitale: FontVariation
 var _icones := {}
 
@@ -215,11 +305,16 @@ func batir() -> void:
 	_fonte_capitale = FontVariation.new()
 	_fonte_capitale.base_font = ThemeDB.fallback_font
 	_fonte_capitale.spacing_glyph = 1
+	# Les nombres du bilan sont gras : dans un panneau sans mots, c'est le seul
+	# poids typographique qui dit lequel des trois éléments d'une ligne compte.
+	_fonte_grasse = FontVariation.new()
+	_fonte_grasse.base_font = ThemeDB.fallback_font
+	_fonte_grasse.variation_embolden = 0.28
 	_theme_ui = _creer_theme()
-	_panneau_ville()
+	_panneau_bilan()
 	_panneau_ilot()
 	_panneau_lieu()
-	_panneau_menu()
+	_panneau_rail()
 	_panneau_diagnostic()
 	_panneau_chantiers()
 	_panneau_calque()
@@ -359,6 +454,8 @@ func _icone(nom: String, taille := 25, coul := TEXTE) -> Texture2D:
 		"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
 		"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
 		"retour": "<path d='M9 7l-5 5 5 5M5 12h9a6 6 0 016 6'/>",
+		"mairie": "<path d='M2 21h20M4 21V10h16v11M2 10l10-6 10 6M8 21v-7m4 7v-7m4 7v-7'/>",
+		"universite": "<path d='M2 8l10-4 10 4-10 4L2 8zm4 3.5V16c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2v-4.5M22 8v6'/>",
 	}
 	var corps: String = dessins.get(nom, dessins["diagnostic"])
 	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='2.0' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [coul.to_html(false), corps]
@@ -371,31 +468,53 @@ func _icone(nom: String, taille := 25, coul := TEXTE) -> Texture2D:
 	return texture
 
 
-func _tuile(parent: HBoxContainer, icone: String, titre: String, largeur: float,
-		teinte := ACCENT) -> VBoxContainer:
+## L'icône dans sa pastille teintée : c'est elle qui remplace le mot. Le fond
+## reprend la couleur du compteur à 15 % — assez pour retrouver la caisse ou le
+## CO₂ du coin de l'œil, trop peu pour concurrencer le nombre.
+func _puce(nom: String, teinte: Color, taille := 26) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.theme = _theme_ui
-	p.add_theme_stylebox_override("panel", _boite())
-	p.custom_minimum_size = Vector2(largeur, 66)
-	parent.add_child(p)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 8)
-	p.add_child(h)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(teinte, 0.15)
+	sb.set_corner_radius_all(9)
+	sb.set_content_margin_all(6)
+	p.add_theme_stylebox_override("panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var pic := TextureRect.new()
-	pic.texture = _icone(icone, 27, teinte)
-	pic.custom_minimum_size = Vector2(27, 27)
+	pic.texture = _icone(nom, taille, teinte)
+	pic.custom_minimum_size = Vector2(taille, taille)
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(pic)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 1)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	# Un titre vide = pas de ligne : la tuile de la ville porte son nom, pas son genre.
-	if titre != "":
-		v.add_child(_capitale(titre, 10, GRIS))
-	return v
+	p.add_child(pic)
+	return p
+
+
+## Tous les panneaux de détail occupent LA MÊME case, à droite du rail : ils se
+## remplacent, ils ne s'empilent pas.
+func _ancrer_detail(p: Control) -> void:
+	p.offset_left = DETAIL_X
+	p.offset_right = DETAIL_X + DETAIL_LARGEUR
+	p.offset_top = HAUT
+
+
+## Une tuile du rail : sombre, carrée, sans mot. Le jaune de l'état enfoncé est
+## le même que celui du bouton qui engage la caisse — un seul accent dans le jeu.
+func _habiller_tuile_rail(b: Button) -> void:
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = RAIL_TUILE
+	normal.set_corner_radius_all(11)
+	normal.set_content_margin_all(6)
+	var survol := normal.duplicate() as StyleBoxFlat
+	survol.bg_color = RAIL_SURVOL
+	var presse := normal.duplicate() as StyleBoxFlat
+	presse.bg_color = ACCENT_VIF
+	b.add_theme_stylebox_override("normal", normal)
+	b.add_theme_stylebox_override("hover", survol)
+	b.add_theme_stylebox_override("pressed", presse)
+	b.add_theme_stylebox_override("hover_pressed", presse)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(48, 46)
 
 
 ## Le curseur par défaut de Godot est un trait gris sans remplissage : on y lit
@@ -438,161 +557,258 @@ func _label(txt: String, taille: int, coul: Color) -> Label:
 	return l
 
 
-func _panneau_ville() -> void:
+## 🔄 LE BANDEAU DE NEUF TUILES EST DEVENU CE PANNEAU (2026-09-03) : il s'ouvre
+## à côté du rail, sur l'icône VILLE. Une ligne = une pastille, une jauge, un
+## nombre ; le mot est dans l'infobulle. Rien de neuf n'est mesuré — ce sont les
+## sept mêmes chiffres, rangés.
+func _panneau_bilan() -> void:
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
-	p.anchor_right = 1.0
-	p.offset_left = 12
-	p.offset_right = -12
-	p.offset_top = 10
-	p.custom_minimum_size.y = 66
-	p.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	p.add_theme_stylebox_override("panel", _boite())
+	_ancrer_detail(p)
 	add_child(p)
 	_ville_panneau = p
 
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 6)
-	p.add_child(h)
-	var ville_tuile := _tuile(h, "ville", "", 150, ACCENT)
-	ville_tuile.add_child(_label("Wehrau", 19, TEXTE))
-
-	var adaptation_parent := _tuile(h, "adaptation", "Adaptation", 155,
-		Color8(46, 122, 146))
-	var adaptation := _jauge_climat(adaptation_parent, Color8(55, 133, 157))
-	_adaptation_jauge = adaptation["jauge"]
-	_adaptation_valeur = adaptation["valeur"]
-	_adaptation_etat = adaptation["etat"]
-	var reduction_parent := _tuile(h, "reduction", "Réduction", 150,
-		Color8(88, 128, 60))
-	var reduction := _jauge_climat(reduction_parent, Color8(104, 136, 73))
-	_reduction_jauge = reduction["jauge"]
-	_reduction_valeur = reduction["valeur"]
-	_reduction_etat = reduction["etat"]
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 9)
+	p.add_child(v)
 
 	# 🔧 UNE TEINTE PAR COMPTEUR, et c'est ce qui distingue un tableau de bord
 	# de jeu d'un tableau : on retrouve la caisse à la couleur, pas au mot.
+	_titre_section(v, "Données")
+	var adaptation := _ligne_bilan(v, "adaptation", Color8(46, 122, 146),
+		"Adaptation — la part de la ville relevée après la crue.", true, "adaptation")
+	_adaptation_jauge = adaptation["jauge"]
+	_adaptation_valeur = adaptation["valeur"]
+	_adaptation_pictos = adaptation["pictos"]
+	var reduction := _ligne_bilan(v, "reduction", Color8(88, 128, 60),
+		"Réduction — la part des émissions déjà évitées.", true, "reduction")
+	_reduction_jauge = reduction["jauge"]
+	_reduction_valeur = reduction["valeur"]
+	_reduction_pictos = reduction["pictos"]
+
+	_titre_section(v, "Énergie")
 	for ligne in [
-		["conso", "conso", "Conso.", 128.0, Color8(198, 126, 32)],
-		["production", "production", "Solaire", 128.0, Color8(214, 158, 44)],
-		["achat", "achat", "Achat", 128.0, Color8(122, 112, 96)],
-		["co2", "co2", "CO₂", 110.0, Color8(104, 116, 108)],
-		["caisse", "caisse", "Caisse", 128.0, Color8(78, 121, 67)],
+		["conso", "conso", Color8(198, 126, 32),
+			"Ce que la ville consomme. La jauge se lit contre le mois 0."],
+		["production", "production", Color8(214, 158, 44),
+			"Ce que les panneaux produisent, sur la consommation de la ville."],
+		["achat", "achat", Color8(122, 112, 96),
+			"Ce qu'il faut encore acheter au réseau."],
+		["co2", "co2", Color8(104, 116, 108),
+			"Les émissions de l'électricité achetée. La jauge se lit contre le mois 0."],
 	]:
-		var tuile := _tuile(h, ligne[1], ligne[2], ligne[3], ligne[4])
-		var valeur := _label("—", 17, TEXTE)
-		tuile.add_child(valeur)
-		_ville_valeurs[ligne[0]] = valeur
-	# La recette reste le petit écart de la caisse, comme dans la référence.
-	var recette := _label("", 10, Color8(78, 121, 67))
-	(_ville_valeurs["caisse"] as Label).get_parent().add_child(recette)
+		var l := _ligne_bilan(v, ligne[1], ligne[2], ligne[3], true)
+		_ville_valeurs[ligne[0]] = l["valeur"]
+		_ville_jauges[ligne[0]] = l["jauge"]
+
+	_titre_section(v, "Caisse")
+	# Pas de jauge : une caisse n'a pas de plein. Le nombre prend toute la
+	# largeur, et la recette reste son petit écart, comme dans la référence.
+	var caisse := _ligne_bilan(v, "caisse", Color8(78, 121, 67),
+		"La caisse, et ce que le solaire lui rapporte chaque année.", false)
+	_ville_valeurs["caisse"] = caisse["valeur"]
+	(caisse["valeur"] as Label).add_theme_color_override("font_color", ACCENT)
+	(caisse["valeur"] as Label).add_theme_font_size_override("font_size", 20)
+	var recette := _label("", 11, Color8(78, 121, 67))
+	recette.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	(caisse["colonne"] as VBoxContainer).add_child(recette)
 	_ville_valeurs["recette"] = recette
-	(_ville_valeurs["caisse"] as Label).add_theme_color_override("font_color", ACCENT)
-	# 🎓🏛️ LES DEUX PORTES PERMANENTES (décision 81) : un menu s'ouvre sans
-	# aller sur place. L'autre porte est le bouton de la fiche d'îlot ; le lieu
-	# est un raccourci, jamais le seul chemin.
-	for lieu in LIEUX_ORDRE:
-		var b := Button.new()
-		b.text = LIEUX[lieu]["nom"] + "\nîlot %d" % int(LIEUX[lieu]["fid"])
-		b.theme = _theme_ui
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(96, 66)
-		b.add_theme_font_size_override("font_size", 12)
-		b.tooltip_text = String(LIEUX[lieu]["quoi"])
-		var cle: String = lieu
-		b.pressed.connect(func() -> void: ouvrir_lieu(cle))
-		h.add_child(b)
 
 	# 🧪 LE BOUTON D'ESSAI, ET IL DIT QU'IL EN EST UN. Il sert à atteindre en un
 	# clic un état que vingt ans de dotation mettraient à payer — donc à juger
-	# une ville équipée, pas à juger l'économie. Sa propre tuile et pas un
-	# troisième étage dans celle de la caisse, qui est haute de 64 px.
+	# une ville équipée, pas à juger l'économie.
 	# À retirer en même temps que `ville.crediter_essai_ke`.
 	var triche := Button.new()
-	triche.text = "Essai\n+1 000 k€"
+	triche.text = "Essai · +1 000 k€"
 	triche.theme = _theme_ui
 	triche.focus_mode = Control.FOCUS_NONE
-	triche.custom_minimum_size = Vector2(92, 66)
 	triche.add_theme_font_size_override("font_size", 11)
+	triche.add_theme_color_override("font_color", GRIS)
 	triche.tooltip_text = "Outil d'essai : remplit la caisse, hors règles du jeu."
 	triche.pressed.connect(func() -> void:
 		ville.crediter_essai_ke(1000.0)
 		_message.text = "Essai : 1 000 k€ versés.")
-	h.add_child(triche)
+	v.add_child(triche)
 
 
-func _jauge_climat(parent: VBoxContainer, couleur: Color) -> Dictionary:
+## Une ligne du bilan : la pastille dit QUOI, la jauge dit OÙ ON EN EST, le
+## nombre dit COMBIEN. Les pastilles du dessous comptent la même part en jetons
+## — c'est ce qui remplace la phrase qui traînait sous les deux jauges de climat.
+func _ligne_bilan(parent: VBoxContainer, icone: String, teinte: Color,
+		bulle: String, avec_jauge := true, pictos := "") -> Dictionary:
 	var h := HBoxContainer.new()
-	var valeur := _label("0 %", 15, TEXTE)
-	h.add_child(valeur)
+	h.add_theme_constant_override("separation", 10)
+	h.tooltip_text = bulle
+	# 🔴 La ligne est la SEULE à prendre la souris : sans ça l'infobulle
+	# n'existe pas, et avec elle sur les enfants elle clignoterait.
+	h.mouse_filter = Control.MOUSE_FILTER_STOP
 	parent.add_child(h)
-	var jauge := Jauge.new()
-	jauge.custom_minimum_size = Vector2(0, 7)
-	jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	jauge.colorer(couleur)
-	parent.add_child(jauge)
-	var etat := _label("", 11, GRIS)
-	etat.visible = false
-	return {"jauge": jauge, "valeur": valeur, "etat": etat}
+	h.add_child(_puce(icone, teinte))
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(col)
+
+	var rang := HBoxContainer.new()
+	rang.add_theme_constant_override("separation", 10)
+	rang.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(rang)
+	var jauge: Jauge = null
+	if avec_jauge:
+		jauge = Jauge.new()
+		jauge.custom_minimum_size = Vector2(0, 10)
+		jauge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		jauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		jauge.colorer(teinte)
+		rang.add_child(jauge)
+	var valeur := _label("—", 15, TEXTE)
+	valeur.add_theme_font_override("font", _fonte_grasse)
+	valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# ⚠️ Sans jauge, le nombre prend la ligne ; avec, il garde 104 px fixes et
+	# c'est la jauge qui s'étire — sinon les deux se partagent la place et
+	# aucune colonne de nombres n'est alignée d'une ligne à l'autre.
+	valeur.size_flags_horizontal = Control.SIZE_FILL if avec_jauge \
+		else Control.SIZE_EXPAND_FILL
+	valeur.custom_minimum_size.x = 104
+	rang.add_child(valeur)
+
+	var jetons: Pictos = null
+	if pictos != "":
+		jetons = Pictos.new()
+		jetons.texture = _icone(pictos, 15, Color.WHITE)
+		jetons.teinte = teinte
+		jetons.custom_minimum_size = Vector2(0, 15)
+		jetons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(jetons)
+	return {"valeur": valeur, "jauge": jauge, "pictos": jetons, "colonne": col}
 
 
 # ============================================== LA DEUXIÈME VUE, ET SON MENU
 #
-# 🩶 La ville vivante d'un côté, le diagnostic de l'autre (2026-08-25). Ce menu
-# PREND LA PLACE du tableau de bord : deux vues, jamais deux panneaux de tête à
-# l'écran en même temps. Le thème choisi commande le panneau du haut.
+# 🩶 La ville vivante d'un côté, le diagnostic de l'autre (2026-08-25). Le rail
+# porte le choix, et un seul panneau de détail est ouvert à la fois : deux vues,
+# jamais deux tableaux de bord à l'écran ensemble.
 
 
-## 🔄 LE MENU EST DEVENU LA BARRE D'OUTILS DU BAS (2026-09-01), et il ne se
-## cache plus : une liste qui n'existait qu'une fois le diagnostic ouvert
-## demandait de savoir qu'il fallait l'ouvrir. « Ville » y est le premier
-## bouton, dans le même groupe — donc la vue courante s'y voit toujours.
-func _panneau_menu() -> void:
+## 🔄 LA BARRE DU BAS EST DEVENUE UNE COLONNE À GAUCHE (2026-09-03) : icônes
+## seules, mot en infobulle. Elle porte aussi les DEUX LIEUX (81) — mairie et
+## université — qui étaient deux boutons de plus dans le bandeau du haut.
+func _panneau_rail() -> void:
 	_menu_panneau = PanelContainer.new()
 	_menu_panneau.theme = _theme_ui
-	_menu_panneau.add_theme_stylebox_override("panel", _boite())
-	_menu_panneau.anchor_left = 0.5
-	_menu_panneau.anchor_right = 0.5
-	_menu_panneau.anchor_top = 1.0
-	_menu_panneau.anchor_bottom = 1.0
-	_menu_panneau.offset_top = -104
-	_menu_panneau.offset_bottom = -16
-	_menu_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_menu_panneau.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = RAIL_FOND
+	sb.set_corner_radius_all(16)
+	sb.set_content_margin_all(10)
+	# La même ombre que les panneaux de papier : sans elle, le rail sombre est
+	# un trou dans la ville au lieu d'un objet posé dessus.
+	sb.shadow_color = Color(0.10, 0.08, 0.05, 0.38)
+	sb.shadow_size = 12
+	sb.shadow_offset = Vector2(0, 4)
+	_menu_panneau.add_theme_stylebox_override("panel", sb)
+	_menu_panneau.offset_left = RAIL_X
+	_menu_panneau.offset_right = RAIL_X + RAIL_LARGEUR
+	_menu_panneau.offset_top = HAUT
 	add_child(_menu_panneau)
 
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 6)
-	_menu_panneau.add_child(h)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_menu_panneau.add_child(v)
+
 	# ⚠️ `allow_unpress` à false : sans lui, recliquer la vue active l'éteint
-	# À L'ÉCRAN alors que la ville reste peinte — la barre mentirait.
+	# À L'ÉCRAN alors que la ville reste peinte — le rail mentirait. La
+	# fermeture du panneau passe par `_sur_rail`, pas par le groupe.
 	var groupe := ButtonGroup.new()
 	groupe.allow_unpress = false
-	var vues := [["", "retour", "Ville",
-		"Retrouver la matière, les arbres et les voitures."]]
+
+	# 🏙️ L'EN-TÊTE EST AUSSI LE BOUTON DE LA VILLE VIVANTE : jaune quand on y
+	# est. C'est le seul endroit du rail qui porte un mot, et c'est le nom de la
+	# vue par défaut — sans lui, une colonne de sept icônes ne dit pas où l'on est.
+	var accueil := Button.new()
+	accueil.text = "VILLE"
+	accueil.add_theme_font_override("font", _fonte_capitale)
+	accueil.add_theme_font_size_override("font_size", 11)
+	accueil.add_theme_color_override("font_color", RAIL_ICONE)
+	accueil.add_theme_color_override("font_hover_color", RAIL_ICONE)
+	accueil.add_theme_color_override("font_pressed_color", Color8(52, 38, 8))
+	accueil.add_theme_color_override("font_hover_pressed_color", Color8(52, 38, 8))
+	_habiller_tuile_rail(accueil)
+	accueil.custom_minimum_size = Vector2(56, 34)
+	accueil.toggle_mode = true
+	accueil.button_group = groupe
+	accueil.tooltip_text = "Ville — retrouver la matière, les arbres et les voitures."
+	accueil.pressed.connect(func() -> void: _sur_rail(""))
+	v.add_child(accueil)
+	_menu_boutons[""] = accueil
+
 	for t in themes:
 		var id := str(t["id"])
-		vues.append([id, id, {"dangers": "Dangers", "chantiers": "Chantiers",
-			"energie": "Énergie", "trafic": "Trafic", "tissu": "Tissu"}.get(
-			id, str(t["nom"])), str(t.get("resume", ""))])
-	for vue in vues:
-		var id: String = vue[0]
-		var b := Button.new()
-		b.text = vue[2]
-		b.icon = _icone(vue[1], 28)
-		# L'icône AU-DESSUS du mot : c'est ce qui fait la tuile carrée d'une
-		# barre d'outils plutôt qu'une ligne de menu.
-		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		b.expand_icon = false
-		b.custom_minimum_size = Vector2(78, 62)
-		b.add_theme_font_size_override("font_size", 12)
+		var b := _tuile_rail(id, "%s — %s" % [str(t["nom"]), str(t.get("resume", ""))])
 		b.toggle_mode = true
 		b.button_group = groupe
-		b.tooltip_text = vue[3]
-		b.pressed.connect(func() -> void: theme_demande.emit(id))
-		h.add_child(b)
+		b.pressed.connect(func() -> void: _sur_rail(id))
+		v.add_child(b)
 		_menu_boutons[id] = b
-	(_menu_boutons[""] as Button).set_pressed_no_signal(true)
+
+	# 🎓🏛️ LES DEUX PORTES PERMANENTES (81) : un menu s'ouvre sans aller sur
+	# place. L'autre porte est le bouton de la fiche d'îlot ; le lieu est un
+	# raccourci, jamais le seul chemin. Hors du groupe — un lieu n'est pas une
+	# vue : il ouvre une fiche à droite et ne repeint pas la ville.
+	v.add_child(_filet_rail())
+	for lieu in LIEUX_ORDRE:
+		var cle: String = lieu
+		var b := _tuile_rail(cle, "%s (îlot %d) — %s" % [String(LIEUX[cle]["nom"]),
+			int(LIEUX[cle]["fid"]), String(LIEUX[cle]["quoi"])])
+		b.pressed.connect(func() -> void: ouvrir_lieu(cle))
+		v.add_child(b)
+	accueil.set_pressed_no_signal(true)
+
+
+func _tuile_rail(icone: String, bulle: String) -> Button:
+	var b := Button.new()
+	b.icon = _icone(icone, 28, RAIL_ICONE)
+	b.expand_icon = false
+	b.tooltip_text = bulle
+	_habiller_tuile_rail(b)
+	return b
+
+
+## Le trait qui sépare les vues des lieux : sans lui, sept tuiles identiques
+## laissent croire que la mairie repeint la ville.
+func _filet_rail() -> Control:
+	# `trait` est un mot réservé de GDScript : ne pas renommer la variable.
+	var filet := ColorRect.new()
+	filet.color = Color(RAIL_ICONE, 0.22)
+	filet.custom_minimum_size = Vector2(0, 1)
+	filet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return filet
+
+
+## 🔴 LE SEUL ENDROIT OÙ LE PANNEAU SE FERME. `maquette._sur_theme` sort tout de
+## suite quand le thème ne change pas, donc recliquer l'icône active ne
+## rappellerait jamais `montrer_theme` : c'est ici, et pas là-bas.
+func _sur_rail(id: String) -> void:
+	if id == _theme_courant:
+		_detail_ouvert = not _detail_ouvert
+		_placer_detail()
+		return
+	_detail_ouvert = true
+	theme_demande.emit(id)
+
+
+## Un seul panneau de détail à l'écran, et il tombe par le `genre` du thème —
+## un thème neuf n'écrit rien de plus ici.
+func _placer_detail() -> void:
+	var genre := str(_theme_actuel.get("genre", ""))
+	_ville_panneau.visible = _detail_ouvert and _theme_courant == ""
+	_diagnostic_panneau.visible = _detail_ouvert and genre == "crue"
+	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
+	_calque_panneau.visible = _detail_ouvert and (genre == "calque" or genre == "tissu")
 
 
 ## Le panneau des thèmes CONTINUS — énergie, trafic — et du tissu. Un thème
@@ -601,12 +817,7 @@ func _panneau_calque() -> void:
 	_calque_panneau = PanelContainer.new()
 	_calque_panneau.theme = _theme_ui
 	_calque_panneau.add_theme_stylebox_override("panel", _boite())
-	_calque_panneau.anchor_left = 0.5
-	_calque_panneau.anchor_right = 0.5
-	_calque_panneau.offset_left = -205
-	_calque_panneau.offset_right = 205
-	_calque_panneau.offset_top = 92
-	_calque_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_ancrer_detail(_calque_panneau)
 	_calque_panneau.visible = false
 	add_child(_calque_panneau)
 
@@ -665,13 +876,19 @@ func _texture_rampe() -> Texture2D:
 ## L'unique entrée de la deuxième vue : `maquette` dit quel thème, l'interface
 ## en tire tout le reste. `id` vide = la ville vivante.
 func montrer_theme(id: String, t: Dictionary) -> void:
+	_theme_courant = id
+	_theme_actuel = t
+	# Changer de vue rouvre le panneau : on vient de demander à voir quelque
+	# chose, et le refermer serait exactement le contraire du clic.
+	_detail_ouvert = true
+	# Les deux lieux sont dans le rail mais hors du groupe : ils n'ont pas de
+	# bascule, donc pas d'état à remettre.
+	for vue in _menu_boutons:
+		var b := _menu_boutons[vue] as Button
+		if b.toggle_mode:
+			b.set_pressed_no_signal(vue == id)
+	_placer_detail()
 	var genre := str(t.get("genre", ""))
-	_ville_panneau.visible = true
-	for cle in _menu_boutons:
-		(_menu_boutons[cle] as Button).set_pressed_no_signal(cle == id)
-	_diagnostic_panneau.visible = genre == "crue"
-	_chantiers_panneau.visible = genre == "chantiers"
-	_calque_panneau.visible = genre == "calque" or genre == "tissu"
 	if id != "":
 		var cle := "_calque" if _calque_panneau.visible else id
 		_ecrire_entete(_entetes[cle], t)
@@ -694,12 +911,7 @@ func _panneau_diagnostic() -> void:
 	_diagnostic_panneau = PanelContainer.new()
 	_diagnostic_panneau.theme = _theme_ui
 	_diagnostic_panneau.add_theme_stylebox_override("panel", _boite())
-	_diagnostic_panneau.anchor_left = 0.5
-	_diagnostic_panneau.anchor_right = 0.5
-	_diagnostic_panneau.offset_left = -205
-	_diagnostic_panneau.offset_right = 205
-	_diagnostic_panneau.offset_top = 92
-	_diagnostic_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_ancrer_detail(_diagnostic_panneau)
 	_diagnostic_panneau.visible = false
 	add_child(_diagnostic_panneau)
 
@@ -762,12 +974,7 @@ func _panneau_chantiers() -> void:
 	_chantiers_panneau = PanelContainer.new()
 	_chantiers_panneau.theme = _theme_ui
 	_chantiers_panneau.add_theme_stylebox_override("panel", _boite())
-	_chantiers_panneau.anchor_left = 0.5
-	_chantiers_panneau.anchor_right = 0.5
-	_chantiers_panneau.offset_left = -205
-	_chantiers_panneau.offset_right = 205
-	_chantiers_panneau.offset_top = 92
-	_chantiers_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_ancrer_detail(_chantiers_panneau)
 	_chantiers_panneau.visible = false
 	add_child(_chantiers_panneau)
 
@@ -856,7 +1063,9 @@ func _panneau_ilot() -> void:
 	p.anchor_right = 1.0
 	p.offset_left = -336
 	p.offset_right = -16
-	p.offset_top = 92
+	# 🔄 Remontée à 14 px le 2026-09-03 : le bandeau de tuiles qui l'écartait
+	# du haut n'existe plus.
+	p.offset_top = HAUT
 	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
 
@@ -1155,6 +1364,48 @@ func _panneau_ilot() -> void:
 	_vert_curseur.value_changed.connect(_sur_curseur_vert)
 	_vert_bloc.add_child(_vert_curseur)
 
+	# 🏢 DENSIFIER. Deux boutons pour la HAUTEUR — « un étage ou deux » est un
+	# choix —, un curseur pour COMBIEN DE BÂTIMENTS. 🪜 Un cran, un bâtiment :
+	# le curseur compte des toits, comme celui des arbres compte des arbres, et
+	# non des pourcents. Le bloc ne s'ouvre que là où quelque chose peut monter
+	# — le patrimoine n'a donc jamais de bouton grisé à expliquer.
+	# 🔴 LES ÉTAGES SE CHOISISSENT UNE FOIS PAR ÎLOT : le shader n'a qu'une
+	# hauteur pour tout l'îlot. Les deux boutons se verrouillent au premier
+	# chantier, le curseur, lui, reprend au cran atteint.
+	_dense_bloc = VBoxContainer.new()
+	_dense_bloc.add_theme_constant_override("separation", 6)
+	_dense_bloc.visible = false
+	v.add_child(_dense_bloc)
+	_dense_bloc.add_child(HSeparator.new())
+	_titre_section(_dense_bloc, "Densifier")
+	_dense_valeur = _label("", 13, TEXTE)
+	_dense_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_dense_bloc.add_child(_dense_valeur)
+	var etages_ligne := HBoxContainer.new()
+	etages_ligne.add_theme_constant_override("separation", 6)
+	_dense_bloc.add_child(etages_ligne)
+	for n in [1, 2]:
+		var b := Button.new()
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(func() -> void: _basculer("dense", n))
+		etages_ligne.add_child(b)
+		_dense_boutons.append(b)
+	_dense_jauge = Jauge.new()
+	_dense_jauge.custom_minimum_size = Vector2(0, 15)
+	_dense_jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dense_jauge.colorer(FAIT)
+	_dense_bloc.add_child(_dense_jauge)
+	_dense_curseur = HSlider.new()
+	# ⚠️ L'échelle n'est PAS fixe ici, au contraire des trois autres curseurs :
+	# elle compte des bâtiments, et chaque îlot n'en a pas le même nombre. Le
+	# pas d'un cran garde son sens — un toit —, ce qui est le propos.
+	_dense_curseur.min_value = 0.0
+	_dense_curseur.step = 1.0
+	_dense_curseur.focus_mode = Control.FOCUS_NONE
+	_habiller_curseur(_dense_curseur)
+	_dense_curseur.value_changed.connect(_sur_curseur_dense)
+	_dense_bloc.add_child(_dense_curseur)
+
 	# 🔴 LE RÉCAPITULATIF ET LE BOUTON, EN BAS ET UNE SEULE FOIS. Tous les
 	# réglages posés y arrivent : un prix, une durée, un refus. C'est aussi le
 	# seul endroit où le jeu dit non — un bouton grisé sans phrase est une
@@ -1240,7 +1491,7 @@ func _panneau_lieu() -> void:
 	p.anchor_right = 1.0
 	p.offset_left = -336
 	p.offset_right = -16
-	p.offset_top = 92
+	p.offset_top = HAUT
 	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	p.visible = false
 	add_child(p)
@@ -1492,10 +1743,23 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_mois = mois
 	var conso: float = indic["conso_mwh"]
 	var prod: float = indic["production_mwh"]
+	var achat: float = indic["achat_mwh"]
+	var co2: float = indic["co2_kt"]
 	_ville_valeurs["conso"].text = _nb(conso / 1000.0, 1) + " GWh/an"
 	_ville_valeurs["production"].text = _nb(prod / 1000.0, 1) + " GWh/an"
-	_ville_valeurs["achat"].text = _nb(indic["achat_mwh"] / 1000.0, 1) + " GWh/an"
-	_ville_valeurs["co2"].text = _nb(indic["co2_kt"], 1) + " kt/an"
+	_ville_valeurs["achat"].text = _nb(achat / 1000.0, 1) + " GWh/an"
+	_ville_valeurs["co2"].text = _nb(co2, 1) + " kt/an"
+	# 🔴 CE QUE MESURENT LES QUATRE JAUGES, et c'est le seul endroit où c'est
+	# écrit : le solaire et l'achat se lisent sur la consommation ; la conso et
+	# le CO₂ n'ont pas de plein, donc ils se lisent contre le MOIS 0, mémorisé
+	# au premier appel. Aucun nouveau chiffre — la même mesure, en image.
+	if _conso_zero <= 0.0:
+		_conso_zero = maxf(conso, 1.0)
+		_co2_zero = maxf(co2, 0.001)
+	_regler_jauge("conso", conso / _conso_zero)
+	_regler_jauge("production", prod / maxf(conso, 1.0))
+	_regler_jauge("achat", achat / maxf(conso, 1.0))
+	_regler_jauge("co2", co2 / _co2_zero)
 	# ⚠️ Mémorisée ici : `_maj_fiche()` en a besoin à chaque image, et la
 	# recalculer parcourrait la ville une seconde fois par image.
 	_caisse_ke = indic["caisse_ke"]
@@ -1514,22 +1778,24 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		_maj_lieu()
 
 
+func _regler_jauge(cle: String, part: float) -> void:
+	var p := clampf(part, 0.0, 1.0)
+	(_ville_jauges[cle] as Jauge).regler(p, p)
+
+
+## 🔄 LES DEUX PHRASES SOUS LES JAUGES SONT PARTIES le 2026-09-03 — elles
+## étaient déjà invisibles depuis que le bandeau les avait perdues, et les
+## jetons disent la même part sans mot.
 func _maj_durabilite(indic: Dictionary) -> void:
 	var adaptation := float(indic["adaptation_part"])
 	_adaptation_jauge.regler(adaptation, adaptation)
 	_adaptation_valeur.text = "%d %%" % int(roundf(adaptation * 100.0))
-	_adaptation_etat.text = "%d logements · %d ponts" % [
-		int(ceil(float(indic["adaptation_logements"]))),
-		int(indic["adaptation_ponts"])] if adaptation < 0.9995 else \
-		"Ville relevée"
+	_adaptation_pictos.regler(adaptation)
 
 	var reduction := float(indic["reduction_part"])
-	_reduction_jauge.colorer(Color8(91, 174, 117))
 	_reduction_jauge.regler(reduction, reduction)
 	_reduction_valeur.text = "%d %%" % int(roundf(reduction * 100.0))
-	var ecart := float(indic["reduction_ecart_kt"])
-	_reduction_etat.text = "%s kt/an évitées depuis le mois 0." % _nb(ecart, 1) \
-		if ecart >= 0.0 else "Émissions +%s kt/an depuis le mois 0." % _nb(-ecart, 1)
+	_reduction_pictos.regler(reduction)
 
 
 func montrer(couche: String, fid: int, _garder := true) -> void:
@@ -1559,6 +1825,9 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# peut rien poser n'est pas une décision grisée, c'est du bruit.
 	_vert_bloc.visible = couche == "i" \
 		and ville.valeur("i", fid, "_part_plate", _mois) > 0.001
+	# 🏢 Un îlot dont rien ne peut monter n'a pas de bloc : le cœur ancien,
+	# le front commerçant, et tout ce qui n'est pas bâti.
+	_dense_bloc.visible = couche == "i" and ville.dense_logements_etage(fid) > 0
 	_trafic_bloc.visible = couche == "r"
 	# 🌳 Seulement là où il y a la place d'un arbre entre la chaussée et la
 	# limite d'emprise : `07` l'a tranché, les ruelles du cœur ancien n'en ont
@@ -1645,6 +1914,7 @@ func _maj_fiche() -> void:
 		if etat["a_commence"]:
 			_message.text = "Pose terminée."
 	_maj_vert()
+	_maj_dense()
 	_maj_recap()
 
 
@@ -1657,6 +1927,71 @@ func _maj_fiche() -> void:
 ## dans un bouton déjà chargé de trois nombres.
 func _posee(cle: String, texte: String, valeur := true) -> String:
 	return ("✓ " + texte) if _pose.get(cle) == valeur else texte
+
+
+## 🏢 CE QUE DENSIFIER DONNE, EN LOGEMENTS ET JAMAIS EN MÈTRES. La hauteur
+## se voit à l'écran ; ce qui décide, c'est le parc que l'îlot gagne — et la
+## consommation qui vient avec.
+func _maj_dense() -> void:
+	if not _dense_bloc.visible:
+		return
+	var etat := ville.etat_dense(_fiche_fid, _mois)
+	var n := int(etat["batiments"])
+	var montes := int(etat["montes"])
+	var etages := _dense_etages()
+	# Les deux boutons donnent la HAUTEUR, et ils marchent en couple : l'un des
+	# deux est toujours coché, parce qu'un curseur seul doit suffire à
+	# densifier. Ils se figent au premier chantier — la hauteur d'un îlot ne se
+	# choisit qu'une fois.
+	for k in _dense_boutons.size():
+		var b: Button = _dense_boutons[k]
+		b.text = ("✓ " if k + 1 == etages else "") \
+			+ "+%d étage%s" % [k + 1, "s" if k else ""]
+		b.disabled = ville.dense_engage(_fiche_fid)
+
+	# 🪜 Le curseur compte des BÂTIMENTS. Il repart du cran atteint : on ne
+	# redescend pas un étage.
+	_ecrit_curseur = true
+	_dense_curseur.max_value = float(n)
+	_dense_curseur.editable = montes < n and not etat["en_cours"]
+	if _dense_choix < 0.0:
+		_dense_curseur.set_value_no_signal(float(maxi(montes, int(etat["vises"]))))
+	else:
+		_dense_choix = clampf(_dense_choix, float(montes), float(n))
+		_dense_curseur.set_value_no_signal(_dense_choix)
+	_ecrit_curseur = false
+	var vise: float = _dense_choix if _dense_choix >= 0.0 else float(etat["vises"])
+	_dense_jauge.regler(float(montes) / maxf(float(n), 1.0),
+		maxf(float(montes), vise) / maxf(float(n), 1.0))
+
+	# 🏢 CE QUE DENSIFIER DONNE, EN LOGEMENTS ET JAMAIS EN MÈTRES.
+	if _dense_choix >= 0.0 and _dense_choix > float(montes) + 0.01:
+		var de := float(montes) / float(n)
+		var vers := _dense_choix / float(n)
+		_dense_valeur.text = "%d → %d bâtiments · +%d logements · %s" % [
+			montes, int(_dense_choix),
+			int(roundf(ville.dense_logements_tranche(_fiche_fid, de, vers, etages))),
+			_duree(ville.duree_dense_mois(etages, de, vers))]
+	elif etat["en_cours"]:
+		_dense_valeur.text = "%d → %d bâtiments · +%d étage%s · encore %s" % [
+			montes, int(etat["vises"]), etages, "s" if etages > 1 else "",
+			_duree(float(etat["reste_mois"]))]
+	elif montes > 0:
+		_dense_valeur.text = "%d bâtiments sur %d montés · +%d logements" % [
+			montes, n, int(roundf(float(etat["logements"])))]
+	else:
+		_dense_valeur.text = ("%d bâtiments peuvent monter, du plus bas au"
+			+ " plus haut · %d logements par étage") % [
+				n, ville.dense_logements_etage(_fiche_fid)]
+
+
+## La hauteur retenue pour cet îlot : celle déjà engagée, sinon celle des
+## boutons, sinon un étage — le curseur seul doit suffire à densifier.
+func _dense_etages() -> int:
+	var engage := ville.dense_etages(_fiche_fid)
+	if engage > 0:
+		return engage
+	return int(_pose.get("dense", 1))
 
 
 ## 🌿 Le bloc des toits verts. Même mécanique que le solaire, à une chose près :
@@ -1754,6 +2089,16 @@ func _reglages() -> Dictionary:
 		var actuel_v := ville.valeur("i", _fiche_fid, "part_toit_vert", _mois) * 100.0
 		if _vert_choix > actuel_v + 0.01:
 			r["vert"] = _vert_choix / 100.0
+	# 🏢 La densification part du curseur, et les boutons ne portent que la
+	# hauteur : `dense` est un couple, pas un nombre d'étages.
+	if _fiche_couche == "i":
+		r.erase("dense")
+		var ed := ville.etat_dense(_fiche_fid, _mois)
+		if _dense_choix > float(ed["montes"]) + 0.01 and not ed["en_cours"]:
+			r["dense"] = {
+				"part": _dense_choix / maxf(float(ed["batiments"]), 1.0),
+				"etages": _dense_etages(),
+			}
 	if _fiche_couche == "r" and _arbres_choix >= 0.0:
 		var cible := _arbres_choix / 100.0 * Ville.PLANTATION_CANOPEE_MAX
 		if ville.arbres_a(_fiche_fid, cible) > ville.arbres_a(
@@ -1779,6 +2124,7 @@ func _vider_pose() -> void:
 	_solaire_choix = -1.0
 	_vert_choix = -1.0
 	_arbres_choix = -1.0
+	_dense_choix = -1.0
 	_apercu_avant = false
 
 
@@ -1821,6 +2167,16 @@ func _maj_recap() -> void:
 		quoi.append("%d arbres" % (ville.arbres_a(_fiche_fid, float(r["arbres"]))
 			- ville.arbres_a(_fiche_fid,
 				ville.valeur("r", _fiche_fid, "canopee", _mois))))
+	if r.has("dense"):
+		var e := int(r["dense"]["etages"])
+		var ed := ville.etat_dense(_fiche_fid, _mois)
+		var de := float(ed["montes"]) / maxf(float(ed["batiments"]), 1.0)
+		quoi.append("%d bâtiments à +%d étage%s, %d logements" % [
+			int(roundf(float(r["dense"]["part"]) * float(ed["batiments"])
+				- float(ed["montes"]))),
+			e, "s" if e > 1 else "",
+			int(roundf(ville.dense_logements_tranche(_fiche_fid, de,
+				float(r["dense"]["part"]), e)))])
 	if r.has("places"):
 		quoi.append("places retirées")
 	if r.has("axe"):
@@ -1847,9 +2203,15 @@ func _maj_recap() -> void:
 ## fonction le 2026-08-31 : ils sont dans le récapitulatif, où ils portent aussi
 ## les autres réglages.
 func _afficher_choix(actuel: float, cible: float) -> void:
-	_solaire_valeur.text = "%d %% → %d %% · %s" % [
+	# 🪜 LE REMBOURSEMENT DE LA TRANCHE QU'ON POSE, et c'est là que la
+	# progressivité se voit : sur le même toit, les premiers pour cent se
+	# remboursent deux fois plus vite que les derniers.
+	var ans := Energie.rentabilite_tranche_annees(ville, _fiche_fid,
+		actuel / 100.0, cible / 100.0, _mois)
+	_solaire_valeur.text = "%d %% → %d %% · %s%s" % [
 		int(roundf(actuel)), int(roundf(cible)),
-		_duree(ville.duree_solaire_mois(actuel / 100.0, cible / 100.0))]
+		_duree(ville.duree_solaire_mois(actuel / 100.0, cible / 100.0)),
+		"" if is_inf(ans) else " · remboursé en %d ans" % int(roundf(ans))]
 
 
 ## 🔎 CE QUE LA MINIATURE DOIT MONTRER (décision 12) : l'ÉTAT QUI SERA LIVRÉ —
@@ -1867,21 +2229,39 @@ func apercu_demande() -> Dictionary:
 	var places := true
 	var roule := true
 	var arbres := 0.0
+	# 🏢 (avancement, part d'un bâtiment, mètres) — ce que le shader attend.
+	# ⚠️ Un Vector4, pas une Color : une couleur passerait en espace linéaire.
+	var dense := Vector4(0.0, 1.0, 0.0, 0.0)
 	if _fiche_fid < 0:
 		return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 			"verdi": verdi, "plate": plate,
 			"futur": futur, "berge": berge, "places": places, "roule": roule,
-			"arbres": arbres}
+			"arbres": arbres, "dense": dense}
 	var r: Dictionary = {} if _apercu_avant else _reglages()
 	if _fiche_couche == "i":
 		equipe = ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois)
 		verdi = ville.valeur("i", _fiche_fid, "part_toit_vert", _mois)
 		plate = ville.valeur("i", _fiche_fid, "_part_plate", _mois)
+		var ed := ville.etat_dense(_fiche_fid, _mois)
+		dense = Vector4(float(ed["avancement"]), float(ed["pas"]),
+			float(ed["metres"]), 0.0)
 		if not _apercu_avant:
 			equipe = maxf(ville.etat_solaire(_fiche_fid, _mois)["cible"],
 				float(r.get("solaire", 0.0)))
 			verdi = maxf(ville.etat_vert(_fiche_fid, _mois)["cible"],
 				float(r.get("vert", 0.0)))
+			# 🏢 La miniature promet l'état LIVRÉ : les bâtiments VISÉS déjà
+			# montés, pas la moitié d'un chantier. 🪜 Et « visés » n'est plus
+			# « tous » — c'est le cran du curseur, sinon l'image promet un îlot
+			# entier pour le prix de trois toits.
+			var e := int(ed["etages"])
+			var vise := float(ed["cible"])
+			if r.has("dense"):
+				e = int(r["dense"]["etages"])
+				vise = maxf(vise, float(r["dense"]["part"]))
+			if e > 0 and vise > 0.0:
+				dense = Vector4(vise, float(ed["pas"]),
+					float(e) * Ville.DENSE_ETAGE_M, 0.0)
 	if _fiche_couche != "b":
 		futur = not _apercu_avant \
 			and (ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
@@ -1918,7 +2298,7 @@ func apercu_demande() -> Dictionary:
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 		"verdi": verdi, "plate": plate,
 		"futur": futur, "berge": berge, "places": places, "roule": roule,
-		"arbres": arbres}
+		"arbres": arbres, "dense": dense}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait
@@ -1945,7 +2325,16 @@ func viser_arbres(pct: float) -> void:
 	_arbres_curseur.value = pct
 
 
-func poser(cle: String, valeur := true) -> void:
+## 🏢 En BÂTIMENTS. Lu par `--essai`, qui pose un cran puis un autre pour
+## montrer que le premier coûte moins cher que le dernier.
+func viser_dense(batiments: int) -> void:
+	_dense_curseur.value = float(batiments)
+
+
+## ⚠️ `valeur` N'EST PAS UN BOOLÉEN. Écrite `valeur := true`, elle était typée
+## bool par inférence : `poser("dense", 2)` posait 1, et la capture d'essai
+## annonçait deux étages en en montrant un. Corrigé le 2026-09-03.
+func poser(cle: String, valeur: Variant = true) -> void:
 	_basculer(cle, valeur)
 
 
@@ -1993,6 +2382,21 @@ func _sur_curseur_vert(v: float) -> void:
 	_vert_choix = v
 	_vert_jauge.regler(actuel / 100.0, v / 100.0)
 	_maj_recap()
+
+
+## 🏢 Le curseur de la densification. Même règle que les trois autres — on ne
+## DÉMOLIT pas un étage —, à ceci près qu'il compte des bâtiments entiers.
+func _sur_curseur_dense(v: float) -> void:
+	if _fiche_fid < 0 or _ecrit_curseur:
+		return
+	var etat := ville.etat_dense(_fiche_fid, _mois)
+	v = clampf(roundf(v), float(etat["montes"]), float(etat["batiments"]))
+	if not is_equal_approx(v, _dense_curseur.value):
+		_ecrit_curseur = true
+		_dense_curseur.set_value_no_signal(v)
+		_ecrit_curseur = false
+	_dense_choix = v
+	_maj_fiche()
 
 
 ## 🌳 Le curseur des arbres. Même règle que le solaire : on ne DÉPLANTE pas, et

@@ -347,7 +347,7 @@ func viser(lacet: float) -> void:
 ## la géométrie reconstruite, `berge` pousse les trois crans de la rive — et
 ## sur un échantillon il en REFAIT la coupe : le quai recule, la rive s'ouvre.
 func regler(equipe: float, verdi: float, plate: float, futur: bool,
-		berge: float) -> void:
+		berge: float, dense := Vector4(0.0, 1.0, 0.0, 0.0)) -> void:
 	if _ech_couche == "b" and int(berge) != _ech_etat:
 		_batir_echantillon(int(berge))
 	_futur.visible = futur and _futur.mesh != null
@@ -356,6 +356,7 @@ func regler(equipe: float, verdi: float, plate: float, futur: bool,
 		mi.set_instance_shader_parameter("verdi", verdi)
 		mi.set_instance_shader_parameter("part_plate", plate)
 		mi.set_instance_shader_parameter("etat_berge", berge)
+		mi.set_instance_shader_parameter("densification", dense)
 
 
 ## Les points à contenir, calculés UNE FOIS par objet : le cadrage se refait à

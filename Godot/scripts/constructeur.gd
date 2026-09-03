@@ -65,6 +65,11 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 	var cs: Array = d["c"]
 	var uvs: Array = d.get("uv", [])
 	var uv2s: Array = d.get("uv2", [])
+	# 🏢 (rang de montée, ce sommet suit-il le toit, égout d'origine). Seul le
+	# maillage des masses le porte ; absent, CUSTOM0 reste à zéro et rien ne se
+	# lève. ⚠️ Un export d'avant le 2026-09-03 n'a que deux colonnes : le
+	# plafond retombe à 0, ce qui veut dire « pas d'étage neuf à peindre ».
+	var denses: Array = d.get("dense", [])
 	var idx: Array = d["i"]
 
 	# Les indices citent des sommets répartis dans TOUT le tableau : sans
@@ -75,6 +80,7 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 	var co := PackedColorArray()
 	var uv := PackedVector2Array()
 	var uv2 := PackedVector2Array()
+	var dn := PackedFloat32Array()
 	var i := PackedInt32Array()
 	i.resize(nb)
 	for k in nb:
@@ -89,9 +95,14 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 			uv.append(Vector2.ZERO if uvs.is_empty() else Vector2(uvs[src][0], uvs[src][1]))
 			uv2.append(Vector2.ZERO if uv2s.is_empty() \
 				else Vector2(uv2s[src][0], uv2s[src][1]))
+			if not denses.is_empty():
+				var dd: Array = denses[src]
+				dn.append(float(dd[0]))
+				dn.append(float(dd[1]))
+				dn.append(0.0 if dd.size() < 3 else float(dd[2]))
 		i[k] = renumerote[src]
 
-	return _surface(v, nm, co, i, uv, uv2)
+	return _surface(v, nm, co, i, uv, uv2, dn)
 
 
 ## RGB = teinte déjà occluse, ALPHA = l'occlusion seule, dont le shader se sert
@@ -109,7 +120,8 @@ static func _couleur(c: Array) -> Color:
 static func _surface(v: PackedVector3Array, n: PackedVector3Array,
 		c: PackedColorArray, i: PackedInt32Array,
 		uv: PackedVector2Array = PackedVector2Array(),
-		uv2: PackedVector2Array = PackedVector2Array()) -> ArrayMesh:
+		uv2: PackedVector2Array = PackedVector2Array(),
+		dense: PackedFloat32Array = PackedFloat32Array()) -> ArrayMesh:
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)          # obligatoire AVANT d'indexer
 	arrays[Mesh.ARRAY_VERTEX] = v
@@ -119,9 +131,16 @@ static func _surface(v: PackedVector3Array, n: PackedVector3Array,
 		arrays[Mesh.ARRAY_TEX_UV] = uv
 	if not uv2.is_empty():
 		arrays[Mesh.ARRAY_TEX_UV2] = uv2
+	# 🏢 CUSTOM0, trois flottants par sommet. ⚠️ Le FORMAT se déclare en
+	# drapeau, sinon Godot refuse le tableau : c'est un PackedFloat32Array à
+	# plat, trois valeurs par sommet, jamais un tableau de Vector3.
+	var flags := 0
+	if not dense.is_empty():
+		arrays[Mesh.ARRAY_CUSTOM0] = dense
+		flags = Mesh.ARRAY_CUSTOM_RGB_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
 	arrays[Mesh.ARRAY_INDEX] = i
 	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(PRIM, arrays)
+	m.add_surface_from_arrays(PRIM, arrays, [], {}, flags)
 	return m
 
 

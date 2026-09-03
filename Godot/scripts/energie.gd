@@ -67,6 +67,38 @@ const CO2_GRIS_ISOLATION_KG_LOG := 4000.0 # modeste : remboursé en ~2 ans
 const COUT_PANNEAU_EUR_M2 := 260.0    # panneau + structure + pose sur toiture existante
 const PRIX_ENERGIE_EUR_MWH := 150.0   # ce que vaut le MWh produit plutôt qu'acheté
 
+# ==========================================================================
+# 🪜 ON COMMENCE PAR LE MEILLEUR — la progressivité (auteur, 2026-09-03)
+# ==========================================================================
+# Le shader remplissait déjà les versants du mieux exposé au moins bon ; le prix
+# et le rendement, eux, étaient plats. Deux courbes le disent maintenant : le
+# premier mètre carré posé coûte moins et produit plus que le dernier.
+# 🔴 LES TOTAUX NE BOUGENT PAS, et c'est ce qui rend le changement sûr : les
+# deux primitives valent 1 en 1, donc équiper un toit ENTIER coûte et rapporte
+# exactement ce qu'il coûtait et rapportait avant. Seul l'ORDRE change — d'où le
+# jeu : s'arrêter à mi-toit devient une décision, et non un demi-geste.
+# 🎚️ LEVEL DESIGN, un seul nombre. À 0,4 le premier m² coûte 0,6 fois le prix
+# moyen et rend 1,4 fois ; le dernier l'inverse. Rapport entre les deux bouts :
+# 5,4. À 0, tout redevient linéaire et le jeu d'avant revient.
+const PROGRESSIVITE := 0.4
+
+
+## La part du PRIX d'un toit entier qu'il faut avoir dépensée pour en équiper
+## `p`. Convexe, et croissante tant que PROGRESSIVITE < 1.
+static func courbe_payee(p: float) -> float:
+	p = clampf(p, 0.0, 1.0)
+	return p * (1.0 - PROGRESSIVITE * (1.0 - p))
+
+
+## La part du RENDEMENT d'un toit entier obtenue en en équipant `p`. Concave.
+## ⚠️ Ne se lit JAMAIS sur `part_toit_equipe` au vol : `ville` en fait un champ
+## à part, `part_rendue`, pour que la recette encaissée reste une intégrale
+## exacte de rampes droites.
+static func courbe_rendue(p: float) -> float:
+	p = clampf(p, 0.0, 1.0)
+	return p * (1.0 + PROGRESSIVITE * (1.0 - p))
+
+
 # 🌿 LE TOIT VERT — étanchéité reprise, substrat, sédum. 🎚️ Level design : il ne
 # rapporte RIEN, donc son prix seul décide s'il vaut de renoncer à des panneaux
 # sur le même mètre carré. Mesuré : verdir les 1,58 ha plats et équipables de
@@ -158,8 +190,11 @@ static func potentiel_mwh(v, fid: int, t: float) -> float:
 ## 🎓 Le palier de rendement (79) s'applique ICI et pas dans `potentiel_mwh` :
 ## le potentiel reste le toit physique, et `ville.recette_cumulee_ke` intègre le
 ## palier marche par marche pour ne pas repayer le passé.
+## 🪜 `part_rendue` et non `part_toit_equipe` : la SURFACE couverte est droite,
+## le RENDEMENT ne l'est pas. C'est `ville.lancer_solaire` qui pose les deux
+## rampes, l'une pour ce qu'on voit, l'autre pour ce qu'on encaisse.
 static func production_mwh(v, fid: int, t: float) -> float:
-	return potentiel_mwh(v, fid, t) * v.valeur("i", fid, "part_toit_equipe", t) \
+	return potentiel_mwh(v, fid, t) * v.valeur("i", fid, "part_rendue", t) \
 		* v.facteur("rendement_x", t)
 
 
@@ -186,8 +221,11 @@ static func gain_isolation_mwh(v, fid: int, t: float) -> float:
 ## En k€. `cout_x` fait qu'un toit de cœur ancien coûte plus du double d'un
 ## toit de barre au m².
 ## 🏛️🎓 `facteur` porte la subvention de la mairie et le palier de l'université.
+## 🪜 `courbe_payee` remplace l'écart droit : les premiers panneaux sont les
+## moins chers. Le toit ENTIER coûte le même prix qu'avant.
 static func cout_pose_ke(v, fid: int, de: float, vers: float, t: float) -> float:
-	return toit_equipable_m2(v, fid) * maxf(vers - de, 0.0) \
+	return toit_equipable_m2(v, fid) \
+		* maxf(courbe_payee(vers) - courbe_payee(de), 0.0) \
 		* COUT_PANNEAU_EUR_M2 * ligne(v, fid)["cout_x"] / 1000.0 \
 		* v.facteur("cout_panneau_x", t)
 
@@ -197,14 +235,27 @@ static func recette_ke_an(v, fid: int, t: float) -> float:
 	return production_mwh(v, fid, t) * PRIX_ENERGIE_EUR_MWH / 1000.0
 
 
-## ⚠️ Ne dépend PAS de la part équipée — coût et recette sont tous deux
-## proportionnels aux m² posés. C'est un critère de CHOIX D'ÎLOT, pas de dosage.
+## LE TOIT ENTIER, toujours : un critère de CHOIX D'ÎLOT, que le calque peint.
+## 🪜 Les deux courbes valant 1 en 1, ce nombre n'a pas bougé d'un jour à
+## l'autre — c'est `rentabilite_tranche_annees` qui porte le dosage.
 ## INF sans toit : à ne jamais peindre ni afficher tel quel.
 static func rentabilite_annees(v, fid: int, t: float) -> float:
 	var pot: float = potentiel_mwh(v, fid, t) * v.facteur("rendement_x", t)
 	if pot <= 0.0:
 		return INF
 	return cout_pose_ke(v, fid, 0.0, 1.0, t) / (pot * PRIX_ENERGIE_EUR_MWH / 1000.0)
+
+
+## 🪜 CE QUE LA TRANCHE QU'ON POSE MET À SE REMBOURSER — et c'est LE nombre que
+## la progressivité rend visible : sur le même toit, les 20 premiers pour cent
+## se remboursent deux fois plus vite que les 20 derniers.
+static func rentabilite_tranche_annees(v, fid: int, de: float, vers: float,
+		t: float) -> float:
+	var pot: float = potentiel_mwh(v, fid, t) * v.facteur("rendement_x", t) \
+		* maxf(courbe_rendue(vers) - courbe_rendue(de), 0.0)
+	if pot <= 0.0:
+		return INF
+	return cout_pose_ke(v, fid, de, vers, t) / (pot * PRIX_ENERGIE_EUR_MWH / 1000.0)
 
 
 ## 0 vite · 1 dans la partie · 2 tout juste · 3 jamais.

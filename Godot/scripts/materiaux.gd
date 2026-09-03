@@ -3,6 +3,32 @@ extends RefCounted
 # La couleur voyage dans ARRAY_COLOR, donc UN matériau suffit pour les 69 îlots.
 
 
+# 🏢 LA SURÉLÉVATION, ET DEUX MATÉRIAUX LA PARTAGENT : la ville et le masque de
+# sélection. Posée dans un seul des deux, le trait de sélection reste sur
+# l'ancien volume — vu à l'écran par l'auteur le 2026-09-03.
+# `densification` = (avancement, pas d'un bâtiment, mètres gagnés) : un vec4 et
+# non trois flottants, les uniformes d'instance sont comptés.
+# CUSTOM0 = (rang du bâtiment, ce sommet suit-il le toit, égout d'origine), posé
+# par 07. Un bâtiment monte ENTIER, chacun son tour, du plus bas au plus haut —
+# même mécanique que le toit vert, sur les sommets cette fois. Le mur s'étire,
+# donc la recette de fenêtres, qui compte les étages en Y monde, en perce de
+# neuves. ⚠ La collision ne monte pas : cliquer vise l'îlot, pas une façade.
+const DENSE_DECL := "instance uniform vec4 densification = vec4(0.0, 1.0, 0.0, 0.0);\n" \
+	+ "varying float montee;\n" \
+	+ "varying float plafond;\n"
+
+# `montee` et `plafond` sont constants sur tout le bâtiment, donc
+# l'interpolation ne les déforme pas — au contraire du déplacement du sommet,
+# nul en pied de mur et plein en tête.
+const DENSE_VERTEX := "\tmontee = densification.z * clamp(\n" \
+	+ "\t\t(densification.x - CUSTOM0.x) / max(densification.y, 0.001),\n" \
+	+ "\t\t0.0, 1.0);\n" \
+	+ "\tplafond = CUSTOM0.z;\n" \
+	+ "\tif (montee > 0.0 && CUSTOM0.y > 0.5) {\n" \
+	+ "\t\tVERTEX.y += montee;\n" \
+	+ "\t}\n"
+
+
 static func surface(rugosite: float = 0.95) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true
@@ -40,11 +66,23 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "instance uniform float verdi = 0.0;\n" \
 		+ "instance uniform float part_plate = 0.0;\n" \
 		+ "instance uniform float etat_berge = 0.0;\n" \
+		+ DENSE_DECL \
 		+ "varying vec3 pos_monde;\n" \
 		+ "// Choix de LISIBILITÉ, pas des mesures de toiture. ⚠ Mesuré le\n" \
 		+ "// 2026-08-17 : à 0,10 de liseré le toit se lit BLANC semé de bleu.\n" \
 		+ "const float PANNEAU_M = 3.0;\n" \
 		+ "const float LISERE = 0.05;\n" \
+		+ "// 🏢 LE BÂTI AJOUTÉ — bardage bois clair et zinc. Une\n" \
+		+ "// surélévation ne se rejointoie pas en enduit : c'est la SEULE\n" \
+		+ "// famille de matière du projet qui ne soit pas de l'époque du\n" \
+		+ "// bâtiment, et c'est ce qui la fait lire comme neuve.\n" \
+		+ "// ⚠ LINÉAIRE. #C6A277, #B08E63, #4E545C en sRGB.\n" \
+		+ "const vec3 BARDAGE = vec3(0.565, 0.361, 0.184);\n" \
+		+ "const vec3 BARDAGE_SEC = vec3(0.434, 0.270, 0.125);\n" \
+		+ "const vec3 ZINC = vec3(0.076, 0.089, 0.107);\n" \
+		+ "// La lame de bardage et le joint debout du zinc, en mètres.\n" \
+		+ "const float LAME_M = 0.22;\n" \
+		+ "const float JOINT_ZINC_M = 0.52;\n" \
 		+ "// 🧱 LE RANG DE TUILES — 32 cm, la valeur réelle d'une tuile\n" \
 		+ "// mécanique. Une ligne de motif, aucune texture, aucun sommet.\n" \
 		+ "const float RANG_M = 0.32;\n" \
@@ -93,6 +131,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tmix(alea_pt(c + vec2(0.0, 1.0)), alea_pt(c + vec2(1.0, 1.0)), f.x), f.y);\n" \
 		+ "}\n" \
 		+ "void vertex() {\n" \
+		+ DENSE_VERTEX \
 		+ "\tpos_monde = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n" \
 		+ "}\n" \
 		+ "void fragment() {\n" \
@@ -105,10 +144,15 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tvec3 normale_monde = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);\n" \
 		+ "\tfloat vers_le_ciel = normale_monde.y;\n" \
 		+ "\tfloat rugosite = 0.95;\n" \
+		+ "\t// 🏢 CE QUI EST NEUF, ET ÇA SE JOUE À LA HAUTEUR. Le mur\n" \
+		+ "\t// s'ÉTIRE au lieu de s'allonger, mais toutes les recettes de\n" \
+		+ "\t// surface se comptent en Y MONDE : au-dessus de l'ancien égout,\n" \
+		+ "\t// ce qu'on voit est ce que la densification a posé.\n" \
+		+ "\tbool neuf = montee > 0.05 && plafond > 0.5 && pos_monde.y > plafond;\n" \
 		+ "\t// 🧱 Les rangs AVANT les panneaux : un toit équipé est couvert.\n" \
 		+ "\t// La borne 0,995 écarte tout ce qui est PLAT — sol, chaussée,\n" \
 		+ "\t// cours, et les toits-terrasses de 1974, qui ne sont pas en tuile.\n" \
-		+ "\tif (vers_le_ciel > 0.5 && vers_le_ciel < 0.995 && pos_monde.y > 1.0) {\n" \
+		+ "\tif (!neuf && vers_le_ciel > 0.5 && vers_le_ciel < 0.995 && pos_monde.y > 1.0) {\n" \
 		+ "\t\t// L'écart se mesure LE LONG DE LA PENTE : sinon un toit à 14°\n" \
 		+ "\t\t// sort avec des rangs de 1,4 m pour la même tuile.\n" \
 		+ "\t\tfloat sin_pente = sqrt(max(1.0 - vers_le_ciel * vers_le_ciel, 0.02));\n" \
@@ -120,6 +164,23 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t// défaut les rangs sont plus fins qu'un pixel et scintillent.\n" \
 		+ "\t\tfloat visible = clamp(1.3 - 4.0 * ar, 0.0, 1.0);\n" \
 		+ "\t\tbase *= mix(1.0, mix(0.80, 1.0, joint), visible);\n" \
+		+ "\t}\n" \
+		+ "\t// 🏢 LE TOIT REFAIT. Une surélévation emporte la toiture :\n" \
+		+ "\t// zinc à joint debout, jamais la tuile de dessous. Les joints\n" \
+		+ "\t// suivent la pente — UV porte l'axe du bâtiment, donc les\n" \
+		+ "\t// espacer le long de cet axe les couche dans le bon sens.\n" \
+		+ "\tif (neuf && vers_le_ciel > 0.5 && pos_monde.y > 1.0) {\n" \
+		+ "\t\tbase = ZINC * COLOR.a;\n" \
+		+ "\t\trugosite = 0.55;\n" \
+		+ "\t\tif (length(UV) > 0.5) {\n" \
+		+ "\t\t\tfloat j = dot(pos_monde.xz, normalize(UV)) / JOINT_ZINC_M;\n" \
+		+ "\t\t\tfloat aj = max(fwidth(j), 0.0005);\n" \
+		+ "\t\t\tfloat dj = abs(fract(j + 0.5) - 0.5);\n" \
+		+ "\t\t\t// Le joint est un pli DEBOUT : il accroche la lumière.\n" \
+		+ "\t\t\tfloat vj = clamp(1.3 - 4.0 * aj, 0.0, 1.0);\n" \
+		+ "\t\t\tbase *= mix(1.0, mix(1.45, 1.0,\n" \
+		+ "\t\t\t\tsmoothstep(0.05 - aj, 0.05 + aj, dj)), vj);\n" \
+		+ "\t\t}\n" \
 		+ "\t}\n" \
 		+ "\tif ((equipe > 0.0 || verdi > 0.0) && vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5) {\n" \
 		+ "\t\t// 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter) : le panneau était un\n" \
@@ -192,6 +253,25 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t+ c_pan * posee + c_vert * posee_v;\n" \
 		+ "\t\trugosite = mix(0.95, 0.35, posee);\n" \
 		+ "\t}\n" \
+		+ "\t// 🏢 LE MUR AJOUTÉ — bardage de lames verticales. La\n" \
+		+ "\t// tangente sort de la NORMALE et non d'UV : un mur mitoyen\n" \
+		+ "\t// aveugle n'a aucune coordonnée de façade, et il se barde\n" \
+		+ "\t// comme les autres.\n" \
+		+ "\tif (neuf && abs(normale_monde.y) < 0.30) {\n" \
+		+ "\t\tvec2 tang = normalize(vec2(-normale_monde.z, normale_monde.x));\n" \
+		+ "\t\tfloat lame = dot(pos_monde.xz, tang) / LAME_M;\n" \
+		+ "\t\tfloat hl = fract(sin(floor(lame) * 91.317) * 43758.545);\n" \
+		+ "\t\tbase = mix(BARDAGE, BARDAGE_SEC, hl) * COLOR.a;\n" \
+		+ "\t\tfloat al = max(fwidth(lame), 0.0005);\n" \
+		+ "\t\tfloat dl = abs(fract(lame + 0.5) - 0.5);\n" \
+		+ "\t\tfloat vl = clamp(1.3 - 4.0 * al, 0.0, 1.0);\n" \
+		+ "\t\tbase *= mix(1.0, mix(0.70, 1.0,\n" \
+		+ "\t\t\tsmoothstep(0.07 - al, 0.07 + al, dl)), vl);\n" \
+		+ "\t\t// LA COUTURE, à l'ancien égout : sans elle le bardage se lit\n" \
+		+ "\t\t// comme un bâtiment repeint, pas comme un étage posé dessus.\n" \
+		+ "\t\tbase *= mix(1.0, 0.45,\n" \
+		+ "\t\t\tsmoothstep(0.11, 0.02, abs(pos_monde.y - plafond)));\n" \
+		+ "\t}\n" \
 		+ "\t// 🪟 LES FENÊTRES — une recette de surface, pas un triangle de\n" \
 		+ "\t// plus. Tout ce qui arrive ici :\n" \
 		+ "\t//   UV  = (u, L)         mètres le long de la façade, longueur\n" \
@@ -249,6 +329,31 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tbas = 0.02;\n" \
 		+ "\t\t\thaut = 2.15;\n" \
 		+ "\t\t}\n" \
+		+ "\t\t// 🏢 L'ÉTAGE AJOUTÉ PERCE PLUS GRAND : même trame que\n" \
+		+ "\t\t// dessous — sinon l'immeuble se disloque —, mais une\n" \
+		+ "\t\t// ouverture d'aujourd'hui. C'est ce qui reste lisible de\n" \
+		+ "\t\t// loin, quand la lame de bardage a fondu en teinte.\n" \
+		+ "\t\t// \U0001f3e2 DEUX ÉTAGES AJOUTÉS = DEUX RANGÉES, JAMAIS UNE\n" \
+		+ "\t\t// TROISIÈME TRANCHÉE PAR LE TOIT (auteur, 2026-09-03). Les\n" \
+		+ "\t\t// étages ajoutés ont leur PROPRE trame, accrochée à l'ancien\n" \
+		+ "\t\t// égout : celle du monde est décalée de \u00b11 m par la\n" \
+		+ "\t\t// hauteur des deux rives, et couperait une rangée en deux.\n" \
+		+ "\t\tfloat tient = 1.0;\n" \
+		+ "\t\tif (neuf) {\n" \
+		+ "\t\t\tdemi = 0.5 * min(1.90, pas * 0.66);\n" \
+		+ "\t\t\tbas = 0.50;\n" \
+		+ "\t\t\thaut = 2.48;\n" \
+		+ "\t\t\tfloat hn = h - plafond;\n" \
+		+ "\t\t\tfloat k = floor(hn / ETAGE);\n" \
+		+ "\t\t\thy = hn - k * ETAGE;\n" \
+		+ "\t\t\t// Une rangée n'apparaît qu'une fois son étage LIVRÉ.\n" \
+		+ "\t\t\ttient = (k * ETAGE + haut > montee) ? 0.0 : 1.0;\n" \
+		+ "\t\t} else if (montee > 0.05 && plafond > 0.5\n" \
+		+ "\t\t\t\t&& etage * ETAGE + haut > plafond) {\n" \
+		+ "\t\t\t// La dernière rangée d'origine traverserait la couture :\n" \
+		+ "\t\t\t// elle laisse un bandeau plein sous l'étage ajouté.\n" \
+		+ "\t\t\ttient = 0.0;\n" \
+		+ "\t\t}\n" \
 		+ "\t\tfloat bord = min(u, L - u);\n" \
 		+ "\t\tfloat dedans = smoothstep(demi + aa, demi - aa, du)\n" \
 		+ "\t\t\t* smoothstep(bas - aa, bas + aa, hy)\n" \
@@ -263,15 +368,15 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t* smoothstep(marge - 0.10 - aa, marge - 0.10 + aa, bord);\n" \
 		+ "\t\t// Le meneau, sur les ouvertures assez larges pour en avoir un.\n" \
 		+ "\t\tfloat meneau = (demi > 0.45) ? smoothstep(0.030, 0.055, du) : 1.0;\n" \
-		+ "\t\tfloat ouverture = clamp(dedans * meneau, 0.0, 1.0);\n" \
-		+ "\t\tfloat dormant = clamp(cerne - ouverture, 0.0, 1.0);\n" \
+		+ "\t\tfloat ouverture = clamp(dedans * meneau, 0.0, 1.0) * tient;\n" \
+		+ "\t\tfloat dormant = clamp(cerne * tient - ouverture, 0.0, 1.0);\n" \
 		+ "\t\t// 🔴 LOIN, ON N'ÉCRIT PLUS — ON ASSOMBRIT. Une fenêtre tient sur\n" \
 		+ "\t\t// deux pixels à la vue par défaut : on rend la main à la PART\n" \
 		+ "\t\t// VITRÉE du mur, un enduit plus sombre, sans scintillement.\n" \
 		+ "\t\tfloat net = clamp(1.15 - 1.8 * aa, 0.0, 1.0);\n" \
 		+ "\t\tfloat part = clamp(2.0 * demi * (haut - bas)\n" \
 		+ "\t\t\t/ max(pas * ETAGE, 0.1), 0.0, 1.0);\n" \
-		+ "\t\tfloat vitre = mix(part, ouverture, net);\n" \
+		+ "\t\tfloat vitre = mix(part * tient, ouverture, net);\n" \
 		+ "\t\t// COLOR.a garde le volume sous le percement.\n" \
 		+ "\t\tbase = mix(base, min(base * 1.28 + 0.012, vec3(1.0)), dormant * net);\n" \
 		+ "\t\tbase = mix(base, VITRE * mix(1.0, 0.45, ombre) * COLOR.a, vitre);\n" \
@@ -365,11 +470,19 @@ static func bois(teinte: Color) -> StandardMaterial3D:
 ## 🔲 LE MASQUE DE SÉLECTION : l'objet choisi, redessiné seul en blanc plat
 ## dans une vue à part, d'où le contour est tiré. Non éclairé (on ne lit que la
 ## couverture) et faces non éliminées (un dos manquant troue le trait).
-static func masque() -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.albedo_color = Color.WHITE
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+static func masque() -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = "shader_type spatial;\n" \
+		+ "render_mode unshaded, cull_disabled;\n" \
+		+ DENSE_DECL \
+		+ "void vertex() {\n" \
+		+ DENSE_VERTEX \
+		+ "}\n" \
+		+ "void fragment() {\n" \
+		+ "\tALBEDO = vec3(1.0);\n" \
+		+ "}\n"
+	var m := ShaderMaterial.new()
+	m.shader = sh
 	return m
 
 

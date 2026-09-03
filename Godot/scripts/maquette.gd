@@ -32,6 +32,8 @@ const Constructeur := preload("res://scripts/constructeur.gd")
 const Materiaux := preload("res://scripts/materiaux.gd")
 const CameraAxo := preload("res://scripts/camera_axo.gd")
 const Ville := preload("res://scripts/ville.gd")
+## 🪜 Pour les seuls contrôles de progressivité de `--essai`.
+const Energie := preload("res://scripts/energie.gd")
 const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
@@ -352,6 +354,31 @@ func _essai_interface() -> void:
 	print("  et cela épargnerait %.0f MWh/an sur %.0f — soit %.2f %% de la ville"
 		% [mwh, conso, 100.0 * mwh / maxf(conso, 1.0)])
 
+	# 🏢 LA FICHE QUI DENSIFIE (2026-09-03). Deux captures au même cadrage :
+	# l'îlot réglé à +2 étages, puis sa miniature dans les deux états.
+	# 🪜 Le curseur est posé à LA MOITIÉ des bâtiments : la miniature doit
+	# montrer un îlot à moitié monté, pas un îlot entier.
+	var moitie := maxi(1, ville.dense_batiments(49) / 2)
+	_viser_objet("i", 49, 150.0)
+	await _fiche("i", 49)
+	interface.poser("dense", 2)
+	interface.viser_dense(moitie)
+	await _fiche("i", 49)
+	await _capturer("interface_densifier")
+	await _capturer_apercu("apercu_densifier_apres")
+	interface.regarder_avant(true)
+	await _fiche("i", 49)
+	await _capturer_apercu("apercu_densifier_avant")
+	interface.regarder_avant(false)
+	interface.viser_dense(0)
+	interface.poser("dense", 2)   # reposer le même réglage l'enlève
+	var part_m := float(moitie) / float(maxi(ville.dense_batiments(49), 1))
+	print("  îlot 49 · %d des %d bâtiments à +2 étages : %d logements de plus, %.0f k€, %.0f mois"
+		% [moitie, ville.dense_batiments(49),
+		int(roundf(ville.dense_logements_tranche(49, 0.0, part_m, 2))),
+		ville.cout_dense_ke(49, 0.0, part_m, 2),
+		ville.duree_dense_mois(2, 0.0, part_m)])
+
 	# 🎓🏛️ LES DEUX MENUS ET LEURS DEUX PORTES (79 · 80 · 81). Trois captures :
 	# la fiche de l'îlot 36, qui reste une fiche d'ÎLOT avec un bouton en plus,
 	# puis les deux menus, qui sont d'AUTRES fiches et prennent sa place.
@@ -638,6 +665,8 @@ ESSAI — la ville, sans décision")
 
 	await _essai_berge()
 
+	await _essai_dense()
+
 	# De près, sur la barre de 1974 : les volumes tiennent-ils après le
 	# découpage en nœuds, et le clic retrouve-t-il l'objet sous le curseur.
 	_repere("barre")
@@ -779,6 +808,17 @@ ESSAI — la ville, sans décision")
 		return
 	print("  pose disponible au mois 0 : %d logements encore à terre, caisse %.0f k€ ✅"
 		% [int(degats0["logements_perdus"]), ville.caisse_ke(mois)])
+
+	# 🪜 LE CONTRÔLE NOMMÉ DE LA PROGRESSIVITÉ, côté toit : sur le MÊME îlot, les
+	# 30 premiers pour cent se remboursent plus vite que les 30 derniers. Sinon
+	# le curseur est redevenu un robinet, et s'arrêter à mi-toit ne veut rien
+	# dire. À PROGRESSIVITE = 0, les deux nombres se rejoignent.
+	var t30 := Energie.rentabilite_tranche_annees(ville, 32, 0.0, 0.3, mois)
+	var d30 := Energie.rentabilite_tranche_annees(ville, 32, 0.7, 1.0, mois)
+	print("  îlot 32 · premiers 30 %% : %.0f k€ remboursés en %.0f ans ; derniers 30 %% : %.0f k€ en %.0f ans  %s"
+		% [ville.cout_solaire_ke(32, 0.3, mois), t30,
+		Energie.cout_pose_ke(ville, 32, 0.7, 1.0, mois), d30,
+		"✅" if t30 < d30 else "❌"])
 
 	# Le seul geste du prototype, vérifié sur la barre : mi-pose puis 100 %.
 	var caisse_avant := ville.caisse_ke(mois)
@@ -1102,6 +1142,103 @@ BERGE — trois états francs")
 ## même siècle.
 ##
 ## Rend le fid de l'îlot que la caisse ne peut PAS payer, ou −1 : c'est celui
+## 🏢 DENSIFIER — trois captures au MÊME cadrage, et c'est le critère : après la
+## PREMIÈRE tranche, la moitié de l'îlot est montée et l'autre non, et elle le
+## reste. Si les trois images se ressemblent, ou si l'îlot monte d'un bloc, le
+## rang de 07 ne passe pas jusqu'au shader.
+## 🪜 Le second contrôle est imprimé : la première tranche doit coûter MOINS
+## CHER par logement que la seconde. Sinon la progressivité n'est pas branchée.
+func _essai_dense() -> void:
+	print("\nDENSIFIER — du bâtiment le plus bas au plus haut, un cran à la fois")
+	# Celui qui gagne le plus de logements par étage : c'est là que la montée
+	# se voit, et c'est là que le prix mord.
+	var fid := -1
+	for f in ville.ilots:
+		if fid < 0 or ville.dense_logements_etage(f) \
+				> ville.dense_logements_etage(fid):
+			fid = f
+	if fid < 0 or ville.dense_logements_etage(fid) <= 0:
+		push_error("aucun îlot ne peut monter — voir DENSE_INTERDIT dans 07")
+		get_tree().quit(1)
+		return
+	var n := ville.dense_batiments(fid)
+	_viser_objet("i", fid, 170.0)
+	pivot.caler(120.0, 26.0)
+	selection.sel_couche = "i"
+	selection.sel_fid = fid
+	interface.montrer("i", fid, false)
+	_rafraichir(true)
+	await get_tree().process_frame
+	var log0 := ville.valeur("i", fid, "logements", 0.0)
+	var conso0: float = ville.indicateurs(0.0)["conso_mwh"]
+	await _capturer("essai_densifier_avant")
+
+	# 🧪 La caisse est remplie : ce qu'on juge ici est l'IMAGE, et le prix a
+	# son propre repère plus bas.
+	var etages := Ville.DENSE_ETAGES_MAX
+	var moitie := float(maxi(1, n / 2)) / float(n)
+	var cout1 := ville.cout_dense_ke(fid, 0.0, moitie, etages)
+	var neufs1 := ville.dense_logements_tranche(fid, 0.0, moitie, etages)
+	ville.crediter_essai_ke(cout1)
+	if not ville.densifier(fid, moitie, etages, 0.0):
+		push_error("îlot %d : première tranche refusée au mois 0" % fid)
+		get_tree().quit(1)
+		return
+	var duree1 := ville.duree_dense_mois(etages, 0.0, moitie)
+	print("  îlot %d · %d bâtiments montables · +%d étages"
+		% [fid, n, etages])
+	print("  tranche 1 — %d bâtiments : %.0f k€ pour %.0f logements (%.1f k€ le logement), %.0f mois"
+		% [maxi(1, n / 2), cout1, neufs1, cout1 / maxf(neufs1, 1.0), duree1])
+
+	# 🪜 LE PALIER : la première tranche est livrée, la seconde n'est pas
+	# engagée. La moitié de l'îlot est montée, l'autre non, et elle le reste.
+	mois = duree1 + 0.1
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_densifier_palier")
+
+	var cout2 := ville.cout_dense_ke(fid, moitie, 1.0, etages)
+	var neufs2 := ville.dense_logements_tranche(fid, moitie, 1.0, etages)
+	ville.crediter_essai_ke(cout2)
+	if not ville.densifier(fid, 1.0, etages, mois):
+		push_error("îlot %d : seconde tranche refusée au mois %.0f" % [fid, mois])
+		get_tree().quit(1)
+		return
+	var duree2 := ville.duree_dense_mois(etages, moitie, 1.0)
+	print("  tranche 2 — les %d derniers : %.0f k€ pour %.0f logements (%.1f k€ le logement), %.0f mois"
+		% [n - maxi(1, n / 2), cout2, neufs2, cout2 / maxf(neufs2, 1.0), duree2])
+
+	mois += duree2 + 0.1
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	await get_tree().process_frame
+	await _capturer("essai_densifier_apres")
+	var log1 := ville.valeur("i", fid, "logements", mois)
+	var conso1: float = ville.indicateurs(mois)["conso_mwh"]
+	print("  logements de l'îlot %.0f → %.0f · conso de la ville %.0f → %.0f MWh/an"
+		% [log0, log1, conso0, conso1])
+	# 🪜 LE CONTRÔLE NOMMÉ DE LA PROGRESSIVITÉ : on monte les bâtiments du plus
+	# bas au plus haut, donc le premier logement posé doit coûter moins que le
+	# dernier. À PROGRESSIVITE = 0, les deux prix se rejoignent — et c'est le
+	# jeu d'avant le 2026-09-03.
+	var u1 := cout1 / maxf(neufs1, 1.0)
+	var u2 := cout2 / maxf(neufs2, 1.0)
+	print("  %s la première tranche coûte %.1f k€ le logement, la dernière %.1f"
+		% ["✅" if u1 < u2 else "❌", u1, u2])
+	# 🔴 LE CONTRÔLE NOMMÉ DE LA DETTE 59 : une densification pure ne doit
+	# pas s'autofinancer. Sur les 240 mois du jeu, le loyer net rentré doit
+	# rester SOUS le prix payé — sinon monter d'un étage est de l'argent gratuit.
+	var rentre := ville.solde_dense_ke(float(Ville.HORIZON_MOIS))
+	print("  sur 20 ans : %.0f k€ payés, %.0f k€ de loyer net rentré  %s"
+		% [cout1 + cout2, rentre,
+		"✅ ne s'autofinance pas" if rentre < cout1 + cout2 else "❌ s'autofinance"])
+	_sur_reset()
+	mois = 0.0
+	_rafraichir(true)
+	pivot.caler(30.0, 32.0)
+
+
 ## 🔧 Payer, attendre, regarder. Le seul contrôle qui prouve que la géométrie
 ## neuve existe et qu'elle recouvre bien la ruine.
 func _essai_reparation() -> void:
@@ -1870,6 +2007,18 @@ func _peindre() -> void:
 						ville.valeur("i", fid, "part_toit_vert", mois))
 					mj.set_instance_shader_parameter("part_plate",
 						ville.valeur("i", fid, "_part_plate", mois))
+					# 🏢 LA MONTÉE : avancement, part d'un bâtiment, mètres. Le
+					# shader lève un bâtiment entier dès que son rang passe
+					# sous l'avancement. ⚠️ Le nœud RÉPARÉ ne porte pas le canal
+					# (07 ne le range pas) : un bâtiment relevé après coup
+					# reste à sa hauteur.
+					# ⚠️ UN Vector4 ET JAMAIS UNE Color : Godot fait passer une
+					# couleur en espace linéaire, et 5,4 m de surélévation en
+					# ressortaient à ~50 — la ville poussait en tours.
+					var dn := ville.etat_dense(fid, mois)
+					mj.set_instance_shader_parameter("densification", Vector4(
+						float(dn["avancement"]), float(dn["pas"]),
+						float(dn["metres"]), 0.0))
 
 
 
@@ -2081,6 +2230,15 @@ func _maj_contour() -> void:
 			1.0 / maxf(float(taille.y), 1.0)))
 		rect_contour.material.set_shader_parameter("rayon", CONTOUR_PX)
 
+	# 🏢 LA MÊME MONTÉE QUE LA VILLE, sinon le trait de sélection reste sur le
+	# volume d'avant — vu à l'écran le 2026-09-03. Le masque a le maillage de
+	# l'îlot, donc son canal ; il ne lui manquait que le curseur.
+	if couche == "i":
+		var dn := ville.etat_dense(fid, mois)
+		maille_masque.set_instance_shader_parameter("densification", Vector4(
+			float(dn["avancement"]), float(dn["pas"]),
+			float(dn["metres"]), 0.0))
+
 	# LA caméra recopiée : c'est ça, et rien d'autre, qui fait que le trait
 	# épouse la vue.
 	cam_masque.global_transform = pivot.camera.global_transform
@@ -2123,7 +2281,7 @@ func _maj_apercu() -> void:
 				_voie_de_berge(fid) if couche == "b" else 0.0)
 	apercu.viser(pivot.lacet)
 	apercu.regler(float(d["equipe"]), float(d["verdi"]), float(d["plate"]),
-		bool(d["futur"]), float(d["berge"]))
+		bool(d["futur"]), float(d["berge"]), d["dense"] as Vector4)
 	# Les voitures du morceau montré. La signature évite de les reposer à chaque
 	# image : elles ne changent qu'au survol ou au mois. Un pont cassé n'en a
 	# pas — sa miniature est un bout de ville, pas un échantillon.
