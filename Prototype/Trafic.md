@@ -89,19 +89,19 @@ Ce qui prouverait que c'est cassé : une voiture ou un arbre sur une image de di
 🟠 **Deux limites assumées** : les créneaux traversent le carrefour, donc un marcheur coupe le nœud en diagonale au lieu de suivre un passage — un piéton qui bouge n'est pas une voiture garée en travers ; et une rue rendue aux piétons garde son monde **sur les trottoirs**, la chaussée reste vide.
 🟠 **Ce qu'aucun d'eux ne change encore** : ni la consommation, ni le CO₂, ni un indicateur. Ils disent la rue, ils ne la comptent pas — la question du levier est la même que celle de l'arbre, deux paragraphes plus haut.
 
-## Les voitures font le tour — 2026-09-01
+## Les voitures font le tour — virages et détours revus le 2026-09-05
 
 🔄 **Une voiture ne revient plus en arrière au bout de son segment : elle passe au suivant.** Avant, chacune bouclait sur son morceau droit — **médiane 19,9 m, 43 % en font moins de 10** —, donc un retour en arrière toutes les 2,4 s sous les yeux. Maintenant elle tourne le coin, traverse le carrefour et continue. **864 arcs orientés**, chacun désignant un seul suivant : la continuation la plus droite.
 
 🔴 **La table est une PERMUTATION, et c'est elle qui tient tout.** À chaque nœud, les arcs qui entrent sont appariés **un à un** à ceux qui sortent (appariement exact, degrés 1 à 5). Donc les circuits sont fermés et couvrent tout le réseau, et **une rue ne peut pas se vider au profit d'une autre**. « Le plus droit devant » seul ne suffisait pas : deux entrées choisissaient la même sortie, et tout le trafic finissait par se ramasser dans quelques boucles. Résultat : **31 circuits**, du plus long — 12 km, 112 tronçons — aux **65 impasses**, où le demi-tour est le seul mouvement possible. Simulé sur 10 minutes : les tronçons s'écartent de **±3 voitures** de leur compte de départ, deux se retrouvent momentanément vides sur 173.
 
-✅ **La décision 62 tient** : la table est calculée **une fois au chargement**, aucune voiture ne cherche son chemin, il n'y a ni file d'attente ni nœud par véhicule. Le seul cas où une voiture choisit est le clic qui ferme une rue — elle prend alors la sortie ouverte la plus droite, et la rue fermée se vide au coin au lieu d'avaler les voitures.
+✅ **La décision 62 tient** : aucune voiture ne cherche son chemin, ni file d'attente ni nœud par véhicule. Les branches ouvertes sont réappariées après fermeture ou réparation : chaque sortie garde une seule entrée, donc le détour ne concentre plus les circuits. Les créneaux cachés des rues coupées rejoignent une branche ouverte quand elle existe.
 
 **La densité reste une propriété de la rue.** Ce n'est plus le rang de semis d'une voiture qui décide si on la voit, c'est un **quota par tronçon** tenu à la pulsation : même compte qu'avant — **329 visibles sur 963** —, mais celles qui ne tiennent pas dedans s'effacent **au carrefour** au lieu du milieu de la rue.
 
-**Ce que ça coûte** : le shader anime toujours seul, à la fréquence de l'écran ; le CPU ne touche que les deux ou trois voitures qui changent d'arc dans l'image — **29 µs par image** sur les 7 500 du script, mesuré au banc. Une horloge (`temps_trafic`) est partagée avec le GPU, sans quoi le CPU ne saurait pas où le shader a posé la voiture.
+**Ce que ça coûte** : animation GPU, texture de trajectoires de **1,27 Mio**, recalcul des seuls virages modifiés (**11 ms** pour fermer 55, contrôle sans rendu). Banc RX 9060 XT : circuit **46 µs/image**, affectation **23 ms**, axe **9,09 ms/image** ; une autre maquette tourne pendant la mesure, comparaison de rendu non isolée. Une image lente conserve maintenant le temps restant, même si plusieurs segments sont franchis.
 
-🟠 **Ce qui reste à juger, et c'est neuf** : au coin, la voiture **pivote d'un coup** — pas d'arc de braquage. À voir sur `wehrau_essai_axe.png` puis `wehrau_essai_axe_2s.png`, **même cadrage, deux secondes plus tard, rien d'autre n'a bougé**.
+🚗 **Les virages sont arrondis**, position et direction se raccordent à la file suivante, impasses comprises. Aperçu numéroté : `QGIS/rendus/wehrau_trafic_mouvement.gif`, produit avec `Godot --path Godot --script res://outils/apercu_trafic.gd` (80 PNG à assembler). Le calcul des détours couvre aussi les nœuds devenus origines après fermeture ; un anneau isolé survit à la contraction. **Validé** : chaîne, `--essai`, `outils/essai_trafic.gd` (chemins contre un calcul indépendant, fermetures multiples, raccords, huit secondes en une image ou 480). **À juger** : le braquage ; défauts : saut au coin, voiture sur rue fermée. **Limite conservée** : pas de priorités ni d'évitement des collisions aux intersections.
 
 ## Ce que ça coûte à la machine — 2026-09-01
 

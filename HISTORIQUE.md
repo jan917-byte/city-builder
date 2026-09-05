@@ -6,6 +6,10 @@
 
 ---
 
+**2026-09-05 — godot : trafic, trajets et intersections.** Virages continus sur GPU, branches ouvertes réappariées après fermeture, temps de déplacement conservé entre images.
+Référence des détours étendue aux futurs points de départ ; les anneaux isolés gardent une ancre. Flux agrégés conservés (62), sans priorité ni collision individuelle.
+Chaîne, essai rendu et régressions ciblées validés ; aperçu animé numéroté du carrefour 55. Les changements préexistants restent hors du commit.
+
 **2026-09-05 — godot : passe graphique sur `codex/renouveau-visuel`.** Lumière douce, matières procédurales, végétation animée et interface ivoire/vert ; autorisation graphique donnée par l’auteur, aucune règle de simulation modifiée.
 Le diagnostic éteint les rides et le grain ; eau et arbres partagent leurs recettes avec les miniatures. Les modifications préexistantes du trafic restent hors de ce commit.
 Chaîne, partie de contrôle, menus et banc exécutés ; captures avant/après locales dans `QGIS/rendus/`, mesures dans `Prototype/Trafic.md`.
