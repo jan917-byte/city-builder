@@ -1,5 +1,5 @@
 extends RefCounted
-# Cinq matériaux, zéro texture (Direction artistique l.19).
+# Matières procédurales, sans texture importée (Direction artistique l.19).
 # La couleur voyage dans ARRAY_COLOR, donc UN matériau suffit pour les 69 îlots.
 
 
@@ -144,6 +144,13 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tvec3 normale_monde = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);\n" \
 		+ "\tfloat vers_le_ciel = normale_monde.y;\n" \
 		+ "\tfloat rugosite = 0.95;\n" \
+		+ "\t// Patine large : reste stable à tous les zooms, avant les équipements.\n" \
+		+ "\tfloat patine = bruit(pos_monde.xz * 0.32 + vec2(pos_monde.y * 0.17));\n" \
+		+ "\tbase *= mix(0.94, 1.04, patine);\n" \
+		+ "\tif (abs(normale_monde.y) < 0.30 && UV.y > 1.05) {\n" \
+		+ "\t\tfloat corniche = 1.0 - smoothstep(0.0, 0.20, abs(pos_monde.y - plafond + 0.18));\n" \
+		+ "\t\tbase *= 1.0 - corniche * 0.16;\n" \
+		+ "\t}\n" \
 		+ "\t// 🏢 CE QUI EST NEUF, ET ÇA SE JOUE À LA HAUTEUR. Le mur\n" \
 		+ "\t// s'ÉTIRE au lieu de s'allonger, mais toutes les recettes de\n" \
 		+ "\t// surface se comptent en Y MONDE : au-dessus de l'ancien égout,\n" \
@@ -379,7 +386,10 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat vitre = mix(part * tient, ouverture, net);\n" \
 		+ "\t\t// COLOR.a garde le volume sous le percement.\n" \
 		+ "\t\tbase = mix(base, min(base * 1.28 + 0.012, vec3(1.0)), dormant * net);\n" \
-		+ "\t\tbase = mix(base, VITRE * mix(1.0, 0.45, ombre) * COLOR.a, vitre);\n" \
+		+ "\t\tfloat interieur = alea_pt(vec2(floor(u / pas), etage) + vec2(alea * 53.0));\n" \
+		+ "\t\tvec3 reflet = mix(VITRE, vec3(0.12, 0.18, 0.20), 0.25 + 0.45 * (hy / ETAGE));\n" \
+		+ "\t\treflet = mix(reflet, vec3(0.32, 0.25, 0.16), step(0.86, interieur) * 0.55);\n" \
+		+ "\t\tbase = mix(base, reflet * mix(1.0, 0.60, ombre) * COLOR.a, vitre);\n" \
 		+ "\t\trugosite = mix(rugosite, 0.18, vitre * net);\n" \
 		+ "\t}\n" \
 		+ "\t// 🌊 L'ÉTAT D'UNE BERGE, DANS LA VILLE VIVANTE. `calque` ne\n" \
@@ -440,21 +450,22 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 	return m
 
 
-static func eau(teinte: Color) -> StandardMaterial3D:
-	var m := surface(0.25)
-	m.vertex_color_use_as_albedo = false
-	m.albedo_color = teinte
-	m.metallic = 0.15
-	m.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+static func terrain() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/terrain.gdshader")
 	return m
 
 
-static func feuillage() -> StandardMaterial3D:
-	var m := surface(0.98)
-	# Godot MULTIPLIE couleur d'instance et couleur de sommet : la sous-face
-	# reste sombre quelle que soit la teinte tirée.
-	m.vertex_color_use_as_albedo = true
-	m.cull_mode = BaseMaterial3D.CULL_BACK
+static func eau(teinte: Color) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/eau.gdshader")
+	m.set_shader_parameter("teinte", teinte)
+	return m
+
+
+static func feuillage() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/feuillage.gdshader")
 	return m
 
 
@@ -574,10 +585,9 @@ static func soleil(teinte: Color, portee_ombre := 3000.0) -> DirectionalLight3D:
 	l.name = "Soleil"
 	l.rotation_degrees = Vector3(-48.0, -125.0, 0.0)
 	l.light_color = teinte
-	# 🔄 Monté le 2026-08-18 pendant que l'ambiant baissait : la somme ne bouge
-	# presque pas, c'est le PARTAGE soleil/ciel qui change. Ce contraste est ce
-	# qui fait lire un enduit crème comme crème et non comme gris.
-	l.light_energy = 1.45
+	# Ombres douces : leur pénombre se règle en angle, pas en floutant l'image.
+	l.light_energy = 1.25
+	l.light_angular_distance = 1.6
 	l.shadow_enabled = true
 	l.directional_shadow_max_distance = portee_ombre
 	return l
@@ -591,14 +601,13 @@ static func environnement(ciel: Color, ambiant: Color) -> Environment:
 	e.background_color = ciel
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = ambiant
-	# 🔄 Baissé le 2026-08-18 : à 0,85 l'ambiant bleu du ciel repeignait les
-	# façades à l'ombre. Voir `AMBIANT` dans palette.py.
-	e.ambient_light_energy = 0.74
+	# Retour à un ciel plus présent ; sa teinte froide est dans palette.py.
+	e.ambient_light_energy = 0.85
 
 	e.ssao_enabled = true
-	e.ssao_radius = 2.0
-	e.ssao_intensity = 2.4
-	e.ssao_power = 1.5
+	e.ssao_radius = 1.4
+	e.ssao_intensity = 1.15
+	e.ssao_power = 1.2
 	e.ssao_detail = 0.5
 
 	# ⚠ Le SSAO travaille en espace vue : son rayon se comporte autrement en

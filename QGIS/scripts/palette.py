@@ -262,8 +262,8 @@ SOLEIL = "#FFF2DC"                     # lumière chaude, basse en intensité
 # 🔄 RÉCHAUFFÉ ET AFFAIBLI le 2026-08-18 (de #8FA0AE à 0,85 d'énergie) : sur
 # des enduits clairs et neutres, ce bleu repeignait toute façade à l'ombre et
 # la ville avait l'air d'un jour de pluie.
-AMBIANT = "#A2A29C"                    # le bleu du ciel dans les ombres
-FEUILLAGE = "#8FB177"                  # la canopée instanciée
+AMBIANT = "#ABBAC6"                    # ombres fraîches sous le soleil chaud
+FEUILLAGE = "#83A879"                  # la canopée instanciée
 TRONC = "#8A7A66"
 
 

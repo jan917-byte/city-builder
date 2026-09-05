@@ -6,6 +6,11 @@
 
 ---
 
+**2026-09-05 — godot : passe graphique sur `codex/renouveau-visuel`.** Lumière douce, matières procédurales, végétation animée et interface ivoire/vert ; autorisation graphique donnée par l’auteur, aucune règle de simulation modifiée.
+Le diagnostic éteint les rides et le grain ; eau et arbres partagent leurs recettes avec les miniatures. Les modifications préexistantes du trafic restent hors de ce commit.
+Chaîne, partie de contrôle, menus et banc exécutés ; captures avant/après locales dans `QGIS/rendus/`, mesures dans `Prototype/Trafic.md`.
+
+
 
 **2026-09-03 (session 83) — un cran, un bâtiment ; et on commence par le meilleur.** Deux demandes de l'auteur en une phrase. ① **Densifier se dose au curseur**, un cran par bâtiment, comme les panneaux : on engage une tranche, on paie, on reprend plus tard au cran atteint. Les deux boutons ne portent plus que la **hauteur**, et elle se verrouille au premier chantier — 🔴 contrainte du shader, qui n'a qu'une hauteur pour tout l'îlot. `07` exporte le **profil des paliers** (`dense_cumul`) : monter le plus petit bâtiment ne loge pas autant que monter le plus grand.
 ② **Le prix est progressif**, un seul nombre (`PROGRESSIVITE` = 0,4, haut de `energie.gd`) pour les panneaux **et** les étages : le premier posé coûte 0,6 fois le prix moyen et rend 1,4 fois, le dernier l'inverse. 🔴 **Aucun total ne bouge** — les deux primitives valent 1 en 1 —, donc tout le level design mesuré reste valide : toit entier 292 k€ / 10 ans, îlot 50 entier 5 510 k€. Mesuré : îlot 32, 30 premiers % = 63 k€ / 6 ans contre 112 k€ / 18 ans pour les 30 derniers ; îlot 50, 75 contre 113 k€ le logement.

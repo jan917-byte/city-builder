@@ -22,12 +22,12 @@ const Apercu := preload("res://scripts/apercu.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 
-const FOND := Color8(247, 243, 231, 252)
-const FOND_FORT := Color8(232, 224, 200, 255)
-const BORD := Color8(118, 108, 80, 90)
-const TEXTE := Color8(38, 44, 40)
-const GRIS := Color8(112, 108, 92)
-const ACCENT := Color8(146, 106, 30)
+const FOND := Color8(247, 248, 242, 252)
+const FOND_FORT := Color8(226, 235, 227, 255)
+const BORD := Color8(92, 117, 105, 65)
+const TEXTE := Color8(29, 48, 43)
+const GRIS := Color8(95, 112, 103)
+const ACCENT := Color8(39, 101, 84)
 ## Le jaune des bandeaux, des filets et du bouton qui engage : c'est lui qui
 ## fait « jeu » plutôt que « document ». Jamais sous du texte long.
 const ACCENT_VIF := Color8(226, 168, 44)
@@ -38,10 +38,10 @@ const ALERTE := Color8(194, 74, 53)
 ## C'est le seul endroit du prototype qui n'est pas du papier : la barre d'outils
 ## est la MACHINE, les panneaux sont le DOCUMENT. Sans ce contraste, une colonne
 ## d'icônes crème sur une ville pastel disparaît.
-const RAIL_FOND := Color8(52, 44, 52, 252)
-const RAIL_TUILE := Color8(70, 60, 70, 255)
-const RAIL_SURVOL := Color8(92, 79, 90, 255)
-const RAIL_ICONE := Color8(238, 228, 205)
+const RAIL_FOND := Color8(27, 48, 44, 252)
+const RAIL_TUILE := Color8(43, 66, 60, 255)
+const RAIL_SURVOL := Color8(61, 91, 80, 255)
+const RAIL_ICONE := Color8(230, 239, 225)
 # 🔧 LES TROIS COULEURS DE LA VUE CHANTIERS, aussi dans le shader
 # (`materiaux.objet`, en linéaire) : n'en changer qu'une fait mentir la légende.
 const CASSE := Color8(220, 58, 48)
@@ -60,7 +60,7 @@ const CHANTIER_MOTS := {
 ## nombre : il en faut deux pour distinguer « 40 % posés » de « 40 % en route
 ## vers 72 % ». Elle ne se touche pas — le réglage est le curseur d'en dessous.
 class Jauge extends Control:
-	const RESTE := Color8(205, 201, 183)         # le toit encore nu
+	const RESTE := Color8(214, 222, 211)         # le toit encore nu
 	const VISEE := Color8(174, 147, 74)          # l'objectif demandé, pas encore atteint
 	const POSE := Color8(221, 171, 49)           # les panneaux réellement en place
 
@@ -343,16 +343,16 @@ func _boite() -> StyleBoxFlat:
 	sb.set_content_margin_all(13)
 	# L'ombre portée est ce qui décolle le panneau de la ville : à 3 px elle
 	# n'existait pas, et tout avait l'air imprimé sur la carte.
-	sb.shadow_color = Color(0.14, 0.12, 0.07, 0.30)
-	sb.shadow_size = 11
-	sb.shadow_offset = Vector2(0, 4)
+	sb.shadow_color = Color(0.06, 0.12, 0.10, 0.22)
+	sb.shadow_size = 16
+	sb.shadow_offset = Vector2(0, 6)
 	return sb
 
 
 func _creer_theme() -> Theme:
 	var t := Theme.new()
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color8(252, 249, 238, 235)
+	normal.bg_color = Color8(252, 253, 248, 245)
 	normal.border_color = BORD
 	normal.set_border_width_all(1)
 	normal.set_corner_radius_all(9)
@@ -360,7 +360,7 @@ func _creer_theme() -> Theme:
 	normal.content_margin_left = 12
 	normal.content_margin_right = 12
 	var survol := normal.duplicate()
-	survol.bg_color = Color8(246, 231, 190, 255)
+	survol.bg_color = Color8(226, 239, 222, 255)
 	survol.border_color = Color(ACCENT_VIF, 0.85)
 	# 🔧 Un bouton ENFONCÉ est jaune, pas noir : c'est l'état actif de la barre
 	# du bas, et il doit se lire du coin de l'œil sans relire le mot.
@@ -368,7 +368,7 @@ func _creer_theme() -> Theme:
 	presse.bg_color = ACCENT_VIF
 	presse.border_color = Color8(178, 126, 26)
 	var inactif := normal.duplicate()
-	inactif.bg_color = Color8(226, 221, 205, 150)
+	inactif.bg_color = Color8(219, 227, 217, 150)
 	inactif.border_color = Color(BORD, 0.45)
 	t.set_stylebox("normal", "Button", normal)
 	t.set_stylebox("hover", "Button", survol)
@@ -709,7 +709,7 @@ func _panneau_rail() -> void:
 	# un trou dans la ville au lieu d'un objet posé dessus.
 	sb.shadow_color = Color(0.10, 0.08, 0.05, 0.38)
 	sb.shadow_size = 12
-	sb.shadow_offset = Vector2(0, 4)
+	sb.shadow_offset = Vector2(0, 6)
 	_menu_panneau.add_theme_stylebox_override("panel", sb)
 	_menu_panneau.offset_left = RAIL_X
 	_menu_panneau.offset_right = RAIL_X + RAIL_LARGEUR

@@ -2,6 +2,10 @@
 
 > Étape 5 ouverte le 2026-08-21. Le trafic est un flux agrégé figuré par une poignée de véhicules : aucune voiture ne cherche son chemin.
 
+## Passe graphique — 2026-09-05 · `codex/renouveau-visuel`
+Lumière et ombres adoucies, eau et feuillage animés, grain du sol et des façades, fenêtres nuancées, arbres à huit méridiens, interface ivoire et vert profond. Comparer `QGIS/rendus/visuel-avant/wehrau_interface_ilot.png` et `QGIS/rendus/wehrau_interface_ilot.png` ; puis les vues de rivière, de densification et de diagnostic.
+Validé : chaîne complète, `--essai`, `--interface`, aucun message d’erreur. Banc RX 9060 XT, 1600 × 900 : ville **9,19 → 9,30 ms**, axe **7,68 → 7,99**, cœur **9,71 → 8,26**, place **8,82 → 8,52** (une passe chacun). Budget géométrique exporté inchangé ; triangles rendus de la ville **930 755 → 1 113 118**, ombres comprises. À juger en mouvement : rides et feuillage ; défauts à signaler : scintillement, diagnostic animé, miniature incohérente.
+
 ## Le critère
 
 > **Une rue à `charge = 1,00` est désagréable à regarder.**

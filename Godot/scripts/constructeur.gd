@@ -699,7 +699,7 @@ static func _brin(v: PackedVector3Array, n: PackedVector3Array,
 	_fondre(v, n, c, i, cy, t, pied.y, pied.y + hauteur, 0.58, 1.16)
 
 
-## Une sphère à six méridiens, dégradé vertical bakké en couleur de sommet :
+## Huit méridiens, deux anneaux : silhouette plus ronde à budget comparable.
 ## sans lui, une sphère sous une lumière fixe est un disque plat.
 static func _lobe(v: PackedVector3Array, n: PackedVector3Array,
 		c: PackedColorArray, i: PackedInt32Array,
@@ -707,8 +707,8 @@ static func _lobe(v: PackedVector3Array, n: PackedVector3Array,
 	var s := SphereMesh.new()
 	s.radius = rayon
 	s.height = rayon * 1.85
-	s.radial_segments = 6
-	s.rings = 3
+	s.radial_segments = 8
+	s.rings = 2
 	_fondre(v, n, c, i, s, Transform3D(Basis(), centre),
 		centre.y - rayon * 0.93, centre.y + rayon * 0.93, bas, haut)
 

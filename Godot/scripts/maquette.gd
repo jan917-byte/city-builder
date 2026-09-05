@@ -1424,8 +1424,8 @@ func _construire() -> void:
 
 	# 🔄 Le terrain était un CHAMP D'ALTITUDE déplié en grille ; la carte est
 	# plate depuis le 2026-08-12. Murs de quai et fond du chenal sont dedans,
-	# pas dans l'eau, dont le matériau est lisse et d'une seule teinte.
-	_fusionne("Terrain", Constructeur.maillage(donnees["terrain"]), mat)
+	# pas dans l'eau, dont les rides restent dans le matériau.
+	_fusionne("Terrain", Constructeur.maillage(donnees["terrain"]), Materiaux.terrain())
 	_fusionne("Eau", Constructeur.maillage(donnees["eau"]),
 		Materiaux.eau(Donnees.teinte(donnees, "riviere")))
 
@@ -1915,14 +1915,10 @@ func _habiller_monde(diagnostic: bool) -> void:
 			n.visible = not diagnostic
 	var terrain := monde.get_node_or_null("Terrain") as MeshInstance3D
 	if terrain != null:
-		# `surface()` peint par couleur de sommet ; l'albédo la MULTIPLIE.
-		(terrain.material_override as StandardMaterial3D).albedo_color = \
-			Color(0.66, 0.66, 0.66) if diagnostic else Color.WHITE
+		(terrain.material_override as ShaderMaterial).set_shader_parameter("diagnostic", diagnostic)
 	var eau := monde.get_node_or_null("Eau") as MeshInstance3D
 	if eau != null:
-		(eau.material_override as StandardMaterial3D).albedo_color = \
-			Color(0.30, 0.33, 0.36) if diagnostic \
-			else Donnees.teinte(donnees, "riviere")
+		(eau.material_override as ShaderMaterial).set_shader_parameter("diagnostic", diagnostic)
 
 
 func _val(couche: String, fid: int, t: float) -> float:
