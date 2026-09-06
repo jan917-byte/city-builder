@@ -1,7 +1,7 @@
 ---
 tags: [ville, prototype, level-design]
 statut: 🎯 périmètre du prototype
-maj: 2026-09-02
+maj: 2026-09-05
 habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 ---
 
@@ -28,6 +28,10 @@ habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 > catégorie qui ne servait qu'à cette galerie disparaît. → [[Décisions arrêtées]] 71
 
 C'est la sortie attendue de la semaine 1. → [[Plan 3 mois]]
+
+## Les noms affichés
+
+La table éditoriale `Godot/data/lieux.json` porte les noms des îlots, rues et berges de la maquette. Elle se corrige à la main et ne se régénère pas avec la carte. Les numéros restent accessibles en infobulle dans les fiches. → [[Décisions arrêtées]] 82
 
 ## La carte
 

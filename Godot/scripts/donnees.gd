@@ -32,7 +32,7 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 	var d: Dictionary = brut
 	for cle in ["meta", "palette", "terrain", "masses", "sols", "eau", "berges",
 			"berges_mur", "berges_pente",
-			"voirie", "repare", "repare_voirie",
+			"voirie", "repare", "repare_voirie", "ponts_ruine", "boue",
 			"arbres", "alignements", "berges_semis", "berges_couloir",
 			"couloirs", "emprises", "objets", "riverains",
 			"crue", "reperes", "controles"]:
@@ -40,6 +40,18 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 			_fatal("clé absente du JSON : `%s`\n" % cle
 				+ "Relancer :  python QGIS/scripts/07_exporter_godot.py")
 			return {}
+
+	var boue: Dictionary = d["boue"]
+	var taille: Array = boue.get("taille", [])
+	var repere: Array = boue.get("repere", [])
+	if taille.size() != 2 or repere.size() != 4:
+		_fatal("carte de boue : taille ou repère absent")
+		return {}
+	if int(taille[0]) < 2 or int(taille[1]) < 2 \
+			or float(repere[2]) <= 0.0 or float(repere[3]) <= 0.0 \
+			or boue.get("pixels", []).size() != int(taille[0]) * int(taille[1]) * 2:
+		_fatal("carte de boue : dimensions ou pixels incohérents")
+		return {}
 
 	var o: Dictionary = d["objets"]
 	if not o.has("ilots") or not o.has("routes") or not o.has("berges"):
@@ -63,7 +75,7 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 	# 🔄 `terrain` se contrôlait à part quand c'était un champ d'altitude ;
 	# la carte étant plate, c'est un maillage comme les autres.
 	for nom in ["terrain", "masses", "sols", "eau", "berges", "berges_mur",
-			"berges_pente", "voirie", "repare", "repare_voirie"]:
+			"berges_pente", "voirie", "repare", "repare_voirie", "ponts_ruine"]:
 		var e: String = _valider_maillage(d[nom] as Dictionary, nom)
 		if e != "":
 			_fatal(e)

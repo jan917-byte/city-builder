@@ -6,6 +6,48 @@
 
 ---
 
+**2026-09-06 — godot : navigation façon Google Earth, décision 83.** Sol saisi au clic gauche, orbite avec Ctrl, zoom au pointeur, boussole et Dessus / 3D.
+Le clic sélectionne au relâchement ; les panneaux et la perte de focus terminent correctement les gestes. La portée de sélection suit le recul étendu de la caméra.
+Contrôles de gestes et passe rendue dans la ville sans échec ; aperçu `wehrau_camera_navigation.png`, ressenti à juger par l'auteur.
+
+**2026-09-06 — chaîne : suppression du dépôt artificiel au carrefour droit du pont 168.** L’auteur visait la tache isolée, pas le raccord aux accès.
+Piège payé : la hauteur d’eau au milieu d’un pont était étalée sur ses deux rives ; les ponts coupés ou fragiles lisent désormais le dépôt voisin sans en semer.
+Dix contrôles ciblés passent ; seules 336 cellules de boue changent dans l’export, carrefour contrôlé en rendu détruit / reconstruit et vue opposée.
+
+**2026-09-06 — godot : raccord de boue aux accès des ponts reconstruits.** Nettoyage progressif et irrégulier, partagé avec la miniature, sans géométrie ajoutée.
+Piège payé : rendre un tronçon propre en bloc faisait apparaître les pointes de son maillage au milieu du dépôt de crue.
+Trois ponts et angle inverse contrôlés en rendu ; deux contrôles de clic en échec dans la passe générale sont consignés dans Trafic, sans modification de la sélection.
+
+**2026-09-05 — chaîne / godot : raccords des trois ponts aux rues et quais.** Entrées évasées, trottoirs prolongés, niveaux raccordés aux berges obliques.
+Piège payé : le couronnement du quai et la promenade traversaient le tablier reconstruit ; leurs découpes réservent désormais toute sa largeur, et le mur du chenal reste sous la dalle.
+Chaîne, dix-huit contrôles et essai rendu validés ; vues opposées dans `Prototype/Trafic.md`, données de jeu et ruines conservées.
+**2026-09-05 — godot : Wehrau dans une vallée boisée.** Demande de l’auteur : ville–champs–forêt–montagnes, nuages bas sur les bords.
+Paysage exporté hors emprise jouable, champs continus, sorties réelles de l’Ilse au nord et à l’est ; recul orthographique élargi pour ne pas couper les versants.
+Essai rendu général, vues opposées et diagnostic validés ; aperçus et mesures dans `Prototype/Trafic.md`, « La vallée ».
+**2026-09-05 — godot / chaîne : dépôt de crue organique et trois ponts retravaillés.** La boue traverse les limites de supports ; les ponts portent dalles, appuis et garde-corps, les ruines montrent des ruptures irrégulières.
+Pièges corrigés : le relief sous l’eau coupait la chaussée du tablier ; les débris ne doivent pas rester sous le neuf, ni le socle de miniature boucher le pont détruit.
+Douze contrôles ciblés, partie de contrôle rendue, vues des trois ponts et miniatures vérifiés ; banc à 82–95 ips. Source et données de jeu inchangées, aucun arbitrage ajouté.
+
+**2026-09-05 — godot / chaîne : routes et berges corrigées depuis la capture du quai.** Jonctions des quais déplacés recousues, carrefours sans superpositions, trottoirs dégagés et hauteurs de voirie continues.
+Arrondis partagés par le chenal et les quais, talus continus ; les champs conservent leurs rives. Le sondage de chaussée lit les surfaces effectivement dessinées.
+Neuf contrôles ciblés, chaîne et essai Godot rendus validés ; références et huit vues dans `QGIS/rendus/correction_routes_berges/` et `QGIS/rendus/`. Aucun arbitrage de design ajouté.
+
+**2026-09-05 — godot / chaîne : raccords des berges et promenades.** Demande de l’auteur : retravailler les rives et retirer les affichages superposés ; promenade continue, talus raccordés, matière et miniatures harmonisées.
+La compensation locale d’altitude servait à tort de hauteur absolue ; le quai avancé laissait un vide sous la bande, et six triangles se repliaient dans un coude. Retour en arrière signalé : retrait du recouvrement de promenade ajouté le 2 septembre.
+Chaîne, essai rendu, interface et quatre contrôles géométriques passent ; avant/après numérotés dans `QGIS/rendus/`. Aucun arbitrage de design ajouté.
+
+**2026-09-05 — godot / chaîne : trois équipements reconnaissables.** Demande de l’auteur : université à portique, mairie à pignons à redents et horloges, église à nef et flèche, dans la palette de Wehrau.
+Recettes sur les empreintes existantes ; toitures mesurées sur les faces, corniches recalées entre les fenêtres, +2 006 triangles sans groupe ajouté. Les autres îlots et la voirie restent identiques à la référence.
+Chaîne, contrôle rendu et miniatures vérifiés ; deux anciens échecs d’énergie reproduits avant modification. Aperçus numérotés dans `QGIS/rendus/`, via `apercu_equipements.gd`.
+
+**2026-09-05 — godot : travaux visibles sur la carte.** Palissades et balises animées, grues pivotantes sur les îlots, repères à distance ; apparition et retrait suivent le chantier de la fiche.
+Décor réutilisé par lieu, sans collision ; diagnostic masqué et reprise restaurée. Les accès des ponts coupés portent les barrières, pas le tablier absent.
+Essai rendu général et contrôle ciblé validés ; aperçu animé numéroté de densification, renaturation et reconstruction dans `QGIS/rendus/wehrau_travaux_mouvement.gif`.
+
+**2026-09-05 — godot / chaîne : noms des lieux, reprise et exporteur découpé.** Demande de l'auteur ; table éditoriale séparée de la géométrie (82), sauvegarde avec copie de secours et reprise en pause.
+Les rampes de trafic se restaurent sans refaire l'affectation ; les toits reconstruits reprennent leur surface, le mois et la caisse restent identiques. Contrôle de reprise dans une ville neuve jusqu'à vingt ans.
+Export strictement identique avant/après découpage ; captures des noms et de la reprise. Le grand assemblage `main()` reste une dette distincte.
+
 **2026-09-05 — godot : trafic, trajets et intersections.** Virages continus sur GPU, branches ouvertes réappariées après fermeture, temps de déplacement conservé entre images.
 Référence des détours étendue aux futurs points de départ ; les anneaux isolés gardent une ancre. Flux agrégés conservés (62), sans priorité ni collision individuelle.
 Chaîne, essai rendu et régressions ciblées validés ; aperçu animé numéroté du carrefour 55. Les changements préexistants restent hors du commit.
@@ -15,6 +57,10 @@ Le diagnostic éteint les rides et le grain ; eau et arbres partagent leurs rece
 Chaîne, partie de contrôle, menus et banc exécutés ; captures avant/après locales dans `QGIS/rendus/`, mesures dans `Prototype/Trafic.md`.
 
 
+
+**2026-09-04 (session 84) — fermer aux voitures emporte les places.** Règle donnée par l'auteur : une rue fermée n'a plus où garer. Le retrait du stationnement part désormais AVEC la fermeture, dans la même commande et le même chantier de deux mois (`ville.commander`) ; le réglage « places » est effacé quand « axe » est posé, sinon le récapitulatif comptait le même retrait deux fois.
+La miniature applique la règle en une ligne — *pas de voitures, pas de places* —, au survol du bouton de fermeture comme une fois le réglage posé, et le bouton « Retirer les places » s'efface derrière lui.
+✅ Contrôle nommé ajouté à `--essai`, qui passe par le clic entier au lieu du seul report : **axe 55, 47 places → 0** (`wehrau_essai_axe_ferme.png` → `wehrau_essai_axe_rendu.png`, même cadrage). 🚲 **Et le cycliste est éteint**, deuxième demande de l'auteur : il ne décore pas la ville de départ, il viendra avec la décision qui lui fait de la place. Un commutateur (`VELO_ACTIF`, haut de `trafic.gd`), rien de semé, **1 218 créneaux et un appel de rendu en moins** ; les règles restent branchées. → [Trafic](Prototype/Trafic.md)
 
 **2026-09-03 (session 83) — un cran, un bâtiment ; et on commence par le meilleur.** Deux demandes de l'auteur en une phrase. ① **Densifier se dose au curseur**, un cran par bâtiment, comme les panneaux : on engage une tranche, on paie, on reprend plus tard au cran atteint. Les deux boutons ne portent plus que la **hauteur**, et elle se verrouille au premier chantier — 🔴 contrainte du shader, qui n'a qu'une hauteur pour tout l'îlot. `07` exporte le **profil des paliers** (`dense_cumul`) : monter le plus petit bâtiment ne loge pas autant que monter le plus grand.
 ② **Le prix est progressif**, un seul nombre (`PROGRESSIVITE` = 0,4, haut de `energie.gd`) pour les panneaux **et** les étages : le premier posé coûte 0,6 fois le prix moyen et rend 1,4 fois, le dernier l'inverse. 🔴 **Aucun total ne bouge** — les deux primitives valent 1 en 1 —, donc tout le level design mesuré reste valide : toit entier 292 k€ / 10 ans, îlot 50 entier 5 510 k€. Mesuré : îlot 32, 30 premiers % = 63 k€ / 6 ans contre 112 k€ / 18 ans pour les 30 derniers ; îlot 50, 75 contre 113 k€ le logement.

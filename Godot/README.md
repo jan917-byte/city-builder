@@ -2,7 +2,7 @@
 
 Relever la ville après la crue et équiper ses toits se disputent la même caisse dès le premier mois. Deux jauges suivent les deux fronts, **adaptation** et **réduction**. Godot **4.7.1**, aucun plugin, aucune dépendance.
 🔴 **Aucun chiffre mesuré dans ce fichier.** Ils sont dans `Prototype/`, à l'étape qui les porte, et l'export les réimprime à chaque passage. Le design est dans le vault, ce qui reste à faire dans `ETAT.md`.
-**Toute la géométrie est calculée en Python**, dans `07_exporter_godot.py`. Godot ne prend aucune décision géométrique : il lit des tableaux et les passe à `ArrayMesh`. L'« interface propre » de `Moteur et architecture:18` n'est pas une hiérarchie de classes, **c'est le contrat JSON**.
+**Toute la géométrie est calculée en Python**, par `07_exporter_godot.py` et les modules de `QGIS/scripts/export_godot/`. Godot ne prend aucune décision géométrique : il lit des tableaux et les passe à `ArrayMesh`. L'« interface propre » de `Moteur et architecture:18` n'est pas une hiérarchie de classes, **c'est le contrat JSON**.
 
 ## Le lancer
 
@@ -13,11 +13,19 @@ python QGIS/scripts/chaine.py --godot
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
 `Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, les deux menus de lieu, plus chaque miniature seule à sa taille de rendu.
+## Sauvegarder une partie
+
+Les boutons **Sauvegarder** (F5 dans le jeu) et **Reprendre** (F9) sont à côté du temps. Une seule partie manuelle est conservée, avec une copie de secours ; reprendre revient en pause. « Recommencer » ne supprime pas la sauvegarde.
+Le mois, les décisions, les travaux, la recherche, les politiques, les rues fermées et le cadrage sont conservés. Les réglages non engagés restent des essais et ne sont pas sauvegardés.
+Fichier local : `user://partie.wehrau`, dans le dossier de données Godot de l'utilisateur ; il ne voyage pas par git. Une carte régénérée différente ou un format incompatible est refusé avant de modifier la partie en cours.
+Le contrôle autonome se lance avec `Godot --headless --path Godot --script res://outils/essai_sauvegarde.gd` ; ajouter `-- --captures` et retirer `--headless` pour produire l'aperçu de reprise.
+Les noms affichés viennent de `Godot/data/lieux.json`, table éditoriale à modifier à la main. Le numéro reste en infobulle sur le titre de la fiche.
+
 ## Le clavier
 
 | | |
 |---|---|
-| **clic** | sélectionner un îlot ou une rue — la fiche s'ouvre à droite, l'objet choisi est cerné d'un trait clair qui épouse sa silhouette |
+| **clic bref** | sélectionner au relâchement un îlot ou une rue ; glisser ne sélectionne pas |
 | **Espace** | lecture / pause · **×1** = un mois par minute, **×4** et **×12** accélèrent, **Recommencer** ramène au mois 0 |
 | **V** | Wehrau en entier |
 | **B** | la barre de 1974 |
@@ -31,7 +39,7 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 | **Q / E** | quart de tour, recalé sur les quatre vues cardinales |
 | **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
 | **T** | bascule vue de dessus ⇄ hauteur précédente |
-| **souris** | molette : zoom · clic droit glissé : tourner · clic milieu glissé : déplacer |
+| **souris** | clic gauche glissé : attraper le sol · Ctrl + clic gauche glissé : tourner et incliner autour du point visé · molette : zoom progressif au pointeur |
 | **F3** | afficher / masquer le moniteur de performances |
 | **P** | capture PNG dans `QGIS/rendus/` |
 | **Échap** | quitter |
@@ -40,36 +48,21 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
 
 **La ville vivante** et **le diagnostic**, à la souris : le bouton « Diagnostic » du tableau de bord, puis le menu des thèmes qui prend sa place — pas de raccourci clavier, c'est voulu. Le diagnostic passe la ville en **maquette blanche** — plus de matière, plus d'arbres, plus de voitures, rien que le volume — et **seul le thème choisi est en couleur** : tant qu'il ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le thème. Le temps continue, la caméra ne bouge pas, la fiche répond toujours au clic — **le diagnostic change ce qu'on voit, jamais ce qu'on peut faire**. Un thème neuf, c'est **trois pièces** : une ligne dans `THEMES` (haut de `maquette.gd`), son genre de peinture, et un panneau seulement s'il en faut un.
 
-Les gestes de caméra sont rappelés en bas à gauche de l'écran, avec l'angle courant. `V` `B` `R` ne sont pas un confort : ce sont **les critères de réussite du plan**, une touche chacun. On ne juge pas de mémoire.
+En bas à gauche, la boussole **N** remet le nord en haut ; **Dessus / 3D** alterne plan et inclinaison précédente. Les panneaux gardent leurs clics et leur molette. `V` `B` `R` restent les repères de contrôle. `Godot --headless --path Godot --script res://outils/essai_camera.gd` vérifie les gestes ; retirer `--headless` et ajouter `-- --ville` vérifie les clics et boutons dans la maquette et produit un aperçu.
 
 ## Les fichiers
 
-```
-maquette.tscn          un nœud, un script — tout le reste est construit en code
-data/wehrau.json       produit par 07 (gitignoré)
-scripts/
-  maquette.gd          l'orchestrateur : construit, branche, fait passer le temps
-  donnees.gd           lecture + validation. Échoue en NOMMANT ce qui manque
-  constructeur.gd      tableaux → ArrayMesh. Aucun accès aux nœuds   ← isolé
-  ville.gd             l'état, les rampes, les indicateurs, la caisse  ← LE NOYAU
-  energie.gd           la table par tissu, les formules, les deux prix. Tout statique
-  chantiers.gd         ancien prototype, conservé comme trace — RIEN à voir
-                       avec le thème « chantiers », qui vit dans ville.gd
-  selection.gd         le raycast. Rend un (couche, fid), rien de plus
-  interface.gd         la ville ou le menu à gauche, la fiche à droite. Elle
-                       n'émet QU'UNE demande : la commande
-  apercu.gd            la miniature de la fiche : l'objet choisi, dans son état
-                       livré, de trois quarts, sur une dalle épaisse
-  echantillon.gd       le morceau droit d'une rue ou d'une berge : la coupe en
-                       bandes, aux largeurs mesurées   ← la seule géométrie
-                       fabriquée dans Godot
-  moniteur_performances.gd  le thermomètre F3, sans dépendance au jeu
-  materiaux.gd         les matériaux, zéro texture
-  camera_axo.gd        orthographique, lacet libre et hauteur de 6° à 90°
-outils/
-  sonde_api.gd         interroge ClassDB — à lancer avant de déboguer autre chose
-  essai_energie.gd     contrôle imprimé de l'ancien prototype
-```
+| Entrée | Rôle |
+|---|---|
+| `maquette.tscn` · `scripts/maquette.gd` · `donnees.gd` · `constructeur.gd` | scène, orchestration, validation et maillages |
+| `scripts/ville.gd` · `energie.gd` | état de la ville, décisions, budget et énergie |
+| `scripts/recherche.gd` · `politiques.gd` | tables de recherche et de politiques |
+| `scripts/interface.gd` · `selection.gd` · `lieux.gd` | fiches, clic et noms affichés |
+| `scripts/sauvegarde.gd` | écriture, lecture et copie de secours de la partie |
+| `scripts/apercu.gd` · `echantillon.gd` | miniature et coupe de rue ou de berge |
+| `scripts/trafic.gd` · `materiaux.gd` · `camera_axo.gd` · `paysage.gd` | trafic, matières, caméra et décor extérieur exporté |
+| `outils/` · `scripts/moniteur_performances.gd` | contrôles autonomes et thermomètre F3 ; `chantiers.gd` reste l'ancien prototype |
+
 
 `ville.gd`, `energie.gd` et `chantiers.gd` **ne touchent aucun nœud**, même discipline que `constructeur.gd` : c'est ce qui les rend relisibles et portables ailleurs le jour venu.
 
@@ -114,19 +107,14 @@ godot --headless --path Godot --script res://outils/sonde_api.gd
 
 La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change. Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
-- `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`).
+- `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`, `Paysage`). `--script res://outils/apercu_vallee.gd` produit les vues de contrôle de la vallée.
 - `-- --essai` joue la partie de contrôle et quitte. ⚠️ **pas** avec `--headless` : le pilote de rendu y est factice, aucune image n'en sort.
 - `-- --banc` mesure et quitte : quatre cadrages verrou d'écran levé, puis la pulsation du trafic et le prix d'une image, part par part. 🔴 **À lancer AVANT d'optimiser quoi que ce soit** — le coupable n'est presque jamais celui qu'on croit, et le banc dit s'il est dans le script ou dans le rendu. Les chiffres vivent dans `Prototype/`, pas ici.
 
 `.mcp.json` à la racine déclare le serveur `godot-mcp`, qui permet de lancer la maquette et de lire la console. 🔴 **C'est le seul fichier du dépôt qui ne soit pas portable** : il est écrit pour Windows, et se corrige à la main sur le Mac. `run_project` lance un vrai processus — c'est `stop_project` qui le tue.
 
-## 🔴 Le contrôle de recoupement n'existe plus
+Les essais vérifient les commandes, la reprise et les invariants du moteur. La question du recoupement avec le classeur est suivie dans `ETAT.md`, « Le rôle du classeur ».
 
-**À lire avant de faire confiance à un chiffre de ce projet.** Deux moteurs appliquaient les mêmes règles — `08_jouer.py` en Python, `ville.gd` en GDScript — et devaient tomber sur le même résultat. La décision qui portait ce contrôle est partie dans `archive/`, et le contrôle avec.
-
-Ce qui reste sont des contrôles **d'un moteur contre lui-même** : la caisse tombe exactement du coût annoncé · l'îlot que la caisse ne peut pas payer reste refusé sans qu'un centime bouge · un chantier en cours n'accepte pas de seconde commande. Ils attrapent une formule qui dérive, **pas deux implémentations qui divergent**.
-
-Concrètement : une formule fausse dans le noyau ne sera plus attrapée par personne avant qu'on la voie à l'écran. Si le classeur doit rester le banc d'essai, c'est lui qu'il faudra étendre — sinon il devient une archive, et il faut le dire.
 ---
 
 **Voir aussi** — `Prototype/` pour l'étape en cours et ses défauts · `ETAT.md` pour ce qui attend l'auteur · `archive/LISEZ-MOI.md` pour ce qui a été retiré · le vault : `Technique/Moteur et architecture.md` · `Technique/Direction artistique.md`.

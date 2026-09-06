@@ -5,6 +5,10 @@ extends CanvasLayer
 
 signal vitesse_demandee(vitesse: float)
 signal temps_remis()
+signal sauvegarde_demandee()
+signal reprise_demandee()
+signal nord_demande()
+signal dessus_demande()
 ## "" ramène à la ville vivante, sinon c'est un `id` de `maquette.THEMES`.
 signal theme_demande(id: String)
 ## 🔴 UNE SEULE DEMANDE, ET C'EST TOUT CE QUE LA FICHE ÉMET (2026-08-31). On
@@ -21,6 +25,11 @@ const Energie := preload("res://scripts/energie.gd")
 const Apercu := preload("res://scripts/apercu.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Politiques := preload("res://scripts/politiques.gd")
+const Lieux := preload("res://scripts/lieux.gd")
+var lieux := Lieux.new()
+var _etat_partie: Label
+var _avis_partie: PanelContainer
+var _reprendre: Button
 
 const FOND := Color8(247, 248, 242, 252)
 const FOND_FORT := Color8(226, 235, 227, 255)
@@ -215,6 +224,8 @@ var _avant_bouton: Button
 var _apres_bouton: Button
 var _message: Label
 var _camera_vue: Label
+var _camera_nord: Button
+var _camera_dessus: Button
 var _temps_label: Label
 var _vitesses := {}
 var _ville_panneau: PanelContainer
@@ -1037,16 +1048,11 @@ func maj_chantiers(d: Dictionary) -> void:
 		l.visible = texte != ""
 
 
-## Le numéro d'abord : c'est par lui que l'auteur désigne l'objet à l'écran.
+## Le même nom que la fiche pour retrouver un chantier dans la ville.
 func _ligne_chantier(c: Dictionary) -> String:
-	var modele: String = {
-		"reconstruction": "Îlot %d · reconstruction",
-		"pont": "Rue %d · tablier",
-		"deblaiement": "Rue %d · déblaiement",
-		"solaire": "Îlot %d · panneaux",
-		"berge": "Berge %d · transformation",
-	}.get(str(c["genre"]), "%d")
-	return "%s · encore %s" % [modele % int(c["fid"]),
+	var genre: String = {"pont": "tablier", "deblaiement": "déblaiement",
+		"solaire": "panneaux", "berge": "transformation"}.get(c["genre"], c["genre"])
+	return "%s · %s · encore %s" % [lieux.nom(c["couche"], int(c["fid"])), genre,
 		_duree(float(c["reste_mois"]))]
 
 
@@ -1675,9 +1681,24 @@ func _panneau_camera() -> void:
 	p.add_child(v)
 	_camera_vue = _label("", 14, TEXTE)
 	v.add_child(_camera_vue)
+	var boutons := HBoxContainer.new()
+	v.add_child(boutons)
+	_camera_nord = Button.new()
+	_camera_nord.name = "Boussole"
+	_camera_nord.custom_minimum_size = Vector2(100, 32)
+	_camera_nord.focus_mode = Control.FOCUS_NONE
+	_camera_nord.tooltip_text = "Remettre le nord en haut"
+	_camera_nord.pressed.connect(func(): nord_demande.emit())
+	boutons.add_child(_camera_nord)
+	_camera_dessus = Button.new()
+	_camera_dessus.name = "VueDessus"
+	_camera_dessus.focus_mode = Control.FOCUS_NONE
+	_camera_dessus.pressed.connect(func(): dessus_demande.emit())
+	boutons.add_child(_camera_dessus)
 	for ligne in [
-		"Molette : zoom · clic droit : tourner",
-		"V : ville · T : dessus · Q E : quart de tour",
+		"Glisser : déplacer · clic : sélectionner",
+		"Ctrl + glisser : tourner / incliner",
+		"Molette : zoom au pointeur · V : ville",
 	]:
 		v.add_child(_label(ligne, 11, GRIS))
 
@@ -1688,6 +1709,8 @@ func maj_camera(lacet: float, hauteur: float) -> void:
 	var l := fmod(fmod(lacet, 360.0) + 360.0, 360.0)
 	var i := int(roundf(l / 45.0)) % 8
 	_camera_vue.text = "vue %s, %d° au-dessus" % [AZIMUTS[i], int(roundf(hauteur))]
+	_camera_nord.text = "%s N" % ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"][i]
+	_camera_dessus.text = "3D" if hauteur >= 89.5 else "Dessus"
 
 
 func _controles_temps() -> void:
@@ -1731,6 +1754,41 @@ func _controles_temps() -> void:
 	raz.tooltip_text = "Remet le temps au mois 0 et annule les poses décidées."
 	raz.pressed.connect(func() -> void: temps_remis.emit())
 	h.add_child(raz)
+
+	for action in [["Sauvegarder", "F5"], ["Reprendre", "F9"]]:
+		var bouton := Button.new()
+		bouton.text = action[0]
+		bouton.tooltip_text = "%s (%s)" % action
+		bouton.custom_minimum_size.y = 40
+		h.add_child(bouton)
+		if action[1] == "F5":
+			bouton.pressed.connect(func() -> void: sauvegarde_demandee.emit())
+		else:
+			_reprendre = bouton
+			bouton.pressed.connect(func() -> void: reprise_demandee.emit())
+	_avis_partie = PanelContainer.new()
+	_avis_partie.theme = _theme_ui
+	_avis_partie.add_theme_stylebox_override("panel", _boite())
+	_avis_partie.anchor_left = 0.5
+	_avis_partie.anchor_right = 0.5
+	_avis_partie.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_avis_partie.offset_top = 16
+	_avis_partie.visible = false
+	add_child(_avis_partie)
+	_etat_partie = _label("", 12, TEXTE)
+	_avis_partie.add_child(_etat_partie)
+
+
+func informer_partie(message: String, disponible: bool) -> void:
+	_etat_partie.text = message
+	_avis_partie.visible = message != ""
+	_reprendre.disabled = not disponible
+
+
+func _titre_lieu(couche: String) -> void:
+	_fiche_titre.text = lieux.nom(couche, _fiche_fid).to_upper()
+	_fiche_titre.tooltip_text = lieux.repere(couche, _fiche_fid)
+	_fiche_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _demander_vitesse(v: float) -> void:
@@ -1806,6 +1864,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 		return
 	# 🎓🏛️ Cliquer la ville referme le menu : jamais deux fiches ensemble (81).
 	_fermer_lieu()
+	_fiche_panneau.visible = true
 	var lieu := _lieu_du_fid(fid) if couche == "i" else ""
 	_lieu_bouton.visible = lieu != ""
 	if lieu != "":
@@ -1837,6 +1896,16 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_maj_fiche()
 
 
+func reprendre_fiche(couche: String, fid: int) -> void:
+	_vider_pose()
+	_fermer_lieu()
+	_message.text = ""
+	_fiche_fid = -1
+	_fiche_panneau.visible = fid >= 0
+	if fid >= 0:
+		montrer(couche, fid)
+
+
 func _maj_fiche() -> void:
 	_maj_chantier()
 	if _fiche_couche == "r":
@@ -1848,7 +1917,7 @@ func _maj_fiche() -> void:
 	var o: Dictionary = ville.ilots.get(_fiche_fid, {})
 	if o.is_empty():
 		return
-	_fiche_titre.text = ("Îlot %d" % _fiche_fid).to_upper()
+	_titre_lieu("i")
 	_maj_reparation(o)
 
 	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _mois)
@@ -2099,6 +2168,10 @@ func _reglages() -> Dictionary:
 				"part": _dense_choix / maxf(float(ed["batiments"]), 1.0),
 				"etages": _dense_etages(),
 			}
+	# 🅿️ Fermer aux voitures emporte les places : les deux réglages
+	# ensemble feraient deux lignes de récapitulatif pour un seul chantier.
+	if r.has("axe"):
+		r.erase("places")
 	if _fiche_couche == "r" and _arbres_choix >= 0.0:
 		var cible := _arbres_choix / 100.0 * Ville.PLANTATION_CANOPEE_MAX
 		if ville.arbres_a(_fiche_fid, cible) > ville.arbres_a(
@@ -2180,7 +2253,9 @@ func _maj_recap() -> void:
 	if r.has("places"):
 		quoi.append("places retirées")
 	if r.has("axe"):
-		quoi.append("fermeture aux voitures")
+		quoi.append("fermeture aux voitures, places retirées"
+			if ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5
+			else "fermeture aux voitures")
 	if r.has("berge"):
 		quoi.append(Ville.BERGE_NOMS[int(r["berge"])])
 	if r.has("reparer"):
@@ -2290,6 +2365,9 @@ func apercu_demande() -> Dictionary:
 					or not _trafic_stationnement.is_hovered())
 			roule = roule and not r.has("axe") \
 				and (_trafic_axe.disabled or not _trafic_axe.is_hovered())
+		# 🅿️ La règle, en une ligne : pas de voitures, pas de places. Au
+		# survol du bouton de fermeture comme une fois le réglage posé.
+		places = places and roule
 		# 🌳 La canopée du moment, ou celle que la commande livrerait : c'est
 		# elle qui décide combien d'arbres l'échantillon plante.
 		arbres = ville.valeur("r", _fiche_fid, "canopee", _mois)
@@ -2480,7 +2558,7 @@ func _maj_fiche_rue() -> void:
 	var o: Dictionary = ville.routes.get(_fiche_fid, {})
 	if o.is_empty():
 		return
-	_fiche_titre.text = ("Rue %d" % _fiche_fid).to_upper()
+	_titre_lieu("r")
 	var etat := str(o.get("etat_crue", "intact"))
 	if ville.est_repare("r", _fiche_fid):
 		etat = "repare"
@@ -2493,11 +2571,15 @@ func _maj_fiche_rue() -> void:
 	var axe_ferme: bool = trafic != null and trafic.axe_ferme(_fiche_fid)
 	var stationnement_fini := stationnement_engage and ville.valeur(
 		"r", _fiche_fid, "stationnement", _mois) < 0.5
+	var a_des_places := ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5
+	# 🅿️ Le bouton s'efface derrière la fermeture, qui emporte déjà les places.
+	var emportees: bool = _pose.has("axe") and a_des_places
 	_trafic_stationnement.text = ("Places retirées" if stationnement_fini \
 		else "Places · 2 mois") if stationnement_engage \
-		else _posee("places", "Retirer les places")
-	_trafic_stationnement.disabled = stationnement_engage or ville.valeur(
-		"r", _fiche_fid, "stationnement", _mois) < 0.5
+		else ("✓ Places emportées par la fermeture" if emportees \
+		else _posee("places", "Retirer les places"))
+	_trafic_stationnement.disabled = stationnement_engage or emportees \
+		or not a_des_places
 	_trafic_axe.text = ("Fermée · report" if trafic.report_en_cours(
 		_fiche_fid, _mois) else "Fermée") if axe_ferme \
 		else _posee("axe", "Fermer aux voitures")
@@ -2521,7 +2603,7 @@ func _maj_fiche_berge() -> void:
 	if o.is_empty():
 		return
 	var etat := ville.berge_etat(_fiche_fid, _mois)
-	_fiche_titre.text = ("Berge %d" % _fiche_fid).to_upper()
+	_titre_lieu("b")
 	(_berge_valeurs["bord"] as Label).text = str(o.get("rive", "?"))
 	(_berge_valeurs["longueur"] as Label).text = "%s m" % _nb(
 		float(o.get("longueur_m", 0.0)), 0)

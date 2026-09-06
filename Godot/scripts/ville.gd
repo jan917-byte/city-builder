@@ -221,6 +221,92 @@ func objets(couche: String) -> Dictionary:
 	return routes
 
 
+## L'historique des décisions suffit : les indicateurs se recalculent au mois repris.
+const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
+	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
+	"_repare", "_berge", "_toit_avant", "_plantation"]
+
+func exporter_partie() -> Dictionary:
+	var etat := {}
+	for champ in CHAMPS_PARTIE:
+		etat[champ] = get(champ)
+	return etat.duplicate(true)
+
+func valider_partie(etat: Dictionary) -> bool:
+	for champ in CHAMPS_PARTIE:
+		if not etat.has(champ) or typeof(etat[champ]) != typeof(get(champ)):
+			return false
+	if not etat["_rampes"].has_all(["i", "r"]):
+		return false
+	for couche in ["i", "r"]:
+		if not etat["_rampes"][couche] is Dictionary:
+			return false
+		for fid in etat["_rampes"][couche]:
+			if not objets(couche).has(fid) or not etat["_rampes"][couche][fid] is Array:
+				return false
+			for rampe in etat["_rampes"][couche][fid]:
+				if not _forme_partie(rampe, {"champ": "", "ecart": 0.0, "d": 0.0, "L": 0.0, "M": 0.0}):
+					return false
+				if not rampe["champ"] in CHAMPS_MOBILES[couche]:
+					return false
+	var pose := {"debut": 0.0, "duree": 0.0, "cible": 0.0, "cout_ke": 0.0}
+	var formes := {"_solaire": [ilots, pose], "_vert": [ilots, pose],
+		"_dense": [ilots, {"debut": 0.0, "duree": 0.0, "etages": 0,
+			"cible": 0.0, "cout_ke": 0.0, "lots": [{"debut": 0.0, "duree": 0.0, "logements": 0.0}]}],
+		"_berge": [berges, {"debut": 0.0, "duree": 0.0, "cible": 0,
+			"depuis": 0, "cout_ke": 0.0}],
+		"_plantation": [routes, {"debut": 0.0, "duree": 0.0, "cible": 0.0,
+			"cout_ke": 0.0, "arbres": 0}],
+		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
+		"_recherche": [Recherche.SUJETS, 0.0]}
+	for champ in formes:
+		for fid in etat[champ]:
+			if not formes[champ][0].has(fid) or not _forme_partie(etat[champ][fid], formes[champ][1]):
+				return false
+	for cle in etat["_politiques"]:
+		if not Politiques.POLITIQUES.has(cle) or not _forme_partie(etat["_politiques"][cle], [[0.0]]):
+			return false
+		for periode in etat["_politiques"][cle]:
+			if periode.size() != 2:
+				return false
+	for cle in etat["_repare"]:
+		if not cle is String or not _forme_partie(etat["_repare"][cle], 0.0):
+			return false
+		var morceaux: PackedStringArray = cle.split(":")
+		if morceaux.size() != 2 or not morceaux[0] in ["i", "r"] or not morceaux[1].is_valid_int():
+			return false
+		if not objets(morceaux[0]).has(int(morceaux[1])):
+			return false
+	for champ in ["_depense_ke", "_credit_essai_ke"]:
+		if not is_finite(etat[champ]) or etat[champ] < 0.0:
+			return false
+	return true
+
+static func _forme_partie(valeur_sauvee: Variant, modele: Variant) -> bool:
+	if modele is float:
+		return (valeur_sauvee is float or valeur_sauvee is int) and is_finite(float(valeur_sauvee))
+	if typeof(valeur_sauvee) != typeof(modele):
+		return false
+	if modele is Dictionary:
+		for cle in modele:
+			if not valeur_sauvee.has(cle) or not _forme_partie(valeur_sauvee[cle], modele[cle]):
+				return false
+	elif modele is Array:
+		for element in valeur_sauvee:
+			if not _forme_partie(element, modele[0]):
+				return false
+	return true
+
+func importer_partie(etat: Dictionary) -> void:
+	reinitialiser()
+	for champ in CHAMPS_PARTIE:
+		var valeur_sauvee: Variant = etat[champ]
+		set(champ, valeur_sauvee.duplicate(true) if valeur_sauvee is Dictionary else valeur_sauvee)
+	for fid in _toit_avant:
+		ilots[fid]["toit_m2"] = ilots[fid]["toit_m2_neuf"]
+	_vert_ha_mois = INF
+
+
 ## 🌊 L'état de DÉPART se mesure, il ne se choisit pas : une berge que nul mur
 ## ne tient ne porte pas d'asphalte — elle est déjà rendue au fleuve.
 func berge_depart(fid: int) -> int:
@@ -1210,7 +1296,8 @@ func degats(t: float) -> Dictionary:
 #   reparer  true   relever, déblayer ou rebâtir   (îlot, rue)
 #   arbres   float  la canopée visée               (rue)
 #   places   true   retirer le stationnement       (rue)
-#   axe      true   fermer aux voitures            (rue) — rendu à l'appelant
+#   axe      true   fermer aux voitures            (rue) — rendu à l'appelant,
+#                   et il emporte les places : une rue fermée n'a plus où garer
 #   berge    int    l'état visé                    (berge)
 #   dense    dict   {part, etages} : la part des bâtiments visée et la
 #                   hauteur — 🪜 un cran du curseur = un bâtiment  (îlot)
@@ -1249,7 +1336,10 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			float(r["vert"])))
 	if r.has("arbres"):
 		m = maxf(m, PLANTATION_MOIS)
-	if r.has("places"):
+	# 🅿️ La fermeture emporte les places : même chantier de deux mois, donc
+	# même durée annoncée — mais seulement s'il reste des places à retirer.
+	if r.has("places") or (couche == "r" and r.has("axe")
+			and valeur("r", fid, "stationnement", t) >= 0.5):
 		m = maxf(m, STATIONNEMENT_MOIS)
 	if r.has("dense"):
 		m = maxf(m, duree_dense_mois(int(r["dense"]["etages"]),
@@ -1282,7 +1372,9 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("toit vert")
 	if r.has("arbres") and planter(fid, float(r["arbres"]), t):
 		faits.append("plantation")
-	if r.has("places") and supprimer_stationnement(fid, t):
+	# 🅿️ FERMER AUX VOITURES RETIRE LES PLACES (auteur, 2026-09-04) : la
+	# fermeture les emporte sans qu'on ait à les demander.
+	if (r.has("places") or r.has("axe")) and supprimer_stationnement(fid, t):
 		faits.append("stationnement")
 	if r.has("dense") and densifier(fid, float(r["dense"]["part"]),
 			int(r["dense"]["etages"]), t):

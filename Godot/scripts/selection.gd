@@ -8,8 +8,6 @@ extends Node
 signal survole(couche: String, fid: int)
 signal choisi(couche: String, fid: int)
 
-const PORTEE := 6000.0     # la caméra recule de 1500 et voit loin
-
 var camera: Camera3D
 
 var survol_couche := ""
@@ -28,13 +26,8 @@ func _process(_delta: float) -> void:
 		survole.emit(survol_couche, survol_fid)
 
 
-func _unhandled_input(e: InputEvent) -> void:
-	if not (e is InputEventMouseButton):
-		return
-	var b := e as InputEventMouseButton
-	if b.button_index != MOUSE_BUTTON_LEFT or not b.pressed:
-		return
-	var r := sonder(b.position)
+func choisir(pos: Vector2) -> void:
+	var r := sonder(pos)
 	sel_couche = r[0]
 	sel_fid = r[1]
 	choisi.emit(sel_couche, sel_fid)
@@ -44,7 +37,7 @@ func sonder(pos: Vector2) -> Array:
 	var espace := camera.get_world_3d().direct_space_state
 	var p := PhysicsRayQueryParameters3D.create(
 		camera.project_ray_origin(pos),
-		camera.project_ray_origin(pos) + camera.project_ray_normal(pos) * PORTEE)
+		camera.project_ray_origin(pos) + camera.project_ray_normal(pos) * camera.far)
 	var touche := espace.intersect_ray(p)
 	if touche.is_empty():
 		return ["", -1]

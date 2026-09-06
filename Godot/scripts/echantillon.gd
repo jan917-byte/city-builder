@@ -151,6 +151,11 @@ static func berge(d: Dictionary, voie_m: float, pal: Dictionary,
 	# le quai lui-même, sinon la pente monterait sur la chaussée.
 	var rive := maxf(float(d.get("rive_m", BERGE_BANDE_M)), 1.0)
 	var bande := minf(BERGE_BANDE_M, rive)
+	var niveau := 1.0 if d.get("rive", "droite") == "droite" else -1.0
+	var y_sol := Y_TROTTOIR + 0.02 + niveau
+	var y_trottoir := Y_TROTTOIR + niveau
+	var y_quai := Y_QUAI + niveau
+	var y_chaussee := Y_CHAUSSEE + niveau
 	var lit := _sombre(_c(pal, "_mineral_clair"), 0.45)
 	var quai := _sombre(_c(pal, "_mineral_clair"), 0.14)   # `coul_quai` de 07
 	var dalle := _c(pal, "_trottoir")
@@ -175,7 +180,7 @@ static func berge(d: Dictionary, voie_m: float, pal: Dictionary,
 			# nu du quai et descend au lit, coupé à la ligne d'eau. La bande
 			# verte reste à plat derrière lui, et le quai qui subsiste est
 			# toujours minéral — c'est la promenade.
-			var part := (Y_SOL - NAPPE) / (Y_SOL - FOND)
+			var part := (y_sol - NAPPE) / (y_sol - FOND)
 			var z_lit := b - PENTE_RIVE_M
 			z_eau = b - PENTE_RIVE_M * part
 			var z_mi := (z_eau + b) * 0.5
@@ -184,26 +189,29 @@ static func berge(d: Dictionary, voie_m: float, pal: Dictionary,
 			# qu'un plat, et le talus resterait un aplat vert.
 			bandes.append([z_lit, z_eau, FOND, NAPPE, _ombre(lit, 0.37),
 				_ombre(lit, 0.37), DECOR])
-			bandes.append([z_eau, z_mi, NAPPE, (NAPPE + Y_SOL) * 0.5,
+			bandes.append([z_eau, z_mi, NAPPE, (NAPPE + y_sol) * 0.5,
 				_ombre(vert, 0.68), _ombre(vert, 0.68), OBJET])
-			bandes.append([z_mi, b, (NAPPE + Y_SOL) * 0.5, Y_SOL,
+			bandes.append([z_mi, b, (NAPPE + y_sol) * 0.5, y_sol,
 				_ombre(vert, 0.86), _ombre(vert, 0.86), OBJET])
-			bandes.append([b, b + bande, Y_SOL, Y_SOL, vert, vert, OBJET])
-			rive_semee = [z_eau, NAPPE, b + bande, Y_SOL]
+			bandes.append([b, b + bande, y_sol, y_sol, vert, vert, OBJET])
+			rive_semee = [z_eau, NAPPE, b + bande, y_sol]
 			if rive > bande:
-				bandes.append([b + bande, b + rive, Y_SOL, Y_SOL, dalle, quai,
-					OBJET])
+				bandes.append([b + bande, b + rive, y_sol, y_trottoir, dalle, quai,
+					DECOR])
 		else:
-			bandes.append([b, b + PARAPET_EP, Y_QUAI + PARAPET_H,
-				Y_QUAI + PARAPET_H, dalle, quai, OBJET])
-			bandes.append([b + PARAPET_EP, b + rive, Y_TROTTOIR,
-				Y_TROTTOIR, dalle, quai, OBJET])
+			bandes.append([b, b + PARAPET_EP, y_quai + PARAPET_H,
+				y_quai + PARAPET_H, dalle, quai, OBJET])
+			bandes.append([b + PARAPET_EP, b + bande, y_trottoir,
+				y_trottoir, dalle, quai, OBJET])
+			if rive > bande:
+				bandes.append([b + bande, b + rive, y_trottoir, y_trottoir,
+					dalle, quai, DECOR])
 		# La voie de berge suit le quai. Le fond de coupe, lui, ne bouge pas —
 		# il absorbe le recul.
 		bandes.append([b + rive, b + rive + voie_m,
-			Y_CHAUSSEE, Y_CHAUSSEE, bitume, bitume, DECOR])
+			y_chaussee, y_chaussee, bitume, bitume, DECOR])
 		bandes.append([b + rive + voie_m,
-			rive + voie_m + FOND_DE_COUPE_M, Y_SOL, Y_SOL,
+			rive + voie_m + FOND_DE_COUPE_M, y_sol, y_sol,
 			_c(pal, "_mineral_clair"), _c(pal, "_mineral_clair"), DECOR])
 	else:
 		# Sans mur, la rive est un talus d'herbe : c'est le type, et il se lit
@@ -212,13 +220,13 @@ static func berge(d: Dictionary, voie_m: float, pal: Dictionary,
 		bandes.append([-EAU_VUE_M, 0.0, NAPPE + BORD_MOUILLE, FOND, lit, lit,
 			DECOR])
 		var haut := TALUS_LARGEUR - BERGE_BANDE_M
-		var y_haut := TALUS_BAS + (Y_SOL - TALUS_BAS) * haut / TALUS_LARGEUR
+		var y_haut := TALUS_BAS + (y_sol - TALUS_BAS) * haut / TALUS_LARGEUR
 		bandes.append([0.0, haut, TALUS_BAS, y_haut, vert, vert, DECOR])
-		bandes.append([haut, TALUS_LARGEUR, y_haut, Y_SOL, vert, vert, OBJET])
-		bandes.append([TALUS_LARGEUR, TALUS_LARGEUR + FOND_DE_COUPE_M, Y_SOL,
-			Y_SOL, champ, champ, DECOR])
+		bandes.append([haut, TALUS_LARGEUR, y_haut, y_sol, vert, vert, OBJET])
+		bandes.append([TALUS_LARGEUR, TALUS_LARGEUR + FOND_DE_COUPE_M, y_sol,
+			y_sol, champ, champ, DECOR])
 		z_eau = _croisement(0.0, TALUS_BAS, haut, y_haut, NAPPE)
-		rive_semee = [z_eau, NAPPE, TALUS_LARGEUR, Y_SOL]
+		rive_semee = [z_eau, NAPPE, TALUS_LARGEUR, y_sol]
 
 	var large: float = float(bandes[-1][1]) - float(bandes[0][0])
 	var longueur := clampf(1.4 * large, LONGUEUR_MIN + 6.0, LONGUEUR_MAX)

@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
 statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue) et n°26 (le logement en campagne) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-02
+maj: 2026-09-06
 ---
 
 # Questions ouvertes
@@ -331,6 +331,12 @@ Ce qui reste à écrire, et qui est le travail de la semaine 2 : quelles décisi
 🔴 **Le piège de B, à nommer maintenant** : un étalement qui coûte cher **tout de suite** n'est jamais choisi, donc n'est pas une tentation ; un étalement qui ne coûte jamais rien est la stratégie dominante. Il n'est une mécanique que si le prix arrive **après** — c'est-à-dire s'il exploite précisément l'horizon de 20 ans du jeu.
 
 **Ce qui est du level design et attend le tracé de [[Vallmar]]** : la liste exacte des usages, leurs prix, leurs délais, et ce que chacun retire aux autres. Ne se tranche pas avant que Wehrau soit jugé — Wehrau n'a pas de campagne jouable, et la question ne coûte rien à laisser ouverte. → [[Décisions arrêtées]] 77b · 77c · [[Vallmar]]
+
+### 27. Comment nommer les lieux affichés ? — ✅ fermée le 2026-09-05
+L'auteur demande de nommer les lieux. Une table éditoriale fixe porte les noms des fiches et des chantiers, les identifiants restent en infobulle ; voir [[Décisions arrêtées]] 82. Le découpage et les noms des quartiers restent à traiter séparément.
+
+### 28. Comment parcourir la ville à la souris ? — ✅ fermée le 2026-09-06
+L'auteur préfère un système façon Google Earth et demande sa mise en place : sol saisi au clic gauche, orbite avec Ctrl, zoom au pointeur, sélection au clic bref, boussole et Dessus / 3D. → [[Décisions arrêtées]] 83.
 
 ## 🟢 Peut attendre (réversible)
 

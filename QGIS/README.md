@@ -58,6 +58,11 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête
 - les déclencheurs d'index spatial du GeoPackage appellent des fonctions que SQLite seul n'a pas : **écrire le moindre attribut échoue sans elles**. Les scripts les rebranchent en Python.
 - les coordonnées sont en **EPSG:25832** et ne sont **jamais arrondies** — voir l'en-tête de `carte.py`.
 
+## L'export vers Godot
+
+`07_exporter_godot.py` lit la carte et assemble le JSON ; `scripts/export_godot/` porte les recettes : `geometrie`, `batiments`, `voirie`, `berges`, `vegetation`. Les constantes et tables de rendu sont dans `reglages.py`.
+Avant de déplacer une recette, conserver une copie du JSON dans `QGIS/rendus/`. Après relance de la chaîne, `python QGIS/scripts/verifier_export.py QGIS/rendus/reference.json` exige un export identique octet pour octet et échoue sinon. Ces copies restent locales.
+
 ## Regarder, sans rien écrire
 
 ```bash

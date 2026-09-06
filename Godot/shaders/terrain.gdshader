@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode cull_back, specular_disabled;
+#include "res://shaders/boue.gdshaderinc"
 
 uniform bool diagnostic = false;
 varying vec3 monde;
@@ -23,5 +24,9 @@ void fragment() {
 	float fin = bruit(monde.xz * 1.6);
 	float grain = (large - 0.5) * mix(0.05, 0.20, vert) + (fin - 0.5) * 0.055 * net;
 	ALBEDO = COLOR.rgb * (diagnostic ? vec3(0.394) : vec3(1.0 + grain));
+	if (!diagnostic) {
+		vec4 depot = depot_boue(monde);
+		ALBEDO = mix(ALBEDO, depot.rgb * COLOR.a, depot.a);
+	}
 	ROUGHNESS = 1.0;
 }

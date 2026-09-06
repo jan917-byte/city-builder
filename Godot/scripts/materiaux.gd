@@ -56,6 +56,13 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 	var sh := Shader.new()
 	sh.code = "shader_type spatial;\n" \
 		+ "render_mode cull_back, specular_disabled;\n" \
+		+ "#include \"res://shaders/boue.gdshaderinc\"\n" \
+		+ "#include \"res://shaders/champs.gdshaderinc\"\n" \
+		+ "instance uniform float parcelle_agricole = 0.0;\n" \
+		+ "instance uniform float boue_propre = 0.0;\n" \
+		+ "instance uniform vec4 boue_acces = vec4(0.0);\n" \
+		+ "instance uniform float boue_largeur = 0.0;\n" \
+		+ "instance uniform float boue_hauteur = -1.0;\n" \
 		+ "instance uniform vec4 teinte = vec4(1.0, 1.0, 1.0, 1.0);\n" \
 		+ "instance uniform vec4 calque = vec4(1.0, 1.0, 1.0, 0.0);\n" \
 		+ "instance uniform float maquette_blanche = 0.0;\n" \
@@ -113,10 +120,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// d'architecte. Assez clair pour que les quatre signaux\n" \
 		+ "// saturés ressortent, assez gris pour ne pas brûler au soleil.\n" \
 		+ "const vec3 PAPIER = vec3(0.624, 0.605, 0.560);\n" \
-		+ "// 🌿 LE GRAIN D'UNE RIVE RENDUE — deux teintes de vert en linéaire.\n" \
-		+ "// ⚠ Le premier est celui d'avant le semis : la valeur moyenne de la\n" \
-		+ "// bande ne bouge pas, c'est son UNIFORMITÉ qui disparaît.\n" \
-		+ "const vec3 RIVE_VERTE = vec3(0.128, 0.318, 0.096);\n" \
+		+ "// Teintes de rive en espace linéaire.\n" \
+		+ "const vec3 RIVE_VERTE = vec3(0.112, 0.230, 0.105);\n" \
 		+ "const vec3 RIVE_SABLE = vec3(0.620, 0.548, 0.398);\n" \
 		+ "float alea_pt(vec2 p) {\n" \
 		+ "\treturn fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.545);\n" \
@@ -159,7 +164,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// 🧱 Les rangs AVANT les panneaux : un toit équipé est couvert.\n" \
 		+ "\t// La borne 0,995 écarte tout ce qui est PLAT — sol, chaussée,\n" \
 		+ "\t// cours, et les toits-terrasses de 1974, qui ne sont pas en tuile.\n" \
-		+ "\tif (!neuf && vers_le_ciel > 0.5 && vers_le_ciel < 0.995 && pos_monde.y > 1.0) {\n" \
+		+ "\tif (!neuf && UV.y <= 1.05 && dot(UV, UV) > 0.5 && vers_le_ciel > 0.5 && vers_le_ciel < 0.995 && pos_monde.y > 1.0) {\n" \
 		+ "\t\t// L'écart se mesure LE LONG DE LA PENTE : sinon un toit à 14°\n" \
 		+ "\t\t// sort avec des rangs de 1,4 m pour la même tuile.\n" \
 		+ "\t\tfloat sin_pente = sqrt(max(1.0 - vers_le_ciel * vers_le_ciel, 0.02));\n" \
@@ -395,13 +400,18 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// 🌊 L'ÉTAT D'UNE BERGE, DANS LA VILLE VIVANTE. `calque` ne\n" \
 		+ "\t// peint que la maquette blanche ; une rive rendue au fleuve doit se\n" \
 		+ "\t// voir SANS ouvrir le diagnostic, sinon la décision n'a pas d'effet.\n" \
+		+ "\tif (parcelle_agricole > 0.5) base = couleur_champ(pos_monde.xz) * COLOR.a;\n" \
+		+ "\tvec4 depot = boue_hauteur >= 0.0 ? depot_boue_local(pos_monde, boue_hauteur, 0.0) : depot_boue(pos_monde);\n" \
+		+ "\tfloat propre = boue_propre * boue_nettoyage_acces(pos_monde.xz, boue_acces, boue_largeur);\n" \
+		+ "\tbase = mix(base, depot.rgb * COLOR.a, depot.a * (1.0 - propre));\n" \
 		+ "\tif (etat_berge > 0.5) {\n" \
-		+ "\t\t// 🔴 UNE VARIATION DE VALEUR, PAS UNE DEUXIÈME TEINTE (DA l.67) :\n" \
-		+ "\t\t// deux octaves de 2,2 m et 0,5 m, l'herbe rase et l'herbe grasse.\n" \
-		+ "\t\tfloat grain = 0.64 * bruit(pos_monde.xz * 0.45)\n" \
-		+ "\t\t\t+ 0.36 * bruit(pos_monde.xz * 2.10);\n" \
+		+ "\t\tfloat net_rive = 1.0 - smoothstep(0.25, 1.0, length(fwidth(pos_monde.xz)));\n" \
+		+ "\t\tfloat grain = bruit(pos_monde.xz * 0.18);\n" \
+		+ "\t\tgrain += (bruit(pos_monde.xz * 1.2) - 0.5) * 0.16 * net_rive;\n" \
 		+ "\t\tvec3 rive = (etat_berge > 1.5 ? RIVE_VERTE : RIVE_SABLE)\n" \
-		+ "\t\t\t* mix(0.62, 1.48, grain);\n" \
+		+ "\t\t\t* mix(0.86, 1.12, grain);\n" \
+		+ "\t\tfloat humide = 1.0 - smoothstep(-1.95, -1.40, pos_monde.y);\n" \
+		+ "\t\tif (etat_berge > 1.5) rive = mix(rive, vec3(0.105, 0.125, 0.085), humide * 0.65);\n" \
 		+ "\t\t// 🔴 LE MUR NE SE REPEINT PAS, IL VERDIT. À plat (la bande) la\n" \
 		+ "\t\t// rive prend tout ; sur la paroi du quai, la pierre reste\n" \
 		+ "\t\t// dessous — sinon renaturer badigeonne un mur de vert.\n" \

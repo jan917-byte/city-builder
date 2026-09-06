@@ -60,6 +60,7 @@ var _rives := {}
 var _sol: MeshInstance3D
 var _objet: MeshInstance3D
 var _futur: MeshInstance3D
+var _ruine: MeshInstance3D
 ## 🧩 L'ÉCHANTILLON : ce qui n'est pas l'objet cliquable — l'eau, le sol, la
 ## voie de berge — et qui n'est donc jamais teinté par la fiche.
 var _decor: MeshInstance3D
@@ -164,6 +165,10 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 	_futur.name = "Futur"
 	_futur.material_override = mat_objet
 	add_child(_futur)
+	_ruine = MeshInstance3D.new()
+	_ruine.name = "RuinePont"
+	_ruine.material_override = mat_objet
+	add_child(_ruine)
 
 	_decor = MeshInstance3D.new()
 	_decor.name = "Decor"
@@ -177,17 +182,25 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 
 	# La miniature ne joue ni le thème, ni le calque, ni la sélection : elle
 	# montre l'objet tel qu'il sera. Posé une fois, jamais repeint.
-	for mi in [_objet, _futur, _decor]:
+	for mi in [_objet, _futur, _ruine, _decor]:
 		mi.set_instance_shader_parameter("teinte", Color.WHITE)
 		mi.set_instance_shader_parameter("calque", Color(1.0, 1.0, 1.0, 0.0))
 		mi.set_instance_shader_parameter("maquette_blanche", 0.0)
 
 
 ## 🏘️ UN ÎLOT : les maillages de la ville, tels quels. `sol` est sa plaque.
-func montrer(objet: Mesh, futur: Mesh, sol: Mesh) -> void:
+func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ruine: Mesh = null, agricole := false) -> void:
 	_vider_echantillon()
 	_objet.mesh = objet
+	_objet.set_instance_shader_parameter("parcelle_agricole", 1.0 if agricole else 0.0)
 	_futur.mesh = futur
+	_ruine.mesh = ruine
+	for mi in [_objet, _futur, _ruine]:
+		mi.set_instance_shader_parameter("boue_acces",
+			futur.get_meta("boue_acces", Vector4.ZERO) if futur != null else Vector4.ZERO)
+		mi.set_instance_shader_parameter("boue_largeur",
+			futur.get_meta("boue_largeur", 0.0) if futur != null else 0.0)
+	_objet.set_instance_shader_parameter("boue_hauteur", -1.0)
 	_sol.mesh = sol
 	render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_semer_points()
@@ -198,12 +211,17 @@ func montrer(objet: Mesh, futur: Mesh, sol: Mesh) -> void:
 ## berge — c'est la chaussée de la voie qu'elle porte, mesurée sur ses rues.
 ## L'état de la berge arrive juste après par `regler`, à la même image.
 func echantillon(couche: String, fiche: Dictionary, voie_m := 0.0) -> void:
+	_objet.set_instance_shader_parameter("parcelle_agricole", 0.0)
 	_ech_couche = couche
 	_ech_fiche = fiche
 	_ech_voie = voie_m
 	_ech_etat = -1
 	_sol.mesh = null
 	_futur.mesh = null
+	_ruine.mesh = null
+	_objet.set_instance_shader_parameter("boue_hauteur", float(fiche.get("hauteur_eau", 0.0)))
+	_objet.set_instance_shader_parameter("boue_acces", Vector4.ZERO)
+	_decor.set_instance_shader_parameter("boue_propre", 1.0)
 	# 🔴 Les voitures du morceau précédent ne suivent pas : elles se sont déjà
 	# retrouvées garées le long d'une berge.
 	vider_voitures()
@@ -326,6 +344,7 @@ func eteindre() -> void:
 	_vider_echantillon()
 	_objet.mesh = null
 	_futur.mesh = null
+	_ruine.mesh = null
 	_sol.mesh = null
 	render_target_update_mode = SubViewport.UPDATE_DISABLED
 
@@ -351,7 +370,9 @@ func regler(equipe: float, verdi: float, plate: float, futur: bool,
 	if _ech_couche == "b" and int(berge) != _ech_etat:
 		_batir_echantillon(int(berge))
 	_futur.visible = futur and _futur.mesh != null
-	for mi in [_objet, _futur]:
+	_ruine.visible = not futur and _ruine.mesh != null
+	for mi in [_objet, _futur, _ruine]:
+		mi.set_instance_shader_parameter("boue_propre", 1.0 if futur else 0.0)
 		mi.set_instance_shader_parameter("equipe", equipe)
 		mi.set_instance_shader_parameter("verdi", verdi)
 		mi.set_instance_shader_parameter("part_plate", plate)
@@ -366,7 +387,7 @@ func _semer_points() -> void:
 	_cap = 0.0
 	var b := AABB()
 	var premier := true
-	for mi in [_objet, _futur, _sol, _decor, _eau]:
+	for mi in [_objet, _futur, _ruine, _sol, _decor, _eau]:
 		if mi.mesh == null:
 			continue
 		var a: AABB = (mi.mesh as Mesh).get_aabb()

@@ -3,6 +3,7 @@ render_mode cull_back;
 
 uniform vec4 teinte : source_color;
 uniform bool diagnostic = false;
+uniform vec2 brume_exterieure = vec2(0.0);
 varying vec3 monde;
 
 void vertex() {
@@ -18,6 +19,10 @@ void fragment() {
 	float onde = (sin(a) * 0.6 + sin(b) * 0.4) * net;
 	vec3 couleur = teinte.rgb * vec3(0.60, 0.87, 0.85) * (1.0 + onde * 0.065);
 	ALBEDO = diagnostic ? vec3(0.073, 0.089, 0.107) : couleur;
+	float brume = brume_exterieure.x > 0.0 ? smoothstep(550.0,2450.0,
+		length(max(abs(monde.xz)-brume_exterieure,vec2(0.0)))) : 0.0;
+	ALBEDO *= 1.0-brume;
+	EMISSION = vec3(0.578,0.624,0.658)*brume;
 	vec3 pente = vec3(cos(a) * 0.025 * net, 1.0, cos(b) * 0.018 * net);
 	NORMAL = diagnostic ? NORMAL : normalize((VIEW_MATRIX * vec4(normalize(pente), 0.0)).xyz);
 	ROUGHNESS = diagnostic ? 1.0 : 0.30;

@@ -61,6 +61,10 @@ const TAILLE_VELO_MAX := 450.0
 ## chasse, et le fond de fréquentation d'une hiérarchie. À trancher devant
 ## l'image, pas ici.
 const CHASSE_PIETON := 0.80
+## 🚲 LE CYCLISTE EST ÉTEINT (2026-09-04, auteur) : il ne décore pas la
+## ville de départ, il vient avec la décision qui lui fait de la place. Tout
+## reste branché — semis, règles, échantillon — ; seul ce commutateur bascule.
+const VELO_ACTIF := false
 const CHASSE_VELO := 0.90
 const FOULE := {
 	"boulevard": 1.00, "rue": 0.85, "ruelle": 0.70, "rive": 0.55,
@@ -204,8 +208,9 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 				continue
 			_semer(_pieds, chemin, bord_pieton, y_pieton, RESERVE_PIETON,
 				VITESSE_PIETON, 0.26)
-			_semer(_roues, chemin, _bord_velo(route), Y_ROULE, RESERVE_VELO,
-				VITESSE_VELO, 0.0)
+			if VELO_ACTIF:
+				_semer(_roues, chemin, _bord_velo(route), Y_ROULE, RESERVE_VELO,
+					VITESSE_VELO, 0.0)
 		if _pieds.t.size() > debut_p:
 			_pieds.groupes[fid] = [debut_p, _pieds.t.size()]
 		if _roues.t.size() > debut_v:
@@ -270,11 +275,12 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	print(("  trafic : %d voitures roulantes visibles sur %d en circuit,"
 		+ " %d garées sur %d places peintes, 2 appels, animation GPU à l'écran")
 		% [_compter_visibles(), _roulantes.size(), _garees.size(), peintes])
+	var velo := ("%d cyclistes sur %d, 2 appels de plus"
+		% [_compter(_roues), _roues.t.size()]) if VELO_ACTIF \
+		else "cycliste éteint, il attend une décision (1 appel de plus)"
 	print(("  usagers doux : %d piétons visibles sur %d créneaux (%d rues avec"
-		+ " trottoir), %d cyclistes sur %d — 2 appels de plus, la foule suit"
-		+ " l'inverse de la charge")
-		% [_compter(_pieds), _pieds.t.size(), _rues_avec_trottoir(),
-			_compter(_roues), _roues.t.size()])
+		+ " trottoir), %s — la foule suit l'inverse de la charge")
+		% [_compter(_pieds), _pieds.t.size(), _rues_avec_trottoir(), velo])
 
 
 func avancer(mois: float) -> void:
@@ -664,10 +670,14 @@ func remplir_droit(mm_gare: MultiMesh, mm_roule: MultiMesh,
 		Y_ROULE + (Y_MARCHE if trottoir > 0.0 else 0.0),
 		q_doux if praticable else 1.0, CHASSE_PIETON, ESPACEMENT_PIETON_ANIME,
 		ESPACEMENT_PIETON_DESERT, VITESSE_PIETON, 0.26, praticable, hier)
-	var n_v := _doux_droit(mm_velo, axe, cum, longueur,
-		_bord_velo(ville.routes[fid]), Y_ROULE,
-		q_doux if praticable else 1.0, CHASSE_VELO, ESPACEMENT_VELO_DENSE,
-		ESPACEMENT_VELO_RARE, VITESSE_VELO, 0.0, praticable, hier)
+	var n_v := 0
+	if VELO_ACTIF:
+		n_v = _doux_droit(mm_velo, axe, cum, longueur,
+			_bord_velo(ville.routes[fid]), Y_ROULE,
+			q_doux if praticable else 1.0, CHASSE_VELO, ESPACEMENT_VELO_DENSE,
+			ESPACEMENT_VELO_RARE, VITESSE_VELO, 0.0, praticable, hier)
+	else:
+		mm_velo.instance_count = 0
 	return [n_g, n_r, n_p, n_v]
 
 
@@ -720,6 +730,20 @@ func retirer_axe(fid: int, mois: float) -> void:
 
 func axe_ferme(fid: int) -> bool:
 	return _fermees.has(fid)
+
+
+func exporter_fermetures() -> Dictionary:
+	return _fermees.duplicate()
+
+func importer_fermetures(fermetures: Dictionary, mois: float) -> void:
+	_fermees = fermetures.duplicate()
+	# Les rampes de report sont déjà dans la ville sauvée : ne pas les rejouer.
+	_indisponibles_connues = _signature(_indisponibles(mois))
+	_signature_circuit = "?"
+	_dernier_etat = -1.0
+	_derniere_charge = -1.0
+	_semer_circuit()
+	avancer(mois)
 
 
 func report_en_cours(fid: int, mois: float) -> bool:

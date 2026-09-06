@@ -18,8 +18,7 @@ extends Node3D
 # 🩶 Les deux vues — la ville vivante et le diagnostic — se prennent au MENU,
 # pas au clavier : voir THEMES plus bas.
 #
-# 🔄 Caméra libre depuis le 2026-08-17 (clic droit glissé) : le déplacement est
-# passé au clic milieu. Voir `camera_axo.gd` pour ce que ça coûte.
+# 🔄 2026-09-06 : navigation façon Google Earth, clic glissé et Ctrl pour l'orbite.
 # 🔄 Les touches 1..4 exagéraient le relief ; la carte est plate depuis le
 # 2026-08-12.
 #
@@ -38,9 +37,15 @@ const Selection := preload("res://scripts/selection.gd")
 const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
 const Trafic := preload("res://scripts/trafic.gd")
+const TravauxVisuels := preload("res://scripts/travaux_visuels.gd")
 const Apercu := preload("res://scripts/apercu.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
+const Sauvegarde := preload("res://scripts/sauvegarde.gd")
+const Paysage := preload("res://scripts/paysage.gd")
+var paysage: Paysage
+var _empreinte_carte := ""
+var chemin_sauvegarde := Sauvegarde.CHEMIN
 
 const RENDUS := "res://../QGIS/rendus/"
 
@@ -100,6 +105,7 @@ var selection: Selection
 var interface: Interface
 var moniteur_performances: MoniteurPerformances
 var trafic: Trafic
+var travaux: TravauxVisuels
 var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
 var masque: SubViewport
@@ -128,6 +134,7 @@ var _socles := {}
 # la seule géométrie qui se montre en cours de partie — elle est CALCULÉE par
 # 07 comme tout le reste, Godot ne fabrique rien.
 var reparations := {"i": {}, "r": {}, "b": {}}
+var ruines_ponts := {}
 # 🅿️ Les files de stationnement peintes, un nœud par tronçon : elles se cachent
 # quand la rue n'a plus de places (fid de tronçon -> MeshInstance3D).
 var places_rue := {}
@@ -171,9 +178,11 @@ func _ready() -> void:
 
 	ville = Ville.new()
 	ville.charger(donnees)
+	_empreinte_carte = FileAccess.get_sha256(Donnees.CHEMIN)
 	# 🪟 Des DONNÉES, pas d'une constante recopiée : c'est ce qui aligne les
 	# rangées de fenêtres sur les planchers que 07 a empilés.
 	mat_objet = Materiaux.objet(float(donnees["meta"]["etage_m"]))
+	_appliquer_boue(mat_objet)
 	monde = Node3D.new()
 	monde.name = "Monde"
 	add_child(monde)
@@ -182,6 +191,10 @@ func _ready() -> void:
 	trafic.name = "Trafic"
 	monde.add_child(trafic)
 	trafic.batir(donnees, ville)
+	travaux = TravauxVisuels.new()
+	travaux.name = "Travaux"
+	monde.add_child(travaux)
+	travaux.batir(donnees, noeuds, reparations)
 	_batir_marqueurs_crue()
 	_decor()
 
@@ -190,6 +203,7 @@ func _ready() -> void:
 	add_child(pivot)
 	_repere("ville")
 	trafic.regler_detail(pivot.taille)
+	travaux.regler_detail(pivot.taille, pivot.camera)
 
 	selection = Selection.new()
 	selection.name = "Selection"
@@ -197,6 +211,7 @@ func _ready() -> void:
 	selection.survole.connect(_sur_survol)
 	selection.choisi.connect(_sur_choix)
 	add_child(selection)
+	pivot.clic_sol.connect(selection.choisir)
 
 	# 🔎 Avant l'interface : c'est sa TEXTURE que la fiche affiche.
 	apercu = Apercu.new()
@@ -218,7 +233,12 @@ func _ready() -> void:
 	interface.commande_demandee.connect(_sur_commande)
 	interface.vitesse_demandee.connect(_sur_vitesse)
 	interface.temps_remis.connect(_sur_reset)
+	interface.sauvegarde_demandee.connect(_sur_sauvegarde)
+	interface.reprise_demandee.connect(_sur_reprise)
+	interface.informer_partie("", _sauvegarde_disponible())
 	interface.theme_demande.connect(_sur_theme)
+	interface.nord_demande.connect(pivot.remettre_nord)
+	interface.dessus_demande.connect(pivot.basculer_dessus)
 	pivot.vue_changee.connect(interface.maj_camera)
 	pivot.vue_changee.connect(_sur_vue_changee)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
@@ -618,6 +638,10 @@ ESSAI — la ville, sans décision")
 	var total_avant := 0.0
 	for f in ville.routes:
 		total_avant += float(ville.valeur("r", f, "charge", mois))
+	# 🅿️ LE CLIC ENTIER, et pas seulement le report : c'est `commander` qui
+	# emporte les places, `retirer_axe` qui vide la chaussée.
+	var places_avant := ville.valeur("r", 55, "stationnement", 0.0)
+	ville.commander("r", 55, {"axe": true}, 0.0)
 	trafic.retirer_axe(55, 0.0)
 	trafic.avancer(0.0)
 	var fermees: Array = trafic.voitures_visibles_sur(55)
@@ -638,6 +662,14 @@ ESSAI — la ville, sans décision")
 	# les usagers doux disent quelque chose ou décorent.
 	await get_tree().process_frame
 	await _capturer("essai_axe_rendu")
+	var places_apres := ville.valeur("r", 55, "stationnement", mois)
+	if places_avant >= 0.5 and places_apres >= 0.5:
+		push_error("axe 55 fermé aux voitures mais il y reste %d places"
+			% int(roundf(places_apres)))
+		get_tree().quit(1)
+		return
+	print("  axe 55 fermé : %d places de stationnement → %d ✅"
+		% [int(roundf(places_avant)), int(roundf(places_apres))])
 	var doux_55: Array = trafic.doux_visibles_sur(55)
 	print("  axe 55 rendu : %d piétons et %d cyclistes visibles ✅"
 		% [doux_55[0], doux_55[1]])
@@ -1062,11 +1094,11 @@ func _journal_crue(bief: Array, quand: String) -> void:
 func _essai_berge() -> void:
 	print("
 BERGE — trois états francs")
-	# La plus minéralisée : celle qui a le plus d'asphalte au-dessus de l'Ilse.
+	# Le plus long quai : la chaussée corrigée ne déborde plus dans l'Ilse.
 	var fid := -1
 	for f in ville.berges:
-		if fid < 0 or ville.base("b", f, "debord_m2") \
-				> ville.base("b", fid, "debord_m2"):
+		if fid < 0 or ville.base("b", f, "mur_m") \
+				> ville.base("b", fid, "mur_m"):
 			fid = f
 	if fid < 0:
 		push_error("aucune berge : la couche `b` est vide")
@@ -1425,7 +1457,14 @@ func _construire() -> void:
 	# 🔄 Le terrain était un CHAMP D'ALTITUDE déplié en grille ; la carte est
 	# plate depuis le 2026-08-12. Murs de quai et fond du chenal sont dedans,
 	# pas dans l'eau, dont les rides restent dans le matériau.
-	_fusionne("Terrain", Constructeur.maillage(donnees["terrain"]), Materiaux.terrain())
+	var mat_terrain := Materiaux.terrain()
+	_appliquer_boue(mat_terrain)
+	_fusionne("Terrain", Constructeur.maillage(donnees["terrain"]), mat_terrain)
+	if donnees.has("paysage") and not _ignore("Paysage"):
+		paysage = Paysage.new()
+		paysage.name = "Paysage"
+		monde.add_child(paysage)
+		paysage.batir(donnees["paysage"], Donnees.teinte(donnees, "riviere"))
 	_fusionne("Eau", Constructeur.maillage(donnees["eau"]),
 		Materiaux.eau(Donnees.teinte(donnees, "riviere")))
 
@@ -1440,6 +1479,7 @@ func _construire() -> void:
 	_par_objet("Routes", [donnees["voirie"]], "r")
 	_par_reparation("Reparation", donnees["repare"], "i")
 	_par_reparation("ReparationVoirie", donnees["repare_voirie"], "r")
+	_par_ruines_ponts(donnees["ponts_ruine"])
 	_par_places(donnees["places"])
 
 	# 🌳 Le semis des îlots de sol ne bouge pas : aucune décision ne plante DANS
@@ -1487,6 +1527,18 @@ func _ignore(nom: String) -> bool:
 		if a.begins_with("--solo=") and a.substr(7) != nom:
 			return true
 	return false
+
+
+func _appliquer_boue(mat: ShaderMaterial) -> void:
+	if not donnees.has("boue"):
+		return
+	var b: Dictionary = donnees["boue"]
+	var img := Image.create_from_data(int(b["taille"][0]), int(b["taille"][1]),
+		false, Image.FORMAT_RG8, PackedByteArray(b["pixels"]))
+	var r: Array = b["repere"]
+	mat.set_shader_parameter("boue_carte", ImageTexture.create_from_image(img))
+	mat.set_shader_parameter("boue_repere", Vector4(r[0], r[1], r[2], r[3]))
+	mat.set_shader_parameter("boue_active", true)
 
 
 func _fusionne(nom: String, m: ArrayMesh, mat: Material) -> void:
@@ -1579,10 +1631,30 @@ func _par_berge(nom: String, source: Dictionary, cible: Dictionary,
 	print("  %-8s %3d berges" % [nom, parent.get_child_count()])
 
 
-## Les nœuds de réparation. Même recette que `_par_objet`, trois différences :
-## ils partent CACHÉS, leur corps de collision part désactivé, et ils ne
-## remplacent personne — une ruine tient tout entière SOUS le bâtiment neuf qui
-## la couvre (voir RUINE_RETRAIT dans 07), donc rien n'est à retirer.
+## Les débris de pont disparaissent à la livraison, y compris sous le tablier.
+func _par_ruines_ponts(source: Dictionary) -> void:
+	if _ignore("Routes"):
+		return
+	var parent := Node3D.new()
+	parent.name = "RuinesPonts"
+	monde.add_child(parent)
+	for gr in source["g"]:
+		var fid := int(gr[0])
+		var mi := MeshInstance3D.new()
+		mi.name = "Ruine%d" % fid
+		mi.mesh = Constructeur.maillage_groupe(source, int(gr[1]), int(gr[2]))
+		mi.material_override = mat_objet
+		mi.set_meta("fid", fid)
+		mi.set_meta("couche", "r")
+		parent.add_child(mi)
+		mi.create_trimesh_collision()
+		ruines_ponts[fid] = mi
+		var axe: Array = donnees["couloirs"][str(fid)][1][0]
+		reparations["r"][fid].mesh.set_meta("boue_acces",
+			Vector4(axe[0], axe[1], axe[-2], axe[-1]))
+		reparations["r"][fid].mesh.set_meta("boue_largeur", donnees["couloirs"][str(fid)][0])
+
+
 func _par_reparation(nom: String, source: Dictionary, couche: String) -> void:
 	if _ignore("Ilots" if couche == "i" else "Routes"):
 		return
@@ -1617,6 +1689,10 @@ func _corps(mi: MeshInstance3D, actif: bool) -> void:
 ## Montre ce qui vient d'être fini. Une géométrie qui apparaîtrait à
 ## l'ENGAGEMENT dirait qu'un pont se rebâtit en une image.
 func _montrer_reparations() -> void:
+	for fid in ruines_ponts:
+		var mi: MeshInstance3D = ruines_ponts[fid]
+		mi.visible = not ville.reparation_finie("r", fid, mois)
+		_corps(mi, mi.visible)
 	for couche in ["i", "r"]:
 		for fid in reparations[couche]:
 			var mi: MeshInstance3D = reparations[couche][fid]
@@ -1738,6 +1814,7 @@ func _process(delta: float) -> void:
 
 func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
 	trafic.regler_detail(pivot.taille)
+	travaux.regler_detail(pivot.taille, pivot.camera)
 
 
 func _sur_pulsation_trafic() -> void:
@@ -1761,6 +1838,7 @@ func _rafraichir(force: bool) -> void:
 	_montrer_reparations()
 	_montrer_arbres()
 	_montrer_rives()
+	travaux.actualiser(ville, mois)
 	_peindre()
 	interface.maj(ville.indicateurs(mois), mois, vitesse)
 
@@ -1909,7 +1987,10 @@ func _calibrer_echelle() -> void:
 ## les deux rives disparaissent et le thème « dangers » n'a plus de sujet —
 ## mais ils passent au gris, comme le carton du reste.
 func _habiller_monde(diagnostic: bool) -> void:
+	if paysage != null:
+		paysage.visible = not diagnostic
 	trafic.visible = not diagnostic
+	travaux.visible = not diagnostic
 	for n in monde.get_children():
 		if n is MultiMeshInstance3D and str(n.name).begins_with("Arbres"):
 			n.visible = not diagnostic
@@ -1972,6 +2053,7 @@ func _peindre() -> void:
 				(places_rue[fid] as MeshInstance3D).visible = \
 					ville.valeur("r", fid, "stationnement", mois) > 0.5
 			for mj in [mi, reparations[couche].get(fid),
+					ruines_ponts.get(fid) if couche == "r" else null,
 					places_rue.get(fid) if couche == "r" else null,
 					_berges_mur.get(fid) if couche == "b" else null,
 					_berges_pente.get(fid) if couche == "b" else null]:
@@ -1979,7 +2061,17 @@ func _peindre() -> void:
 					continue
 				mj.set_instance_shader_parameter("maquette_blanche",
 					1.0 if blanche else 0.0)
+				mj.set_instance_shader_parameter("boue_propre",
+					1.0 if ville.reparation_finie(couche, fid, mois) else 0.0)
+				mj.set_instance_shader_parameter("boue_acces",
+					reparations["r"][fid].mesh.get_meta("boue_acces", Vector4.ZERO)
+					if couche == "r" and ruines_ponts.has(fid) else Vector4.ZERO)
+				mj.set_instance_shader_parameter("boue_largeur",
+					reparations["r"][fid].mesh.get_meta("boue_largeur", 0.0)
+					if couche == "r" and ruines_ponts.has(fid) else 0.0)
 				mj.set_instance_shader_parameter("diagnostic_sol", diagnostic_sol)
+				mj.set_instance_shader_parameter("parcelle_agricole",
+					1.0 if ville.objets(couche).get(fid, {}).get("sous_type", "") == "champ" else 0.0)
 				mj.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
 				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
 				mj.set_instance_shader_parameter("calque", c)
@@ -2271,7 +2363,9 @@ func _maj_apercu() -> void:
 		if couche == "i" or casse:
 			var neuf: MeshInstance3D = reparations[couche].get(fid)
 			apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
-				neuf.mesh if neuf != null else null, _socle(couche, fid))
+				neuf.mesh if neuf != null else null, null if casse else _socle(couche, fid),
+				ruines_ponts[fid].mesh if casse and ruines_ponts.has(fid) else null,
+				ville.objets(couche).get(fid, {}).get("sous_type", "") == "champ")
 		else:
 			apercu.echantillon(couche, ville.objets(couche).get(fid, {}),
 				_voie_de_berge(fid) if couche == "b" else 0.0)
@@ -2394,6 +2488,87 @@ func _sur_vitesse(nouvelle: float) -> void:
 		_derniere_vitesse = nouvelle
 
 
+func _sauvegarde_disponible() -> bool:
+	return FileAccess.file_exists(chemin_sauvegarde) \
+		or FileAccess.file_exists(chemin_sauvegarde + ".bak")
+
+func _partie() -> Dictionary:
+	return {"mois": mois, "ville": ville.exporter_partie(),
+		"fermetures": trafic.exporter_fermetures(),
+		"camera": {"position": pivot.position, "taille": pivot.taille,
+			"lacet": pivot.lacet, "hauteur": pivot.hauteur},
+		"theme": theme, "couche": selection.sel_couche, "fid": selection.sel_fid}
+
+func _sur_sauvegarde() -> void:
+	var erreur := Sauvegarde.ecrire(_partie(), _empreinte_carte, chemin_sauvegarde)
+	var message := "Partie sauvegardée · mois %.1f" % mois if erreur == "" else erreur
+	interface.informer_partie(message, _sauvegarde_disponible())
+	print(message)
+
+func _partie_valide(p: Dictionary) -> bool:
+	if not p.has_all(["mois", "ville", "fermetures", "camera", "theme", "couche", "fid"]):
+		return false
+	if not p["mois"] is float or not is_finite(p["mois"]) or p["mois"] < 0.0 or p["mois"] > Ville.HORIZON_MOIS:
+		return false
+	if not p["ville"] is Dictionary or not ville.valider_partie(p["ville"]):
+		return false
+	if not p["fermetures"] is Dictionary:
+		return false
+	for fid in p["fermetures"]:
+		if not ville.routes.has(fid) or not p["fermetures"][fid] is float:
+			return false
+	var c: Variant = p["camera"]
+	if not c is Dictionary or not c.has_all(["position", "taille", "lacet", "hauteur"]):
+		return false
+	if not c["position"] is Vector3 or not c["position"].is_finite():
+		return false
+	for champ in ["taille", "lacet", "hauteur"]:
+		if not c[champ] is float or not is_finite(c[champ]):
+			return false
+	if not p["theme"] is String or not p["couche"] is String or not p["fid"] is int:
+		return false
+	if p["fid"] >= 0 and (not p["couche"] in ["i", "r", "b"] or not ville.objets(p["couche"]).has(p["fid"])):
+		return false
+	var themes_valides := [""]
+	for t in THEMES:
+		themes_valides.append(t["id"])
+	return p["theme"] in themes_valides
+
+func _sur_reprise() -> void:
+	var r := Sauvegarde.lire(_empreinte_carte, chemin_sauvegarde)
+	if r.has("erreur"):
+		interface.informer_partie(r["erreur"], _sauvegarde_disponible())
+		return
+	var p: Dictionary = r["partie"]
+	if not _partie_valide(p):
+		interface.informer_partie("Sauvegarde incomplète ; la partie en cours est conservée.", true)
+		return
+	ville.importer_partie(p["ville"])
+	mois = p["mois"]
+	trafic.importer_fermetures(p["fermetures"], mois)
+	_sur_vitesse(0.0)
+	interface.remis_a_zero()
+	pivot.caler(p["camera"]["lacet"], p["camera"]["hauteur"])
+	var position_vue: Vector3 = p["camera"]["position"]
+	pivot.viser(Vector2(position_vue.x, position_vue.z), p["camera"]["taille"])
+	selection.sel_couche = p["couche"]
+	selection.sel_fid = p["fid"]
+	selection.survol_fid = -1
+	_sur_theme(p["theme"])
+	_apercu_fid = -1
+	_apercu_voitures = ""
+	_arbres_compte = -1
+	_berges_rendues = "?"
+	_dernier_peint = -1.0
+	interface.reprendre_fiche(p["couche"], p["fid"])
+	_rafraichir(true)
+	var message := "Partie reprise en pause · mois %.1f" % mois
+	if r["secours"]:
+		message += " · copie de secours"
+	interface.informer_partie(message, true)
+	print(message)
+
+
 # ------------------------------------------------------------------ le reste
 
 func _repere(nom: String) -> void:
@@ -2456,6 +2631,13 @@ func _route_calme() -> int:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo:
+		if e.keycode == KEY_F5:
+			_sur_sauvegarde()
+			return
+		if e.keycode == KEY_F9:
+			_sur_reprise()
+			return
 	if not (e is InputEventKey) or not (e as InputEventKey).pressed \
 			or (e as InputEventKey).echo:
 		return
