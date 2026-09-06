@@ -1,5 +1,9 @@
 # HISTORIQUE.md — ce qui s'est passé, session par session
 
+## 2026-09-06 — Première boucle jouable après la crue
+À la demande de l'auteur : deux réparations proposées, livraison visible et pause, puis réparation / protection / solaire ; progression conservée dans la sauvegarde. Étape 6 ouverte, 5 mise en pause ; arbitrage de plaisir ouvert (question 29).
+Contrôles rendus de l'ouverture et du jeu, reprise et chaîne vérifiés ; largeur initiale du guide et comparaison booléen/entier des états de berge corrigées. L'argent d'essai passe derrière `--outils`.
+
 > **On ne lit pas ce fichier pour travailler** : on vient y chercher *pourquoi* une chose est comme elle est. Ce qui est vrai aujourd'hui est dans [ETAT.md](ETAT.md) ; ce qui est tranché est dans le vault.
 > **La règle : 3 lignes par session**, en fin de session — ce qui a changé, le piège payé, le numéro de décision. Pas le récit.
 > ⚠️ Les entrées d'avant le 2026-08-19 ont été **coupées à leur début** ce jour-là, quand les fichiers de contexte ont été réduits. Leur texte complet est dans l'historique git.

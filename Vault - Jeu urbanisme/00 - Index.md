@@ -22,7 +22,7 @@ maj: 2026-09-02
 
 - [[Vision et prémisses]] — les deux bases non négociables, ce que le jeu est et n'est pas
 - [[Ton et règles d'écriture]] — « dur mais possible », les clichés interdits
-- [[Boucle de jeu]] — les 60 secondes qui se répètent
+- [[Boucle de jeu]] — les 60 secondes qui se répètent · [[Premiers pas après la crue]] — la première boucle mise à l'essai
 - [[Pièges connus]] — la liste des façons de rater ce projet
 
 ## ⚙️ Systèmes

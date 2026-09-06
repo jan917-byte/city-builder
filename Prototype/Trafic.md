@@ -1,6 +1,6 @@
 # Le trafic visible
 
-> Étape 5 ouverte le 2026-08-21. Le trafic est un flux agrégé figuré par une poignée de véhicules : aucune voiture ne cherche son chemin.
+> Étape 5 en pause depuis l'ouverture des premiers pas le 2026-09-06 ; son critère reste à juger. Le trafic est un flux agrégé figuré par une poignée de véhicules : aucune voiture ne cherche son chemin.
 ## Caméra à la souris — 2026-09-06
 Navigation façon Google Earth validée par l'auteur (décision 83). Contrôles `essai_camera.gd` et sa passe rendue `-- --ville` : aucun échec ; ancrage à moins de 0,1 pixel à 6°, 32° et 90°, sur deux tailles de fenêtre. Sélection au relâchement, glissé sans sélection, panneaux et perte de focus vérifiés ; la portée du clic suit maintenant celle de la caméra.
 À essayer dans la maquette : glisser, zoomer au pointeur, tourner avec Ctrl, retrouver le nord et alterner Dessus / 3D. Aperçu numéroté : `QGIS/rendus/wehrau_camera_navigation.png`. Défaut à signaler : le sol dérive sous le curseur, une fiche s'ouvre pendant le déplacement ou la carte reste accrochée après relâchement.

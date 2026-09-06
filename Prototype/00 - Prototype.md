@@ -11,10 +11,10 @@
 | 2 | **[Les parcelles](Parcelles.md)** | ⏸️ **en pause** | la surface de toit mesurée retombe sur le coefficient de l'énergie · le cœur ancien ressemble à un cœur ancien |
 | 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
 | 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | ⏸️ **en pause** | croire qu'on y habite |
-| 5 | **[Le trafic visible](Trafic.md)** | 🎯 **ouverte** | une rue à `charge = 1,00` est désagréable à regarder |
-| 6 | **Le thème suivant** | ☐ | il s'écrit en trois pièces, sans toucher à la machinerie |
+| 5 | **[Le trafic visible](Trafic.md)** | ⏸️ **en pause** | une rue à `charge = 1,00` est désagréable à regarder |
+| 6 | **[Les premiers pas](Premiers%20pas.md)** | 🎯 **ouverte** | après la première réparation livrée, le joueur veut choisir la suite |
 
-⏸️ **Les étapes 2 et 4 sont en pause, pas finies** : leurs critères n'ont pas été vus à l'écran. L'auteur a ouvert la 5 explicitement ; la règle d'une seule étape ouverte tient.
+⏸️ **Les étapes 2, 4 et 5 sont en pause, pas finies** : leurs critères restent à juger. L'auteur ouvre l'essai de gameplay le 2026-09-06 ; une seule étape est ouverte.
 
 ## Ce qui commande le prototype
 

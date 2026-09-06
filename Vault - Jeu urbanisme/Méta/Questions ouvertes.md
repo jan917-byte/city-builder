@@ -338,6 +338,9 @@ L'auteur demande de nommer les lieux. Une table éditoriale fixe porte les noms 
 ### 28. Comment parcourir la ville à la souris ? — ✅ fermée le 2026-09-06
 L'auteur préfère un système façon Google Earth et demande sa mise en place : sol saisi au clic gauche, orbite avec Ctrl, zoom au pointeur, sélection au clic bref, boussole et Dessus / 3D. → [[Décisions arrêtées]] 83.
 
+### 29. La première réparation donne-t-elle envie de continuer ? — en essai le 2026-09-06
+L'auteur demande de mettre en place la boucle proposée : manque visible, réparation, réussite, puis choix de protection. L'essai tourne dans Wehrau ; restent à juger les deux lieux, le rythme et l'envie de poursuivre. L'autorisation de l'implémenter ne clôt pas ces arbitrages. → [[Premiers pas après la crue]] · `Prototype/Premiers pas.md`
+
 ## 🟢 Peut attendre (réversible)
 
 Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · titre du jeu · modèle économique et prix · nombre de langues

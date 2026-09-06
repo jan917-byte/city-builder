@@ -43,6 +43,8 @@ const Recherche := preload("res://scripts/recherche.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
 const Sauvegarde := preload("res://scripts/sauvegarde.gd")
 const Paysage := preload("res://scripts/paysage.gd")
+const Ouverture := preload("res://scripts/ouverture.gd")
+var ouverture: Ouverture
 var paysage: Paysage
 var _empreinte_carte := ""
 var chemin_sauvegarde := Sauvegarde.CHEMIN
@@ -256,6 +258,16 @@ func _ready() -> void:
 		or "--interface" in OS.get_cmdline_user_args()))
 
 	_batir_contour()
+	var arguments := OS.get_cmdline_user_args()
+	if "--ouverture" in arguments or (not "--script" in OS.get_cmdline_args()
+			and not "--essai" in arguments and not "--interface" in arguments
+			and not "--banc" in arguments):
+		ouverture = Ouverture.new()
+		interface.add_child(ouverture)
+		interface.ouverture = ouverture
+		ouverture.batir(self)
+		_commencer_ouverture()
+	interface._debut.visible = ouverture != null
 
 	var c: Dictionary = donnees["controles"]
 	print("Wehrau — %d îlots, %d tronçons, %d cliquables, %d triangles"
@@ -1810,6 +1822,8 @@ func _process(delta: float) -> void:
 	else:
 		mois = minf(mois + delta * vitesse * MOIS_PAR_SECONDE, Ville.HORIZON_MOIS)
 	_rafraichir(false)
+	if ouverture != null:
+		ouverture.actualiser()
 
 
 func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
@@ -2463,6 +2477,8 @@ func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
 	interface.confirmer_solaire(float(r["cout_ke"]))
 	_dernier_peint = -1.0
 	_rafraichir(true)
+	if ouverture != null:
+		ouverture.actualiser(true)
 
 
 static func _nom_couche(couche: String) -> String:
@@ -2477,6 +2493,10 @@ func _sur_reset() -> void:
 	mois = 0.0
 	_sur_vitesse(0.0)
 	interface.remis_a_zero()
+	interface.informer_partie("", _sauvegarde_disponible())
+	if ouverture != null:
+		ouverture.reprendre({})
+		_commencer_ouverture()
 	print("retour au mois 0 · poses annulées, ville comme au chargement")
 	_dernier_peint = -1.0
 	_rafraichir(true)
@@ -2494,6 +2514,7 @@ func _sauvegarde_disponible() -> bool:
 
 func _partie() -> Dictionary:
 	return {"mois": mois, "ville": ville.exporter_partie(),
+		"ouverture": ouverture.exporter() if ouverture != null else {},
 		"fermetures": trafic.exporter_fermetures(),
 		"camera": {"position": pivot.position, "taille": pivot.taille,
 			"lacet": pivot.lacet, "hauteur": pivot.hauteur},
@@ -2508,6 +2529,12 @@ func _sur_sauvegarde() -> void:
 func _partie_valide(p: Dictionary) -> bool:
 	if not p.has_all(["mois", "ville", "fermetures", "camera", "theme", "couche", "fid"]):
 		return false
+	if p.has("ouverture"):
+		if not p["ouverture"] is Dictionary:
+			return false
+		for cle in ["suite", "termine", "ouvert"]:
+			if p["ouverture"].has(cle) and not p["ouverture"][cle] is bool:
+				return false
 	if not p["mois"] is float or not is_finite(p["mois"]) or p["mois"] < 0.0 or p["mois"] > Ville.HORIZON_MOIS:
 		return false
 	if not p["ville"] is Dictionary or not ville.valider_partie(p["ville"]):
@@ -2561,6 +2588,10 @@ func _sur_reprise() -> void:
 	_berges_rendues = "?"
 	_dernier_peint = -1.0
 	interface.reprendre_fiche(p["couche"], p["fid"])
+	if ouverture != null:
+		ouverture.reprendre(p.get("ouverture", {"ouvert": false}))
+		interface._detail_ouvert = not ouverture.ouvert
+		interface._placer_detail()
 	_rafraichir(true)
 	var message := "Partie reprise en pause · mois %.1f" % mois
 	if r["secours"]:
@@ -2570,6 +2601,19 @@ func _sur_reprise() -> void:
 
 
 # ------------------------------------------------------------------ le reste
+
+func _commencer_ouverture() -> void:
+	_sur_vitesse(0.0)
+	_sur_theme("")
+	interface._detail_ouvert = false
+	interface._placer_detail()
+	interface._fiche_panneau.hide()
+	pivot.caler(35.0, 42.0)
+	_viser_objet("i", Ouverture.MAISONS, 330.0)
+	selection.sel_fid = -1
+	selection.survol_fid = -1
+	ouverture.actualiser(true)
+
 
 func _repere(nom: String) -> void:
 	var r: Dictionary = donnees["reperes"]

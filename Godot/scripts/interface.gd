@@ -167,6 +167,8 @@ class Pictos extends Control:
 
 var ville: Ville
 var trafic
+var ouverture
+var _debut: Button
 ## 🔎 La texture de la miniature, posée par `maquette.gd` avant `batir()`.
 var apercu: Texture2D
 var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
@@ -641,6 +643,7 @@ func _panneau_bilan() -> void:
 		ville.crediter_essai_ke(1000.0)
 		_message.text = "Essai : 1 000 k€ versés.")
 	v.add_child(triche)
+	triche.visible = "--outils" in OS.get_cmdline_user_args()
 
 
 ## Une ligne du bilan : la pastille dit QUOI, la jauge dit OÙ ON EN EST, le
@@ -778,6 +781,23 @@ func _panneau_rail() -> void:
 		b.pressed.connect(func() -> void: ouvrir_lieu(cle))
 		v.add_child(b)
 	accueil.set_pressed_no_signal(true)
+	var debut := Button.new()
+	_debut = debut
+	debut.text = "DÉBUT"
+	debut.tooltip_text = "Revoir les premiers pas après la crue."
+	debut.add_theme_font_size_override("font_size", 11)
+	debut.add_theme_color_override("font_color", RAIL_ICONE)
+	debut.add_theme_color_override("font_hover_color", RAIL_ICONE)
+	_habiller_tuile_rail(debut)
+	debut.pressed.connect(func() -> void:
+		if ouverture != null:
+			var ouvrir: bool = not ouverture.visible
+			theme_demande.emit("")
+			_detail_ouvert = false
+			_placer_detail()
+			ouverture.ouvert = ouvrir
+			ouverture.actualiser(true))
+	v.add_child(debut)
 
 
 func _tuile_rail(icone: String, bulle: String) -> Button:
@@ -820,6 +840,8 @@ func _placer_detail() -> void:
 	_diagnostic_panneau.visible = _detail_ouvert and genre == "crue"
 	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
 	_calque_panneau.visible = _detail_ouvert and (genre == "calque" or genre == "tissu")
+	if ouverture != null:
+		ouverture.visible = ouverture.ouvert and not _detail_ouvert
 
 
 ## Le panneau des thèmes CONTINUS — énergie, trafic — et du tissu. Un thème
@@ -1994,8 +2016,9 @@ func _maj_fiche() -> void:
 ## Le libellé d'une bascule, marqué quand le réglage est posé. Une coche plutôt
 ## qu'une couleur : elle survit à une capture en noir et blanc, et elle se lit
 ## dans un bouton déjà chargé de trois nombres.
-func _posee(cle: String, texte: String, valeur := true) -> String:
-	return ("✓ " + texte) if _pose.get(cle) == valeur else texte
+func _posee(cle: String, texte: String, valeur: Variant = true) -> String:
+	return ("✓ " + texte) if _pose.has(cle) and typeof(_pose[cle]) == typeof(valeur) \
+		and _pose[cle] == valeur else texte
 
 
 ## 🏢 CE QUE DENSIFIER DONNE, EN LOGEMENTS ET JAMAIS EN MÈTRES. La hauteur

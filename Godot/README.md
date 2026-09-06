@@ -10,7 +10,7 @@ Relever la ville après la crue et équiper ses toits se disputent la même cais
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5).
+Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5). Les premiers pas s'ouvrent en pause ; DÉBUT retrouve l'accompagnement. Le contrôle dédié se lance avec `--script res://outils/essai_ouverture.gd -- --ouverture --captures`. `-- --outils` affiche l'argent d'essai.
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
 `Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, les deux menus de lieu, plus chaque miniature seule à sa taille de rendu.
 ## Sauvegarder une partie
