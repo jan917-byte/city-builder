@@ -1,5 +1,9 @@
 # HISTORIQUE.md — ce qui s'est passé, session par session
 
+**2026-09-09 — campagne : parcelles cliquables, fermes, chemins, routes prolongées et Ilse extérieure sinueuse.** Demande de l'auteur : effacer le carré de la carte et donner une structure agricole aux alentours.
+Pièges corrigés : champs dessinés par une texture sans rapport avec la sélection, arbres limités au rectangle, routes enfoncées dans le relief ; les voies suivent maintenant le support triangulé.
+Contrat agricole, clics rendus, fiches, miniature, diagnostic et reprise contrôlés ; données et règles urbaines conservées, actions agricoles encore absentes. Détail et aperçus dans l'étape « Premiers pas ».
+
 ## 2026-09-06 — Première boucle jouable après la crue
 À la demande de l'auteur : deux réparations proposées, livraison visible et pause, puis réparation / protection / solaire ; progression conservée dans la sauvegarde. Étape 6 ouverte, 5 mise en pause ; arbitrage de plaisir ouvert (question 29).
 Contrôles rendus de l'ouverture et du jeu, reprise et chaîne vérifiés ; largeur initiale du guide et comparaison booléen/entier des états de berge corrigées. L'argent d'essai passe derrière `--outils`.

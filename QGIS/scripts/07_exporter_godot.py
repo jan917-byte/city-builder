@@ -881,7 +881,8 @@ def main():
                 if trame_pl is not None:
                     interdit = list(trame_pl) + [trame_pl[0]]
             plantes = [] if (d["hauteur_eau_max"] or 0.0) >= CRUE_ARBRE_NOYE_M                 else _semer(an, d, rng, relief, interdit)
-            arbres.extend(plantes)
+            if st != "champ":
+                arbres.extend(plantes)
             if interdit is not None:
                 # Le compte est MESURÉ sur les arbres rendus, pas déduit du
                 # rejet : c'est ce qui prouve que le rejet a bien tourné.
@@ -1651,7 +1652,7 @@ def main():
         # autres : Godot n'a plus qu'UNE façon de lire de la géométrie.
         "boue": carte_boue(ilots, routes, chenal, cx, cy),
         "terrain": terre.json(),
-        "paysage": paysage(maxx - minx, maxy - miny, chenal, cx, cy),
+        "paysage": paysage(maxx - minx, maxy - miny, chenal, cx, cy, routes, sols, ilots),
         "masses": masses.json(),
         # 🔧 LA VILLE RÉPARÉE, groupe par groupe, jamais montrée au chargement.
         # Le bâti neuf d'un îlot ruiné, et le tablier neuf d'un franchissement

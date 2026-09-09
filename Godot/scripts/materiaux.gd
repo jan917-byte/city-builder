@@ -57,7 +57,6 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 	sh.code = "shader_type spatial;\n" \
 		+ "render_mode cull_back, specular_disabled;\n" \
 		+ "#include \"res://shaders/boue.gdshaderinc\"\n" \
-		+ "#include \"res://shaders/champs.gdshaderinc\"\n" \
 		+ "instance uniform float parcelle_agricole = 0.0;\n" \
 		+ "instance uniform float boue_propre = 0.0;\n" \
 		+ "instance uniform vec4 boue_acces = vec4(0.0);\n" \
@@ -400,7 +399,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// 🌊 L'ÉTAT D'UNE BERGE, DANS LA VILLE VIVANTE. `calque` ne\n" \
 		+ "\t// peint que la maquette blanche ; une rive rendue au fleuve doit se\n" \
 		+ "\t// voir SANS ouvrir le diagnostic, sinon la décision n'a pas d'effet.\n" \
-		+ "\tif (parcelle_agricole > 0.5) base = couleur_champ(pos_monde.xz) * COLOR.a;\n" \
+		+ "\tif (UV2.x < -0.5) { float s = dot(pos_monde.xz, vec2(-UV.y, UV.x)); base = COLOR.rgb * (1.0 + sin(s * 2.2) * 0.045 / (1.0 + fwidth(s) * 3.0)); }\n" \
 		+ "\tvec4 depot = boue_hauteur >= 0.0 ? depot_boue_local(pos_monde, boue_hauteur, 0.0) : depot_boue(pos_monde);\n" \
 		+ "\tfloat propre = boue_propre * boue_nettoyage_acces(pos_monde.xz, boue_acces, boue_largeur);\n" \
 		+ "\tbase = mix(base, depot.rgb * COLOR.a, depot.a * (1.0 - propre));\n" \

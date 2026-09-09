@@ -1,9 +1,7 @@
-"""Écrin extérieur de Wehrau : champs, forêt mixte, relief et nuages.
-
-Le rectangle jouable et ses données restent exclus de cette géométrie.
-"""
+"""Relief extérieur et campagne sélectionnable, sans modifier les données urbaines."""
 import math
 import random
+from functools import lru_cache
 
 import palette as PAL
 from .geometrie import Maillage
@@ -19,7 +17,7 @@ def fondu(a, b, x):
     return t * t * (3.0 - 2.0 * t)
 
 
-def paysage(largeur, profondeur, chenal, cx, cy):
+def paysage(largeur, profondeur, chenal, cx, cy, routes, sols, ilots):
     hx, hz = largeur / 2, profondeur / 2
     rng = random.Random(GRAINE)
     # Les sorties sont les deux bouchons du chenal sur le bord de la carte.
@@ -35,29 +33,39 @@ def paysage(largeur, profondeur, chenal, cx, cy):
             continue
         est = mx > hx - 3
         rails = []
-        for k in range(10):
-            t = k * 430.0
-            virage = 90 * math.sin(t / 620)
+        for k in range(131):
+            t = k * 30.0
+            virage = (145 * math.sin(t / 350) + 65 * math.sin(t / 790)) * fondu(0, 220, t)
             x = hx + t if est else mx + virage
             z = mz + virage if est else -hz - t
-            rails.append(((x, z - largeur_eau / 2), (x, z + largeur_eau / 2)) if est
-                         else ((x - largeur_eau / 2, z), (x + largeur_eau / 2, z)))
+            demi = largeur_eau / 2 * (1 + .23 * math.sin(t / 145) * fondu(0, 130, t))
+            rails.append(((x, z - demi), (x, z + demi)) if est
+                         else ((x - demi, z), (x + demi, z)))
         for (a, b), (c, d) in zip(rails, rails[1:]):
             canaux.append([a, b, d, c])
 
     def distance(x, z):
         return math.hypot(max(abs(x) - hx, 0), max(abs(z) - hz, 0))
 
+    segments = []
+    for a, b, c, d in canaux:
+        px, pz = (a[0]+b[0])/2, (a[1]+b[1])/2
+        qx, qz = (c[0]+d[0])/2, (c[1]+d[1])/2
+        vx, vz = qx-px, qz-pz
+        segments.append((px,pz,vx,vz,vx*vx+vz*vz,math.dist(a,b)/2,
+                         min(px,qx),min(pz,qz),max(px,qx),max(pz,qz)))
+
+    @lru_cache(maxsize=250000)
     def bord_riviere(x, z):
         dist = 1e9
-        for a, b, c, d in canaux:
-            px, pz = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
-            qx, qz = (c[0] + d[0]) / 2, (c[1] + d[1]) / 2
-            vx, vz = qx - px, qz - pz
-            t = max(0, min(1, ((x-px)*vx + (z-pz)*vz) / (vx*vx+vz*vz)))
-            dist = min(dist, math.hypot(x-px-t*vx, z-pz-t*vz) - math.dist(a,b)/2)
+        for px,pz,vx,vz,lg,demi,x0,z0,x1,z1 in segments:
+            if max(x0-x,x-x1,z0-z,z-z1) > dist+demi:
+                continue
+            t = max(0, min(1, ((x-px)*vx + (z-pz)*vz) / lg))
+            dist = min(dist, math.hypot(x-px-t*vx, z-pz-t*vz) - demi)
         return dist
 
+    @lru_cache(maxsize=250000)
     def altitude(x, z):
         d = distance(x, z)
         rive = chenal.niveau_rive(cx + x, cy - z)
@@ -68,11 +76,11 @@ def paysage(largeur, profondeur, chenal, cx, cy):
         relief = (cretes * collines + arriere) * cote * fondu(130, 580, d)
         relief += 13 * fondu(0, 250, d) * (1 + math.sin(x / 155 + z / 210)) * cote
         berge = bord_riviere(x, z)
-        fond = rive - 0.045 + relief * fondu(0, 190, berge)
+        fond = rive + 0.03 + relief * fondu(0, 190, berge)
         return -2.4 + (fond + 2.4) * fondu(0, 12, berge)
 
     def lisiere(x, z):
-        return 165 + 65 * math.sin(x / 125 + z / 160) + 40 * math.cos(z / 74 - x / 220)
+        return math.hypot(x, z * .82) - (820 + 85 * math.sin(z / 180) + 55 * math.cos(x / 160))
 
     sol, eau = Maillage(), Maillage()
     vert = PAL.vers_lineaire("#687e49")
@@ -123,14 +131,16 @@ def paysage(largeur, profondeur, chenal, cx, cy):
         norme = math.sqrt(nx * nx + 4 + nz * nz)
         sol.n[k] = (nx / norme, 2 / norme, nz / norme)
 
+    from .campagne import campagne
+    rural = campagne(sol, sols, ilots, routes, altitude, bord_riviere, lisiere, hx, hz, cx, cy)
     arbres = [[], []]
     for z0 in range(-1950, 1950, 25):
         for x0 in range(-1950, 1950, 25):
             x, z = x0 + rng.uniform(-12, 12), z0 + rng.uniform(-12, 12)
             d = distance(x, z)
-            if d < max(45, lisiere(x, z)) or rng.random() > 0.92 - 0.68 * fondu(600, 1600, d):
+            if d < 30 or lisiere(x, z) < 20 or rng.random() > 0.92 - 0.68 * fondu(600, 1600, d):
                 continue
-            if bord_riviere(x, z) < 22:
+            if bord_riviere(x, z) < 22 or rural["pres_route"](x, z) < 13 or rural["dans_champ"](x,z):
                 continue
             espece = int(rng.random() < 0.35 + 0.4 * fondu(200, 650, d))
             arbres[espece].append([round(x, 2), round(altitude(x, z), 2), round(z, 2),
@@ -148,7 +158,9 @@ def paysage(largeur, profondeur, chenal, cx, cy):
     quad.triangle((-0.5, -0.5, 0), (0.5, 0.5, 0), (-0.5, 0.5, 0), (1, 1, 1))
     print("  vallée : %d triangles de sol, %d arbres extérieurs, %d bancs de nuages"
           % (len(sol), sum(map(len, arbres)), len(nuages)))
-    return {"demi_emprise": [hx, hz], "sol": sol.json(), "eau": eau.json(),
+    rural.pop("pres_route")
+    rural.pop("dans_champ")
+    return {"demi_emprise": [hx, hz], "sol": sol.json(), "eau": eau.json(), "campagne": rural,
             "arbres": arbres, "modeles": [_arbre(False), _arbre(True)],
             "nuages": nuages, "quad": quad.json()}
 

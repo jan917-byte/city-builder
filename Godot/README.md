@@ -100,7 +100,6 @@ L'occlusion voyage dans `COLOR.a` — la teinte occluse est dans `COLOR.rgb`, le
 3. **`class_name` ne suffit pas en ligne de commande.** Les classes globales n'existent qu'une fois le projet indexé par l'éditeur ; un clone frais échoue en « Identifier not declared ». D'où `preload()` partout.
 
 ## Déboguer
-
 ```bash
 godot --headless --path Godot --script res://outils/sonde_api.gd
 ```
@@ -108,6 +107,7 @@ godot --headless --path Godot --script res://outils/sonde_api.gd
 La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change. Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
 - `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`, `Paysage`). `--script res://outils/apercu_vallee.gd` produit les vues de contrôle de la vallée.
+- `--script res://outils/essai_campagne.gd` vérifie les parcelles agricoles au clic, leurs fiches et leur reprise, puis produit les aperçus des alentours. Les champs se consultent ; leurs décisions agricoles restent à définir.
 - `-- --essai` joue la partie de contrôle et quitte. ⚠️ **pas** avec `--headless` : le pilote de rendu y est factice, aucune image n'en sort.
 - `-- --banc` mesure et quitte : quatre cadrages verrou d'écran levé, puis la pulsation du trafic et le prix d'une image, part par part. 🔴 **À lancer AVANT d'optimiser quoi que ce soit** — le coupable n'est presque jamais celui qu'on croit, et le banc dit s'il est dans le script ou dans le rendu. Les chiffres vivent dans `Prototype/`, pas ici.
 

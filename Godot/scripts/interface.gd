@@ -27,6 +27,8 @@ const Recherche := preload("res://scripts/recherche.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 const Lieux := preload("res://scripts/lieux.gd")
 var lieux := Lieux.new()
+var parcelles_agricoles := {}
+var _agricole_texte: Label
 var _etat_partie: Label
 var _avis_partie: PanelContainer
 var _reprendre: Button
@@ -1101,6 +1103,10 @@ func _panneau_ilot() -> void:
 	v.add_theme_constant_override("separation", 8)
 	p.add_child(v)
 	_fiche_titre = _bandeau(v, "Sélection")
+	_agricole_texte = _label("", 14, TEXTE)
+	_agricole_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_agricole_texte.visible = false
+	v.add_child(_agricole_texte)
 
 	# 🎓🏛️ LA DEUXIÈME PORTE (81), et elle ne change rien à la fiche : celle-ci
 	# reste la fiche de L'ÎLOT — surface, logements, toits, curseurs. Le menu
@@ -1882,7 +1888,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# 🔄 LA FICHE S'OUVRE AUSSI SUR UNE RUE depuis le 2026-08-21. Elle
 	# n'appartenait qu'à l'îlot ; la crue a mis deux décisions sur la voirie —
 	# déblayer, rebâtir — et une décision qu'on ne peut pas cliquer n'existe pas.
-	if fid < 0 or (couche != "i" and couche != "r" and couche != "b"):
+	if fid < 0 or couche not in ["i", "r", "b", "a"]:
 		return
 	# 🎓🏛️ Cliquer la ville referme le menu : jamais deux fiches ensemble (81).
 	_fermer_lieu()
@@ -1915,6 +1921,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# aucune. Un curseur qui ne planterait rien n'a pas à s'afficher.
 	_arbres_bloc.visible = couche == "r" and ville.arbres_plantables(fid) > 0
 	_berge_bloc.visible = couche == "b"
+	_agricole_texte.visible = couche == "a"
 	_maj_fiche()
 
 
@@ -1929,6 +1936,18 @@ func reprendre_fiche(couche: String, fid: int) -> void:
 
 
 func _maj_fiche() -> void:
+	if _fiche_couche == "a":
+		var champ: Dictionary = parcelles_agricoles.get(str(_fiche_fid), {})
+		_fiche_titre.text = str(champ.get("nom", "Parcelle agricole")).to_upper()
+		_fiche_titre.tooltip_text = "Îlot agricole %d" % _fiche_fid
+		_agricole_texte.text = "Culture : %s\nSurface : %s ha\n%s" % [
+			champ.get("culture", ""), _nb(float(champ.get("surface_m2", 0.0))/10000.0, 2),
+			"Corps de ferme · logis, grange et remise" if champ.get("ferme", false) else "Parcelle cultivée"]
+		_maj_reparation({})
+		_chantier_bloc.hide()
+		_recap_bloc.hide()
+		_apercu_boutons.hide()
+		return
 	_maj_chantier()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()

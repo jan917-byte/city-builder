@@ -31,3 +31,10 @@ Validé le 2026-09-06 : essai rendu de l'ouverture, essai général rendu, essai
 - Défauts à signaler : réussite avant livraison, rue toujours vide, dépense dès la comparaison, premiers pas perdus après reprise, guide qui masque les commandes.
 
 La crue suivante reste une prévision, sans événement daté. Le retour des piétons représente la praticabilité locale ; le faubourg reste coupé de l'autre rive tant que les ponts ne sont pas réparés. Le capital politique et le relogement ne sont pas introduits par cet essai.
+
+## Les alentours — 2026-09-09, à juger à l'écran
+
+135 parcelles agricoles traversent l'ancienne limite rectangulaire, avec des surfaces et orientations variées, quatre corps de ferme et des chemins. Quatre sorties routières continuent sur le relief ; l'Ilse extérieure serpente avec une largeur variable. Les cultures n'hébergent plus le semis dispersé qui révélait le rectangle.
+Chaque parcelle ouvre une fiche (culture, hectares, ferme), une miniature et son contour ; la sélection se conserve à la reprise. Cette couche agricole n'ajoute encore aucune décision de production : les objets, indicateurs et règles urbaines restent identiques à l'export précédent. Une ancienne sauvegarde est refusée par l'empreinte de carte existante ; essayer sur une nouvelle partie.
+Contrôles : `python QGIS/scripts/verifier_campagne.py` (maillages, raccords routiers, parcelles traversantes, comparaison urbaine si référence locale) ; Godot avec `--script res://outils/essai_campagne.gd` (tous les clics, fiches, miniature, diagnostic, sauvegarde/reprise, quatre captures). L'essai général rendu passe également.
+À regarder : `wehrau_campagne_ensemble.png`, `..._dessus.png`, `..._montagnes.png`, `..._ferme.png` dans `QGIS/rendus/`. Défauts à signaler : route qui disparaît dans une pente, ligne carrée autour de la ville, arbres au milieu d'une culture, clic qui sélectionne un autre champ. Les noms de cultures et fermes générés restent une proposition visuelle.

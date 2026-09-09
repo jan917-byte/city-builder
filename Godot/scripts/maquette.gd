@@ -126,7 +126,7 @@ var _plaques := {}
 var _berges_contour := {}
 var _diagnostic_marqueurs: Node3D
 
-var noeuds := {"i": {}, "r": {}, "b": {}}
+var noeuds := {"i": {}, "r": {}, "b": {}, "a": {}}
 ## L'épaisseur de la dalle de la miniature, en mètres. Assez pour se voir dans
 ## une fenêtre de 35 m, assez peu pour ne pas faire un gâteau sous un îlot.
 const EPAISSEUR_SOCLE := 1.6
@@ -224,6 +224,7 @@ func _ready() -> void:
 	interface = Interface.new()
 	interface.name = "Interface"
 	interface.ville = ville
+	interface.parcelles_agricoles = donnees.get("paysage", {}).get("campagne", {}).get("objets", {})
 	interface.trafic = trafic
 	interface.apercu = apercu.get_texture()
 	# Passées plutôt que preloadées : `interface.gd` importerait `maquette.gd`,
@@ -1488,6 +1489,15 @@ func _construire() -> void:
 	_par_berge("MursQuai", donnees["berges_mur"], _berges_mur, true)
 	_par_berge("TalusRives", donnees["berges_pente"], _berges_pente, false)
 	_par_objet("Ilots", [donnees["masses"], donnees["sols"]], "i")
+	if donnees.get("paysage", {}).has("campagne"):
+		var rural: Dictionary = donnees.paysage.campagne
+		_par_objet("Champs", [rural.sols], "a")
+		_fusionne("RoutesCampagne", Constructeur.maillage(rural.routes), mat)
+		_fusionne("CheminsCampagne", Constructeur.maillage(rural.chemins), mat)
+		for f in rural.anciens_champs:
+			if noeuds.i.has(int(f)):
+				noeuds.i[int(f)].hide()
+				_corps(noeuds.i[int(f)], false)
 	_par_objet("Routes", [donnees["voirie"]], "r")
 	_par_reparation("Reparation", donnees["repare"], "i")
 	_par_reparation("ReparationVoirie", donnees["repare_voirie"], "r")
@@ -1576,7 +1586,7 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 			var gr: Array = g
 			var fid := int(gr[0])
 			var mi := MeshInstance3D.new()
-			mi.name = "%s%d" % [{"i": "I", "r": "R", "b": "B"}[couche], fid]
+			mi.name = "%s%d" % [{"i": "I", "r": "R", "b": "B", "a": "A"}[couche], fid]
 			mi.mesh = Constructeur.maillage_groupe(d, int(gr[1]), int(gr[2]))
 			mi.material_override = mat_objet
 			mi.set_meta("fid", fid)
@@ -2025,6 +2035,10 @@ func _val(couche: String, fid: int, t: float) -> float:
 func _peindre() -> void:
 	var genre := _genre()
 	var blanche := theme != ""
+	for fid in noeuds.a:
+		var champ: MeshInstance3D = noeuds.a[fid]
+		champ.set_instance_shader_parameter("maquette_blanche", 1.0 if blanche else 0.0)
+		champ.set_instance_shader_parameter("teinte", _teinte("a", fid))
 	for couche in ["i", "r", "b"]:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
@@ -2374,7 +2388,9 @@ func _maj_apercu() -> void:
 		# de rebâtir. Tout le reste de la voirie passe par l'échantillon.
 		var casse: bool = couche == "r" \
 			and str(ville.routes[fid].get("etat_crue", "")) == "coupe"
-		if couche == "i" or casse:
+		if couche == "a":
+			apercu.montrer((noeuds.a[fid] as MeshInstance3D).mesh, null, null)
+		elif couche == "i" or casse:
 			var neuf: MeshInstance3D = reparations[couche].get(fid)
 			apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
 				neuf.mesh if neuf != null else null, null if casse else _socle(couche, fid),
@@ -2554,8 +2570,12 @@ func _partie_valide(p: Dictionary) -> bool:
 			return false
 	if not p["theme"] is String or not p["couche"] is String or not p["fid"] is int:
 		return false
-	if p["fid"] >= 0 and (not p["couche"] in ["i", "r", "b"] or not ville.objets(p["couche"]).has(p["fid"])):
-		return false
+	if p["fid"] >= 0:
+		if p["couche"] == "a":
+			if not donnees.get("paysage", {}).get("campagne", {}).get("objets", {}).has(str(p["fid"])):
+				return false
+		elif not p["couche"] in ["i", "r", "b"] or not ville.objets(p["couche"]).has(p["fid"]):
+			return false
 	var themes_valides := [""]
 	for t in THEMES:
 		themes_valides.append(t["id"])
