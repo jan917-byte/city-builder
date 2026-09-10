@@ -33,6 +33,7 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête
 | `chaine.py` | ▶️ LA commande |
 | `carte.py` | 📖 lit et écrit la SOURCE — le seul qui connaisse le WKB |
 | `atelier.py` | ✏️ l'aller-retour avec QGIS : l'auteur dessine, la chaîne reprend |
+| `atelier_svg.py` | ✏️ le même aller-retour, avec Illustrator |
 | `00_decouper_ilots.py` · `00b_ilots_lisiere.py` · `tracer_chemins.py` | ✏️ **écrivent dans la SOURCE** |
 | `02_qualifier.py` | ① le level design : les listes de `fid`, la hiérarchie et la largeur des rues |
 | `03_adjacences.py` | ② le graphe : qui touche qui, et ce que la rue laisse passer |
@@ -49,7 +50,7 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête
 | `palette.py` | les matériaux du bâti |
 | `01_champs_et_valuemaps.py` · `classification.json` · `00b_mettre_a_echelle.py` | vestiges, hors chaîne — le dernier vise encore `Vallmar2.gpkg`, qui n'existe plus |
 
-🔴 **Quatre scripts écrivent dans la SOURCE**, et ce qu'ils touchent est du level design : passer `--blanc` d'abord, toujours. `02` rebâtit la carte de travail depuis la source, donc **un tracé fait à la main ne survit que dans la source**. `tracer_chemins` refuse en plus d'écraser une couche existante sans `--refaire`, et `atelier` exige un arbre git propre avant d'écrire.
+🔴 **Cinq scripts écrivent dans la SOURCE**, et ce qu'ils touchent est du level design : passer `--blanc` d'abord, toujours. `02` rebâtit la carte de travail depuis la source, donc **un tracé fait à la main ne survit que dans la source**. `tracer_chemins` refuse en plus d'écraser une couche existante sans `--refaire`, et `atelier` exige un arbre git propre avant d'écrire.
 
 ## Dessiner à la main
 
@@ -66,6 +67,27 @@ python QGIS/scripts/atelier.py --reprendre --blanc
 Montre ce que le dessin change, nomme les îlots neufs qu'aucune liste de `02` ne connaît, et n'écrit rien. Sans `--blanc`, écrit la source.
 
 🔴 **Un îlot dessiné qui ne partage pas exactement ses sommets avec ses voisins sort du graphe d'adjacence de `03` en silence.** C'est ce que l'accrochage protège — ne pas l'éteindre.
+
+## Dessiner dans Illustrator
+
+```bash
+python QGIS/scripts/atelier_svg.py --exporter
+```
+
+Écrit `data/travail/wehrau_gabarit.svg` — **une unité SVG = un mètre**. La ville et les rues y sont en fond verrouillé, les champs numérotés, et quatre calques attendent le dessin.
+
+| Calque | Ce qu'on y trace |
+|---|---|
+| `coupes` | des **traits ouverts**. Un trait en travers d'un champ le coupe en deux |
+| `eau` · `relief` · `bois` | des **formes fermées**, hors du rectangle jouable |
+
+```bash
+python QGIS/scripts/atelier_svg.py --reprendre --blanc
+```
+
+🔴 **Illustrator n'a pas d'accrochage topologique** — c'est pour ça qu'on y trace des traits et non des polygones voisins : la géométrie des champs est fabriquée par `00_decouper_ilots`, donc juste par construction. Les points d'entrée et de sortie du trait sur le bord sont calculés, jamais dessinés.
+
+Le géoréférencement tient au rectangle `cadre-geo` et aux calques `_reference-*` : **les déplacer ou les supprimer casse le repère**, et le script refuse alors d'écrire.
 
 ## Ce qui casse la chaîne sans prévenir
 

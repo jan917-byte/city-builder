@@ -35,6 +35,7 @@ python QGIS/scripts/00_decouper_ilots.py --blanc      découper un îlot en deux
 python QGIS/scripts/00b_ilots_lisiere.py --blanc      poser un îlot de lisière
 python QGIS/scripts/tracer_chemins.py --blanc         proposer des venelles
 python QGIS/scripts/atelier.py --reprendre --blanc    reprendre un dessin QGIS
+python QGIS/scripts/atelier_svg.py --reprendre --blanc  reprendre un dessin Illustrator
 ```
 
 ## Les couches
