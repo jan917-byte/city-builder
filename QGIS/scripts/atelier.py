@@ -225,33 +225,40 @@ def _controler_ilots_neufs(detail):
 # ==========================================================================
 
 STYLES = {
-    # couche      remplissage        contour       largeur  ordre
+    # couche      remplissage        contour       largeur
     "paysage":   ("173,196,140,90",  "90,120,70",  "0.5"),
     "ilots":     ("222,214,196,110", "70,70,70",   "0.26"),
     "routes":    (None,              "200,60,50",  "0.6"),
     "chemins":   (None,              "150,90,190", "0.4"),
 }
 
+# ✏️ CE QUE L'AUTEUR DOIT DISTINGUER AU COUP D'ŒIL POUR DESSINER : les champs
+# à découper, l'eau à prolonger, et le bâti auquel il ne touche pas.
+REGLES_ILOTS = [("CHAMPS",  "les champs — à découper", "150,178,106,120", "90,120,70"),
+                ("RIVIERE", "l'Ilse",                  "104,173,179,150", "60,120,130")]
+
+
+def _sym(i, typ, cls, props):
+    opts = "".join('<Option type="QString" name="%s" value="%s"/>' % k for k in props)
+    return ('<symbol type="%s" name="%d" alpha="1" force_rhr="0" frame_rate="10">'
+            '<layer class="%s" enabled="1" pass="0" locked="0">'
+            '<Option type="Map">%s</Option></layer></symbol>' % (typ, i, cls, opts))
+
+
+def _fill(i, remp, trait, larg):
+    return _sym(i, "fill", "SimpleFill",
+                [("color", remp), ("outline_color", trait),
+                 ("outline_width", larg), ("style", "solid"),
+                 ("outline_style", "solid"), ("joinstyle", "bevel")])
+
 
 def _symbole(nom, i):
     remp, trait, larg = STYLES[nom]
     if remp is None:
-        props = [("line_color", trait), ("line_width", larg),
-                 ("capstyle", "round"), ("joinstyle", "round")]
-        cls = "LineSymbol"
-        typ = "line"
-    else:
-        props = [("color", remp), ("outline_color", trait),
-                 ("outline_width", larg), ("style", "solid"),
-                 ("outline_style", "solid"), ("joinstyle", "bevel")]
-        cls = "SimpleFill"
-        typ = "fill"
-    lignes = "".join('<Option type="QString" name="%s" value="%s"/>' % k
-                     for k in props)
-    return ('<symbol type="%s" name="%d" alpha="1" force_rhr="0" frame_rate="10">'
-            '<layer class="%s" enabled="1" pass="0" locked="0">'
-            '<Option type="Map">%s</Option></layer></symbol>'
-            % (typ, i, cls if remp else "SimpleLine", lignes))
+        return _sym(i, "line", "SimpleLine",
+                    [("line_color", trait), ("line_width", larg),
+                     ("capstyle", "round"), ("joinstyle", "round")])
+    return _fill(i, remp, trait, larg)
 
 
 # 🔴 RECOPIÉ DE CE QUE QGIS 3.42 ÉCRIT LUI-MÊME. Un bloc bricolé à la main
@@ -259,6 +266,30 @@ def _symbole(nom, i):
 # 2026-09-10. `<srsid>` est retiré : c'est un identifiant de la base
 # locale de QGIS, pas un standard, et il diffère d'une machine à l'autre.
 _SRS_XML = '<spatialrefsys nativeFormat="Wkt"><wkt>PROJCRS["ETRS89 / UTM zone 32N",BASEGEOGCRS["ETRS89",ENSEMBLE["European Terrestrial Reference System 1989 ensemble",MEMBER["European Terrestrial Reference Frame 1989"],MEMBER["European Terrestrial Reference Frame 1990"],MEMBER["European Terrestrial Reference Frame 1991"],MEMBER["European Terrestrial Reference Frame 1992"],MEMBER["European Terrestrial Reference Frame 1993"],MEMBER["European Terrestrial Reference Frame 1994"],MEMBER["European Terrestrial Reference Frame 1996"],MEMBER["European Terrestrial Reference Frame 1997"],MEMBER["European Terrestrial Reference Frame 2000"],MEMBER["European Terrestrial Reference Frame 2005"],MEMBER["European Terrestrial Reference Frame 2014"],ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[0.1]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4258]],CONVERSION["UTM zone 32N",METHOD["Transverse Mercator",ID["EPSG",9807]],PARAMETER["Latitude of natural origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8801]],PARAMETER["Longitude of natural origin",9,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8802]],PARAMETER["Scale factor at natural origin",0.9996,SCALEUNIT["unity",1],ID["EPSG",8805]],PARAMETER["False easting",500000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],USAGE[SCOPE["Engineering survey, topographic mapping."],AREA["Europe between 6°E and 12°E: Austria; Belgium; Denmark - onshore and offshore; Germany - onshore and offshore; Norway including - onshore and offshore; Spain - offshore."],BBOX[38.76,6,84.33,12]],ID["EPSG",25832]]</wkt><proj4>+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs</proj4><srid>25832</srid><authid>EPSG:25832</authid><description>ETRS89 / UTM zone 32N</description><projectionacronym>utm</projectionacronym><ellipsoidacronym>EPSG:7019</ellipsoidacronym><geographicflag>false</geographicflag></spatialrefsys>'
+
+
+def _rendu(nom):
+    """`ilots` est rendu PAR RÈGLES : sans ça, champs et bâti sont un même
+    aplat et l'auteur ne voit pas ce qu'il a le droit de découper."""
+    if nom != "ilots":
+        return ('<renderer-v2 type="singleSymbol" forceraster="0" symbollevels="0">'
+                '<symbols>%s</symbols></renderer-v2>' % _symbole(nom, 0))
+    connus = listes_connues()
+    symboles, regles = [], []
+    for i, (liste, libelle, remp, trait) in enumerate(REGLES_ILOTS):
+        fids = connus.get(liste) or []
+        if not fids:
+            continue
+        symboles.append(_fill(i, remp, trait, "0.4"))
+        regles.append('<rule key="r%d" symbol="%d" label="%s" filter="%s"/>'
+                      % (i, i, libelle,
+                         "fid IN (%s)" % ",".join(map(str, sorted(fids)))))
+    i = len(symboles)
+    symboles.append(_fill(i, *STYLES["ilots"]))
+    regles.append('<rule key="rz" symbol="%d" label="le bâti — ne pas y toucher"/>' % i)
+    return ('<renderer-v2 type="RuleRenderer" forceraster="0" symbollevels="0">'
+            '<rules key="ilots">%s</rules><symbols>%s</symbols></renderer-v2>'
+            % ("".join(regles), "".join(symboles)))
 
 
 def ecrire_projet(couches):
@@ -285,12 +316,11 @@ def ecrire_projet(couches):
             '<layername>%s</layername>'
             '<srs>%s</srs>'
             '<provider encoding="UTF-8">ogr</provider>'
-            '<renderer-v2 type="singleSymbol" forceraster="0" symbollevels="0">'
-            '<symbols>%s</symbols></renderer-v2>'
+            '%s'
             '<fieldConfiguration>%s</fieldConfiguration>'
             '<layerGeometryType>%d</layerGeometryType>'
             '</maplayer>'
-            % (geom, lid, nom, nom, _SRS_XML, _symbole(nom, 0), champs,
+            % (geom, lid, nom, nom, _SRS_XML, _rendu(nom), champs,
                1 if geom == "Line" else 2))
         noeuds.append('<layer-tree-layer id="%s" name="%s" source="./atelier.gpkg|layername=%s" '
                       'providerKey="ogr" checked="Qt::Checked" expanded="0"/>'
