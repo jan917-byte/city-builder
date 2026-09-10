@@ -2,7 +2,7 @@
 
 | Dossier | Quoi | Git |
 |---|---|---|
-| `source/` | **la carte**, en GeoJSON : îlots, routes, et les venelles quand elles existent | ✅ **suivi** |
+| `source/` | **la carte**, en GeoJSON : îlots, routes, les venelles et le décor dessiné, quand ils existent | ✅ **suivi** |
 | `travail/` | la carte de travail (`wehrau.gpkg`) et les copies d'essai | ❌ ignoré |
 | `archive/` | les anciens GeoPackages | ❌ ignoré |
 
@@ -34,6 +34,18 @@ Trois scripts écrivent dans `source/`, et eux seuls. Ils gardent tous leur pass
 python QGIS/scripts/00_decouper_ilots.py --blanc      découper un îlot en deux
 python QGIS/scripts/00b_ilots_lisiere.py --blanc      poser un îlot de lisière
 python QGIS/scripts/tracer_chemins.py --blanc         proposer des venelles
+python QGIS/scripts/atelier.py --reprendre --blanc    reprendre un dessin QGIS
 ```
+
+## Les couches
+
+| Couche | Quoi | Ce qu'elle porte en plus |
+|---|---|---|
+| `ilots` | les polygones de la ville et des champs | rien |
+| `routes` | les tronçons | `hierarchy` |
+| `chemins` | les venelles, quand elles existent | `fid_ilot` · `largeur_m` · `note` |
+| `paysage` | **le décor dessiné**, hors du rectangle jouable | `genre` · `altitude_m` · `note` |
+
+`paysage` est facultative comme `chemins`. `genre` vaut `eau` (le cours de l'Ilse au-delà des bords), `relief` (un massif) ou `bois`. Un massif porte son `altitude_m` **dès le tracé**, bien qu'il soit rendu plat : le soulever plus tard ne doit demander aucun redessin.
 
 Après écriture, `git diff` montre en clair les îlots touchés, et `git checkout QGIS/data/source` défait tout.

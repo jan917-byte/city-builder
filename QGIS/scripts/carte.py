@@ -48,6 +48,14 @@ COUCHES = {
     "chemins": {"type": "LINESTRING",
                 "champs": [("fid_ilot", "INTEGER"), ("largeur_m", "REAL"),
                            ("note", "TEXT")]},
+    # ✏️ LE DÉCOR DESSINÉ À LA MAIN, HORS du rectangle jouable : le cours de
+    # l'Ilse au-delà des bords, et les massifs. Facultative comme `chemins`.
+    # Tant qu'elle manque, `export_godot/paysage.py` garde ses formules.
+    # `altitude_m` est portée dès le tracé bien que le relief soit plat :
+    # soulever les massifs plus tard ne doit demander aucun redessin.
+    "paysage": {"type": "POLYGON",
+                "champs": [("genre", "TEXT"), ("altitude_m", "REAL"),
+                           ("note", "TEXT")]},
 }
 
 
@@ -379,10 +387,8 @@ def construire_gpkg(cible, couches=None, dossier_source=None):
 # Reprise : convertir un vieux GeoPackage en source texte
 # ==========================================================================
 
-def importer_gpkg(source_gpkg, dossier=None):
-    """Le pont d'origine — a servi une fois, le 2026-08-17, pour sortir
-    `Vallmar2.gpkg` du dépôt. Gardé parce qu'il redevient utile le jour où
-    une carte arrive de l'extérieur en `.gpkg`."""
+def lire_gpkg(source_gpkg):
+    """-> {nom: entités}, SANS rien écrire. `atelier.py` compare avant d'écrire."""
     import sqlite3
 
     con = sqlite3.connect("file:%s?mode=ro" % source_gpkg.replace("\\", "/"),
@@ -404,4 +410,11 @@ def importer_gpkg(source_gpkg, dossier=None):
             ents.append(rec)
         couches[nom] = ents
     con.close()
-    return ecrire_source(couches, dossier)
+    return couches
+
+
+def importer_gpkg(source_gpkg, dossier=None):
+    """Le pont d'origine — a servi une fois, le 2026-08-17, pour sortir
+    `Vallmar2.gpkg` du dépôt. Gardé parce qu'il redevient utile le jour où
+    une carte arrive de l'extérieur en `.gpkg`."""
+    return ecrire_source(lire_gpkg(source_gpkg), dossier)
