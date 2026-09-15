@@ -19,7 +19,7 @@ def fondu(a, b, x):
     return t * t * (3.0 - 2.0 * t)
 
 
-def paysage(largeur, profondeur, chenal, cx, cy):
+def paysage(largeur, profondeur, chenal, cx, cy, massifs=None):
     hx, hz = largeur / 2, profondeur / 2
     rng = random.Random(GRAINE)
     # Les sorties sont les deux bouchons du chenal sur le bord de la carte.
@@ -58,6 +58,12 @@ def paysage(largeur, profondeur, chenal, cx, cy):
             dist = min(dist, math.hypot(x-px-t*vx, z-pz-t*vz) - math.dist(a,b)/2)
         return dist
 
+    def massif(x, z):
+        """Le massif DESSINÉ, vu d'ici. Sans lui, le dôme que la plaque soulève
+        s'arrêtait net au bord du rectangle et la vallée reprenait 90 m plus
+        bas : une falaise droite en travers du décor (2026-09-15)."""
+        return 0.0 if massifs is None else massifs.hauteur(cx + x, cy - z)
+
     def altitude(x, z):
         d = distance(x, z)
         rive = chenal.niveau_rive(cx + x, cy - z)
@@ -69,7 +75,7 @@ def paysage(largeur, profondeur, chenal, cx, cy):
         relief += 13 * fondu(0, 250, d) * (1 + math.sin(x / 155 + z / 210)) * cote
         berge = bord_riviere(x, z)
         fond = rive - 0.045 + relief * fondu(0, 190, berge)
-        return -2.4 + (fond + 2.4) * fondu(0, 12, berge)
+        return -2.4 + (fond + 2.4) * fondu(0, 12, berge) + massif(x, z)
 
     def lisiere(x, z):
         return 165 + 65 * math.sin(x / 125 + z / 160) + 40 * math.cos(z / 74 - x / 220)

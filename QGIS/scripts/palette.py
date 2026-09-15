@@ -70,6 +70,17 @@ SOLS = {
 
 EAU = "#7EA7C3"                        # `sous_type = riviere`
 
+# ------------------------------------------------- le décor dessiné (paysage)
+# 🎨 Les formes tracées dans Illustrator sur `bois` et `relief` : elles peignent
+# LA PLAQUE, qui sortait en MINERAL_CLAIR sur tout ce que ni la ville ni un
+# champ ne couvre — 69 % du monde dessiné le 2026-09-15, une dalle grise.
+# Plus sombres que les champs : vues d'en haut, ce sont les masses qui tiennent
+# la silhouette de la vallée, et une forêt claire se confond avec une prairie.
+DECOR = {
+    "bois":   "#5D7452",               # sous-bois, sous les instances d'arbres
+    "relief": "#7F8C6D",               # versant pâturé — le massif n'est pas nu
+}
+
 # ================================================== LES MATÉRIAUX DU BÂTI
 # 🔄 RETOUR EN ARRIÈRE SIGNALÉ (CLAUDE.md §3 ter). Jusqu'au 2026-08-18 `MASSES`
 # posait UNE teinte par `sous_type`, murs et toit compris : la ville sortait en

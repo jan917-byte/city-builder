@@ -32,6 +32,14 @@ from export_godot.batiments import (
     _toit_plat,
 )
 from export_godot.boue import carte_boue
+from export_godot.decor import (
+    Decor,
+    Massifs,
+    cap_plaque as _cap_plaque,
+    couleurs as _coul_decor,
+    haies as _haies_domaines,
+    semer as _semer_bois,
+)
 from export_godot.paysage import paysage
 from export_godot.ponts import _acces_pont
 from export_godot.berges import (
@@ -271,16 +279,41 @@ def lire(con):
         d = dict(zip(COLS_ROUTES, r[:-1]))
         d["parts"] = lire_wkb(gpkg_vers_wkb(r[-1]))[0]
         routes.append(d)
-    return ilots, routes
+
+    # ✏️ LE DESSIN D'ILLUSTRATOR. Les deux couches sont facultatives : tant
+    # qu'elles manquent, la plaque reste grise et les fermes n'ont pas de bord.
+    decor, domaines, emprise = [], [], []
+    for table, sortie, champ in (("paysage", decor, "genre"),
+                                 ("domaines", domaines, "nom"),
+                                 ("emprise", emprise, "fid")):
+        try:
+            sup = ", altitude_m" if table == "paysage" else ""
+            for r in con.execute('SELECT "%s", geom%s FROM "%s" ORDER BY fid'
+                                 % (champ, sup, table)):
+                sortie.append((r[0], anneau_ouvert(r[1]))
+                              + ((r[2],) if sup else ()))
+        except sqlite3.OperationalError:
+            pass
+    return ilots, routes, decor, domaines, [a for _v, a in emprise]
 
 
 # ==================================================================== la sortie
+
+def _avec_bois(pay, *semis):
+    """Les arbres des bois dessinés rejoignent les instances de la vallée :
+    même modèle, même matériau, aucune ombre portée — donc un bois de 100 ha
+    coûte un remplissage de tampon, pas un appel de rendu de plus."""
+    for arbres in semis:
+        for essence, sup in enumerate(arbres):
+            pay["arbres"][essence].extend(sup)
+    return pay
+
 
 def main():
     if not os.path.exists(GPKG):
         sys.exit("Introuvable : %s — lancer 02 → 03 → 04 → 04b d'abord." % GPKG)
     con = sqlite3.connect("file:%s?mode=ro" % GPKG.replace("\\", "/"), uri=True)
-    ilots, routes = lire(con)
+    ilots, routes, decor, domaines, emprise = lire(con)
     con.close()
     _arrondir_rives(ilots)
 
@@ -316,6 +349,14 @@ def main():
         for part in d["parts"]:
             xs.extend(p[0] for p in part)
             ys.extend(p[1] for p in part)
+    # ✏️ L'EMPRISE DESSINÉE ÉLARGIT LE MONDE. Sans elle la plaque s'arrêtait à
+    # l'enveloppe des îlots, soit 465 m plus étroite que le cadre tracé dans
+    # Illustrator : la forêt dessinée sur les côtés tombait hors plaque et la
+    # vallée par formule reprenait la main au milieu du dessin. L'union, et non
+    # le cadre seul : champs et rivière débordent son bord nord et sud.
+    for e in emprise:
+        xs.extend(p[0] for p in e)
+        ys.extend(p[1] for p in e)
     minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
     cx, cy = (minx + maxx) / 2.0, (miny + maxy) / 2.0
     print("  emprise %.1f × %.1f m, centre (%.3f, %.3f)"
@@ -360,15 +401,93 @@ def main():
 
     terre = Maillage()
     coul_terre = PAL.vers_lineaire(PAL.MINERAL_CLAIR)
+    # ✏️ LE DESSIN PEINT LA PLAQUE. Elle sortait en gris minéral partout où ni
+    # la ville ni un champ ne la couvre — 69 % du monde, une dalle grise autour
+    # de Wehrau. Le gris ne reste que là où l'auteur n'a rien tracé, et c'est
+    # devenu un DÉFAUT VISIBLE : du sol nu se voit, un trou de dessin aussi.
+    # L'index des îlots, une fois : il sert au contrôle du sol nu (ce qui se
+    # VOIT en gris) et à la haie des fermes (qui ne doit pas traverser la ville).
+    def _index(cond):
+        return [(min(p[0] for p in d["brut"]), min(p[1] for p in d["brut"]),
+                 max(p[0] for p in d["brut"]), max(p[1] for p in d["brut"]),
+                 list(d["brut"]) + [d["brut"][0]])
+                for d in ilots.values() if cond(d)]
+
+    def _dedans_index(idx, p):
+        return any(x0 <= p[0] <= x1 and y0_ <= p[1] <= y1_ and dedans(an, p)
+                   for x0, y0_, x1, y1_, an in idx)
+
+    _tous = _index(lambda d: True)
+    _batis = _index(lambda d: d["sous_type"] not in ("champ", "riviere"))
+
+    dessin = Decor([(g, a) for g, a, _alt in decor])
+    # ⛰️ LES MASSIFS SE SOULÈVENT. Sans ça ils sortaient en dalle verte plate,
+    # et une montagne plate est pire qu'un trou : elle se lit comme une prairie.
+    massifs = Massifs(decor)
+    massifs.preparer()
+    teintes = _coul_decor()
+    cellules_bois = []
+    aires = {}
     # Le paysage prolonge désormais cette plaque ; plus de cadre minéral.
     x0, y0, x1, y1 = minx, miny, maxx, maxy
     morceaux, approx = chenal.plaque(x0, y0, x1, y1, PAS_TERRAIN, relief)
     for mo in morceaux:
+        centre = (sum(p[0] for p in mo) / len(mo),
+                  sum(p[1] for p in mo) / len(mo))
+        genre = dessin.genre(centre) if dessin else None
+        aire_mo = abs(aire_signee(mo))
+        # 🔴 LE GRIS NE COMPTE QUE S'IL SE VOIT. Les deux tiers de la plaque
+        # sont sous un îlot — ville, champ ou rivière — et n'ont jamais été
+        # visibles : compté sans ce filtre, le contrôle criait 107 ha de sol nu
+        # sur une image où il n'y avait pas un pixel gris.
+        if genre is None and _dedans_index(_tous, centre):
+            genre = "sous un îlot"
+        aires[genre] = aires.get(genre, 0.0) + aire_mo
+        if genre == "bois":
+            cellules_bois.append(mo)
         # La plaque plonge un quart plus bas que le talus : elle est invisible
         # sous le champ, et cette marge est ce qui dispense de faire coïncider
         # deux découpages différents du même relief.
-        _cap_plat(terre, mo, Y_TERRAIN, coul_terre, G,
-                  relief, 1.0 + TALUS_DESSOUS)
+        _cap_plaque(terre, mo, Y_TERRAIN, teintes.get(genre, coul_terre), G,
+                    relief, 1.0 + TALUS_DESSOUS, massifs)
+        if genre == "sous un îlot":
+            genre = None
+    arbres_bois = _semer_bois(cellules_bois, relief, Y_TERRAIN,
+                              1.0 + TALUS_DESSOUS, G, massifs)
+
+    # 🚜 LA HAIE DE FERME. Un domaine n'a ni bâtiment ni couleur : son contour
+    # ne portait rien à l'écran. Une haie le dit sans rien inventer d'autre.
+    # Elle s'arrête au bord de la ville : un arbre planté dans une rue ou sur
+    # un toit se voit tout de suite, et c'est par là que passent les contours.
+    def _dans_ville(p):
+        return _dedans_index(_batis, p)
+
+    arbres_haies = _haies_domaines(domaines, relief, Y_TERRAIN,
+                                   1.0 + TALUS_DESSOUS, G, _dans_ville, massifs)
+    if domaines:
+        print("  fermes : %d domaines, %d arbres de haie"
+              % (len(domaines), sum(map(len, arbres_haies))))
+    if dessin:
+        print("  décor dessiné : %d formes — %s"
+              % (len(dessin), ", ".join(
+                  "%.1f ha en %s" % (a / 10000.0, g or "GRIS, rien de dessiné")
+                  for g, a in sorted(aires.items(),
+                                     key=lambda kv: -kv[1]))))
+        print("    %d arbres semés dans les bois dessinés"
+              % sum(map(len, arbres_bois)))
+        if massifs:
+            print("    %d massifs soulevés, point le plus haut %.0f m"
+                  % (len(massifs), max(h for l in massifs.grille for h in l)))
+            if massifs.sans_altitude:
+                print("    ⚠️  %d massif(s) sans `altitude_m` : hauteur par"
+                      " défaut (MASSIF_ALTITUDE_M, haut de decor.py)"
+                      % massifs.sans_altitude)
+        if aires.get(None, 0.0) > 20000.0:
+            print("    🔴 %.1f ha de plaque À NU ET VISIBLE — du gris à l'écran,"
+                  " là où le dessin ne va pas" % (aires[None] / 10000.0))
+    else:
+        print("  ⚠️  aucun décor dessiné : la plaque reste grise (couche"
+              " `paysage` vide — voir atelier_svg.py)")
     # Mesuré ICI et pas à la fin : `terre` recevra ensuite le lit du chenal et
     # les murs de quai, qui descendent bien plus bas et masqueraient la seule
     # chose qu'on veut contrôler — jusqu'où la PLAQUE plonge sous le talus.
@@ -1651,7 +1770,9 @@ def main():
         # autres : Godot n'a plus qu'UNE façon de lire de la géométrie.
         "boue": carte_boue(ilots, routes, chenal, cx, cy),
         "terrain": terre.json(),
-        "paysage": paysage(maxx - minx, maxy - miny, chenal, cx, cy),
+        "paysage": _avec_bois(paysage(maxx - minx, maxy - miny, chenal, cx, cy,
+                                      massifs),
+                              arbres_bois, arbres_haies),
         "masses": masses.json(),
         # 🔧 LA VILLE RÉPARÉE, groupe par groupe, jamais montrée au chargement.
         # Le bâti neuf d'un îlot ruiné, et le tablier neuf d'un franchissement
