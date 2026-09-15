@@ -43,7 +43,12 @@ CARTE = os.path.join(TRAVAIL, "wehrau.gpkg")
 # `chemins` est facultative : elle n'existe qu'une fois `tracer_chemins.py`
 # passé, et `02` la recopie telle quelle dans la carte de travail.
 COUCHES = {
-    "ilots":   {"type": "POLYGON", "champs": []},
+    # ✏️ `sol` EST LE CALQUE SUR LEQUEL L'ÎLOT A ÉTÉ DESSINÉ (champ, rivière).
+    # Il porte le level design de la campagne, que `02` lisait dans des listes
+    # de fid — or le gabarit renumérote à chaque reprise, et le 2026-09-15 les
+    # champs neufs sont tombés sur 73 et 74, déjà pavillonnaires. Vide sur les
+    # îlots de la ville, dont les listes de `02` restent la vérité.
+    "ilots":   {"type": "POLYGON", "champs": [("sol", "TEXT")]},
     "routes":  {"type": "MULTILINESTRING", "champs": [("hierarchy", "TEXT")]},
     "chemins": {"type": "LINESTRING",
                 "champs": [("fid_ilot", "INTEGER"), ("largeur_m", "REAL"),
@@ -56,6 +61,16 @@ COUCHES = {
     "paysage": {"type": "POLYGON",
                 "champs": [("genre", "TEXT"), ("altitude_m", "REAL"),
                            ("note", "TEXT")]},
+    # ✏️ LES FERMES, dessinées à la main : un domaine coiffe plusieurs champs
+    # et leur donne un propriétaire (décision de l'auteur, 2026-09-15). C'est
+    # une GÉOMÉTRIE et pas une colonne sur `ilots` : le contour est la donnée,
+    # donc un champ redessiné change de ferme sans qu'on retouche une liste.
+    "domaines": {"type": "POLYGON", "champs": [("nom", "TEXT")]},
+    # ✏️ L'EMPRISE DU MONDE, dessinée à la main : un seul rectangle, et il est
+    # PLUS GRAND que la ville (décision de l'auteur, 2026-09-15). Tant qu'elle
+    # manque, la chaîne se rabat sur l'enveloppe des îlots — c'est-à-dire sur
+    # la ville seule, sans sa campagne.
+    "emprise": {"type": "POLYGON", "champs": []},
 }
 
 

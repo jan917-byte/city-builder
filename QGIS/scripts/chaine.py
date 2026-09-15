@@ -4,8 +4,15 @@ LA CHAÎNE — une seule commande pour refaire la carte depuis la source.
 
     python QGIS/scripts/chaine.py              02 → 03 → 04 → 04b → 04c → 04d
     python QGIS/scripts/chaine.py --godot      … puis 07, pour la maquette 3D
+    python QGIS/scripts/chaine.py --gabarit --godot   … EN PARTANT DU DESSIN
     python QGIS/scripts/chaine.py --court      seulement le compte rendu final
     python QGIS/scripts/chaine.py --depuis 04  reprendre au milieu
+
+🎨 `--gabarit` met le dessin d'Illustrator en tête de chaîne : il reprend
+`QGIS/wehrau_gabarit2.svg` dans la source, puis relance tout. C'est la seule
+étape qui ÉCRIT DANS LA SOURCE, d'où l'arbre git propre exigé par
+`atelier_svg.py` — et d'où `--blanc`, qui montre ce que le dessin changerait
+sans l'écrire ni lancer la suite.
 
 L'ordre des étapes est une contrainte réelle (`04d` a besoin de `04c`, qui a
 besoin de `04b`…) qui était tenue de mémoire, recopiée dans six notes. Elle est
@@ -51,6 +58,9 @@ ETAPES = [
     ("04e", "04e_crue.py",               "la crue : dégâts et ponts coupés"),
 ]
 GODOT = ("07", "07_exporter_godot.py", "l'export vers la maquette 3D")
+# Pas dans `ETAPES` : elle écrit dans la SOURCE, les autres n'écrivent que du
+# dérivé. Une chaîne ordinaire ne doit jamais toucher au dessin.
+GABARIT = ("svg", "atelier_svg.py", "le dessin d'Illustrator repris dans la source")
 
 
 def main():
@@ -61,6 +71,8 @@ def main():
         depuis = args[args.index("--depuis") + 1]
 
     etapes = list(ETAPES)
+    if "--gabarit" in args:
+        etapes.insert(0, GABARIT)
     if "--godot" in args:
         etapes.append(GODOT)
     if depuis:
@@ -78,9 +90,16 @@ def main():
     for num, script, quoi in etapes:
         t0 = time.time()
         print("\n▶ %-4s %s" % (num, quoi))
-        r = subprocess.run([sys.executable, os.path.join(ICI, script)],
+        # Sans ça le compte rendu du sous-script sort AVANT nos titres :
+        # le nôtre est bufferisé, le sien va droit au terminal.
+        sys.stdout.flush()
+        sup = ["--reprendre"] + (["--blanc"] if "--blanc" in args else []) \
+            if num == "svg" else []
+        r = subprocess.run([sys.executable, os.path.join(ICI, script)] + sup,
                            cwd=RACINE,
-                           capture_output=court, text=True,
+                           # L'étape du dessin PARLE À L'AUTEUR — ce qu'elle
+                           # remplace, ce qu'elle laisse en trou : jamais avalé.
+                           capture_output=court and num != "svg", text=True,
                            encoding="utf-8", errors="replace")
         dt = time.time() - t0
         if r.returncode != 0:
@@ -94,6 +113,9 @@ def main():
                   " ensuite." % (num, dt))
             raise SystemExit(r.returncode)
         resume.append((num, quoi, dt))
+        if num == "svg" and "--blanc" in args:
+            print("\n--blanc : la source n'a pas bougé, rien n'a été lancé ensuite.")
+            return
         if court:
             print("   ✅ %.1f s" % dt)
 

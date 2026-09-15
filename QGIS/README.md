@@ -30,7 +30,7 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête
 
 | | |
 |---|---|
-| `chaine.py` | ▶️ LA commande |
+| `chaine.py` | ▶️ LA commande — `--gabarit` la fait partir du dessin |
 | `carte.py` | 📖 lit et écrit la SOURCE — le seul qui connaisse le WKB |
 | `atelier.py` | ✏️ l'aller-retour avec QGIS : l'auteur dessine, la chaîne reprend |
 | `atelier_svg.py` | ✏️ le même aller-retour, avec Illustrator |
@@ -58,13 +58,7 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête
 python QGIS/scripts/atelier.py --ouvrir
 ```
 
-Prépare `data/travail/atelier.qgs`, à ouvrir dans QGIS : les îlots, les rues et les venelles de la source, plus la couche **`paysage`**, vide, pour le décor hors du rectangle jouable — le cours de l'Ilse au-delà des bords (`genre` = `eau`) et les massifs (`genre` = `relief`, avec leur `altitude_m`). L'accrochage aux sommets et aux segments est allumé d'office.
-
-```bash
-python QGIS/scripts/atelier.py --reprendre --blanc
-```
-
-Montre ce que le dessin change, nomme les îlots neufs qu'aucune liste de `02` ne connaît, et n'écrit rien. Sans `--blanc`, écrit la source.
+Prépare `data/travail/atelier.qgs`, à ouvrir dans QGIS : les îlots, les rues et les venelles de la source, plus la couche **`paysage`** pour le décor. L'accrochage aux sommets et aux segments est allumé d'office. `--reprendre --blanc` montre ce que le dessin change sans rien écrire ; sans `--blanc`, écrit la source.
 
 🔴 **Un îlot dessiné qui ne partage pas exactement ses sommets avec ses voisins sort du graphe d'adjacence de `03` en silence.** C'est ce que l'accrochage protège — ne pas l'éteindre.
 
@@ -74,16 +68,20 @@ Montre ce que le dessin change, nomme les îlots neufs qu'aucune liste de `02` n
 python QGIS/scripts/atelier_svg.py --exporter
 ```
 
-Écrit `data/travail/wehrau_gabarit.svg` — **une unité SVG = un mètre**. La ville et les rues y sont en fond verrouillé, les champs numérotés, et quatre calques attendent le dessin.
+Écrit `data/travail/wehrau_gabarit.svg` — **une unité SVG = un mètre** — un calque de départ jetable. Le dessin de l'auteur, lui, est `QGIS/wehrau_gabarit2.svg`, suivi par git : c'est lui que `--reprendre` lit par défaut, et `--exporter` ne l'écrase jamais.
 
 | Calque | Ce qu'on y trace |
 |---|---|
 | `coupes` | des **traits ouverts**. Un trait en travers d'un champ le coupe en deux |
-| `eau` · `relief` · `bois` | des **formes fermées**, hors du rectangle jouable |
+| `champs` · `eau` | des **formes fermées**. Elles deviennent du **sol jouable** et portent leur calque dans `sol` |
+| `relief` · `bois` · `domaines` · `emprise` | des **formes fermées** de décor, de ferme et de cadre |
 
 ```bash
-python QGIS/scripts/atelier_svg.py --reprendre --blanc
+python QGIS/scripts/chaine.py --gabarit --godot --blanc   # montre, n'écrit rien
+python QGIS/scripts/chaine.py --gabarit --godot           # du dessin à la maquette
 ```
+
+🔴 **`--gabarit` est la seule étape de la chaîne qui écrit dans la source** — d'où l'arbre git propre exigé, et d'où `--blanc`, à passer d'abord.
 
 🔴 **Illustrator n'a pas d'accrochage topologique** — c'est pour ça qu'on y trace des traits et non des polygones voisins : la géométrie des champs est fabriquée par `00_decouper_ilots`, donc juste par construction. Les points d'entrée et de sortie du trait sur le bord sont calculés, jamais dessinés.
 

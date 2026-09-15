@@ -110,9 +110,14 @@ FONCTION_DE = {
     "friche_industrielle": "industrie",
 }
 
+# 🔴 LES DEUX LISTES CI-DESSUS NE NOMMENT QUE L'ANCIENNE CAMPAGNE. Le sol
+# dessiné dans Illustrator porte son calque sur l'îlot (`sol`), et c'est lui qui
+# gagne : le gabarit renumérote à chaque reprise, et le 2026-09-15 les champs
+# neufs sont tombés sur 73 et 74, déjà pavillonnaires. → `atelier_svg.py`
+
 # Les îlots posés à la main, protégés du recalcul (décision 32 du vault).
-def sous_types():
-    s = {}
+def sous_types(dessine=None):
+    s = dict(dessine or {})
     for lst, st in ((RIVIERE, "riviere"), (CHAMPS, "champ"),
                     (PLACE_PARKING, "place_minerale"),
                     (FRICHES, "friche_industrielle"),
@@ -125,16 +130,19 @@ def sous_types():
                     (ILOT_COMPACT, "ilot_compact")):
         for fid in lst:
             if fid in s:
-                raise SystemExit("îlot %d affecté deux fois (%s et %s)"
-                                 % (fid, s[fid], st))
+                raise SystemExit(
+                    "îlot %d affecté deux fois (%s et %s) — s'il est dessiné, "
+                    "retire son numéro de la liste %s" % (fid, s[fid], st, st))
             s[fid] = st
     return s
 
 
 # `exception = 1` : saisie manuelle protégée. Tout ce qui est du level design
 # posé consciemment, par opposition au tissu ordinaire dérivé par règle.
-def exceptions():
-    e = set(RIVIERE) | set(PLACE_PARKING) \
+def exceptions(dessine=None):
+    # La rivière dessinée est du level design au même titre que celle des listes.
+    e = {f for f, s in (dessine or {}).items() if s == "riviere"}
+    e |= set(RIVIERE) | set(PLACE_PARKING) \
         | set(FRICHES) | set(EQUIPEMENTS) | set(BARRE) | set(PARCS) \
         | set(JARDINS) | set(COEUR_VERT_PRIVE) \
         | set(COLLECTIF_1995) | set(ILOT_COMPACT)
@@ -301,9 +309,9 @@ def main():
 
     # ---------------- lecture des géométries
     ilots = {}
-    for fid, blob in cur.execute("SELECT fid, geom FROM ilots"):
+    for fid, blob, sol in cur.execute("SELECT fid, geom, sol FROM ilots"):
         anneaux, _ = lire_wkb(gpkg_vers_wkb(blob))
-        ilots[fid] = {"anneaux": anneaux,
+        ilots[fid] = {"anneaux": anneaux, "sol": sol,
                       "aire": aire(anneaux[0]) - sum(aire(a) for a in anneaux[1:])}
 
     rues = {}
@@ -314,8 +322,14 @@ def main():
         rues[fid] = {"parts": parts, "long": lg}
 
     # ---------------- qualification des îlots
-    st = sous_types()
-    exc = exceptions()
+    dessine = {f: d["sol"] for f, d in ilots.items() if d["sol"]}
+    st = sous_types(dessine)
+    exc = exceptions(dessine)
+    if dessine:
+        print("sol dessiné : %d îlots (%s)"
+              % (len(dessine), ", ".join(
+                  "%d en %s" % (sum(1 for v in dessine.values() if v == s), s)
+                  for s in sorted(set(dessine.values())))))
     inconnus = [f for f in ilots if f not in st]
     for f in inconnus:
         st[f] = "maisons_de_ville"
@@ -342,11 +356,14 @@ def main():
         for i in range(len(r) - 1):
             proprio.setdefault(cle_seg(r[i], r[i + 1]), set()).add(fid)
 
-    riv = set(RIVIERE)
+    # 🔴 PRIS SUR LES ÎLOTS VIVANTS, PAS SUR LES LISTES : le dessin efface les
+    # îlots qu'il remplace, et un fid listé mais disparu faisait planter le
+    # repérage des ponts (KeyError 4, 2026-09-15).
+    riv = {f for f in ilots if st[f] == "riviere"}
     quai = set(BERGE_VOIE_RAPIDE)
     transit = set(FRONT_COMMERCANT)          # l'axe qui longe le front commerçant
     coeur = set(COEUR_ANCIEN) | set(FRONT_COMMERCANT)
-    champs = set(CHAMPS)
+    champs = {f for f in ilots if st[f] == "champ"}
     # 🔴 COLLECTIF_1995 EST DEDANS, ET CE N'EST PAS UN DÉTAIL : sans lui, les
     # îlots 60 et 61 en quittant le pavillonnaire rétrécissaient leurs rues de
     # 2 m, ce qui redécoupait les voisins 59 et 62 sans que rien ne le dise.
