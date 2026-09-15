@@ -655,6 +655,17 @@ def _sol_dessine(source, sols, domaines, decor):
     connues = atelier.listes_connues()
     rapport = []
 
+    # 🔴 LE SOL DÉJÀ DESSINÉ S'EFFACE D'ABORD. `sol` marque les îlots qu'une
+    # reprise précédente a posés : sans ce retrait, une deuxième passe EMPILE
+    # une seconde campagne sur la première (93 îlots de plus, fid 1093 et
+    # suivants) au lieu de la remplacer, et la chaîne n'est plus rejouable.
+    ancien = [f for f, e in par_fid.items() if e.get("sol")]
+    for f in ancien:
+        del par_fid[f]
+    if ancien:
+        rapport.append("%d îlots de la reprise précédente effacés (fid %d à %d)"
+                       % (len(ancien), min(ancien), max(ancien)))
+
     # --- souder chaque sol, puis mesurer TOUT ce que le dessin couvre
     anneaux, mailles = {}, {}
     for calque, brins in sols.items():
