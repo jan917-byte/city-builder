@@ -1,5 +1,10 @@
 # HISTORIQUE.md — ce qui s'est passé, session par session
 
+## 2026-09-15 — Le dessin d'Illustrator devient la carte, et le monde entier
+`chaine.py --gabarit --godot` va du SVG à la maquette en 33 s. Le calque fait le sol (`sol` sur l'îlot, fid à partir de 1000) : plus aucune liste de `fid` à recopier dans `02` — les 88 champs neufs tombaient sur 73 et 74, déjà pavillonnaires, et la chaîne s'arrêtait là.
+La plaque ne sort plus en gris minéral : le dessin la peint (110 ha de bois et 4 253 arbres, 253 ha de massifs soulevés à 90 m, 572 arbres de haie sur les 11 domaines), l'emprise dessinée fixe le monde à 1943 × 2470 m, et le contrôle de sol nu visible passe de 107 ha à 0,0.
+Piège payé : un contrôle qui compte le gris SOUS un îlot crie 107 ha sur une image sans un pixel gris — il ne compte plus que ce qui se voit. Restent deux nombres à l'auteur : l'altitude des massifs, et un calque pour tracer les routes qui manquent vers les fermes.
+
 ## 2026-09-06 — Première boucle jouable après la crue
 À la demande de l'auteur : deux réparations proposées, livraison visible et pause, puis réparation / protection / solaire ; progression conservée dans la sauvegarde. Étape 6 ouverte, 5 mise en pause ; arbitrage de plaisir ouvert (question 29).
 Contrôles rendus de l'ouverture et du jeu, reprise et chaîne vérifiés ; largeur initiale du guide et comparaison booléen/entier des états de berge corrigées. L'argent d'essai passe derrière `--outils`.
