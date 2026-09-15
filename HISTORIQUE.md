@@ -459,5 +459,5 @@ Encodage réparé · `CLAUDE.md` et `ETAT.md` posés · carte qualifiée (69 îl
 *(`Méta/Journal.md` reste vierge de ma main — c'est le fichier de l'auteur.)*
 
 **2026-09-15 — Campagne SVG dans Godot :** retrait du damier superposé, bandes orientées par parcelle et prairies plus lisibles ; massifs boisés continus sans retour de champs.
-Quatre sorties prolongées jusqu’au cadre puis dans la brume, 177/178 arrêtées avec les îlots sur demande de l’auteur ; chaussées posées sur le sol, arbres écartés et Ilse prolongée au sud.
+Sur précision de l’auteur, quatre sorties suivent uniquement les limites communes des champs jusqu’à la lisière ; 177/178 restent arrêtées avec les îlots. Les prolongements vers les montagnes sont retirés.
 Chaîne régénérée, neuf contrôles géométriques et trois cadrages rendus ; les accès aux fermes et les alertes héritées des ponts restent à reprendre.

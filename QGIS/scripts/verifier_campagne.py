@@ -2,7 +2,7 @@
 import math
 import unittest
 
-from export_godot.sorties import portes, tracer, hors_routes, Surface
+from export_godot.sorties import portes, LimitesChamps, hors_routes, Surface
 from export_godot.batiments import _bandes_de_fauche
 from export_godot.geometrie import aire_signee, Maillage
 
@@ -29,13 +29,21 @@ class Campagne(unittest.TestCase):
                        [(20, 40), (40, 40), (30, 60), (20, 40)]])]
         self.assertEqual({r[0]["fid"] for r in portes(routes)}, {0, 1, 3})
 
-    def test_continuation_contourne_eau_sans_couper_les_angles(self):
-        libre = lambda p: not (40 <= p[0] <= 70 and 0 <= p[1] <= 65)
-        ligne = tracer((10, 30), (0, 30), 2, (0, 0, 120, 120), libre, lambda x, y: 0)
-        self.assertEqual(ligne[0], (10, 30))
-        self.assertEqual(ligne[-1][0], 120)
-        self.assertTrue(all(libre(p) for p in ligne))
-        self.assertTrue(all(math.dist(a, b) <= 4.01 for a, b in zip(ligne, ligne[1:])))
+    def test_route_garde_les_angles_de_la_limite_commune(self):
+        commun = [(0, 0), (0, 50), (10, 100)]
+        ilots = {1: {"sous_type": "champ", "brut": [(-50, 0)] + commun + [(-50, 100)]},
+                 2: {"sous_type": "champ", "brut": [(50, 0), (50, 100)] + list(reversed(commun))}}
+        limites = LimitesChamps(ilots)
+        ligne = limites.tracer((0, 0), (0, -10), 8)
+        self.assertEqual(ligne[0], (0, 0))
+        self.assertEqual(ligne[-1], (10, 100))
+        self.assertIn((0, 50), ligne)
+        for a, b in zip(ligne, ligne[1:]):
+            milieu = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+            from export_godot.decor import _d_point_seg
+            self.assertLess(min(_d_point_seg(milieu, *ab) for ab in limites.segments), 1e-9)
+        # Une bordure champ-forêt ne suffit pas : il faut deux champs.
+        self.assertEqual(LimitesChamps({1: ilots[1]}).tracer((0, 0), (0, -10), 8), [])
 
     def test_bandes_conservent_aire_et_sens_du_champ(self):
         champ = [(0, 0), (120, 0), (120, 60), (0, 60)]

@@ -1756,15 +1756,18 @@ def main():
     if n_gi != len(ilots):
         print("    ⚠️  des îlots ne seront pas cliquables — anneau dégénéré ?")
 
-    routes_sortie = sorties(routes, ilots, (minx, miny, maxx, maxy),
-                            massifs, relief, G, D4.EMPRISE_CIRCULATION, Surface([terre, sols]))
+    routes_sortie = sorties(routes, ilots, massifs, relief, G,
+                            D4.EMPRISE_CIRCULATION, Surface([terre, sols]))
     decor_vallee = _avec_bois(paysage(maxx - minx, maxy - miny, chenal, cx, cy,
-                                    massifs, dessin, routes_sortie), arbres_bois, arbres_haies)
+                                    massifs, dessin), arbres_bois, arbres_haies)
     for axe in routes_sortie["axes"]:
         axe["points"] = [[p[0] - cx, cy - p[1]] for p in axe["points"]]
     decor_vallee["sorties"] = routes_sortie
-    decor_vallee["arbres"] = hors_routes(decor_vallee["arbres"], routes_sortie["axes"]
-                                          + decor_vallee["sorties_exterieures"]["axes"])
+    decor_vallee["arbres"] = hors_routes(decor_vallee["arbres"], routes_sortie["axes"])
+    arbres_godot = [[round(c, 2) for c in G(a[0], a[1], a[2])]
+                    + [round(a[3], 3), round(a[4], 3), int(a[5])] for a in arbres]
+    arbres_godot = hors_routes([arbres_godot, []], routes_sortie["axes"])[0]
+    print("    %d arbres des champs écartés des prolongements" % (len(arbres) - len(arbres_godot)))
     doc = {
         "meta": {
             "source": os.path.basename(GPKG),
@@ -1810,9 +1813,7 @@ def main():
         "ponts_ruine": ponts_ruine.json(),
         # Déjà en repère Godot : [x, y, z, échelle, lacet]. Godot ne fait
         # aucune conversion de coordonnées, c'est la règle du contrat.
-        "arbres": [[round(c, 2) for c in G(a[0], a[1], a[2])]
-                   + [round(a[3], 3), round(a[4], 3), int(a[5])]
-                   for a in arbres],
+        "arbres": arbres_godot,
         # Les emplacements d'alignement, avec leur seuil de canopée. Godot en
         # fait UN MultiMesh et n'affiche que ceux dont le seuil est atteint —
         # c'est là que le temps se voit sans lire un chiffre.
@@ -1880,7 +1881,7 @@ def main():
             "masses": n_masse, "sols": n_sol, "eau": n_eau,
             "triangles": (len(terre) + len(masses) + len(sols) + len(eau)
                           + len(voirie) + len(ponts_ruine)),
-            "arbres": len(arbres),
+            "arbres": len(arbres_godot),
             "alignements": n_align,
             "groupes": n_groupes,
         },

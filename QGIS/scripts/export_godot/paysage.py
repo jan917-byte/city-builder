@@ -19,7 +19,7 @@ def fondu(a, b, x):
     return t * t * (3.0 - 2.0 * t)
 
 
-def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None, sorties=None):
+def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
     hx, hz = largeur / 2, profondeur / 2
     rng = random.Random(GRAINE)
     # Les sorties sont les deux bouchons du chenal sur le bord de la carte.
@@ -144,45 +144,6 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None, sort
         norme = math.sqrt(nx * nx + 4 + nz * nz)
         sol.n[k] = (nx / norme, 2 / norme, nz / norme)
 
-    # Les sorties franchissent aussi la couture du décor et se perdent dans la brume.
-    from .sorties import Surface
-    from .geometrie import _ruban, _densifier
-    surface = Surface([sol])
-    routes_m, accotements, axes = Maillage(), Maillage(), []
-    for route in (sorties or {}).get("axes", []):
-        p = route["points"][-1]
-        cote = route["cote"]
-        vx, vy = [(-1, 0), (0, -1), (1, 0), (0, 1)][cote]
-        precedent = route["points"][-2]
-        lateral = max(-.8, min(.8, ((p[0] - precedent[0]) * vy - (p[1] - precedent[1]) * vx)
-                              / max(.01, (p[0] - precedent[0]) * vx + (p[1] - precedent[1]) * vy)))
-        ligne = [p]
-        for t in range(8, 3600, 8):
-            ecart = lateral * 120 * (1 - math.exp(-t / 120))
-            x, y = p[0] + vx * t + vy * ecart, p[1] + vy * t - vx * ecart
-            if max(abs(x - cx), abs(cy - y)) >= PORTEE - 8:
-                break
-            # L'Ilse peut méandrer hors cadre : la route garde sa rive.
-            for _ in range(80):
-                if bord_riviere(x - cx, cy - y) > route["largeur_m"] / 2 + 10:
-                    break
-                essais = [(x + vy * 3, y - vx * 3), (x - vy * 3, y + vx * 3)]
-                x, y = max(essais, key=lambda q: bord_riviere(q[0] - cx, cy - q[1]))
-            ligne.append((x, y))
-        ligne = _densifier(ligne, 3.0)
-        def proj(x, y, h):
-            x, z = x - cx, cy - y
-            return (x, surface.hauteur(x, z, altitude(x, z)) + .16 + h, z)
-        large = route["largeur_m"]
-        for bande in range(4):
-            _ruban(routes_m, ligne, large / 4, PAL.vers_lineaire(PAL.MINERAL), proj, 0,
-                   decal=-large / 2 + large / 4 * (bande + .5), bouts=False)
-        for cote_acc in (-1, 1):
-            _ruban(accotements, ligne, .75, PAL.vers_lineaire("#899571"), proj, -.025,
-                   decal=cote_acc * (large / 2 + .375), bouts=False)
-        axes.append({"fid": route["fid"], "largeur_m": large,
-                     "points": [[p[0] - cx, cy - p[1]] for p in ligne]})
-
     arbres = [[], []]
     for z0 in range(-1950, 1950, 25):
         for x0 in range(-1950, 1950, 25):
@@ -209,7 +170,6 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None, sort
     print("  vallée : %d triangles de sol, %d arbres extérieurs, %d bancs de nuages"
           % (len(sol), sum(map(len, arbres)), len(nuages)))
     return {"demi_emprise": [hx, hz], "sol": sol.json(), "eau": eau.json(),
-            "sorties_exterieures": {"sol": routes_m.json(), "accotements": accotements.json(), "axes": axes},
             "arbres": arbres, "modeles": [_arbre(False), _arbre(True)],
             "nuages": nuages, "quad": quad.json()}
 
