@@ -97,7 +97,7 @@ Le géoréférencement tient au rectangle `cadre-geo` et aux calques `_reference
 
 ## L'export vers Godot
 
-`07_exporter_godot.py` lit la carte et assemble le JSON ; `scripts/export_godot/` porte les recettes : `geometrie`, `batiments`, `voirie`, `berges`, `vegetation`. Les constantes et tables de rendu sont dans `reglages.py`.
+`07_exporter_godot.py` lit la carte et assemble le JSON ; `scripts/export_godot/` porte les recettes : `geometrie`, `batiments`, `voirie`, `berges`, `vegetation`, `decor`, `paysage`, `sorties`. Les routes de sortie sont des prolongements de décor calculés à l’export ; les tracer ne modifie pas le réseau jouable. Les constantes et tables de rendu sont dans `reglages.py`.
 Avant de déplacer une recette, conserver une copie du JSON dans `QGIS/rendus/`. Après relance de la chaîne, `python QGIS/scripts/verifier_export.py QGIS/rendus/reference.json` exige un export identique octet pour octet et échoue sinon. Ces copies restent locales.
 
 ## Regarder, sans rien écrire

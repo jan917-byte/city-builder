@@ -9,6 +9,10 @@ func batir(d: Dictionary, teinte_eau: Color) -> void:
 	mat.shader = preload("res://shaders/paysage.gdshader")
 	mat.set_shader_parameter("demi_emprise", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	_maille("Versants", d.sol, mat)
+	for cle in ["sorties", "sorties_exterieures"]:
+		if d.has(cle):
+			_maille("Accotements" + cle, d[cle].accotements, mat)
+			_maille("Routes" + cle, d[cle].sol, mat)
 	var eau := Materiaux.eau(teinte_eau)
 	eau.set_shader_parameter("brume_exterieure", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	_maille("IlseExterieure", d.eau, eau)

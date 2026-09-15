@@ -31,3 +31,13 @@ Validé le 2026-09-06 : essai rendu de l'ouverture, essai général rendu, essai
 - Défauts à signaler : réussite avant livraison, rue toujours vide, dépense dès la comparaison, premiers pas perdus après reprise, guide qui masque les commandes.
 
 La crue suivante reste une prévision, sans événement daté. Le retour des piétons représente la praticabilité locale ; le faubourg reste coupé de l'autre rive tant que les ponts ne sont pas réparés. Le capital politique et le relogement ne sont pas introduits par cet essai.
+
+## Campagne du SVG vers Godot — 2026-09-15
+
+Les 88 champs gardent leur contour importé, leur teinte et des bandes parallèles à leur grand côté. La grille agricole globale est retirée ; prairies et cultures se distinguent davantage. Les deux massifs portent des croupes boisées et se prolongent dans le décor extérieur, sans seconde ceinture de champs.
+
+Les quatre sorties principales de l'ancien cadre rejoignent le nouveau cadre (3 063 m), puis continuent dans le décor jusqu'à la brume. Elles contournent l'eau et le bâti, suivent les triangles du terrain et dégagent les arbres. Ces prolongements sont du décor : les décisions et le trafic restent sur les tronçons existants. Les dessertes 177 et 178 s’arrêtent avec les îlots, à la demande de l’auteur ; les impasses intérieures ne sont pas prolongées.
+
+Contrôles : `verifier_campagne.py` (6 cas), `verifier_voirie.py` (3 cas), chaîne complète et aires des 88 champs exportés vérifiées (écart maximal 0,013 %), et trois cadrages Godot via `--script res://outils/apercu_campagne.gd`. Aperçus : `QGIS/rendus/wehrau_campagne_dessus_apres.png`, `..._relief_apres.png`, `..._champs_apres.png` ; `..._avant.png` garde le même cadrage avant correction.
+
+À regarder : ① contours des champs, ② sortie ouest continue, ③a/b montagnes. Défauts à signaler : routes en pointillés dans les pentes, champ réapparu derrière un massif, rupture rectangulaire du paysage. Les chemins d'accès aux fermes restent à dessiner. Les alertes d'export concernant les anciens ponts et les effectifs attendus de l'ancienne carte restent un chantier distinct.

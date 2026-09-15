@@ -41,6 +41,7 @@ from export_godot.decor import (
     semer as _semer_bois,
 )
 from export_godot.paysage import paysage
+from export_godot.sorties import sorties, hors_routes, Surface
 from export_godot.ponts import _acces_pont
 from export_godot.berges import (
     _arrondir_rives,
@@ -426,7 +427,7 @@ def main():
     massifs = Massifs(decor)
     massifs.preparer()
     teintes = _coul_decor()
-    cellules_bois = []
+    cellules_bois, cellules_versants = [], []
     aires = {}
     # Le paysage prolonge désormais cette plaque ; plus de cadre minéral.
     x0, y0, x1, y1 = minx, miny, maxx, maxy
@@ -445,6 +446,8 @@ def main():
         aires[genre] = aires.get(genre, 0.0) + aire_mo
         if genre == "bois":
             cellules_bois.append(mo)
+        elif genre == "relief":
+            cellules_versants.append(mo)
         # La plaque plonge un quart plus bas que le talus : elle est invisible
         # sous le champ, et cette marge est ce qui dispense de faire coïncider
         # deux découpages différents du même relief.
@@ -454,6 +457,11 @@ def main():
             genre = None
     arbres_bois = _semer_bois(cellules_bois, relief, Y_TERRAIN,
                               1.0 + TALUS_DESSOUS, G, massifs)
+
+    arbres_versants = _semer_bois(cellules_versants, relief, Y_TERRAIN,
+                                 1.0 + TALUS_DESSOUS, G, massifs, densite=.4)
+    for k in range(2):
+        arbres_bois[k].extend(arbres_versants[k])
 
     # 🚜 LA HAIE DE FERME. Un domaine n'a ni bâtiment ni couleur : son contour
     # ne portait rien à l'écran. Une haie le dit sans rien inventer d'autre.
@@ -1748,6 +1756,15 @@ def main():
     if n_gi != len(ilots):
         print("    ⚠️  des îlots ne seront pas cliquables — anneau dégénéré ?")
 
+    routes_sortie = sorties(routes, ilots, (minx, miny, maxx, maxy),
+                            massifs, relief, G, D4.EMPRISE_CIRCULATION, Surface([terre, sols]))
+    decor_vallee = _avec_bois(paysage(maxx - minx, maxy - miny, chenal, cx, cy,
+                                    massifs, dessin, routes_sortie), arbres_bois, arbres_haies)
+    for axe in routes_sortie["axes"]:
+        axe["points"] = [[p[0] - cx, cy - p[1]] for p in axe["points"]]
+    decor_vallee["sorties"] = routes_sortie
+    decor_vallee["arbres"] = hors_routes(decor_vallee["arbres"], routes_sortie["axes"]
+                                          + decor_vallee["sorties_exterieures"]["axes"])
     doc = {
         "meta": {
             "source": os.path.basename(GPKG),
@@ -1770,9 +1787,7 @@ def main():
         # autres : Godot n'a plus qu'UNE façon de lire de la géométrie.
         "boue": carte_boue(ilots, routes, chenal, cx, cy),
         "terrain": terre.json(),
-        "paysage": _avec_bois(paysage(maxx - minx, maxy - miny, chenal, cx, cy,
-                                      massifs),
-                              arbres_bois, arbres_haies),
+        "paysage": decor_vallee,
         "masses": masses.json(),
         # 🔧 LA VILLE RÉPARÉE, groupe par groupe, jamais montrée au chargement.
         # Le bâti neuf d'un îlot ruiné, et le tablier neuf d'un franchissement

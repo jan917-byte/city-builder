@@ -230,9 +230,9 @@ MARQUAGE = "#C6C3B9"
 # tirée de sa position.
 CHAMPS = [
     "#C9C39A",   # blé mûr
-    "#BCC192",   # prairie
+    "#91A875",   # prairie
     "#D0C7A2",   # chaume
-    "#AEB588",   # herbe grasse
+    "#7F996B",   # herbe grasse
     "#C3B896",   # terre travaillée
 ]
 

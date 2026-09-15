@@ -400,7 +400,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// 🌊 L'ÉTAT D'UNE BERGE, DANS LA VILLE VIVANTE. `calque` ne\n" \
 		+ "\t// peint que la maquette blanche ; une rive rendue au fleuve doit se\n" \
 		+ "\t// voir SANS ouvrir le diagnostic, sinon la décision n'a pas d'effet.\n" \
-		+ "\tif (parcelle_agricole > 0.5) base = couleur_champ(pos_monde.xz) * COLOR.a;\n" \
+		+ "\tif (parcelle_agricole > 0.5) base *= grain_champ(pos_monde.xz);\n" \
 		+ "\tvec4 depot = boue_hauteur >= 0.0 ? depot_boue_local(pos_monde, boue_hauteur, 0.0) : depot_boue(pos_monde);\n" \
 		+ "\tfloat propre = boue_propre * boue_nettoyage_acces(pos_monde.xz, boue_acces, boue_largeur);\n" \
 		+ "\tbase = mix(base, depot.rgb * COLOR.a, depot.a * (1.0 - propre));\n" \

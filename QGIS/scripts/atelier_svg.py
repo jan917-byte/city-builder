@@ -876,7 +876,7 @@ def reprendre(chemin_svg, blanc):
 
     manquants = [e["fid"] for e in nouvelles["paysage"] if e["genre"] == "relief"]
     if manquants:
-        print("\n⚠️  %d massifs sans altitude_m — plats tant que tu ne la donnes pas."
+        print("\n⚠️  %d massifs sans altitude_m — hauteur par défaut à l’export Godot."
               % len(manquants))
 
     if cadre:

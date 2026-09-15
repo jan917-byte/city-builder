@@ -271,17 +271,10 @@ def _cheminee(m, x, y, y_bas, y_haut, u, coul, G):
 
 
 def _bandes_de_fauche(anneau, coul):
-    """Un champ coupé en bandes alternées, comme une parcelle fauchée.
-
-    Le sens de la fauche est tiré de la POSITION du champ (35) : deux champs
-    voisins ne se fauchent pas dans le même sens, et c'est ce qui fait qu'on
-    lit des parcelles agricoles et non une trame posée sur la ville.
-
-    Renvoie une liste de (morceau, couleur). Si le champ est trop petit pour
-    deux bandes, il ressort tel quel — un seul morceau, sa couleur d'origine.
-    """
-    r = random.Random(_graine_lieu(anneau) ^ 0x8A17)
-    ang = r.uniform(0.0, math.pi)
+    """Les bandes suivent le grand côté du champ, sans changer son contour."""
+    a, b = max(zip(anneau, anneau[1:] + anneau[:1]),
+               key=lambda ab: math.dist(*ab))
+    ang = math.atan2(b[1] - a[1], b[0] - a[0]) + math.pi / 2
     nx, ny = math.cos(ang), math.sin(ang)
     proj = [p[0] * nx + p[1] * ny for p in anneau]
     s0, s1 = min(proj), max(proj)

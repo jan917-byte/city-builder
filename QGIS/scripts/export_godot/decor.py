@@ -1,15 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Le décor DESSINÉ — ce que l'auteur trace sur `bois` et `relief` dans
-Illustrator, et qui PEINT LA PLAQUE DE SOL.
-
-🔴 CE QU'IL RÉPARE (2026-09-15). La plaque sortait en gris minéral partout où
-ni la ville ni un champ ne la couvrait : 69 % du monde dessiné, une dalle grise
-autour de Wehrau. `paysage.py` fabrique bien une vallée, mais par formule et
-UNIQUEMENT hors du rectangle jouable — il ne sait rien du dessin.
-
-Le partage tient en une phrase : **dans le rectangle jouable le dessin fait
-loi ; au-delà, la vallée de `paysage.py` continue.**
-"""
+"""Reliefs et végétation des formes SVG ; le décor extérieur prolonge leurs bords."""
 import math
 import random
 
@@ -58,7 +48,7 @@ def couleurs():
     return {g: PAL.vers_lineaire(c) for g, c in PAL.DECOR.items()}
 
 
-def semer(cellules, relief, y_plaque, facteur, G, massifs=None):
+def semer(cellules, relief, y_plaque, facteur, G, massifs=None, densite=1.0):
     """Les arbres du bois dessiné, en coordonnées Godot, prêts à rejoindre les
     instances de `paysage.py` — donc sans ombre portée et sans coût de rendu
     par arbre.
@@ -72,7 +62,7 @@ def semer(cellules, relief, y_plaque, facteur, G, massifs=None):
         xs = [p[0] for p in cel]
         ys = [p[1] for p in cel]
         aire = (max(xs) - min(xs)) * (max(ys) - min(ys))
-        n = aire / M2_PAR_ARBRE_BOIS
+        n = aire / M2_PAR_ARBRE_BOIS * densite
         # La partie décimale tirée au sort : sans elle une maille de 16 m sur
         # 260 m² par arbre ne porterait jamais le moindre arbre.
         n = int(n) + (1 if rng.random() < n - int(n) else 0)
@@ -193,7 +183,9 @@ class Massifs(object):
             d = min(_d_point_seg((x, y), a, b)
                     for a, b in zip(ferme, ferme[1:]))
             t = min(1.0, d / MASSIF_MONTEE_M)
-            h = max(h, alt * t * t * (3.0 - 2.0 * t))
+            # Le plateau uniforme devient une succession de croupes, sous le plafond dessiné.
+            croupe = .78 + .14 * math.sin(x / 170 + y / 220) + .08 * math.sin(y / 95 - x / 270)
+            h = max(h, alt * t * t * (3.0 - 2.0 * t) * croupe)
         return h
 
     def hauteur(self, x, y):

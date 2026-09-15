@@ -1,4 +1,4 @@
-"""Écrin extérieur de Wehrau : champs, forêt mixte, relief et nuages.
+"""Écrin extérieur de Wehrau : forêt mixte, relief et nuages.
 
 Le rectangle jouable et ses données restent exclus de cette géométrie.
 """
@@ -19,28 +19,31 @@ def fondu(a, b, x):
     return t * t * (3.0 - 2.0 * t)
 
 
-def paysage(largeur, profondeur, chenal, cx, cy, massifs=None):
+def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None, sorties=None):
     hx, hz = largeur / 2, profondeur / 2
     rng = random.Random(GRAINE)
     # Les sorties sont les deux bouchons du chenal sur le bord de la carte.
     canaux = []
     for a, b in chenal.berges:
         p, q = (a[0] - cx, cy - a[1]), (b[0] - cx, cy - b[1])
-        if not ((p[0] > hx - 3 and q[0] > hx - 3) or
-                (p[1] < -hz + 3 and q[1] < -hz + 3)):
+        cote = next((k for k, ok in enumerate([
+            p[0] < -hx + 3 and q[0] < -hx + 3,
+            p[1] > hz - 3 and q[1] > hz - 3,
+            p[0] > hx - 3 and q[0] > hx - 3,
+            p[1] < -hz + 3 and q[1] < -hz + 3]) if ok), None)
+        if cote is None:
             continue
         mx, mz = (p[0] + q[0]) / 2, (p[1] + q[1]) / 2
         largeur_eau = math.dist(p, q)
         if largeur_eau < 12:
             continue
-        est = mx > hx - 3
         rails = []
         for k in range(10):
             t = k * 430.0
             virage = 90 * math.sin(t / 620)
-            x = hx + t if est else mx + virage
-            z = mz + virage if est else -hz - t
-            rails.append(((x, z - largeur_eau / 2), (x, z + largeur_eau / 2)) if est
+            x = (-hx - t if cote == 0 else hx + t) if cote in (0, 2) else mx + virage
+            z = (hz + t if cote == 1 else -hz - t) if cote in (1, 3) else mz + virage
+            rails.append(((x, z - largeur_eau / 2), (x, z + largeur_eau / 2)) if cote in (0, 2)
                          else ((x - largeur_eau / 2, z), (x + largeur_eau / 2, z)))
         for (a, b), (c, d) in zip(rails, rails[1:]):
             canaux.append([a, b, d, c])
@@ -59,10 +62,12 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None):
         return dist
 
     def massif(x, z):
-        """Le massif DESSINÉ, vu d'ici. Sans lui, le dôme que la plaque soulève
-        s'arrêtait net au bord du rectangle et la vallée reprenait 90 m plus
-        bas : une falaise droite en travers du décor (2026-09-15)."""
-        return 0.0 if massifs is None else massifs.hauteur(cx + x, cy - z)
+        if massifs is None:
+            return 0.0
+        # Le bord du dessin devient un versant continu, jamais un second fond de vallée.
+        bx, bz = max(-hx, min(hx, x)), max(-hz, min(hz, z))
+        return max(massifs.hauteur(cx + x, cy - z),
+                   massifs.hauteur(cx + bx, cy - bz))
 
     def altitude(x, z):
         d = distance(x, z)
@@ -77,11 +82,21 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None):
         fond = rive - 0.045 + relief * fondu(0, 190, berge)
         return -2.4 + (fond + 2.4) * fondu(0, 12, berge) + massif(x, z)
 
-    def lisiere(x, z):
-        return 165 + 65 * math.sin(x / 125 + z / 160) + 40 * math.cos(z / 74 - x / 220)
+    teintes = {g: PAL.vers_lineaire(c) for g, c in PAL.DECOR.items()}
+
+    def genre(x, z):
+        if dessin is None:
+            return "bois"
+        bx, bz = max(-hx, min(hx, x)), max(-hz, min(hz, z))
+        return (dessin.genre((cx + x, cy - z))
+                or dessin.genre((cx + bx, cy - bz)) or "bois")
+
+    def couleur(x, z):
+        base = teintes[genre(x, z)]
+        t = fondu(0, 550, distance(x, z))
+        return tuple(c * (1 - t) + f * t for c, f in zip(base, teintes["bois"]))
 
     sol, eau = Maillage(), Maillage()
-    vert = PAL.vers_lineaire("#687e49")
 
     def axe(a, b):
         n = math.ceil((b - a) / PAS)
@@ -108,7 +123,7 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None):
                     if any(dedans(c + c[:1], centre) for c in proches):
                         continue
                     for k in range(1, len(mo)-1):
-                        sol.triangle(point(*mo[0]), point(*mo[k+1]), point(*mo[k]), vert)
+                        sol.triangle(point(*mo[0]), point(*mo[k+1]), point(*mo[k]), couleur(*centre))
 
     bande(-PORTEE, -hx, -PORTEE, PORTEE)
     bande(hx, PORTEE, -PORTEE, PORTEE)
@@ -129,12 +144,51 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None):
         norme = math.sqrt(nx * nx + 4 + nz * nz)
         sol.n[k] = (nx / norme, 2 / norme, nz / norme)
 
+    # Les sorties franchissent aussi la couture du décor et se perdent dans la brume.
+    from .sorties import Surface
+    from .geometrie import _ruban, _densifier
+    surface = Surface([sol])
+    routes_m, accotements, axes = Maillage(), Maillage(), []
+    for route in (sorties or {}).get("axes", []):
+        p = route["points"][-1]
+        cote = route["cote"]
+        vx, vy = [(-1, 0), (0, -1), (1, 0), (0, 1)][cote]
+        precedent = route["points"][-2]
+        lateral = max(-.8, min(.8, ((p[0] - precedent[0]) * vy - (p[1] - precedent[1]) * vx)
+                              / max(.01, (p[0] - precedent[0]) * vx + (p[1] - precedent[1]) * vy)))
+        ligne = [p]
+        for t in range(8, 3600, 8):
+            ecart = lateral * 120 * (1 - math.exp(-t / 120))
+            x, y = p[0] + vx * t + vy * ecart, p[1] + vy * t - vx * ecart
+            if max(abs(x - cx), abs(cy - y)) >= PORTEE - 8:
+                break
+            # L'Ilse peut méandrer hors cadre : la route garde sa rive.
+            for _ in range(80):
+                if bord_riviere(x - cx, cy - y) > route["largeur_m"] / 2 + 10:
+                    break
+                essais = [(x + vy * 3, y - vx * 3), (x - vy * 3, y + vx * 3)]
+                x, y = max(essais, key=lambda q: bord_riviere(q[0] - cx, cy - q[1]))
+            ligne.append((x, y))
+        ligne = _densifier(ligne, 3.0)
+        def proj(x, y, h):
+            x, z = x - cx, cy - y
+            return (x, surface.hauteur(x, z, altitude(x, z)) + .16 + h, z)
+        large = route["largeur_m"]
+        for bande in range(4):
+            _ruban(routes_m, ligne, large / 4, PAL.vers_lineaire(PAL.MINERAL), proj, 0,
+                   decal=-large / 2 + large / 4 * (bande + .5), bouts=False)
+        for cote_acc in (-1, 1):
+            _ruban(accotements, ligne, .75, PAL.vers_lineaire("#899571"), proj, -.025,
+                   decal=cote_acc * (large / 2 + .375), bouts=False)
+        axes.append({"fid": route["fid"], "largeur_m": large,
+                     "points": [[p[0] - cx, cy - p[1]] for p in ligne]})
+
     arbres = [[], []]
     for z0 in range(-1950, 1950, 25):
         for x0 in range(-1950, 1950, 25):
             x, z = x0 + rng.uniform(-12, 12), z0 + rng.uniform(-12, 12)
             d = distance(x, z)
-            if d < max(45, lisiere(x, z)) or rng.random() > 0.92 - 0.68 * fondu(600, 1600, d):
+            if d <= 0 or rng.random() > 0.92 - 0.68 * fondu(600, 1600, d):
                 continue
             if bord_riviere(x, z) < 22:
                 continue
@@ -155,6 +209,7 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None):
     print("  vallée : %d triangles de sol, %d arbres extérieurs, %d bancs de nuages"
           % (len(sol), sum(map(len, arbres)), len(nuages)))
     return {"demi_emprise": [hx, hz], "sol": sol.json(), "eau": eau.json(),
+            "sorties_exterieures": {"sol": routes_m.json(), "accotements": accotements.json(), "axes": axes},
             "arbres": arbres, "modeles": [_arbre(False), _arbre(True)],
             "nuages": nuages, "quad": quad.json()}
 

@@ -107,7 +107,7 @@ godot --headless --path Godot --script res://outils/sonde_api.gd
 
 La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change. Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
-- `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`, `Paysage`). `--script res://outils/apercu_vallee.gd` produit les vues de contrôle de la vallée.
+- `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`, `Paysage`). `--script res://outils/apercu_vallee.gd` produit les vues de contrôle de la vallée ; `--script res://outils/apercu_campagne.gd` celles du raccord SVG, des champs et des routes de sortie.
 - `-- --essai` joue la partie de contrôle et quitte. ⚠️ **pas** avec `--headless` : le pilote de rendu y est factice, aucune image n'en sort.
 - `-- --banc` mesure et quitte : quatre cadrages verrou d'écran levé, puis la pulsation du trafic et le prix d'une image, part par part. 🔴 **À lancer AVANT d'optimiser quoi que ce soit** — le coupable n'est presque jamais celui qu'on croit, et le banc dit s'il est dans le script ou dans le rendu. Les chiffres vivent dans `Prototype/`, pas ici.
 
