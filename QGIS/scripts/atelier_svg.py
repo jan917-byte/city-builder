@@ -801,7 +801,16 @@ def reprendre(chemin_svg, blanc):
     nouvelles = {n: list(e) for n, e in source.items()}
 
     # --- les formes fermées du décor
-    fid = max([e["fid"] for e in source["paysage"]] or [0])
+    # 🔴 MÊME PIÈGE QUE POUR LE SOL : sans ce retrait la deuxième reprise
+    # empilait 8 formes de plus sur les 8 premières. La note dit d'où elles
+    # viennent, donc ce qui a été tracé dans QGIS (`atelier.py`) survit.
+    avant = len(nouvelles["paysage"])
+    nouvelles["paysage"] = [e for e in nouvelles["paysage"]
+                            if not (e.get("note") or "").startswith("dessiné dans ")]
+    if avant - len(nouvelles["paysage"]):
+        print("\n%d forme(s) de décor de la reprise précédente effacées"
+              % (avant - len(nouvelles["paysage"])))
+    fid = max([e["fid"] for e in nouvelles["paysage"]] or [0])
     for calque, genre in GENRES_CALQUES.items():
         formes = [f for f in calques.get(calque, []) if f[1]]
         ouvertes = len(calques.get(calque, [])) - len(formes)
