@@ -24,6 +24,11 @@ func actualiser(mois: float) -> void:
 
 
 func cliquer(b: Button) -> void:
+	var parent := b.get_parent()
+	while parent != null:
+		if parent is ScrollContainer:
+			parent.ensure_control_visible(b)
+		parent = parent.get_parent()
 	await process_frame
 	await process_frame
 	var pos := b.get_global_rect().get_center()
@@ -109,13 +114,13 @@ func executer() -> void:
 		"La protection ouvre la berge qui agit sur ce secteur")
 	verifier(jeu.interface._recap_bouton.disabled, "Le prix inaccessible est expliqué et refusé")
 	var avant: float = jeu.ville.valeur("i", o.MAISONS, "hauteur_eau_annonce", jeu.mois)
-	actualiser(8.0)
+	actualiser(12.0)
 	verifier(not jeu.interface._recap_bouton.disabled, "Épargner rend la protection accessible")
 	await cliquer(jeu.interface._recap_bouton)
-	actualiser(25.99)
+	actualiser(29.99)
 	verifier(is_equal_approx(jeu.ville.valeur("i", o.MAISONS, "hauteur_eau_annonce", jeu.mois), avant),
 		"La protection attend la livraison")
-	actualiser(26.0)
+	actualiser(30.0)
 	verifier(jeu.ville.valeur("i", o.MAISONS, "hauteur_eau_annonce", jeu.mois) < avant,
 		"La berge livrée réduit réellement l'eau attendue")
 	await capture("04_protection")
@@ -123,7 +128,7 @@ func executer() -> void:
 	jeu._sur_reset()
 	verifier(o.etape == "choix" and jeu.mois == 0.0, "Recommencer remet les premiers pas à zéro")
 	jeu._sur_reprise()
-	verifier(o.etape == "suite" and jeu.mois == 26.0 and jeu.vitesse == 0.0,
+	verifier(o.etape == "suite" and jeu.mois == 30.0 and jeu.vitesse == 0.0,
 		"La reprise retrouve la boucle, le chantier et le mois")
 	await cliquer(bouton("Continuer à mon rythme"))
 	verifier(not o.visible and o.termine, "Le guide peut se terminer sans arrêter la partie")
@@ -139,8 +144,8 @@ func executer() -> void:
 	actualiser(12.0)
 	verifier(o.etape == "livraison" and jeu.ville.reparation_finie("i", o.MAISONS, 12.0),
 		"Les logements peuvent aussi être le premier chantier")
-	verifier(jeu.ville.valeur("i", o.MAISONS, "logements", 12.0) == 62.0,
-		"Les 62 logements sont réellement remis en état")
+	verifier(jeu.ville.valeur("i", o.MAISONS, "logements", 12.0) == 67.0,
+		"Les 43 logements sinistrés rejoignent les 24 restés habitables")
 	await capture("05_logements")
 	var ancienne: Dictionary = jeu._partie()
 	ancienne.erase("ouverture")

@@ -2,10 +2,10 @@ extends PanelContainer
 ## Première boucle d'essai : les étapes se déduisent des chantiers réellement livrés.
 
 const Ville := preload("res://scripts/ville.gd")
-# Proposition de lieux pour l'essai du 2026-09-06, à juger en jouant.
-const RUE := 150
-const MAISONS := 61
-const BERGE := 2
+# Lieux touchés dans l’emprise corrigée le 2026-09-16.
+const RUE := 148
+const MAISONS := 59
+const BERGE := 3
 const SOLAIRE := 32
 
 var jeu
@@ -195,7 +195,7 @@ func actualiser(force := false) -> void:
 		_progression.value = (1.0 - reste / duree) * 100.0
 		_detail.text = "Encore %.1f mois · ×12 : environ %d s" % [reste, int(ceil(reste * 5.0))]
 	elif etape == "suite":
-		_detail.text = "Aux maisons des Halles, hauteur d'eau prévue : %.2f m → %.2f m.\nCrue de référence · sans date annoncée." % [
+		_detail.text = "Aux maisons des Forgerons, hauteur d'eau prévue : %.2f m → %.2f m.\nCrue de référence · sans date annoncée." % [
 			jeu.ville.base("i", MAISONS, "hauteur_eau_annonce"),
 			jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois)]
 		_maj_protection()
@@ -215,7 +215,7 @@ func actualiser(force := false) -> void:
 	match etape:
 		"choix":
 			_titre.text = "Un premier lieu à relever"
-			_texte.text = "La rue des Halles est envasée. À côté, %.0f logements sont inhabitables. Par quoi commencer ?\n\nComparez les deux chantiers, puis engagez celui qui vous convient dans sa fiche." % jeu.ville.base("i", MAISONS, "logements_sinistres")
+			_texte.text = "La rue des Forgerons est envasée. À côté, %.0f logements sont inhabitables. Par quoi commencer ?\n\nComparez les deux chantiers, puis engagez celui qui vous convient dans sa fiche." % jeu.ville.base("i", MAISONS, "logements_sinistres")
 			_reparation("r", RUE, "① Déblayer la rue")
 			_reparation("i", MAISONS, "② Relever les logements")
 		"travaux":
@@ -274,7 +274,7 @@ func _maj_protection() -> void:
 	if jeu.ville.berge_etat(BERGE, jeu.mois) == Ville.BERGE_RENATUREE:
 		prix = "Livrée · voir la rive"
 		_titre.text = "La protection commence à agir"
-		_texte.text = "La rive a changé et l'eau attendue aux maisons des Halles a baissé. Le secteur reste exposé : regardez ce qu'il reste à protéger avant de choisir la suite."
+		_texte.text = "La rive a changé et l'eau attendue aux maisons des Forgerons a baissé. Le secteur reste exposé : regardez ce qu'il reste à protéger avant de choisir la suite."
 	elif jeu.ville.berge_en_cours(BERGE, jeu.mois):
 		prix = "En travaux · la protection attend la livraison"
 	_proteger.text = "Protéger · renaturer la berge\n" + prix

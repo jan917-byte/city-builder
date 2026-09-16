@@ -42,6 +42,7 @@ RACINE = os.path.dirname(os.path.dirname(ICI))
 sys.path.insert(0, ICI)
 
 from apercu_carte import gpkg_vers_wkb, lire_wkb  # noqa: E402
+from geographie_crue import Rives, limite_est, LIMITE_DEPOT_EST
 
 D4 = import_module("04_deriver_attributs")   # dist_pt_seg, centroide, borne
 
@@ -155,6 +156,29 @@ def etat(h):
     return "intact"
 
 
+class ChampCrue:
+    """Même hauteur locale pour les dégâts et le dépôt, au lieu du maximum d'îlot."""
+    def __init__(self, anneaux, contour=LIMITE_DEPOT_EST):
+        self.rives = Rives(anneaux)
+        self.contour = contour
+        self.segs = [(a, b) for an in self.rives.anneaux for a, b in zip(an, an[1:])]
+        ys = [p[1] for an in anneaux for p in an]
+        self.sud, self.nord = min(ys), max(ys)
+
+    def hauteur(self, p, niveau):
+        d = min(D4.dist_pt_seg(p, a, b) for a, b in self.segs)
+        fil = D4.borne((self.nord - p[1]) / max(1e-6, self.nord - self.sud))
+        return hauteur_eau(d, fil, self.rives.rive(p), niveau)
+
+    def ouverture(self, p):
+        bord = limite_est(p[1], self.contour)
+        coupe = self.rives.coupe(p[1])
+        if bord is None or coupe is None or not coupe[1] <= p[0] < bord:
+            return 0.0
+        # Les derniers mètres perdent progressivement leur dépôt et leurs dégâts.
+        return min(self.hauteur(p, NIVEAU_OUVERTURE_M), (bord - p[0]) / 8.0)
+
+
 # ------------------------------------------------------------------ la lecture
 
 def _riviere(cur):
@@ -211,6 +235,7 @@ def main():
     con = sqlite3.connect(GPKG)
     cur = con.cursor()
     segs, ynord, ysud, aval, eaux = _riviere(cur)
+    champ_crue = ChampCrue(eaux)
 
     def mesurer(anneau):
         c = D4.centroide(anneau)
@@ -220,21 +245,21 @@ def main():
     ilots = {}
     for fid, blob, st, rive, log in cur.execute(
             "SELECT fid, geom, sous_type, rive, logements FROM ilots"):
-        d, fil = mesurer(lire_wkb(gpkg_vers_wkb(blob))[0][0])
+        anneau = lire_wkb(gpkg_vers_wkb(blob))[0][0]
+        d, fil = mesurer(anneau)
         ilots[fid] = {"st": st, "rive": rive or "droite", "log": log or 0,
-                      "d": d, "fil": fil, "bats": []}
+                      "d": d, "fil": fil, "c": D4.centroide(anneau), "bats": []}
 
     bats = []
     for fid, blob, fid_i, surf in cur.execute(
             "SELECT fid, geom, fid_ilot, surface_m2 FROM batiments ORDER BY fid"):
         if fid_i not in ilots:
             continue
-        d, fil = mesurer(lire_wkb(gpkg_vers_wkb(blob))[0][0])
-        rive = ilots[fid_i]["rive"]
-        h = hauteur_eau(d, fil, rive, NIVEAU_OUVERTURE_M)
+        c = D4.centroide(lire_wkb(gpkg_vers_wkb(blob))[0][0])
+        h = champ_crue.ouverture(c)
         b = {"fid": fid, "ilot": fid_i, "surf": surf or 0.0, "h": h,
              "etat": etat(h),
-             "h_annonce": hauteur_eau(d, fil, rive, NIVEAU_ANNONCE_M)}
+             "h_annonce": champ_crue.hauteur(c, NIVEAU_ANNONCE_M)}
         bats.append(b)
         ilots[fid_i]["bats"].append(b)
 
@@ -256,8 +281,7 @@ def main():
             h_a = hauteur_eau(d["d"], d["fil"], d["rive"], NIVEAU_ANNONCE_M)
             d.update({"alea": round(D4.borne(h_a / NIVEAU_ANNONCE_M), 3),
                       "h_annonce": h_a,
-                      "h_max": hauteur_eau(d["d"], d["fil"], d["rive"],
-                                           NIVEAU_OUVERTURE_M),
+                      "h_max": champ_crue.ouverture(d["c"]),
                       "part_ruinee": 0.0, "part_ruinee_apres": 0.0,
                       "ruine_apres_baisse": [0.0] * len(BAISSES_M),
                       "part_sinistree": 0.0, "log_sinistres": 0})
@@ -325,7 +349,7 @@ def main():
         # La rive d'une rue n'est pas dans les données : on la déduit, par le
         # même test qu'en `04`. Un pont tombe d'un côté ou de l'autre selon son
         # milieu — sans conséquence, il porte déjà `etat_crue`.
-        h = hauteur_eau(d, f, _rive_de(c, segs, aval), NIVEAU_OUVERTURE_M)
+        h = champ_crue.ouverture(c)
         rues.append((round(h, 2), fid))
 
     # --- CE QUE COÛTE LA RÉPARATION ------------------------------------

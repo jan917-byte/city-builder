@@ -9,11 +9,11 @@ Lancer normalement la maquette, ou Recommencer : départ en pause face aux deux 
 
 | Repère de l'essai | Ce qui est mesuré |
 |---|---|
-| ① Rue des Halles, tronçon 150 | 13,6 k€, 1 mois ; 0 piéton avant livraison, 12 après |
-| ② Maisons des Halles, îlot 61 | 376,8 k€, 12 mois ; 62 logements remis en état |
-| Protection, berge 2 | 1 018,64 k€, 18 mois ; eau prévue aux maisons : 3,529 → 3,109 m |
+| ① Rue des Forgerons, tronçon 148 | 15,7 k€, 1 mois |
+| ② Maisons des Forgerons, îlot 59 | 734,4 k€, 12 mois ; 43 logements sinistrés, 24 restés habitables |
+| Protection, berge 3 | 18 mois ; bief des maisons des Forgerons |
 
-La caisse de départ reste à 800 k€. Après la rue, la renaturation complète devient accessible au mois 8 avec la dotation normale. Les premiers pas peuvent être suivis dans les deux ordres ; le solaire reste accessible. Le bouton d'argent d'essai exige désormais `-- --outils`.
+La caisse de départ reste à 800 k€. Après la rue, la renaturation complète devient accessible au mois 12 avec la dotation normale. Les premiers pas peuvent être suivis dans les deux ordres ; le solaire reste accessible. Le bouton d'argent d'essai exige désormais `-- --outils`.
 
 ## Contrôles
 
@@ -41,3 +41,9 @@ Les quatre sorties principales suivent exclusivement les limites communes de deu
 Contrôles : `verifier_campagne.py` (6 cas), `verifier_voirie.py` (3 cas), chaîne complète et aires des 88 champs exportés vérifiées (écart maximal 0,013 %), axes des prolongements contrôlés sur les limites communes (écart inférieur à 1 mm), et trois cadrages Godot via `--script res://outils/apercu_campagne.gd`. Aperçus : `QGIS/rendus/wehrau_campagne_dessus_apres.png`, `..._relief_apres.png`, `..._champs_apres.png` ; `..._avant.png` garde le même cadrage avant correction.
 
 À regarder : ① contours des champs, ② sortie ouest posée sur la limite des champs, ③a/b montagnes. Défauts à signaler : route coupant un champ ou dépassant sa lisière, champ réapparu derrière un massif, rupture rectangulaire du paysage. Les chemins d'accès aux fermes restent à dessiner. Les alertes d'export concernant les anciens ponts et les effectifs attendus de l'ancienne carte restent un chantier distinct.
+
+## Emprise de boue — 2026-09-16
+
+Le contour annoté par l'auteur limite le dépôt à l'est, indépendamment des îlots. Le nord et l'ouest de l'Ilse restent propres ; les dégâts des bâtiments et la boue lisent le même champ spatial. La route 177, ancienne desserte traversant le nouveau lit au sud, est retirée de la carte de travail. Aperçu numéroté : `QGIS/rendus/wehrau_emprise_crue_apres.png`.
+
+Chaîne régénérée ; 20 contrôles Python passent et le rendu des trois zones est vérifié. Les premiers lieux passent aux Forgerons, avec la berge de leur bief. **Reste : deux échecs du parcours d'ouverture sur la réparation des logements ; le bouton d'engagement dépasse le bas de la fiche.** Tests arrêtés à la demande de l'auteur avant correction de cette interface ; la passe générale n'est pas déclarée validée.

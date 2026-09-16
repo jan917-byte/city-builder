@@ -42,6 +42,8 @@ import sqlite3
 import struct
 import sys
 
+from geographie_crue import Rives
+
 for flux in (sys.stdout, sys.stderr):
     try:
         flux.reconfigure(encoding="utf-8", errors="replace")
@@ -469,9 +471,7 @@ def main():
     if not riv:
         raise SystemExit("aucun îlot `riviere` : le fil de l'eau est indéfini.")
     sommets = [p for f in riv for a in ilots[f]["anneaux"] for p in a]
-    _, u = axe_principal(sommets)
-    if u[1] > 0:                        # l'Ilse coule vers le sud
-        u = (-u[0], -u[1])
+    rives = Rives([a for f in riv for a in ilots[f]["anneaux"]])
 
     segs_riv = [(a[i], a[i + 1])
                 for f in riv for a in ilots[f]["anneaux"]
@@ -491,16 +491,8 @@ def main():
         d["dist_eau"] = 0.0 if d["st"] == "riviere" else proche[0]
         d["fil"] = round(borne((ynord - c[1]) / (ynord - ysud)), 3)
 
-        # rive gauche / droite : face à l'aval, la gauche est à gauche. On
-        # prend la direction LOCALE de la berge, orientée vers l'aval —
-        # sur un méandre, un axe global se tromperait de rive.
-        a, b = proche[1], proche[2]
-        vx, vy = b[0] - a[0], b[1] - a[1]
-        if vx * u[0] + vy * u[1] < 0:
-            vx, vy = -vx, -vy
-        cote = vx * (c[1] - a[1]) - vy * (c[0] - a[0])
-        d["rive"] = "lit" if d["st"] == "riviere" else \
-            ("gauche" if cote > 0 else "droite")
+        # La coupe locale évite de retourner la rive dans un coude de l’Ilse.
+        d["rive"] = "lit" if d["st"] == "riviere" else rives.rive(c)
 
         # Valeurs par défaut : `04e` réécrit `alea`, `altitude_relative` reste à 0.
         d["alt"] = 0.0

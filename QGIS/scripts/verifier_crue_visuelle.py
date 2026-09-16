@@ -2,6 +2,9 @@
 """Contrôles du dépôt partagé et de la portée des ponts : aucune règle de jeu."""
 
 import unittest
+from importlib import import_module
+
+ChampCrue = import_module("04e_crue").ChampCrue
 from export_godot.boue import carte_boue
 from export_godot.geometrie import Chenal, Maillage
 from export_godot.ponts import _cadre, _pont_neuf, _pont_ruine, _acces_pont
@@ -12,44 +15,45 @@ from export_godot.reglages import Y_CHAUSSEE, Y_TROTTOIR, JEU_CHAUSSEE
 
 
 class CrueVisuelle(unittest.TestCase):
-    def test_pont_ne_transporte_pas_le_depot_sur_la_rive_seche(self):
-        ilots = {
-            1: {"brut": [(0, 0), (20, 0), (20, 60), (0, 60)],
-                "hauteur_eau_max": 3.0, "sous_type": "champ"},
-            2: {"brut": [(50, 0), (80, 0), (80, 60), (50, 60)],
-                "hauteur_eau_max": 0.0, "sous_type": "champ"}}
-        c = Chenal([[(20, -20), (50, -20), (50, 80), (20, 80)]])
-        pont = {"parts": [[(10, 30), (65, 30)]], "largeur_m": 20,
-                "hauteur_eau": 3.8}
-        reference = carte_boue(ilots, [], c, 0, 0)
-        for etat in ("coupe", "fragile"):
-            with self.subTest(etat=etat):
-                pont["etat_crue"] = etat
-                self.assertEqual(carte_boue(ilots, [pont], c, 0, 0), reference,
-                                 "Le pont ne doit pas créer une tache sur la rive sèche")
-        pont["etat_crue"] = "envase"
-        self.assertNotEqual(carte_boue(ilots, [pont], c, 0, 0), reference,
-                            "Une rue inondée doit encore déposer sa boue")
-
-    def test_depot_deborde_localement_sans_salir_la_zone_seche(self):
-        ilots = {
-            1: {"brut": [(0, 0), (20, 0), (20, 20), (0, 20)],
-                "hauteur_eau_max": 3.0, "sous_type": "champ"},
-            2: {"brut": [(30, 0), (50, 0), (50, 20), (30, 20)],
-                "hauteur_eau_max": 0.0, "sous_type": "champ"}}
-        c = Chenal([[(60, -20), (80, -20), (80, 40), (60, 40)]])
-        b = carte_boue(ilots, [], c, 0, 0)
+    def test_depot_coupe_un_ilot_et_ignore_la_hauteur_maximale(self):
+        c = Chenal([[(20, -20), (50, -20), (50, 100), (20, 100)]])
+        champ = ChampCrue(c.rivieres, contour=((80, 0), (80, 60)))
+        ilots = {1: {"brut": [(0, 0), (110, 0), (110, 90), (0, 90)],
+                     "hauteur_eau_max": 6.0, "sous_type": "champ"}}
+        b = carte_boue(ilots, [], c, 0, 0, champ=champ)
         nx, ny = b["taille"]
         self.assertEqual(len(b["pixels"]), nx * ny * 2)
+
         def depth(x, y):
             x0, z0, largeur, hauteur = b["repere"]
             i = round((x - x0) / largeur * (nx - 1))
             j = round((-y - z0) / hauteur * (ny - 1))
             return b["pixels"][(j * nx + i) * 2]
-        self.assertGreater(depth(24, 10), 0)
-        self.assertLess(depth(24, 10), depth(10, 10))
-        self.assertEqual(depth(40, 10), 0)
-        self.assertEqual(b, carte_boue(ilots, [], c, 0, 0))
+
+        self.assertGreater(depth(60, 30), depth(75, 30))
+        self.assertGreater(depth(75, 30), 0)
+        for p in ((90, 30), (10, 30), (35, 30), (60, 75)):
+            self.assertEqual(depth(*p), 0, "Est, ouest, eau et nord restent propres")
+        ilots[1]["hauteur_eau_max"] = 0.0
+        self.assertEqual(b, carte_boue(ilots, [], c, 0, 0, champ=champ))
+
+    def test_une_route_ou_un_pont_ne_deplace_pas_la_limite(self):
+        c = Chenal([[(20, -20), (50, -20), (50, 100), (20, 100)]])
+        champ = ChampCrue(c.rivieres, contour=((80, 0), (80, 60)))
+        ilots = {1: {"brut": [(0, 0), (110, 0), (110, 90), (0, 90)]}}
+        reference = carte_boue(ilots, [], c, 0, 0, champ=champ)
+        for etat in ("coupe", "fragile", "envase", "intact"):
+            route = {"parts": [[(10, 30), (100, 30)]], "largeur_m": 20,
+                     "hauteur_eau": 3.8, "etat_crue": etat}
+            self.assertEqual(reference, carte_boue(ilots, [route], c, 0, 0, champ=champ))
+
+    def test_degats_et_depot_lisent_le_meme_point(self):
+        c = Chenal([[(20, -20), (50, -20), (50, 100), (20, 100)]])
+        champ = ChampCrue(c.rivieres, contour=((80, 0), (80, 60)))
+        etat = import_module("04e_crue").etat
+        self.assertEqual(etat(champ.ouverture((51, 30))), "ruine")
+        self.assertEqual(etat(champ.ouverture((70, 30))), "sinistre")
+        self.assertEqual(etat(champ.ouverture((90, 30))), "intact")
 
     def test_tablier_franchit_le_relief_sous_jacent(self):
         def G(x, y, h):

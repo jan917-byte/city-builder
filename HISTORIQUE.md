@@ -1,5 +1,9 @@
 # HISTORIQUE.md — ce qui s'est passé, session par session
 
+**2026-09-16 — chaîne / godot : emprise de crue corrigée selon l'annotation de l'auteur.** Route 177 retirée, rives corrigées et dépôt spatial partagé avec les dégâts ; îlots partiellement touchés.
+Chaîne et aperçu rendus, 20 contrôles Python passent ; les premiers lieux passent aux Forgerons et à la berge 3.
+Tests arrêtés à la demande de l'auteur : deux échecs de réparation des logements restent ouverts, bouton d'engagement hors écran ; commit et push demandés.
+
 ## 2026-09-15 — Le dessin d'Illustrator devient la carte, et le monde entier
 `chaine.py --gabarit --godot` va du SVG à la maquette en 33 s. Le calque fait le sol (`sol` sur l'îlot, fid à partir de 1000) : plus aucune liste de `fid` à recopier dans `02` — les 88 champs neufs tombaient sur 73 et 74, déjà pavillonnaires, et la chaîne s'arrêtait là.
 La plaque ne sort plus en gris minéral : le dessin la peint (110 ha de bois et 4 253 arbres, 253 ha de massifs soulevés à 90 m, 572 arbres de haie sur les 11 domaines), l'emprise dessinée fixe le monde à 1943 × 2470 m, et le contrôle de sol nu visible passe de 107 ha à 0,0.

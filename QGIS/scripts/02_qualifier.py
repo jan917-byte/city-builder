@@ -161,6 +161,8 @@ def exceptions(dessine=None):
 # Les dix paires possibles ont été testées, aucune ne coupe le réseau — le
 # contrôle de connexité de `03` doit toujours passer après.
 PONTS_SUPPRIMES = [136, 171]
+# Auteur, 2026-09-16 : l’ancienne desserte sud traverse le nouveau lit.
+ROUTES_SUPPRIMEES = PONTS_SUPPRIMES + [177]
 
 # Largeur par défaut, en mètres, par hiérarchie. Base du profil en travers.
 LARGEUR = {"boulevard": 18.0, "rue": 12.0, "ruelle": 7.0,
@@ -293,18 +295,18 @@ def main():
     brancher_fonctions_spatiales(con)
     cur = con.cursor()
 
-    # ---------------- les deux ponts qu'on retire (décision 30c)
+    # ---------------- les ponts et dessertes retirés
     # Avant toute lecture, pour que tout l'aval travaille sur la carte réduite.
     # Les déclencheurs du GeoPackage remettent l'index spatial à jour seuls.
-    if PONTS_SUPPRIMES:
+    if ROUTES_SUPPRIMEES:
         avant = cur.execute("SELECT count(*) FROM routes").fetchone()[0]
         cur.execute("DELETE FROM routes WHERE fid IN (%s)"
-                    % ",".join("?" * len(PONTS_SUPPRIMES)), PONTS_SUPPRIMES)
+                    % ",".join("?" * len(ROUTES_SUPPRIMEES)), ROUTES_SUPPRIMEES)
         apres = cur.execute("SELECT count(*) FROM routes").fetchone()[0]
         con.commit()
-        print("franchissements retirés : %s — %d tronçons, puis %d"
-              % (sorted(PONTS_SUPPRIMES), avant, apres))
-        if avant - apres != len(PONTS_SUPPRIMES):
+        print("routes retirées : %s — %d tronçons, puis %d"
+              % (sorted(ROUTES_SUPPRIMEES), avant, apres))
+        if avant - apres != len(ROUTES_SUPPRIMEES):
             raise SystemExit("un des fid à supprimer n'existait pas dans `routes`")
 
     # ---------------- lecture des géométries
