@@ -43,11 +43,11 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 | 🏢 les cinq nombres de la densification | haut de `ville.gd` | prix du logement posé, durée, loyer, entretien, plafond d'étages |
 | `DENSE_INTERDIT` · le m² brut par logement | `export_godot/reglages.py`, haut de `04d` | **qui a le droit de monter**, et combien de logements un étage ajoute |
 | les quatre nombres de la plantation | haut de `ville.gd` | prix de l'arbre, durée de reprise, plafond de canopée, et **ce qu'un arbre épargne** |
+| 🏕️ les deux nombres du camp, la case et le rattrapage | haut de `ville.gd`, `export_godot/reglages.py` | prix du logement de containers et durée de montage · **combien de sinistrés tiennent sur un champ**, et à quelle distance un champ hérite d'une route |
 
 🔴 Dans `04d.TISSU`, le retrait latéral à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (61).
 
 ## La dette — ce qui ment tant que ce n'est pas payé
-
 
 - 🔴 **Calibrer les deux formules de budget** (59) : recettes ∝ `logements`, charges ∝ mètres de voirie. Le contrôle nommé — *une densification pure ne doit pas s'autofinancer* — **tourne et passe** depuis le 2026-09-03 (`--essai`), mais sur les seuls logements neufs : le parc existant ne paie ni ne rapporte encore. Le budget ne mord toujours jamais (418/500, +152 de solde, aucune décision refusée sur trois parties).
 - 🟠 **La recette de fenêtres compte les étages depuis le zéro MONDE, pas depuis le pied du mur** — or les deux rives sont à **±1 m** (`RIVE_GAUCHE_Y`, `RIVE_DROITE_Y` dans `07`). Rive droite, l'allège du rez tombe **au niveau du sol** ; rive gauche, elle flotte **2 m au-dessus**. Trouvé le 2026-09-03 en posant la couture du bardage, qui doit se recaler sur cette trame pour ne pas couper une fenêtre en deux. Le jour où la fenêtre part du pied du mur, ce recalage saute.

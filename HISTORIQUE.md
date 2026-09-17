@@ -1,5 +1,9 @@
 # HISTORIQUE.md — ce qui s'est passé, session par session
 
+**2026-09-17 — le relogement devient la première décision, et les problèmes se posent sur la carte.** `07` écrit le morceau de réseau de chaque îlot une fois les ponts coupés : seuls les champs 1082, 1083 et 1084 partagent celui du faubourg (195, 141, 114 places pour 260 sinistrés), les 85 autres sont de l'autre rive. Un champ inaccessible se pose, se paie et reste vide.
+Camp de containers semé par la chaîne, deux boîtes par logement, 1,5 k€ le logement payé une fois, 0,2 mois de montage — 293 k€ sur le plus grand champ, donc relever les logements demande ensuite huit mois d'épargne. Pastilles de sans-abri et de pont coupé posées sur la ville, taille constante à l'écran, effacées à la livraison. Écran de départ à deux modes, le mode auteur livrant les chantiers au clic sans toucher aux prix.
+La fiche d'îlot défile enfin (son bouton d'engagement sortait de l'écran) et les deux échecs ouverts du parcours passent ; ouverture 0 échec, 6 contrôles de relogement. Restent 94 « lieu sans nom » — les trois champs du relogement s'affichent « Îlot 1082 ».
+
 **2026-09-17 — chaîne : quai aval recalé sur la rive à la demande de l'auteur.** Route 178 redessinée dans la source, raccord conservé, arrêt au dernier champ ; sol agricole découpé sous les chaussées.
 Chaîne régénérée sur Windows, neuf contrôles voirie/campagne passent ; aperçu numéroté du quai rendu dans Godot, 120 centres de triangles sans recouvrement agricole.
 Travail repris sur master ; les défauts connus du parcours de réparation des logements restent ouverts.

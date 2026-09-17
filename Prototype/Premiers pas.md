@@ -5,21 +5,45 @@
 
 ## À jouer
 
-Lancer normalement la maquette, ou Recommencer : départ en pause face aux deux lieux numérotés. Comparer une proposition, engager dans la fiche, puis laisser avancer le temps. DÉBUT rouvre l'accompagnement ; le diagnostic prend sa place.
+Au lancement, un écran demande le mode : **histoire** ou **auteur**. Le mode auteur livre tout chantier engagé au clic — les prix, la caisse et la dotation ne changent pas. Les drapeaux `-- --histoire` et `-- --auteur` sautent l'écran pour les contrôles.
+
+Puis départ en pause sur le relogement, faubourg et champs dans la même image. Choisir un champ, engager dans sa fiche, laisser avancer le temps. DÉBUT rouvre l'accompagnement ; le diagnostic prend sa place.
 
 | Repère de l'essai | Ce qui est mesuré |
 |---|---|
+| Sinistrés à reloger | 260 logements perdus, 7 îlots, faubourg de rive gauche |
+| ① champ 1082 | 195 places · 293 k€ |
+| ② champ 1083 | 141 places · 212 k€ |
+| ③ champ 1084 | 114 places · 171 k€ |
 | ① Rue des Forgerons, tronçon 148 | 15,7 k€, 1 mois |
 | ② Maisons des Forgerons, îlot 59 | 734,4 k€, 12 mois ; 43 logements sinistrés, 24 restés habitables |
-| Protection, berge 3 | 18 mois ; bief des maisons des Forgerons |
+| Protection, berge 3 | 1 019 k€, 18 mois ; bief des maisons des Forgerons |
 
-La caisse de départ reste à 800 k€. Après la rue, la renaturation complète devient accessible au mois 12 avec la dotation normale. Les premiers pas peuvent être suivis dans les deux ordres ; le solaire reste accessible. Le bouton d'argent d'essai exige désormais `-- --outils`.
+La caisse de départ reste à 800 k€. **Le camp en prend la moitié** : après ① le plus grand champ, il reste 507 k€, donc la rue passe tout de suite et relever les logements demande **huit mois d'épargne**. La berge devient accessible au mois 20 au lieu de 12. Le bouton d'argent d'essai exige toujours `-- --outils`.
+
+## Le relogement — 2026-09-17
+
+**Aucune liste de fid** : `07` écrit le morceau de réseau de chaque îlot une fois les trois ponts retirés, et un champ n'est proposé que s'il partage celui du faubourg. Redessiner un pont ou une desserte déplace la scène sans toucher au code. Un champ n'étant riverain d'aucune rue, il hérite du morceau de la route la plus proche sous 30 m — 10 m mesurés pour 1082 et 1083, 115 m pour le premier champ réellement sans accès.
+
+**Aucun des trois ne loge tout le monde** : 195 places au mieux pour 260 sinistrés. Le choix du lieu est donc un vrai choix, et 65 personnes restent dehors après le premier camp.
+
+**Un champ de l'autre rive se pose quand même** (arbitrage de l'auteur) : la fiche prévient, le bouton reste actif, le camp se monte, personne n'y va. Réparer un pont le remplirait.
+
+Les places de containers sont semées par la chaîne, deux boîtes par logement ; la maquette n'en montre que le nombre payé, donc un camp qui grandit ne coûte aucun triangle décidé à l'exécution. Le camp dégage les arbres de son champ.
+
+## Les pastilles — 2026-09-17
+
+Sept pastilles de sans-abri, une par îlot touché, avec le nombre de logements perdus ; trois pastilles de pont coupé ; une par camp posé, avec ses occupants ou le mot « vide ». Elles gardent leur taille à l'écran, s'éteignent au-delà de 900 m de caméra, et **s'effacent à la livraison, pas à l'engagement**.
+
+La boue et les ruines n'en portent pas : elles se voient déjà au sol, et les badger mettait vingt-sept pastilles sur le faubourg. Les passes de capture (`--essai`, `--interface`, `--banc`) n'en affichent aucune : les images de référence jugent la ville.
 
 ## Contrôles
 
-`Godot --path Godot --script res://outils/essai_ouverture.gd -- --ouverture --captures` joue les deux débuts par clics, la comparaison sans dépense, le refus financier, l'épargne, la livraison, les piétons, la protection, la sauvegarde et la reprise. Ajouter `--headless` et retirer `--captures` pour le contrôle sans image.
+`Godot --path Godot --script res://outils/essai_ouverture.gd -- --ouverture --captures` joue le relogement, le mauvais champ, les deux débuts par clics, la comparaison sans dépense, le refus financier, l'épargne, la livraison, les piétons, la protection, le mode auteur, la sauvegarde et la reprise. Ajouter `--headless` et retirer `--captures` pour le contrôle sans image. `python QGIS/scripts/verifier_relogement.py` contrôle l'export (6 cas).
 
-Captures dans `QGIS/rendus/` : `wehrau_ouverture_01_depart.png`, `..._02_choix_rue.png`, `..._03_livraison.png`, `..._04_protection.png`, `..._05_logements.png`.
+Captures dans `QGIS/rendus/` : `wehrau_ouverture_01_relogement.png`, `..._02_camp.png`, `..._03_depart.png`, `..._04_choix_rue.png`, `..._05_livraison.png`, `..._06_protection.png`, `..._07_logements.png`, `..._08_camp_vide.png`.
+
+Validé le 2026-09-17 : ouverture 0 échec, trafic 0, travaux 0, essai général rendu sans alerte ; 6 contrôles de relogement, 6 campagne, 3 voirie, 11 crue. **Deux dettes trouvées et laissées** : `verifier_berges` attend 8 berges et en trouve 9 (antérieur), et `essai_sauvegarde` compte 94 « lieu sans nom » — les 88 champs et la 9ᵉ berge n'ont pas de nom dans `Godot/data/lieux.json`. **Les trois champs du relogement s'affichent donc « Îlot 1082 » dans la scène d'ouverture.**
 
 Validé le 2026-09-06 : essai rendu de l'ouverture, essai général rendu, essai de sauvegarde ; zéro échec dans les contrôles. Chaîne régénérée. `_posee` acceptait seulement un booléen et comparait mal les deux états de berge : corrigé.
 
@@ -28,9 +52,11 @@ Validé le 2026-09-06 : essai rendu de l'ouverture, essai général rendu, essai
 - Après une livraison, a-t-on envie de regarder le résultat puis de choisir la suite ?
 - Le déblaiement et la remise en état font-ils deux débuts suffisamment différents ?
 - La renaturation demande-t-elle trop d'épargne après la première réparation ?
-- Défauts à signaler : réussite avant livraison, rue toujours vide, dépense dès la comparaison, premiers pas perdus après reprise, guide qui masque les commandes.
+- Le camp de containers est-il assez laid, et le champ assez perdu, pour qu'on veuille relever les logements ?
+- 1,5 k€ le logement de containers : la moitié de la caisse est-elle le bon prix ?
+- Défauts à signaler : réussite avant livraison, rue toujours vide, dépense dès la comparaison, premiers pas perdus après reprise, guide qui masque les commandes, camp qui déborde du champ, pastille qui reste après une livraison.
 
-La crue suivante reste une prévision, sans événement daté. Le retour des piétons représente la praticabilité locale ; le faubourg reste coupé de l'autre rive tant que les ponts ne sont pas réparés. Le capital politique et le relogement ne sont pas introduits par cet essai.
+La crue suivante reste une prévision, sans événement daté. Le retour des piétons représente la praticabilité locale ; le faubourg reste coupé de l'autre rive tant que les ponts ne sont pas réparés. Le capital politique n'est pas introduit par cet essai.
 
 ## Campagne du SVG vers Godot — 2026-09-15
 
