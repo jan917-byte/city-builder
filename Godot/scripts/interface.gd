@@ -257,6 +257,8 @@ var _entetes := {}
 var _chantiers_valeurs := {}
 var _chantiers_lignes := []
 var _fiche_panneau: PanelContainer
+var _fiche_defilement: ScrollContainer
+var _fiche_contenu: VBoxContainer
 var _apercu_cadre: PanelContainer
 
 var _fiche_fid := -1
@@ -1097,9 +1099,21 @@ func _panneau_ilot() -> void:
 	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
 
+	# 🔴 LA FICHE DÉFILE, sinon son bouton d'engagement sort de l'écran : sept
+	# réglages, le récapitulatif et la miniature dépassent 900 px de haut. Elle
+	# épouse son contenu tant qu'il tient, et ne défile qu'au-delà (`_clamper`).
+	var defil := ScrollContainer.new()
+	defil.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	p.add_child(defil)
+	_fiche_defilement = defil
+
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
-	p.add_child(v)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	defil.add_child(v)
+	_fiche_contenu = v
+	v.minimum_size_changed.connect(_clamper_fiche)
+	get_viewport().size_changed.connect(_clamper_fiche)
 	_fiche_titre = _bandeau(v, "Sélection")
 
 	# 🎓🏛️ LA DEUXIÈME PORTE (81), et elle ne change rien à la fiche : celle-ci
@@ -1455,6 +1469,19 @@ func _panneau_ilot() -> void:
 	_message = _label("", 12, GRIS)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_message)
+	_clamper_fiche()
+
+
+## La fiche hésite entre deux besoins : hugger son contenu quand il est court,
+## ne jamais dépasser le bas de l'écran quand il est long. Le ScrollContainer
+## n'a pas de hauteur propre, donc on la lui donne ici — 26 px de marges de
+## boîte, 16 px de bord bas.
+func _clamper_fiche() -> void:
+	if _fiche_defilement == null or _fiche_contenu == null:
+		return
+	var dispo: float = get_viewport().get_visible_rect().size.y - HAUT - 16.0 - 26.0
+	_fiche_defilement.custom_minimum_size.y = minf(
+		_fiche_contenu.get_combined_minimum_size().y, maxf(160.0, dispo))
 
 
 # Le lacet 0 place la caméra AU SUD : repère fixé par « Z vers le sud » dans
