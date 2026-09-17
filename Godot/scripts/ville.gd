@@ -54,6 +54,22 @@ var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbr
 var _seuils := {}          # fid tronçon -> [seuil]
 var _adaptation_total_ke := 0.0
 var _co2_depart_kt := 0.0
+## 🏕️ Champ -> {debut, places, cout_ke}. Un camp posé ne se démonte pas : ce
+## qu'on en fait au bout de vingt ans reste une question ouverte.
+var _camps := {}
+## Le morceau de réseau du faubourg sinistré, mesuré au chargement.
+var _morceau_sinistres := -1
+## 🛠️ MODE AUTEUR, PAS UNE RÈGLE DU JEU : tout chantier engagé est livré
+## immédiatement. Les prix, la caisse et la dotation restent ceux du jeu — sans
+## ça, juger la vingtième minute coûterait vingt minutes à chaque essai.
+var livraison_immediate := false
+
+
+## La durée annoncée ET vécue d'un chantier. Le mode auteur passe par ici et
+## par nulle part ailleurs : une durée annoncée qui ne serait pas celle du
+## chantier ferait mentir la fiche.
+func _delai(mois: float) -> float:
+	return 0.0 if livraison_immediate else mois
 
 # 🔄 Un `_base_avant` figeait en base la part posée pour permettre de réviser
 # une cible en cours de chantier. Retiré avec la caisse : réécrire la base
@@ -210,6 +226,14 @@ func charger(d: Dictionary) -> void:
 	for fid in routes:
 		if str(routes[fid].get("etat_crue", "")) == "coupe":
 			_adaptation_total_ke += base("r", fid, "cout_reparation_ke")
+	var pire := -1
+	var perdus := -1.0
+	for fid in ilots:
+		var n := base("i", fid, "logements_sinistres")
+		if n > perdus:
+			perdus = n
+			pire = int(fid)
+	_morceau_sinistres = morceau("i", pire) if pire >= 0 else -1
 	var m := Energie.ville_mwh(self, 0.0)
 	_co2_depart_kt = float(m["achat"]) * Energie.CO2_KG_KWH / 1000.0
 
@@ -224,7 +248,10 @@ func objets(couche: String) -> Dictionary:
 ## L'historique des décisions suffit : les indicateurs se recalculent au mois repris.
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
-	"_repare", "_berge", "_toit_avant", "_plantation"]
+	"_repare", "_berge", "_toit_avant", "_plantation", "_camps"]
+
+## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
+const CHAMPS_PARTIE_NEUFS := ["_camps"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -234,7 +261,11 @@ func exporter_partie() -> Dictionary:
 
 func valider_partie(etat: Dictionary) -> bool:
 	for champ in CHAMPS_PARTIE:
-		if not etat.has(champ) or typeof(etat[champ]) != typeof(get(champ)):
+		if not etat.has(champ):
+			if champ in CHAMPS_PARTIE_NEUFS:
+				continue
+			return false
+		if typeof(etat[champ]) != typeof(get(champ)):
 			return false
 	if not etat["_rampes"].has_all(["i", "r"]):
 		return false
@@ -257,9 +288,12 @@ func valider_partie(etat: Dictionary) -> bool:
 			"depuis": 0, "cout_ke": 0.0}],
 		"_plantation": [routes, {"debut": 0.0, "duree": 0.0, "cible": 0.0,
 			"cout_ke": 0.0, "arbres": 0}],
+		"_camps": [ilots, {"debut": 0.0, "places": 0, "cout_ke": 0.0}],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0]}
 	for champ in formes:
+		if not etat.has(champ):
+			continue
 		for fid in etat[champ]:
 			if not formes[champ][0].has(fid) or not _forme_partie(etat[champ][fid], formes[champ][1]):
 				return false
@@ -300,6 +334,8 @@ static func _forme_partie(valeur_sauvee: Variant, modele: Variant) -> bool:
 func importer_partie(etat: Dictionary) -> void:
 	reinitialiser()
 	for champ in CHAMPS_PARTIE:
+		if not etat.has(champ):
+			continue
 		var valeur_sauvee: Variant = etat[champ]
 		set(champ, valeur_sauvee.duplicate(true) if valeur_sauvee is Dictionary else valeur_sauvee)
 	for fid in _toit_avant:
@@ -359,7 +395,7 @@ func transformer_berge(fid: int, cible: int, t: float) -> bool:
 	if cout > caisse_ke(t):
 		return false
 	_berge[fid] = {"cible": cible, "depuis": de, "debut": t,
-		"duree": BERGE_MOIS[cible] - BERGE_MOIS[de], "cout_ke": cout}
+		"duree": _delai(BERGE_MOIS[cible] - BERGE_MOIS[de]), "cout_ke": cout}
 	_depense_ke += cout
 	return true
 
@@ -529,7 +565,8 @@ func supprimer_stationnement(fid: int, t: float) -> bool:
 	if actuel <= 0.0:
 		return false
 	_stationnement_supprime[fid] = t
-	ajouter_rampe("r", fid, "stationnement", -actuel, t, 0.0, STATIONNEMENT_MOIS)
+	ajouter_rampe("r", fid, "stationnement", -actuel, t, 0.0,
+		_delai(STATIONNEMENT_MOIS))
 	return true
 
 
@@ -575,8 +612,8 @@ func planter(fid: int, cible: float, t: float) -> bool:
 	var cout := float(neufs) * PLANTATION_PRIX_KE_ARBRE
 	if cout > caisse_ke(t) + 0.001:
 		return false
-	ajouter_rampe("r", fid, "canopee", c - actuelle, t, 0.0, PLANTATION_MOIS)
-	_plantation[fid] = {"debut": t, "duree": PLANTATION_MOIS, "cible": c,
+	ajouter_rampe("r", fid, "canopee", c - actuelle, t, 0.0, _delai(PLANTATION_MOIS))
+	_plantation[fid] = {"debut": t, "duree": _delai(PLANTATION_MOIS), "cible": c,
 		"cout_ke": cout, "arbres": neufs}
 	_depense_ke += cout
 	return true
@@ -625,6 +662,7 @@ func reinitialiser() -> void:
 	_dense.clear()
 	_plantation.clear()
 	_berge.clear()
+	_camps.clear()
 	_depense_ke = 0.0
 	_credit_essai_ke = 0.0
 	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
@@ -686,7 +724,7 @@ func lancer_solaire(fid: int, part: float, t: float) -> bool:
 
 
 func duree_solaire_mois(depart: float, cible: float) -> float:
-	return maxf(cible - depart, 0.0) * SOLAIRE_MOIS_POUR_100
+	return _delai(maxf(cible - depart, 0.0) * SOLAIRE_MOIS_POUR_100)
 
 
 ## De quoi distinguer la cible du réalisé.
@@ -752,7 +790,7 @@ func lancer_vert(fid: int, part: float, t: float) -> bool:
 
 
 func duree_vert_mois(depart: float, cible: float) -> float:
-	return maxf(cible - depart, 0.0) * TOIT_VERT_MOIS_POUR_100
+	return _delai(maxf(cible - depart, 0.0) * TOIT_VERT_MOIS_POUR_100)
 
 
 func etat_vert(fid: int, t: float) -> Dictionary:
@@ -890,8 +928,8 @@ func cout_dense_ke(fid: int, de: float, vers: float, etages: int) -> float:
 ## Les bâtiments montent l'un après l'autre : n'en monter que la moitié prend
 ## la moitié du temps.
 func duree_dense_mois(etages: int, de: float, vers: float) -> float:
-	return DENSE_MOIS_PAR_ETAGE * float(mini(etages, DENSE_ETAGES_MAX)) \
-		* maxf(vers - de, 0.0)
+	return _delai(DENSE_MOIS_PAR_ETAGE * float(mini(etages, DENSE_ETAGES_MAX)) \
+		* maxf(vers - de, 0.0))
 
 
 ## Les logements ajoutés par la tranche, étages compris.
@@ -976,6 +1014,152 @@ func solde_dense_ke(t: float) -> float:
 			s += float(lot["logements"]) * _integrale_avancement(
 				t, float(lot["debut"]), 0.0, float(lot["duree"]))
 	return s * (DENSE_LOYER_KE_MOIS_LOGEMENT - DENSE_CHARGE_KE_MOIS_LOGEMENT)
+
+
+# ============================ LE RELOGEMENT (auteur, 2026-09-17) ============
+# 🏕️ LA PREMIÈRE DÉCISION DE LA PARTIE : 260 personnes sont dehors, et le seul
+# terrain qu'elles peuvent atteindre est celui que la rivière reprend en
+# premier. Trois champs de rive gauche, aucun assez grand à lui seul.
+#
+# 🌉 CE QUI DÉCIDE OÙ, et ce n'est pas une liste de fid : `morceau` est le
+# morceau de réseau que `07` a mesuré une fois les ponts emportés. Un champ
+# d'un autre morceau se pose et se paie — personne ne peut y aller.
+#
+# 🎚️ LEVEL DESIGN, les deux nombres : le prix d'un logement de containers, et
+# le temps de montage. Le nombre de PLACES, lui, est mesuré champ par champ
+# (`camp_places`) — il se règle dans `export_godot/reglages.py`, pas ici.
+const CAMP_KE_LOGEMENT := 1.5
+const CAMP_MOIS := 0.2                     # une semaine de grue
+
+
+## Le morceau de réseau qui porte cet objet, −1 s'il n'en a aucun.
+func morceau(couche: String, fid: int) -> int:
+	return int(objets(couche).get(fid, {}).get("morceau", -1))
+
+
+## Le morceau où sont les sinistrés — celui qu'un camp doit partager. Mesuré
+## une fois au chargement, sur l'îlot le plus touché : c'est lui qui porte le
+## gros du faubourg, et `camp_accessible` est appelé en boucle.
+func morceau_sinistres() -> int:
+	return _morceau_sinistres
+
+
+## Un champ, et rien d'autre, peut accueillir un camp.
+func camp_possible(fid: int) -> bool:
+	return str(ilots.get(fid, {}).get("sous_type", "")) == "champ" \
+		and camp_places_max(fid) > 0
+
+
+## Les places semées par `07` sur ce champ.
+func camp_places_max(fid: int) -> int:
+	return int(base("i", fid, "camp_places"))
+
+
+## 🌉 Les sinistrés peuvent-ils y aller à pied ? Même morceau de réseau, donc
+## aucun pont emporté entre eux et lui.
+func camp_accessible(fid: int) -> bool:
+	var m := morceau_sinistres()
+	return m >= 0 and morceau("i", fid) == m
+
+
+func camp_pose(fid: int) -> bool:
+	return _camps.has(fid)
+
+
+func camp_livre(fid: int, t: float) -> bool:
+	return _camps.has(fid) and t >= float(_camps[fid]["debut"]) + _delai(CAMP_MOIS)
+
+
+func camp_reste_mois(fid: int, t: float) -> float:
+	if not _camps.has(fid):
+		return 0.0
+	return maxf(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS) - t, 0.0)
+
+
+## Combien de logements ce champ porterait si on le posait maintenant : ce dont
+## on a besoin, plafonné par ce qu'il peut tenir. Poser un camp de 195 places
+## pour 12 personnes serait payer 183 containers vides.
+func camp_taille(fid: int, t: float) -> int:
+	if _camps.has(fid):
+		return int(_camps[fid]["places"])
+	return mini(camp_places_max(fid), int(ceil(sans_toit(t))))
+
+
+func cout_camp_ke(fid: int, t: float) -> float:
+	if _camps.has(fid):
+		return 0.0
+	return float(camp_taille(fid, t)) * CAMP_KE_LOGEMENT
+
+
+## `false` si ce n'est pas un champ, s'il en porte déjà un, s'il n'y a personne
+## à loger ou si la caisse ne suit pas. Même partage que `lancer_solaire` :
+## l'interface pré-vérifie et explique, ici le verrou seul.
+## 🔴 UN CHAMP INACCESSIBLE N'EST PAS REFUSÉ (auteur, 2026-09-17) : le camp se
+## construit, il reste vide, et réparer un pont le remplira. L'erreur coûte du
+## temps et de l'argent, elle ne ferme aucune porte.
+func abriter(fid: int, t: float) -> bool:
+	if not camp_possible(fid) or _camps.has(fid):
+		return false
+	var places := camp_taille(fid, t)
+	if places <= 0:
+		return false
+	var cout := float(places) * CAMP_KE_LOGEMENT
+	if cout > caisse_ke(t) + 0.001:
+		return false
+	_camps[fid] = {"debut": t, "places": places, "cout_ke": cout}
+	_depense_ke += cout
+	return true
+
+
+## Les places de camp LIVRÉES et atteignables. Un camp de l'autre rive n'en
+## apporte aucune — c'est le seul endroit où l'inaccessibilité se paie.
+func abris_places(t: float) -> int:
+	var n := 0
+	for fid in _camps:
+		if camp_livre(int(fid), t) and camp_accessible(int(fid)):
+			n += int(_camps[fid]["places"])
+	return n
+
+
+## Les sinistrés encore sans toit : ceux dont l'îlot n'est pas RELEVÉ, moins
+## ceux qu'un camp abrite.
+## 🔴 `reparation_finie` et non `est_repare` : on rentre chez soi à la
+## livraison, pas à la signature du marché. C'est ce qui fait que le nombre est
+## une fonction du temps, et que la file se vide quand le chantier se termine.
+func _perdus(t: float) -> float:
+	var perdus := 0.0
+	for fid in ilots:
+		if not reparation_finie("i", fid, t):
+			perdus += base("i", fid, "logements_sinistres")
+	return perdus
+
+
+func sans_toit(t: float) -> float:
+	return maxf(0.0, _perdus(t) - float(abris_places(t)))
+
+
+func reloges(t: float) -> float:
+	return minf(_perdus(t), float(abris_places(t)))
+
+
+## Qui vit dans CE camp-là. Les camps se vident dans l'ordre inverse de leur
+## pose : le dernier posé est le premier que les réparations libèrent.
+func camp_occupants(fid: int, t: float) -> float:
+	if not camp_livre(fid, t) or not camp_accessible(fid):
+		return 0.0
+	var ordre := []
+	for f in _camps:
+		if camp_livre(int(f), t) and camp_accessible(int(f)):
+			ordre.append(int(f))
+	ordre.sort_custom(func(a, b) -> bool:
+		return float(_camps[a]["debut"]) < float(_camps[b]["debut"]))
+	var reste := reloges(t)
+	for f in ordre:
+		var pris: float = minf(reste, float(_camps[f]["places"]))
+		if f == fid:
+			return pris
+		reste -= pris
+	return 0.0
 
 
 # ================================== l'université et la mairie (décisions 79 · 80)
@@ -1153,9 +1337,9 @@ func est_repare(couche: String, fid: int) -> bool:
 ## Combien de mois dure CE chantier-là. Un pont n'est pas une rue.
 func duree_reparation_mois(couche: String, fid: int) -> float:
 	if couche == "i":
-		return RECONSTRUCTION_MOIS
+		return _delai(RECONSTRUCTION_MOIS)
 	var coupe := str(objets("r").get(fid, {}).get("etat_crue", "")) == "coupe"
-	return PONT_MOIS if coupe else DEBLAIEMENT_MOIS
+	return _delai(PONT_MOIS if coupe else DEBLAIEMENT_MOIS)
 
 
 ## Ce qui reste avant que la géométrie neuve n'apparaisse. 0 = c'est fini.
@@ -1299,6 +1483,7 @@ func degats(t: float) -> Dictionary:
 #   axe      true   fermer aux voitures            (rue) — rendu à l'appelant,
 #                   et il emporte les places : une rue fermée n'a plus où garer
 #   berge    int    l'état visé                    (berge)
+#   camp     true   accueillir les sinistrés       (champ)
 #   dense    dict   {part, etages} : la part des bâtiments visée et la
 #                   hauteur — 🪜 un cran du curseur = un bâtiment  (îlot)
 
@@ -1319,6 +1504,8 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 	if r.has("dense"):
 		ke += cout_dense_ke(fid, etat_dense(fid, t)["cible"],
 			float(r["dense"]["part"]), int(r["dense"]["etages"]))
+	if r.has("camp"):
+		ke += cout_camp_ke(fid, t)
 	if r.has("reparer"):
 		ke += cout_reparation_ke(couche, fid)
 	return ke
@@ -1335,17 +1522,20 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 		m = maxf(m, duree_vert_mois(valeur("i", fid, "part_toit_vert", t),
 			float(r["vert"])))
 	if r.has("arbres"):
-		m = maxf(m, PLANTATION_MOIS)
+		m = maxf(m, _delai(PLANTATION_MOIS))
 	# 🅿️ La fermeture emporte les places : même chantier de deux mois, donc
 	# même durée annoncée — mais seulement s'il reste des places à retirer.
 	if r.has("places") or (couche == "r" and r.has("axe")
 			and valeur("r", fid, "stationnement", t) >= 0.5):
-		m = maxf(m, STATIONNEMENT_MOIS)
+		m = maxf(m, _delai(STATIONNEMENT_MOIS))
 	if r.has("dense"):
 		m = maxf(m, duree_dense_mois(int(r["dense"]["etages"]),
 			etat_dense(fid, t)["cible"], float(r["dense"]["part"])))
 	if r.has("berge"):
-		m = maxf(m, BERGE_MOIS[int(r["berge"])] - BERGE_MOIS[berge_etat(fid, t)])
+		m = maxf(m, _delai(BERGE_MOIS[int(r["berge"])]
+			- BERGE_MOIS[berge_etat(fid, t)]))
+	if r.has("camp"):
+		m = maxf(m, _delai(CAMP_MOIS))
 	if r.has("reparer"):
 		m = maxf(m, duree_reparation_mois(couche, fid))
 	return m
@@ -1381,6 +1571,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("densification")
 	if r.has("berge") and transformer_berge(fid, int(r["berge"]), t):
 		faits.append("berge")
+	if r.has("camp") and abriter(fid, t):
+		faits.append("relogement")
 	if r.has("reparer") and reparer(couche, fid, t):
 		faits.append("reparation")
 	return {"ok": not faits.is_empty() or r.has("axe"), "manque": 0.0,

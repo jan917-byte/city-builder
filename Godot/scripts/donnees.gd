@@ -34,7 +34,7 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 			"berges_mur", "berges_pente",
 			"voirie", "repare", "repare_voirie", "ponts_ruine", "boue",
 			"arbres", "alignements", "berges_semis", "berges_couloir",
-			"couloirs", "emprises", "objets", "riverains",
+			"couloirs", "emprises", "objets", "riverains", "camps",
 			"crue", "reperes", "controles"]:
 		if not d.has(cle):
 			_fatal("clé absente du JSON : `%s`\n" % cle
@@ -60,6 +60,14 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 	if (o["ilots"] as Dictionary).size() != N_ILOTS:
 		push_warning("objets.ilots : %d fiches pour %d îlots"
 			% [(o["ilots"] as Dictionary).size(), N_ILOTS])
+
+	# 🏕️ Les places de camp : une par logement de containers, semées par `07`.
+	# Sans elles, poser un camp ne dessinerait rien et rien ne le dirait.
+	var camps: Dictionary = d["camps"]
+	if (camps.get("boite", []) as Array).size() != 3 \
+			or (camps.get("places", {}) as Dictionary).is_empty():
+		_fatal("`camps` doit porter une boîte de 3 côtés et des places")
+		return {}
 
 	var c: Dictionary = d["controles"]
 	# 🌊 Les berges ne sont pas dans la source : elles sont DÉCOUPÉES par 07 aux

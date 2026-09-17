@@ -38,6 +38,8 @@ const Interface := preload("res://scripts/interface.gd")
 const MoniteurPerformances := preload("res://scripts/moniteur_performances.gd")
 const Trafic := preload("res://scripts/trafic.gd")
 const TravauxVisuels := preload("res://scripts/travaux_visuels.gd")
+const Camp := preload("res://scripts/camp.gd")
+const Pastilles := preload("res://scripts/pastilles.gd")
 const Apercu := preload("res://scripts/apercu.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
@@ -108,6 +110,9 @@ var interface: Interface
 var moniteur_performances: MoniteurPerformances
 var trafic: Trafic
 var travaux: TravauxVisuels
+## 🏕️ Le camp de containers, et les problèmes posés sur la carte.
+var camp: Camp
+var pastilles: Pastilles
 var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
 var masque: SubViewport
@@ -197,6 +202,11 @@ func _ready() -> void:
 	travaux.name = "Travaux"
 	monde.add_child(travaux)
 	travaux.batir(donnees, noeuds, reparations)
+
+	camp = Camp.new()
+	camp.name = "Camp"
+	monde.add_child(camp)
+	camp.batir(donnees)
 	_batir_marqueurs_crue()
 	_decor()
 
@@ -262,11 +272,27 @@ func _ready() -> void:
 	if "--ouverture" in arguments or (not "--script" in OS.get_cmdline_args()
 			and not "--essai" in arguments and not "--interface" in arguments
 			and not "--banc" in arguments):
+		# 🔴 PAS DANS LES PASSES DE CAPTURE : les images de référence jugent la
+		# ville, pas les pictogrammes posés dessus.
+		pastilles = Pastilles.new()
+		pastilles.name = "Pastilles"
+		monde.add_child(pastilles)
+		pastilles.batir(self)
+		pastilles.regler_portee(pivot.taille)
 		ouverture = Ouverture.new()
 		interface.add_child(ouverture)
 		interface.ouverture = ouverture
 		ouverture.batir(self)
 		_commencer_ouverture()
+		# 🛠️ DEUX MODES, ET LE CHOIX SE FAIT À L'ÉCRAN. Les scripts de contrôle
+		# le passent en drapeau pour ne pas avoir à cliquer.
+		interface.mode_choisi.connect(_sur_mode)
+		if "--auteur" in arguments:
+			_sur_mode(true)
+		elif "--histoire" in arguments:
+			_sur_mode(false)
+		else:
+			interface.montrer_depart()
 	interface._debut.visible = ouverture != null
 
 	var c: Dictionary = donnees["controles"]
@@ -1718,10 +1744,35 @@ func _montrer_reparations() -> void:
 ## 🌳 Un arbre planté sort de terre au rythme de la canopée de sa rue. Le
 ## compte visible sert de signature : tant qu'il ne bouge pas, on ne refait
 ## rien — et il ne bouge qu'aux mois où un seuil est franchi.
+## Lancer de rayon sur les emprises des champs qui portent un camp.
+static func _dans_un_camp(campements: Array, x: float, z: float) -> bool:
+	for an in campements:
+		var dedans := false
+		var n: int = (an as Array).size()
+		for i in n:
+			var a: Array = an[i]
+			var b: Array = an[(i + 1) % n]
+			if (float(a[2]) > z) != (float(b[2]) > z) 					and x < (float(b[0]) - float(a[0])) * (z - float(a[2])) 						/ (float(b[2]) - float(a[2])) + float(a[0]):
+				dedans = not dedans
+		if dedans:
+			return true
+	return false
+
+
 func _montrer_arbres() -> void:
 	if _arbres_noeuds.is_empty():
 		return
-	var liste: Array = _arbres_semis.duplicate()
+	# 🏕️ UN CAMP DÉGAGE SON CHAMP : sans ça les arbres traversent les
+	# containers, et c'est la première chose qu'on voit.
+	var campements := []
+	for fid in ville._camps:
+		if donnees["emprises"].has(str(fid)):
+			campements.append(donnees["emprises"][str(fid)])
+	var liste := []
+	for a in _arbres_semis:
+		if campements.is_empty() or not _dans_un_camp(campements,
+				float(a[0]), float(a[2])):
+			liste.append(a)
 	for a in _arbres_slots:
 		if float(a[6]) <= ville.valeur("r", int(a[5]), "canopee", mois):
 			# Un alignement est d'une seule essence, et feuillu : personne ne
@@ -1829,6 +1880,8 @@ func _process(delta: float) -> void:
 func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
 	trafic.regler_detail(pivot.taille)
 	travaux.regler_detail(pivot.taille, pivot.camera)
+	if pastilles != null:
+		pastilles.regler_portee(pivot.taille)
 
 
 func _sur_pulsation_trafic() -> void:
@@ -1852,6 +1905,9 @@ func _rafraichir(force: bool) -> void:
 	_montrer_reparations()
 	_montrer_arbres()
 	_montrer_rives()
+	camp.montrer(ville, mois)
+	if pastilles != null:
+		pastilles.actualiser(mois)
 	travaux.actualiser(ville, mois)
 	_peindre()
 	interface.maj(ville.indicateurs(mois), mois, vitesse)
@@ -2481,6 +2537,19 @@ func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
 		ouverture.actualiser(true)
 
 
+## 🛠️ Le mode auteur ne touche qu'aux DURÉES : la caisse, les prix et la
+## dotation restent ceux du jeu.
+func _sur_mode(auteur: bool) -> void:
+	interface.cacher_depart()
+	ville.livraison_immediate = auteur
+	print("mode %s" % ("auteur : chantiers livrés au clic" if auteur
+		else "histoire"))
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	if ouverture != null:
+		ouverture.actualiser(true)
+
+
 static func _nom_couche(couche: String) -> String:
 	return {"i": "îlot", "r": "rue", "b": "berge"}.get(couche, couche)
 
@@ -2609,7 +2678,10 @@ func _commencer_ouverture() -> void:
 	interface._placer_detail()
 	interface._fiche_panneau.hide()
 	pivot.caler(35.0, 42.0)
-	_viser_objet("i", Ouverture.MAISONS, 330.0)
+	# 🏕️ LE PREMIER CADRAGE PORTE LA PREMIÈRE DÉCISION : le faubourg sinistré
+	# ET les champs où l'on peut reloger, dans la même image. Cadrer le seul
+	# faubourg reviendrait à demander un choix sans montrer les options.
+	_viser_ensemble(ouverture._champs_accessibles() + [Ouverture.MAISONS], 180.0)
 	selection.sel_fid = -1
 	selection.survol_fid = -1
 	ouverture.actualiser(true)
@@ -2631,6 +2703,27 @@ func _repere(nom: String) -> void:
 ## ⚠️ Le sommet le plus proche du barycentre, et pas « celui du milieu » :
 ## l'ordre des sommets suit l'émission (mur, puis bande), donc le milieu du
 ## tableau tombait ailleurs dès qu'on ajoutait une surface.
+## Le cadrage qui tient plusieurs îlots à la fois, marge comprise.
+func _viser_ensemble(fids: Array, marge: float) -> void:
+	if fids.is_empty():
+		return
+	var boite := AABB()
+	var premier := true
+	for fid in fids:
+		if not noeuds["i"].has(int(fid)):
+			continue
+		var mi: MeshInstance3D = noeuds["i"][int(fid)]
+		var b := mi.get_aabb()
+		b.position += mi.global_position
+		boite = b if premier else boite.merge(b)
+		premier = false
+	if premier:
+		return
+	var c := boite.get_center()
+	pivot.viser(Vector2(c.x, c.z),
+		maxf(boite.size.x, boite.size.z) + marge)
+
+
 func _viser_objet(couche: String, fid: int, taille: float) -> void:
 	var mi: MeshInstance3D = noeuds[couche][fid]
 	var sommets: PackedVector3Array = (mi.mesh as ArrayMesh).surface_get_arrays(

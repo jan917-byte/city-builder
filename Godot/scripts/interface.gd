@@ -17,6 +17,8 @@ signal theme_demande(id: String)
 ## 🔄 Cinq boutons émettaient cinq demandes AU CLIC — rien à essayer, rien à
 ## reprendre, et chacun disait « il manque 214 k€ » de son côté.
 signal commande_demandee(couche: String, fid: int, reglages: Dictionary)
+## 🛠️ Le mode choisi au lancement : histoire, ou auteur (chantiers livrés au clic).
+signal mode_choisi(auteur: bool)
 
 const Ville := preload("res://scripts/ville.gd")
 ## 🪜 Pour le seul remboursement de la tranche : la fiche annonce ce que la
@@ -257,6 +259,7 @@ var _entetes := {}
 var _chantiers_valeurs := {}
 var _chantiers_lignes := []
 var _fiche_panneau: PanelContainer
+var _depart_panneau: CenterContainer
 var _fiche_defilement: ScrollContainer
 var _fiche_contenu: VBoxContainer
 var _apercu_cadre: PanelContainer
@@ -266,6 +269,9 @@ var _fiche_couche := "i"
 var _rue_grille: GridContainer
 var _rue_valeurs := {}
 var _repare_bloc: VBoxContainer
+var _camp_bloc: VBoxContainer
+var _camp_texte: Label
+var _camp_bouton: Button
 var _repare_texte: Label
 var _repare_bouton: Button
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
@@ -449,30 +455,41 @@ func _titre_section(parent: Control, txt: String) -> void:
 	parent.add_child(h)
 
 
+## 🔴 LA TABLE DES DESSINS EST HORS DE `_icone` depuis le 2026-09-17 : les
+## pastilles posées sur la ville (`pastilles.gd`) y puisent pour fabriquer leur
+## propre image, contour compris. Deux tables finiraient par diverger.
+const DESSINS := {
+	"ville": "<path d='M3 21h18M5 21V9h5v12M10 21V4h6v17M16 21v-9h4v9M7 12h1m-1 3h1m-1 3h1m5-11h1m-1 4h1m-1 4h1m4 0h1m-1 3h1'/>",
+	"diagnostic": "<path d='M4 20h16M6 18v-6h3v6m3 0V6h3v12m3 0v-9h3v9'/>",
+	"adaptation": "<path d='M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3zM8 12c2-2 6-2 8 0m-8 3c2-2 6-2 8 0'/>",
+	"reduction": "<path d='M20 4C10 4 5 9 5 15c0 3 2 5 5 5 7 0 10-8 10-16zM5 20c3-6 7-9 12-12'/>",
+	"conso": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
+	"production": "<circle cx='12' cy='12' r='4'/><path d='M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2M19 5l-2 2M7 17l-2 2'/>",
+	"achat": "<path d='M9 3v7m6-7v7m-8 0h10v2a5 5 0 01-5 5v4m-3 0h6'/>",
+	"co2": "<path d='M7 18h11a4 4 0 000-8 6 6 0 00-11-2 5 5 0 000 10z'/>",
+	"caisse": "<circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/>",
+	"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
+	"chantiers": "<path d='M4 21h16M7 21V6h10m-10 4h12l-4-4m1 4v5m-2 0h4'/>",
+	"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
+	"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
+	"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
+	"retour": "<path d='M9 7l-5 5 5 5M5 12h9a6 6 0 016 6'/>",
+	"mairie": "<path d='M2 21h20M4 21V10h16v11M2 10l10-6 10 6M8 21v-7m4 7v-7m4 7v-7'/>",
+	"universite": "<path d='M2 8l10-4 10 4-10 4L2 8zm4 3.5V16c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2v-4.5M22 8v6'/>",
+	# 🏕️🌉 LES QUATRE PROBLEMES QUI SE POSENT SUR LA CARTE (auteur, 2026-09-17).
+	"sans_abri": "<circle cx='12' cy='5.5' r='2.5'/><path d='M12 8.5v6m-3.5 6.5l3.5-6.5 3.5 6.5M8 11.5h8'/>",
+	"ruine": "<path d='M3 21h18M5 21V11l7-5 5 3.6M9 21v-5h3v5M14.5 13.5l6 6m0-6l-6 6'/>",
+	"pont_casse": "<path d='M2 17h5m10 0h5M4 17c0-4.5 3.6-8 8-8m0 0c4.4 0 8 3.5 8 8M6.5 17v3.5m11-3.5v3.5M11 5.5l2.4 3-3.4 1.4 2.2 2.6'/>",
+	"boue": "<path d='M3 15.5c3-2.2 5.2 2.2 8.4 0 3.2-2.2 5.4 1.2 8.6-.4M3 19.5c3-2.2 5.2 2.2 8.4 0 3.2-2.2 5.4 1.2 8.6-.4M7.5 11h.01M12 8.5h.01M16.5 11h.01'/>",
+	"camp": "<path d='M2 21h20M12 3.5L4.5 21M12 3.5L19.5 21M12 10.5L7.5 21h9L12 10.5z'/>",
+}
+
+
 func _icone(nom: String, taille := 25, coul := TEXTE) -> Texture2D:
 	var cle := "%s_%d_%s" % [nom, taille, coul.to_html(false)]
 	if _icones.has(cle):
 		return _icones[cle]
-	var dessins := {
-		"ville": "<path d='M3 21h18M5 21V9h5v12M10 21V4h6v17M16 21v-9h4v9M7 12h1m-1 3h1m-1 3h1m5-11h1m-1 4h1m-1 4h1m4 0h1m-1 3h1'/>",
-		"diagnostic": "<path d='M4 20h16M6 18v-6h3v6m3 0V6h3v12m3 0v-9h3v9'/>",
-		"adaptation": "<path d='M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3zM8 12c2-2 6-2 8 0m-8 3c2-2 6-2 8 0'/>",
-		"reduction": "<path d='M20 4C10 4 5 9 5 15c0 3 2 5 5 5 7 0 10-8 10-16zM5 20c3-6 7-9 12-12'/>",
-		"conso": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
-		"production": "<circle cx='12' cy='12' r='4'/><path d='M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2M19 5l-2 2M7 17l-2 2'/>",
-		"achat": "<path d='M9 3v7m6-7v7m-8 0h10v2a5 5 0 01-5 5v4m-3 0h6'/>",
-		"co2": "<path d='M7 18h11a4 4 0 000-8 6 6 0 00-11-2 5 5 0 000 10z'/>",
-		"caisse": "<circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/>",
-		"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
-		"chantiers": "<path d='M4 21h16M7 21V6h10m-10 4h12l-4-4m1 4v5m-2 0h4'/>",
-		"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
-		"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
-		"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
-		"retour": "<path d='M9 7l-5 5 5 5M5 12h9a6 6 0 016 6'/>",
-		"mairie": "<path d='M2 21h20M4 21V10h16v11M2 10l10-6 10 6M8 21v-7m4 7v-7m4 7v-7'/>",
-		"universite": "<path d='M2 8l10-4 10 4-10 4L2 8zm4 3.5V16c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2v-4.5M22 8v6'/>",
-	}
-	var corps: String = dessins.get(nom, dessins["diagnostic"])
+	var corps: String = DESSINS.get(nom, DESSINS["diagnostic"])
 	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='2.0' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [coul.to_html(false), corps]
 	var img := Image.new()
 	var erreur := img.load_svg_from_string(svg, float(taille) / 24.0)
@@ -1302,6 +1319,23 @@ func _panneau_ilot() -> void:
 	_repare_bouton.pressed.connect(func() -> void: _basculer("reparer", true))
 	_repare_bloc.add_child(_repare_bouton)
 
+	# 🏕️ ACCUEILLIR LES SINISTRÉS. Le bloc n'existe que sur un champ, et il ne
+	# dit jamais non : un champ que personne ne peut atteindre se pose quand
+	# même, avec l'avertissement au-dessus du bouton (auteur, 2026-09-17).
+	_camp_bloc = VBoxContainer.new()
+	_camp_bloc.add_theme_constant_override("separation", 6)
+	_camp_bloc.visible = false
+	v.add_child(_camp_bloc)
+	_camp_bloc.add_child(HSeparator.new())
+	_titre_section(_camp_bloc, "Relogement")
+	_camp_texte = _label("", 12, TEXTE)
+	_camp_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_camp_bloc.add_child(_camp_texte)
+	_camp_bouton = Button.new()
+	_camp_bouton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_camp_bouton.pressed.connect(func() -> void: _basculer("camp", true))
+	_camp_bloc.add_child(_camp_bouton)
+
 	_trafic_bloc = VBoxContainer.new()
 	_trafic_bloc.add_theme_constant_override("separation", 6)
 	_trafic_bloc.visible = false
@@ -1470,6 +1504,59 @@ func _panneau_ilot() -> void:
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_message)
 	_clamper_fiche()
+
+
+## 🛠️ L'ÉCRAN DE DÉPART, ET IL NE PROPOSE QUE DEUX CHOSES. « Auteur » ne
+## change ni les prix ni la caisse : il livre les chantiers au clic, pour qu'on
+## puisse juger la vingtième minute sans la jouer vingt fois.
+## Refermer l'écran de départ : le mode a été choisi, au clic ou en drapeau.
+func cacher_depart() -> void:
+	if _depart_panneau != null:
+		_depart_panneau.visible = false
+
+
+func montrer_depart() -> void:
+	if _depart_panneau != null:
+		_depart_panneau.visible = true
+		return
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(centre)
+	_depart_panneau = centre
+	var p := PanelContainer.new()
+	p.theme = _theme_ui
+	p.add_theme_stylebox_override("panel", _boite())
+	p.custom_minimum_size.x = 380
+	centre.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	p.add_child(v)
+	v.add_child(_capitale("Wehrau, après la crue", 15, ACCENT))
+	var mot := _label("La ville est sinistrée et la caisse est courte."
+		+ " Choisissez comment vous voulez jouer.", 13, TEXTE)
+	mot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(mot)
+	for choix in [["Mode histoire", false,
+			"La partie normale : les chantiers prennent le temps qu'ils prennent."],
+			["Mode auteur", true,
+			"Pour essayer : tout chantier engagé est livré immédiatement."
+			+ " Les prix et la dotation ne changent pas."]]:
+		var b := Button.new()
+		b.text = String(choix[0])
+		b.tooltip_text = String(choix[2])
+		b.focus_mode = Control.FOCUS_NONE
+		if not bool(choix[1]):
+			_habiller_principal(b)
+		var auteur: bool = choix[1]
+		b.pressed.connect(func() -> void:
+			centre.visible = false
+			mode_choisi.emit(auteur))
+		v.add_child(b)
+		var sous := _label(String(choix[2]), 11, GRIS)
+		sous.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(sous)
+	_sans_focus(centre)
 
 
 ## La fiche hésite entre deux besoins : hugger son contenu quand il est court,
@@ -1968,6 +2055,7 @@ func _maj_fiche() -> void:
 		return
 	_titre_lieu("i")
 	_maj_reparation(o)
+	_maj_camp()
 
 	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _mois)
 	var prod := ville.valeur("i", _fiche_fid, "_production_mwh", _mois)
@@ -2308,6 +2396,8 @@ func _maj_recap() -> void:
 			else "fermeture aux voitures")
 	if r.has("berge"):
 		quoi.append(Ville.BERGE_NOMS[int(r["berge"])])
+	if r.has("camp"):
+		quoi.append("camp de %d logements" % ville.camp_taille(_fiche_fid, _mois))
 	if r.has("reparer"):
 		quoi.append(_verbe_reparation(_fiche_couche,
 			ville.objets(_fiche_couche).get(_fiche_fid, {})).to_lower())
@@ -2742,6 +2832,51 @@ func _maj_reparation(o: Dictionary) -> void:
 	_repare_texte.text = _degat_en_clair(couche, o) + "  " + phrase
 	_repare_bouton.text = _posee("reparer", "%s · %s k€" % [verbe, _milliers(prix)])
 	_repare_bouton.disabled = false
+
+
+## 🏕️ LE BLOC DU RELOGEMENT. Il ne dit jamais non : un champ inaccessible se
+## pose et se paie, et l'avertissement est au-dessus du bouton. L'erreur coûte
+## du temps et de l'argent, elle ne ferme aucune porte — un pont réparé
+## remplira le camp plus tard.
+func _maj_camp() -> void:
+	if _fiche_couche != "i" or not ville.camp_possible(_fiche_fid):
+		_camp_bloc.visible = false
+		return
+	_camp_bloc.visible = true
+	var fid := _fiche_fid
+	if ville.camp_pose(fid):
+		var occupants: float = ville.camp_occupants(fid, _mois)
+		if not ville.camp_livre(fid, _mois):
+			_camp_texte.text = "Les containers arrivent · %s" % _duree(
+				ville.camp_reste_mois(fid, _mois))
+			_camp_bouton.text = "Chantier en cours"
+		elif ville.camp_accessible(fid):
+			_camp_texte.text = "%d logements de containers, %d occupés." % [
+				int(ville.camp_taille(fid, _mois)), int(occupants)]
+			_camp_bouton.text = "Camp en place"
+		else:
+			# 🌉 Le camp promis, et personne dedans. Ce n'est pas une panne :
+			# c'est la carte, et elle peut encore changer.
+			_camp_texte.text = "Le camp est monté et vide : aucun pont ne mène ici. Rétablir un franchissement le remplirait."
+			_camp_bouton.text = "Personne ne peut y venir"
+		_camp_bouton.disabled = true
+		return
+	var besoin: float = ville.sans_toit(_mois)
+	if besoin <= 0.0:
+		_camp_texte.text = "Personne n'attend de toit."
+		_camp_bouton.text = "Rien à reloger"
+		_camp_bouton.disabled = true
+		return
+	var places: int = ville.camp_taille(fid, _mois)
+	var maxi: int = ville.camp_places_max(fid)
+	var phrase := "%d personnes sans toit. Ce champ en tient %d." % [
+		int(besoin), maxi]
+	if not ville.camp_accessible(fid):
+		phrase += "\n⚠ Les ponts sont coupés : personne ne pourra y aller."
+	_camp_texte.text = phrase
+	_camp_bouton.text = _posee("camp", "Accueillir %d logements · %s k€" % [
+		places, _milliers(ville.cout_camp_ke(fid, _mois))])
+	_camp_bouton.disabled = false
 
 
 func _verbe_reparation(couche: String, o: Dictionary) -> String:

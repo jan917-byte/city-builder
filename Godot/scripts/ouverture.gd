@@ -25,6 +25,8 @@ var _corps: VBoxContainer
 var _dernier_mois := -1.0
 var _proteger: Button
 var _reperes: Node3D
+var _reperes_poses := ""
+var _champs := []
 
 
 func batir(maquette) -> void:
@@ -71,21 +73,40 @@ func batir(maquette) -> void:
 	_reperes = Node3D.new()
 	_reperes.name = "PremiersLieux"
 	jeu.monde.add_child(_reperes)
-	for lieu in [["r", RUE, "①"], ["i", MAISONS, "②"]]:
-		var mi: MeshInstance3D = jeu.noeuds[lieu[0]][lieu[1]]
+	actualiser(true)
+
+
+## Les chiffres posés sur la ville. Ils suivent la scène : les trois champs
+## d'abord, la rue et les logements ensuite.
+func _poser_reperes(lieux: Array) -> void:
+	var noms := PackedStringArray()
+	for lieu in lieux:
+		noms.append("%s%d" % [lieu[0], int(lieu[1])])
+	var signature := ",".join(noms)
+	if signature == _reperes_poses:
+		return
+	_reperes_poses = signature
+	for enfant in _reperes.get_children():
+		_reperes.remove_child(enfant)
+		enfant.queue_free()
+	var ui = jeu.interface
+	for lieu in lieux:
+		var mi: MeshInstance3D = jeu.noeuds[lieu[0]][int(lieu[1])]
 		var boite := mi.get_aabb()
 		var repere := Label3D.new()
-		repere.text = lieu[2]
+		repere.text = String(lieu[2])
 		repere.font_size = 64
-		repere.pixel_size = 0.20
 		repere.modulate = ui.ACCENT_VIF
 		repere.outline_modulate = ui.TEXTE
 		repere.outline_size = 12
 		repere.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		# 🔴 SANS TEST DE PROFONDEUR : un champ est plat et la forêt est entre
+		# lui et la caméra — le chiffre disparaissait derrière les arbres.
+		repere.no_depth_test = true
+		repere.render_priority = 3
 		_reperes.add_child(repere)
 		repere.global_position = mi.to_global(boite.get_center())
-		repere.global_position.y = mi.global_position.y + boite.end.y + 9.0
-	actualiser(true)
+		repere.global_position.y = mi.global_position.y + boite.end.y + 16.0
 
 
 func _paragraphe(texte: String, taille: int) -> Label:
@@ -148,6 +169,31 @@ func _reparation(couche: String, fid: int, titre: String) -> void:
 	_bouton(texte, examiner.bind(couche, fid, reglage))
 
 
+## 🌉 Les champs que les sinistrés peuvent atteindre, du plus grand au plus
+## petit. Aucune liste de fid : c'est le morceau de réseau mesuré par `07`, donc
+## redessiner un pont déplace la scène sans toucher à ce fichier.
+func _champs_accessibles() -> Array:
+	if not _champs.is_empty():
+		return _champs
+	for fid in jeu.ville.ilots:
+		if jeu.ville.camp_possible(int(fid)) and jeu.ville.camp_accessible(int(fid)):
+			_champs.append(int(fid))
+	_champs.sort_custom(func(a, b) -> bool:
+		return jeu.ville.camp_places_max(a) > jeu.ville.camp_places_max(b))
+	return _champs
+
+
+func _camp_pose() -> bool:
+	for fid in _champs_accessibles():
+		if jeu.ville.camp_pose(fid):
+			return true
+	# Un camp posé ailleurs compte aussi : c'est une décision prise, même ratée.
+	for fid in jeu.ville.ilots:
+		if jeu.ville.camp_pose(int(fid)):
+			return true
+	return false
+
+
 func _premiere_reparation() -> Dictionary:
 	var out := {}
 	var fin := INF
@@ -166,6 +212,9 @@ func actualiser(force := false) -> void:
 	visible = ouvert and not jeu.interface._detail_ouvert
 	if _reperes != null:
 		_reperes.visible = visible and jeu.theme == "" and not suite and not termine
+		# Même règle que les pastilles : taille constante à l'écran.
+		for r in _reperes.get_children():
+			(r as Label3D).pixel_size = jeu.pivot.taille * 0.0012
 	if not force and absf(jeu.mois - _dernier_mois) < 0.02:
 		return
 	_dernier_mois = jeu.mois
@@ -175,6 +224,11 @@ func actualiser(force := false) -> void:
 		etape = "libre"
 	elif suite:
 		etape = "suite"
+	elif not _camp_pose():
+		# 🏕️ LA PREMIÈRE DÉCISION DE LA PARTIE : 260 personnes sont dehors, et
+		# le seul terrain qu'elles peuvent atteindre est celui que la rivière
+		# reprend en premier. Elle passe AVANT le budget des réparations.
+		etape = "reloger"
 	elif premier.is_empty():
 		etape = "choix"
 	elif jeu.mois < float(premier["fin"]):
@@ -200,11 +254,12 @@ func actualiser(force := false) -> void:
 			jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois)]
 		_maj_protection()
 	# Les boutons restent en place sous le doigt ; seuls les changements de décision les refont.
-	var signature := "%s/%s/%s/%s/%s/%s/%s/%s" % [etape, premier,
+	var signature := "%s/%s/%s/%s/%s/%s/%s/%s/%d" % [etape, premier,
 		jeu.ville.est_repare("r", RUE), jeu.ville.est_repare("i", MAISONS),
 		jeu.ville.reparation_finie("r", RUE, jeu.mois),
 		jeu.ville.reparation_finie("i", MAISONS, jeu.mois),
-		jeu.ville.berge_etat(BERGE, jeu.mois), jeu.ville._solaire.has(SOLAIRE)]
+		jeu.ville.berge_etat(BERGE, jeu.mois), jeu.ville._solaire.has(SOLAIRE),
+		int(jeu.ville.sans_toit(jeu.mois))]
 	if signature == _signature and not force:
 		return
 	_signature = signature
@@ -213,7 +268,26 @@ func actualiser(force := false) -> void:
 		_actions.remove_child(enfant)
 		enfant.queue_free()
 	match etape:
+		"reloger":
+			var sans_toit: float = jeu.ville.sans_toit(jeu.mois)
+			_titre.text = "%d personnes sont dehors" % int(sans_toit)
+			_texte.text = "La crue a emporté leurs logements. Les trois ponts du faubourg sont coupés : elles ne peuvent rejoindre que les champs de leur rive.
+
+Choisissez un champ, le camp de containers y monte en quelques jours."
+			var lieux := []
+			var chiffres := ["①", "②", "③", "④", "⑤"]
+			for k in _champs_accessibles().size():
+				var fid: int = _champs_accessibles()[k]
+				var marque: String = chiffres[k] if k < chiffres.size() else "•"
+				lieux.append(["i", fid, marque])
+				_bouton("%s %s
+%d places · %.0f k€" % [marque, _nom("i", fid),
+					jeu.ville.camp_places_max(fid),
+					jeu.ville.cout_camp_ke(fid, jeu.mois)],
+					examiner.bind("i", fid, "camp"))
+			_poser_reperes(lieux)
 		"choix":
+			_poser_reperes([["r", RUE, "①"], ["i", MAISONS, "②"]])
 			_titre.text = "Un premier lieu à relever"
 			_texte.text = "La rue des Forgerons est envasée. À côté, %.0f logements sont inhabitables. Par quoi commencer ?\n\nComparez les deux chantiers, puis engagez celui qui vous convient dans sa fiche." % jeu.ville.base("i", MAISONS, "logements_sinistres")
 			_reparation("r", RUE, "① Déblayer la rue")
