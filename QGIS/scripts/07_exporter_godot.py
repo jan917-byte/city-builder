@@ -32,6 +32,7 @@ from export_godot.batiments import (
     _toit_plat,
 )
 from export_godot.boue import carte_boue
+from export_godot.camps import emplacements as _places_camp
 from export_godot.decor import (
     Decor,
     Massifs,
@@ -95,6 +96,9 @@ from export_godot.reglages import (
     COUDE_MIN_DEG,
     CRUE_ARBRE_NOYE_M,
     DEBORD_TOIT,
+    ACCES_ILOTS,
+    ACCES_RATTRAPAGE_M,
+    CAMP_BOITE_M,
     DENSE_ILOTS,
     ETAGE_M,
     FACADE_PORTE,
@@ -343,6 +347,71 @@ def main():
     if orphelins:
         print("    ⚠️  %s" % ", ".join(str(f) for f in orphelins[:12]))
 
+    # 🌉 QUI PEUT ALLER OÙ, UNE FOIS LES PONTS EMPORTÉS. Le morceau 0 est le
+    # gros de la ville ; le faubourg de rive gauche en est détaché, et c'est
+    # CE fait — pas une liste de fid écrite à la main — qui décide sur quels
+    # champs les sinistrés peuvent être relogés. Redessiner un pont ou une
+    # desserte déplace la règle toute seule.
+    reseau_acces = {d["fid"]: {"parts": d["parts"],
+                               "hier": (d["hierarchie"] or "").strip().lower(),
+                               "largeur": d["largeur_m"] or 0.0}
+                    for d in routes}
+    coupes_acces = {d["fid"] for d in routes
+                    if (d["etat_crue"] or "") == "coupe"}
+    morceau_rue = D4.morceaux_par_troncon(reseau_acces, coupes_acces)
+    i2r = {}
+    for f, bordes in r2i.items():
+        for i in bordes:
+            i2r.setdefault(i, []).append(f)
+    for fid, d in ilots.items():
+        ms = sorted({morceau_rue[f] for f in i2r.get(fid, ())
+                     if f in morceau_rue})
+        # −1 : aucune route connectée ne le borde. Il n'est accessible de nulle
+        # part, et l'interface doit pouvoir le dire au lieu de le supposer.
+        d["morceau"] = ms[0] if ms else -1
+    # 🔴 UN CHAMP N'EST RIVERAIN DE RIEN, et c'est normal : la berge le sépare
+    # de la chaussée. Sans ce rattrapage, deux des trois champs du faubourg
+    # (1082 et 1083, à 10 m de la route 178) seraient déclarés inaccessibles et
+    # le joueur n'aurait qu'un seul terrain. Le seuil sépare franchement :
+    # 10 m d'un côté, 115 m pour le premier champ qui n'a vraiment pas d'accès.
+    semis_rue = {}
+    for d in routes:
+        m = morceau_rue.get(d["fid"])
+        if m is None:
+            continue
+        for part in d["parts"]:
+            for a, b in zip(part, part[1:]):
+                L = math.hypot(b[0] - a[0], b[1] - a[1])
+                for k in range(int(L / 4.0) + 1):
+                    t = min(1.0, k * 4.0 / L) if L > 1e-9 else 0.0
+                    p = (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))
+                    semis_rue.setdefault((int(p[0] // ACCES_RATTRAPAGE_M),
+                                          int(p[1] // ACCES_RATTRAPAGE_M)),
+                                         []).append((p, m))
+    n_rattrape = 0
+    for fid, d in ilots.items():
+        if d["morceau"] >= 0:
+            continue
+        proche = None
+        for p in d["anneau"]:
+            cx0, cy0 = int(p[0] // ACCES_RATTRAPAGE_M), int(p[1] // ACCES_RATTRAPAGE_M)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    for q, m in semis_rue.get((cx0 + dx, cy0 + dy), ()):
+                        dist = math.dist(p, q)
+                        if dist <= ACCES_RATTRAPAGE_M \
+                                and (proche is None or dist < proche[0]):
+                            proche = (dist, m)
+        if proche is not None:
+            d["morceau"] = proche[1]
+            n_rattrape += 1
+    n_morceaux = len({d["morceau"] for d in ilots.values()} - {-1})
+    detaches = sum(1 for d in ilots.values() if d["morceau"] > 0)
+    print("  accès : %d morceaux de réseau, %d îlots détachés du plus gros, "
+          "%d rattachés à moins de %.0f m, %d sans accès"
+          % (n_morceaux, detaches, n_rattrape, ACCES_RATTRAPAGE_M,
+             sum(1 for d in ilots.values() if d["morceau"] < 0)))
+
     # ------------------------------------------------------- le recentrage
     xs = [p[0] for d in ilots.values() for p in d["brut"]]
     ys = [p[1] for d in ilots.values() for p in d["brut"]]
@@ -573,6 +642,7 @@ def main():
     n_chemin = 0
     aire_chemin = 0.0
     n_champ = n_bande = n_maille_talus = 0
+    camps = {}                 # 🏕️ champ -> places de containers semées
     n_neuf = 0                 # bâtiments préparés pour la reconstruction
     n_dense = 0                # bâtiments qui ont le droit de prendre un étage
     aire_sol_ilot = 0.0        # le sol nu rendu aux îlots bâtis
@@ -986,6 +1056,22 @@ def main():
                             _sol(sols, cel, coul_berge, G, relief)
                             n_maille_talus += 1
                 n_champ += 1
+                # 🏕️ LES PLACES DU CAMP, semées une fois. La maquette n'en
+                # montre que les premières — le camp grandit sans qu'un seul
+                # triangle soit décidé à l'exécution.
+                entree = None
+                bords = [p for f in i2r.get(fid, ())
+                         for part in routes_par_fid[f]["parts"] for p in part]
+                if bords:
+                    cg = (sum(p[0] for p in an) / len(an),
+                          sum(p[1] for p in an) / len(an))
+                    entree = min(bords, key=lambda p: math.dist(p, cg))
+                places_camp = _places_camp(an, entree)
+                if places_camp:
+                    camps[str(fid)] = [
+                        [round(c, 2) for c in G(x, y, Y_SOL + relief.z(x, y))]
+                        + [g] for x, y, g in places_camp]
+                d["camp_places"] = len(places_camp)
             else:
                 _sol(sols, an, coul, G)
             # 🅿️ LA PLACE-PARKING SE DESSINE. Le test ne nomme aucun îlot et
@@ -1844,7 +1930,8 @@ def main():
         "objets": {
             "ilots": {str(f): dict({c: d[c] for c in FICHE_ILOTS},
                                    **{c: d[c]
-                                      for c in TOIT_ILOTS + DENSE_ILOTS
+                                      for c in (TOIT_ILOTS + DENSE_ILOTS
+                                                + ACCES_ILOTS)
                                       if c in d})
                       for f, d in ilots.items()},
             "routes": {str(d["fid"]): {c: d[c] for c in FICHE_ROUTES}
@@ -1879,6 +1966,9 @@ def main():
         # sélection, celle que la silhouette rendue ne peut pas donner.
         "emprises": emprises,
         "riverains": {str(f): sorted(v) for f, v in r2i.items()},
+        # 🏕️ Les places du camp, champ par champ : [x, y, z, angle], rangées
+        # depuis l'accès. `boite` est le container dessiné — deux par place.
+        "camps": {"boite": list(CAMP_BOITE_M), "places": camps},
         "reperes": _reperes(ilots, routes, cx, cy, relief, ponts_vus),
         "controles": {
             "ilots": len(ilots), "routes": len(routes),

@@ -311,20 +311,10 @@ def axe_principal(points):
 
 # ---------------------------------------------------------------- le trafic
 
-def charge_reseau(rues, exclus=()):
-    """Affectation de trafic minimale : le plus court chemin en TEMPS entre
-    les nœuds du réseau. Deux demandes superposées — l'échange (entre les
-    radiales qui sortent de la carte) et le local (tous les nœuds entre eux).
-
-    Ce n'est pas une simulation : c'est le socle sur lequel « fermer une rue
-    reporte sa charge sur les voisines » devient calculable. → brainstorm §5
-
-    `exclus` retire des tronçons du graphe — un pont emporté, une rue fermée.
-    Ils gardent une entrée dans le résultat, à 0. C'est par là que `04e` fait
-    passer la crue ; le reste de la ville se réaffecte tout seul.
-    ⚠️ La demande ne tient qu'à la géométrie : ni `logements` ni `emplois` n'y
-    entrent, et aucune capacité ne freine personne.
-    """
+def graphe_routier(rues, exclus=()):
+    """Le graphe du réseau, une seule fois : `charge_reseau` l'affecte,
+    `morceaux_par_troncon` le casse en morceaux. Deux constructions
+    divergeraient sur ce qui compte comme voie."""
     G = 0.5
 
     def cle(p):
@@ -350,6 +340,53 @@ def charge_reseau(rues, exclus=()):
                 t = L / (v / 3.6)
                 voisins.setdefault(a, []).append((b, t, fid))
                 voisins.setdefault(b, []).append((a, t, fid))
+    return voisins
+
+
+def morceaux_par_troncon(rues, exclus=()):
+    """Quel morceau de réseau porte chaque tronçon, une fois `exclus` retirés.
+    🌉 C'est par là que « les ponts sont coupés, donc le faubourg est une île »
+    devient un fait mesuré au lieu d'une liste de fid écrite à la main : le
+    morceau 0 est le plus gros, les suivants sont les bouts détachés."""
+    voisins = graphe_routier(rues, exclus)
+    vus, groupes = set(), []
+    for n in voisins:
+        if n in vus:
+            continue
+        pile, amas, troncons = [n], [], set()
+        vus.add(n)
+        while pile:
+            u = pile.pop()
+            amas.append(u)
+            for v, _t, f in voisins[u]:
+                troncons.add(f)
+                if v not in vus:
+                    vus.add(v)
+                    pile.append(v)
+        groupes.append((len(amas), troncons))
+    groupes.sort(key=lambda g: -g[0])
+    out = {}
+    for i, (_taille, troncons) in enumerate(groupes):
+        for f in troncons:
+            out[f] = i
+    return out
+
+
+def charge_reseau(rues, exclus=()):
+    """Affectation de trafic minimale : le plus court chemin en TEMPS entre
+    les nœuds du réseau. Deux demandes superposées — l'échange (entre les
+    radiales qui sortent de la carte) et le local (tous les nœuds entre eux).
+
+    Ce n'est pas une simulation : c'est le socle sur lequel « fermer une rue
+    reporte sa charge sur les voisines » devient calculable. → brainstorm §5
+
+    `exclus` retire des tronçons du graphe — un pont emporté, une rue fermée.
+    Ils gardent une entrée dans le résultat, à 0. C'est par là que `04e` fait
+    passer la crue ; le reste de la ville se réaffecte tout seul.
+    ⚠️ La demande ne tient qu'à la géométrie : ni `logements` ni `emplois` n'y
+    entrent, et aucune capacité ne freine personne.
+    """
+    voisins = graphe_routier(rues, exclus)
     if not voisins:
         return {}, []
 

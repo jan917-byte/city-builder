@@ -419,6 +419,17 @@ TOIT_ILOTS = ["toit_m2", "toit_pente", "toit_plat", "toit_plat_m2",
 # `dense_cumul[k]` = la part de cette emprise atteinte aux k+1 premiers.
 DENSE_ILOTS = ["dense_n", "dense_logements_etage", "dense_cumul"]
 
+# 🏕️🌉 CE QUE LE RELOGEMENT DEMANDE : le morceau de réseau qui porte l'îlot
+# une fois les ponts emportés — deux îlots de morceaux différents ne se
+# rejoignent pas à pied —, et le nombre de places de camp mesuré sur le champ.
+ACCES_ILOTS = ["morceau", "camp_places"]
+
+# 🔴 Un champ n'est riverain d'aucune rue : la berge l'en sépare. Sous ce
+# seuil, il hérite du morceau de la route la plus proche. Mesuré : 10 m pour
+# les champs 1082 et 1083 du faubourg, 115 m pour le premier qui n'a
+# réellement pas d'accès — le seuil ne tranche rien de serré.
+ACCES_RATTRAPAGE_M = 30.0
+
 FICHE_ROUTES = ([c for c in COLS_ROUTES if c != "fid"]
                 + ["longueur_m", "bord_places_m", "bord_trottoir_m"])
 
@@ -847,6 +858,19 @@ Y_MARQUAGE_SOL = Y_SOL + 0.01
 BANDE_CHAMP = 15.0
 
 BANDE_ECART = 0.055
+
+# 🏕️ LE CAMP DE CONTAINERS — ce qu'on pose sur un champ pour loger les
+# sinistrés de la crue. 🎚️ LEVEL DESIGN : la taille de la case décide combien
+# de gens tiennent sur un champ, donc si les trois champs accessibles du
+# faubourg suffisent. Une case de 6,5 × 6,0 m tient un logement et son
+# passage, soit ~256 par hectare brut. Le bord laissé libre est ce qui empêche
+# un container de toucher la haie, et le plafond borne le poids des données.
+CAMP_CONTAINER_M = (6.5, 6.0)
+CAMP_BORD_M = 6.0
+CAMP_PLAFOND = 400
+# UN logement, DEUX containers côte à côte (long, large, haut). Leur somme
+# reste sous la case : l'écart qui reste est l'allée entre deux rangées.
+CAMP_BOITE_M = (5.6, 2.9, 2.6)
 
 # 🔄 IL Y AVAIT ICI UNE RÈGLE DE REPLI — « quand l'empreinte ne sait pas porter
 # un toit propre, toit plat » — et elle a été RETIRÉE le 2026-08-12, le jour
