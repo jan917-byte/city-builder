@@ -382,6 +382,9 @@ def main():
     st_colle = _coller_aux_facades(routes, ilots, chenal)
     coudes, (n_coude, n_marque, n_rond) = _coudes(routes)
     axes_voirie, chaussees = _index_chaussees(routes, coudes)
+    # Une route redessinée dans un champ doit découper son sol, plus haut que l'asphalte.
+    passages_champs = DecoupeChaussees(routes, {
+        d["fid"]: [[axe] for axe in axes_voirie.get(d["fid"], [])] for d in routes})
     passages_ponts = DecoupeChaussees([], {})
     for d in routes:
         if d.get("etat_crue") == "coupe":
@@ -969,7 +972,9 @@ def main():
                 # se voit pas.
                 coul_berge = PAL.vers_lineaire(
                     PAL.melanger(brut_champ, PAL.SOLS["parc"], 0.65))
-                for mo, tint in _bandes_de_fauche(an, coul):
+                bandes = [(piece, tint) for mo, tint in _bandes_de_fauche(an, coul)
+                          for piece in passages_champs.hors(mo)]
+                for mo, tint in bandes:
                     if len(mo) < 3:
                         continue
                     n_bande += 1

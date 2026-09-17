@@ -1,5 +1,9 @@
 # HISTORIQUE.md — ce qui s'est passé, session par session
 
+**2026-09-17 — chaîne : quai aval recalé sur la rive à la demande de l'auteur.** Route 178 redessinée dans la source, raccord conservé, arrêt au dernier champ ; sol agricole découpé sous les chaussées.
+Chaîne régénérée sur Windows, neuf contrôles voirie/campagne passent ; aperçu numéroté du quai rendu dans Godot, 120 centres de triangles sans recouvrement agricole.
+Travail repris sur master ; les défauts connus du parcours de réparation des logements restent ouverts.
+
 **2026-09-16 — chaîne / godot : emprise de crue corrigée selon l'annotation de l'auteur.** Route 177 retirée, rives corrigées et dépôt spatial partagé avec les dégâts ; îlots partiellement touchés.
 Chaîne et aperçu rendus, 20 contrôles Python passent ; les premiers lieux passent aux Forgerons et à la berge 3.
 Tests arrêtés à la demande de l'auteur : deux échecs de réparation des logements restent ouverts, bouton d'engagement hors écran ; commit et push demandés.

@@ -47,3 +47,8 @@ Contrôles : `verifier_campagne.py` (6 cas), `verifier_voirie.py` (3 cas), chaî
 Le contour annoté par l'auteur limite le dépôt à l'est, indépendamment des îlots. Le nord et l'ouest de l'Ilse restent propres ; les dégâts des bâtiments et la boue lisent le même champ spatial. La route 177, ancienne desserte traversant le nouveau lit au sud, est retirée de la carte de travail. Aperçu numéroté : `QGIS/rendus/wehrau_emprise_crue_apres.png`.
 
 Chaîne régénérée ; 20 contrôles Python passent et le rendu des trois zones est vérifié. Les premiers lieux passent aux Forgerons, avec la berge de leur bief. **Reste : deux échecs du parcours d'ouverture sur la réparation des logements ; le bouton d'engagement dépasse le bas de la fiche.** Tests arrêtés à la demande de l'auteur avant correction de cette interface ; la passe générale n'est pas déclarée validée.
+
+## Quai aval le long de l'Ilse — 2026-09-17
+
+À la demande de l'auteur, la route 178 suit la rive est jusqu'au bord sud du champ 1082 : six sommets, 235,7 m, raccord au réseau conservé. Son ancien tracé droit disparaît. Les champs rendus cèdent désormais la place aux chaussées qui les traversent ; leur contour source reste intact.
+Chaîne régénérée, neuf contrôles voirie/campagne passent ; aucun centre des 120 triangles du quai n'est masqué par un champ. Aperçu numéroté : `QGIS/rendus/wehrau_quai_aval_apres.png`, reproductible avec `--script res://outils/apercu_quai_aval.gd`. À regarder : ① raccord, ② route continue au bord de l'Ilse, ③ arrêt au dernier champ ; une chaussée recouverte par le champ ou prolongée dans la forêt serait un défaut.
