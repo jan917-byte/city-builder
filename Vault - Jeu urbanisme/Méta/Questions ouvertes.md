@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
 statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue) et n°26 (le logement en campagne) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-06
+maj: 2026-09-20
 ---
 
 # Questions ouvertes
@@ -340,6 +340,13 @@ L'auteur préfère un système façon Google Earth et demande sa mise en place :
 
 ### 29. La première réparation donne-t-elle envie de continuer ? — en essai le 2026-09-06
 L'auteur demande de mettre en place la boucle proposée : manque visible, réparation, réussite, puis choix de protection. L'essai tourne dans Wehrau ; restent à juger les deux lieux, le rythme et l'envie de poursuivre. L'autorisation de l'implémenter ne clôt pas ces arbitrages. → [[Premiers pas après la crue]] · `Prototype/Premiers pas.md`
+**Capacité tranchée le 2026-09-18 :** deux champs sur trois doivent suffire ; plusieurs occupants par container, avec deux places par logement en essai. Le besoin de prendre les trois champs est levé ; le rythme et le verrou du pont restent ouverts. → [[Décisions arrêtées]] 84
+
+### 30. Comment rendre la progression lisible sans encombrer la carte ? — ✅ fermée le 2026-09-18
+L'auteur demande la mise en place de la proposition : compteur permanent, aucun pictogramme flottant, choix libre du pont, vérification des accès routiers et retours factuels dans l'interface. → [[Décisions arrêtées]] 85 · [[Premiers pas après la crue]]. L'équilibre des trois ponts et le rythme restent à juger dans la question 29.
+
+### 31. Faut-il épargner avant de réparer le premier pont et déblayer les routes ? — ✅ fermée le 2026-09-20
+L'auteur demande un budget suffisant dès le début, en plus du relogement. La caisse commune est ajustée pour couvrir un pont au choix et toutes les routes à déblayer ; l'équilibre de la suite reste à juger. → [[Décisions arrêtées]] 86.
 
 ## 🟢 Peut attendre (réversible)
 

@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-09-06
+maj: 2026-09-20
 ---
 
 # Décisions arrêtées
@@ -175,5 +175,11 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 | 82 | **Les lieux portent un nom lisible dans les fiches et les chantiers** | 🔓 | ✅ 2026-09-05, demande de l'auteur : « nomme le lieu ». Les noms sont posés dans la table éditoriale `Godot/data/lieux.json`, conservée à la main ; les identifiants restent en infobulle. La régénération de la ville ne renomme pas les lieux. → [[Wehrau]] |
 
 | 83 | **Navigation à la souris façon Google Earth** | 🔓 | ✅ 2026-09-06, proposition acceptée par l'auteur : clic gauche glissé pour attraper le sol, clic bref pour sélectionner, Ctrl + glissé pour tourner et incliner autour du point visé, molette pour zoomer progressivement au pointeur. Une boussole remet le nord en haut et un bouton Dessus / 3D retrouve l'inclinaison précédente. Un déplacement ne sélectionne pas ; les panneaux gardent leurs gestes. → [[Questions ouvertes]] n°28 |
+
+| 84 | **Deux des trois champs doivent suffire au relogement d'urgence** | 🔓 | 2026-09-18, demande de l'auteur, puis proposition de plusieurs occupants par container. Réglage d'essai : deux places par logement temporaire ; le nombre de modules et leur prix restent distincts des personnes accueillies. Aucun champ seul ne suffit ; le dernier camp s'ajuste au besoin. → [[Relogement progressif - proposition]] · [[Questions ouvertes]] n°29 |
+
+| 85 | **Carte sans pictogrammes, compteur permanent, pont et accès, retours factuels** | 🔓 | 2026-09-18, proposition acceptée par l'auteur (« mets en place ») : besoin en logements dans l'interface, places en préparation séparées, libre examen des trois ponts, réussite à la continuité routière réelle. Coût financier et perte agricole à l'engagement ; livraisons et conséquences visibles, notifications sobres et journal sauvegardé. Prix et durées conservés ; équilibre à juger. → [[Premiers pas après la crue]] · [[Questions ouvertes]] n°30 |
+
+| 86 | **Le budget de départ finance aussi le pont et le déblaiement des routes** | 🔓 | ✅ 2026-09-20, demande de l'auteur : assez de budget dès le début pour ces réparations. La caisse commune couvre le relogement complet, un des trois ponts au choix et toutes les routes à déblayer. Réglage d'essai : **3 500 k€** au départ, dotation inchangée ; révise les 800 k€ de la décision 69. → [[Premiers pas après la crue]] · [[Questions ouvertes]] n°31 |
 
 **Voir aussi** : [[Questions ouvertes]] · [[00 - Index]] · [[Indicateurs globaux]]
