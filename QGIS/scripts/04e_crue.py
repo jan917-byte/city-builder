@@ -170,13 +170,60 @@ class ChampCrue:
         fil = D4.borne((self.nord - p[1]) / max(1e-6, self.nord - self.sud))
         return hauteur_eau(d, fil, self.rives.rive(p), niveau)
 
-    def ouverture(self, p):
+    # 🌳 LE VERGER (2026-09-17, auteur) : le quartier de rive gauche que le
+    # limon a couvert. L'Ilse le borne à l'ouest, le contour annoté à l'est.
+    def _bord(self, p):
+        """La limite est du verger si le point y est, sinon None."""
         bord = limite_est(p[1], self.contour)
         coupe = self.rives.coupe(p[1])
         if bord is None or coupe is None or not coupe[1] <= p[0] < bord:
+            return None
+        return bord
+
+    def dans_l_eau(self, p):
+        coupe = self.rives.coupe(p[1])
+        return coupe is not None and coupe[0] <= p[0] <= coupe[1]
+
+    def ouverture(self, p):
+        bord = self._bord(p)
+        if bord is None:
             return 0.0
         # Les derniers mètres perdent progressivement leur dépôt et leurs dégâts.
         return min(self.hauteur(p, NIVEAU_OUVERTURE_M), (bord - p[0]) / 8.0)
+
+
+# 🌳 CE QUE LA BOUE COUVRE D'UNE CHAUSSÉE, et non ce qu'il y a à son milieu :
+# une rue de quai a son axe SUR la rive, le point du milieu tombe dans l'Ilse
+# et rend 0 — neuf tronçons sous 3,7 m de limon passaient pour intacts. On
+# échantillonne la largeur et on jette ce qui est au-dessus de l'eau.
+PAS_CHAUSSEE_M = 4.0
+TRAVERS_CHAUSSEE = 5
+
+
+def boue_sur_chaussee(champ, parts, largeur):
+    """(part de chaussée sous le limon, hauteur la plus forte mesurée)."""
+    sol = sale = 0
+    haut = 0.0
+    for pa in parts:
+        for a, b in zip(pa, pa[1:]):
+            lg = math.hypot(b[0] - a[0], b[1] - a[1])
+            if lg < 1e-9:
+                continue
+            nx, ny = -(b[1] - a[1]) / lg, (b[0] - a[0]) / lg
+            for i in range(max(1, int(lg / PAS_CHAUSSEE_M))):
+                t = (i + 0.5) / max(1, int(lg / PAS_CHAUSSEE_M))
+                px, py = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+                for k in range(TRAVERS_CHAUSSEE):
+                    d = (-0.5 + (k + 0.5) / TRAVERS_CHAUSSEE) * largeur
+                    q = (px + nx * d, py + ny * d)
+                    if champ.dans_l_eau(q):
+                        continue
+                    sol += 1
+                    h = champ.ouverture(q)
+                    if h >= SEUIL_MOUILLE:
+                        sale += 1
+                        haut = max(haut, h)
+    return (sale / sol if sol else 0.0), haut
 
 
 # ------------------------------------------------------------------ la lecture
@@ -321,6 +368,7 @@ def main():
     # Les rues du faubourg sont courtes, la marche ne se voit pas — sur une
     # radiale de 300 m, elle se verrait.
     rues = []
+    parts_boue = {}
     largeurs = {}
     reseau = {}          # ce que `charge_reseau` attend, pour le report ci-dessous
     for fid, blob, larg, hier in cur.execute(
@@ -346,10 +394,8 @@ def main():
                 if any(_dedans(an, mil) for an in eaux):
                     portee += L
         largeurs[fid] = (larg or 0.0, longueur, portee)
-        # La rive d'une rue n'est pas dans les données : on la déduit, par le
-        # même test qu'en `04`. Un pont tombe d'un côté ou de l'autre selon son
-        # milieu — sans conséquence, il porte déjà `etat_crue`.
-        h = champ_crue.ouverture(c)
+        part, h = boue_sur_chaussee(champ_crue, parts, larg or 6.0)
+        parts_boue[fid] = round(part, 3)
         rues.append((round(h, 2), fid))
 
     # --- CE QUE COÛTE LA RÉPARATION ------------------------------------
@@ -382,8 +428,10 @@ def main():
             # Un tablier neuf, sur la portée MESURÉE au-dessus de l'eau.
             couts_rue[fid] = round(portee * larg
                                    * PRIX_PONT_EUR_M2 / 1000.0, 1)
-        elif h >= SEUIL_MOUILLE:
-            couts_rue[fid] = round(longueur * larg
+        elif parts_boue.get(fid, 0.0) > 0.0:
+            # Le déblaiement se paie sur la surface SALE, pas sur le tronçon
+            # entier : une rue à moitié couverte coûte la moitié.
+            couts_rue[fid] = round(longueur * larg * parts_boue[fid]
                                    * PRIX_DEBLAIEMENT_EUR_M2 / 1000.0, 1)
 
     # --- LE REPORT DE TRAFIC ------------------------------------------------
@@ -401,11 +449,12 @@ def main():
     trafic = {"avant": charge_avant, "apres": charge_apres,
               "morceaux": morceaux, "coupes": coupes}
 
-    _compte_rendu(ilots, bats, rues, couts_rue, largeurs, trafic)
+    _compte_rendu(ilots, bats, rues, couts_rue, largeurs, trafic,
+                  parts_boue)
     if BLANC:
         print("\n--blanc : rien n'a ete ecrit.")
         return
-    _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic)
+    _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic, parts_boue)
     print("\n[ok] ecrit dans %s" % os.path.relpath(GPKG, RACINE))
 
 
@@ -414,7 +463,8 @@ def main():
 ORDRE = ("ruine", "sinistre", "mouille", "intact")
 
 
-def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None, TRAFIC=None):
+def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None,
+                  TRAFIC=None, BOUE=None):
     print("=" * 78)
     print("04e — LA CRUE  (ouverture %.2f m · annoncée %.2f m)"
           % (NIVEAU_OUVERTURE_M, NIVEAU_ANNONCE_M))
@@ -481,11 +531,18 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None, TRAFIC=None):
             base_n = n
         print("  %4.2f m %30d %14d" % (v, n, base_n - n))
 
-    print("\nLES RUES NOYÉES  (une hauteur par tronçon, prise à son milieu)")
+    print("\nLES RUES DU VERGER  (la boue mesurée SUR LA CHAUSSÉE, pas au"
+          " milieu du tronçon)")
     hs = [h for h, _ in RUES]
-    print("  %d tronçons sur %d ont gardé du limon, jusqu'à %.2f m"
-          % (sum(1 for h in hs if h >= SEUIL_MOUILLE), len(hs),
-             max(hs or [0.0])))
+    sales = sorted(((v, f) for f, v in (BOUE or {}).items() if v > 0.0),
+                   reverse=True)
+    print("  %d tronçons sur %d portent du limon, jusqu'à %.2f m,"
+          " dont %d de bout en bout"
+          % (len(sales), len(hs), max(hs or [0.0]),
+             sum(1 for v, _ in sales if v >= 0.995)))
+    if sales:
+        print("  aucune voiture n'y roule tant qu'ils ne sont pas déblayés :")
+        print("  " + ", ".join("%d (%.0f %%)" % (f, v * 100) for v, f in sales))
 
     # 💶 CE QUE LA RÉPARATION COÛTE, ET C'EST LE TABLEAU QU'ON REGARDE POUR
     # RÉGLER LES TROIS PRIX. Le total DOIT dépasser ce que la ville gagne en
@@ -580,7 +637,7 @@ def _colonnes(cur, table, cols):
             cur.execute('ALTER TABLE "%s" ADD COLUMN %s %s' % (table, nom, typ))
 
 
-def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic):
+def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic, parts_boue):
     _colonnes(cur, "batiments", [("hauteur_eau", "REAL"),
                                  ("hauteur_eau_annoncee", "REAL"),
                                  ("etat_crue", "TEXT")])
@@ -595,6 +652,7 @@ def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic):
                              ("cout_reparation_ke", "REAL")])
     _colonnes(cur, "routes", [("etat_crue", "TEXT"),
                               ("hauteur_eau", "REAL"),
+                              ("part_boue", "REAL"),
                               ("cout_reparation_ke", "REAL")])
 
     cur.executemany(
@@ -631,6 +689,9 @@ def _ecrire(con, cur, ilots, bats, rues, couts_rue, trafic):
     cur.executemany("UPDATE routes SET cout_reparation_ke=? WHERE fid=?",
                     [(v, f) for f, v in couts_rue.items()])
     cur.executemany("UPDATE routes SET hauteur_eau=? WHERE fid=?", rues)
+    cur.execute("UPDATE routes SET part_boue=0")
+    cur.executemany("UPDATE routes SET part_boue=? WHERE fid=?",
+                    [(v, f) for f, v in parts_boue.items() if v > 0.0])
     cur.executemany("UPDATE routes SET etat_crue=? WHERE fid=?",
                     [(v, f) for f, v in PONTS_CASSES.items()])
     con.commit()

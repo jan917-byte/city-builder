@@ -399,7 +399,7 @@ COLS_ILOTS = [
 
 COLS_ROUTES = ["fid", "hierarchie", "largeur_m", "emprise_libre_m", "charge",
                "canopee", "stationnement", "etat_crue", "hauteur_eau",
-               "cout_reparation_ke"]
+               "part_boue", "cout_reparation_ke"]
 
 # 🅿️ Calculé, pas lu : l'écart à l'axe où `trafic.gd` pose une voiture garée.
 
@@ -861,15 +861,14 @@ BANDE_ECART = 0.055
 
 # 🏕️ LE CAMP DE CONTAINERS — ce qu'on pose sur un champ pour loger les
 # sinistrés de la crue. 🎚️ LEVEL DESIGN : la taille de la case décide combien
-# de gens tiennent sur un champ, donc si les trois champs accessibles du
-# faubourg suffisent. Une case de 6,5 × 6,0 m tient un logement et son
-# passage, soit ~256 par hectare brut. Le bord laissé libre est ce qui empêche
-# un container de toucher la haie, et le plafond borne le poids des données.
+# de logements tiennent sur un champ. Une case de 6,5 × 6,0 m tient un
+# container et son passage ; l'occupation en personnes se règle dans ville.gd.
+# Le bord laissé libre empêche un container de toucher la haie.
 CAMP_CONTAINER_M = (6.5, 6.0)
 CAMP_BORD_M = 6.0
 CAMP_PLAFOND = 400
-# UN logement, DEUX containers côte à côte (long, large, haut). Leur somme
-# reste sous la case : l'écart qui reste est l'allée entre deux rangées.
+# UN logement, UN abri (long, large, haut) : ce qui est à l'écran est le
+# nombre que la fiche annonce. Ce qui reste dans la case est l'allée.
 CAMP_BOITE_M = (5.6, 2.9, 2.6)
 
 # 🔄 IL Y AVAIT ICI UNE RÈGLE DE REPLI — « quand l'empreinte ne sait pas porter

@@ -234,6 +234,11 @@ class Relief(object):
         """`champs` : {fid: anneau d'emprise ouvert} des îlots `champ`."""
         self.chenal = chenal
         self.zones = {}
+        bords = {}
+        for an in champs.values():
+            for a, b in zip(an, an[1:] + an[:1]):
+                cle = tuple(sorted((_cle(a), _cle(b))))
+                bords[cle] = bords.get(cle, 0) + 1
         for fid in sorted(champs):
             an = list(champs[fid])
             n = len(an)
@@ -242,7 +247,10 @@ class Relief(object):
                 a, b = an[i], an[(i + 1) % n]
                 if math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-9:
                     continue
-                (riv if _sur_la_berge(a, b, chenal) else autres).append((a, b))
+                if _sur_la_berge(a, b, chenal):
+                    riv.append((a, b))
+                elif bords[tuple(sorted((_cle(a), _cle(b))))] == 1:
+                    autres.append((a, b))
             if not riv:
                 continue
             sens = 1.0 if aire_signee(an) > 0.0 else -1.0

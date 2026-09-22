@@ -12,6 +12,9 @@ import math
 import sys
 import unittest
 from pathlib import Path
+from apercu_carte import dedans
+from export_godot.geometrie import Chenal, Relief, aire_signee
+from export_godot.voirie import DecoupeChaussees, D4C
 
 SORTIE = Path(__file__).resolve().parents[2] / "Godot/data/wehrau.json"
 
@@ -58,34 +61,69 @@ class Relogement(unittest.TestCase):
             self.assertGreater(v["camp_places"], 0, "champ %s sans place" % f)
             self.assertEqual(v["camp_places"], len(self.camps[f]))
 
-    def test_aucun_champ_ne_loge_a_lui_seul_tous_les_sinistres(self):
-        """🎚️ LEVEL DESIGN, pas une règle : c'est ce qui fait que le choix du
-        champ est un choix. Si un jour un champ suffit, c'est une décision de
-        l'auteur — et elle se prend en changeant la case du camp, pas ici."""
-        besoin = sum(v["logements_sinistres"] for v in self.sinistres.values())
-        m = next(iter(self.sinistres.values()))["morceau"]
-        plus_grand = max(v["camp_places"] for v in self.champs.values()
-                         if v["morceau"] == m)
-        self.assertLess(plus_grand, besoin)
-        total = sum(v["camp_places"] for v in self.champs.values()
-                    if v["morceau"] == m)
-        self.assertGreaterEqual(total, besoin, "à trois champs on n'y arrive"
-                                " toujours pas : personne ne peut être logé")
-
     def test_les_places_tiennent_dans_le_champ(self):
         emprises = self.d["emprises"]
         for f, places in self.camps.items():
             an = [(p[0], p[2]) for p in emprises[f]]
             x0, x1 = min(p[0] for p in an), max(p[0] for p in an)
             z0, z1 = min(p[1] for p in an), max(p[1] for p in an)
-            for x, _y, z, _ang in places:
+            rangs = set()
+            for x, _y, z, _ang, rang in places:
                 self.assertTrue(x0 <= x <= x1 and z0 <= z <= z1,
                                 "place hors du champ %s" % f)
+                rangs.add(rang)
+            # La rangée sert la teinte des abris dans la maquette : un champ
+            # d'une seule rangée sortirait d'un seul ton.
+            self.assertTrue(rangs, "champ %s sans rangée" % f)
 
     def test_les_ponts_coupes_ne_portent_aucun_morceau(self):
         coupes = [f for f, v in self.d["objets"]["routes"].items()
                   if v["etat_crue"] == "coupe"]
         self.assertEqual(len(coupes), 3)
+
+    def test_chaque_pont_relie_le_faubourg_au_reste_de_la_ville(self):
+        sinistres = next(iter(self.sinistres.values()))["morceau"]
+        for fid, route in self.d["objets"]["routes"].items():
+            if route["etat_crue"] == "coupe":
+                self.assertIn(sinistres, route["morceaux_reunis"], fid)
+                self.assertIn(0, route["morceaux_reunis"], fid)
+
+    def test_les_trois_champs_ne_recouvrent_plus_la_desserte(self):
+        m = self.d["voirie"]
+        _, debut, nombre = next(g for g in m["g"] if g[0] == 178)
+        triangles = [[(m["v"][j][0], m["v"][j][2])
+                      for j in m["i"][k:k + 3]]
+                     for k in range(debut, debut + nombre, 3)]
+        for fid in (1082, 1083, 1084):
+            champ = [(p[0], p[2]) for p in self.d["emprises"][str(fid)]]
+            for tri in triangles:
+                if abs(aire_signee(tri)) < 1e-5:
+                    continue
+                _, commun = D4C._soustraire_convexe(champ, DecoupeChaussees.plans(tri))
+                self.assertLess(sum(abs(aire_signee(p)) for p in commun), 0.02)
+            self.assertAlmostEqual(abs(aire_signee(champ)),
+                                   self.champs[str(fid)]["surface_m2"], delta=2.0)
+
+    def test_empreinte_complete_des_containers_dans_les_trois_champs(self):
+        lg, la, _ = self.d["camps"]["boite"]
+        for fid in (1082, 1083, 1084):
+            champ = [(p[0], p[2]) for p in self.d["emprises"][str(fid)]]
+            champ.append(champ[0])
+            for x, _, z, g, _ in self.camps[str(fid)]:
+                for dx in (-lg / 2, lg / 2):
+                    for dz in (-la / 2, la / 2 + 0.44):
+                        p = (x + dx * math.cos(g) + dz * math.sin(g),
+                             z - dx * math.sin(g) + dz * math.cos(g))
+                        self.assertTrue(dedans(champ, p), "Container hors du champ %s" % fid)
+
+    def test_la_berge_ne_remonte_pas_entre_deux_champs(self):
+        chenal = Chenal([[(0, 0), (20, 0), (20, 100), (0, 100)]])
+        relief = Relief(chenal, {
+            1: [(20, 0), (60, 0), (60, 50), (20, 50)],
+            2: [(20, 50), (60, 50), (60, 100), (20, 100)],
+        })
+        self.assertLess(relief.z(22, 49.99), -0.5)
+        self.assertAlmostEqual(relief.z(22, 49.99), relief.z(22, 50.01), places=4)
 
 
 if __name__ == "__main__":

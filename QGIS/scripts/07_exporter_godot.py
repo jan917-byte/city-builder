@@ -33,6 +33,7 @@ from export_godot.batiments import (
 )
 from export_godot.boue import carte_boue
 from export_godot.camps import emplacements as _places_camp
+from export_godot.faubourg import DESSERTE, axe_en_lisiere, separer_champ
 from export_godot.decor import (
     Decor,
     Massifs,
@@ -326,6 +327,7 @@ def main():
     print("  %d îlots, %d tronçons" % (len(ilots), len(routes)))
 
     routes_par_fid = {d["fid"]: d for d in routes}
+    desserte = routes_par_fid[DESSERTE]
     for d in routes:
         d["longueur_m"] = round(sum(
             math.hypot(b[0] - a[0], b[1] - a[1])
@@ -359,6 +361,12 @@ def main():
     coupes_acces = {d["fid"] for d in routes
                     if (d["etat_crue"] or "") == "coupe"}
     morceau_rue = D4.morceaux_par_troncon(reseau_acces, coupes_acces)
+    # Les composantes réunies par chaque pont : l'accès change à sa livraison.
+    acces_ponts = {}
+    for pont in sorted(coupes_acces):
+        reunis = D4.morceaux_par_troncon(reseau_acces, coupes_acces - {pont})
+        acces_ponts[pont] = sorted({m for f, m in morceau_rue.items()
+                                   if reunis.get(f) == reunis.get(pont)})
     i2r = {}
     for f, bordes in r2i.items():
         for i in bordes:
@@ -369,11 +377,7 @@ def main():
         # −1 : aucune route connectée ne le borde. Il n'est accessible de nulle
         # part, et l'interface doit pouvoir le dire au lieu de le supposer.
         d["morceau"] = ms[0] if ms else -1
-    # 🔴 UN CHAMP N'EST RIVERAIN DE RIEN, et c'est normal : la berge le sépare
-    # de la chaussée. Sans ce rattrapage, deux des trois champs du faubourg
-    # (1082 et 1083, à 10 m de la route 178) seraient déclarés inaccessibles et
-    # le joueur n'aurait qu'un seul terrain. Le seuil sépare franchement :
-    # 10 m d'un côté, 115 m pour le premier champ qui n'a vraiment pas d'accès.
+    # Les champs sans bord commun héritent de la route voisine sous 30 m.
     semis_rue = {}
     for d in routes:
         m = morceau_rue.get(d["fid"])
@@ -1042,7 +1046,19 @@ def main():
                 # se voit pas.
                 coul_berge = PAL.vers_lineaire(
                     PAL.melanger(brut_champ, PAL.SOLS["parc"], 0.65))
-                bandes = [(piece, tint) for mo, tint in _bandes_de_fauche(an, coul)
+                cultures, rives = separer_champ(fid, an, relief, desserte)
+                if rives:
+                    d["surface_m2"] = round(sum(abs(aire_signee(p)) for p in cultures), 1)
+                    # Le masque de sélection et le déboisement du camp s'arrêtent au champ.
+                    assert len(cultures) == 1, "Champ du faubourg coupé en plusieurs morceaux"
+                    emprises[str(fid)] = [[round(c, 2) for c in G(x, y, Y_SOL)]
+                                           for x, y in cultures[0]]
+                    for rive in rives:
+                        for piece in passages_champs.hors(rive):
+                            for cel in _grille(piece, TALUS_PAS):
+                                _sol(terre, cel, PAL.vers_lineaire(PAL.SOLS["parc"]), G, relief)
+                bandes = [(piece, tint) for culture in cultures
+                          for mo, tint in _bandes_de_fauche(culture, coul)
                           for piece in passages_champs.hors(mo)]
                 for mo, tint in bandes:
                     if len(mo) < 3:
@@ -1066,11 +1082,15 @@ def main():
                     cg = (sum(p[0] for p in an) / len(an),
                           sum(p[1] for p in an) / len(an))
                     entree = min(bords, key=lambda p: math.dist(p, cg))
-                places_camp = _places_camp(an, entree)
+                if entree is None and rives:
+                    cg = (sum(p[0] for p in an) / len(an), sum(p[1] for p in an) / len(an))
+                    bords = [p for r in routes for part in r["parts"] for p in part]
+                    entree = min(bords, key=lambda p: math.dist(p, cg))
+                places_camp = [p for culture in cultures for p in _places_camp(culture, entree)]
                 if places_camp:
                     camps[str(fid)] = [
                         [round(c, 2) for c in G(x, y, Y_SOL + relief.z(x, y))]
-                        + [g] for x, y, g in places_camp]
+                        + [g, rang] for x, y, g, rang in places_camp]
                 d["camp_places"] = len(places_camp)
             else:
                 _sol(sols, an, coul, G)
@@ -1442,7 +1462,7 @@ def main():
                         repare_voirie, axe_entier, manque, larg, _bord_libre(d, ch),
                         coul_tr, G_voirie, decoupe_chaussee)
         # Le shader dépose le limon en coordonnées monde, sur tous les supports.
-        lavage = (d.get("hauteur_eau") or 0.0) > 0.10 and etat_crue != "coupe"
+        lavage = (d.get("part_boue") or 0.0) > 0.0 and etat_crue != "coupe"
         if lavage:
             repare_voirie.marque(d["fid"])
         coul_ch_d, coul_tr_d, coul_marq_d = coul_ch, coul_tr, coul_marq
@@ -1854,10 +1874,13 @@ def main():
     for axe in routes_sortie["axes"]:
         axe["points"] = [[p[0] - cx, cy - p[1]] for p in axe["points"]]
     decor_vallee["sorties"] = routes_sortie
-    decor_vallee["arbres"] = hors_routes(decor_vallee["arbres"], routes_sortie["axes"])
+    # La desserte du faubourg longe le bois depuis le 2026-09-18 : ses arbres
+    # sont semés par cellule de plaque, qui ne sait rien de la voirie.
+    a_deboiser = routes_sortie["axes"] + axe_en_lisiere(desserte, cx, cy)
+    decor_vallee["arbres"] = hors_routes(decor_vallee["arbres"], a_deboiser)
     arbres_godot = [[round(c, 2) for c in G(a[0], a[1], a[2])]
                     + [round(a[3], 3), round(a[4], 3), int(a[5])] for a in arbres]
-    arbres_godot = hors_routes([arbres_godot, []], routes_sortie["axes"])[0]
+    arbres_godot = hors_routes([arbres_godot, []], a_deboiser)[0]
     print("    %d arbres des champs écartés des prolongements" % (len(arbres) - len(arbres_godot)))
     doc = {
         "meta": {
@@ -1934,7 +1957,8 @@ def main():
                                                 + ACCES_ILOTS)
                                       if c in d})
                       for f, d in ilots.items()},
-            "routes": {str(d["fid"]): {c: d[c] for c in FICHE_ROUTES}
+            "routes": {str(d["fid"]): dict({c: d[c] for c in FICHE_ROUTES},
+                        morceaux_reunis=acces_ponts.get(d["fid"], []))
                        for d in routes},
             # 🌊 La fiche d'une berge : ce qui est MESURÉ sur la carte, rien de
             # plus. `debord_m2` est l'asphalte que le quai a pris à l'Ilse ;
@@ -1966,8 +1990,8 @@ def main():
         # sélection, celle que la silhouette rendue ne peut pas donner.
         "emprises": emprises,
         "riverains": {str(f): sorted(v) for f, v in r2i.items()},
-        # 🏕️ Les places du camp, champ par champ : [x, y, z, angle], rangées
-        # depuis l'accès. `boite` est le container dessiné — deux par place.
+        # 🏕️ Les places du camp, champ par champ : [x, y, z, angle, rangée],
+        # rangées depuis l'accès. `boite` est l'abri dessiné — un par place.
         "camps": {"boite": list(CAMP_BOITE_M), "places": camps},
         "reperes": _reperes(ilots, routes, cx, cy, relief, ponts_vus),
         "controles": {

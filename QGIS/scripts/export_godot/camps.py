@@ -34,8 +34,10 @@ def emplacements(anneau, entree):
     proche) : les places s'occupent depuis lui, donc un camp à moitié plein
     reste un camp, pas une poussière de boîtes.
 
-    Rend une liste de [x, y_source, angle] en repère SOURCE ; c'est `07` qui
-    la passe en repère Godot.
+    Rend une liste de [x, y_source, angle, rangée] en repère SOURCE ; c'est
+    `07` qui la passe en repère Godot. La RANGÉE est l'indice de la bande : la
+    maquette y prend la teinte de l'abri, pour que les alignements sortent en
+    rangs et non en poivre et sel.
     """
     if len(anneau) < 3:
         return []
@@ -58,6 +60,7 @@ def emplacements(anneau, entree):
     u = min(pu) + pas_u / 2.0
     while u < max(pu) and len(places) < CAMP_PLAFOND * 4:
         v = min(pv) + pas_v / 2.0
+        rang = 0
         while v < max(pv) and len(places) < CAMP_PLAFOND * 4:
             p = (u * ux + v * vx, u * uy + v * vy)
             # Les quatre coins dedans, pas seulement le centre : sinon un
@@ -67,10 +70,11 @@ def emplacements(anneau, entree):
                      for du in (-pas_u / 2.4, pas_u / 2.4)
                      for dv in (-pas_v / 2.4, pas_v / 2.4)]
             if all(_dedans(inte, c) for c in coins):
-                places.append((p, ang))
+                places.append((p, ang, rang))
             v += pas_v
+            rang += 1
         u += pas_u
     if entree is not None:
         places.sort(key=lambda t: math.dist(t[0], entree))
-    return [[round(p[0], 2), round(p[1], 2), round(g, 4)]
-            for p, g in places[:CAMP_PLAFOND]]
+    return [[round(p[0], 2), round(p[1], 2), round(g, 4), rang]
+            for p, g, rang in places[:CAMP_PLAFOND]]
