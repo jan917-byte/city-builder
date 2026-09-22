@@ -24,6 +24,8 @@ const LARGEUR_MIN_M := 12.0
 const LARGEUR_MAX_M := 90.0
 
 var jeu
+## 📖 Le récit d'ouverture les tient éteintes jusqu'à la page des dégâts.
+var muettes := false
 var _pastilles := {}         # "i66" -> Node3D
 var _signature := ""
 var _fond: Color
@@ -47,7 +49,7 @@ func _probleme(couche: String, fid: int, t: float) -> Array:
 	# le faubourg, et on ne lisait plus ni la ville ni les pastilles.
 	if couche == "i":
 		if v.camp_pose(fid):
-			if not v.camp_accessible(fid):
+			if not v.camp_accessible(fid, t):
 				return ["camp", "vide"]
 			return ["camp", "%d" % int(v.camp_occupants(fid, t))]
 		# 🔴 À LA LIVRAISON, pas à l'engagement : on rentre chez soi quand le
@@ -137,7 +139,8 @@ func _poser_texte(n: Node3D, p: Array) -> void:
 func _texture(nom: String) -> Texture2D:
 	if _textures.has(nom):
 		return _textures[nom]
-	var corps: String = Interface.DESSINS.get(nom, Interface.DESSINS["dangers"])
+	# 🎨 `@` = l'encre du dessin, la même table que l'interface (`_icone`).
+	var corps: String = str(Interface.DESSINS.get(nom, Interface.DESSINS["dangers"])) 		.replace("@", "#" + _encre.to_html(false))
 	var svg := ("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'"
 		+ " viewBox='-4 -4 32 32'>"
 		+ "<circle cx='12' cy='12' r='15' fill='#%s'/>" % _encre.to_html(false)
@@ -162,7 +165,7 @@ func _dimensionner(n: Node3D) -> void:
 ## Les pastilles s'éteignent de loin : de haut, la ville doit se voir. Et tant
 ## qu'elles sont là, elles gardent la même taille à l'écran.
 func regler_portee(distance: float) -> void:
-	visible = distance <= PORTEE_M
+	visible = not muettes and distance <= PORTEE_M
 	var large := clampf(distance * LARGEUR_PAR_TAILLE,
 		LARGEUR_MIN_M, LARGEUR_MAX_M)
 	if is_equal_approx(large, _largeur_m):

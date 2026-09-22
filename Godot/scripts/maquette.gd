@@ -46,7 +46,9 @@ const Echantillon := preload("res://scripts/echantillon.gd")
 const Sauvegarde := preload("res://scripts/sauvegarde.gd")
 const Paysage := preload("res://scripts/paysage.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
+const Recit := preload("res://scripts/recit.gd")
 var ouverture: Ouverture
+var recit: Recit
 var paysage: Paysage
 var _empreinte_carte := ""
 var chemin_sauvegarde := Sauvegarde.CHEMIN
@@ -64,6 +66,8 @@ const RAMPE := [
 	Color8(42, 74, 110), Color8(90, 140, 150),
 	Color8(214, 190, 110), Color8(196, 84, 62),
 ]
+# 🚧 Hors de la rampe, et d'aucune de ses teintes : un brun se lisait « saturé ».
+const COUPEE := Color8(150, 88, 204)
 # Des facteurs, pas des couleurs : assez forts pour se voir sur un pastel
 # clair, assez faibles pour ne pas le brûler.
 const SURVOL := Color(1.15, 1.15, 1.08)
@@ -126,6 +130,7 @@ var apercu: Apercu
 var _apercu_fid := -1
 var _apercu_couche := ""
 var _apercu_voitures := ""
+var _apercu_camp := ""
 var _couloirs := {}
 var _plaques := {}
 var _berges_contour := {}
@@ -272,21 +277,21 @@ func _ready() -> void:
 	if "--ouverture" in arguments or (not "--script" in OS.get_cmdline_args()
 			and not "--essai" in arguments and not "--interface" in arguments
 			and not "--banc" in arguments):
-		# 🔴 PAS DANS LES PASSES DE CAPTURE : les images de référence jugent la
-		# ville, pas les pictogrammes posés dessus.
-		pastilles = Pastilles.new()
-		pastilles.name = "Pastilles"
-		monde.add_child(pastilles)
-		pastilles.batir(self)
-		pastilles.regler_portee(pivot.taille)
+		# Décision 85 : la carte porte les transformations, l'interface les constats.
 		ouverture = Ouverture.new()
 		interface.add_child(ouverture)
 		interface.ouverture = ouverture
 		ouverture.batir(self)
+		recit = Recit.new()
+		recit.name = "Recit"
+		interface.add_child(recit)
+		recit.batir(self)
 		_commencer_ouverture()
 		# 🛠️ DEUX MODES, ET LE CHOIX SE FAIT À L'ÉCRAN. Les scripts de contrôle
 		# le passent en drapeau pour ne pas avoir à cliquer.
-		interface.mode_choisi.connect(_sur_mode)
+		# 📖 Le récit ne part QUE du bouton : un drapeau sert un contrôle, et un
+		# contrôle n'a pas de story à lire.
+		interface.mode_choisi.connect(_sur_mode_choisi)
 		if "--auteur" in arguments:
 			_sur_mode(true)
 		elif "--histoire" in arguments:
@@ -294,6 +299,7 @@ func _ready() -> void:
 		else:
 			interface.montrer_depart()
 	interface._debut.visible = ouverture != null
+	interface.retours.reprendre(mois)
 
 	var c: Dictionary = donnees["controles"]
 	print("Wehrau — %d îlots, %d tronçons, %d cliquables, %d triangles"
@@ -351,7 +357,15 @@ func _essai_interface() -> void:
 	print("  îlot 49 · 70 % de panneaux puis 60 % de sédum demandés : le toit"
 		+ " en accepte %.0f %%  %s" % [float(d49["verdi"]) * 100.0,
 		"✅" if absf(float(d49["verdi"]) - 0.30) < 0.011 else "❌"])
+	# 🗂️ DEUX IMAGES DEPUIS LE 2026-09-18, et c'est le prix des onglets : les
+	# deux curseurs se partagent un 100 % mais plus un écran. À juger — si la
+	# bascule coûte trop cher au joueur, les deux thèmes n'en font qu'un.
+	interface.ouvrir_onglet("energie")
+	await _fiche("i", 49)
 	await _capturer("interface_toit_partage")
+	interface.ouvrir_onglet("vert")
+	await _fiche("i", 49)
+	await _capturer("interface_toit_vert")
 	await _capturer_apercu("apercu_toit_partage")
 	# 🎚️ LES RÉGLAGES POSÉS, ET L'AVANT/APRÈS (2026-08-31). Trois captures au
 	# MÊME cadrage : la fiche réglée, puis la miniature dans ses deux états.
@@ -1687,6 +1701,9 @@ func _par_ruines_ponts(source: Dictionary) -> void:
 		parent.add_child(mi)
 		mi.create_trimesh_collision()
 		ruines_ponts[fid] = mi
+		# Un tablier entièrement emporté reste un objet sélectionnable.
+		if not noeuds["r"].has(fid):
+			noeuds["r"][fid] = mi
 		var axe: Array = donnees["couloirs"][str(fid)][1][0]
 		reparations["r"][fid].mesh.set_meta("boue_acces",
 			Vector4(axe[0], axe[1], axe[-2], axe[-1]))
@@ -1727,6 +1744,9 @@ func _corps(mi: MeshInstance3D, actif: bool) -> void:
 ## Montre ce qui vient d'être fini. Une géométrie qui apparaîtrait à
 ## l'ENGAGEMENT dirait qu'un pont se rebâtit en une image.
 func _montrer_reparations() -> void:
+	if _diagnostic_marqueurs != null:
+		for marqueur in _diagnostic_marqueurs.get_children():
+			marqueur.visible = not ville.reparation_finie("r", int(str(marqueur.name).trim_prefix("Route")), mois)
 	for fid in ruines_ponts:
 		var mi: MeshInstance3D = ruines_ponts[fid]
 		mi.visible = not ville.reparation_finie("r", fid, mois)
@@ -1735,6 +1755,10 @@ func _montrer_reparations() -> void:
 		for fid in reparations[couche]:
 			var mi: MeshInstance3D = reparations[couche][fid]
 			var fini: bool = ville.reparation_finie(couche, fid, mois)
+			# 🌉 Le diagnostic Trafic montre le tablier MANQUANT, peint « coupé » :
+			# sans lui, un pont emporté n'était qu'une paire de moignons.
+			if couche == "r" and theme == "trafic" and fid in ville.ponts_coupes():
+				fini = true
 			if fini == mi.visible:
 				continue
 			mi.visible = fini
@@ -1885,7 +1909,10 @@ func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
 
 
 func _sur_pulsation_trafic() -> void:
+	var reseau: String = trafic._indisponibles_connues
 	trafic.avancer(mois)
+	if reseau != trafic._indisponibles_connues:
+		_dernier_peint = -1.0
 
 
 ## 🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-09-01 : le bandeau a été rafraîchi 10 fois
@@ -1911,6 +1938,7 @@ func _rafraichir(force: bool) -> void:
 	travaux.actualiser(ville, mois)
 	_peindre()
 	interface.maj(ville.indicateurs(mois), mois, vitesse)
+	interface.retours.actualiser(mois)
 
 
 # --------------------------------------------------------------- la couleur
@@ -1970,7 +1998,8 @@ const THEMES := [
 	{"id": "trafic", "nom": "Trafic", "genre": "calque",
 		"couche": "r", "champ": "charge",
 		"resume": "La charge des rues, après la crue",
-		"bas": "Rue calme", "haut": "Saturée"},
+		"bas": "Rue calme", "haut": "Saturée",
+		"note": "Violet : coupée par la crue — pont emporté ou boue à déblayer."},
 	{"id": "tissu", "nom": "Tissu urbain", "genre": "tissu",
 		"resume": "Une teinte par type de tissu"},
 ]
@@ -2028,13 +2057,15 @@ func _sur_theme(id: String) -> void:
 	# La ville vivante n'entre pas dans la maquette blanche : arbres, voitures,
 	# eau et terrain la quittent ensemble, sinon le thème se lit sur un décor.
 	_habiller_monde(id != "")
-	_diagnostic_marqueurs.visible = genre == "crue"
+	_diagnostic_marqueurs.visible = false
 	interface.montrer_theme(id, t)
 	# 🔄 RETOUR EN ARRIÈRE SIGNALÉ : ouvrir la crue ou les chantiers recadrait
 	# sur la ville entière. La caméra NE BOUGE PLUS — c'est ce qui rend les
 	# deux vues comparables, et un avant/après lisible sans recadrer à la main.
 	_dernier_peint = -1.0
 	_rafraichir(true)
+	if id == "trafic" and ouverture != null:
+		ouverture.voir_trafic()
 
 
 ## Échelle fixée sur l'état de DÉPART (leçon de `parties.html`) : sinon chaque
@@ -2110,6 +2141,11 @@ func _peindre() -> void:
 			elif genre == "calque" and calque_couche == couche \
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
+				# 🚧 Une rue coupée ne porte AUCUNE voiture : sur la rampe, elle
+				# se lisait « calme », le contraire de ce qu'elle est (auteur,
+				# 2026-09-22). Pont emporté ou boue, elle sort de la rampe.
+				if calque_champ == "charge" and not ville.route_praticable(fid, mois):
+					c = COUPEE.srgb_to_linear()
 				c.a = 1.0
 			var etat_travaux := ville.etat_chantier(couche, fid, mois) \
 				if genre == "chantiers" else 0
@@ -2425,6 +2461,7 @@ func _maj_apercu() -> void:
 		_apercu_fid = fid
 		_apercu_couche = couche
 		_apercu_voitures = ""   # changer d'objet repose les voitures
+		_apercu_camp = ""
 		# 🔧 UN PONT CASSÉ RESTE MONTRÉ PAR LA VILLE : un morceau droit ne sait
 		# pas dire une travée tombée, et c'est justement ce que la fiche propose
 		# de rebâtir. Tout le reste de la voirie passe par l'échantillon.
@@ -2442,6 +2479,13 @@ func _maj_apercu() -> void:
 	apercu.viser(pivot.lacet)
 	apercu.regler(float(d["equipe"]), float(d["verdi"]), float(d["plate"]),
 		bool(d["futur"]), float(d["berge"]), d["dense"] as Vector4)
+	# 🏕️ Les abris que la fiche promet. La signature évite de refaire le
+	# MultiMesh à chaque image : il ne change qu'au survol ou à la commande.
+	var signe_camp := "%s%d %d" % [couche, fid, int(d["camp"])]
+	if signe_camp != _apercu_camp:
+		_apercu_camp = signe_camp
+		apercu.camper(camp.maillage_champ(fid, int(d["camp"]))
+			if couche == "i" else null)
 	# Les voitures du morceau montré. La signature évite de les reposer à chaque
 	# image : elles ne changent qu'au survol ou au mois. Un pont cassé n'en a
 	# pas — sa miniature est un bout de ville, pas un échantillon.
@@ -2502,6 +2546,8 @@ func _sur_survol(_couche: String, _fid: int) -> void:
 func _sur_choix(couche: String, fid: int) -> void:
 	if fid >= 0:
 		interface.montrer(couche, fid, false)
+		if ouverture != null:
+			ouverture.regarde(couche, fid)
 	_dernier_peint = -1.0
 
 
@@ -2515,6 +2561,8 @@ func _sur_choix(couche: String, fid: int) -> void:
 ## berge, dont la teinte porte les trois crans, et pour les arbres, qui sortent
 ## de terre au rythme de la canopée.
 func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
+	var duree := ville.duree_commande_mois(couche, fid, reglages, mois)
+	interface.retours.actualiser(mois)
 	var r := ville.commander(couche, fid, reglages, mois)
 	if not bool(r["ok"]):
 		print("%s %d · refusé : %.0f k€ demandés, il manque %.0f k€"
@@ -2524,6 +2572,7 @@ func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
 	# noyau le renvoie au lieu de l'appliquer.
 	if bool(r["axe"]):
 		trafic.retirer_axe(fid, mois)
+	interface.retours.engagement(couche, fid, r, duree, mois)
 	print("%s %d · %s engagé%s : %.0f k€ · %.0f mois · caisse %.0f k€"
 		% [_nom_couche(couche), fid, ", ".join(PackedStringArray(r["faits"]))
 			+ (", axe fermé" if bool(r["axe"]) else ""),
@@ -2535,6 +2584,12 @@ func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
 	_rafraichir(true)
 	if ouverture != null:
 		ouverture.actualiser(true)
+
+
+func _sur_mode_choisi(auteur: bool) -> void:
+	_sur_mode(auteur)
+	if recit != null:
+		recit.commencer()
 
 
 ## 🛠️ Le mode auteur ne touche qu'aux DURÉES : la caisse, les prix et la
@@ -2562,6 +2617,7 @@ func _sur_reset() -> void:
 	mois = 0.0
 	_sur_vitesse(0.0)
 	interface.remis_a_zero()
+	interface.retours.reprendre(mois)
 	interface.informer_partie("", _sauvegarde_disponible())
 	if ouverture != null:
 		ouverture.reprendre({})
@@ -2583,6 +2639,7 @@ func _sauvegarde_disponible() -> bool:
 
 func _partie() -> Dictionary:
 	return {"mois": mois, "ville": ville.exporter_partie(),
+		"journal": interface.retours.journal.duplicate(),
 		"ouverture": ouverture.exporter() if ouverture != null else {},
 		"fermetures": trafic.exporter_fermetures(),
 		"camera": {"position": pivot.position, "taille": pivot.taille,
@@ -2591,7 +2648,7 @@ func _partie() -> Dictionary:
 
 func _sur_sauvegarde() -> void:
 	var erreur := Sauvegarde.ecrire(_partie(), _empreinte_carte, chemin_sauvegarde)
-	var message := "Partie sauvegardée · mois %.1f" % mois if erreur == "" else erreur
+	var message := "Partie sauvegardée · mois %s" % interface._nb(mois, 1) if erreur == "" else erreur
 	interface.informer_partie(message, _sauvegarde_disponible())
 	print(message)
 
@@ -2601,7 +2658,7 @@ func _partie_valide(p: Dictionary) -> bool:
 	if p.has("ouverture"):
 		if not p["ouverture"] is Dictionary:
 			return false
-		for cle in ["suite", "termine", "ouvert"]:
+		for cle in ["suite", "termine", "ouvert", "trafic_vu", "pont_termine"]:
 			if p["ouverture"].has(cle) and not p["ouverture"][cle] is bool:
 				return false
 	if not p["mois"] is float or not is_finite(p["mois"]) or p["mois"] < 0.0 or p["mois"] > Ville.HORIZON_MOIS:
@@ -2642,15 +2699,16 @@ func _sur_reprise() -> void:
 	ville.importer_partie(p["ville"])
 	mois = p["mois"]
 	trafic.importer_fermetures(p["fermetures"], mois)
+	interface.retours.reprendre(mois, p.get("journal", []) if p.get("journal", []) is Array else [])
 	_sur_vitesse(0.0)
 	interface.remis_a_zero()
+	_sur_theme(p["theme"])
 	pivot.caler(p["camera"]["lacet"], p["camera"]["hauteur"])
 	var position_vue: Vector3 = p["camera"]["position"]
 	pivot.viser(Vector2(position_vue.x, position_vue.z), p["camera"]["taille"])
 	selection.sel_couche = p["couche"]
 	selection.sel_fid = p["fid"]
 	selection.survol_fid = -1
-	_sur_theme(p["theme"])
 	_apercu_fid = -1
 	_apercu_voitures = ""
 	_arbres_compte = -1
@@ -2662,7 +2720,7 @@ func _sur_reprise() -> void:
 		interface._detail_ouvert = not ouverture.ouvert
 		interface._placer_detail()
 	_rafraichir(true)
-	var message := "Partie reprise en pause · mois %.1f" % mois
+	var message := "Partie reprise en pause · mois %s" % interface._nb(mois, 1)
 	if r["secours"]:
 		message += " · copie de secours"
 	interface.informer_partie(message, true)
@@ -2677,14 +2735,20 @@ func _commencer_ouverture() -> void:
 	interface._detail_ouvert = false
 	interface._placer_detail()
 	interface._fiche_panneau.hide()
-	pivot.caler(35.0, 42.0)
-	# 🏕️ LE PREMIER CADRAGE PORTE LA PREMIÈRE DÉCISION : le faubourg sinistré
-	# ET les champs où l'on peut reloger, dans la même image. Cadrer le seul
-	# faubourg reviendrait à demander un choix sans montrer les options.
-	_viser_ensemble(ouverture._champs_accessibles() + [Ouverture.MAISONS], 180.0)
+	_cadrer_relogement()
 	selection.sel_fid = -1
 	selection.survol_fid = -1
 	ouverture.actualiser(true)
+
+
+## 🏕️ LE PREMIER CADRAGE PORTE LA PREMIÈRE DÉCISION : le faubourg sinistré ET
+## les champs où l'on peut reloger, dans la même image. Cadrer le seul faubourg
+## reviendrait à demander un choix sans montrer d'où peut venir la réponse.
+## 🔴 Les champs n'y sont NI numérotés NI nommés : le cadrage oriente, la fiche
+## répond.
+func _cadrer_relogement() -> void:
+	pivot.caler(35.0, 42.0)
+	_viser_ensemble(ouverture._champs_accessibles() + [Ouverture.MAISONS], 180.0)
 
 
 func _repere(nom: String) -> void:

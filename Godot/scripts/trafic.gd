@@ -119,6 +119,8 @@ var _roues := Famille.new()
 ## que le rasteriseur jette. Même recette que les voitures.
 var _vide := Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO)
 var _mois := 0.0
+var _comparaisons_ponts := {}
+var _acces_ponts := {}
 
 # --- 🔄 le circuit : ce que la voiture fait au bout de son segment ---------
 ## Un arc = UN segment ORIENTÉ et son virage, sa file décalée à droite. Chaque arc
@@ -162,7 +164,8 @@ static func _bord_gare(route: Dictionary) -> float:
 
 func batir(donnees: Dictionary, etat_ville) -> void:
 	ville = etat_ville
-	var couloirs: Dictionary = donnees["couloirs"]
+	var couloirs: Dictionary = donnees["couloirs"].duplicate(true)
+	_raccorder_bouts_ponts(couloirs)
 	var fentes: Dictionary = donnees.get("places_rue", {})
 	_batir_graphe(couloirs)
 	_batir_arcs(couloirs)
@@ -287,16 +290,15 @@ func avancer(mois: float) -> void:
 	# Retenu même quand la vue est trop haute pour les voitures : c'est ce mois
 	# que le réveil d'une famille repeindra.
 	_mois = mois
-	if not _actif:
-		return
 	# Une seule passe sur les routes pour les deux publics : les voitures y
 	# ajoutent les rues fermées, les usagers doux non.
 	var doux := _impraticables(mois)
-	var indisponibles: Dictionary = doux.duplicate()
-	indisponibles.merge(_fermees)
+	var indisponibles := _indisponibles(mois)
 	var signature := _signature(indisponibles)
 	if signature != _indisponibles_connues:
 		_reaffecter(mois, 0.0, indisponibles)
+	if not _actif:
+		return
 	if absf(mois - _dernier_etat) > 0.02:
 		_maj_garees(mois, false)
 	if absf(mois - _derniere_charge) > 0.05:
@@ -361,7 +363,8 @@ func _maj_roulantes(mois: float, force: bool) -> void:
 		force = true
 	for fid in ville.routes:
 		var praticable := not _indispo_courant.has(fid)
-		var q := float(ville.valeur("r", fid, "charge", mois)) if praticable else 0.0
+		var part: float = ville.part_trafic(fid, mois) if praticable else 0.0
+		var q := float(ville.trafic_vu(fid, mois)) if praticable else 0.0
 		var hier := str(ville.routes[fid].get("hierarchie", "rue"))
 		var libre := float(VITESSES.get(hier, 30.0)) / 3.6
 		# La donnée d'animation ne porte que la vitesse : tant qu'aucune rampe
@@ -372,8 +375,13 @@ func _maj_roulantes(mois: float, force: bool) -> void:
 		vitesses[fid] = v
 		var esp: float = lerpf(ESPACEMENT_CALME, ESPACEMENT_CHARGE,
 			pow(clampf(q / 0.65, 0.0, 1.0), 0.72))
-		quota[fid] = maxi(1, int(floor(float(_long_fid.get(fid, 0.0)) / esp))) \
-			if praticable else 0
+		# 🌳 L'ESPACEMENT NE SUIT PLUS LA CHARGE EN BAS DE COURBE : sous 0,15
+		# il reste collé à ESPACEMENT_CALME, donc une rue à 2 % montrerait
+		# autant de voitures qu'une rue à 12 %. La part du verger s'applique
+		# donc au COMPTE, et le plancher d'une voiture tombe avec elle.
+		var n_vu := float(_long_fid.get(fid, 0.0)) / esp
+		quota[fid] = (maxi(1, int(floor(n_vu))) if part >= 0.999 \
+			else int(round(n_vu * part))) if praticable else 0
 	var occupe := {}
 	for k in _roulantes.size():
 		var a: Dictionary = _roulantes[k]
@@ -469,7 +477,7 @@ func _maj_famille(fam: Famille, mois: float, force: bool, chasse: float,
 			var base := float(FOULE.get(
 				str(ville.routes[fid].get("hierarchie", "rue")), 0.8))
 			f = clampf(base * (1.0 - chasse
-				* float(ville.valeur("r", fid, "charge", mois))), 0.0, 1.0)
+				* float(ville.trafic_vu(fid, mois))), 0.0, 1.0)
 		var quantifie := int(f * 32.0)
 		if not force and int(fam.pas.get(fid, -1)) == quantifie:
 			continue
@@ -767,7 +775,150 @@ func _reaffecter(mois: float, duree: float, indisponibles: Dictionary) -> void:
 func _indisponibles(mois: float) -> Dictionary:
 	var out := _impraticables(mois)
 	out.merge(_fermees)
+	for pont in ville.ponts_coupes():
+		if not acces_pont(pont, mois)["connecte"]:
+			out[pont] = true
 	return out
+
+
+## Chaque rive doit rejoindre un carrefour praticable, sans emprunter un autre pont.
+func acces_pont(fid: int, mois: float) -> Dictionary:
+	var bloquees := _impraticables(mois)
+	bloquees.merge(_fermees)
+	var cle := "%d/%s" % [fid, _signature(bloquees)]
+	if _acces_ponts.has(cle):
+		return _acces_ponts[cle]
+	var bouts := []
+	var cibles := {}
+	for u in range(_deb.size() - 1):
+		var pont := false
+		var rue := false
+		var sorties := {}
+		for e in range(_deb[u], _deb[u + 1]):
+			var f := _fid_arete[e]
+			pont = pont or f == fid
+			if f not in ville.ponts_coupes():
+				rue = true
+				if not bloquees.has(f):
+					sorties[f] = true
+		if sorties.size() >= 3:
+			cibles[u] = true
+		if pont and rue:
+			bouts.append(u)
+	var chemins := []
+	var obstacles := []
+	var possible := bouts.size() >= 2
+	for bout in bouts:
+		var chemin := _chemin_acces(int(bout), cibles, bloquees)
+		possible = possible and chemin["trouve"]
+		for f in chemin["rues"]:
+			if f not in chemins:
+				chemins.append(f)
+			if bloquees.has(f) and f not in obstacles:
+				obstacles.append(f)
+	var resultat := {"connecte": possible and obstacles.is_empty(),
+		"possible": possible, "rues": chemins, "obstacles": obstacles}
+	_acces_ponts[cle] = resultat
+	return resultat
+
+
+func pont_fonctionnel(fid: int, mois: float) -> bool:
+	return ville.route_praticable(fid, mois) and not _fermees.has(fid) \
+		and bool(acces_pont(fid, mois)["connecte"])
+
+
+func _chemin_acces(depart: int, cibles: Dictionary, bloquees: Dictionary) -> Dictionary:
+	var cout := {depart: 0.0}
+	var precedents := {}
+	var ouverts := [depart]
+	while not ouverts.is_empty():
+		var u: int = ouverts[0]
+		for candidat in ouverts:
+			if float(cout[candidat]) < float(cout[u]):
+				u = candidat
+		ouverts.erase(u)
+		if cibles.has(u):
+			var rues := []
+			while u != depart:
+				var p: Array = precedents[u]
+				rues.push_front(p[1])
+				u = p[0]
+			return {"trouve": true, "rues": rues}
+		for e in range(_deb[u], _deb[u + 1]):
+			var f := _fid_arete[e]
+			if f in ville.ponts_coupes() or _fermees.has(f):
+				continue
+			if bloquees.has(f) and ville.base("r", f, "cout_reparation_ke") <= 0.0:
+				continue
+			var v := _vers[e]
+			# Un trajet ouvert passe toujours avant un chantier ; ensuite, le moins coûteux.
+			var prix: float = ville.cout_reparation_ke("r", f) if bloquees.has(f) else 0.0
+			var candidat: float = float(cout[u]) + _temps[e] + prix * 1000000.0
+			if candidat < float(cout.get(v, INF)):
+				cout[v] = candidat
+				precedents[v] = [u, f]
+				if v not in ouverts:
+					ouverts.append(v)
+	return {"trouve": false, "rues": []}
+
+
+## Les couloirs rendus s'arrêtent parfois au bord du carrefour (4,25 m au pont aval).
+## Ne raccorder que les bouts isolés, dans la demi-largeur de la chaussée exportée.
+func _raccorder_bouts_ponts(couloirs: Dictionary) -> void:
+	var points := {}
+	for cle in couloirs:
+		if int(cle) in ville.ponts_coupes():
+			continue
+		for partie in couloirs[cle][1]:
+			for k in range(0, partie.size(), 2):
+				points[Vector2(float(partie[k]), float(partie[k + 1]))] = true
+	for fid in ville.ponts_coupes():
+		if not couloirs.has(str(fid)):
+			continue
+		for partie in couloirs[str(fid)][1]:
+			for k in [0, partie.size() - 2]:
+				var p := Vector2(float(partie[k]), float(partie[k + 1]))
+				var cible := p
+				var distance := float(couloirs[str(fid)][0]) * 0.5
+				for q in points:
+					if p.distance_to(q) < distance:
+						distance = p.distance_to(q)
+						cible = q
+				partie[k] = cible.x
+				partie[k + 1] = cible.y
+
+
+## Un essai de réseau sans rampe, dépense ni réparation appliquée à la partie.
+func prevoir_pont(fid: int, mois: float) -> Dictionary:
+	var avant := _indisponibles(mois)
+	var cle := "%s/%d" % [_signature(avant), fid]
+	if _comparaisons_ponts.has(cle):
+		return _comparaisons_ponts[cle]
+	var apres := avant.duplicate()
+	apres.erase(fid)
+	var acces := acces_pont(fid, mois)
+	for rue in acces["obstacles"]:
+		apres.erase(rue)
+	var brut_avant := _affectation(avant)
+	var brut_apres := _affectation(apres)
+	var resultat := {"rue": -1, "avant": 0.0, "apres": 0.0, "charge_pont": 0.0,
+		"acces": acces}
+	var ecart := 0.001
+	for f in ville.routes:
+		var charges := []
+		for etat in [[brut_avant, avant], [brut_apres, apres]]:
+			var ct := pow(minf(1.0, float(etat[0][0].get(f, 0)) / _calibration[0]), 0.6)
+			var cl := pow(minf(1.0, float(etat[0][1].get(f, 0)) / _calibration[1]), 0.6)
+			charges.append(0.0 if etat[1].has(f) else clampf(0.55 * ct + 0.45 * cl, 0.0, 1.0))
+		if f == fid:
+			resultat["charge_pont"] = charges[1]
+		elif float(charges[1]) - float(charges[0]) > ecart:
+			ecart = float(charges[1]) - float(charges[0])
+			resultat["rue"] = f
+			resultat["avant"] = charges[0]
+			resultat["apres"] = charges[1]
+	_comparaisons_ponts[cle] = resultat
+	return resultat
 
 
 ## 🚶 CE QUI ARRÊTE UN PIÉTON N'EST PAS CE QUI ARRÊTE UNE VOITURE. Une rue
@@ -793,6 +944,7 @@ static func _signature(indisponibles: Dictionary) -> String:
 
 func reinitialiser() -> void:
 	_fermees.clear()
+	_comparaisons_ponts.clear()
 	_semer_circuit()
 	var indisponibles := _indisponibles(0.0)
 	_reaffecter(0.0, 0.0, indisponibles)

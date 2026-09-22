@@ -94,7 +94,7 @@ func executer() -> void:
 	f.close()
 	m._sur_reprise()
 	verifier(m.mois == 0.25, "La copie de secours n'a pas repris l'ancienne partie")
-	verifier("secours" in m.interface._etat_partie.text, "La reprise de secours doit être signalée")
+	verifier("secours" in m.interface.retours.texte.text, "La reprise de secours doit être signalée")
 
 	nettoyer()
 	var partie_incomplete := avant.duplicate(true)

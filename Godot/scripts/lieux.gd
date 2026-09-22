@@ -12,8 +12,12 @@ func _init() -> void:
 	else:
 		push_error("Noms des lieux illisibles : " + CHEMIN)
 
-func nom(couche: String, fid: int) -> String:
-	return str(noms.get(couche, {}).get(str(fid), "%s %d" % [GENRES.get(couche, "Lieu"), fid]))
+## 🌾 `genre` FORCE le mot du nom de secours : un champ s'appelle « Champ 1082 »
+## et jamais « Îlot 1082 » (auteur, 2026-09-18). Il ne touche pas aux noms écrits.
+func nom(couche: String, fid: int, genre := "") -> String:
+	var mot: String = genre if genre != "" else str(GENRES.get(couche, "Lieu"))
+	return str(noms.get(couche, {}).get(str(fid), "%s %d" % [mot, fid]))
 
-func repere(couche: String, fid: int) -> String:
-	return "%s · %s %d" % [nom(couche, fid), GENRES.get(couche, "Lieu"), fid]
+func repere(couche: String, fid: int, genre := "") -> String:
+	var mot: String = genre if genre != "" else str(GENRES.get(couche, "Lieu"))
+	return "%s · %s %d" % [nom(couche, fid, genre), mot, fid]

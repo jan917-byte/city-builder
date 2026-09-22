@@ -70,6 +70,11 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 		return {}
 
 	var c: Dictionary = d["controles"]
+	for fid in o["routes"]:
+		var route: Dictionary = o["routes"][fid]
+		if route.get("etat_crue", "") == "coupe" and not route.get("morceaux_reunis") is Array:
+			_fatal("Pont %s : accès absents ; relancer 07_exporter_godot.py." % fid)
+			return {}
 	# 🌊 Les berges ne sont pas dans la source : elles sont DÉCOUPÉES par 07 aux
 	# franchissements. Leur nombre est donc le contrôle de cette découpe.
 	if int(c.get("berges", 0)) != N_BERGES:

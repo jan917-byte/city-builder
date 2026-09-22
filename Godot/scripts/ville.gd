@@ -9,6 +9,7 @@ extends RefCounted
 const Energie := preload("res://scripts/energie.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Politiques := preload("res://scripts/politiques.gd")
+var _ponts: Array[int] = []
 
 const HORIZON_MOIS := 240                  # 20 ans. Le classeur s'arrête à 60.
 
@@ -23,8 +24,12 @@ const CAPITAL_DEPART := 50.0               # décision 16b
 # 🎚️ LEVEL DESIGN, pas physique : à eux seuls ils décident si le jeu est « dur
 # mais possible ». Trop haut, on équipe sans choisir ; trop bas, on regarde le
 # temps passer. Repère imprimé par `-- --essai`.
-const CAISSE_DEPART_KE := 800.0            # de quoi équiper deux ou trois bons toits
+const CAISSE_DEPART_KE := 3500.0           # relogement, un pont au choix et déblaiement (auteur, 2026-09-20)
 const DOTATION_KE_MOIS := 30.0             # 360 k€/an votés pour la transition
+
+# 🌳 CE QU'IL RESTE DE TRAFIC AU VERGER tant que la boue y est — voir
+# `part_trafic`. 🎚️ Level design, à juger devant l'image.
+const PART_TRAFIC_VERGER := 0.20
 
 var ilots := {}            # fid:int -> {champ: float|String}
 var routes := {}
@@ -59,6 +64,11 @@ var _co2_depart_kt := 0.0
 var _camps := {}
 ## Le morceau de réseau du faubourg sinistré, mesuré au chargement.
 var _morceau_sinistres := -1
+## 🌳 Les tronçons du verger, relevés au chargement : `part_boue` les nomme.
+var _verger := PackedInt32Array()
+## Le mois du dernier calcul de `verger_sous_boue`, et sa réponse.
+var _verger_vu := -1.0
+var _verger_sale := true
 ## 🛠️ MODE AUTEUR, PAS UNE RÈGLE DU JEU : tout chantier engagé est livré
 ## immédiatement. Les prix, la caisse et la dotation restent ceux du jeu — sans
 ## ça, juger la vingtième minute coûterait vingt minutes à chaque essai.
@@ -196,6 +206,9 @@ func charger(d: Dictionary) -> void:
 		ilots[int(cle)] = (o["ilots"] as Dictionary)[cle]
 	for cle in (o["routes"] as Dictionary):
 		routes[int(cle)] = (o["routes"] as Dictionary)[cle]
+		if str(routes[int(cle)].get("etat_crue", "")) == "coupe":
+			_ponts.append(int(cle))
+	_ponts.sort()
 	for cle in (d["riverains"] as Dictionary):
 		var liste := []
 		for f in (d["riverains"] as Dictionary)[cle]:
@@ -234,6 +247,10 @@ func charger(d: Dictionary) -> void:
 			perdus = n
 			pire = int(fid)
 	_morceau_sinistres = morceau("i", pire) if pire >= 0 else -1
+	_verger.clear()
+	for fid in routes:
+		if base("r", fid, "part_boue") > 0.0:
+			_verger.append(int(fid))
 	var m := Energie.ville_mwh(self, 0.0)
 	_co2_depart_kt = float(m["achat"]) * Energie.CO2_KG_KWH / 1000.0
 
@@ -651,6 +668,48 @@ func route_praticable(fid: int, t: float) -> bool:
 		or reparation_finie("r", fid, t)
 
 
+## 🌳 LE VERGER — le quartier de rive gauche que le limon a couvert (nommé par
+## l'auteur le 2026-09-17). `04e` mesure la boue SUR LA CHAUSSÉE et l'exporte
+## en `part_boue` ; ici on ne fait qu'en lire les deux conséquences.
+func au_verger(fid: int) -> bool:
+	return base("r", fid, "part_boue") > 0.0
+
+
+## Reste-t-il de la boue dans le verger ? Tant qu'un seul de ses tronçons n'est
+## pas déblayé, oui. Relu une fois par mois : `part_trafic` est appelé pour les
+## 177 rues à chaque pulsation.
+func verger_sous_boue(t: float) -> bool:
+	if not is_equal_approx(t, _verger_vu):
+		_verger_vu = t
+		_verger_sale = false
+		for fid in _verger:
+			if not reparation_finie("r", fid, t):
+				_verger_sale = true
+				break
+	return _verger_sale
+
+
+## 🚗 LA PART DE SON TRAFIC QU'UNE RUE PORTE ENCORE. Deux règles, demandées
+## le 2026-09-17 : aucune voiture ne roule dans la boue — un tronçon envasé est
+## impraticable jusqu'à son déblaiement, comme un tablier emporté —, et tant
+## qu'il reste de la boue au verger, ses rues déblayées n'en retrouvent qu'une
+## fraction : le quartier est coupé de ses trois ponts et ses maisons sont
+## vides.
+func part_trafic(fid: int, t: float) -> float:
+	if not route_praticable(fid, t):
+		return 0.0
+	if au_verger(fid) and verger_sous_boue(t):
+		return PART_TRAFIC_VERGER
+	return 1.0
+
+
+## La charge telle qu'on la VOIT : celle du réseau, moins ce que la boue retire.
+## Fiche, voitures et foule lisent celle-ci ; l'affectation, elle, travaille sur
+## `charge` seule — sinon une fermeture se calculerait sur un trafic déjà rogné.
+func trafic_vu(fid: int, t: float) -> float:
+	return valeur("r", fid, "charge", t) * part_trafic(fid, t)
+
+
 ## Retour au mois 0. Rien n'ayant été écrit en base, il n'y a rien d'autre à
 ## défaire — et ni géométrie ni caméra ne sont concernées.
 func reinitialiser() -> void:
@@ -671,6 +730,7 @@ func reinitialiser() -> void:
 		ilots[fid]["toit_m2"] = _toit_avant[fid]
 	_toit_avant.clear()
 	_repare.clear()
+	_verger_vu = -1.0
 	vider_rampes()
 
 
@@ -839,8 +899,7 @@ func baisse_crue_toits_m(t: float) -> float:
 # ============================================== densifier (auteur, 2026-09-03)
 
 # 🏢 UN ÉTAGE OU DEUX, DU BÂTIMENT LE PLUS BAS AU PLUS HAUT. Ces cinq nombres
-# sont du LEVEL DESIGN. Repère : la dotation est de 30 k€/mois, la caisse de
-# 800 k€, et 07 dit combien de logements un étage ajoute par îlot.
+# sont du LEVEL DESIGN. 07 dit combien de logements un étage ajoute par îlot.
 # ⚠️ Le patrimoine ne monte pas, et c'est 07 qui le sait (DENSE_INTERDIT) : ici,
 # un îlot qui ne peut pas monter annonce simplement zéro bâtiment.
 const DENSE_ETAGES_MAX := 2
@@ -1030,6 +1089,7 @@ func solde_dense_ke(t: float) -> float:
 # (`camp_places`) — il se règle dans `export_godot/reglages.py`, pas ici.
 const CAMP_KE_LOGEMENT := 1.5
 const CAMP_MOIS := 0.2                     # une semaine de grue
+const CAMP_PERSONNES_LOGEMENT := 2        # Deux places par container, ouverture du 18 septembre.
 
 
 ## Le morceau de réseau qui porte cet objet, −1 s'il n'en a aucun.
@@ -1050,16 +1110,43 @@ func camp_possible(fid: int) -> bool:
 		and camp_places_max(fid) > 0
 
 
-## Les places semées par `07` sur ce champ.
+## Les emplacements de logements semés par `07`, pas le nombre de personnes.
 func camp_places_max(fid: int) -> int:
 	return int(base("i", fid, "camp_places"))
 
 
+func camp_capacite(fid: int) -> int:
+	return camp_places_max(fid) * CAMP_PERSONNES_LOGEMENT
+
+
 ## 🌉 Les sinistrés peuvent-ils y aller à pied ? Même morceau de réseau, donc
 ## aucun pont emporté entre eux et lui.
-func camp_accessible(fid: int) -> bool:
-	var m := morceau_sinistres()
-	return m >= 0 and morceau("i", fid) == m
+func camp_accessible(fid: int, t := 0.0) -> bool:
+	return morceaux_accessibles(t).has(morceau("i", fid))
+
+
+func ponts_coupes() -> Array[int]:
+	return _ponts
+
+
+## La marche retrouve les composantes exportées seulement à la livraison.
+func morceaux_accessibles(t: float, pont_essai := -1) -> Dictionary:
+	var accessibles := {}
+	if morceau_sinistres() < 0:
+		return accessibles
+	accessibles[morceau_sinistres()] = true
+	for _tour in _ponts.size():
+		for fid in _ponts:
+			if fid != pont_essai and not reparation_finie("r", fid, t):
+				continue
+			var reunis: Array = routes[fid].get("morceaux_reunis", [])
+			var rejoint := false
+			for m in reunis:
+				rejoint = rejoint or accessibles.has(int(m))
+			if rejoint:
+				for m in reunis:
+					accessibles[int(m)] = true
+	return accessibles
 
 
 func camp_pose(fid: int) -> bool:
@@ -1076,13 +1163,27 @@ func camp_reste_mois(fid: int, t: float) -> float:
 	return maxf(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS) - t, 0.0)
 
 
-## Combien de logements ce champ porterait si on le posait maintenant : ce dont
-## on a besoin, plafonné par ce qu'il peut tenir. Poser un camp de 195 places
-## pour 12 personnes serait payer 183 containers vides.
+## Les logements commandés, distincts des personnes : le dernier peut rester à moitié occupé.
+## 🔄 Taillé sur ce qui n'a pas encore de place COMMANDÉE, et non plus sur les
+## sinistrés dehors : on doit pouvoir abriter tout le monde avant la première
+## livraison (auteur, 2026-09-22) sans payer deux fois les mêmes places.
 func camp_taille(fid: int, t: float) -> int:
 	if _camps.has(fid):
 		return int(_camps[fid]["places"])
-	return mini(camp_places_max(fid), int(ceil(sans_toit(t))))
+	return mini(camp_places_max(fid), int(ceil(besoin_non_couvert(t) / CAMP_PERSONNES_LOGEMENT)))
+
+
+## Les places que promettent les camps commandés ET atteignables, livrés ou non.
+func places_commandees(t: float) -> int:
+	var n := 0
+	for fid in _camps:
+		if camp_accessible(int(fid), t):
+			n += int(_camps[fid]["places"]) * CAMP_PERSONNES_LOGEMENT
+	return n
+
+
+func besoin_non_couvert(t: float) -> float:
+	return maxf(0.0, _perdus(t) - float(places_commandees(t)))
 
 
 func cout_camp_ke(fid: int, t: float) -> float:
@@ -1111,13 +1212,13 @@ func abriter(fid: int, t: float) -> bool:
 	return true
 
 
-## Les places de camp LIVRÉES et atteignables. Un camp de l'autre rive n'en
+## Les places pour les personnes, LIVRÉES et atteignables. Un camp de l'autre rive n'en
 ## apporte aucune — c'est le seul endroit où l'inaccessibilité se paie.
 func abris_places(t: float) -> int:
 	var n := 0
 	for fid in _camps:
-		if camp_livre(int(fid), t) and camp_accessible(int(fid)):
-			n += int(_camps[fid]["places"])
+		if camp_livre(int(fid), t) and camp_accessible(int(fid), t):
+			n += int(_camps[fid]["places"]) * CAMP_PERSONNES_LOGEMENT
 	return n
 
 
@@ -1142,24 +1243,112 @@ func reloges(t: float) -> float:
 	return minf(_perdus(t), float(abris_places(t)))
 
 
+## 🆘 CE QUE COÛTE UNE PERSONNE DEHORS, chaque mois : repas, couvertures, soins
+## (auteur, 2026-09-22). Sans ce prix, 22 personnes restaient dehors trois ans
+## sans que rien ne bouge. 🎚️ LEVEL DESIGN : 260 dehors = 104 k€ par mois.
+const AIDE_KE_PERSONNE_MOIS := 0.4
+var _aide_cle := ""
+var _aide_marches := []   # [début, personnes dehors], triés
+
+
+func aide_mensuelle_ke(t: float) -> float:
+	return sans_toit(t) * AIDE_KE_PERSONNE_MOIS
+
+
+## ∫ `sans_toit` de 0 à `t`, exacte : le nombre ne change qu'à une livraison
+## de camp ou de réparation. Les marches sont gardées tant que rien n'est commandé.
+func aide_cumulee_ke(t: float) -> float:
+	var cle := "%d/%d/%s" % [_repare.hash(), _camps.hash(), livraison_immediate]
+	if cle != _aide_cle:
+		_aide_cle = cle
+		var dates := [0.0]
+		for c in _repare:
+			var m: PackedStringArray = str(c).split(":")
+			dates.append(float(_repare[c]) + duree_reparation_mois(m[0], int(m[1])))
+		for fid in _camps:
+			dates.append(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS))
+		dates.sort()
+		_aide_marches = []
+		for d in dates:
+			_aide_marches.append([d, sans_toit(d)])
+	var ke := 0.0
+	for i in _aide_marches.size():
+		var debut: float = _aide_marches[i][0]
+		if debut >= t:
+			break
+		var fin: float = minf(t, float(_aide_marches[i + 1][0])) if i + 1 < _aide_marches.size() else t
+		ke += float(_aide_marches[i][1]) * (fin - debut)
+	return ke * AIDE_KE_PERSONNE_MOIS
+
+
 ## Qui vit dans CE camp-là. Les camps se vident dans l'ordre inverse de leur
 ## pose : le dernier posé est le premier que les réparations libèrent.
 func camp_occupants(fid: int, t: float) -> float:
-	if not camp_livre(fid, t) or not camp_accessible(fid):
+	if not camp_livre(fid, t) or not camp_accessible(fid, t):
 		return 0.0
 	var ordre := []
 	for f in _camps:
-		if camp_livre(int(f), t) and camp_accessible(int(f)):
+		if camp_livre(int(f), t) and camp_accessible(int(f), t):
 			ordre.append(int(f))
 	ordre.sort_custom(func(a, b) -> bool:
 		return float(_camps[a]["debut"]) < float(_camps[b]["debut"]))
 	var reste := reloges(t)
 	for f in ordre:
-		var pris: float = minf(reste, float(_camps[f]["places"]))
+		var pris: float = minf(reste, float(_camps[f]["places"]) * CAMP_PERSONNES_LOGEMENT)
 		if f == fid:
 			return pris
 		reste -= pris
 	return 0.0
+
+
+# ======================================== 🌾 CE QUE LES CHAMPS NOURRISSENT
+#
+# Poser des logements sur un champ est toujours possible ; ce bloc est ce que
+# ça coûte. La surface est MESURÉE (`surface_m2`), la conversion ne l'est pas.
+#
+# 🎚️ LEVEL DESIGN, LE SEUL NOMBRE DU SYSTÈME : combien de personnes un hectare
+# de la campagne de Wehrau nourrit sur l'année. 12 = une ceinture nourricière
+# (légumes, fruits, œufs), donc les 68,9 ha mesurés couvrent 15 % de la ville.
+# 🔴 À 3 pers./ha — la moyenne française toutes productions confondues — la
+# campagne ne couvrirait que 4 %, et prendre un champ ne coûterait rien de
+# lisible. C'est ce nombre qui décide si le coût se voit.
+const NOURRITURE_PERSONNES_HA := 12.0
+## Les habitants de Wehrau : le seul endroit où le chiffre du dossier entre
+## dans le moteur, la carte ne portant que des logements.
+const HABITANTS := 5350.0
+
+
+func est_champ(fid: int) -> bool:
+	return str(ilots.get(fid, {}).get("sous_type", "")) == "champ"
+
+
+## Ce que ce champ nourrit en une année, s'il est encore cultivé.
+func champ_nourriture(fid: int) -> float:
+	if not est_champ(fid):
+		return 0.0
+	return base("i", fid, "surface_m2") / 10000.0 * NOURRITURE_PERSONNES_HA
+
+
+## 🔴 UN CAMP PREND LE CHAMP ENTIER, ET POUR DE BON : les containers coupent la
+## parcelle en deux, et rien dans le jeu ne les enlève. La perte suit la
+## mise en chantier : le champ n'est plus cultivable dès l'engagement.
+func champ_cultive(fid: int, t: float) -> bool:
+	return est_champ(fid) and (not _camps.has(fid) or t < float(_camps[fid]["debut"]))
+
+
+## Ce que toute la campagne nourrit encore.
+func nourriture_personnes(t: float) -> float:
+	var n := 0.0
+	for fid in ilots:
+		if champ_cultive(int(fid), t):
+			n += champ_nourriture(int(fid))
+	return n
+
+
+## La part de Wehrau que sa propre campagne nourrit. Elle ne remonte jamais :
+## aucun champ ne se rend.
+func nourriture_part(t: float) -> float:
+	return nourriture_personnes(t) / HABITANTS
 
 
 # ================================== l'université et la mairie (décisions 79 · 80)
@@ -1276,7 +1465,7 @@ func _integrale_part_rendue(fid: int, t: float) -> float:
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
-		- _depense_ke \
+		- _depense_ke - aide_cumulee_ke(t) \
 		- Recherche.depense_ke(self, t) - Politiques.depense_ke(self, t)
 
 
@@ -1315,6 +1504,10 @@ func indicateurs(t: float) -> Dictionary:
 		# et ce qui reste en caisse après les avoir payés.
 		"recette_ke_an": m["production"] * Energie.PRIX_ENERGIE_EUR_MWH / 1000.0,
 		"caisse_ke": caisse_ke(t),
+		# 🌾 Ce que la campagne nourrit encore, et la part de la ville que ça
+		# couvre. Un champ bâti ne revient pas : la jauge ne remonte jamais.
+		"nourriture_personnes": nourriture_personnes(t),
+		"nourriture_part": nourriture_part(t),
 	}
 	out.merge(durabilite(t, co2))
 	return out
@@ -1404,6 +1597,9 @@ func reparer(couche: String, fid: int, t: float) -> bool:
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
 		return false
 	_repare[couche + ":" + str(fid)] = t
+	# ⚠️ En mode auteur le chantier est livré SANS que le mois bouge : le
+	# verger redeviendrait propre au mois suivant seulement.
+	_verger_vu = -1.0
 	_depense_ke += cout
 	if couche == "i":
 		# 🔗 CE QUE LA RECONSTRUCTION REND, et c'est tout : les logements que
@@ -1592,6 +1788,8 @@ const CHANTIER_FAIT := 3
 
 
 func etat_chantier(couche: String, fid: int, t: float) -> int:
+	if couche == "i" and camp_pose(fid):
+		return CHANTIER_FAIT if camp_livre(fid, t) else CHANTIER_EN_COURS
 	# La pose passe devant : sur un îlot déjà relevé, c'est elle le chantier.
 	if couche == "i" and ((_solaire.has(fid) and etat_solaire(fid, t)["en_cours"])
 			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])
@@ -1612,6 +1810,8 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if fid < 0:
 		return out
 	var lot := []   # [quoi, durée totale, ce qui reste]
+	if couche == "i" and camp_pose(fid) and not camp_livre(fid, t):
+		lot.append(["relogement", _delai(CAMP_MOIS), camp_reste_mois(fid, t)])
 	if est_repare(couche, fid) and not reparation_finie(couche, fid, t):
 		lot.append([_genre_chantier(couche, fid),
 			duree_reparation_mois(couche, fid),
@@ -1703,6 +1903,20 @@ func chantiers(t: float) -> Dictionary:
 		en_cours.append({"couche": "r", "fid": fid, "genre": "plantation",
 			"cout_ke": float(_plantation[fid]["cout_ke"]),
 			"reste_mois": plantation_reste_mois(fid, t)})
+	for fid in _camps:
+		if not camp_livre(fid, t):
+			en_cours.append({"couche": "i", "fid": fid, "genre": "relogement",
+				"cout_ke": float(_camps[fid]["cout_ke"]), "reste_mois": camp_reste_mois(fid, t)})
+	for fid in _dense:
+		var d := etat_dense(fid, t)
+		if d["en_cours"]:
+			en_cours.append({"couche": "i", "fid": fid, "genre": "densification",
+				"cout_ke": d["cout_ke"], "reste_mois": d["reste_mois"]})
+	for fid in _stationnement_supprime:
+		var reste := float(_stationnement_supprime[fid]) + _delai(STATIONNEMENT_MOIS) - t
+		if reste > 0.0:
+			en_cours.append({"couche": "r", "fid": fid, "genre": "stationnement",
+				"cout_ke": 0.0, "reste_mois": reste})
 	# Le plus proche de sa fin en tête : c'est l'ordre dans lequel on lit une
 	# liste qui ne tient pas entière à l'écran.
 	en_cours.sort_custom(func(a, b): return a["reste_mois"] < b["reste_mois"])

@@ -29,30 +29,53 @@ const Recherche := preload("res://scripts/recherche.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 const Lieux := preload("res://scripts/lieux.gd")
 var lieux := Lieux.new()
-var _etat_partie: Label
-var _avis_partie: PanelContainer
 var _reprendre: Button
 
-const FOND := Color8(247, 248, 242, 252)
-const FOND_FORT := Color8(226, 235, 227, 255)
-const BORD := Color8(92, 117, 105, 65)
-const TEXTE := Color8(29, 48, 43)
-const GRIS := Color8(95, 112, 103)
-const ACCENT := Color8(39, 101, 84)
-## Le jaune des bandeaux, des filets et du bouton qui engage : c'est lui qui
+## 🔤 LA POLICE, À TRANCHER DEVANT L'IMAGE. Trois candidates dans
+## `Godot/polices/`, toutes sous licence SIL OFL (leur `*-OFL.txt` est à côté du
+## fichier) — donc libres pour un jeu vendu. `-- --police <clé>` en essaie une
+## sans toucher au fichier ; « godot » est la police d'origine.
+const POLICES := {
+	"godot": "",
+	"rubik": "res://polices/Rubik.ttf",
+	"grotesk": "res://polices/SpaceGrotesk.ttf",
+	"barlow": "res://polices/BarlowSemiCondensed.ttf",
+	"nunito": "res://polices/Nunito.ttf",
+	"fredoka": "res://polices/Fredoka.ttf",
+	"baloo": "res://polices/Baloo2.ttf",
+}
+const POLICE := "rubik"
+## 🔷 VERRE BLEU (auteur, 2026-09-20), en remplacement du papier crème. Le fond
+## des panneaux n'est plus une couleur mais la ville floutée (`shaders/verre`) ;
+## `FOND` ne sert donc que de secours si le verre est coupé.
+const VERRE := true
+## 🔴 LEVEL DESIGN, RELEVÉ LE 2026-09-20 après les captures : à 0,66 le petit
+## texte gris se perdait sur les toits rouges. C'est la lisibilité qui tranche,
+## pas l'effet — sous 0,70 on ne lit plus, au-dessus de 0,85 ce n'est plus du verre.
+const VERRE_TEINTE := Color(0.90, 0.94, 1.00, 0.78)
+const FOND := Color8(238, 244, 251, 190)
+const FOND_FORT := Color8(210, 227, 245, 168)
+const BORD := Color8(255, 255, 255, 150)
+const TEXTE := Color8(23, 40, 61)
+const GRIS := Color8(72, 94, 122)
+## 🔠 Le gris des ÉTIQUETTES en capitales : plus sombre que celui des phrases,
+## parce qu'un mot de 10 px en capitales a moins de forme à offrir à l'œil.
+const GRIS_FORT := Color8(46, 74, 108)
+const ACCENT := Color8(26, 88, 148)
+## L'azur des bandeaux, des filets et du bouton qui engage : c'est lui qui
 ## fait « jeu » plutôt que « document ». Jamais sous du texte long.
-const ACCENT_VIF := Color8(226, 168, 44)
+const ACCENT_VIF := Color8(46, 141, 224)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
-const ALERTE := Color8(194, 74, 53)
-## 🌑 LE RAIL EST SOMBRE, LE PAPIER RESTE CLAIR (2026-09-03, image de l'auteur).
-## C'est le seul endroit du prototype qui n'est pas du papier : la barre d'outils
-## est la MACHINE, les panneaux sont le DOCUMENT. Sans ce contraste, une colonne
-## d'icônes crème sur une ville pastel disparaît.
-const RAIL_FOND := Color8(27, 48, 44, 252)
-const RAIL_TUILE := Color8(43, 66, 60, 255)
-const RAIL_SURVOL := Color8(61, 91, 80, 255)
-const RAIL_ICONE := Color8(230, 239, 225)
+const ALERTE := Color8(198, 76, 66)
+## 🌑 LE RAIL EST SOMBRE, LE VERRE RESTE CLAIR (2026-09-03, image de l'auteur).
+## C'est le seul endroit du prototype qui n'est pas translucide : la barre
+## d'outils est la MACHINE, les panneaux sont le DOCUMENT. Sans ce contraste,
+## une colonne d'icônes claires sur une ville pastel disparaît.
+const RAIL_FOND := Color8(21, 38, 61, 244)
+const RAIL_TUILE := Color8(38, 60, 90, 255)
+const RAIL_SURVOL := Color8(60, 94, 136, 255)
+const RAIL_ICONE := Color8(223, 235, 250)
 # 🔧 LES TROIS COULEURS DE LA VUE CHANTIERS, aussi dans le shader
 # (`materiaux.objet`, en linéaire) : n'en changer qu'une fait mentir la légende.
 const CASSE := Color8(220, 58, 48)
@@ -64,6 +87,7 @@ const CHANTIER_MOTS := {
 	"deblaiement": "Déblaiement", "solaire": "Pose de panneaux",
 	"berge": "Rive transformée", "stationnement": "Retrait des places",
 	"densification": "Étages ajoutés",
+	"relogement": "Installation des abris",
 }
 
 
@@ -71,7 +95,7 @@ const CHANTIER_MOTS := {
 ## nombre : il en faut deux pour distinguer « 40 % posés » de « 40 % en route
 ## vers 72 % ». Elle ne se touche pas — le réglage est le curseur d'en dessous.
 class Jauge extends Control:
-	const RESTE := Color8(214, 222, 211)         # le toit encore nu
+	const RESTE := Color8(196, 212, 232, 190)    # le toit encore nu
 	const VISEE := Color8(174, 147, 74)          # l'objectif demandé, pas encore atteint
 	const POSE := Color8(221, 171, 49)           # les panneaux réellement en place
 
@@ -144,7 +168,7 @@ const HAUT := 14.0
 ## sinon la modulation multiplierait deux couleurs.
 class Pictos extends Control:
 	const NB := 10
-	const PALE := Color8(212, 206, 188)
+	const PALE := Color8(198, 212, 230)
 
 	var texture: Texture2D
 	var teinte := Color.WHITE
@@ -170,6 +194,8 @@ class Pictos extends Control:
 var ville: Ville
 var trafic
 var ouverture
+var retours := preload("res://scripts/retours.gd").new()
+var _acces_boutons: VBoxContainer
 var _debut: Button
 ## 🔎 La texture de la miniature, posée par `maquette.gd` avant `batir()`.
 var apercu: Texture2D
@@ -190,8 +216,27 @@ var _reduction_valeur: Label
 var _reduction_pictos: Pictos
 var _fiche_valeurs := {}
 var _fiche_titre: Label
+## Le type de l'objet, sous son nom : une identité, jamais une mesure.
+var _fiche_soustitre: Label
 var _fiche_vide: Label
-var _fiche_grille: GridContainer
+## 🗂️ LA FICHE EST À ONGLETS (auteur, 2026-09-18) : une ligne de résumé, puis
+## une rangée d'icônes, et UN SEUL thème ouvert à la fois — ses chiffres ET son
+## réglage. Ce qui suit est tout le mécanisme.
+## `_dispo` dit quels onglets l'objet courant mérite ; `_bloc_onglet` range
+## chaque bloc de réglage sous son thème ; `_bloc_dispo` garde son droit à
+## s'afficher indépendamment de l'onglet ouvert — sans quoi la phrase de
+## l'urgence ne saurait plus si le camp existe.
+var _resume_ligne: HBoxContainer
+var _resume_icone: TextureRect
+var _resume_texte: Label
+var _resume_dessin := ""
+var _onglets: HBoxContainer
+var _onglet_boutons := {}
+var _onglet_grilles := {}
+var _onglet_actif := ""
+var _dispo := {}
+var _bloc_onglet := {}
+var _bloc_dispo := {}
 var _chantier_bloc: VBoxContainer
 var _chantier_quoi: Label
 var _chantier_reste: Label
@@ -227,14 +272,18 @@ var _apercu_boutons: HBoxContainer
 var _avant_bouton: Button
 var _apres_bouton: Button
 var _message: Label
-var _camera_vue: Label
 var _camera_nord: Button
 var _camera_dessus: Button
 var _temps_label: Label
 var _vitesses := {}
+## 📖 Les deux panneaux du bas, rangés pendant le récit avec tout le reste.
+var _temps_panneau: PanelContainer
+var _camera_panneau: PanelContainer
 var _ville_panneau: PanelContainer
 var _menu_panneau: PanelContainer
 var _menu_boutons := {}
+## 🔒 Les tuiles de la mairie et de l'université, grisées pendant le verrou.
+var _rail_lieux: Array[Button] = []
 ## 🎓🏛️ LES DEUX MENUS QUI ONT UN LIEU (décision 81). `_lieu_ouvert` vaut ""
 ## quand la fiche d'îlot est en place : les deux ne s'affichent jamais ensemble.
 var _lieu_panneau: PanelContainer
@@ -266,7 +315,6 @@ var _apercu_cadre: PanelContainer
 
 var _fiche_fid := -1
 var _fiche_couche := "i"
-var _rue_grille: GridContainer
 var _rue_valeurs := {}
 var _repare_bloc: VBoxContainer
 var _camp_bloc: VBoxContainer
@@ -285,7 +333,6 @@ var _apercu_avant := false
 var _trafic_bloc: VBoxContainer
 var _trafic_stationnement: Button
 var _trafic_axe: Button
-var _berge_grille: GridContainer
 var _berge_valeurs := {}
 var _berge_bloc: VBoxContainer
 var _berge_texte: Label
@@ -318,19 +365,23 @@ var _theme_actuel := {}
 var _detail_ouvert := true
 var _theme_ui: Theme
 var _fonte_grasse: FontVariation
-var _fonte_capitale: FontVariation
+var _police: Font
+var _fonte_texte: FontVariation
+var _fonte_titre: FontVariation
 var _icones := {}
 
 
 func batir() -> void:
-	_fonte_capitale = FontVariation.new()
-	_fonte_capitale.base_font = ThemeDB.fallback_font
-	_fonte_capitale.spacing_glyph = 1
+	_police = _charger_police()
+	# 🔴 TOUT EST PLUS GRAS DEPUIS LE 2026-09-20 (auteur, sur captures) : sur du
+	# verre, un texte maigre disparaît dès qu'un toit rouge passe dessous. Le
+	# corps du texte est déjà en demi-gras, et les trois graisses se suivent.
+	_fonte_texte = _peser(600, 0.16)
+	_fonte_titre = _peser(750, 0.38)
+	_fonte_titre.spacing_glyph = 1
 	# Les nombres du bilan sont gras : dans un panneau sans mots, c'est le seul
 	# poids typographique qui dit lequel des trois éléments d'une ligne compte.
-	_fonte_grasse = FontVariation.new()
-	_fonte_grasse.base_font = ThemeDB.fallback_font
-	_fonte_grasse.variation_embolden = 0.28
+	_fonte_grasse = _peser(700, 0.34)
 	_theme_ui = _creer_theme()
 	_panneau_bilan()
 	_panneau_ilot()
@@ -341,7 +392,43 @@ func batir() -> void:
 	_panneau_calque()
 	_panneau_camera()
 	_controles_temps()
+	retours.batir(self)
 	_sans_focus(self)
+
+
+## La police demandée, ou celle de Godot si le fichier manque — une police
+## absente ne doit pas empêcher la maquette de s'ouvrir.
+func _charger_police() -> Font:
+	var nom := POLICE
+	var args := OS.get_cmdline_user_args()
+	var i := args.find("--police")
+	if i >= 0 and i + 1 < args.size():
+		nom = args[i + 1]
+	var chemin := str(POLICES.get(nom, ""))
+	if chemin == "" or not ResourceLoader.exists(chemin):
+		if chemin != "":
+			push_warning("police introuvable : %s" % chemin)
+		return ThemeDB.fallback_font
+	return load(chemin) as Font
+
+
+## ⚠️ DEUX FAÇONS DE GRAISSER, ET UNE SEULE EST BONNE PAR POLICE : une police
+## variable porte ses vrais dessins de graisse (`wght`) ; une police fixe n'a
+## que le grossissement du contour, qui empâte. Les appliquer toutes les deux
+## donnerait un gras double.
+## 🔴 PIÈGE PAYÉ LE 2026-09-20 : `variation_opentype` n'accepte PAS `{"wght": …}`,
+## la clé doit être le TAG ENTIER — mesuré, « Densifier » en 60 px fait 235 px
+## avec la chaîne quel que soit le poids, 293 px avec le tag à 900. La graisse
+## était silencieusement ignorée, et Rubik se dessinait à son défaut, 300.
+func _peser(poids: int, grossir: float) -> FontVariation:
+	var f := FontVariation.new()
+	f.base_font = _police
+	if _police != null and not _police.get_supported_variation_list().is_empty():
+		var tag := TextServerManager.get_primary_interface().name_to_tag("wght")
+		f.variation_opentype = {tag: poids}
+	else:
+		f.variation_embolden = grossir
+	return f
 
 
 ## 🔴 Un bouton qui garde le focus MANGE le clavier du jeu : Espace le
@@ -355,42 +442,90 @@ func _sans_focus(n: Node) -> void:
 		_sans_focus(e)
 
 
+const RAYON := 14
+const Verre := preload("res://shaders/verre.gdshader")
+
+
 func _boite() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = FOND
+	# ⚠️ AUCUN FOND QUAND LE VERRE EST LÀ : le `StyleBox` se dessine PAR-DESSUS
+	# le verre, et un fond même à moitié transparent rebouche le flou.
+	sb.bg_color = Color(FOND, 0.0) if VERRE else FOND
+	# Le liseré clair est l'arête du verre : c'est lui, et non le fond, qui
+	# donne l'épaisseur. Le verre s'arrête 1 px en deçà pour le laisser voir.
 	sb.border_color = BORD
 	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(14)
+	sb.set_corner_radius_all(RAYON)
 	sb.set_content_margin_all(13)
 	# L'ombre portée est ce qui décolle le panneau de la ville : à 3 px elle
 	# n'existait pas, et tout avait l'air imprimé sur la carte.
-	sb.shadow_color = Color(0.06, 0.12, 0.10, 0.22)
-	sb.shadow_size = 16
-	sb.shadow_offset = Vector2(0, 6)
+	sb.shadow_color = Color(0.05, 0.10, 0.20, 0.26)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2(0, 7)
 	return sb
+
+
+## 🔷 Le fond flouté d'un panneau. ⚠️ DEUX PIÈGES DÉJÀ PAYÉS : `top_level` est
+## ce qui empêche le conteneur de le ranger avec le contenu, mais il le fait
+## aussi passer AU-DESSUS de tout — d'où le `z_index` négatif, qui le remet
+## sous le panneau et son contenu.
+func _vitrer(p: Control) -> void:
+	if not VERRE:
+		return
+	var fond := ColorRect.new()
+	fond.name = "Verre"
+	fond.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fond.set_as_top_level(true)
+	fond.z_index = -1
+	var mat := ShaderMaterial.new()
+	mat.shader = Verre
+	mat.set_shader_parameter("teinte", VERRE_TEINTE)
+	mat.set_shader_parameter("rayon", float(RAYON) - 1.0)
+	fond.material = mat
+	p.add_child(fond)
+	p.move_child(fond, 0)
+	var suivre := func() -> void:
+		fond.global_position = p.global_position + Vector2.ONE
+		fond.size = p.size - Vector2(2.0, 2.0)
+		mat.set_shader_parameter("taille", fond.size)
+	p.item_rect_changed.connect(suivre)
+	suivre.call()
+
+
+## Le fond et le verre d'un coup : les quatorze panneaux du jeu passent par là.
+func _poser_boite(p: Control) -> void:
+	p.theme = _theme_ui
+	p.add_theme_stylebox_override("panel", _boite())
+	_vitrer(p)
 
 
 func _creer_theme() -> Theme:
 	var t := Theme.new()
+	# La police de TOUT ce qui hérite du thème : les panneaux la posent en même
+	# temps que leur fond (`_poser_boite`), donc un seul endroit à changer.
+	t.default_font = _fonte_texte
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color8(252, 253, 248, 245)
-	normal.border_color = BORD
+	# Sur du verre, un bouton n'est pas un aplat : c'est une plaque un peu plus
+	# claire que le panneau, sinon il disparaît dans le fond flouté.
+	normal.bg_color = Color8(255, 255, 255, 132)
+	normal.border_color = Color8(255, 255, 255, 170)
 	normal.set_border_width_all(1)
 	normal.set_corner_radius_all(9)
 	normal.set_content_margin_all(9)
 	normal.content_margin_left = 12
 	normal.content_margin_right = 12
 	var survol := normal.duplicate()
-	survol.bg_color = Color8(226, 239, 222, 255)
+	survol.bg_color = Color8(180, 214, 248, 190)
 	survol.border_color = Color(ACCENT_VIF, 0.85)
-	# 🔧 Un bouton ENFONCÉ est jaune, pas noir : c'est l'état actif de la barre
-	# du bas, et il doit se lire du coin de l'œil sans relire le mot.
+	# 🔧 Un réglage CHOISI est un azur pâle, pas l'azur plein : le seul azur
+	# plein du jeu est le bouton qui engage la caisse (`_habiller_principal`),
+	# et deux pleins côte à côte ne disent plus lequel paie.
 	var presse := normal.duplicate()
-	presse.bg_color = ACCENT_VIF
-	presse.border_color = Color8(178, 126, 26)
+	presse.bg_color = Color8(158, 203, 243, 235)
+	presse.border_color = Color(ACCENT_VIF, 0.9)
 	var inactif := normal.duplicate()
-	inactif.bg_color = Color8(219, 227, 217, 150)
-	inactif.border_color = Color(BORD, 0.45)
+	inactif.bg_color = Color8(226, 234, 244, 90)
+	inactif.border_color = Color8(255, 255, 255, 80)
 	t.set_stylebox("normal", "Button", normal)
 	t.set_stylebox("hover", "Button", survol)
 	t.set_stylebox("pressed", "Button", presse)
@@ -399,14 +534,15 @@ func _creer_theme() -> Theme:
 	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
 	t.set_color("font_color", "Button", TEXTE)
 	t.set_color("font_hover_color", "Button", TEXTE)
-	t.set_color("font_pressed_color", "Button", Color8(52, 38, 8))
+	t.set_color("font_pressed_color", "Button", ACCENT.darkened(0.25))
 	t.set_color("font_disabled_color", "Button", GRIS.lightened(0.15))
+	t.set_font("font", "Button", _fonte_grasse)
 	t.set_font_size("font_size", "Button", 14)
 	t.set_constant("h_separation", "Button", 8)
 	t.set_constant("icon_max_width", "Button", 30)
 	var ligne := StyleBoxFlat.new()
 	ligne.bg_color = Color(0, 0, 0, 0)
-	ligne.border_color = Color(BORD, 0.72)
+	ligne.border_color = Color8(140, 172, 206, 110)
 	ligne.border_width_top = 1
 	ligne.content_margin_top = 5
 	ligne.content_margin_bottom = 5
@@ -414,16 +550,26 @@ func _creer_theme() -> Theme:
 	return t
 
 
-## Les petits titres sont en capitales espacées : c'est le seul écart de
-## typographie du prototype, et il suffit à séparer une étiquette d'un mot de
-## phrase. `FontVariation` est la seule façon d'espacer un glyphe dans Godot.
-func _capitale(txt: String, taille: int, coul: Color) -> Label:
+## 🔠 LA RÈGLE DES CAPITALES (auteur, 2026-09-20, après les captures) :
+## **une capitale ÉTIQUETTE, elle ne nomme pas et elle ne parle pas.**
+## Donc en capitales espacées et grasses : les étiquettes de données
+## (SURFACE, NIVEAUX), les titres de bloc (DENSIFIER), le mois, les deux mots
+## du rail. Jamais : un nom de lieu, un titre de page, une phrase, un bouton.
+## Ce sont ces deux fonctions qui tiennent la règle — pas les chaînes.
+func _etiquette(txt: String, taille: int, coul: Color) -> Label:
 	var l := _label(txt.to_upper(), taille, coul)
-	l.add_theme_font_override("font", _fonte_capitale)
+	l.add_theme_font_override("font", _fonte_titre)
 	return l
 
 
-## Le bandeau qui coiffe un panneau : barre jaune à gauche, titre en capitales.
+## L'autre moitié de la règle : ce qui NOMME. Casse normale, gras, plus grand.
+func _titre(txt: String, taille: int, coul: Color) -> Label:
+	var l := _label(txt, taille, coul)
+	l.add_theme_font_override("font", _fonte_grasse)
+	return l
+
+
+## Le bandeau qui coiffe un panneau : filet azur à gauche, titre.
 func _bandeau(parent: Control, txt: String) -> Label:
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
@@ -436,7 +582,7 @@ func _bandeau(parent: Control, txt: String) -> Label:
 	sb.border_color = ACCENT_VIF
 	p.add_theme_stylebox_override("panel", sb)
 	parent.add_child(p)
-	var l := _capitale(txt, 13, ACCENT)
+	var l := _titre(txt, 15, ACCENT)
 	p.add_child(l)
 	return l
 
@@ -451,8 +597,169 @@ func _titre_section(parent: Control, txt: String) -> void:
 	filet.custom_minimum_size = Vector2(3, 13)
 	filet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(filet)
-	h.add_child(_capitale(txt, 11, ACCENT))
+	h.add_child(_etiquette(txt, 11, ACCENT))
 	parent.add_child(h)
+
+
+# ==========================================================================
+# 🗂️ LA FICHE À ONGLETS (auteur, 2026-09-18)
+# ==========================================================================
+
+## 🔴 L'ORDRE EST CELUI DE LA PRIORITÉ, pas seulement celui de la rangée : le
+## premier onglet disponible s'ouvre, donc un îlot sinistré s'ouvre sur la crue
+## et un champ sur la campagne. Trois colonnes : l'identifiant, le dessin, le
+## mot de l'infobulle — l'onglet n'affiche que l'icône.
+## 🔴 L'ORTHOGRAPHE DES TISSUS, ET RIEN D'AUTRE : la chaîne les exporte sans
+## accent (`ilot_compact`), et « ilot compact » sous le nom d'un lieu se lit
+## comme une faute. La TABLE des tissus, elle, est du level design et reste
+## dans `QGIS/scripts/`. À corriger à la main si un mot ne convient pas.
+const TISSUS := {
+	"maisons_de_ville": "maisons de ville",
+	"coeur_ancien": "cœur ancien",
+	"front_commercant": "front commerçant",
+	"ilot_compact": "îlot compact",
+	"place_minerale": "place minérale",
+	"friche_industrielle": "friche industrielle",
+	"jardins_familiaux": "jardins familiaux",
+	"equipement": "équipement",
+	"riviere": "rivière",
+}
+
+
+const ONGLETS := [
+	["crue", "dangers", "Après la crue"],
+	["campagne", "nourriture", "Campagne"],
+	["bati", "logement", "Bâti"],
+	["trafic", "trafic", "Voitures"],
+	["berge", "eau", "Berge"],
+	["energie", "energie", "Énergie"],
+	["vert", "feuille", "Vert"],
+]
+
+
+## 🗂️ UNE TUILE : l'étiquette au-dessus, le nombre en dessous, tout collé à
+## gauche. 🔄 REMPLACE LA GRILLE « étiquette à gauche, valeur à droite » : sur
+## 310 px, « Toit ········ 0 m² » creusait un vide au milieu de chaque ligne,
+## et c'est ce vide que l'auteur a refusé le 2026-09-18.
+func _tuile(parent: GridContainer, etiquette: String, valeurs: Dictionary,
+		cle: String) -> void:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(v)
+	v.add_child(_etiquette(etiquette, 10, GRIS_FORT))
+	var l := _label("", 14, TEXTE)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(l)
+	valeurs[cle] = l
+
+
+## La clé d'une grille est `onglet_couche` : « après la crue » ne dit pas la
+## même chose d'un îlot et d'une rue.
+func _grille_onglet(parent: Control, cle: String, colonnes: int,
+		valeurs: Dictionary, lignes: Array) -> void:
+	var g := GridContainer.new()
+	g.columns = colonnes
+	g.add_theme_constant_override("h_separation", 12)
+	g.add_theme_constant_override("v_separation", 10)
+	g.visible = false
+	parent.add_child(g)
+	for l in lignes:
+		_tuile(g, l[1], valeurs, l[0])
+	_onglet_grilles[cle] = g
+
+
+func ouvrir_onglet(id: String) -> void:
+	_onglet_actif = id
+	_appliquer_onglets()
+	_clamper_fiche()
+
+
+## L'onglet ouvert est un verre plus dense sous un filet azur ; les autres sont
+## transparents sur un trait clair. C'est le seul fond de la fiche qui dit « ici ».
+func _habiller_onglet(b: Button, ouvert: bool, dessin: String) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = FOND_FORT if ouvert else Color(0, 0, 0, 0)
+	sb.set_corner_radius_all(8)
+	sb.corner_radius_bottom_left = 0
+	sb.corner_radius_bottom_right = 0
+	sb.set_content_margin_all(4)
+	sb.border_width_bottom = 3
+	sb.border_color = ACCENT_VIF if ouvert else Color(BORD, 0.55)
+	var survol := sb.duplicate()
+	survol.bg_color = Color(FOND_FORT, 0.6) if not ouvert else FOND_FORT
+	for etat in ["normal", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(etat, sb)
+	b.add_theme_stylebox_override("hover", survol)
+	b.add_theme_stylebox_override("hover_pressed", survol)
+	b.icon = _icone(dessin, 27, ACCENT if ouvert else GRIS)
+
+
+## Ce que l'objet courant mérite comme onglets. Un onglet qui ne dirait rien
+## n'existe pas : il ne se grise pas — un onglet gris est une porte fermée,
+## une absence est une priorité.
+func _calculer_dispo() -> Dictionary:
+	var d := {}
+	var fid := _fiche_fid
+	if _fiche_couche == "i":
+		var champ := ville.est_champ(fid)
+		d["crue"] = bool(_bloc_dispo.get(_repare_bloc, false))
+		d["campagne"] = champ
+		d["bati"] = not champ
+		d["energie"] = not _solaire_verrouille() 			and ville.valeur("i", fid, "_toit_equipable_m2", _mois) > 0.0
+		d["vert"] = ville.valeur("i", fid, "_part_plate", _mois) > 0.001
+	elif _fiche_couche == "r":
+		d["crue"] = bool(_bloc_dispo.get(_repare_bloc, false))
+		d["trafic"] = true
+		d["vert"] = ville.arbres_plantables(fid) > 0
+	elif _fiche_couche == "b":
+		d["berge"] = true
+	# 🏕️ PENDANT L'URGENCE, IL N'Y A QU'UN THÈME : reloger. C'est ce qui rend
+	# un îlot bâti muet et oriente vers les champs sans les désigner.
+	# 🌉 Puis un seul : la crue, sur un pont coupé ou une rue qui y mène.
+	var verrou := _verrou()
+	var garde: String = {"reloger": "campagne", "pont": "crue"}.get(verrou, "")
+	var permis := verrou == "" or _autorise(_fiche_couche, fid)
+	for id in d.keys():
+		if not d[id] or not permis or (garde != "" and id != garde):
+			d.erase(id)
+	return d
+
+
+## Ce qui s'affiche, une fois `_dispo` connu. Trois choses : les boutons, la
+## grille de l'onglet ouvert, et les blocs de réglage rangés sous leur thème.
+func _appliquer_onglets() -> void:
+	# On GARDE l'onglet d'avant tant qu'il existe sur le nouvel objet : comparer
+	# deux îlots sur l'énergie ne doit pas coûter un clic par îlot.
+	if not _dispo.get(_onglet_actif, false):
+		_onglet_actif = ""
+		for ligne in ONGLETS:
+			if _dispo.get(ligne[0], false):
+				_onglet_actif = ligne[0]
+				break
+	for ligne in ONGLETS:
+		var id: String = ligne[0]
+		var b: Button = _onglet_boutons[id]
+		b.visible = bool(_dispo.get(id, false))
+		if b.visible:
+			_habiller_onglet(b, id == _onglet_actif, ligne[1])
+	# Un onglet seul n'est pas un choix : la rangée disparaît (la berge).
+	_onglets.visible = _dispo.size() > 1
+	var ouverte := "%s_%s" % [_onglet_actif, _fiche_couche]
+	for cle in _onglet_grilles:
+		(_onglet_grilles[cle] as Control).visible = cle == ouverte
+	for bloc in _bloc_onglet:
+		(bloc as Control).visible = bool(_bloc_dispo.get(bloc, false)) 			and String(_bloc_onglet[bloc]) == _onglet_actif
+
+
+## 🔢 CE QUE L'OBJET REND, EN UNE LIGNE. Un îlot compte des logements, un champ
+## des repas, une rue des voitures : une unité, jamais deux à la fois.
+func _maj_resume(dessin: String, texte: String) -> void:
+	if dessin != _resume_dessin:
+		_resume_dessin = dessin
+		_resume_icone.texture = _icone(dessin, 23, ACCENT)
+	_resume_texte.text = texte
+	_resume_ligne.visible = true
 
 
 ## 🔴 LA TABLE DES DESSINS EST HORS DE `_icone` depuis le 2026-09-17 : les
@@ -473,15 +780,17 @@ const DESSINS := {
 	"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
 	"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
 	"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
-	"retour": "<path d='M9 7l-5 5 5 5M5 12h9a6 6 0 016 6'/>",
-	"mairie": "<path d='M2 21h20M4 21V10h16v11M2 10l10-6 10 6M8 21v-7m4 7v-7m4 7v-7'/>",
-	"universite": "<path d='M2 8l10-4 10 4-10 4L2 8zm4 3.5V16c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2v-4.5M22 8v6'/>",
-	# 🏕️🌉 LES QUATRE PROBLEMES QUI SE POSENT SUR LA CARTE (auteur, 2026-09-17).
-	"sans_abri": "<circle cx='12' cy='5.5' r='2.5'/><path d='M12 8.5v6m-3.5 6.5l3.5-6.5 3.5 6.5M8 11.5h8'/>",
-	"ruine": "<path d='M3 21h18M5 21V11l7-5 5 3.6M9 21v-5h3v5M14.5 13.5l6 6m0-6l-6 6'/>",
-	"pont_casse": "<path d='M2 17h5m10 0h5M4 17c0-4.5 3.6-8 8-8m0 0c4.4 0 8 3.5 8 8M6.5 17v3.5m11-3.5v3.5M11 5.5l2.4 3-3.4 1.4 2.2 2.6'/>",
-	"boue": "<path d='M3 15.5c3-2.2 5.2 2.2 8.4 0 3.2-2.2 5.4 1.2 8.6-.4M3 19.5c3-2.2 5.2 2.2 8.4 0 3.2-2.2 5.4 1.2 8.6-.4M7.5 11h.01M12 8.5h.01M16.5 11h.01'/>",
-	"camp": "<path d='M2 21h20M12 3.5L4.5 21M12 3.5L19.5 21M12 10.5L7.5 21h9L12 10.5z'/>",
+	# 🏛️🎓 Les deux lieux du rail (Lucide « landmark », « graduation-cap ») :
+	# sans dessin, ils prenaient celui du diagnostic, deux fois.
+	"mairie": "<path d='M3 22h18M6 18v-7m4 7v-7m4 7v-7m4 7v-7M12 2l8 5H4z'/>",
+	"universite": "<path d='M21.42 10.922a1 1 0 00-.019-1.838L12.83 5.18a2 2 0 00-1.66 0L2.6 9.08a1 1 0 000 1.832l8.57 3.908a2 2 0 001.66 0zM22 10v6M6 12.5V16a6 3 0 0012 0v-3.5'/>",
+	# 🗂️ LES TROIS DESSINS DES ONGLETS DE FICHE (auteur, 2026-09-18), repris de
+	# Lucide (licence ISC) comme le reste de la table : même grille 24, même
+	# trait. L'immeuble ne reprend pas « ville » — une silhouette de commune sur
+	# la fiche d'UN îlot désignerait le mauvais objet.
+	"logement": "<rect x='4' y='2' width='16' height='20' rx='2'/><path d='M9 22v-3a1 1 0 011-1h4a1 1 0 011 1v3'/><path d='M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01'/>",
+	"feuille": "<path d='M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20'/><path d='M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13'/>",
+	"eau": "<path d='M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/>",
 }
 
 
@@ -489,7 +798,9 @@ func _icone(nom: String, taille := 25, coul := TEXTE) -> Texture2D:
 	var cle := "%s_%d_%s" % [nom, taille, coul.to_html(false)]
 	if _icones.has(cle):
 		return _icones[cle]
-	var corps: String = DESSINS.get(nom, DESSINS["diagnostic"])
+	# 🎨 `@` = LA COULEUR DU TRAIT : c'est ce qui permet un aplat (`fill='@'`)
+	# dans une table qui est sinon tout en traits.
+	var corps: String = str(DESSINS.get(nom, DESSINS["diagnostic"])) 		.replace("@", "#" + coul.to_html(false))
 	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='2.0' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [coul.to_html(false), corps]
 	var img := Image.new()
 	var erreur := img.load_svg_from_string(svg, float(taille) / 24.0)
@@ -529,7 +840,7 @@ func _ancrer_detail(p: Control) -> void:
 	p.offset_top = HAUT
 
 
-## Une tuile du rail : sombre, carrée, sans mot. Le jaune de l'état enfoncé est
+## Une tuile du rail : sombre, carrée, sans mot. L'azur de l'état enfoncé est
 ## le même que celui du bouton qui engage la caisse — un seul accent dans le jeu.
 func _habiller_tuile_rail(b: Button) -> void:
 	var normal := StyleBoxFlat.new()
@@ -562,14 +873,14 @@ func _habiller_curseur(s: HSlider) -> void:
 	s.add_theme_stylebox_override("slider", gouttiere)
 
 	var rempli := StyleBoxFlat.new()
-	rempli.bg_color = Jauge.VISEE
+	rempli.bg_color = Color(ACCENT_VIF, 0.75)
 	rempli.set_corner_radius_all(3)
 	rempli.content_margin_top = 3.0
 	rempli.content_margin_bottom = 3.0
 	s.add_theme_stylebox_override("grabber_area", rempli)
 	s.add_theme_stylebox_override("grabber_area_highlight", rempli)
 
-	var poignee := _pastille(Jauge.POSE)
+	var poignee := _pastille(ACCENT)
 	s.add_theme_icon_override("grabber", poignee)
 	s.add_theme_icon_override("grabber_highlight", poignee)
 	s.add_theme_icon_override("grabber_disabled", _pastille(GRIS.darkened(0.4)))
@@ -596,7 +907,7 @@ func _label(txt: String, taille: int, coul: Color) -> Label:
 func _panneau_bilan() -> void:
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
-	p.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(p)
 	_ancrer_detail(p)
 	add_child(p)
 	_ville_panneau = p
@@ -633,6 +944,15 @@ func _panneau_bilan() -> void:
 		var l := _ligne_bilan(v, ligne[1], ligne[2], ligne[3], true)
 		_ville_valeurs[ligne[0]] = l["valeur"]
 		_ville_jauges[ligne[0]] = l["jauge"]
+
+	# 🌾 LA CAMPAGNE EST UN COMPTEUR, PAS UN DÉCOR : c'est elle qui rend
+	# visible le prix d'un logement posé sur un champ. La jauge ne remonte
+	# jamais — un champ bâti ne se rend pas.
+	_titre_section(v, "Campagne")
+	var nourriture := _ligne_bilan(v, "nourriture", Color8(150, 128, 44),
+		"Ce que les champs de Wehrau nourrissent, sur les 5 350 habitants. Bâtir un champ le retire pour de bon.", true)
+	_ville_valeurs["nourriture"] = nourriture["valeur"]
+	_ville_jauges["nourriture"] = nourriture["jauge"]
 
 	_titre_section(v, "Caisse")
 	# Pas de jauge : une caisse n'a pas de plein. Le nombre prend toute la
@@ -738,9 +1058,9 @@ func _panneau_rail() -> void:
 	sb.bg_color = RAIL_FOND
 	sb.set_corner_radius_all(16)
 	sb.set_content_margin_all(10)
-	# La même ombre que les panneaux de papier : sans elle, le rail sombre est
+	# La même ombre que les panneaux de verre : sans elle, le rail sombre est
 	# un trou dans la ville au lieu d'un objet posé dessus.
-	sb.shadow_color = Color(0.10, 0.08, 0.05, 0.38)
+	sb.shadow_color = Color(0.04, 0.09, 0.18, 0.40)
 	sb.shadow_size = 12
 	sb.shadow_offset = Vector2(0, 6)
 	_menu_panneau.add_theme_stylebox_override("panel", sb)
@@ -764,12 +1084,12 @@ func _panneau_rail() -> void:
 	# vue par défaut — sans lui, une colonne de sept icônes ne dit pas où l'on est.
 	var accueil := Button.new()
 	accueil.text = "VILLE"
-	accueil.add_theme_font_override("font", _fonte_capitale)
+	accueil.add_theme_font_override("font", _fonte_titre)
 	accueil.add_theme_font_size_override("font_size", 11)
 	accueil.add_theme_color_override("font_color", RAIL_ICONE)
 	accueil.add_theme_color_override("font_hover_color", RAIL_ICONE)
-	accueil.add_theme_color_override("font_pressed_color", Color8(52, 38, 8))
-	accueil.add_theme_color_override("font_hover_pressed_color", Color8(52, 38, 8))
+	accueil.add_theme_color_override("font_pressed_color", Color.WHITE)
+	accueil.add_theme_color_override("font_hover_pressed_color", Color.WHITE)
 	_habiller_tuile_rail(accueil)
 	accueil.custom_minimum_size = Vector2(56, 34)
 	accueil.toggle_mode = true
@@ -799,11 +1119,13 @@ func _panneau_rail() -> void:
 			int(LIEUX[cle]["fid"]), String(LIEUX[cle]["quoi"])])
 		b.pressed.connect(func() -> void: ouvrir_lieu(cle))
 		v.add_child(b)
+		_rail_lieux.append(b)
 	accueil.set_pressed_no_signal(true)
 	var debut := Button.new()
 	_debut = debut
 	debut.text = "DÉBUT"
 	debut.tooltip_text = "Revoir les premiers pas après la crue."
+	debut.add_theme_font_override("font", _fonte_titre)
 	debut.add_theme_font_size_override("font_size", 11)
 	debut.add_theme_color_override("font_color", RAIL_ICONE)
 	debut.add_theme_color_override("font_hover_color", RAIL_ICONE)
@@ -855,6 +1177,8 @@ func _sur_rail(id: String) -> void:
 ## un thème neuf n'écrit rien de plus ici.
 func _placer_detail() -> void:
 	var genre := str(_theme_actuel.get("genre", ""))
+	if _theme_courant == "" and _bilan_differe():
+		_detail_ouvert = false
 	_ville_panneau.visible = _detail_ouvert and _theme_courant == ""
 	_diagnostic_panneau.visible = _detail_ouvert and genre == "crue"
 	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
@@ -863,12 +1187,18 @@ func _placer_detail() -> void:
 		ouverture.visible = ouverture.ouvert and not _detail_ouvert
 
 
+## Les données générales attendent la fin de la découverte du premier pont.
+func _bilan_differe() -> bool:
+	return ouverture != null and not ouverture.pont_termine \
+		and not ouverture.suite and not ouverture.termine
+
+
 ## Le panneau des thèmes CONTINUS — énergie, trafic — et du tissu. Un thème
 ## neuf n'écrit rien de plus : il tombe ici par son `genre`.
 func _panneau_calque() -> void:
 	_calque_panneau = PanelContainer.new()
 	_calque_panneau.theme = _theme_ui
-	_calque_panneau.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(_calque_panneau)
 	_ancrer_detail(_calque_panneau)
 	_calque_panneau.visible = false
 	add_child(_calque_panneau)
@@ -904,7 +1234,7 @@ func _entete(parent: VBoxContainer) -> Array:
 
 
 func _ecrire_entete(e: Array, t: Dictionary) -> void:
-	(e[0] as Label).text = str(t["nom"]).to_upper()
+	(e[0] as Label).text = str(t["nom"])
 	(e[1] as Label).text = str(t.get("resume", ""))
 
 
@@ -962,7 +1292,7 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 func _panneau_diagnostic() -> void:
 	_diagnostic_panneau = PanelContainer.new()
 	_diagnostic_panneau.theme = _theme_ui
-	_diagnostic_panneau.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(_diagnostic_panneau)
 	_ancrer_detail(_diagnostic_panneau)
 	_diagnostic_panneau.visible = false
 	add_child(_diagnostic_panneau)
@@ -1025,7 +1355,7 @@ const CHANTIERS_LIGNES := 7
 func _panneau_chantiers() -> void:
 	_chantiers_panneau = PanelContainer.new()
 	_chantiers_panneau.theme = _theme_ui
-	_chantiers_panneau.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(_chantiers_panneau)
 	_ancrer_detail(_chantiers_panneau)
 	_chantiers_panneau.visible = false
 	add_child(_chantiers_panneau)
@@ -1105,7 +1435,7 @@ func _panneau_ilot() -> void:
 	var p := PanelContainer.new()
 	_fiche_panneau = p
 	p.theme = _theme_ui
-	p.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(p)
 	p.anchor_left = 1.0
 	p.anchor_right = 1.0
 	p.offset_left = -336
@@ -1132,6 +1462,12 @@ func _panneau_ilot() -> void:
 	v.minimum_size_changed.connect(_clamper_fiche)
 	get_viewport().size_changed.connect(_clamper_fiche)
 	_fiche_titre = _bandeau(v, "Sélection")
+	# Le type se lit sous le nom, jamais dans les chiffres : « champ »,
+	# « habitat collectif », « voie de desserte » sont une identité, pas une
+	# mesure — et à cette place ils ne prennent aucune ligne de tuile.
+	_fiche_soustitre = _label("", 12, GRIS)
+	_fiche_soustitre.visible = false
+	v.add_child(_fiche_soustitre)
 
 	# 🎓🏛️ LA DEUXIÈME PORTE (81), et elle ne change rien à la fiche : celle-ci
 	# reste la fiche de L'ÎLOT — surface, logements, toits, curseurs. Le menu
@@ -1202,7 +1538,7 @@ func _panneau_ilot() -> void:
 	_chantier_quoi = _label("Chantier", 11, ACCENT)
 	_chantier_quoi.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chantier_ligne.add_child(_chantier_quoi)
-	_chantier_reste = _label("", 11, GRIS)
+	_chantier_reste = _label("", 12, GRIS)
 	_chantier_reste.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	chantier_ligne.add_child(_chantier_reste)
 	_chantier_jauge = Jauge.new()
@@ -1215,77 +1551,81 @@ func _panneau_ilot() -> void:
 	_fiche_vide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_fiche_vide)
 
-	_fiche_grille = GridContainer.new()
-	_fiche_grille.columns = 2
-	_fiche_grille.add_theme_constant_override("h_separation", 14)
-	_fiche_grille.add_theme_constant_override("v_separation", 4)
-	_fiche_grille.visible = false
-	v.add_child(_fiche_grille)
-	for ligne in [
-		["tissu", "Type"],
-		["logements", "Logements"],
-		["conso", "Conso."],
-		["production", "Solaire"],
-		["toit", "Toit"],
-		# 🌿 La part PLATE se lit ici et nulle part ailleurs : c'est elle qui
-		# décide si le bloc des toits verts existe sur cet îlot.
-		["plat", "Dont plat"],
-		# L'amortissement est une propriété de l'îlot, pas de la part visée
-		# (`energie.rentabilite_annees`) : sa place est dans la grille.
-		["retour", "Retour"],
-	]:
-		_fiche_grille.add_child(_label(ligne[1], 12, GRIS))
-		var valeur := _label("", 12, TEXTE)
-		valeur.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		_fiche_grille.add_child(valeur)
-		_fiche_valeurs[ligne[0]] = valeur
+	# 🔢 LA LIGNE DU HAUT : UN SEUL CHIFFRE, celui qui dit ce que l'objet rend —
+	# des logements, des repas, des voitures (auteur, 2026-09-18). Tout le reste
+	# est rangé dans les onglets du dessous.
+	_resume_ligne = HBoxContainer.new()
+	_resume_ligne.add_theme_constant_override("separation", 9)
+	_resume_ligne.visible = false
+	v.add_child(_resume_ligne)
+	_resume_icone = TextureRect.new()
+	_resume_icone.custom_minimum_size = Vector2(23, 23)
+	_resume_icone.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	_resume_icone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_resume_ligne.add_child(_resume_icone)
+	_resume_texte = _label("", 16, TEXTE)
+	_resume_texte.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_resume_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_resume_ligne.add_child(_resume_texte)
 
-	# 🔧 LA FICHE D'UNE RUE. Quatre lignes, et la seule qui compte est l'état :
-	# c'est elle qui dit si le bloc du dessous propose un déblaiement ou un
-	# tablier neuf.
-	_rue_grille = GridContainer.new()
-	_rue_grille.columns = 2
-	_rue_grille.add_theme_constant_override("h_separation", 14)
-	_rue_grille.add_theme_constant_override("v_separation", 4)
-	_rue_grille.visible = false
-	v.add_child(_rue_grille)
-	for ligne in [
-		["type", "Voie"],
-		["largeur", "Largeur"],
-		["charge", "Trafic"],
-		["etat", "Après la crue"],
-	]:
-		_rue_grille.add_child(_label(ligne[1], 12, GRIS))
-		var val := _label("", 12, TEXTE)
-		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		_rue_grille.add_child(val)
-		_rue_valeurs[ligne[0]] = val
+	# 🗂️ LA RANGÉE D'ONGLETS. Une icône, pas un mot : cinq mots ne tiennent pas
+	# sur 310 px, et le mot revient dans l'infobulle. L'ordre de `ONGLETS` est
+	# aussi l'ordre de PRIORITÉ — c'est lui qui décide lequel s'ouvre en premier,
+	# donc la crue passe avant l'énergie.
+	_onglets = HBoxContainer.new()
+	_onglets.add_theme_constant_override("separation", 4)
+	_onglets.visible = false
+	v.add_child(_onglets)
+	for ligne in ONGLETS:
+		var b := Button.new()
+		b.tooltip_text = ligne[2]
+		b.focus_mode = Control.FOCUS_NONE
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 40)
+		var id: String = ligne[0]
+		b.pressed.connect(func() -> void: ouvrir_onglet(id))
+		_onglets.add_child(b)
+		_onglet_boutons[id] = b
+
+	# 🗂️ LES GRILLES DE TUILES, une par onglet ET par couche : « après la crue »
+	# ne dit pas la même chose d'un îlot et d'une rue, « vert » non plus. La clé
+	# est `onglet_couche`, et c'est elle qui décide laquelle s'affiche.
+	# 🔴 AUCUNE TUILE NE REPÈTE LA LIGNE DU HAUT : les logements et les repas y
+	# sont déjà, et deux fois le même nombre à deux lignes d'écart se lit comme
+	# deux nombres. La rive est ici parce qu'elle décide qui peut atteindre le
+	# champ une fois les ponts coupés.
+	_grille_onglet(v, "bati_i", 3, _fiche_valeurs, [
+		["surface", "Surface"], ["niveaux", "Niveaux"], ["emplois", "Emplois"]])
+	_grille_onglet(v, "campagne_i", 2, _fiche_valeurs, [
+		["surface_champ", "Surface"], ["rive", "Rive"]])
+	_grille_onglet(v, "energie_i", 3, _fiche_valeurs, [
+		["conso", "Conso./an"], ["production", "Solaire/an"], ["retour", "Retour"]])
+	# 🌿 La part PLATE se lit ici et nulle part ailleurs : c'est elle qui décide
+	# si l'onglet vert existe sur cet îlot.
+	_grille_onglet(v, "vert_i", 3, _fiche_valeurs, [
+		["toit", "Toit"], ["plat", "Dont plat"], ["verdi", "Verdi"]])
+	_grille_onglet(v, "crue_i", 2, _fiche_valeurs, [
+		["perdus", "Logements perdus"], ["detruits", "Bâtiments détruits"],
+		["annonce", "Crue annoncée"], ["reprise", "Reprise annoncée"]])
+
+	# 🔧 LA FICHE D'UNE RUE. La hiérarchie est passée sous le nom, la charge dans
+	# la ligne de résumé : il ne reste ici que ce qu'une décision consomme.
+	_grille_onglet(v, "trafic_r", 2, _rue_valeurs, [
+		["largeur", "Largeur"], ["places", "Places"]])
+	_grille_onglet(v, "vert_r", 2, _rue_valeurs, [
+		["arbres", "Arbres"], ["canopee", "Canopée"]])
+	_grille_onglet(v, "crue_r", 1, _rue_valeurs, [["etat", "Après la crue"]])
 
 	# 🌊 LA FICHE D'UNE BERGE. 🔄 Le nombre qui portait la décision était les m²
 	# d'asphalte posés au-dessus de l'Ilse ; il est tombé à ~0 le 2026-08-31,
 	# quand le corridor des rues de berge est passé sur la terre. Ce qui reste
 	# à montrer, c'est la RIVE : les mètres de quai entre la chaussée et l'eau.
-	_berge_grille = GridContainer.new()
-	_berge_grille.columns = 2
-	_berge_grille.add_theme_constant_override("h_separation", 14)
-	_berge_grille.add_theme_constant_override("v_separation", 4)
-	_berge_grille.visible = false
-	v.add_child(_berge_grille)
-	for ligne in [
-		["bord", "Rive"],
-		["longueur", "Longueur"],
-		["mur", "Mur de quai"],
-		["rive", "Rive minérale"],
-		["rues", "Voies portées"],
-		["bief", "Bief"],
-		["crue", "Crue annoncée"],
-		["etat", "État"],
-	]:
-		_berge_grille.add_child(_label(ligne[1], 12, GRIS))
-		var vb := _label("", 12, TEXTE)
-		vb.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		_berge_grille.add_child(vb)
-		_berge_valeurs[ligne[0]] = vb
+	# Le bief se lit en îlots, pas en fil d'eau : « 7 îlots » décide, « 0,31 à
+	# 0,61 » n'est qu'une coordonnée.
+	_grille_onglet(v, "berge_b", 2, _berge_valeurs, [
+		["mur", "Mur de quai"], ["rive", "Rive minérale"],
+		["rues", "Voies portées"], ["crue", "Crue au pire"],
+		["etat", "État"], ["bief", "Bief"]])
 
 	# 🔴 DEUX BOUTONS, PAS TROIS : l'asphalte est l'état de départ et on n'y
 	# revient pas. Démolir un mur de quai est irréversible dans le jeu comme
@@ -1318,6 +1658,8 @@ func _panneau_ilot() -> void:
 	_repare_bouton = Button.new()
 	_repare_bouton.pressed.connect(func() -> void: _basculer("reparer", true))
 	_repare_bloc.add_child(_repare_bouton)
+	_acces_boutons = VBoxContainer.new()
+	_repare_bloc.add_child(_acces_boutons)
 
 	# 🏕️ ACCUEILLIR LES SINISTRÉS. Le bloc n'existe que sur un champ, et il ne
 	# dit jamais non : un champ que personne ne peut atteindre se pose quand
@@ -1482,6 +1824,15 @@ func _panneau_ilot() -> void:
 	_dense_curseur.value_changed.connect(_sur_curseur_dense)
 	_dense_bloc.add_child(_dense_curseur)
 
+	# 🗂️ CHAQUE BLOC DE RÉGLAGE SOUS SON THÈME. C'est ce qui fait qu'un onglet
+	# porte les chiffres ET la décision : `vert` en tient deux, parce qu'un toit
+	# et un alignement d'arbres sont le même thème sur deux couches.
+	_bloc_onglet = {
+		_repare_bloc: "crue", _camp_bloc: "campagne", _dense_bloc: "bati",
+		_solaire_bloc: "energie", _vert_bloc: "vert", _arbres_bloc: "vert",
+		_trafic_bloc: "trafic", _berge_bloc: "berge",
+	}
+
 	# 🔴 LE RÉCAPITULATIF ET LE BOUTON, EN BAS ET UNE SEULE FOIS. Tous les
 	# réglages posés y arrivent : un prix, une durée, un refus. C'est aussi le
 	# seul endroit où le jeu dit non — un bouton grisé sans phrase est une
@@ -1491,7 +1842,7 @@ func _panneau_ilot() -> void:
 	_recap_bloc.visible = false
 	v.add_child(_recap_bloc)
 	_recap_bloc.add_child(HSeparator.new())
-	_recap_texte = _label("", 12, GRIS)
+	_recap_texte = _label("", 12, GRIS_FORT)
 	_recap_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_recap_bloc.add_child(_recap_texte)
 	_recap_bouton = Button.new()
@@ -1506,6 +1857,27 @@ func _panneau_ilot() -> void:
 	_clamper_fiche()
 
 
+## 📖 TANT QUE LES CARTES DU DÉBUT PASSENT, IL N'Y A PAS DE JEU À L'ÉCRAN
+## (auteur, 2026-09-18) : ni compteurs, ni rail, ni commandes du temps. On
+## regarde Wehrau, on ne lit pas encore un tableau de bord — et surtout on ne
+## voit pas de quoi poser des panneaux avant d'avoir su ce qui s'est passé.
+## Les panneaux qui s'ouvrent au clic (fiche, diagnostic, chantiers, calque)
+## se referment et reviendront par leur propre chemin.
+func montrer_jeu(oui: bool) -> void:
+	for panneau in [_ville_panneau, _menu_panneau, _camera_panneau,
+			_temps_panneau, retours.compteur]:
+		if panneau != null:
+			(panneau as Control).visible = oui
+	if oui:
+		_placer_detail()
+	retours.actualiser_affichage()
+	if not oui:
+		for panneau in [_fiche_panneau, _diagnostic_panneau,
+				_chantiers_panneau, _calque_panneau, _lieu_panneau]:
+			if panneau != null:
+				(panneau as Control).visible = false
+
+
 ## 🛠️ L'ÉCRAN DE DÉPART, ET IL NE PROPOSE QUE DEUX CHOSES. « Auteur » ne
 ## change ni les prix ni la caisse : il livre les chantiers au clic, pour qu'on
 ## puisse juger la vingtième minute sans la jouer vingt fois.
@@ -1513,9 +1885,13 @@ func _panneau_ilot() -> void:
 func cacher_depart() -> void:
 	if _depart_panneau != null:
 		_depart_panneau.visible = false
+		montrer_jeu(true)
 
 
 func montrer_depart() -> void:
+	# 📖 L'écran de choix fait partie de l'ouverture : pas de compteurs
+	# derrière lui non plus.
+	montrer_jeu(false)
 	if _depart_panneau != null:
 		_depart_panneau.visible = true
 		return
@@ -1526,13 +1902,13 @@ func montrer_depart() -> void:
 	_depart_panneau = centre
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
-	p.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(p)
 	p.custom_minimum_size.x = 380
 	centre.add_child(p)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	p.add_child(v)
-	v.add_child(_capitale("Wehrau, après la crue", 15, ACCENT))
+	v.add_child(_titre("Wehrau, après la crue", 17, ACCENT))
 	var mot := _label("La ville est sinistrée et la caisse est courte."
 		+ " Choisissez comment vous voulez jouer.", 13, TEXTE)
 	mot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1566,7 +1942,7 @@ func montrer_depart() -> void:
 func _clamper_fiche() -> void:
 	if _fiche_defilement == null or _fiche_contenu == null:
 		return
-	var dispo: float = get_viewport().get_visible_rect().size.y - HAUT - 16.0 - 26.0
+	var dispo: float = get_viewport().get_visible_rect().size.y - HAUT - 166.0
 	_fiche_defilement.custom_minimum_size.y = minf(
 		_fiche_contenu.get_combined_minimum_size().y, maxf(160.0, dispo))
 
@@ -1582,21 +1958,21 @@ const AZIMUTS := ["du sud", "du sud-est", "de l'est", "du nord-est",
 func _habiller_principal(b: Button) -> void:
 	var plein := StyleBoxFlat.new()
 	plein.bg_color = ACCENT_VIF
-	plein.border_color = Color8(178, 126, 26)
+	plein.border_color = Color8(22, 96, 166)
 	plein.set_border_width_all(1)
 	plein.set_corner_radius_all(9)
 	plein.set_content_margin_all(11)
 	var survol := plein.duplicate()
-	survol.bg_color = Color8(240, 186, 66)
+	survol.bg_color = Color8(74, 163, 240)
 	var presse := plein.duplicate()
-	presse.bg_color = Color8(198, 142, 30)
+	presse.bg_color = Color8(28, 106, 180)
 	b.add_theme_stylebox_override("normal", plein)
 	b.add_theme_stylebox_override("hover", survol)
 	b.add_theme_stylebox_override("pressed", presse)
 	b.add_theme_font_size_override("font_size", 15)
-	b.add_theme_color_override("font_color", Color8(52, 38, 8))
-	b.add_theme_color_override("font_hover_color", Color8(52, 38, 8))
-	b.add_theme_color_override("font_pressed_color", Color8(52, 38, 8))
+	b.add_theme_color_override("font_color", Color.WHITE)
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_color_override("font_pressed_color", Color.WHITE)
 
 
 # ==========================================================================
@@ -1628,7 +2004,7 @@ func _panneau_lieu() -> void:
 	var p := PanelContainer.new()
 	_lieu_panneau = p
 	p.theme = _theme_ui
-	p.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(p)
 	p.anchor_left = 1.0
 	p.anchor_right = 1.0
 	p.offset_left = -336
@@ -1700,7 +2076,7 @@ func ouvrir_lieu(cle: String) -> void:
 	_lieu_ouvert = cle
 	_lieu_panneau.visible = true
 	_fiche_panneau.visible = false
-	_lieu_titre.text = String(LIEUX[cle]["nom"]).to_upper()
+	_lieu_titre.text = String(LIEUX[cle]["nom"])
 	_lieu_intro.text = String(LIEUX[cle]["quoi"])
 	_brancher_lieu()
 	_maj_lieu()
@@ -1723,11 +2099,16 @@ func _brancher_lieu() -> void:
 		var k: String = cle
 		if String(l["genre"]) == "recherche":
 			b.pressed.connect(func() -> void:
-				ville.financer_recherche(k, _mois)
+				if ville.financer_recherche(k, _mois):
+					var sujet: Dictionary = Recherche.SUJETS[k]
+					retours.notifier("%s : financement engagé, %s k€/mois pendant %s." % [sujet["nom"], _milliers(sujet["ke_mois"]), _duree(sujet["mois"])], _mois)
+					retours.actualiser(_mois)
 				_maj_lieu())
 		else:
 			b.pressed.connect(func() -> void:
-				ville.basculer_politique(k, _mois)
+				if ville.basculer_politique(k, _mois):
+					var politique: Dictionary = Politiques.POLITIQUES[k]
+					retours.notifier("%s : %s" % [politique["nom"], "%s k€/mois · %s" % [_milliers(politique["ke_mois"]), politique["quoi"]] if Politiques.active(ville, k) else "subvention arrêtée, prélèvements terminés."], _mois)
 				_maj_lieu())
 
 
@@ -1803,7 +2184,7 @@ func _panneau_camera() -> void:
 	# fichier pour les connaître n'en est pas un.
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
-	p.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(p)
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
 	p.offset_left = 16
@@ -1811,19 +2192,19 @@ func _panneau_camera() -> void:
 	p.offset_bottom = -88
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
+	_camera_panneau = p
 
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 3)
 	p.add_child(v)
-	_camera_vue = _label("", 14, TEXTE)
-	v.add_child(_camera_vue)
+	# 🔄 « vue du sud-est, 42° au-dessus » est passé dans la bulle de la
+	# boussole : la flèche dit déjà où est le nord.
 	var boutons := HBoxContainer.new()
 	v.add_child(boutons)
 	_camera_nord = Button.new()
 	_camera_nord.name = "Boussole"
 	_camera_nord.custom_minimum_size = Vector2(100, 32)
 	_camera_nord.focus_mode = Control.FOCUS_NONE
-	_camera_nord.tooltip_text = "Remettre le nord en haut"
 	_camera_nord.pressed.connect(func(): nord_demande.emit())
 	boutons.add_child(_camera_nord)
 	_camera_dessus = Button.new()
@@ -1832,19 +2213,19 @@ func _panneau_camera() -> void:
 	_camera_dessus.pressed.connect(func(): dessus_demande.emit())
 	boutons.add_child(_camera_dessus)
 	for ligne in [
-		"Glisser : déplacer · clic : sélectionner",
-		"Ctrl + glisser : tourner / incliner",
-		"Molette : zoom au pointeur · V : ville",
+		"Glisser : déplacer · Ctrl : tourner",
+		"Molette : zoom · V : toute la ville",
 	]:
-		v.add_child(_label(ligne, 11, GRIS))
+		v.add_child(_label(ligne, 12, GRIS))
 
 
 func maj_camera(lacet: float, hauteur: float) -> void:
-	if _camera_vue == null:
+	if _camera_nord == null:
 		return
 	var l := fmod(fmod(lacet, 360.0) + 360.0, 360.0)
 	var i := int(roundf(l / 45.0)) % 8
-	_camera_vue.text = "vue %s, %d° au-dessus" % [AZIMUTS[i], int(roundf(hauteur))]
+	_camera_nord.tooltip_text = "Vue %s, %d° au-dessus. Remettre le nord en haut." % [
+		AZIMUTS[i], int(roundf(hauteur))]
 	_camera_nord.text = "%s N" % ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"][i]
 	_camera_dessus.text = "3D" if hauteur >= 89.5 else "Dessus"
 
@@ -1852,7 +2233,7 @@ func maj_camera(lacet: float, hauteur: float) -> void:
 func _controles_temps() -> void:
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
-	p.add_theme_stylebox_override("panel", _boite())
+	_poser_boite(p)
 	# 🔄 AU COIN BAS-GAUCHE depuis le 2026-09-01 : le centre du bas est pris
 	# par la barre des vues.
 	p.anchor_top = 1.0
@@ -1863,11 +2244,12 @@ func _controles_temps() -> void:
 	p.offset_bottom = -16
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
+	_temps_panneau = p
 
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	_temps_label = _capitale("Mois 0", 13, TEXTE)
+	_temps_label = _etiquette("Mois 0", 12, TEXTE)
 	_temps_label.custom_minimum_size.x = 86
 	_temps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(_temps_label)
@@ -1877,6 +2259,9 @@ func _controles_temps() -> void:
 		b.custom_minimum_size = Vector2(52, 40)
 		b.add_theme_font_size_override("font_size", 15)
 		var v: float = choix[1]
+		# ⏯️ La vitesse en cours est ENFONCÉE, pas grisée : grisée, elle se lisait
+		# comme un bouton en panne, et on ne savait plus si le temps courait.
+		b.toggle_mode = true
 		b.pressed.connect(_demander_vitesse.bind(v))
 		h.add_child(b)
 		_vitesses[v] = b
@@ -1902,28 +2287,21 @@ func _controles_temps() -> void:
 		else:
 			_reprendre = bouton
 			bouton.pressed.connect(func() -> void: reprise_demandee.emit())
-	_avis_partie = PanelContainer.new()
-	_avis_partie.theme = _theme_ui
-	_avis_partie.add_theme_stylebox_override("panel", _boite())
-	_avis_partie.anchor_left = 0.5
-	_avis_partie.anchor_right = 0.5
-	_avis_partie.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_avis_partie.offset_top = 16
-	_avis_partie.visible = false
-	add_child(_avis_partie)
-	_etat_partie = _label("", 12, TEXTE)
-	_avis_partie.add_child(_etat_partie)
 
 
+## 💾 Le message passe par le bandeau des retours : un seul bandeau en haut.
 func informer_partie(message: String, disponible: bool) -> void:
-	_etat_partie.text = message
-	_avis_partie.visible = message != ""
+	if message != "" and retours != null:
+		retours.signaler(message)
 	_reprendre.disabled = not disponible
 
 
 func _titre_lieu(couche: String) -> void:
-	_fiche_titre.text = lieux.nom(couche, _fiche_fid).to_upper()
-	_fiche_titre.tooltip_text = lieux.repere(couche, _fiche_fid)
+	# 🌾 Un champ s'appelle « Champ », pas « Îlot » : les 88 champs n'ont pas de
+	# nom écrit, donc c'est ce mot de secours qu'on lit à l'écran.
+	var genre := "Champ" if couche == "i" and ville.est_champ(_fiche_fid) else ""
+	_fiche_titre.text = lieux.nom(couche, _fiche_fid, genre)
+	_fiche_titre.tooltip_text = lieux.repere(couche, _fiche_fid, genre)
 	_fiche_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
@@ -1932,6 +2310,7 @@ func _demander_vitesse(v: float) -> void:
 
 
 func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
+	retours.actualiser_affichage()
 	if indic.is_empty():
 		return
 	_mois = mois
@@ -1954,6 +2333,12 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_regler_jauge("production", prod / maxf(conso, 1.0))
 	_regler_jauge("achat", achat / maxf(conso, 1.0))
 	_regler_jauge("co2", co2 / _co2_zero)
+	# 🌾 Le nombre est en personnes, la jauge en part de la ville : les deux
+	# disent la même mesure, et c'est la jauge qui rend visible ce qu'un champ
+	# bâti coûte.
+	var nourris: float = indic["nourriture_personnes"]
+	_ville_valeurs["nourriture"].text = _nb(nourris, 0) + " pers."
+	_regler_jauge("nourriture", indic["nourriture_part"])
 	# ⚠️ Mémorisée ici : `_maj_fiche()` en a besoin à chaque image, et la
 	# recalculer parcourrait la ville une seconde fois par image.
 	_caisse_ke = indic["caisse_ke"]
@@ -1964,8 +2349,11 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	maj_degats(ville.degats(mois))
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
+	var verrou := _verrou()
+	for b in _rail_lieux:
+		b.disabled = verrou != ""
 	for v in _vitesses:
-		(_vitesses[v] as Button).disabled = is_equal_approx(float(v), vitesse)
+		(_vitesses[v] as Button).set_pressed_no_signal(is_equal_approx(float(v), vitesse))
 	if _fiche_fid >= 0:
 		_maj_fiche()
 	if _lieu_ouvert != "":
@@ -2008,27 +2396,32 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 			else "l'université")
 	if fid != _fiche_fid or couche != _fiche_couche:
 		_vider_pose()   # changer d'objet abandonne tout ce qui était posé
+		_message.text = ""
 	_fiche_fid = fid
 	_fiche_couche = couche
 	_fiche_vide.visible = false
 	_apercu_cadre.visible = apercu != null
-	_fiche_grille.visible = couche == "i"
-	_rue_grille.visible = couche == "r"
-	_berge_grille.visible = couche == "b"
-	_solaire_bloc.visible = couche == "i"
+	_fiche_soustitre.visible = true
+	# 🗂️ CE QUI PEUT S'AFFICHER SUR CET OBJET, onglet ouvert mis à part. Les deux
+	# blocs de la crue se remettent à zéro ici : une berge ne passe jamais par
+	# `_maj_reparation`, donc sans cette ligne elle hériterait du dernier îlot.
+	_bloc_dispo[_repare_bloc] = false
+	_bloc_dispo[_camp_bloc] = false
+	# ☀️ VERROUILLÉ JUSQU'À L'ÉCRAN « investir » (auteur, 2026-09-18) : la ville
+	# reloge et relève d'abord ; les panneaux ne s'ouvrent qu'ensuite.
+	_bloc_dispo[_solaire_bloc] = couche == "i" and not _solaire_verrouille()
 	# 🌿 Un îlot tout en versants ne verra JAMAIS ce bloc : un curseur qui ne
 	# peut rien poser n'est pas une décision grisée, c'est du bruit.
-	_vert_bloc.visible = couche == "i" \
-		and ville.valeur("i", fid, "_part_plate", _mois) > 0.001
+	_bloc_dispo[_vert_bloc] = couche == "i" 		and ville.valeur("i", fid, "_part_plate", _mois) > 0.001
 	# 🏢 Un îlot dont rien ne peut monter n'a pas de bloc : le cœur ancien,
 	# le front commerçant, et tout ce qui n'est pas bâti.
-	_dense_bloc.visible = couche == "i" and ville.dense_logements_etage(fid) > 0
-	_trafic_bloc.visible = couche == "r"
+	_bloc_dispo[_dense_bloc] = couche == "i" and ville.dense_logements_etage(fid) > 0
+	_bloc_dispo[_trafic_bloc] = couche == "r"
 	# 🌳 Seulement là où il y a la place d'un arbre entre la chaussée et la
 	# limite d'emprise : `07` l'a tranché, les ruelles du cœur ancien n'en ont
 	# aucune. Un curseur qui ne planterait rien n'a pas à s'afficher.
-	_arbres_bloc.visible = couche == "r" and ville.arbres_plantables(fid) > 0
-	_berge_bloc.visible = couche == "b"
+	_bloc_dispo[_arbres_bloc] = couche == "r" and ville.arbres_plantables(fid) > 0
+	_bloc_dispo[_berge_bloc] = couche == "b"
 	_maj_fiche()
 
 
@@ -2042,8 +2435,56 @@ func reprendre_fiche(couche: String, fid: int) -> void:
 		montrer(couche, fid)
 
 
+## 🏕️ TANT QUE PERSONNE N'EST RELOGÉ, LA FICHE NE PROPOSE QUE LE CAMP
+## (auteur, 2026-09-17). Le joueur clique où il veut, mais la ville n'ouvre
+## aucun autre chantier pendant que les sinistrés dorment dehors : c'est ce qui
+## oriente vers les champs sans les désigner.
+var _message_urgence := false
+
+
+## 🔒 « reloger », « pont » ou "" : le verrou des premières minutes, tenu par le
+## guide (`ouverture.verrou`). Sans guide (contrôles), rien n'est verrouillé.
+func _verrou() -> String:
+	return ouverture.verrou() if ouverture != null else ""
+
+
+func _autorise(couche: String, fid: int) -> bool:
+	return ouverture == null or ouverture.autorise(couche, fid)
+
+
+func _solaire_verrouille() -> bool:
+	return ouverture != null and not (ouverture.suite or ouverture.termine)
+
+
 func _maj_fiche() -> void:
+	_maj_fiche_contenu()
+	_repare_texte.visible = _repare_texte.text != ""
+	var verrou := _verrou()
+	if verrou != "":
+		_lieu_bouton.visible = false
+	# 🗂️ `_maj_fiche_contenu` vient de dire ce qui existe ; on en déduit les
+	# onglets. On ne les repeint QUE s'ils ont changé : on passe ici à chaque
+	# image, et refaire sept boîtes de style par image pour rien se verrait.
+	# Une berge n'a pas de sous-titre : sans ça, elle garderait une ligne vide.
+	_fiche_soustitre.visible = _fiche_soustitre.text != ""
+	var dispo := _calculer_dispo()
+	if dispo != _dispo:
+		_dispo = dispo
+		_appliquer_onglets()
+	# La phrase de l'urgence s'efface dès qu'elle est fausse : sans ça, elle
+	# survivait sous la fiche du champ qui, lui, peut accueillir.
+	var muet := verrou != "" and not _autorise(_fiche_couche, _fiche_fid)
+	if muet:
+		_message.text = "Rien à engager ici avant d'avoir abrité les sinistrés." \
+			if verrou == "reloger" else "Rien à engager ici avant d'avoir rouvert un pont et ses accès."
+	elif _message_urgence:
+		_message.text = ""
+	_message_urgence = muet
+
+
+func _maj_fiche_contenu() -> void:
 	_maj_chantier()
+	_maj_camp()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()
 		return
@@ -2055,7 +2496,6 @@ func _maj_fiche() -> void:
 		return
 	_titre_lieu("i")
 	_maj_reparation(o)
-	_maj_camp()
 
 	var conso := ville.valeur("i", _fiche_fid, "_conso_mwh", _mois)
 	var prod := ville.valeur("i", _fiche_fid, "_production_mwh", _mois)
@@ -2063,20 +2503,60 @@ func _maj_fiche() -> void:
 	var etat := ville.etat_solaire(_fiche_fid, _mois)
 	var pct := float(etat["actuel"]) * 100.0
 	var cible_pct := float(etat["cible"]) * 100.0
-	(_fiche_valeurs["tissu"] as Label).text = str(o.get("sous_type", "?")).replace("_", " ")
+	# 🌾 Un champ porte déjà « Champ » dans son nom : le répéter dessous ne dit
+	# rien. Les autres tissus, si — « îlot compact » n'est pas dans le nom.
+	var tissu := str(o.get("sous_type", "?"))
+	_fiche_soustitre.text = "" if tissu == "champ" 		else str(TISSUS.get(tissu, tissu.replace("_", " ")))
+	var champ := ville.est_champ(_fiche_fid)
 	# 🔄 Par `ville.valeur` depuis le 2026-08-21, plus par la fiche brute :
 	# `logements` BOUGE maintenant — la crue en a retiré 417, une
 	# reconstruction les rend, et la base seule affichait toujours 0.
-	(_fiche_valeurs["logements"] as Label).text = _nb(
-		ville.valeur("i", _fiche_fid, "logements", _mois), 0)
-	(_fiche_valeurs["conso"] as Label).text = _nb(conso, 0) + " MWh/an"
-	(_fiche_valeurs["production"] as Label).text = _nb(prod, 0) + " MWh/an"
-	(_fiche_valeurs["toit"] as Label).text = _nb(toit, 0) + " m²"
+	var loges := ville.valeur("i", _fiche_fid, "logements", _mois)
+	var nourris := ville.champ_nourriture(_fiche_fid)
+	var hectares := float(o.get("surface_m2", 0.0)) / 10000.0
+	if champ:
+		# 🌾 CE QUE CE CHAMP-LÀ NOURRIT, en clair et avant toute décision.
+		_maj_resume("nourriture", ("%s personnes nourries" % _nb(nourris, 0))
+			if ville.champ_cultive(_fiche_fid, _mois) and nourris >= 1.5
+			else "ne produit plus de nourriture")
+		(_fiche_valeurs["surface_champ"] as Label).text = "%s ha" % _nb(hectares, 2)
+		(_fiche_valeurs["rive"] as Label).text = str(o.get("rive", "?"))
+	else:
+		_maj_resume("logement", "aucun logement" if loges < 0.5
+			else ("1 logement" if loges < 1.5 else "%s logements" % _nb(loges, 0)))
+		(_fiche_valeurs["surface"] as Label).text = "%s ha" % _nb(hectares, 2)
+		(_fiche_valeurs["niveaux"] as Label).text = _nb(
+			float(o.get("hauteur", 0.0)), 0)
+		(_fiche_valeurs["emplois"] as Label).text = _nb(
+			float(o.get("emplois", 0)), 0)
+
+	# 🔴 « MWh/an » COUPE LA TUILE EN DEUX sur trois colonnes : le « par an » est
+	# passé dans l'étiquette, et les milliers prennent leur espace comme
+	# partout ailleurs.
+	(_fiche_valeurs["conso"] as Label).text = _milliers(conso) + " MWh"
+	(_fiche_valeurs["production"] as Label).text = _milliers(prod) + " MWh"
+	(_fiche_valeurs["toit"] as Label).text = _milliers(toit) + " m²"
 	var plate := ville.valeur("i", _fiche_fid, "_part_plate", _mois)
 	(_fiche_valeurs["plat"] as Label).text = "%d %%" % int(roundf(plate * 100.0))
+	(_fiche_valeurs["verdi"] as Label).text = _milliers(
+		ville.valeur("i", _fiche_fid, "_toit_vert_m2", _mois)) + " m²"
+	# L'amortissement est une propriété de l'îlot, pas de la part visée
+	# (`energie.rentabilite_annees`).
 	var ans := ville.valeur("i", _fiche_fid, "_rentabilite_annees", _mois)
-	(_fiche_valeurs["retour"] as Label).text = \
-		"—" if is_inf(ans) else "%d ans" % int(roundf(ans))
+	(_fiche_valeurs["retour"] as Label).text = 		"—" if is_inf(ans) else "%d ans" % int(roundf(ans))
+
+	# 🌊 CE QUE LA CRUE A PRIS. La reprise annoncée est par le noyau et non par
+	# la fiche brute : une berge livrée en aval a pu la faire baisser.
+	# Relevé, l'îlot n'a plus rien de perdu : les chiffres de l'export restaient.
+	var releve := ville.reparation_finie("i", _fiche_fid, _mois)
+	(_fiche_valeurs["perdus"] as Label).text = "0" if releve else _nb(
+		float(o.get("logements_sinistres", 0)), 0)
+	(_fiche_valeurs["detruits"] as Label).text = "0" if releve else _nb(
+		float(o.get("batiments_ruines", 0)), 0)
+	(_fiche_valeurs["annonce"] as Label).text = "%s m" % _nb(
+		ville.valeur("i", _fiche_fid, "hauteur_eau_annonce", _mois), 2)
+	(_fiche_valeurs["reprise"] as Label).text = "%d %%" % int(roundf(
+		100.0 * ville.valeur("i", _fiche_fid, "part_ruinee_apres", _mois)))
 
 	# 🔴 On passe ici À CHAQUE IMAGE : le curseur ne se repositionne que sans
 	# choix en cours, sinon on garde la position de l'auteur, remontée au
@@ -2140,7 +2620,9 @@ func _posee(cle: String, texte: String, valeur: Variant = true) -> String:
 ## se voit à l'écran ; ce qui décide, c'est le parc que l'îlot gagne — et la
 ## consommation qui vient avec.
 func _maj_dense() -> void:
-	if not _dense_bloc.visible:
+	# 🗂️ L'onglet fermé n'a rien à remettre à jour ; ce qui décide reste
+	# `_bloc_dispo`, et non la visibilité, qui suit l'onglet ouvert.
+	if not bool(_bloc_dispo.get(_dense_bloc, false)):
 		return
 	var etat := ville.etat_dense(_fiche_fid, _mois)
 	var n := int(etat["batiments"])
@@ -2205,7 +2687,9 @@ func _dense_etages() -> int:
 ## ce qu'il annonce est l'effet de TOUTE la ville, parce que c'est là qu'il a
 ## lieu — un toit seul rachète des centimètres, le programme rachète des mètres.
 func _maj_vert() -> void:
-	if not _vert_bloc.visible:
+	# 🗂️ L'onglet fermé n'a rien à remettre à jour ; ce qui décide reste
+	# `_bloc_dispo`, et non la visibilité, qui suit l'onglet ouvert.
+	if not bool(_bloc_dispo.get(_vert_bloc, false)):
 		return
 	var etat := ville.etat_vert(_fiche_fid, _mois)
 	var pct := float(etat["actuel"]) * 100.0
@@ -2250,7 +2734,9 @@ func _maj_vert() -> void:
 ## et avec le même verrou : sans choix en cours la fiche commande, sinon on
 ## garde la position de l'auteur, remontée au nombre déjà en terre.
 func _maj_arbres() -> void:
-	if not _arbres_bloc.visible:
+	# 🗂️ L'onglet fermé n'a rien à remettre à jour ; ce qui décide reste
+	# `_bloc_dispo`, et non la visibilité, qui suit l'onglet ouvert.
+	if not bool(_bloc_dispo.get(_arbres_bloc, false)):
 		return
 	var plafond := Ville.PLANTATION_CANOPEE_MAX
 	var cano := ville.valeur("r", _fiche_fid, "canopee", _mois)
@@ -2268,6 +2754,8 @@ func _maj_arbres() -> void:
 	_ecrit_curseur = false
 	var vise: float = maxf(pct, _arbres_choix if _arbres_choix >= 0.0 else pct)
 	_arbres_jauge.regler(pct / 100.0, vise / 100.0)
+	(_rue_valeurs["arbres"] as Label).text = "%d sur %d" % [en_terre, tous]
+	(_rue_valeurs["canopee"] as Label).text = "%d %%" % int(roundf(cano * 100.0))
 	if en_cours:
 		_arbres_valeur.text = "%d arbres · reprise dans %s" % [
 			ville.arbres_a(_fiche_fid, _arbres_choix / 100.0 * plafond) if
@@ -2397,7 +2885,12 @@ func _maj_recap() -> void:
 	if r.has("berge"):
 		quoi.append(Ville.BERGE_NOMS[int(r["berge"])])
 	if r.has("camp"):
-		quoi.append("camp de %d logements" % ville.camp_taille(_fiche_fid, _mois))
+		# 🌾 Le récapitulatif porte les DEUX prix : celui de la caisse est sur
+		# le bouton, celui du champ ici.
+		quoi.append("%d logements · %d places, %s personnes nourries en moins" % [
+			ville.camp_taille(_fiche_fid, _mois),
+			ville.camp_taille(_fiche_fid, _mois) * Ville.CAMP_PERSONNES_LOGEMENT,
+			_nb(ville.champ_nourriture(_fiche_fid), 0)])
 	if r.has("reparer"):
 		quoi.append(_verbe_reparation(_fiche_couche,
 			ville.objets(_fiche_couche).get(_fiche_fid, {})).to_lower())
@@ -2444,6 +2937,8 @@ func apercu_demande() -> Dictionary:
 	var places := true
 	var roule := true
 	var arbres := 0.0
+	# 🏕️ Le nombre d'abris que la miniature doit poser sur le champ.
+	var camp := 0
 	# 🏢 (avancement, part d'un bâtiment, mètres) — ce que le shader attend.
 	# ⚠️ Un Vector4, pas une Color : une couleur passerait en espace linéaire.
 	var dense := Vector4(0.0, 1.0, 0.0, 0.0)
@@ -2451,7 +2946,7 @@ func apercu_demande() -> Dictionary:
 		return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 			"verdi": verdi, "plate": plate,
 			"futur": futur, "berge": berge, "places": places, "roule": roule,
-			"arbres": arbres, "dense": dense}
+			"arbres": arbres, "dense": dense, "camp": camp}
 	var r: Dictionary = {} if _apercu_avant else _reglages()
 	if _fiche_couche == "i":
 		equipe = ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois)
@@ -2477,6 +2972,17 @@ func apercu_demande() -> Dictionary:
 			if e > 0 and vise > 0.0:
 				dense = Vector4(vise, float(ed["pas"]),
 					float(e) * Ville.DENSE_ETAGE_M, 0.0)
+		# 🏕️ LE CAMP DANS LA MINIATURE (auteur, 2026-09-18) : il manquait, et
+		# c'était le seul chantier qu'on payait sans l'avoir vu. Même règle que
+		# les autres réglages — au survol du bouton comme une fois posé — et en
+		# AVANT, seul le camp déjà livré.
+		if ville.camp_possible(_fiche_fid):
+			if ville.camp_pose(_fiche_fid):
+				if not _apercu_avant or ville.camp_livre(_fiche_fid, _mois):
+					camp = ville.camp_taille(_fiche_fid, _mois)
+			elif not _apercu_avant and (r.has("camp")
+					or (not _camp_bouton.disabled and _camp_bouton.is_hovered())):
+				camp = ville.camp_taille(_fiche_fid, _mois)
 	if _fiche_couche != "b":
 		futur = not _apercu_avant \
 			and (ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
@@ -2516,7 +3022,7 @@ func apercu_demande() -> Dictionary:
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 		"verdi": verdi, "plate": plate,
 		"futur": futur, "berge": berge, "places": places, "roule": roule,
-		"arbres": arbres, "dense": dense}
+		"arbres": arbres, "dense": dense, "camp": camp}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait
@@ -2647,9 +3153,9 @@ func remis_a_zero() -> void:
 ## Le compte rendu d'une commande partie. 🔄 S'appelait `confirmer_solaire` et
 ## ne parlait que des panneaux ; elle vaut pour les cinq réglages depuis le
 ## 2026-08-31. Le nom reste : `--essai` l'appelle.
-func confirmer_solaire(cout_ke := 0.0) -> void:
+func confirmer_solaire(_cout_ke := 0.0) -> void:
 	_vider_pose()   # la commande est partie : la fiche reprend la main
-	_message.text = "Chantier engagé, %s k€." % _milliers(cout_ke)
+	_message.text = "" # Le constat reste dans la notification et le journal de son lieu.
 	_maj_fiche()
 
 
@@ -2702,36 +3208,43 @@ func _maj_fiche_rue() -> void:
 	var etat := str(o.get("etat_crue", "intact"))
 	if ville.est_repare("r", _fiche_fid):
 		etat = "repare"
-	(_rue_valeurs["type"] as Label).text = str(o.get("hierarchie", "?"))
-	(_rue_valeurs["largeur"] as Label).text = "%s m" % _nb(float(o.get("largeur_m", 0.0)), 0)
-	(_rue_valeurs["charge"] as Label).text = "%d %%" % int(roundf(
-		ville.valeur("r", _fiche_fid, "charge", _mois) * 100.0))
-	_trafic_bloc.visible = true
+	_fiche_soustitre.text = "pont" if _fiche_fid in ville.ponts_coupes() \
+		else str(o.get("hierarchie", "?"))
+	# 🚗 CE QU'UNE RUE REND, c'est le trafic qu'elle porte : c'est lui qui decide
+	# si la fermer se paie, et il est le seul chiffre de sa ligne du haut.
+	_maj_resume("trafic", "%d %% de trafic" % int(roundf(
+		ville.trafic_vu(_fiche_fid, _mois) * 100.0)))
+	(_rue_valeurs["largeur"] as Label).text = "%s m" % _nb(
+		float(o.get("largeur_m", 0.0)), 0)
+	(_rue_valeurs["places"] as Label).text = _nb(
+		ville.valeur("r", _fiche_fid, "stationnement", _mois), 0)
+	_bloc_dispo[_trafic_bloc] = true
 	var stationnement_engage := ville.stationnement_en_suppression(_fiche_fid)
 	var axe_ferme: bool = trafic != null and trafic.axe_ferme(_fiche_fid)
 	var stationnement_fini := stationnement_engage and ville.valeur(
 		"r", _fiche_fid, "stationnement", _mois) < 0.5
 	var a_des_places := ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5
-	# 🅿️ Le bouton s'efface derrière la fermeture, qui emporte déjà les places.
+	# 🅿️ Le bouton s'efface derriere la fermeture, qui emporte deja les places.
 	var emportees: bool = _pose.has("axe") and a_des_places
-	_trafic_stationnement.text = ("Places retirées" if stationnement_fini \
-		else "Places · 2 mois") if stationnement_engage \
-		else ("✓ Places emportées par la fermeture" if emportees \
-		else _posee("places", "Retirer les places"))
-	_trafic_stationnement.disabled = stationnement_engage or emportees \
-		or not a_des_places
+	_trafic_stationnement.text = ("Places retirées" if stationnement_fini 		else "Places · 2 mois") if stationnement_engage 		else ("✓ Places emportées par la fermeture" if emportees 		else _posee("places", "Retirer les places"))
+	_trafic_stationnement.disabled = stationnement_engage or emportees 		or not a_des_places
 	_trafic_axe.text = ("Fermée · report" if trafic.report_en_cours(
-		_fiche_fid, _mois) else "Fermée") if axe_ferme \
-		else _posee("axe", "Fermer aux voitures")
-	_trafic_axe.disabled = axe_ferme or not ville.route_praticable(_fiche_fid, _mois) \
-		or ville.valeur("r", _fiche_fid, "charge", _mois) < 0.20
+		_fiche_fid, _mois) else "Fermée") if axe_ferme 		else _posee("axe", "Fermer aux voitures")
+	_trafic_axe.disabled = axe_ferme or not ville.route_praticable(_fiche_fid, _mois) 		or ville.trafic_vu(_fiche_fid, _mois) < 0.20
 	_maj_arbres()
+	# 🌳 Le verger se NOMME sur la fiche : c'est là qu'on comprend pourquoi
+	# la rue est vide. Déblayée, elle le reste tant que le quartier l'est.
+	var boue := float(o.get("part_boue", 0.0))
+	var sous_boue := boue > 0.0 and etat != "repare"
 	(_rue_valeurs["etat"] as Label).text = {
 		"coupe": "franchissement emporté",
 		"fragile": "pile déchaussée",
-		"repare": "remise en service",
-	}.get(etat, "%s m d'eau" % _nb(float(o.get("hauteur_eau", 0.0)), 1)
-		if float(o.get("hauteur_eau", 0.0)) > 0.1 else "intacte")
+		"repare": "verger déblayé" if boue > 0.0 else "remise en service",
+	}.get(etat, "le verger · %d %% sous la boue" % int(roundf(boue * 100.0))
+		if sous_boue else ("%s m d'eau" % _nb(float(o.get("hauteur_eau", 0.0)), 1)
+		if float(o.get("hauteur_eau", 0.0)) > 0.1 else "intacte"))
+	if etat == "repare" and _fiche_fid in ville.ponts_coupes():
+		(_rue_valeurs["etat"] as Label).text = "liaison ouverte" if trafic.pont_fonctionnel(_fiche_fid, _mois) else "tablier livré · accès coupé"
 	_maj_reparation(o)
 	_maj_recap()
 
@@ -2744,24 +3257,25 @@ func _maj_fiche_berge() -> void:
 		return
 	var etat := ville.berge_etat(_fiche_fid, _mois)
 	_titre_lieu("b")
-	(_berge_valeurs["bord"] as Label).text = str(o.get("rive", "?"))
-	(_berge_valeurs["longueur"] as Label).text = "%s m" % _nb(
-		float(o.get("longueur_m", 0.0)), 0)
+	# Le nom de la berge porte déjà sa rive : un sous-titre la répéterait.
+	_fiche_soustitre.text = ""
+	# 🌊 CE QU'UNE BERGE REND, c'est sa longueur : c'est elle qu'on paie au metre.
+	_maj_resume("eau", "%s m de berge" % _nb(float(o.get("longueur_m", 0.0)), 0))
 	(_berge_valeurs["mur"] as Label).text = "%s m" % _nb(
 		float(o.get("mur_m", 0.0)), 0)
 	(_berge_valeurs["rive"] as Label).text = "%s m" % _nb(
 		float(o.get("rive_m", 0.0)), 1)
 	var rues: Array = o.get("rues", [])
 	(_berge_valeurs["rues"] as Label).text = "aucune" if rues.is_empty() 		else "%d" % rues.size()
-	# 🌊 CE QU'ELLE RACHÈTE. Le bief se lit en îlots, pas en fil d'eau : « 7
-	# îlots » décide, « 0,31 à 0,61 » n'est qu'une coordonnée.
+	# 🌊 CE QU'ELLE RACHETE. Le bief se lit en ilots, pas en fil d'eau : « 7
+	# ilots » decide, « 0,31 a 0,61 » n'est qu'une coordonnee.
 	var bief: Array = ville.ilots_du_bief(_fiche_fid)
-	(_berge_valeurs["bief"] as Label).text = "aucun îlot exposé" if bief.is_empty() \
-		else "%d îlots, dont le %d" % [bief.size(), int(bief[0])]
+	(_berge_valeurs["bief"] as Label).text = "aucun îlot exposé" if bief.is_empty() 		else "%d îlot%s, dont le %d" % [bief.size(),
+			"s" if bief.size() > 1 else "", int(bief[0])]
 	var pire := 0.0
 	for f in bief:
 		pire = maxf(pire, ville.valeur("i", int(f), "hauteur_eau_annonce", _mois))
-	(_berge_valeurs["crue"] as Label).text = "%s m au pire" % _nb(pire, 2)
+	(_berge_valeurs["crue"] as Label).text = "%s m" % _nb(pire, 2)
 	var reste := ville.berge_reste_mois(_fiche_fid, _mois)
 	# 🔎 L'état RÉALISÉ, et lui seul : la barre du haut de fiche porte déjà le
 	# chantier en cours et ce qu'il reste à attendre.
@@ -2804,22 +3318,28 @@ func _maj_fiche_berge() -> void:
 ## c'est une règle.
 func _maj_reparation(o: Dictionary) -> void:
 	var couche := _fiche_couche
+	var pont := couche == "r" and _fiche_fid in ville.ponts_coupes()
+	_maj_acces(pont)
 	var prix := float(o.get("cout_reparation_ke", 0.0))
 	if prix <= 0.0:
-		_repare_bloc.visible = false
+		_bloc_dispo[_repare_bloc] = false
 		return
-	_repare_bloc.visible = true
+	_bloc_dispo[_repare_bloc] = true
 	var fini: bool = ville.reparation_finie(couche, _fiche_fid, _mois)
 	var engage: bool = ville.est_repare(couche, _fiche_fid)
 	var verbe := _verbe_reparation(couche, o)
 	if fini:
-		_repare_texte.text = "Réparé."
+		_repare_texte.text = "Remis en état."
+		if pont:
+			_repare_texte.text = ouverture.description_pont(_fiche_fid) if ouverture != null else "Pont reconstruit."
 		_repare_bouton.text = "Terminé"
 		_repare_bouton.disabled = true
 		return
 	if engage:
-		_repare_texte.text = "En chantier · %s" % _duree(
-			ville.reste_reparation_mois(couche, _fiche_fid, _mois))
+		# La barre du haut de fiche dit déjà le temps qui reste.
+		_repare_texte.text = ""
+		if pont and ouverture != null:
+			_repare_texte.text = ouverture.description_pont(_fiche_fid)
 		_repare_bouton.text = "Chantier en cours"
 		_repare_bouton.disabled = true
 		return
@@ -2830,19 +3350,60 @@ func _maj_reparation(o: Dictionary) -> void:
 		verbe, _milliers(prix),
 		_duree(ville.duree_reparation_mois(couche, _fiche_fid))]
 	_repare_texte.text = _degat_en_clair(couche, o) + "  " + phrase
+	if couche == "r" and str(o.get("etat_crue", "")) == "coupe" and ouverture != null:
+		# Le dégât est déjà dans la grille ; le pont et ses accès font un seul prix.
+		_repare_texte.text = ouverture.description_pont(_fiche_fid)
+		var manque: float = maxf(0.0, prix - ville.caisse_ke(_mois))
+		if manque > 0.0:
+			_repare_texte.text += "\nÀ épargner : %s k€." % _milliers(manque)
 	_repare_bouton.text = _posee("reparer", "%s · %s k€" % [verbe, _milliers(prix)])
 	_repare_bouton.disabled = false
+
+
+func _maj_acces(pont: bool) -> void:
+	_acces_boutons.visible = pont and ouverture != null
+	if not _acces_boutons.visible:
+		return
+	var acces: Dictionary = trafic.acces_pont(_fiche_fid, _mois)
+	var signature := "%s/%s" % [_fiche_fid, acces["obstacles"]]
+	if _acces_boutons.get_meta("signature", "") == signature:
+		return
+	_acces_boutons.set_meta("signature", signature)
+	for enfant in _acces_boutons.get_children():
+		_acces_boutons.remove_child(enfant)
+		enfant.queue_free()
+	var voir := Button.new()
+	voir.text = "Voir les accès"
+	voir.pressed.connect(ouverture.voir_acces.bind(_fiche_fid))
+	_acces_boutons.add_child(voir)
+	for fid in acces["obstacles"]:
+		var b := Button.new()
+		b.text = "Examiner · " + lieux.nom("r", fid)
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.pressed.connect(ouverture.examiner.bind("r", fid))
+		_acces_boutons.add_child(b)
 
 
 ## 🏕️ LE BLOC DU RELOGEMENT. Il ne dit jamais non : un champ inaccessible se
 ## pose et se paie, et l'avertissement est au-dessus du bouton. L'erreur coûte
 ## du temps et de l'argent, elle ne ferme aucune porte — un pont réparé
 ## remplira le camp plus tard.
+## 🌾 CE QUE LE CHAMP NOURRIT, ET CE QU'IL NOURRIRA APRÈS : la même phrase
+## avant et après la pose, pour que le joueur retrouve ce qu'il a payé.
+func _champ_perdu(fid: int) -> String:
+	var nourris := ville.champ_nourriture(fid)
+	if nourris < 0.5:
+		return "Ce champ ne nourrit personne."
+	if ville.champ_cultive(fid, _mois):
+		return "Il nourrit %s personnes, et ne sera plus jamais cultivé." % _nb(nourris, 0)
+	return "Il ne nourrit plus ses %s personnes." % _nb(nourris, 0)
+
+
 func _maj_camp() -> void:
 	if _fiche_couche != "i" or not ville.camp_possible(_fiche_fid):
-		_camp_bloc.visible = false
+		_bloc_dispo[_camp_bloc] = false
 		return
-	_camp_bloc.visible = true
+	_bloc_dispo[_camp_bloc] = true
 	var fid := _fiche_fid
 	if ville.camp_pose(fid):
 		var occupants: float = ville.camp_occupants(fid, _mois)
@@ -2850,31 +3411,38 @@ func _maj_camp() -> void:
 			_camp_texte.text = "Les containers arrivent · %s" % _duree(
 				ville.camp_reste_mois(fid, _mois))
 			_camp_bouton.text = "Chantier en cours"
-		elif ville.camp_accessible(fid):
-			_camp_texte.text = "%d logements de containers, %d occupés." % [
-				int(ville.camp_taille(fid, _mois)), int(occupants)]
+		elif ville.camp_accessible(fid, _mois):
+			_camp_texte.text = "%d containers · %d personnes accueillies.\n%s" % [
+				int(ville.camp_taille(fid, _mois)), int(occupants),
+				_champ_perdu(fid)]
 			_camp_bouton.text = "Camp en place"
 		else:
 			# 🌉 Le camp promis, et personne dedans. Ce n'est pas une panne :
 			# c'est la carte, et elle peut encore changer.
-			_camp_texte.text = "Le camp est monté et vide : aucun pont ne mène ici. Rétablir un franchissement le remplirait."
+			_camp_texte.text = "Camp vide : aucun pont ne mène ici. Rebâtir un pont le remplira."
 			_camp_bouton.text = "Personne ne peut y venir"
 		_camp_bouton.disabled = true
 		return
-	var besoin: float = ville.sans_toit(_mois)
+	# Sur les places COMMANDÉES : un second champ ne se propose plus quand les
+	# camps en route suffisent.
+	var besoin: float = ville.besoin_non_couvert(_mois)
 	if besoin <= 0.0:
-		_camp_texte.text = "Personne n'attend de toit."
+		_camp_texte.text = "Tout le monde a une place."
 		_camp_bouton.text = "Rien à reloger"
 		_camp_bouton.disabled = true
 		return
 	var places: int = ville.camp_taille(fid, _mois)
-	var maxi: int = ville.camp_places_max(fid)
-	var phrase := "%d personnes sans toit. Ce champ en tient %d." % [
-		int(besoin), maxi]
-	if not ville.camp_accessible(fid):
+	var maxi: int = ville.camp_capacite(fid)
+	# Le nombre de sinistrés est déjà au compteur : la fiche dit ce que le champ tient.
+	var phrase := "Accueille %d personnes : %d containers de %d places." % [
+		maxi, ville.camp_places_max(fid), Ville.CAMP_PERSONNES_LOGEMENT]
+	# 🌾 LE PRIX QUI N'EST PAS EN k€, annoncé avant le bouton : le camp prend
+	# le champ entier, et la campagne ne le récupère pas.
+	phrase += "\n%s" % _champ_perdu(fid)
+	if not ville.camp_accessible(fid, _mois):
 		phrase += "\n⚠ Les ponts sont coupés : personne ne pourra y aller."
 	_camp_texte.text = phrase
-	_camp_bouton.text = _posee("camp", "Accueillir %d logements · %s k€" % [
+	_camp_bouton.text = _posee("camp", "Installer %d containers · %s k€" % [
 		places, _milliers(ville.cout_camp_ke(fid, _mois))])
 	_camp_bouton.disabled = false
 

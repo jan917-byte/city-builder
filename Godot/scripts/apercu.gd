@@ -54,6 +54,9 @@ var mm_velo: MultiMesh
 ## change — c'est LA moitié visible de l'avant/après d'une rue plantée.
 var _arbres_mi: MultiMeshInstance3D
 var _arbres_n := -1
+## 🏕️ Les abris du champ montré — le camp promis par la fiche, pas celui de la
+## ville : c'est la seule façon de voir ce qu'on paie avant de le payer.
+var _camp_mmi: MultiMeshInstance3D
 ## 🌿 Ce qui pousse sur la rive du morceau montré. Deux nœuds, une essence
 ## chacun : un MultiMesh ne répète qu'un seul maillage.
 var _rives := {}
@@ -148,6 +151,12 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 	_arbres_mi.name = "Arbres"
 	add_child(_arbres_mi)
 
+	# 🏕️ Le camp que la fiche promet. `camp.gd` en fabrique le MultiMesh, avec
+	# les places de `07` : la miniature ne redessine rien de son côté.
+	_camp_mmi = MultiMeshInstance3D.new()
+	_camp_mmi.name = "Camp"
+	add_child(_camp_mmi)
+
 	for essence in [Constructeur.ROSEAU, Constructeur.BUISSON]:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.name = "Rives%d" % essence
@@ -191,6 +200,7 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 ## 🏘️ UN ÎLOT : les maillages de la ville, tels quels. `sol` est sa plaque.
 func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ruine: Mesh = null, agricole := false) -> void:
 	_vider_echantillon()
+	_camp_mmi.multimesh = null
 	_objet.mesh = objet
 	_objet.set_instance_shader_parameter("parcelle_agricole", 1.0 if agricole else 0.0)
 	_futur.mesh = futur
@@ -212,6 +222,7 @@ func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ruine: Mesh = null, agricole :
 ## L'état de la berge arrive juste après par `regler`, à la même image.
 func echantillon(couche: String, fiche: Dictionary, voie_m := 0.0) -> void:
 	_objet.set_instance_shader_parameter("parcelle_agricole", 0.0)
+	_camp_mmi.multimesh = null
 	_ech_couche = couche
 	_ech_fiche = fiche
 	_ech_voie = voie_m
@@ -338,9 +349,16 @@ func vider_voitures() -> void:
 		_arbres_mi.multimesh = null
 
 
+## 🏕️ Les abris du camp, ou rien. Le cadrage ne les compte pas : ils sont
+## posés SUR le champ, qui est déjà dans l'image.
+func camper(mm: MultiMesh) -> void:
+	_camp_mmi.multimesh = mm
+
+
 func eteindre() -> void:
 	if render_target_update_mode == SubViewport.UPDATE_DISABLED:
 		return
+	_camp_mmi.multimesh = null
 	_vider_echantillon()
 	_objet.mesh = null
 	_futur.mesh = null

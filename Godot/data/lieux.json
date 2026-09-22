@@ -70,7 +70,10 @@
     "69": "Maisons du Four",
     "70": "Clos du Puits",
     "71": "Clos du Clocher",
-    "72": "Passage du Pré"
+    "72": "Passage du Pré",
+    "1082": "Champ des Luzernes",
+    "1083": "Champ des Bleuets",
+    "1084": "Champ de l’Orge"
   },
   "r": {
     "1": "Boulevard des Érables",
@@ -215,7 +218,7 @@
     "142": "Rue des Charmes",
     "143": "Rue du Colombier",
     "144": "Rue du Colombier",
-    "145": "Boulevard · amont · 3",
+    "145": "Pont d’Amont",
     "146": "Quai · amont · 3",
     "147": "Quai · centre · 1",
     "148": "Rue des Forgerons",
@@ -238,8 +241,8 @@
     "165": "Rue du Grenier",
     "166": "Rue du Moulin",
     "167": "Rue du Colombier",
-    "168": "Boulevard · centre · 1",
-    "169": "Rue · aval · 1",
+    "168": "Pont du Centre",
+    "169": "Pont d’Aval",
     "170": "Quai · centre · 2",
     "172": "Rue des Aulnes",
     "173": "Rue du Belvédère",

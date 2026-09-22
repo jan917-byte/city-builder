@@ -71,14 +71,14 @@ func actualiser(ville, mois: float) -> void:
 				(sites[cle] as Node3D).visible = actif
 			actifs += int(actif)
 	set_process(actifs > 0 and visible)
-	_reperes.visible = actifs > 0 and visible and _taille > 320.0
+	_reperes.visible = false
 	_reperes.queue_redraw()
 
 
 func regler_detail(taille: float, camera: Camera3D) -> void:
 	_taille = taille
 	_reperes.camera = camera
-	_reperes.visible = actifs > 0 and visible and taille > 320.0
+	_reperes.visible = false
 	_reperes.queue_redraw()
 
 
