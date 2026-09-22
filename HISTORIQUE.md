@@ -473,3 +473,49 @@ Encodage réparé · `CLAUDE.md` et `ETAT.md` posés · carte qualifiée (69 îl
 **2026-09-15 — Campagne SVG dans Godot :** retrait du damier superposé, bandes orientées par parcelle et prairies plus lisibles ; massifs boisés continus sans retour de champs.
 Sur précision de l’auteur, quatre sorties suivent uniquement les limites communes des champs jusqu’à la lisière ; 177/178 restent arrêtées avec les îlots. Les prolongements vers les montagnes sont retirés.
 Chaîne régénérée, neuf contrôles géométriques et trois cadrages rendus ; les accès aux fermes et les alertes héritées des ponts restent à reprendre.
+
+**2026-09-18 — Récit d'ouverture :** quatre pages à la flèche (Wehrau, la crue, ce qu'elle a laissé, le premier soir), posées en bas au centre pour ne pas couvrir leur sujet ; chiffres tirés de `ville.degats`, pastilles éteintes jusqu'à la troisième page.
+Sur demande de l'auteur, le jeu ne désigne plus les trois champs : ni chiffre sur la carte, ni bouton : le panneau demande un endroit atteignable à pied, et un indice n'arrive qu'après trois lieux ouverts sans champ.
+Tant que personne n'est relogé, la fiche ne propose que le camp — ailleurs, une ligne dit pourquoi rien ne s'engage ; contrôle d'ouverture à zéro échec, six captures neuves.
+
+**2026-09-18 — Le temps part après les cartes, et un champ bâti se paie :** pendant le récit et l'écran de mode, le tableau de bord, le rail, la fiche et les commandes du temps sont rangés ; la dernière page les rend et lance le temps à ×1.
+Nouveau système de nourriture dans `ville.gd` : surface mesurée des 88 champs (68,9 ha) × `NOURRITURE_PERSONNES_HA` = 827 personnes, 15 % des 5 350 habitants ; un camp prend le champ entier à la livraison et la jauge Campagne ne remonte jamais.
+Le coût se lit à trois endroits (ligne « Nourrit », phrase au-dessus du bouton, récapitulatif) ; ouverture 0 échec avec 7 contrôles neufs, essai général rendu sans alerte. Le rendement reste à juger — à 3 pers./ha le coût redevient invisible.
+
+**2026-09-18 — Le camp compte juste, se voit avant d'être payé, et les pictogrammes passent en aplats :** un abri par logement au lieu de deux caisses écartées de 1,55 m pour 2,9 m de large, qui s'interpénétraient ; l'abri gagne plots, toit à deux pentes, porte et deux fenêtres (36 triangles instanciés) et une teinte par rangée, la rangée étant semée par `07`.
+Le camp entre dans la miniature de la fiche (même MultiMesh, mêmes places que la ville) : il était le seul chantier engagé sans l'avoir vu ; survol du bouton et réglage posé le montrent, AVANT rend le champ nu.
+Sans-abri, pont coupé et camp redessinés en aplats — un `@` dans la table prend la couleur de l'encre ; les deux faces en Z de `_boite` portaient la normale de l'autre, corrigé. Ouverture 0 échec, 11 contrôles neufs, chaîne régénérée.
+**2026-09-18 — Faubourg et containers :** coupe Ilse–berge naturelle–route–champs ; desserte 178 reculée côté terre, talus continus, cultures et camps exclus de la rive et de la voirie.
+Les trois champs portent 130, 97 et 76 places ; surface alimentaire et sélection suivent leur emprise utile. Containers à toit plat, ossature, tôle nervurée, vitrages, seuil et casquette ; signe de rotation corrigé.
+Chaîne régénérée, 18 contrôles Python passent, ouverture rendue et orientation des camps à zéro échec ; trois aperçus numérotés à juger.
+
+**2026-09-18 — Trafic et premier pont :** après le premier camp livré, diagnostic puis comparaison des trois ponts ; une décision directe sur la carte est reconnue. Prix conservés, épargne et attente restent à juger.
+Les accès aux camps suivent les ponts livrés ; tablier, croix et trafic changent à livraison, même de loin. Le pont 169 entièrement emporté retrouve sa sélection et sa miniature ; sauvegarde et cadrage sont conservés.
+Export régénéré, relogement 10 cas ; ouverture rendue, trafic et travaux à zéro échec. Aperçus 09 à 14 dans QGIS/rendus ; nouvelle fiche à onglets conservée.
+**2026-09-18 — Retour de jeu, relogement :** proposition de compteur permanent, montage progressif, cohérence du trafic et pont accessible après zéro personne dehors.
+Analyse des risques : trois champs presque sans marge, camps inaccessibles, commandes simultanées et attente financière du pont ; aucun arbitrage appliqué implicitement.
+Données générales masquées pendant le relogement et la découverte du premier pont ; parcours rendu et captures vérifiés, zéro échec.
+
+**2026-09-18 — Relogement à deux par container :** deux champs quelconques suffisent, aucun seul ; capacités de 238, 154 et 130 personnes, modules et espacements conservés.
+Le dernier camp ajuste ses logements au besoin ; 130 containers pour 260 sinistrés, 195 k€ au tarif existant. Les fiches distinguent logements, capacité et occupants.
+Export régénéré ; neuf contrôles géométriques, six ordres de relogement, reprise, besoin impair et parcours rendu de l’ouverture passent sans échec.
+
+**2026-09-18 — Progression et retours (85) :** carte sans pictogrammes, compteur permanent et places en construction séparées ; coûts immédiats, livraisons et journal sauvegardé.
+Le choix du pont passe par ses accès réels ; diagnostic des rues à déblayer, aperçu temporaire et raccord du réseau aval corrigé dans la largeur du carrefour rendu.
+Parcours d'ouverture, progression rendue sur les trois ponts, trafic et relogement : zéro échec ; prix, délais et équilibre des choix restent à juger.
+
+**2026-09-20 — Budget des premières réparations (86) :** caisse de départ portée de 800 à 3 500 k€ pour le relogement, un pont au choix et le déblaiement.
+Le parcours le plus cher coûte 3 256 k€, dont 195 k€ de camps et 201,5 k€ pour 22 routes ; marge de 244 k€ sans dotation.
+Relogement, ouverture et progression : zéro échec, crédits d'essai retirés des parcours de pont ; captures aux panneaux sans texte, contrôle visuel à reprendre. Modifications locales, dépôt déjà modifié et synchronisation Git indisponible dans le bac à sable.
+
+**2026-09-20 — Verre bleu et fin des capitales :** les quatorze panneaux passent du papier crème à la ville floutée sous une teinte bleue (`shaders/verre.gdshader`, posé par `interface._vitrer`), rail bleu nuit, azur à la place du jaune.
+Plus aucun libellé tout en majuscules ; les petits titres se distinguent par la lettre espacée et le demi-gras. Un seul azur plein, celui du bouton qui engage la caisse — un réglage choisi est un azur pâle.
+Coût au banc : 5 appels de rendu de plus, écart de temps d'image dans le bruit ; `--interface` et le parcours d'ouverture à zéro échec. L'arbitrage de DA reste à fermer dans le vault.
+Six polices libres posées dans `Godot/polices/` (Rubik, Space Grotesk, Barlow Semi Condensed, puis Nunito, Fredoka, Baloo 2 à la demande de l'auteur, plus rondes), essayables par `-- --police <clé>` ; Rubik en place, le choix revient à l'auteur.
+Après captures, l'auteur demande plus gras et le retour des capitales : la règle devient **la capitale étiquette, elle ne nomme ni ne parle** (vault amendé), et les graisses passent à 600 pour le texte, 750 pour les étiquettes.
+🔴 Piège trouvé : `FontVariation.variation_opentype` ignore la clé `"wght"` et exige le tag entier — toute l'interface se dessinait au poids par défaut de Rubik, 300. Verre densifié à 0,78 et flou porté à 4,0 pour tenir le petit texte sur les toits rouges.
+
+
+**2026-09-22 — Premier retour de jeu, les deux premières minutes :** l'attente se paie (0,4 k€ par personne dehors et par mois, intégrale exacte dans la caisse), puis l'auteur tranche : les premières minutes se jouent dans l'ordre — abriter tout le monde, puis un pont et ses accès, rien d'autre avant, mairie et université comprises.
+Un camp se taille désormais sur les places non commandées (119 puis 11 containers d'affilée) ; le calque Trafic sort les rues coupées de la rampe en violet et dessine le tablier manquant des ponts, un brun se lisait « saturé ». Guide : un bouton par pont, ×12 en premier, un seul bandeau, vitesse enfoncée, icônes mairie et université, virgules, textes raccourcis, six noms proposés.
+La « miniature vide » n'était qu'une capture trop précoce ; l'essai de progression demande `--ouverture`, et son clic sur le journal visait un enfant du verre (réparé).
