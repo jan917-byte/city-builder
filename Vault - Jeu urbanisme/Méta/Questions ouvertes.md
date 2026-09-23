@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue) et n°26 (le logement en campagne) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-20
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne) et n°32 (l'université qui propose) — n°11 et n°25 closes le 2026-09-02
+maj: 2026-09-23
 ---
 
 # Questions ouvertes
@@ -347,6 +347,20 @@ L'auteur demande la mise en place de la proposition : compteur permanent, aucun 
 
 ### 31. Faut-il épargner avant de réparer le premier pont et déblayer les routes ? — ✅ fermée le 2026-09-20
 L'auteur demande un budget suffisant dès le début, en plus du relogement. La caisse commune est ajustée pour couvrir un pont au choix et toutes les routes à déblayer ; l'équilibre de la suite reste à juger. → [[Décisions arrêtées]] 86.
+
+### 32. L'université donne-t-elle des missions ? — ouverte le 2026-09-23
+Idée de l'auteur, en brainstorm : le premier pont livré, le guide mène à l'université. Elle **annonce la prochaine crue** — c'est l'adaptation — et **propose une première mission** — c'est la réduction —, par exemple rendre la place-parking du marché à un espace vert. L'université deviendrait la **voix** qui fait passer du prologue à la suite (72 · n°23), en plus du labo qu'on finance (**79**).
+
+**Pourquoi la place-parking** (îlot 19, n°5) : le geste parle des deux horizons à la fois — moins de voitures (réduction), un sol qui boit la pluie à 41 m de l'eau, aléa 0,86 (adaptation). Et son effet de bord est honnête : les commerçants perdent **127 places**.
+
+| | Ce que fait l'université | Ce que ça vaut |
+|---|---|---|
+| **A · Rien de plus** | elle reste un labo (79) ; la crue s'annonce ailleurs (récit, mairie) | simple, mais le passage à la réduction n'a pas de voix |
+| **B · Elle informe** | elle annonce la crue et publie ses mesures, sans désigner de lieu | la crue devient une échéance crédible ; le joueur cherche seul où agir |
+| **C · Elle informe et propose un lieu** ⭐ | **une proposition à la fois**, dite comme un constat mesuré (« nos relevés montrent que… »), jamais comme un ordre ; le joueur peut l'ignorer | guide sans imposer, et donne un premier geste de réduction |
+| **D · Des missions en chaîne** | objectifs successifs, récompense à la clé | 🔴 le jeu devient une liste de tâches, ce que refuse [[Milestones]] (57) |
+
+**Recommandation : C.** Le guide y mène une fois ; ensuite l'université s'ouvre par la barre du bas, comme tout menu (81). **Restent à trancher avec elle** : ce qu'une proposition ignorée coûte (rien ? une crue plus chère ?), qui porte l'annonce si l'université est abîmée par la crue, et si la place-parking est bien la première — c'est aussi le candidat de la n°5. → [[Université et recherche]] · [[Adaptation et réduction]] · [[Premiers pas après la crue]]
 
 ## 🟢 Peut attendre (réversible)
 
