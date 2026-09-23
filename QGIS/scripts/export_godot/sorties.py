@@ -4,11 +4,45 @@ from collections import Counter, defaultdict
 
 import palette as PAL
 from .decor import _d_point_seg
-from .geometrie import Maillage, _densifier, _ruban
-from .reglages import Y_CHAUSSEE, Y_SOL
+from .geometrie import Maillage, _cumul, _densifier, _le_long, _ruban, _tronquer
+from .reglages import AXE_TRAIT, LARGEUR_LIGNE, Y_SOL
 
 # Auteur, 2026-09-15 : ces deux dessertes s'arrêtent avec les îlots.
 ARRETS_LISIERE = {177, 178}
+
+# La rue ne tombe jamais pile sur la limite des champs : sur ces premiers mètres,
+# la sortie part du bout de la rue, dans son axe, et rejoint la limite en courbe.
+RACCORD_M = 30.0
+AXE_VIDE_CAMPAGNE = 10.0   # hors agglomération : 3 m de trait, 10 m de vide
+
+
+def raccorder(ligne, a, b):
+    """Remplace le début de la ligne par une courbe tangente à la rue et à la limite."""
+    cum = _cumul(ligne)
+    if cum[-1] < RACCORD_M + 1.0:
+        return ligne
+    q, tq = _le_long(ligne, cum, RACCORD_M)
+    L = math.dist(a, b)
+    ta = ((a[0] - b[0]) / L, (a[1] - b[1]) / L)
+    p1 = (a[0] + ta[0] * RACCORD_M / 3, a[1] + ta[1] * RACCORD_M / 3)
+    p2 = (q[0] - tq[0] * RACCORD_M / 3, q[1] - tq[1] * RACCORD_M / 3)
+    courbe = []
+    for k in range(8):
+        t = k / 8
+        u = 1 - t
+        courbe.append(tuple(u ** 3 * a[i] + 3 * u * u * t * p1[i] + 3 * u * t * t * p2[i] + t ** 3 * q[i]
+                            for i in (0, 1)))
+    return courbe + _tronquer(ligne, cum, RACCORD_M, cum[-1])
+
+
+def tirets(ligne):
+    cum = _cumul(ligne)
+    s, out = AXE_VIDE_CAMPAGNE / 2, []
+    while s + AXE_TRAIT < cum[-1] - RACCORD_M / 2:
+        if s > RACCORD_M / 2:
+            out.append(_tronquer(ligne, cum, s, s + AXE_TRAIT))
+        s += AXE_TRAIT + AXE_VIDE_CAMPAGNE
+    return out
 
 
 class Surface:
@@ -117,30 +151,38 @@ class LimitesChamps:
 
 def sorties(routes, ilots, massifs, relief, G, largeurs, surface):
     limites = LimitesChamps(ilots)
-    m, accotements, axes = Maillage(), Maillage(), []
+    m, accotements, marquage, axes = Maillage(), Maillage(), Maillage(), []
     for r, a, b, cote in portes(routes):
         largeur = min(largeurs.get(r["hierarchie"], 8.5), r["largeur_m"])
         ligne = limites.tracer(a, b, largeur)
         if not ligne:
             print("    sortie %d : aucune limite commune de champs à prolonger" % r["fid"])
             continue
+        ecart = math.dist(ligne[0], a)
+        ligne = raccorder(ligne, a, b)
         def proj(x, y, h):
+            # 🔄 Elle partait de la cote de la rue, 7 cm sous le champ : ses
+            # premiers mètres étaient enterrés et la sortie semblait décollée de la rue.
             raccord = min(1.0, math.dist((x, y), a) / 24.0)
             p = G(x, y, Y_SOL + relief.z(x, y) + massifs.hauteur(x, y))
-            haut = surface.hauteur(p[0], p[2], p[1]) + .16
-            origine = G(x, y, Y_CHAUSSEE)[1]
-            return (p[0], origine * (1 - raccord) + haut * raccord + h, p[2])
+            haut = surface.hauteur(p[0], p[2], p[1]) + .05 + .11 * raccord
+            return (p[0], haut + h, p[2])
         for cote_acc in (-1, 1):
             _ruban(accotements, ligne, .75, PAL.vers_lineaire("#899571"), proj, -.025,
                    decal=cote_acc * (largeur / 2 + .375), bouts=False)
         for bande in range(4):
             _ruban(m, ligne, largeur / 4, PAL.vers_lineaire(PAL.MINERAL), proj, 0.0,
                    decal=-largeur / 2 + largeur / 4 * (bande + .5), bouts=False)
+        for trait in tirets(ligne):
+            _ruban(marquage, trait, LARGEUR_LIGNE, PAL.vers_lineaire(PAL.MARQUAGE), proj, .01,
+                   bouts=False)
+        print("    sortie %d : départ recollé au bout de la rue (%.1f m d'écart)" % (r["fid"], ecart))
         axes.append({"fid": r["fid"], "largeur_m": largeur,
                      "points": [list(p) for p in ligne]})
     print("  sorties de ville : %d routes prolongées, %.0f m exactement entre les champs"
           % (len(axes), sum(math.dist(a, b) for axe in axes for a, b in zip(axe["points"], axe["points"][1:]))))
-    return {"sol": m.json(), "accotements": accotements.json(), "axes": axes}
+    return {"sol": m.json(), "accotements": accotements.json(),
+            "marquage": marquage.json(), "axes": axes}
 
 
 def hors_routes(arbres, axes):

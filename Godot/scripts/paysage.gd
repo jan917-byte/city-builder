@@ -4,14 +4,17 @@ const Constructeur := preload("res://scripts/constructeur.gd")
 const Materiaux := preload("res://scripts/materiaux.gd")
 var mat_nuages: ShaderMaterial
 
-func batir(d: Dictionary, teinte_eau: Color) -> void:
+## `mat_rue` : le matériau des rues de la ville, pour que la sortie les continue sans changer de teinte.
+func batir(d: Dictionary, teinte_eau: Color, mat_rue: Material) -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://shaders/paysage.gdshader")
 	mat.set_shader_parameter("demi_emprise", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	_maille("Versants", d.sol, mat)
 	if d.has("sorties"):
 		_maille("AccotementsSorties", d.sorties.accotements, mat)
-		_maille("RoutesSorties", d.sorties.sol, mat)
+		_maille("RoutesSorties", d.sorties.sol, mat_rue)
+		if d.sorties.has("marquage"):
+			_maille("MarquageSorties", d.sorties.marquage, mat_rue)
 	var eau := Materiaux.eau(teinte_eau)
 	eau.set_shader_parameter("brume_exterieure", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	_maille("IlseExterieure", d.eau, eau)

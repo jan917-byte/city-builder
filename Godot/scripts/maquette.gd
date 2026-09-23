@@ -1516,7 +1516,7 @@ func _construire() -> void:
 		paysage = Paysage.new()
 		paysage.name = "Paysage"
 		monde.add_child(paysage)
-		paysage.batir(donnees["paysage"], Donnees.teinte(donnees, "riviere"))
+		paysage.batir(donnees["paysage"], Donnees.teinte(donnees, "riviere"), mat_objet)
 	_fusionne("Eau", Constructeur.maillage(donnees["eau"]),
 		Materiaux.eau(Donnees.teinte(donnees, "riviere")))
 

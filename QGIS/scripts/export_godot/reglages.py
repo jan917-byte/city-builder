@@ -82,6 +82,11 @@ GRAINE = 20260811          # le semis doit être le même à chaque export
 # rester hors de l'asphalte.
 MARGE_TRONC_CHAUSSEE = 0.40
 
+# Les arbres des bois et des haies sont semés sans rien savoir de la voirie.
+# 2 m : le pied du modèle (1 m × 1,95 au plus) reste hors de l'asphalte, la
+# couronne peut déborder — plus large, on rasait les haies qui bordent les routes.
+MARGE_PIED_DECOR = 2.0
+
 # 🌊 L'ILSE COULE 2 M SOUS LA VILLE — demandé par l'auteur le 2026-08-18, avec
 # une coupe dessinée : la ville reste plate, l'eau descend de 2 m, et les
 # CHAMPS qui bordent l'eau perdent leur bord franc au profit d'un talus.

@@ -9,6 +9,7 @@ import palette as PAL
 import random
 import sqlite3
 import sys
+from collections import defaultdict
 from apercu_carte import dedans
 from apercu_carte import gpkg_vers_wkb
 from apercu_carte import lire_wkb
@@ -112,6 +113,7 @@ from export_godot.reglages import (
     LARGEUR_LIGNE,
     LARGEUR_TROTTOIR,
     MARGE_COULOIR,
+    MARGE_PIED_DECOR,
     MARGE_TRONC_CHAUSSEE,
     MODULE_PARKING,
     NAPPE_ILSE,
@@ -304,6 +306,22 @@ def lire(con):
 
 
 # ==================================================================== la sortie
+
+def _hors_chaussees(arbres, chaussees, cx, cy):
+    """Les arbres du décor sont en coordonnées Godot ; la voirie, en carte."""
+    cases = defaultdict(list)
+    for _, demi, axe in chaussees:
+        m = demi + MARGE_PIED_DECOR
+        for a, b in zip(axe, axe[1:]):
+            for i in range(math.floor((min(a[0], b[0]) - m) / 32), math.floor((max(a[0], b[0]) + m) / 32) + 1):
+                for j in range(math.floor((min(a[1], b[1]) - m) / 32), math.floor((max(a[1], b[1]) + m) / 32) + 1):
+                    cases[i, j].append((a, b, m))
+    def libre(t):
+        p = (t[0] + cx, cy - t[2])
+        return not any(D4C.dist_pt_seg(p, a, b) <= m for a, b, m in
+                       cases.get((math.floor(p[0] / 32), math.floor(p[1] / 32)), ()))
+    return [[t for t in essence if libre(t)] for essence in arbres]
+
 
 def _avec_bois(pay, *semis):
     """Les arbres des bois dessinés rejoignent les instances de la vallée :
@@ -1878,6 +1896,10 @@ def main():
     # sont semés par cellule de plaque, qui ne sait rien de la voirie.
     a_deboiser = routes_sortie["axes"] + axe_en_lisiere(desserte, cx, cy)
     decor_vallee["arbres"] = hors_routes(decor_vallee["arbres"], a_deboiser)
+    avant = sum(map(len, decor_vallee["arbres"]))
+    decor_vallee["arbres"] = _hors_chaussees(decor_vallee["arbres"], chaussees, cx, cy)
+    print("    %d arbres des bois et des haies écartés des rues de la ville"
+          % (avant - sum(map(len, decor_vallee["arbres"]))))
     arbres_godot = [[round(c, 2) for c in G(a[0], a[1], a[2])]
                     + [round(a[3], 3), round(a[4], 3), int(a[5])] for a in arbres]
     arbres_godot = hors_routes([arbres_godot, []], a_deboiser)[0]
