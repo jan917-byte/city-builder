@@ -144,6 +144,15 @@ Trois réglages accordés à une ville dont les murs *étaient* la couleur, chan
 - ☐ **8 coudes sur 33 restent des angles** faute de place, et **11 coudes arrondis sur 25 n'ont qu'un bord de trottoir** — pas rattrapable sans bouger les parcelles.
 - ☐ **Le talus s'arrête aux champs** : la friche 31 et la barre 32 touchent l'eau et gardent un quai droit. Une berge naturelle au sud est **une ligne** — la règle lit le `sous_type` du riverain, pas une liste d'îlots.
 - ☐ **Le fond du chenal ne se voit jamais** : l'eau est opaque, donc des deux mètres on n'en voit qu'un. Le fond à −2,60 m coûte 43 triangles et sert d'assurance, pas d'image.
+- 🔍 **Diagnostic des berges et des routes (2026-09-23)**, planche numérotée `QGIS/rendus/wehrau_diagnostic_berges_routes.png` (régénérable, non suivie) :
+  - ✅ **8 · 9 — arbres sur la chaussée** : 112 arbres des bois et des haies avaient le pied sur l'asphalte d'une rue, `07` les écarte (`MARGE_PIED_DECOR`, 2 m). 🔴 La haie sombre qui longeait la sortie est (**10**) est partie avec : elle était plantée sur la chaussée. À redessiner à côté si on la veut.
+  - ✅ **10 · 11 — sorties de ville** : elles partaient 7 cm sous le champ, donc enterrées sur ~10 m, et semblaient décollées de la rue. Elles partent maintenant du bout de la rue, dans son axe, rejoignent la limite des champs en 30 m, avec l'asphalte de la ville et un axe 3 m / 10 m.
+  - ☐ **2 — le talus des champs ne se voit pas** : l'herbe descend à plat jusqu'à l'eau. **1 —** en face, la rive forêt est une petite marche grise verticale : les deux rives ne parlent pas la même langue.
+  - ☐ **L'eau rencontre la terre sur une ligne nette**, partout : ni bande mouillée, ni galets, ni roseaux au pied. C'est ce qui fait le plus maquette.
+  - ☐ **12 — une route du décor passe sous la forêt**, au nord-est : un fil gris entre les arbres.
+  - ☐ Un sapin au coin de la place-parking, sur la chaussée ; 2 plantes de rive posées sur une chaussée (berge 2).
+  - ☐ **La touche O** cadre exactement comme **I** et ne montre aucun pont, puisque les trois sont coupés au départ.
+  - Les défauts de boue et de quai du faubourg (**3 · 4 · 6 · 7**) sont dans [Crue](Crue.md) § 6.
 - 🔄 **Le trafic n'a pas bougé depuis la session 9** — c'est l'étape 5.
 - 🔴 **Le critère « 9 niveaux » du vault est périmé** depuis que la barre est descendue à 6 (§ 3 quinquies) : à réécrire ou à annuler, dans le vault et pas ici.
 - 🔴 **La DA du vault dit encore « un `sous_type` = une teinte »**, et c'est faux. À fermer dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`, pas au détour de cette note.

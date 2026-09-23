@@ -519,3 +519,8 @@ Après captures, l'auteur demande plus gras et le retour des capitales : la règ
 **2026-09-22 — Premier retour de jeu, les deux premières minutes :** l'attente se paie (0,4 k€ par personne dehors et par mois, intégrale exacte dans la caisse), puis l'auteur tranche : les premières minutes se jouent dans l'ordre — abriter tout le monde, puis un pont et ses accès, rien d'autre avant, mairie et université comprises.
 Un camp se taille désormais sur les places non commandées (119 puis 11 containers d'affilée) ; le calque Trafic sort les rues coupées de la rampe en violet et dessine le tablier manquant des ponts, un brun se lisait « saturé ». Guide : un bouton par pont, ×12 en premier, un seul bandeau, vitesse enfoncée, icônes mairie et université, virgules, textes raccourcis, six noms proposés.
 La « miniature vide » n'était qu'une capture trop précoce ; l'essai de progression demande `--ouverture`, et son clic sur le journal visait un enfant du verre (réparé).
+
+
+**2026-09-23 — Diagnostic des berges et des routes, puis ses deux premiers points :** planche de 12 défauts numérotés sur 25 vues de la maquette ; l'auteur retient d'abord les arbres sur la route et les sorties de ville.
+112 arbres des bois et des haies avaient le pied sur une chaussée, ceux de la vallée étaient semés sans rien savoir des rues de la ville : `07` les écarte à 2 m (6 m rasait aussi les haies de bord de route). La haie de la sortie est part avec, car elle était sur l'asphalte.
+Les sorties partaient à la cote de la rue, 7 cm sous le champ : enterrées sur ~10 m. Elles partent maintenant du bout de la rue en courbe tangente (30 m), au-dessus du champ, avec le matériau des rues et un axe 3/10 m.
