@@ -360,6 +360,8 @@ Idée de l'auteur, en brainstorm : le premier pont livré, le guide mène à l'u
 | **C · Elle informe et propose un lieu** ⭐ | **une proposition à la fois**, dite comme un constat mesuré (« nos relevés montrent que… »), jamais comme un ordre ; le joueur peut l'ignorer | guide sans imposer, et donne un premier geste de réduction |
 | **D · Des missions en chaîne** | objectifs successifs, récompense à la clé | 🔴 le jeu devient une liste de tâches, ce que refuse [[Milestones]] (57) |
 
+**Précisé par l'auteur le 2026-09-23 : la crue est l'horizon de la partie.** Elle arrive **plusieurs années** après l'annonce ; entre les deux, le joueur arbitre peu à peu entre **adaptation** et **réduction**, dans la même caisse. L'université annonce la crue puis tient la prévision à jour (*« la prochaine crue au pire »*) : c'est le retour du joueur avant l'examen. 🔴 Pour juger ce pari, il faut une partie jouable **jusqu'à la crue**, bilan compris — rien ne le prouve avant.
+
 **Recommandation : C.** Le guide y mène une fois ; ensuite l'université s'ouvre par la barre du bas, comme tout menu (81). **Restent à trancher avec elle** : ce qu'une proposition ignorée coûte (rien ? une crue plus chère ?), qui porte l'annonce si l'université est abîmée par la crue, et si la place-parking est bien la première — c'est aussi le candidat de la n°5. → [[Université et recherche]] · [[Adaptation et réduction]] · [[Premiers pas après la crue]]
 
 ## 🟢 Peut attendre (réversible)
