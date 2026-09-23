@@ -1,7 +1,7 @@
 ---
 tags: [système, gameplay, progression]
 statut: en cours de spécification
-maj: 2026-09-02
+maj: 2026-09-23
 ---
 
 # Université et recherche
@@ -39,6 +39,7 @@ Le menu s'ouvre par un **bouton permanent** de la barre du bas, **et** par un bo
 
 ## Ce qui reste ouvert
 
+- **L'université qui informe et propose** : annoncer la prochaine crue, proposer un premier lieu à transformer — la place-parking du marché en exemple. → [[Questions ouvertes]] n°32
 - **La liste des sujets, leurs prix, leurs durées** — du level design, donc de l'auteur. Rien n'est chiffré ici tant que ce n'est pas jugé à l'écran.
 - **Le nom** : une université de plein exercice n'existe pas à 5 350 habitants ; une antenne, une Hochschule, oui — et **13d** avait prévu l'inverse (le lycée descendait en Realschule).
 - **L'emploi** : **50b** tenait le moulin et la brasserie pour le seul levier d'emploi de la ville. Un labo qui grandit en est un deuxième.

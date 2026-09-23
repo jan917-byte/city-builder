@@ -524,3 +524,8 @@ La « miniature vide » n'était qu'une capture trop précoce ; l'essai de progr
 **2026-09-23 — Diagnostic des berges et des routes, puis ses deux premiers points :** planche de 12 défauts numérotés sur 25 vues de la maquette ; l'auteur retient d'abord les arbres sur la route et les sorties de ville.
 112 arbres des bois et des haies avaient le pied sur une chaussée, ceux de la vallée étaient semés sans rien savoir des rues de la ville : `07` les écarte à 2 m (6 m rasait aussi les haies de bord de route). La haie de la sortie est part avec, car elle était sur l'asphalte.
 Les sorties partaient à la cote de la rue, 7 cm sous le champ : enterrées sur ~10 m. Elles partent maintenant du bout de la rue en courbe tangente (30 m), au-dessus du champ, avec le matériau des rues et un axe 3/10 m.
+
+
+**2026-09-23 — Brainstorm de la suite des premiers pas :** cinq suites possibles posées (relever le faubourg, crue annoncée, rendre le champ, passage à la réduction, deuxième pont) ; recommandation : relever le faubourg avant la prochaine crue.
+L'auteur propose que l'université annonce la crue (adaptation) et propose une première mission (réduction), la place-parking du marché en exemple.
+Question n°32 ouverte dans le vault, quatre options, recommandation C : une proposition à la fois, dite comme un constat mesuré, jamais un ordre. Rien n'est tranché.
