@@ -51,6 +51,7 @@ var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois
 ## Le jour où la boucle se juge pour de bon, ce champ et son bouton sautent.
 var _credit_essai_ke := 0.0
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
+var _provisoire := {}      # fid pont -> true : rétabli par un pont provisoire
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
 var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbres}
@@ -141,7 +142,12 @@ const CHAMPS_MOBILES := {
 # chiffres de la carte. Repère : la pose solaire d'un îlot tient en un mois.
 const RECONSTRUCTION_MOIS := 12.0    # un îlot relevé : un an de chantier
 const DEBLAIEMENT_MOIS := 1.0        # la vase enlevée d'une rue
-const PONT_MOIS := 18.0              # un franchissement rebâti
+const PONT_MOIS := 8.0               # un franchissement rebâti en dur (87)
+# 🌉 LE PONT PROVISOIRE (87). 🎚️ Proposition à juger : durée, part du prix en
+# dur, débit d'une voie en alternat (lu par `trafic.gd`).
+const PONT_PROVISOIRE_MOIS := 3.0
+const PONT_PROVISOIRE_PART := 0.25
+const PONT_PROVISOIRE_CAPACITE := 0.5
 
 
 # ==========================================================================
@@ -265,10 +271,10 @@ func objets(couche: String) -> Dictionary:
 ## L'historique des décisions suffit : les indicateurs se recalculent au mois repris.
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
-	"_repare", "_berge", "_toit_avant", "_plantation", "_camps"]
+	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
-const CHAMPS_PARTIE_NEUFS := ["_camps"]
+const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -307,6 +313,7 @@ func valider_partie(etat: Dictionary) -> bool:
 			"cout_ke": 0.0, "arbres": 0}],
 		"_camps": [ilots, {"debut": 0.0, "places": 0, "cout_ke": 0.0}],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
+		"_provisoire": [routes, true],
 		"_recherche": [Recherche.SUJETS, 0.0]}
 	for champ in formes:
 		if not etat.has(champ):
@@ -730,6 +737,7 @@ func reinitialiser() -> void:
 		ilots[fid]["toit_m2"] = _toit_avant[fid]
 	_toit_avant.clear()
 	_repare.clear()
+	_provisoire.clear()
 	_verger_vu = -1.0
 	vider_rampes()
 
@@ -1258,7 +1266,7 @@ func aide_mensuelle_ke(t: float) -> float:
 ## ∫ `sans_toit` de 0 à `t`, exacte : le nombre ne change qu'à une livraison
 ## de camp ou de réparation. Les marches sont gardées tant que rien n'est commandé.
 func aide_cumulee_ke(t: float) -> float:
-	var cle := "%d/%d/%s" % [_repare.hash(), _camps.hash(), livraison_immediate]
+	var cle := "%d/%d/%d/%s" % [_repare.hash(), _provisoire.hash(), _camps.hash(), livraison_immediate]
 	if cle != _aide_cle:
 		_aide_cle = cle
 		var dates := [0.0]
@@ -1517,22 +1525,33 @@ func indicateurs(t: float) -> Dictionary:
 
 ## Ce que `04e` a chiffré pour cet objet, 0 s'il n'y a rien à réparer ou si
 ## c'est déjà payé.
-func cout_reparation_ke(couche: String, fid: int) -> float:
+func cout_reparation_ke(couche: String, fid: int, provisoire := false) -> float:
 	if est_repare(couche, fid):
 		return 0.0
-	return base(couche, fid, "cout_reparation_ke")
+	var part := PONT_PROVISOIRE_PART if provisoire and fid in _ponts and couche == "r" else 1.0
+	return base(couche, fid, "cout_reparation_ke") * part
+
+
+## Rétabli par un pont provisoire, engagé ou livré.
+func pont_provisoire(fid: int) -> bool:
+	return _provisoire.has(fid)
 
 
 func est_repare(couche: String, fid: int) -> bool:
 	return _repare.has(couche + ":" + str(fid))
 
 
-## Combien de mois dure CE chantier-là. Un pont n'est pas une rue.
-func duree_reparation_mois(couche: String, fid: int) -> float:
+## Combien de mois dure CE chantier-là. Un pont n'est pas une rue. Engagé,
+## le pont garde son mode ; sinon `provisoire` dit lequel on annonce.
+func duree_reparation_mois(couche: String, fid: int, provisoire := false) -> float:
 	if couche == "i":
 		return _delai(RECONSTRUCTION_MOIS)
 	var coupe := str(objets("r").get(fid, {}).get("etat_crue", "")) == "coupe"
-	return _delai(PONT_MOIS if coupe else DEBLAIEMENT_MOIS)
+	if not coupe:
+		return _delai(DEBLAIEMENT_MOIS)
+	if est_repare("r", fid):
+		provisoire = _provisoire.has(fid)
+	return _delai(PONT_PROVISOIRE_MOIS if provisoire else PONT_MOIS)
 
 
 ## Ce qui reste avant que la géométrie neuve n'apparaisse. 0 = c'est fini.
@@ -1573,7 +1592,8 @@ func durabilite(t: float, co2_kt: float) -> Dictionary:
 			continue
 		var part := 1.0
 		if est_repare("r", fid):
-			part = clampf(reste_reparation_mois("r", fid, t) / PONT_MOIS, 0.0, 1.0)
+			part = clampf(reste_reparation_mois("r", fid, t)
+				/ maxf(duree_reparation_mois("r", fid), 0.001), 0.0, 1.0)
 		reste_ke += base("r", fid, "cout_reparation_ke") * part
 		ponts += int(part > 0.0)
 	var adaptation := 1.0 if _adaptation_total_ke <= 0.0 else \
@@ -1592,11 +1612,13 @@ func durabilite(t: float, co2_kt: float) -> Dictionary:
 ## `false` si rien à réparer, si c'est déjà engagé, ou si la caisse ne suit pas.
 ## L'interface pré-vérifie et explique ; ici, le verrou seul — même partage que
 ## `lancer_solaire`.
-func reparer(couche: String, fid: int, t: float) -> bool:
-	var cout := cout_reparation_ke(couche, fid)
+func reparer(couche: String, fid: int, t: float, provisoire := false) -> bool:
+	var cout := cout_reparation_ke(couche, fid, provisoire)
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
 		return false
 	_repare[couche + ":" + str(fid)] = t
+	if provisoire and couche == "r" and fid in _ponts:
+		_provisoire[fid] = true
 	# ⚠️ En mode auteur le chantier est livré SANS que le mois bouge : le
 	# verger redeviendrait propre au mois suivant seulement.
 	_verger_vu = -1.0
@@ -1674,6 +1696,7 @@ func degats(t: float) -> Dictionary:
 #   solaire  float  la part de toit visée          (îlot)
 #   vert     float  la part de toit verdie visée   (îlot)
 #   reparer  true   relever, déblayer ou rebâtir   (îlot, rue)
+#            "provisoire"  un pont provisoire à la place du pont en dur
 #   arbres   float  la canopée visée               (rue)
 #   places   true   retirer le stationnement       (rue)
 #   axe      true   fermer aux voitures            (rue) — rendu à l'appelant,
@@ -1703,7 +1726,7 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 	if r.has("camp"):
 		ke += cout_camp_ke(fid, t)
 	if r.has("reparer"):
-		ke += cout_reparation_ke(couche, fid)
+		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire")
 	return ke
 
 
@@ -1733,7 +1756,7 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 	if r.has("camp"):
 		m = maxf(m, _delai(CAMP_MOIS))
 	if r.has("reparer"):
-		m = maxf(m, duree_reparation_mois(couche, fid))
+		m = maxf(m, duree_reparation_mois(couche, fid, str(r["reparer"]) == "provisoire"))
 	return m
 
 
@@ -1769,7 +1792,7 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("berge")
 	if r.has("camp") and abriter(fid, t):
 		faits.append("relogement")
-	if r.has("reparer") and reparer(couche, fid, t):
+	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire"):
 		faits.append("reparation")
 	return {"ok": not faits.is_empty() or r.has("axe"), "manque": 0.0,
 		"cout_ke": cout, "faits": faits, "axe": r.has("axe")}

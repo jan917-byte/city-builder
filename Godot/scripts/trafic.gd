@@ -4,6 +4,7 @@ extends Node3D
 
 const Constructeur := preload("res://scripts/constructeur.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
+const Ville := preload("res://scripts/ville.gd")
 
 const Y_ROULE := 0.72
 const Y_GARE := 0.66
@@ -761,15 +762,25 @@ func report_en_cours(fid: int, mois: float) -> bool:
 func _reaffecter(mois: float, duree: float, indisponibles: Dictionary) -> void:
 	var brut: Array = _affectation(indisponibles)
 	for f in ville.routes:
-		var ct: float = pow(minf(1.0, float(brut[0].get(f, 0)) / _calibration[0]), 0.6)
-		var cl: float = pow(minf(1.0, float(brut[1].get(f, 0)) / _calibration[1]), 0.6)
-		var cible: float = 0.0 if indisponibles.has(f) else \
-			clampf(0.55 * ct + 0.45 * cl, 0.0, 1.0)
+		var cible := _charge(brut, indisponibles, f, ville.pont_provisoire(f))
 		ville.ajouter_rampe("r", f, "charge",
 			cible - ville.valeur("r", f, "charge", mois), mois, 0.0, duree)
 	_indisponibles_connues = _signature(indisponibles)
 	_derniere_charge = -1.0
 	_dernier_etat = -1.0
+
+
+## 🌉 Un pont provisoire porte le même flux sur une voie alternée : il sature
+## plus vite (`PONT_PROVISOIRE_CAPACITE`), et le calque le montre.
+func _charge(brut: Array, indisponibles: Dictionary, f: int, provisoire: bool) -> float:
+	if indisponibles.has(f):
+		return 0.0
+	var ct: float = pow(minf(1.0, float(brut[0].get(f, 0)) / _calibration[0]), 0.6)
+	var cl: float = pow(minf(1.0, float(brut[1].get(f, 0)) / _calibration[1]), 0.6)
+	var charge := clampf(0.55 * ct + 0.45 * cl, 0.0, 1.0)
+	if provisoire:
+		charge = minf(1.0, charge / Ville.PONT_PROVISOIRE_CAPACITE)
+	return charge
 
 
 func _indisponibles(mois: float) -> Dictionary:
@@ -889,9 +900,11 @@ func _raccorder_bouts_ponts(couloirs: Dictionary) -> void:
 
 
 ## Un essai de réseau sans rampe, dépense ni réparation appliquée à la partie.
-func prevoir_pont(fid: int, mois: float) -> Dictionary:
+func prevoir_pont(fid: int, mois: float, provisoire := false) -> Dictionary:
+	if ville.est_repare("r", fid):
+		provisoire = ville.pont_provisoire(fid)
 	var avant := _indisponibles(mois)
-	var cle := "%s/%d" % [_signature(avant), fid]
+	var cle := "%s/%d/%s" % [_signature(avant), fid, provisoire]
 	if _comparaisons_ponts.has(cle):
 		return _comparaisons_ponts[cle]
 	var apres := avant.duplicate()
@@ -907,9 +920,7 @@ func prevoir_pont(fid: int, mois: float) -> Dictionary:
 	for f in ville.routes:
 		var charges := []
 		for etat in [[brut_avant, avant], [brut_apres, apres]]:
-			var ct := pow(minf(1.0, float(etat[0][0].get(f, 0)) / _calibration[0]), 0.6)
-			var cl := pow(minf(1.0, float(etat[0][1].get(f, 0)) / _calibration[1]), 0.6)
-			charges.append(0.0 if etat[1].has(f) else clampf(0.55 * ct + 0.45 * cl, 0.0, 1.0))
+			charges.append(_charge(etat[0], etat[1], f, provisoire and f == fid))
 		if f == fid:
 			resultat["charge_pont"] = charges[1]
 		elif float(charges[1]) - float(charges[0]) > ecart:

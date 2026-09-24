@@ -157,7 +157,7 @@ class Jauge extends Control:
 ## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
 ## nulle part ailleurs — un panneau qui s'ancre tout seul se décale du rail.
 const RAIL_X := 14.0
-const RAIL_LARGEUR := 76.0
+const RAIL_LARGEUR := 90.0
 const DETAIL_X := RAIL_X + RAIL_LARGEUR + 10.0
 const DETAIL_LARGEUR := 312.0
 const HAUT := 14.0
@@ -322,6 +322,7 @@ var _camp_texte: Label
 var _camp_bouton: Button
 var _repare_texte: Label
 var _repare_bouton: Button
+var _repare_provisoire: Button   # 🌉 l'autre choix d'un pont coupé (auteur, 2026-09-24)
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
 ## deux curseurs gardent leur propre mémoire, plus bas, parce qu'ils doivent
 ## survivre à une image sans se replacer sous le doigt ; `_reglages()` réunit
@@ -776,12 +777,14 @@ const DESSINS := {
 	"co2": "<path d='M7 18h11a4 4 0 000-8 6 6 0 00-11-2 5 5 0 000 10z'/>",
 	"caisse": "<circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/>",
 	"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
-	"chantiers": "<path d='M4 21h16M7 21V6h10m-10 4h12l-4-4m1 4v5m-2 0h4'/>",
+	"chantiers": "<rect x='2' y='6' width='20' height='8' rx='1'/><path d='M17 14v7M7 14v7M17 3v3M7 3v3M10 14L2.3 6.3M14 6l7.7 7.7M8 6l8 8'/>",
 	"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
 	"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
 	"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
 	# 🏛️🎓 Les deux lieux du rail (Lucide « landmark », « graduation-cap ») :
 	# sans dessin, ils prenaient celui du diagnostic, deux fois.
+	# Lucide « book-open » : DÉBUT rouvre le récit des premiers pas.
+	"debut": "<path d='M12 7v14M3 18a1 1 0 01-1-1V4a1 1 0 011-1h5a4 4 0 014 4 4 4 0 014-4h5a1 1 0 011 1v13a1 1 0 01-1 1h-6a3 3 0 00-3 3 3 3 0 00-3-3z'/>",
 	"mairie": "<path d='M3 22h18M6 18v-7m4 7v-7m4 7v-7m4 7v-7M12 2l8 5H4z'/>",
 	"universite": "<path d='M21.42 10.922a1 1 0 00-.019-1.838L12.83 5.18a2 2 0 00-1.66 0L2.6 9.08a1 1 0 000 1.832l8.57 3.908a2 2 0 001.66 0zM22 10v6M6 12.5V16a6 3 0 0012 0v-3.5'/>",
 	# 🗂️ LES TROIS DESSINS DES ONGLETS DE FICHE (auteur, 2026-09-18), repris de
@@ -855,9 +858,21 @@ func _habiller_tuile_rail(b: Button) -> void:
 	b.add_theme_stylebox_override("hover", survol)
 	b.add_theme_stylebox_override("pressed", presse)
 	b.add_theme_stylebox_override("hover_pressed", presse)
+	# ⚠️ Sans lui, le thème dessine un cadre pointillé autour de la mairie et
+	# de l'université verrouillées : la tuile pâlit, elle ne change pas de forme.
+	var eteint := normal.duplicate() as StyleBoxFlat
+	eteint.bg_color = Color(RAIL_TUILE, 0.45)
+	b.add_theme_stylebox_override("disabled", eteint)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	for etat in ["font_color", "font_hover_color", "icon_normal_color", "icon_hover_color"]:
+		b.add_theme_color_override(etat, RAIL_ICONE)
+	for etat in ["font_pressed_color", "font_hover_pressed_color", "icon_pressed_color",
+			"icon_hover_pressed_color"]:
+		b.add_theme_color_override(etat, Color.WHITE)
+	b.add_theme_color_override("font_disabled_color", Color(RAIL_ICONE, 0.35))
+	b.add_theme_color_override("icon_disabled_color", Color(RAIL_ICONE, 0.35))
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(48, 46)
+	b.custom_minimum_size = Vector2(0, 54)
 
 
 ## Le curseur par défaut de Godot est un trait gris sans remplissage : on y lit
@@ -1079,29 +1094,19 @@ func _panneau_rail() -> void:
 	var groupe := ButtonGroup.new()
 	groupe.allow_unpress = false
 
-	# 🏙️ L'EN-TÊTE EST AUSSI LE BOUTON DE LA VILLE VIVANTE : jaune quand on y
-	# est. C'est le seul endroit du rail qui porte un mot, et c'est le nom de la
-	# vue par défaut — sans lui, une colonne de sept icônes ne dit pas où l'on est.
-	var accueil := Button.new()
-	accueil.text = "VILLE"
-	accueil.add_theme_font_override("font", _fonte_titre)
-	accueil.add_theme_font_size_override("font_size", 11)
-	accueil.add_theme_color_override("font_color", RAIL_ICONE)
-	accueil.add_theme_color_override("font_hover_color", RAIL_ICONE)
-	accueil.add_theme_color_override("font_pressed_color", Color.WHITE)
-	accueil.add_theme_color_override("font_hover_pressed_color", Color.WHITE)
-	_habiller_tuile_rail(accueil)
-	accueil.custom_minimum_size = Vector2(56, 34)
+	# 🏙️ L'EN-TÊTE EST AUSSI LE BOUTON DE LA VILLE VIVANTE : azur quand on y est.
+	var accueil := _tuile_rail("ville", "Ville",
+		"Ville — retrouver la matière, les arbres et les voitures.")
 	accueil.toggle_mode = true
 	accueil.button_group = groupe
-	accueil.tooltip_text = "Ville — retrouver la matière, les arbres et les voitures."
 	accueil.pressed.connect(func() -> void: _sur_rail(""))
 	v.add_child(accueil)
 	_menu_boutons[""] = accueil
 
 	for t in themes:
 		var id := str(t["id"])
-		var b := _tuile_rail(id, "%s — %s" % [str(t["nom"]), str(t.get("resume", ""))])
+		var b := _tuile_rail(id, str(t.get("court", t["nom"])),
+			"%s — %s" % [str(t["nom"]), str(t.get("resume", ""))])
 		b.toggle_mode = true
 		b.button_group = groupe
 		b.pressed.connect(func() -> void: _sur_rail(id))
@@ -1115,21 +1120,15 @@ func _panneau_rail() -> void:
 	v.add_child(_filet_rail())
 	for lieu in LIEUX_ORDRE:
 		var cle: String = lieu
-		var b := _tuile_rail(cle, "%s (îlot %d) — %s" % [String(LIEUX[cle]["nom"]),
+		var b := _tuile_rail(cle, String(LIEUX[cle]["court"]), "%s (îlot %d) — %s" % [String(LIEUX[cle]["nom"]),
 			int(LIEUX[cle]["fid"]), String(LIEUX[cle]["quoi"])])
 		b.pressed.connect(func() -> void: ouvrir_lieu(cle))
 		v.add_child(b)
 		_rail_lieux.append(b)
 	accueil.set_pressed_no_signal(true)
-	var debut := Button.new()
+	v.add_child(_filet_rail())
+	var debut := _tuile_rail("debut", "Début", "Revoir les premiers pas après la crue.")
 	_debut = debut
-	debut.text = "DÉBUT"
-	debut.tooltip_text = "Revoir les premiers pas après la crue."
-	debut.add_theme_font_override("font", _fonte_titre)
-	debut.add_theme_font_size_override("font_size", 11)
-	debut.add_theme_color_override("font_color", RAIL_ICONE)
-	debut.add_theme_color_override("font_hover_color", RAIL_ICONE)
-	_habiller_tuile_rail(debut)
 	debut.pressed.connect(func() -> void:
 		if ouverture != null:
 			var ouvrir: bool = not ouverture.visible
@@ -1141,10 +1140,20 @@ func _panneau_rail() -> void:
 	v.add_child(debut)
 
 
-func _tuile_rail(icone: String, bulle: String) -> Button:
+## 🔄 L'ICÔNE ET SON MOT (auteur, 2026-09-24) : toutes les tuiles ont la même
+## taille, le même dessin au-dessus, la même étiquette en capitales dessous —
+## VILLE et DÉBUT ne sont plus des mots seuls au milieu des icônes.
+func _tuile_rail(icone: String, mot: String, bulle: String) -> Button:
 	var b := Button.new()
-	b.icon = _icone(icone, 28, RAIL_ICONE)
+	# Dessin BLANC : ce sont les couleurs d'état du bouton qui le teintent.
+	b.icon = _icone(icone, 24, Color.WHITE)
 	b.expand_icon = false
+	b.text = mot.to_upper()
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	b.add_theme_font_override("font", _fonte_titre)
+	b.add_theme_font_size_override("font_size", 10)
+	b.add_theme_constant_override("h_separation", 3)
 	b.tooltip_text = bulle
 	_habiller_tuile_rail(b)
 	return b
@@ -1657,6 +1666,10 @@ func _panneau_ilot() -> void:
 	_repare_bloc.add_child(_repare_texte)
 	_repare_bouton = Button.new()
 	_repare_bouton.pressed.connect(func() -> void: _basculer("reparer", true))
+	_repare_provisoire = Button.new()
+	_repare_provisoire.visible = false
+	_repare_provisoire.pressed.connect(func() -> void: _basculer("reparer", "provisoire"))
+	_repare_bloc.add_child(_repare_provisoire)
 	_repare_bloc.add_child(_repare_bouton)
 	_acces_boutons = VBoxContainer.new()
 	_repare_bloc.add_child(_acces_boutons)
@@ -1983,9 +1996,9 @@ func _habiller_principal(b: Button) -> void:
 # fiche, et le menu qu'il ouvre est une AUTRE fiche.
 
 const LIEUX := {
-	"mairie": {"fid": 20, "nom": "Mairie",
+	"mairie": {"fid": 20, "nom": "Mairie", "court": "Mairie",
 		"quoi": "Une politique n'est pas un chantier : elle dure, et elle se paie tous les mois tant qu'elle tient."},
-	"universite": {"fid": 36, "nom": "Université",
+	"universite": {"fid": 36, "nom": "Université", "court": "Univ.",
 		"quoi": "On finance un sujet, on attend, le palier tombe — et il vaut pour toute la ville, panneaux déjà posés compris."},
 }
 const LIEUX_ORDRE := ["mairie", "universite"]
@@ -2892,8 +2905,8 @@ func _maj_recap() -> void:
 			ville.camp_taille(_fiche_fid, _mois) * Ville.CAMP_PERSONNES_LOGEMENT,
 			_nb(ville.champ_nourriture(_fiche_fid), 0)])
 	if r.has("reparer"):
-		quoi.append(_verbe_reparation(_fiche_couche,
-			ville.objets(_fiche_couche).get(_fiche_fid, {})).to_lower())
+		quoi.append("pont provisoire" if str(r["reparer"]) == "provisoire" else
+			_verbe_reparation(_fiche_couche, ville.objets(_fiche_couche).get(_fiche_fid, {})).to_lower())
 	var phrase := ", ".join(quoi)
 	# Le prix est sur le bouton et nulle part ailleurs : deux fois le même
 	# nombre à deux lignes d'écart se lit comme deux nombres.
@@ -2986,7 +2999,8 @@ func apercu_demande() -> Dictionary:
 	if _fiche_couche != "b":
 		futur = not _apercu_avant \
 			and (ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
-				or r.has("reparer") or _repare_bouton.is_hovered())
+				or r.has("reparer") or _repare_bouton.is_hovered()
+				or _repare_provisoire.is_hovered())
 		if _apercu_avant:
 			futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
 	if _fiche_couche == "b":
@@ -3244,7 +3258,9 @@ func _maj_fiche_rue() -> void:
 		if sous_boue else ("%s m d'eau" % _nb(float(o.get("hauteur_eau", 0.0)), 1)
 		if float(o.get("hauteur_eau", 0.0)) > 0.1 else "intacte"))
 	if etat == "repare" and _fiche_fid in ville.ponts_coupes():
-		(_rue_valeurs["etat"] as Label).text = "liaison ouverte" if trafic.pont_fonctionnel(_fiche_fid, _mois) else "tablier livré · accès coupé"
+		(_rue_valeurs["etat"] as Label).text = ("liaison provisoire" if ville.pont_provisoire(_fiche_fid)
+			else "liaison ouverte") if trafic.pont_fonctionnel(_fiche_fid, _mois) \
+			else "pont livré · accès coupé"
 	_maj_reparation(o)
 	_maj_recap()
 
@@ -3320,6 +3336,7 @@ func _maj_reparation(o: Dictionary) -> void:
 	var couche := _fiche_couche
 	var pont := couche == "r" and _fiche_fid in ville.ponts_coupes()
 	_maj_acces(pont)
+	_repare_provisoire.visible = false
 	var prix := float(o.get("cout_reparation_ke", 0.0))
 	if prix <= 0.0:
 		_bloc_dispo[_repare_bloc] = false
@@ -3340,7 +3357,8 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_texte.text = ""
 		if pont and ouverture != null:
 			_repare_texte.text = ouverture.description_pont(_fiche_fid)
-		_repare_bouton.text = "Chantier en cours"
+		_repare_bouton.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid) \
+			else "Chantier en cours"
 		_repare_bouton.disabled = true
 		return
 	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
@@ -3358,6 +3376,15 @@ func _maj_reparation(o: Dictionary) -> void:
 			_repare_texte.text += "\nÀ épargner : %s k€." % _milliers(manque)
 	_repare_bouton.text = _posee("reparer", "%s · %s k€" % [verbe, _milliers(prix)])
 	_repare_bouton.disabled = false
+	if pont:
+		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une
+		# voie, ou en dur et plus long. Reposer l'autre remplace le premier.
+		_repare_bouton.text = _posee("reparer", "%s · %s k€ · %s" % [verbe, _milliers(prix),
+			_duree(ville.duree_reparation_mois(couche, _fiche_fid))])
+		_repare_provisoire.visible = true
+		_repare_provisoire.text = _posee("reparer", "Pont provisoire · %s k€ · %s" % [
+			_milliers(ville.cout_reparation_ke(couche, _fiche_fid, true)),
+			_duree(ville.duree_reparation_mois(couche, _fiche_fid, true))], "provisoire")
 
 
 func _maj_acces(pont: bool) -> void:
@@ -3451,7 +3478,7 @@ func _verbe_reparation(couche: String, o: Dictionary) -> String:
 	if couche == "i":
 		return "Reconstruire l'îlot"
 	if str(o.get("etat_crue", "")) == "coupe":
-		return "Rebâtir le tablier"
+		return "Rebâtir en dur"
 	return "Déblayer la rue"
 
 ## Ce que la crue a pris à CET objet, en une phrase. Sans elle, le prix n'a

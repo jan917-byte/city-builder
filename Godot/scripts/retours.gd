@@ -151,7 +151,7 @@ func livraison(c: Dictionary, mois: float) -> void:
 		resultat = "%d containers livrés · %d personnes accueillies." % [
 			ui.ville.camp_taille(fid, mois), int(ui.ville.camp_occupants(fid, mois))]
 	elif couche == "r" and fid in ui.ville.ponts_coupes():
-		resultat = "Pont rebâti."
+		resultat = "Pont provisoire posé." if ui.ville.pont_provisoire(fid) else "Pont rebâti."
 		if not ui.trafic.pont_fonctionnel(fid, mois):
 			resultat += " Ses accès restent coupés."
 	elif c["genre"] in ["deblaiement", "reparation"] and couche == "r":

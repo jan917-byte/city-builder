@@ -55,6 +55,7 @@ func executer() -> void:
 		verifier(acces["possible"] and not acces["obstacles"].is_empty(), "Pont %d : des accès réparables sont proposés" % pont)
 		verifier(jeu.ville.caisse_ke(jeu.mois) == caisse and jeu.ville._repare.is_empty(), "Pont %d : diagnostic sans dépense" % pont)
 		o._choisir_pont(pont)
+		await cliquer(jeu.interface._repare_bouton)
 		await cliquer(jeu.interface._recap_bouton)
 		var fin: float = jeu.mois + jeu.ville.duree_reparation_mois("r", pont)
 		actualiser(fin)

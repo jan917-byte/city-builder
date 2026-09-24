@@ -420,8 +420,14 @@ func essayer_ponts(lointain: int) -> void:
 	await capture("10_comparer_ponts")
 	o._choisir_pont(pont)
 	verifier(not jeu.interface._camp_bloc.visible, "La fiche du pont ne conserve pas les informations du camp")
-	verifier(jeu.interface._pose.has("reparer") and not jeu.interface._recap_bouton.disabled,
-		"Le pont choisi est finançable dès le départ dans la fiche")
+	verifier(not jeu.interface._pose.has("reparer") and jeu.interface._repare_provisoire.visible
+		and jeu.interface._repare_bouton.visible, "La fiche du pont propose le provisoire et le pont en dur, sans choisir")
+	verifier(jeu.ville.duree_reparation_mois("r", pont, true) < jeu.ville.duree_reparation_mois("r", pont)
+		and jeu.ville.cout_reparation_ke("r", pont, true) < jeu.ville.cout_reparation_ke("r", pont),
+		"Le provisoire est plus court et moins cher que le pont en dur")
+	await cliquer(jeu.interface._repare_bouton)
+	verifier(jeu.interface._pose.get("reparer") is bool and not jeu.interface._recap_bouton.disabled,
+		"Le pont en dur est finançable dès le départ dans la fiche")
 	await capture("11_fiche_pont")
 	var cadrage: Vector3 = jeu.pivot.position
 	var taille: float = jeu.pivot.taille
@@ -444,14 +450,21 @@ func essayer_ponts(lointain: int) -> void:
 		and o.verrou() == "pont", "Le mauvais camp reste vide ; les deux bons abritent tout le monde")
 	o._choisir_pont(pont)
 	var acces: Dictionary = jeu.trafic.acces_pont(pont, debut)
-	for rue in acces["obstacles"]:
-		jeu._sur_commande("r", rue, {"reparer": true})
-	o._choisir_pont(pont)
-	var attendu: Dictionary = jeu.trafic.prevoir_pont(pont, debut)
+	var attendu: Dictionary = jeu.trafic.prevoir_pont(pont, debut, true)
+	verifier(float(attendu["charge_pont"]) >= float(jeu.trafic.prevoir_pont(pont, debut)["charge_pont"]),
+		"Le pont provisoire sature au moins autant que le pont en dur")
+	await cliquer(jeu.interface._repare_provisoire)
 	await cliquer(jeu.interface._recap_bouton)
-	verifier(o.etape == "pont_travaux" and not jeu.ville.route_praticable(pont, debut),
-		"L'engagement paie le pont sans ouvrir sa traversée")
+	verifier(o.etape == "pont_travaux" and not jeu.ville.route_praticable(pont, debut)
+		and jeu.ville.pont_provisoire(pont), "L'engagement paie le pont provisoire sans ouvrir sa traversée")
+	# 🚧 Les accès se déblaient PENDANT le chantier, depuis la fenêtre.
+	actualiser(debut)
+	await capture("12a_pont_travaux_acces")
+	for rue in acces["obstacles"]:
+		verifier(bouton(o._nom("r", rue)) != null, "La fenêtre du chantier propose l'accès %d" % rue)
+		jeu._sur_commande("r", rue, {"reparer": true})
 	var fin: float = debut + jeu.ville.duree_reparation_mois("r", pont)
+	verifier(is_equal_approx(fin - debut, jeu.ville.PONT_PROVISOIRE_MOIS), "Le pont provisoire se pose en %s mois" % jeu.ville.PONT_PROVISOIRE_MOIS)
 	actualiser(fin - 0.01)
 	verifier(o.etape == "pont_travaux" and jeu.ville.camp_occupants(lointain, jeu.mois) == 0.0,
 		"Le camp de l'autre rive reste vide jusqu'à la livraison")
@@ -474,6 +487,18 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(is_equal_approx(jeu.ville.valeur("r", pont, "charge", fin), float(attendu["charge_pont"])),
 		"Le trafic livré correspond à la prévision, même depuis la vue d'ensemble")
 	await capture("13_pont_livre_trafic")
+	# Le provisoire se voit deux fois : saturé sur le calque, gris acier en ville.
+	jeu.selection.sel_fid = -1
+	jeu._sur_theme("trafic")
+	jeu.pivot.viser(Vector2(jeu.pivot.position.x, jeu.pivot.position.z), 700.0)
+	jeu._rafraichir(true)
+	await capture("13b_provisoire_sature")
+	jeu._sur_theme("")
+	jeu._viser_route(pont, 120.0)
+	jeu._rafraichir(true)
+	await capture("13c_provisoire_acier")
+	jeu.selection.sel_couche = "r"
+	jeu.selection.sel_fid = pont
 	await cliquer(bouton("Voir le pont rouvert"))
 	await capture("14_pont_rouvert")
 	await cliquer(bouton("Choisir la suite"))

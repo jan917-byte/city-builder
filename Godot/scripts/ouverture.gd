@@ -223,6 +223,19 @@ func _reparation(couche: String, fid: int, titre: String) -> void:
 	_bouton(texte, examiner.bind(couche, fid, reglage))
 
 
+## Un pont coupé, ses deux prix sur une ligne : le provisoire, puis en dur.
+func _bouton_pont(fid: int) -> void:
+	var v = jeu.ville
+	var ui = jeu.interface
+	if v.est_repare("r", fid):
+		_reparation("r", fid, _nom("r", fid))
+		return
+	_bouton("%s\n%s k€ · %s  ou  %s k€ · %s" % [_nom("r", fid),
+		ui._milliers(v.cout_reparation_ke("r", fid, true)), ui._duree(v.duree_reparation_mois("r", fid, true)),
+		ui._milliers(v.cout_reparation_ke("r", fid)), ui._duree(v.duree_reparation_mois("r", fid))],
+		examiner.bind("r", fid, "", true))
+
+
 ## 🌉 Les champs que les sinistrés peuvent atteindre, du plus grand au plus
 ## petit. Aucune liste de fid : c'est le morceau de réseau mesuré par `07`, donc
 ## redessiner un pont déplace la scène sans toucher à ce fichier.
@@ -313,27 +326,27 @@ func description_pont(fid: int) -> String:
 		return "Les deux rives sont reliées."
 	var p: Dictionary = jeu.trafic.prevoir_pont(fid, jeu.mois)
 	var acces: Dictionary = p["acces"]
-	var cout := 0.0
-	var delai := 0.0
-	for route in [fid] + acces["obstacles"]:
-		if not jeu.ville.est_repare("r", route):
-			cout += jeu.ville.cout_reparation_ke("r", route)
-			delai = maxf(delai, jeu.ville.duree_reparation_mois("r", route))
-		else:
-			delai = maxf(delai, jeu.ville.reste_reparation_mois("r", route, jeu.mois))
 	var ui = jeu.interface
 	if not acces["possible"]:
 		return "Aucun accès continu aux routes principales : vérifier les fermetures voisines."
-	# Trois lignes au plus : le prix total, ce qui reste à déblayer, la rue qui
-	# prendra les voitures.
+	# 🌉 Le prix du pont est sur ses deux boutons ; ici, les accès seuls, qui
+	# se déblaient PENDANT le chantier du pont (auteur, 2026-09-24).
+	var a_engager := 0
+	var cout := 0.0
+	var delai := 0.0
+	for route in acces["obstacles"]:
+		if not jeu.ville.est_repare("r", route):
+			a_engager += 1
+			cout += jeu.ville.cout_reparation_ke("r", route)
+			delai = maxf(delai, jeu.ville.duree_reparation_mois("r", route))
 	var lignes := []
-	if cout > 0.0:
-		lignes.append("Pont et accès : %s k€ · %s." % [ui._milliers(cout), ui._duree(delai)])
-	var n: int = acces["obstacles"].size()
-	if n > 0:
-		lignes.append("%d rue%s à déblayer pour y accéder." % [n, "s" if n > 1 else ""])
-	elif jeu.ville.reparation_finie("r", fid, jeu.mois):
-		lignes.append("Accès encore coupés.")
+	if a_engager > 0:
+		lignes.append("Accès : %d rue%s à déblayer · %s k€ · %s, pendant le chantier du pont." % [
+			a_engager, "s" if a_engager > 1 else "", ui._milliers(cout), ui._duree(delai)])
+	elif not acces["obstacles"].is_empty():
+		lignes.append("Accès en cours de déblaiement.")
+	if jeu.ville.pont_provisoire(fid):
+		lignes.append("Pont provisoire : une seule voie, en alternat. Il sature plus vite.")
 	if int(p["rue"]) >= 0:
 		lignes.append("%s : trafic %d → %d %%." % [_nom("r", int(p["rue"])),
 			int(roundf(100.0 * float(p["avant"]))), int(roundf(100.0 * float(p["apres"])))])
@@ -370,8 +383,10 @@ func voir_acces(fid: int) -> void:
 			groupe.queue_free())
 
 
+## 🌉 La fiche s'ouvre SANS choix posé (auteur, 2026-09-24) : provisoire ou en
+## dur, c'est le joueur qui tranche.
 func _choisir_pont(fid: int) -> void:
-	examiner("r", fid, "" if jeu.ville.est_repare("r", fid) else "reparer")
+	examiner("r", fid)
 
 
 func actualiser(force := false) -> void:
@@ -446,8 +461,8 @@ func actualiser(force := false) -> void:
 		jeu.ville.reparation_finie("i", MAISONS, jeu.mois),
 		jeu.ville.berge_etat(BERGE, jeu.mois), jeu.ville._solaire.has(SOLAIRE),
 		int(jeu.ville.sans_toit(jeu.mois) * 1000.0 + jeu.ville.besoin_non_couvert(jeu.mois))]
-	signature += "/%d/%s/%s/%d" % [_regards.size(), _champ_vu, jeu.trafic._indisponibles_connues,
-		jeu.ville._camps.size()]
+	signature += "/%d/%s/%s/%d/%d" % [_regards.size(), _champ_vu, jeu.trafic._indisponibles_connues,
+		jeu.ville._camps.size(), jeu.ville._repare.size()]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -468,11 +483,11 @@ func actualiser(force := false) -> void:
 			_bouton("Ouvrir le trafic", func() -> void: jeu.interface._sur_rail("trafic"))
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = "Comparez les trois, puis engagez-en un dans sa fiche. Rien d'autre ne s'engage avant qu'un pont soit rouvert."
+			_texte.text = "Pont provisoire, vite posé, ou pont en dur : choisissez dans sa fiche. Ses accès se déblaient pendant le chantier."
 			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
 			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
 			for fid in jeu.ville.ponts_coupes():
-				_reparation("r", fid, _nom("r", fid))
+				_bouton_pont(fid)
 		"pont_acces":
 			_titre.text = "Le pont attend ses accès"
 			_texte.text = description_pont(int(premier["fid"]))
@@ -481,8 +496,19 @@ func actualiser(force := false) -> void:
 				_reparation("r", fid, _nom("r", fid))
 		"pont_travaux":
 			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
-			_titre.text = "Le pont se reconstruit"
+			_titre.text = "Le pont provisoire se pose" if jeu.ville.pont_provisoire(int(premier["fid"])) \
+				else "Le pont se reconstruit"
 			_texte.text = "%s : la traversée reste coupée jusqu'à la livraison." % _nom("r", premier["fid"])
+			# 🚧 L'ATTENTE A SA MISSION (auteur, 2026-09-24) : les accès se
+			# déblaient pendant que le pont se bâtit.
+			var a_deblayer := []
+			for fid in jeu.trafic.acces_pont(int(premier["fid"]), jeu.mois)["obstacles"]:
+				if not jeu.ville.est_repare("r", fid):
+					a_deblayer.append(fid)
+			if not a_deblayer.is_empty():
+				_texte.text += " En attendant, déblayez ses accès."
+			for fid in a_deblayer:
+				_reparation("r", fid, _nom("r", fid))
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 			_bouton("Voir mon pont", examiner.bind("r", premier["fid"]))
 			_bouton("Voir les accès", voir_acces.bind(int(premier["fid"])))

@@ -1984,23 +1984,23 @@ const DISPO := {
 #   genre "crue"      trois signaux de l'eau + les croix des routes coupées.
 #   genre "chantiers" l'état d'avancement de l'objet entier.
 const THEMES := [
-	{"id": "dangers", "nom": "Dangers naturels", "genre": "crue",
+	{"id": "dangers", "court": "Dangers", "nom": "Dangers naturels", "genre": "crue",
 		"resume": "Ce que la crue a laissé dans la ville"},
-	{"id": "chantiers", "nom": "Chantiers", "genre": "chantiers",
+	{"id": "chantiers", "court": "Chantiers", "nom": "Chantiers", "genre": "chantiers",
 		"resume": "Ce qui est cassé, ce qui est en travaux"},
 	# `_classe_solaire` et non `part_toit_equipe` : un diagnostic répond « où
 	# agir ? », et la part posée vaut 0 partout au mois 0.
-	{"id": "energie", "nom": "Énergie", "genre": "calque",
+	{"id": "energie", "court": "Énergie", "nom": "Énergie", "genre": "calque",
 		"couche": "i", "champ": "_classe_solaire",
 		"resume": "Où le solaire s'amortit dans la partie",
 		"bas": "Amorti vite", "haut": "Jamais rentable",
 		"note": "Gris : pas de toit équipable — hors jeu, pas mauvais."},
-	{"id": "trafic", "nom": "Trafic", "genre": "calque",
+	{"id": "trafic", "court": "Trafic", "nom": "Trafic", "genre": "calque",
 		"couche": "r", "champ": "charge",
 		"resume": "La charge des rues, après la crue",
 		"bas": "Rue calme", "haut": "Saturée",
 		"note": "Violet : coupée par la crue — pont emporté ou boue à déblayer."},
-	{"id": "tissu", "nom": "Tissu urbain", "genre": "tissu",
+	{"id": "tissu", "court": "Tissu", "nom": "Tissu urbain", "genre": "tissu",
 		"resume": "Une teinte par type de tissu"},
 ]
 
@@ -2521,11 +2521,17 @@ func _voie_de_berge(fid: int) -> float:
 		Echantillon.EMPRISE_CIRCULATION["rive"])
 
 
+const PONT_PROVISOIRE := Color(0.55, 0.60, 0.66)
+
+
 func _teinte(couche: String, fid: int) -> Color:
 	if selection and couche == selection.sel_couche and fid == selection.sel_fid:
 		return CHOISI
 	if selection and couche == selection.survol_couche and fid == selection.survol_fid:
 		return SURVOL
+	# 🌉 Le pont provisoire se voit : un tablier d'acier gris, pas de béton.
+	if couche == "r" and ville.pont_provisoire(fid) and ville.reparation_finie("r", fid, mois):
+		return PONT_PROVISOIRE
 	return Color.WHITE
 
 
