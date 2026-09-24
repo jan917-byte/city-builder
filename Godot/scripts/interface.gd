@@ -58,16 +58,19 @@ const FOND_FORT := Color8(210, 227, 245, 168)
 const BORD := Color8(255, 255, 255, 150)
 const TEXTE := Color8(23, 40, 61)
 const GRIS := Color8(72, 94, 122)
-## 🔠 Le gris des ÉTIQUETTES en capitales : plus sombre que celui des phrases,
-## parce qu'un mot de 10 px en capitales a moins de forme à offrir à l'œil.
+## Le gris des ÉTIQUETTES : plus sombre que celui des phrases, parce qu'un
+## mot de 11 px a moins de forme à offrir à l'œil.
 const GRIS_FORT := Color8(46, 74, 108)
 const ACCENT := Color8(26, 88, 148)
-## L'azur des bandeaux, des filets et du bouton qui engage : c'est lui qui
+## L'azur des onglets ouverts et du bouton qui engage : c'est lui qui
 ## fait « jeu » plutôt que « document ». Jamais sous du texte long.
 const ACCENT_VIF := Color8(46, 141, 224)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
 const ALERTE := Color8(198, 76, 66)
+## ✓ Un chantier fini se DIT en vert, il ne se grise pas en bouton mort. Plus
+## sombre que `FAIT`, qui est une couleur de jauge et ne se lit pas en texte.
+const FAIT_TEXTE := Color8(39, 96, 22)
 ## 🌑 LE RAIL EST SOMBRE, LE VERRE RESTE CLAIR (2026-09-03, image de l'auteur).
 ## C'est le seul endroit du prototype qui n'est pas translucide : la barre
 ## d'outils est la MACHINE, les panneaux sont le DOCUMENT. Sans ce contraste,
@@ -323,6 +326,7 @@ var _camp_bouton: Button
 var _repare_texte: Label
 var _repare_bouton: Button
 var _repare_provisoire: Button   # 🌉 l'autre choix d'un pont coupé (auteur, 2026-09-24)
+var _repare_etat: Label   # « ✓ Chantier terminé » : remplace le bouton grisé
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
 ## deux curseurs gardent leur propre mémoire, plus bas, parce qu'ils doivent
 ## survivre à une image sans se replacer sous le doigt ; `_reglages()` réunit
@@ -551,15 +555,12 @@ func _creer_theme() -> Theme:
 	return t
 
 
-## 🔠 LA RÈGLE DES CAPITALES (auteur, 2026-09-20, après les captures) :
-## **une capitale ÉTIQUETTE, elle ne nomme pas et elle ne parle pas.**
-## Donc en capitales espacées et grasses : les étiquettes de données
-## (SURFACE, NIVEAUX), les titres de bloc (DENSIFIER), le mois, les deux mots
-## du rail. Jamais : un nom de lieu, un titre de page, une phrase, un bouton.
-## Ce sont ces deux fonctions qui tiennent la règle — pas les chaînes.
+## 🔄 PLUS DE CAPITALES ESPACÉES DANS LES PANNEAUX (auteur, 2026-09-24 : « ça
+## fait très IA ») : une étiquette est en casse normale, grasse et grise — c'est
+## le gris et la taille qui la distinguent de la valeur. Le rail garde les siennes.
 func _etiquette(txt: String, taille: int, coul: Color) -> Label:
-	var l := _label(txt.to_upper(), taille, coul)
-	l.add_theme_font_override("font", _fonte_titre)
+	var l := _label(txt, taille, coul)
+	l.add_theme_font_override("font", _fonte_grasse)
 	return l
 
 
@@ -570,36 +571,18 @@ func _titre(txt: String, taille: int, coul: Color) -> Label:
 	return l
 
 
-## Le bandeau qui coiffe un panneau : filet azur à gauche, titre.
+## Le titre d'un panneau : le nom seul, foncé, sur le verre. 🔄 Plus de plaque
+## ni de filet azur à gauche (auteur, 2026-09-24) : le filet se courbait dans
+## le coin arrondi et décalait le nom du bord commun.
 func _bandeau(parent: Control, txt: String) -> Label:
-	var p := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = FOND_FORT
-	sb.set_corner_radius_all(8)
-	sb.set_content_margin_all(7)
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.border_width_left = 4
-	sb.border_color = ACCENT_VIF
-	p.add_theme_stylebox_override("panel", sb)
-	parent.add_child(p)
-	var l := _titre(txt, 15, ACCENT)
-	p.add_child(l)
+	var l := _titre(txt, 19, TEXTE)
+	parent.add_child(l)
 	return l
 
 
-## Le titre d'un bloc DANS la fiche : un filet jaune, puis le mot. Plus léger
-## qu'un bandeau, qui coifferait un panneau entier.
+## Le titre d'un bloc DANS la fiche : l'étiquette seule, sans filet.
 func _titre_section(parent: Control, txt: String) -> void:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 7)
-	var filet := ColorRect.new()
-	filet.color = ACCENT_VIF
-	filet.custom_minimum_size = Vector2(3, 13)
-	filet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(filet)
-	h.add_child(_etiquette(txt, 11, ACCENT))
-	parent.add_child(h)
+	parent.add_child(_etiquette(txt, 12, GRIS_FORT))
 
 
 # ==========================================================================
@@ -648,7 +631,7 @@ func _tuile(parent: GridContainer, etiquette: String, valeurs: Dictionary,
 	v.add_theme_constant_override("separation", 1)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(v)
-	v.add_child(_etiquette(etiquette, 10, GRIS_FORT))
+	v.add_child(_etiquette(etiquette, 11, GRIS_FORT))
 	var l := _label("", 14, TEXTE)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(l)
@@ -676,19 +659,17 @@ func ouvrir_onglet(id: String) -> void:
 	_clamper_fiche()
 
 
-## L'onglet ouvert est un verre plus dense sous un filet azur ; les autres sont
-## transparents sur un trait clair. C'est le seul fond de la fiche qui dit « ici ».
+## 🔄 UN SEUL TRAIT SOUS TOUTE LA RANGÉE (auteur, 2026-09-24) : l'onglet ouvert
+## n'a pas de plaque, seulement l'azur de son icône et un soulignement de 2 px.
+## ⚠️ Rangée à `separation` 0, sinon le trait se coupe entre deux onglets.
 func _habiller_onglet(b: Button, ouvert: bool, dessin: String) -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = FOND_FORT if ouvert else Color(0, 0, 0, 0)
-	sb.set_corner_radius_all(8)
-	sb.corner_radius_bottom_left = 0
-	sb.corner_radius_bottom_right = 0
+	sb.bg_color = Color(0, 0, 0, 0)
 	sb.set_content_margin_all(4)
-	sb.border_width_bottom = 3
-	sb.border_color = ACCENT_VIF if ouvert else Color(BORD, 0.55)
+	sb.border_width_bottom = 2 if ouvert else 1
+	sb.border_color = ACCENT_VIF if ouvert else Color8(140, 172, 206, 150)
 	var survol := sb.duplicate()
-	survol.bg_color = Color(FOND_FORT, 0.6) if not ouvert else FOND_FORT
+	survol.bg_color = Color(FOND_FORT, 0.5) if not ouvert else Color(0, 0, 0, 0)
 	for etat in ["normal", "pressed", "focus", "disabled"]:
 		b.add_theme_stylebox_override(etat, sb)
 	b.add_theme_stylebox_override("hover", survol)
@@ -1470,13 +1451,17 @@ func _panneau_ilot() -> void:
 	_fiche_contenu = v
 	v.minimum_size_changed.connect(_clamper_fiche)
 	get_viewport().size_changed.connect(_clamper_fiche)
-	_fiche_titre = _bandeau(v, "Sélection")
+	# Le nom et son type collés : ils ne font qu'un seul bloc.
+	var en_tete := VBoxContainer.new()
+	en_tete.add_theme_constant_override("separation", 0)
+	v.add_child(en_tete)
+	_fiche_titre = _bandeau(en_tete, "Sélection")
 	# Le type se lit sous le nom, jamais dans les chiffres : « champ »,
 	# « habitat collectif », « voie de desserte » sont une identité, pas une
 	# mesure — et à cette place ils ne prennent aucune ligne de tuile.
 	_fiche_soustitre = _label("", 12, GRIS)
 	_fiche_soustitre.visible = false
-	v.add_child(_fiche_soustitre)
+	en_tete.add_child(_fiche_soustitre)
 
 	# 🎓🏛️ LA DEUXIÈME PORTE (81), et elle ne change rien à la fiche : celle-ci
 	# reste la fiche de L'ÎLOT — surface, logements, toits, curseurs. Le menu
@@ -1582,7 +1567,7 @@ func _panneau_ilot() -> void:
 	# aussi l'ordre de PRIORITÉ — c'est lui qui décide lequel s'ouvre en premier,
 	# donc la crue passe avant l'énergie.
 	_onglets = HBoxContainer.new()
-	_onglets.add_theme_constant_override("separation", 4)
+	_onglets.add_theme_constant_override("separation", 0)
 	_onglets.visible = false
 	v.add_child(_onglets)
 	for ligne in ONGLETS:
@@ -1623,7 +1608,7 @@ func _panneau_ilot() -> void:
 		["largeur", "Largeur"], ["places", "Places"]])
 	_grille_onglet(v, "vert_r", 2, _rue_valeurs, [
 		["arbres", "Arbres"], ["canopee", "Canopée"]])
-	_grille_onglet(v, "crue_r", 1, _rue_valeurs, [["etat", "Après la crue"]])
+	_grille_onglet(v, "crue_r", 1, _rue_valeurs, [["etat", "Crue"]])
 
 	# 🌊 LA FICHE D'UNE BERGE. 🔄 Le nombre qui portait la décision était les m²
 	# d'asphalte posés au-dessus de l'Ilse ; il est tombé à ~0 le 2026-08-31,
@@ -1659,8 +1644,7 @@ func _panneau_ilot() -> void:
 	_repare_bloc.add_theme_constant_override("separation", 6)
 	_repare_bloc.visible = false
 	v.add_child(_repare_bloc)
-	_repare_bloc.add_child(HSeparator.new())
-	_titre_section(_repare_bloc, "Crue")
+	# 🔄 Ni trait ni titre « Crue » : l'onglet et la grille le disent déjà.
 	_repare_texte = _label("", 12, TEXTE)
 	_repare_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_repare_bloc.add_child(_repare_texte)
@@ -1671,6 +1655,9 @@ func _panneau_ilot() -> void:
 	_repare_provisoire.pressed.connect(func() -> void: _basculer("reparer", "provisoire"))
 	_repare_bloc.add_child(_repare_provisoire)
 	_repare_bloc.add_child(_repare_bouton)
+	_repare_etat = _etiquette("", 13, FAIT_TEXTE)
+	_repare_etat.visible = false
+	_repare_bloc.add_child(_repare_etat)
 	_acces_boutons = VBoxContainer.new()
 	_repare_bloc.add_child(_acces_boutons)
 
@@ -2358,7 +2345,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_ville_valeurs["caisse"].text = _milliers(_caisse_ke) + " k€"
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
 	_maj_durabilite(indic)
-	_temps_label.text = "MOIS %s" % _nb(mois, 1)
+	_temps_label.text = "Mois %s" % _nb(mois, 1)
 	maj_degats(ville.degats(mois))
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
@@ -3229,7 +3216,8 @@ func _maj_fiche_rue() -> void:
 	var etat := str(o.get("etat_crue", "intact"))
 	if ville.est_repare("r", _fiche_fid):
 		etat = "repare"
-	_fiche_soustitre.text = "pont" if _fiche_fid in ville.ponts_coupes() \
+	_fiche_soustitre.text = ("pont · provisoire" if ville.pont_provisoire(_fiche_fid) else "pont") \
+		if _fiche_fid in ville.ponts_coupes() \
 		else str(o.get("hierarchie", "?"))
 	# 🚗 CE QU'UNE RUE REND, c'est le trafic qu'elle porte : c'est lui qui decide
 	# si la fermer se paie, et il est le seul chiffre de sa ligne du haut.
@@ -3268,6 +3256,8 @@ func _maj_fiche_rue() -> void:
 		(_rue_valeurs["etat"] as Label).text = ("liaison provisoire" if ville.pont_provisoire(_fiche_fid)
 			else "liaison ouverte") if trafic.pont_fonctionnel(_fiche_fid, _mois) \
 			else "pont livré · accès coupé"
+	var l_etat := _rue_valeurs["etat"] as Label
+	l_etat.text = l_etat.text.substr(0, 1).to_upper() + l_etat.text.substr(1)
 	_maj_reparation(o)
 	_maj_recap()
 
@@ -3344,6 +3334,8 @@ func _maj_reparation(o: Dictionary) -> void:
 	var pont := couche == "r" and _fiche_fid in ville.ponts_coupes()
 	_maj_acces(pont)
 	_repare_provisoire.visible = false
+	_repare_etat.visible = false
+	_repare_bouton.visible = true
 	var prix := float(o.get("cout_reparation_ke", 0.0))
 	if prix <= 0.0:
 		_bloc_dispo[_repare_bloc] = false
@@ -3356,17 +3348,21 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_texte.text = "Remis en état."
 		if pont:
 			_repare_texte.text = ouverture.description_pont(_fiche_fid) if ouverture != null else "Pont reconstruit."
-		_repare_bouton.text = "Terminé"
-		_repare_bouton.disabled = true
+		_repare_bouton.visible = false
+		_repare_etat.visible = true
+		_repare_etat.add_theme_color_override("font_color", FAIT_TEXTE)
+		_repare_etat.text = "✓ Chantier terminé"
 		return
 	if engage:
 		# La barre du haut de fiche dit déjà le temps qui reste.
 		_repare_texte.text = ""
 		if pont and ouverture != null:
 			_repare_texte.text = ouverture.description_pont(_fiche_fid)
-		_repare_bouton.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid) \
+		_repare_bouton.visible = false
+		_repare_etat.visible = true
+		_repare_etat.add_theme_color_override("font_color", GRIS_FORT)
+		_repare_etat.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid) \
 			else "Chantier en cours"
-		_repare_bouton.disabled = true
 		return
 	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
 	# récapitulatif, où il porte le TOTAL. Réparer et poser des panneaux séparément
@@ -3394,6 +3390,22 @@ func _maj_reparation(o: Dictionary) -> void:
 			_duree(ville.duree_reparation_mois(couche, _fiche_fid, true))], "provisoire")
 
 
+## Un bouton qui MONTRE sans engager : un contour, sans plaque, pour ne pas
+## peser autant que celui qui paie.
+func _habiller_secondaire(b: Button) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.border_color = Color8(72, 108, 150, 190)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(9)
+	sb.set_content_margin_all(9)
+	var survol := sb.duplicate()
+	survol.bg_color = Color8(255, 255, 255, 90)
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("hover", survol)
+	b.add_theme_stylebox_override("pressed", survol)
+
+
 func _maj_acces(pont: bool) -> void:
 	_acces_boutons.visible = pont and ouverture != null
 	if not _acces_boutons.visible:
@@ -3408,6 +3420,7 @@ func _maj_acces(pont: bool) -> void:
 		enfant.queue_free()
 	var voir := Button.new()
 	voir.text = "Voir les accès"
+	_habiller_secondaire(voir)
 	voir.pressed.connect(ouverture.voir_acces.bind(_fiche_fid))
 	_acces_boutons.add_child(voir)
 	for fid in acces["obstacles"]:
