@@ -538,3 +538,7 @@ Vu sur `wehrau_ouverture_10_comparer_ponts.png` ; l'essai d'ouverture passe à z
 **2026-09-24 — Pont provisoire ou en dur, accès pendant le chantier, rail à icône et mot :** l'attente de 18 mois laissait le joueur sans rien à faire.
 Chaque pont se choisit en dur (8 mois) ou provisoire (3 mois, 25 % du prix, une voie qui sature deux fois plus vite, tablier gris) ; la fenêtre du chantier propose les rues d'accès. Décisions 87 et 88, question 33 fermée.
 Barre de gauche : tuiles de même taille, icône et étiquette en capitales, sans cadre pointillé ; essais ouverture et progression à zéro échec, captures `12a`, `13b`, `13c`.
+
+**2026-09-24 — Le pont provisoire a sa propre silhouette :** une teinte grise sur le tablier en dur ne se distinguait pas à l'écran.
+`07` fabrique un second maillage par pont emporté (une voie entre deux treillis verts type Bailey, plancher de madriers, portiques rouges et blancs, palées d'acier) ; Godot le montre à la place du tablier neuf, miniature comprise.
+Essais ouverture, progression et passe rendue à zéro échec ; paire au même cadrage `13c_provisoire_treillis` → `13d_pont_en_dur_meme_cadrage`.
