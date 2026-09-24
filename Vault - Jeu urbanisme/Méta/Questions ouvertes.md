@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
 statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne) et n°32 (l'université qui propose) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-23
+maj: 2026-09-24
 ---
 
 # Questions ouvertes
@@ -363,6 +363,9 @@ Idée de l'auteur, en brainstorm : le premier pont livré, le guide mène à l'u
 **Précisé par l'auteur le 2026-09-23 : la crue est l'horizon de la partie.** Elle arrive **plusieurs années** après l'annonce ; entre les deux, le joueur arbitre peu à peu entre **adaptation** et **réduction**, dans la même caisse. L'université annonce la crue puis tient la prévision à jour (*« la prochaine crue au pire »*) : c'est le retour du joueur avant l'examen. 🔴 Pour juger ce pari, il faut une partie jouable **jusqu'à la crue**, bilan compris — rien ne le prouve avant.
 
 **Recommandation : C.** Le guide y mène une fois ; ensuite l'université s'ouvre par la barre du bas, comme tout menu (81). **Restent à trancher avec elle** : ce qu'une proposition ignorée coûte (rien ? une crue plus chère ?), qui porte l'annonce si l'université est abîmée par la crue, et si la place-parking est bien la première — c'est aussi le candidat de la n°5. → [[Université et recherche]] · [[Adaptation et réduction]] · [[Premiers pas après la crue]]
+
+### 33. Que fait le joueur pendant que le premier pont se bâtit ? — ✅ fermée le 2026-09-24
+Dix-huit mois d'attente sans rien à engager, c'était trop long. L'auteur laisse le choix entre un pont provisoire, vite posé, et le pont en dur ramené à 8 mois ; les rues d'accès se déblaient pendant le chantier. → [[Décisions arrêtées]] 87. Reste ouvert : remplacer plus tard un pont provisoire par un pont en dur.
 
 ## 🟢 Peut attendre (réversible)
 

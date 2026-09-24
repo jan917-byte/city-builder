@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-09-20
+maj: 2026-09-24
 ---
 
 # Décisions arrêtées
@@ -181,5 +181,9 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 | 85 | **Carte sans pictogrammes, compteur permanent, pont et accès, retours factuels** | 🔓 | 2026-09-18, proposition acceptée par l'auteur (« mets en place ») : besoin en logements dans l'interface, places en préparation séparées, libre examen des trois ponts, réussite à la continuité routière réelle. Coût financier et perte agricole à l'engagement ; livraisons et conséquences visibles, notifications sobres et journal sauvegardé. Prix et durées conservés ; équilibre à juger. → [[Premiers pas après la crue]] · [[Questions ouvertes]] n°30 |
 
 | 86 | **Le budget de départ finance aussi le pont et le déblaiement des routes** | 🔓 | ✅ 2026-09-20, demande de l'auteur : assez de budget dès le début pour ces réparations. La caisse commune couvre le relogement complet, un des trois ponts au choix et toutes les routes à déblayer. Réglage d'essai : **3 500 k€** au départ, dotation inchangée ; révise les 800 k€ de la décision 69. → [[Premiers pas après la crue]] · [[Questions ouvertes]] n°31 |
+
+| 87 | **Le premier pont se choisit provisoire ou en dur, et ses accès se déblaient pendant le chantier** | 🔓 | ✅ 2026-09-24, tranché par l'auteur : *« le choix est laissé : construire un pont provisoire ou reconstruire le pont comme avant avec 8 mois »*, et les routes à déblayer pendant ce temps. Le joueur ne doit pas attendre longtemps avant de pouvoir agir. Le pont en dur passe de 18 à **8 mois**. Réglage d'essai du provisoire : **3 mois**, **25 %** du prix en dur, **une seule voie en alternat** — il sature deux fois plus vite sur le calque Trafic, et son tablier est gris acier. Le remplacer plus tard par un pont en dur reste à trancher. → [[Premiers pas après la crue]] · [[Questions ouvertes]] n°33 |
+
+| 88 | **La barre de gauche porte une icône et son mot** | 🔓 | ✅ 2026-09-24, choix de l'auteur entre deux maquettes : toutes les tuiles ont la même taille, l'icône au-dessus, l'étiquette en capitales dessous — VILLE et DÉBUT compris. Remplace les icônes seules, mot en infobulle, du 2026-09-03. La mairie et l'université verrouillées pâlissent sans changer de forme. |
 
 **Voir aussi** : [[Questions ouvertes]] · [[00 - Index]] · [[Indicateurs globaux]]

@@ -1,7 +1,7 @@
 ---
 tags: [système, gameplay, prototype]
 statut: en essai, à juger par l'auteur
-maj: 2026-09-20
+maj: 2026-09-24
 ---
 
 # Premiers pas après la crue
@@ -12,7 +12,7 @@ L'auteur demande d'essayer une première boucle : **voir un manque → choisir u
 
 Le récit présente la crue, puis le temps part à ×1 sur le relogement. Le joueur cherche un terrain pour les premiers abris. Après le premier camp livré, le guide invite à ouvrir le trafic et à comparer les trois ponts : rétablir une liaison ouvre les accès, mais répartit différemment les trajets. Un camp monté sur la mauvaise rive conduit également à ce diagnostic, sans enfermer le joueur.
 
-Comparer n'engage rien ; le bouton de la fiche lance le chantier. Pendant les travaux du pont, le relogement et les réparations restent possibles. Le tablier réapparaît à sa livraison ; l'accès piéton des camps reste distinct de l'accès routier. La réussite du guide attend une liaison routière continue : chaque extrémité rejoint un carrefour praticable sans passer par un autre pont. Un pont livré sans accès le dit et reste sans voitures. Le guide propose ensuite la rue ou les logements des Forgerons, puis les pistes déjà présentes : réparer, protéger ou investir.
+Comparer n'engage rien ; la fiche du pont propose deux chantiers : un pont provisoire, vite posé mais sur une seule voie, ou le pont en dur, plus long (décision 87). Ses rues d'accès se déblaient pendant les travaux, qui ne laissent donc pas le joueur sans rien à faire. Pendant les travaux du pont, le relogement et les réparations restent possibles. Le tablier réapparaît à sa livraison ; l'accès piéton des camps reste distinct de l'accès routier. La réussite du guide attend une liaison routière continue : chaque extrémité rejoint un carrefour praticable sans passer par un autre pont. Un pont livré sans accès le dit et reste sans voitures. Le guide propose ensuite la rue ou les logements des Forgerons, puis les pistes déjà présentes : réparer, protéger ou investir.
 
 La protection diminue l'eau prévue dans le secteur après livraison ; réparer seul laisse cette prévision inchangée. Le coût de la berge peut obliger à épargner. Aucun cadeau de trésorerie ni verrou supplémentaire ne fabrique le choix.
 
