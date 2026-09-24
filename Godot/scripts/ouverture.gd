@@ -24,6 +24,7 @@ var _actions: VBoxContainer
 var _progression: ProgressBar
 var _detail: Label
 var _corps: VBoxContainer
+var _legende: VBoxContainer
 var _dernier_mois := -1.0
 var _proteger: Button
 var _reperes: Node3D
@@ -64,6 +65,7 @@ func batir(maquette) -> void:
 	v.add_child(_corps)
 	_titre = _paragraphe("", 22)
 	_texte = _paragraphe("", 14)
+	_legende_trafic(ui)
 	_caisse = _paragraphe("", 13)
 	_caisse.add_theme_color_override("font_color", ui.ACCENT)
 	_progression = ProgressBar.new()
@@ -79,6 +81,32 @@ func batir(maquette) -> void:
 	_reperes.name = "PremiersLieux"
 	jeu.monde.add_child(_reperes)
 	actualiser(true)
+
+
+## 🌉 Pendant la phase du pont, ce panneau remplace celui du calque Trafic :
+## il en porte donc la légende, mêmes couleurs, mêmes mots.
+func _legende_trafic(ui) -> void:
+	var t: Dictionary = {}
+	for th in jeu.THEMES:
+		if th["id"] == "trafic":
+			t = th
+	_legende = VBoxContainer.new()
+	_legende.add_theme_constant_override("separation", 4)
+	_corps.add_child(_legende)
+	var barre := TextureRect.new()
+	barre.texture = ui._texture_rampe()
+	barre.custom_minimum_size = Vector2(0, 13)
+	barre.stretch_mode = TextureRect.STRETCH_SCALE
+	barre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_legende.add_child(barre)
+	var h := HBoxContainer.new()
+	h.add_child(ui._label(str(t.get("bas", "")), 12, ui.GRIS))
+	var haut: Label = ui._label(str(t.get("haut", "")), 12, ui.GRIS)
+	haut.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(haut)
+	_legende.add_child(h)
+	ui._legende(_legende, jeu.COUPEE, "Coupée par la crue · pont emporté ou boue")
 
 
 # Les repères du guide restent dans l'interface (décision 85).
@@ -353,6 +381,8 @@ func actualiser(force := false) -> void:
 		# Même règle que les pastilles : taille constante à l'écran.
 		for r in _reperes.get_children():
 			(r as Label3D).pixel_size = jeu.pivot.taille * 0.0012
+	# Deux fois : changer de calque ne fait pas avancer le temps, et l'étape change après.
+	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
 	if not force and absf(jeu.mois - _dernier_mois) < 0.02:
 		return
 	_dernier_mois = jeu.mois
@@ -395,6 +425,7 @@ func actualiser(force := false) -> void:
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
 		visible = true
+	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
 	_caisse.text = "Caisse : %.0f k€" % jeu.ville.caisse_ke(jeu.mois)
 	_progression.visible = etape in ["travaux", "pont_travaux"]
 	_detail.visible = _progression.visible or etape == "suite"
@@ -437,7 +468,7 @@ func actualiser(force := false) -> void:
 			_bouton("Ouvrir le trafic", func() -> void: jeu.interface._sur_rail("trafic"))
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = "Comparez les trois, puis engagez-en un dans sa fiche. Rien d'autre ne s'engage avant qu'un pont soit rouvert.\n\nTrafic : du bleu (calme) au rouge (chargé). Violet : coupée par la crue."
+			_texte.text = "Comparez les trois, puis engagez-en un dans sa fiche. Rien d'autre ne s'engage avant qu'un pont soit rouvert."
 			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
 			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
 			for fid in jeu.ville.ponts_coupes():

@@ -529,3 +529,8 @@ Les sorties partaient à la cote de la rue, 7 cm sous le champ : enterrées sur 
 **2026-09-23 — Brainstorm de la suite des premiers pas :** cinq suites possibles posées (relever le faubourg, crue annoncée, rendre le champ, passage à la réduction, deuxième pont) ; recommandation : relever le faubourg avant la prochaine crue.
 L'auteur propose que l'université annonce la crue (adaptation) et propose une première mission (réduction), la place-parking du marché en exemple.
 Question n°32 ouverte dans le vault, quatre options, recommandation C : une proposition à la fois, dite comme un constat mesuré, jamais un ordre. Rien n'est tranché. Précisé ensuite : la crue est l'horizon de la partie, annoncée des années avant, et l'université tient la prévision à jour.
+
+
+**2026-09-24 — Légende du trafic pendant le choix du pont :** la fenêtre « Rebâtir un pont » remplace le panneau du calque Trafic, et n'en disait les couleurs qu'en une phrase.
+Elle porte maintenant la barre Rue calme → Saturée et la pastille violette « coupée par la crue », seulement quand le calque Trafic est ouvert pendant la phase du pont.
+Vu sur `wehrau_ouverture_10_comparer_ponts.png` ; l'essai d'ouverture passe à zéro échec.
