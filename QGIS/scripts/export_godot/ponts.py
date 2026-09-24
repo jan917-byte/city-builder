@@ -142,6 +142,96 @@ def _pont_neuf(m, axe, larg, ch, coul_tab, coul_ch, coul_par, G, bord=None, chen
     return len(m) - debut
 
 
+def _barre(m, a, b, e, coul, poser):
+    """Poutre de section carrée e entre deux points locaux (longueur, travers, hauteur)."""
+    d = [b[k] - a[k] for k in range(3)]
+    ref = (0.0, 1.0, 0.0) if abs(d[1]) < .9 * math.hypot(*d) else (0.0, 0.0, 1.0)
+    def croix(u, v):
+        return (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2],
+                u[0] * v[1] - u[1] * v[0])
+    def unite(u):
+        n = math.hypot(*u)
+        return tuple(x / n for x in u)
+    p1 = unite(croix(d, ref))
+    p2 = unite(croix(d, p1))
+    coins = [tuple(o[k] + (i - .5) * e * p1[k] + (j - .5) * e * p2[k] for k in range(3))
+             for o in (a, b) for i, j in ((0, 0), (1, 0), (1, 1), (0, 1))]
+    centre = tuple(sum(c[k] for c in coins) / 8 for k in range(3))
+    faces = [(0, 1, 2, 3), (4, 5, 6, 7)] + [(k, (k + 1) % 4, (k + 1) % 4 + 4, k + 4)
+                                            for k in range(4)]
+    for f in faces:
+        q = [coins[k] for k in f]
+        # Main droite en repère local, normale sortante : la convention de `_volume`.
+        n = croix([q[1][k] - q[0][k] for k in range(3)], [q[2][k] - q[0][k] for k in range(3)])
+        dehors = [sum(c[k] for c in q) / 4 - centre[k] for k in range(3)]
+        if sum(n[k] * dehors[k] for k in range(3)) < 0:
+            q.reverse()
+        teinte = coul if dehors[2] > .3 * e else tuple(c * .80 for c in coul)
+        m.triangle(poser(*q[0]), poser(*q[1]), poser(*q[2]), teinte)
+        m.triangle(poser(*q[0]), poser(*q[2]), poser(*q[3]), teinte)
+
+
+# 🌉 Le pont provisoire (87) : une voie entre deux poutres en treillis d'acier
+# vert (type Bailey), plancher de madriers, palées métalliques. Il doit se lire
+# « provisoire » à la distance de jeu, pas par une teinte.
+PROVISOIRE_UTILE = 5.6     # entre les poutres : les deux files de trafic.gd (±1,35 m) y passent
+PROVISOIRE_PANNEAU = 3.05  # un panneau Bailey
+PROVISOIRE_HAUT = 2.4
+
+
+def _pont_provisoire(m, axe, G):
+    """Plancher de bois, deux poutres en treillis, palées d'acier, portiques balisés."""
+    debut = len(m)
+    longueur, poser = _cadre(axe, G, raccord=min(8.0, _cumul(axe)[-1] / 4))
+    vert = (.13, .20, .07)
+    acier = (.10, .10, .09)
+    bois = ((.30, .17, .08), (.24, .13, .06))
+    rouge, blanc = (.62, .05, .03), (.80, .80, .76)
+    demi = PROVISOIRE_UTILE / 2
+    w_p = demi + .25
+    _dalle(m, 0.0, longueur, -w_p - .25, w_p + .25, Y_CHAUSSEE, -.55, acier, poser,
+           couvrir=False)
+    n_pl = max(1, int(longueur / .9))
+    for k in range(n_pl):
+        a, b = longueur * k / n_pl, longueur * (k + 1) / n_pl
+        _dalle(m, a, b, -w_p - .25, w_p + .25, Y_CHAUSSEE + .06, Y_CHAUSSEE,
+               bois[k % 2], poser)
+    n = max(2, round(longueur / PROVISOIRE_PANNEAU))
+    h = PROVISOIRE_HAUT
+    for cote in (-1, 1):
+        w = cote * w_p
+        noeuds = [longueur * k / n for k in range(n + 1)]
+        for a, b in zip(noeuds, noeuds[1:]):
+            _barre(m, (a, w, .15), (b, w, .15), .30, vert, poser)
+            _barre(m, (a, w, h), (b, w, h), .30, vert, poser)
+            _barre(m, (a, w, .15), (b, w, h), .16, vert, poser)
+            _barre(m, (a, w, h), (b, w, .15), .16, vert, poser)
+        for k, s in enumerate(noeuds):
+            if k in (0, n):
+                # Portique d'entrée à chevrons rouges et blancs : l'alternat se voit.
+                for j in range(6):
+                    _barre(m, (s, w, h * j / 6), (s, w, h * (j + 1) / 6), .34,
+                           rouge if j % 2 == 0 else blanc, poser)
+            else:
+                _barre(m, (s, w, .15), (s, w, h), .20, vert, poser)
+    # Contreventement haut aux deux bouts : le cadre qu'on franchit.
+    for s in (0.0, longueur):
+        _barre(m, (s, -w_p, h), (s, w_p, h), .30, rouge, poser)
+    # Palées d'acier sur les travées de plus de quinze mètres, culées en madriers.
+    for s in (.8, longueur - .8):
+        _dalle(m, s - .7, s + .7, -w_p, w_p, -.55, FOND_ILSE - 1.1, bois[1], poser)
+    trav = max(1, math.ceil(longueur / 15.0))
+    for k in range(1, trav):
+        s = longueur * k / trav
+        _barre(m, (s, -w_p, -.55), (s, w_p, -.55), .40, acier, poser)
+        for cote in (-1, 1):
+            _barre(m, (s, cote * (w_p - .4), -.55), (s, cote * (w_p - .4), FOND_ILSE - 1.1),
+                   .35, acier, poser)
+        _barre(m, (s, -(w_p - .4), -.7), (s, w_p - .4, NAPPE_ILSE - .4), .16, acier, poser)
+        _barre(m, (s, w_p - .4, -.7), (s, -(w_p - .4), NAPPE_ILSE - .4), .16, acier, poser)
+    return len(m) - debut
+
+
 def _acces_pont(m, axe, manque, larg, bord, coul, G, decoupe):
     """Prolonger les trottoirs jusqu'aux carrefours, en épousant leur chaussée."""
     from .voirie import _dessus_trottoir, _bordure

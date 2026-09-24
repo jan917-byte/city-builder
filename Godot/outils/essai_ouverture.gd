@@ -477,8 +477,9 @@ func essayer_ponts(lointain: int) -> void:
 	actualiser(fin)
 	verifier(o.etape == "pont_livre" and jeu.vitesse == 0.0, "La livraison du premier pont met le jeu en pause")
 	verifier(o.verrou() == "", "Le pont rouvert avec ses accès lève le verrou")
-	verifier(jeu.ville.route_praticable(pont, fin) and jeu.reparations["r"][pont].visible
-		and not jeu.ruines_ponts[pont].visible, "Le tablier livré remplace la ruine")
+	verifier(jeu.ville.route_praticable(pont, fin) and jeu.ponts_provisoires[pont].visible
+		and not jeu.reparations["r"][pont].visible and not jeu.ruines_ponts[pont].visible,
+		"Le pont provisoire livré remplace la ruine, sans le tablier en dur")
 	verifier(jeu.ville.camp_occupants(lointain, fin) > 0.0
 		and not jeu.ville.camp_accessible(lointain, fin - 0.01),
 		"La livraison remplit le camp de l'autre rive, sans réécrire le passé")
@@ -487,7 +488,7 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(is_equal_approx(jeu.ville.valeur("r", pont, "charge", fin), float(attendu["charge_pont"])),
 		"Le trafic livré correspond à la prévision, même depuis la vue d'ensemble")
 	await capture("13_pont_livre_trafic")
-	# Le provisoire se voit deux fois : saturé sur le calque, gris acier en ville.
+	# Le provisoire se voit deux fois : saturé sur le calque, en treillis en ville.
 	jeu.selection.sel_fid = -1
 	jeu._sur_theme("trafic")
 	jeu.pivot.viser(Vector2(jeu.pivot.position.x, jeu.pivot.position.z), 700.0)
@@ -496,7 +497,17 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._sur_theme("")
 	jeu._viser_route(pont, 120.0)
 	jeu._rafraichir(true)
-	await capture("13c_provisoire_acier")
+	await capture("13c_provisoire_treillis")
+	# Même cadrage, pont en dur livré (8 mois, pas 3) : la paire à comparer.
+	jeu.ville._provisoire.erase(pont)
+	jeu.mois = debut + jeu.ville.PONT_MOIS + 0.1
+	jeu._rafraichir(true)
+	verifier(jeu.reparations["r"][pont].visible and not jeu.ponts_provisoires[pont].visible,
+		"Le pont en dur remplace le treillis au même endroit")
+	await capture("13d_pont_en_dur_meme_cadrage")
+	jeu.ville._provisoire[pont] = true
+	jeu.mois = fin
+	jeu._rafraichir(true)
 	jeu.selection.sel_couche = "r"
 	jeu.selection.sel_fid = pont
 	await cliquer(bouton("Voir le pont rouvert"))

@@ -131,6 +131,7 @@ var _apercu_fid := -1
 var _apercu_couche := ""
 var _apercu_voitures := ""
 var _apercu_camp := ""
+var _apercu_provisoire := false
 var _couloirs := {}
 var _plaques := {}
 var _berges_contour := {}
@@ -147,6 +148,8 @@ var _socles := {}
 # 07 comme tout le reste, Godot ne fabrique rien.
 var reparations := {"i": {}, "r": {}, "b": {}}
 var ruines_ponts := {}
+# 🌉 Le pont provisoire (87) : montré À LA PLACE du tablier neuf, jamais avec.
+var ponts_provisoires := {}
 # 🅿️ Les files de stationnement peintes, un nœud par tronçon : elles se cachent
 # quand la rue n'a plus de places (fid de tronçon -> MeshInstance3D).
 var places_rue := {}
@@ -1532,6 +1535,7 @@ func _construire() -> void:
 	_par_reparation("Reparation", donnees["repare"], "i")
 	_par_reparation("ReparationVoirie", donnees["repare_voirie"], "r")
 	_par_ruines_ponts(donnees["ponts_ruine"])
+	_par_provisoires(donnees["ponts_provisoires"])
 	_par_places(donnees["places"])
 
 	# 🌳 Le semis des îlots de sol ne bouge pas : aucune décision ne plante DANS
@@ -1710,6 +1714,27 @@ func _par_ruines_ponts(source: Dictionary) -> void:
 		reparations["r"][fid].mesh.set_meta("boue_largeur", donnees["couloirs"][str(fid)][0])
 
 
+func _par_provisoires(source: Dictionary) -> void:
+	if _ignore("Routes"):
+		return
+	var parent := Node3D.new()
+	parent.name = "PontsProvisoires"
+	monde.add_child(parent)
+	for gr in source["g"]:
+		var fid := int(gr[0])
+		var mi := MeshInstance3D.new()
+		mi.name = "Provisoire%d" % fid
+		mi.mesh = Constructeur.maillage_groupe(source, int(gr[1]), int(gr[2]))
+		mi.material_override = mat_objet
+		mi.set_meta("fid", fid)
+		mi.set_meta("couche", "r")
+		mi.visible = false
+		parent.add_child(mi)
+		mi.create_trimesh_collision()
+		_corps(mi, false)
+		ponts_provisoires[fid] = mi
+
+
 func _par_reparation(nom: String, source: Dictionary, couche: String) -> void:
 	if _ignore("Ilots" if couche == "i" else "Routes"):
 		return
@@ -1759,6 +1784,14 @@ func _montrer_reparations() -> void:
 			# sans lui, un pont emporté n'était qu'une paire de moignons.
 			if couche == "r" and theme == "trafic" and fid in ville.ponts_coupes():
 				fini = true
+			if couche == "r" and ponts_provisoires.has(fid):
+				var prov: MeshInstance3D = ponts_provisoires[fid]
+				var p: bool = fini and ville.pont_provisoire(fid) \
+					and ville.reparation_finie(couche, fid, mois)
+				fini = fini and not p
+				if p != prov.visible:
+					prov.visible = p
+					_corps(prov, p)
 			if fini == mi.visible:
 				continue
 			mi.visible = fini
@@ -2160,6 +2193,7 @@ func _peindre() -> void:
 					ville.valeur("r", fid, "stationnement", mois) > 0.5
 			for mj in [mi, reparations[couche].get(fid),
 					ruines_ponts.get(fid) if couche == "r" else null,
+					ponts_provisoires.get(fid) if couche == "r" else null,
 					places_rue.get(fid) if couche == "r" else null,
 					_berges_mur.get(fid) if couche == "b" else null,
 					_berges_pente.get(fid) if couche == "b" else null]:
@@ -2457,9 +2491,12 @@ func _maj_apercu() -> void:
 		_apercu_fid = -1
 		_apercu_couche = ""
 		return
-	if fid != _apercu_fid or couche != _apercu_couche:
+	var provisoire: bool = d.get("provisoire", false)
+	if fid != _apercu_fid or couche != _apercu_couche \
+			or provisoire != _apercu_provisoire:
 		_apercu_fid = fid
 		_apercu_couche = couche
+		_apercu_provisoire = provisoire
 		_apercu_voitures = ""   # changer d'objet repose les voitures
 		_apercu_camp = ""
 		# 🔧 UN PONT CASSÉ RESTE MONTRÉ PAR LA VILLE : un morceau droit ne sait
@@ -2468,7 +2505,9 @@ func _maj_apercu() -> void:
 		var casse: bool = couche == "r" \
 			and str(ville.routes[fid].get("etat_crue", "")) == "coupe"
 		if couche == "i" or casse:
-			var neuf: MeshInstance3D = reparations[couche].get(fid)
+			var neuf: MeshInstance3D = ponts_provisoires.get(fid) \
+				if casse and provisoire and ponts_provisoires.has(fid) \
+				else reparations[couche].get(fid)
 			apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
 				neuf.mesh if neuf != null else null, null if casse else _socle(couche, fid),
 				ruines_ponts[fid].mesh if casse and ruines_ponts.has(fid) else null,
@@ -2521,17 +2560,11 @@ func _voie_de_berge(fid: int) -> float:
 		Echantillon.EMPRISE_CIRCULATION["rive"])
 
 
-const PONT_PROVISOIRE := Color(0.55, 0.60, 0.66)
-
-
 func _teinte(couche: String, fid: int) -> Color:
 	if selection and couche == selection.sel_couche and fid == selection.sel_fid:
 		return CHOISI
 	if selection and couche == selection.survol_couche and fid == selection.survol_fid:
 		return SURVOL
-	# 🌉 Le pont provisoire se voit : un tablier d'acier gris, pas de béton.
-	if couche == "r" and ville.pont_provisoire(fid) and ville.reparation_finie("r", fid, mois):
-		return PONT_PROVISOIRE
 	return Color.WHITE
 
 

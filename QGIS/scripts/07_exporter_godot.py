@@ -45,7 +45,7 @@ from export_godot.decor import (
 )
 from export_godot.paysage import paysage
 from export_godot.sorties import sorties, hors_routes, Surface
-from export_godot.ponts import _acces_pont
+from export_godot.ponts import _acces_pont, _pont_provisoire
 from export_godot.berges import (
     _arrondir_rives,
     GrilleChaussee,
@@ -1293,6 +1293,8 @@ def main():
     # ----------------------------------------------------------- la voirie
     voirie = Maillage()
     ponts_ruine = Maillage()
+    # 🌉 Le pont provisoire (87), à la place du tablier neuf quand le joueur le choisit.
+    ponts_provisoires = Maillage()
     # 🌊 LA BERGE A SON MAILLAGE, donc ses groupes, donc ses nœuds cliquables
     # dans Godot. Trois maillages, un fid par groupe dans chacun : la bande de
     # rive, qui reste ; le MUR, que la rive rendue fait disparaître ; le TALUS,
@@ -1467,6 +1469,7 @@ def main():
         if etat_crue == "coupe":
             repare_voirie.marque(d["fid"])
             ponts_ruine.marque(d["fid"])
+            ponts_provisoires.marque(d["fid"])
             for axe_entier in axes_voirie.get(d["fid"], ()):
                 manque = _axe_manque(axe_entier, chenal)
                 if manque:
@@ -1479,6 +1482,9 @@ def main():
                     n_tablier_neuf += _acces_pont(
                         repare_voirie, axe_entier, manque, larg, _bord_libre(d, ch),
                         coul_tr, G_voirie, decoupe_chaussee)
+                    _pont_provisoire(ponts_provisoires, manque, G_voirie)
+                    _acces_pont(ponts_provisoires, axe_entier, manque, larg,
+                                _bord_libre(d, ch), coul_tr, G_voirie, decoupe_chaussee)
         # Le shader dépose le limon en coordonnées monde, sur tous les supports.
         lavage = (d.get("part_boue") or 0.0) > 0.0 and etat_crue != "coupe"
         if lavage:
@@ -1947,6 +1953,7 @@ def main():
         "berges_pente": pentes_m.json(),
         "voirie": voirie.json(),
         "ponts_ruine": ponts_ruine.json(),
+        "ponts_provisoires": ponts_provisoires.json(),
         # Déjà en repère Godot : [x, y, z, échelle, lacet]. Godot ne fait
         # aucune conversion de coordonnées, c'est la règle du contrat.
         "arbres": arbres_godot,

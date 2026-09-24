@@ -3003,6 +3003,13 @@ func apercu_demande() -> Dictionary:
 				or _repare_provisoire.is_hovered())
 		if _apercu_avant:
 			futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
+	# 🌉 Quel pont la miniature promet : le choix posé, sinon le bouton survolé.
+	var provisoire := _fiche_couche == "r" and ville.pont_provisoire(_fiche_fid)
+	if _fiche_couche == "r" and not _apercu_avant:
+		if _repare_provisoire.is_hovered() or _repare_bouton.is_hovered():
+			provisoire = _repare_provisoire.is_hovered()
+		elif r.has("reparer"):
+			provisoire = str(r["reparer"]) == "provisoire"
 	if _fiche_couche == "b":
 		var e := ville.berge_etat(_fiche_fid, _mois) if _apercu_avant \
 			else ville.berge_cible(_fiche_fid)
@@ -3036,7 +3043,7 @@ func apercu_demande() -> Dictionary:
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 		"verdi": verdi, "plate": plate,
 		"futur": futur, "berge": berge, "places": places, "roule": roule,
-		"arbres": arbres, "dense": dense, "camp": camp}
+		"arbres": arbres, "dense": dense, "camp": camp, "provisoire": provisoire}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait
