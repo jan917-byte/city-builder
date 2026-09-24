@@ -1,7 +1,7 @@
 ---
 tags: [vision, ton, DA]
 statut: arrêté
-maj: 2026-08-12
+maj: 2026-09-24
 ---
 
 # Ton et règles d'écriture
@@ -50,7 +50,8 @@ Le test : **si un joueur peut deviner que le libellé a été pondu par une IA, 
 | Le tic | Pourquoi c'est un aveu | Ce qu'on écrit |
 |---|---|---|
 | `TOUT EN MAJUSCULES` sur un bouton, un onglet, un nom de lieu ou une phrase | Personne ne parle comme ça. Sur un bouton, c'est un cache-misère de mise en page | Capitale initiale seule : `Décisions`, `Passer l'année`, `Cour des Tilleuls` |
-| *(depuis le 2026-09-20)* **la capitale ÉTIQUETTE** : `SURFACE`, `NIVEAUX`, `DENSIFIER`, `MOIS 12` | Un mot de 10 px qui coiffe un nombre n'est pas une parole, c'est un repère — et la casse basse s'y perd | Capitales espacées et grasses, réservées aux étiquettes de données, aux titres de bloc et au compteur du temps |
+| *(depuis le 2026-09-24, auteur)* **l'étiquette en capitales espacées** : `CRUE`, `SURFACE`, `MOIS 12` | Le petit sur-titre en capitales espacées est devenu la signature des interfaces générées | Casse normale, grasse et grise : `Crue`, `Surface`, `Mois 12`. Seuls les mots du rail restent en capitales (88) |
+| Le filet coloré collé à gauche d'un titre ou d'un encadré | Autre signature de gabarit ; sur un coin arrondi il se courbe en croissant | Rien : le nom seul, foncé, aligné sur le même bord que le reste |
 | Le tiret cadratin `—` dans un libellé | Ponctuation anglo-saxonne, jamais tapée spontanément en français | Deux-points, virgule, ou deux phrases |
 | Emoji décoratif dans un bouton (🚀 ✨ 📊) | Signature de gabarit | Rien, ou une icône dessinée qui fait partie de la DA |
 | Le triptyque titre + sous-titre explicatif + bouton, partout | Chaque panneau finit identique | Un seul niveau. Si le sous-titre est nécessaire, le titre est mauvais |
