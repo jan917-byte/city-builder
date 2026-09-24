@@ -534,3 +534,7 @@ Question n°32 ouverte dans le vault, quatre options, recommandation C : une pro
 **2026-09-24 — Légende du trafic pendant le choix du pont :** la fenêtre « Rebâtir un pont » remplace le panneau du calque Trafic, et n'en disait les couleurs qu'en une phrase.
 Elle porte maintenant la barre Rue calme → Saturée et la pastille violette « coupée par la crue », seulement quand le calque Trafic est ouvert pendant la phase du pont.
 Vu sur `wehrau_ouverture_10_comparer_ponts.png` ; l'essai d'ouverture passe à zéro échec.
+
+**2026-09-24 — Pont provisoire ou en dur, accès pendant le chantier, rail à icône et mot :** l'attente de 18 mois laissait le joueur sans rien à faire.
+Chaque pont se choisit en dur (8 mois) ou provisoire (3 mois, 25 % du prix, une voie qui sature deux fois plus vite, tablier gris) ; la fenêtre du chantier propose les rues d'accès. Décisions 87 et 88, question 33 fermée.
+Barre de gauche : tuiles de même taille, icône et étiquette en capitales, sans cadre pointillé ; essais ouverture et progression à zéro échec, captures `12a`, `13b`, `13c`.
