@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne) et n°32 (l'université qui propose) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-24
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose) et n°34 (le prix des panneaux posés toit par toit) — n°11 et n°25 closes le 2026-09-02
+maj: 2026-09-27
 ---
 
 # Questions ouvertes
@@ -366,6 +366,24 @@ Idée de l'auteur, en brainstorm : le premier pont livré, le guide mène à l'u
 
 ### 33. Que fait le joueur pendant que le premier pont se bâtit ? — ✅ fermée le 2026-09-24
 Dix-huit mois d'attente sans rien à engager, c'était trop long. L'auteur laisse le choix entre un pont provisoire, vite posé, et le pont en dur ramené à 8 mois ; les rues d'accès se déblaient pendant le chantier. → [[Décisions arrêtées]] 87. Reste ouvert : remplacer plus tard un pont provisoire par un pont en dur.
+
+### 34. Les panneaux se posent toit par toit : le prix doit-il suivre les toits mesurés ? — ouverte le 2026-09-27
+Demande de l'auteur, le 2026-09-26 : *« la pose des panneaux doit être plus réaliste, toit par toit, en commençant par le toit le plus rentable »*. La pose visible change donc : chaque versant ou toit plat reçoit un tableau de **modules entiers**, marges tenues, et l'îlot se couvre **unité par unité**, de la plus rentable à la moins rentable — orientation, pente, taille du toit, ombre d'un voisin plus haut au sud. Le calcul est écrit (`QGIS/scripts/export_godot/solaire.py`) ; il n'est pas encore branché sur la maquette.
+
+**Trois conséquences à valider, avant l'image :**
+- **100 % ne couvre plus tout le toit**, seulement la part équipable du tissu : les versants nord restent nus, le cœur ancien ne se couvre qu'à 15 %.
+- **Le vert prend les toits plats dans l'ordre inverse** — d'abord ceux qu'aucun module ne peut couvrir, puis les moins rentables. Il était tiré au hasard du lieu.
+- Un toit en cours de pose se remplit **rangée par rangée depuis la gouttière**.
+
+**La question : le prix.** La pose suit maintenant un rendement mesuré toit par toit, mais le prix, lui, suit toujours **un seul nombre inventé** — `PROGRESSIVITE` = 0,4, décidé le 2026-09-03 : le premier m² coûte 0,6 fois le prix moyen et rend 1,4 fois.
+
+| | Ce qui décide du prix | Ce que ça vaut |
+|---|---|---|
+| **A · Garder 0,4** | un nombre, le même partout | rien ne bouge dans la partie ; l'image et le prix peuvent se contredire (un îlot tout plat, sans « meilleur toit », reste progressif) |
+| **B · La courbe mesurée de chaque îlot** ⭐ | 07 exporte, îlot par îlot, ce que rendent les premiers m² posés | l'image et le prix disent la même chose ; les totaux changent — un îlot mal orienté devient vraiment moins rentable |
+| **C · Mesurer, puis régler 0,4 dessus** | un nombre, calé sur la moyenne mesurée | un compromis : chiffres stables, écart assumé îlot par îlot |
+
+**Recommandation : B**, mais seulement **après** avoir vu la pose à l'écran : c'est l'image qui dira si le classement des toits est crédible. → `Prototype/Densifier.md` § On commence par le meilleur (la progressivité, jamais consignée dans [[Décisions arrêtées]])
 
 ## 🟢 Peut attendre (réversible)
 
