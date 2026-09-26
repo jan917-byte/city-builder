@@ -569,3 +569,6 @@ Essais ouverture, progression, relogement et trafic : 0 échec ; capture `12c_ru
 **2026-09-26 — Partie jouée jusqu'au pont livré, quatre défauts de lecture corrigés :** 4 minutes, une seule vraie décision (le pont, départagé par le prix seul), la caisse ne mord pas.
 Le guide ne se montre plus derrière le choix du mode ; l'îlot sinistré dit ses logements perdus ; Avant/Après s'enfoncent ; une rue déblayée avant « Choisir la suite » n'est plus le premier lieu relevé (mois sauvegardé).
 Essais ouverture, progression, relogement, trafic : 0 échec ; sauvegarde : les 92 échecs connus (91 lieux sans nom + titre).
+**2026-09-26 — Passe graphique (demande de l'auteur, plan priorisé puis « fais tout ») :** l'Ilse, les panneaux, le bâti, les arbres, les montagnes et le bord de carte, sans qu'un chiffre de jeu bouge.
+Eau redébitée à 8 m avec distance à la rive et courant (16 485 sommets), méandres hors carte ; forêt en peuplements, limite des arbres à 330 m, chaume, rocher, nuages en volume ; `FAMILLE_FACADE` : volets, stores, allèges, halles, balcons ; six essences en ville.
+Banc 11,30 contre 11,27 ms/image ; essais caméra, relogement, trafic, progression, ouverture à 0 échec, travaux et énergie inchangés, sauvegarde : les 92 connus ; outil `apercu_graphisme.gd`, trois planches.

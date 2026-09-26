@@ -139,7 +139,7 @@ Trois réglages accordés à une ville dont les murs *étaient* la couleur, chan
 - 🔄 **Le stationnement DE RUE : 3 310 places, et aucune ne se voit.** La moitié « place-parking » est faite (§ 3 sexies, 123 places à −3 % du compte). Restent les tronçons. ⚠️ **L'ancien chiffre de 4 587 agrégeait les deux sens du champ `stationnement`** et ne correspond à aucune colonne : 3 310 sur les tronçons, 1 028 sur les îlots (dont 127 sur la seule place, les 901 autres sous des îlots bâtis, donc invisibles par construction). La forme à suivre est maintenant **prouvée et pas supposée** — une trame tirée de la géométrie retombe à 3 % du tableur.
 - ✅ ~~**L'axe de certains quais passe au-dessus du chenal**~~ — **plus un défaut visible** depuis § 3 quater : les 7 208 m² sont portés à 100,0 %. ⚠️ Ce qui reste est un **choix de carte** : le quai prend 6 m à l'Ilse. Une rivière plus large veut dire **reculer le tracé** des voies de berge, pas toucher au mur.
 - ☐ **159 empreintes concaves prennent un toit plat** (la recette du faîtage suppose un versant qui avance dans un seul sens) et **169 pans (2 %) sont réorientés à l'émission** — ⚠️ conséquence : la colonne « toits dehors » du contrôle est vraie **par construction** et ne prouve plus rien ; le chiffre qui informe est celui des réorientations. Un repli plus large (toit plat dès qu'un pan se plie trop) a été essayé le 2026-08-12 et **retiré devant l'image**.
-- ☐ **Les fenêtres, ce qui en reste** : les **pignons sous toiture** ne sont pas percés (ils appartiennent au maillage du toit), ni **volets** ni **balcons**, et un mur mitoyen est aveugle sur toute sa hauteur y compris la part qui dépasse d'un voisin plus bas. Les trois se voient de près, aucun à la vue de jeu.
+- ☐ **Les fenêtres, ce qui en reste** : les **pignons sous toiture** ne sont pas percés (ils appartiennent au maillage du toit), et un mur mitoyen est aveugle sur toute sa hauteur y compris la part qui dépasse d'un voisin plus bas. Volets et balcons existent depuis le § 9.
 - ☐ **Le sol des cours** est la teinte de la plaque là où la cour n'est pas plantée : ça passe pour du pavé, mais c'est ce qu'on voit quand rien n'est dessiné.
 - ☐ **8 coudes sur 33 restent des angles** faute de place, et **11 coudes arrondis sur 25 n'ont qu'un bord de trottoir** — pas rattrapable sans bouger les parcelles.
 - ☐ **Le talus s'arrête aux champs** : la friche 31 et la barre 32 touchent l'eau et gardent un quai droit. Une berge naturelle au sud est **une ligne** — la règle lit le `sous_type` du riverain, pas une liste d'îlots.
@@ -148,7 +148,7 @@ Trois réglages accordés à une ville dont les murs *étaient* la couleur, chan
   - ✅ **8 · 9 — arbres sur la chaussée** : 112 arbres des bois et des haies avaient le pied sur l'asphalte d'une rue, `07` les écarte (`MARGE_PIED_DECOR`, 2 m). 🔴 La haie sombre qui longeait la sortie est (**10**) est partie avec : elle était plantée sur la chaussée. À redessiner à côté si on la veut.
   - ✅ **10 · 11 — sorties de ville** : elles partaient 7 cm sous le champ, donc enterrées sur ~10 m, et semblaient décollées de la rue. Elles partent maintenant du bout de la rue, dans son axe, rejoignent la limite des champs en 30 m, avec l'asphalte de la ville et un axe 3 m / 10 m.
   - ☐ **2 — le talus des champs ne se voit pas** : l'herbe descend à plat jusqu'à l'eau. **1 —** en face, la rive forêt est une petite marche grise verticale : les deux rives ne parlent pas la même langue.
-  - ☐ **L'eau rencontre la terre sur une ligne nette**, partout : ni bande mouillée, ni galets, ni roseaux au pied. C'est ce qui fait le plus maquette.
+  - 🟠 **L'eau rencontre la terre sur une ligne nette** : depuis le § 9, l'eau s'éclaircit et écume au bord, mais la rive elle-même n'a ni bande mouillée ni galets.
   - ☐ **12 — une route du décor passe sous la forêt**, au nord-est : un fil gris entre les arbres.
   - ☐ Un sapin au coin de la place-parking, sur la chaussée ; 2 plantes de rive posées sur une chaussée (berge 2).
   - ☐ **La touche O** cadre exactement comme **I** et ne montre aucun pont, puisque les trois sont coupés au départ.
@@ -156,6 +156,23 @@ Trois réglages accordés à une ville dont les murs *étaient* la couleur, chan
 - 🔄 **Le trafic n'a pas bougé depuis la session 9** — c'est l'étape 5.
 - 🔴 **Le critère « 9 niveaux » du vault est périmé** depuis que la barre est descendue à 6 (§ 3 quinquies) : à réécrire ou à annuler, dans le vault et pas ici.
 - 🔴 **La DA du vault dit encore « un `sous_type` = une teinte »**, et c'est faux. À fermer dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`, pas au détour de cette note.
+
+## 9. Passe graphique (2026-09-26, demande de l'auteur : « fais tout »)
+
+Hors étape ouverte, bornée à une session : aucun chiffre de jeu ne bouge, l'étape 4 reste en pause. Planches numérotées `QGIS/rendus/wehrau_graphisme_planche_{1_eau_paysage,2_toits,3_bati_arbres}.png` ; cadrages refaits par `Godot --path Godot --script res://outils/apercu_graphisme.gd` (`-- --avant` pour la série de référence).
+
+| # | Ce qui change | Où ça se règle |
+|---|---|---|
+| 1 · 2 | L'Ilse : clair et vert au bord, profond au milieu (fond atteint à 11 m de la rive), écume sous 1 m, rides qui descendent le courant. La nappe est redébitée à 8 m : **16 485 sommets**, chacun avec sa distance à la rive et le sens de l'aval. Hors carte, méandres de 150 m au lieu d'une ligne droite | `eau.gdshader` · `NAPPE_PAS` (`geometrie.py`) · `PAS_FIL` (`paysage.py`) |
+| 3 · 4 | Forêt en peuplements et clairières, **16 412 feuillus, 5 867 sapins, 251 peupliers** ; au-dessus de la limite des arbres (**330 m ± 70**), chaume puis rocher ; ravines de 150 m ; bord du monde en rectangle arrondi (rayon 850 m) ; 24 nuages en volume, avec leur ombre | `LIMITE_ARBRES` · `DECOR["alpage"]`, `DECOR["roche"]` (`palette.py`) · `brume.gdshaderinc` |
+| 5 · 6 | Panneaux : le bleu du 2026-08-17 reste la lecture de loin ; de près, verre, cellules, cadre clair en haut, ombre en bas ; sur le plat, deux rangées inclinées par case de 3 m avec leur ombre | bloc ☀️ de `materiaux.gd` |
+| 7 · 8 · 9 | Une **famille de façade** par tissu : volets sur 7 bâtiments sur 10 et soubassement (cœur ancien, maisons, pavillons), portes de couleur, stores (front commerçant), allèges de couleur une travée sur trois (barre), bardage, portes de quai et verrières tous les 7,5 m (halles), balcons (collectifs). L'enduit reste celui de l'époque | `FAMILLE_FACADE` (`reglages.py`) · couleurs d'accent en tête de `materiaux.gd` |
+| 10 | Six essences en ville, tirées du lieu : **846 feuillus, 210 conifères, 170 fruitiers** (jardins), **120 bouleaux**, **8 saules et 6 peupliers** (bord de l'eau) ; sur une rive rendue, un buisson sur trois devient saule (**198**) | `varier_essence` (`geometrie.py`) · `VALEUR_ESSENCE` (`maquette.gd`) |
+
+Coût : banc à **11,30 ms/image** sur la ville entière contre **11,27** avant, 3 % de triangles en moins. Essais : caméra, relogement, trafic, progression, ouverture à 0 échec ; travaux (1) et énergie échouent à l'identique de la version d'avant ; sauvegarde : les 92 échecs connus.
+
+- 🔴 **À juger** : les **couleurs d'accent** sont des teintes nouvelles (volets, stores, allèges, portes de quai) — la DA dit « 8–10 teintes » ; si elles débordent, c'est la question à ouvrir. Les montagnes sont des **ballons sans neige** par défaut (question posée, pas tranchée). La **lumière n'a pas bougé** : la DA la veut fixe.
+- ☐ La miniature (`echantillon.gd`) montre une eau sans rive connue, donc uniforme ; la route du décor sous la forêt (**12** ci-dessus) est toujours là.
 
 ---
 
