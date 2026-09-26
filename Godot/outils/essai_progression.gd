@@ -67,8 +67,13 @@ func executer() -> void:
 		if pont == 169:
 			o.examiner("r", pont)
 			await capture("progression_03_pont_inaccessible")
-			o.voir_acces(pont)
-			await capture("progression_04_acces")
+			# 🔄 Rien ne désigne la route (auteur, 2026-09-26) : ni nom, ni bouton.
+			verifier("boue" in o._texte.text and o._actions.get_child_count() == 0,
+				"Le guide dit que la boue bloque le pont, sans nommer ni proposer de route")
+			for rue in acces["obstacles"]:
+				verifier(not jeu.interface.lieux.nom("r", rue) in o._texte.text,
+					"Le guide ne nomme pas l'accès %d" % rue)
+			await capture("progression_04_boue_sans_route")
 			jeu._sur_sauvegarde()
 			jeu._sur_reset()
 			jeu._sur_reprise()

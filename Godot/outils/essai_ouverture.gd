@@ -483,22 +483,49 @@ func essayer_ponts(lointain: int) -> void:
 	await cliquer(jeu.interface._recap_bouton)
 	verifier(o.etape == "pont_travaux" and not jeu.ville.route_praticable(pont, debut)
 		and jeu.ville.pont_provisoire(pont), "L'engagement paie le pont provisoire sans ouvrir sa traversée")
-	# 🚧 Les accès se déblaient PENDANT le chantier, depuis la fenêtre.
+	# 🔄 Rien ne désigne les accès (auteur, 2026-09-26) : ni la fenêtre, ni la fiche.
 	actualiser(debut)
-	await capture("12a_pont_travaux_acces")
+	verifier(bouton("Voir les accès") == null and o._actions.get_child_count() == 2,
+		"La fenêtre du chantier ne propose que d'avancer et de voir le pont")
 	for rue in acces["obstacles"]:
-		verifier(bouton(o._nom("r", rue)) != null, "La fenêtre du chantier propose l'accès %d" % rue)
-		jeu._sur_commande("r", rue, {"reparer": true})
+		verifier(bouton(o._nom("r", rue)) == null and not o._nom("r", rue) in o._texte.text,
+			"La fenêtre du chantier ne nomme pas l'accès %d" % rue)
 	var fin: float = debut + jeu.ville.duree_reparation_mois("r", pont)
 	verifier(is_equal_approx(fin - debut, jeu.ville.PONT_PROVISOIRE_MOIS), "Le pont provisoire se pose en %s mois" % jeu.ville.PONT_PROVISOIRE_MOIS)
 	actualiser(fin - 0.01)
 	verifier(o.etape == "pont_travaux" and jeu.ville.camp_occupants(lointain, jeu.mois) == 0.0,
-		"Le camp de l'autre rive reste vide jusqu'à la livraison")
+		"Le camp de l'autre rive reste vide pendant le chantier")
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()
 	verifier(o.etape == "pont_travaux", "La reprise conserve le pont en travaux")
 	await capture("12_pont_travaux")
+	# Livré, le pont reste barré par la boue : le jeu s'arrête et le dit, sans plus.
+	jeu._sur_vitesse(12.0)
+	actualiser(fin)
+	verifier(o.etape == "pont_acces" and jeu.vitesse == 0.0 and "boue" in o._texte.text
+		and o._actions.get_child_count() == 0,
+		"Le pont livré sans accès met en pause et dit que la boue bloque, sans bouton")
+	await capture("12a_pont_bloque_par_la_boue")
+	# Le joueur cherche : la bonne route répond, une autre rue non.
+	var ailleurs := -1
+	for f in jeu.ville.routes:
+		if jeu.ville.cout_reparation_ke("r", int(f)) > 0.0 and not int(f) in o._rues_du_pont():
+			ailleurs = int(f)
+			break
+	jeu._sur_choix("r", ailleurs)
+	verifier(ailleurs >= 0 and not jeu.interface._repare_bloc.visible,
+		"Une rue envasée qui ne mène à aucun pont ne propose rien")
+	var delai := 0.0
+	for rue in acces["obstacles"]:
+		jeu._sur_choix("r", rue)
+		verifier(jeu.interface._repare_bloc.visible, "La fiche de l'accès %d propose de le déblayer" % rue)
+		jeu._sur_commande("r", rue, {"reparer": true})
+		delai = maxf(delai, jeu.ville.duree_reparation_mois("r", rue))
+	var fin_pont := fin
+	fin += delai
+	actualiser(fin - 0.01)
+	verifier(o.etape == "pont_acces", "Le guide attend tant que la boue n'est pas déblayée")
 	jeu._sur_vitesse(12.0)
 	actualiser(fin)
 	verifier(o.etape == "pont_livre" and jeu.vitesse == 0.0, "La livraison du premier pont met le jeu en pause")
@@ -506,8 +533,9 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(jeu.ville.route_praticable(pont, fin) and jeu.ponts_provisoires[pont].visible
 		and not jeu.reparations["r"][pont].visible and not jeu.ruines_ponts[pont].visible,
 		"Le pont provisoire livré remplace la ruine, sans le tablier en dur")
-	verifier(jeu.ville.camp_occupants(lointain, fin) > 0.0
-		and not jeu.ville.camp_accessible(lointain, fin - 0.01),
+	# À pied, la boue n'arrête personne : le camp se remplit dès le pont livré.
+	verifier(jeu.ville.camp_occupants(lointain, fin_pont) > 0.0
+		and not jeu.ville.camp_accessible(lointain, fin_pont - 0.01),
 		"La livraison remplit le camp de l'autre rive, sans réécrire le passé")
 	verifier(not jeu._diagnostic_marqueurs.visible,
 		"Le pont livré ne porte plus de croix de coupure")

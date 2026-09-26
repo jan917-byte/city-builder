@@ -198,7 +198,6 @@ var ville: Ville
 var trafic
 var ouverture
 var retours := preload("res://scripts/retours.gd").new()
-var _acces_boutons: VBoxContainer
 var _debut: Button
 ## 🔎 La texture de la miniature, posée par `maquette.gd` avant `batir()`.
 var apercu: Texture2D
@@ -1670,8 +1669,8 @@ func _panneau_ilot() -> void:
 	_repare_etat = _etiquette("", 13, FAIT_TEXTE)
 	_repare_etat.visible = false
 	_repare_bloc.add_child(_repare_etat)
-	_acces_boutons = VBoxContainer.new()
-	_repare_bloc.add_child(_acces_boutons)
+	# 🔄 Plus de « Voir les accès » ni d'« Examiner » (auteur, 2026-09-26) : le
+	# joueur trouve lui-même la route envasée qui barre son pont.
 
 	# 🏕️ ACCUEILLIR LES SINISTRÉS. Le bloc n'existe que sur un champ, et il ne
 	# dit jamais non : un champ que personne ne peut atteindre se pose quand
@@ -2940,7 +2939,8 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	if ponts > 0:
 		out.append(["pont", "+%d pont" % ponts, 1])
 	# 🌉 Ce qui sépare le provisoire du pont en dur : le trafic qu'il porte, rouge s'il sature.
-	if r.has("reparer") and _fiche_couche == "r" and trafic != null 			and _fiche_fid in ville.ponts_coupes():
+	if r.has("reparer") and _fiche_couche == "r" and trafic != null \
+			and _fiche_fid in ville.ponts_coupes():
 		var charge := float(trafic.prevoir_pont(_fiche_fid, _mois,
 			str(r["reparer"]) == "provisoire")["charge_pont"])
 		out.append(["trafic", "%d %% de trafic" % int(roundf(charge * 100.0)),
@@ -3405,10 +3405,10 @@ func _maj_fiche_berge() -> void:
 func _maj_reparation(o: Dictionary) -> void:
 	var couche := _fiche_couche
 	var pont := couche == "r" and _fiche_fid in ville.ponts_coupes()
-	_maj_acces(pont)
 	# ⚠️ Jamais caché puis remontré dans la même image : Godot perd le clic entre
 	# l'appui et le relâchement, et le bouton ne répondait plus (2026-09-26).
-	_repare_provisoire.visible = pont and not ville.est_repare(couche, _fiche_fid) 		and float(o.get("cout_reparation_ke", 0.0)) > 0.0
+	_repare_provisoire.visible = pont and not ville.est_repare(couche, _fiche_fid) \
+		and float(o.get("cout_reparation_ke", 0.0)) > 0.0
 	_repare_etat.visible = false
 	_repare_bouton.visible = true
 	var prix := float(o.get("cout_reparation_ke", 0.0))
@@ -3475,31 +3475,6 @@ func _habiller_secondaire(b: Button) -> void:
 	b.add_theme_stylebox_override("normal", sb)
 	b.add_theme_stylebox_override("hover", survol)
 	b.add_theme_stylebox_override("pressed", survol)
-
-
-func _maj_acces(pont: bool) -> void:
-	_acces_boutons.visible = pont and ouverture != null
-	if not _acces_boutons.visible:
-		return
-	var acces: Dictionary = trafic.acces_pont(_fiche_fid, _mois)
-	var signature := "%s/%s" % [_fiche_fid, acces["obstacles"]]
-	if _acces_boutons.get_meta("signature", "") == signature:
-		return
-	_acces_boutons.set_meta("signature", signature)
-	for enfant in _acces_boutons.get_children():
-		_acces_boutons.remove_child(enfant)
-		enfant.queue_free()
-	var voir := Button.new()
-	voir.text = "Voir les accès"
-	_habiller_secondaire(voir)
-	voir.pressed.connect(ouverture.voir_acces.bind(_fiche_fid))
-	_acces_boutons.add_child(voir)
-	for fid in acces["obstacles"]:
-		var b := Button.new()
-		b.text = "Examiner · " + lieux.nom("r", fid)
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.pressed.connect(ouverture.examiner.bind("r", fid))
-		_acces_boutons.add_child(b)
 
 
 ## 🏕️ LE BLOC DU RELOGEMENT. Il ne dit jamais non : un champ inaccessible se

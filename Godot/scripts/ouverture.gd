@@ -320,61 +320,11 @@ func voir_trafic() -> void:
 func description_pont(fid: int) -> String:
 	if jeu.trafic.pont_fonctionnel(fid, jeu.mois):
 		return "Les deux rives sont reliées."
-	var p: Dictionary = jeu.trafic.prevoir_pont(fid, jeu.mois)
-	var acces: Dictionary = p["acces"]
-	var ui = jeu.interface
-	if not acces["possible"]:
+	if not jeu.trafic.acces_pont(fid, jeu.mois)["possible"]:
 		return "Aucun accès continu : une rue voisine est fermée."
-	# 🌉 Le prix du pont est sur ses deux boutons ; ici, les accès seuls, qui
-	# se déblaient PENDANT le chantier du pont (auteur, 2026-09-24).
-	var a_engager := 0
-	var cout := 0.0
-	var delai := 0.0
-	for route in acces["obstacles"]:
-		if not jeu.ville.est_repare("r", route):
-			a_engager += 1
-			cout += jeu.ville.cout_reparation_ke("r", route)
-			delai = maxf(delai, jeu.ville.duree_reparation_mois("r", route))
-	var lignes := []
-	if a_engager > 0:
-		lignes.append("Accès : %d rue%s à déblayer · %s k€ · %s" % [
-			a_engager, "s" if a_engager > 1 else "", ui._milliers(cout), ui._duree(delai)])
-	elif not acces["obstacles"].is_empty():
-		lignes.append("Accès en cours de déblaiement.")
-	if jeu.ville.pont_provisoire(fid):
-		lignes.append("Provisoire : une voie, en alternat.")
-	# 🔄 Le trafic a quitté ce texte (2026-09-26) : il est dans les conséquences.
-	return "\n".join(lignes)
-
-
-func voir_acces(fid: int) -> void:
-	var acces: Dictionary = jeu.trafic.acces_pont(fid, jeu.mois)
-	jeu._sur_theme("trafic")
-	var groupe := Node3D.new()
-	groupe.name = "AccesTemporaires"
-	jeu.monde.add_child(groupe)
-	var limites := AABB()
-	var premier_lieu := true
-	for rue in [fid] + acces["rues"]:
-		if not jeu.donnees["couloirs"].has(str(rue)):
-			continue
-		var c: Array = jeu.donnees["couloirs"][str(rue)]
-		var ruban := MeshInstance3D.new()
-		ruban.mesh = jeu.Constructeur.couloir(c[1], 3.0, 3.0)
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.albedo_color = Color(0.85, 0.25, 0.15, 0.65) if rue in acces["obstacles"] else Color(0.1, 0.65, 0.48, 0.65)
-		ruban.material_override = mat
-		ruban.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		groupe.add_child(ruban)
-		limites = ruban.get_aabb() if premier_lieu else limites.merge(ruban.get_aabb())
-		premier_lieu = false
-	if not premier_lieu:
-		jeu.pivot.viser(Vector2(limites.get_center().x, limites.get_center().z), maxf(220.0, limites.size.length() * 1.3))
-	jeu.get_tree().create_timer(8.0).timeout.connect(func() -> void:
-		if is_instance_valid(groupe):
-			groupe.queue_free())
+	# 🔄 Ni les accès ni leur prix (auteur, 2026-09-26) : le joueur découvre à la
+	# livraison que la boue barre le chemin, et cherche lui-même la route.
+	return "Provisoire : une voie, en alternat." if jeu.ville.pont_provisoire(fid) else ""
 
 
 ## 🌉 La fiche s'ouvre SANS choix posé (auteur, 2026-09-24) : provisoire ou en
@@ -429,7 +379,8 @@ func actualiser(force := false) -> void:
 	else:
 		etape = "livraison"
 	if (etape == "livraison" and ancienne == "travaux" or
-			etape == "pont_livre" and ancienne != "pont_livre") and ouvert:
+			etape == "pont_livre" and ancienne != "pont_livre" or
+			etape == "pont_acces" and ancienne == "pont_travaux") and ouvert:
 		jeu._sur_vitesse(0.0)
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
@@ -483,29 +434,19 @@ func actualiser(force := false) -> void:
 			for fid in jeu.ville.ponts_coupes():
 				_bouton_pont(fid)
 		"pont_acces":
-			_titre.text = "Le pont attend ses accès"
+			# 🔄 Aucun nom de rue ni bouton (auteur, 2026-09-26) : la boue se voit
+			# sur la carte, et seule la fiche d'une route qui barre le pont répond.
+			_titre.text = "Le pont est prêt, personne ne passe"
 			_texte.text = description_pont(int(premier["fid"]))
-			_bouton("Voir les accès", voir_acces.bind(int(premier["fid"])))
-			for fid in jeu.trafic.acces_pont(int(premier["fid"]), jeu.mois)["obstacles"]:
-				_reparation("r", fid, _nom("r", fid))
+			if jeu.trafic.acces_pont(int(premier["fid"]), jeu.mois)["possible"]:
+				_texte.text = "La boue bloque encore le chemin jusqu'au pont."
 		"pont_travaux":
 			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
 			_titre.text = "Le pont provisoire se pose" if jeu.ville.pont_provisoire(int(premier["fid"])) \
 				else "Le pont se reconstruit"
 			_texte.text = "%s : traversée coupée jusqu'à la livraison." % _nom("r", premier["fid"])
-			# 🚧 L'ATTENTE A SA MISSION (auteur, 2026-09-24) : les accès se
-			# déblaient pendant que le pont se bâtit.
-			var a_deblayer := []
-			for fid in jeu.trafic.acces_pont(int(premier["fid"]), jeu.mois)["obstacles"]:
-				if not jeu.ville.est_repare("r", fid):
-					a_deblayer.append(fid)
-			if not a_deblayer.is_empty():
-				_texte.text += " Déblayez ses accès en attendant."
-			for fid in a_deblayer:
-				_reparation("r", fid, _nom("r", fid))
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 			_bouton("Voir mon pont", examiner.bind("r", premier["fid"]))
-			_bouton("Voir les accès", voir_acces.bind(int(premier["fid"])))
 		"pont_livre":
 			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
 			_titre.text = "Les deux rives sont reliées"

@@ -557,3 +557,6 @@ Essai ouverture à zéro échec, captures d'interface refaites.
 **2026-09-26 — Le bouton « Pont provisoire » répond vraiment, et la fiche du pont passe aux pictogrammes :** la fiche, redessinée à chaque image, cachait puis remontrait le bouton, et Godot perdait le clic entre l'appui et le relâchement.
 Le bouton ne se cache plus que pour de bon ; l'essai redessine la fiche entre appui et relâchement, comme en jeu (14 échecs avant correction, 0 après). Correctif du matin (`_basculer`) juste, mais insuffisant.
 La bande des conséquences d'un pont dit son trafic (Aval : provisoire 100 % en rouge, en dur 61 %) ; la ligne « rue voisine : trafic » et « À épargner » quittent le texte. Passe rendue à zéro échec.
+**2026-09-26 — Le jeu ne désigne plus les accès d'un pont :** retirés de la fiche « Voir les accès », « Examiner · ⟨rue⟩ » et la ligne « Accès : 1 rue à déblayer · k€ · mois », et de la fenêtre du chantier les boutons de rue et « Déblayez ses accès en attendant » (demande de l'auteur : moins dirigé).
+Pont livré mais barré : pause et « La boue bloque encore le chemin jusqu'au pont. », sans bouton ; seule la fiche d'une route qui barre un pont propose de la déblayer. `voir_acces` supprimé.
+Essais ouverture et progression, passe rendue : 0 échec ; captures `12a_pont_bloque_par_la_boue`, `progression_04_boue_sans_route`.
