@@ -268,6 +268,12 @@ var _arbres_jauge: Jauge
 var _recap_bloc: VBoxContainer
 var _recap_texte: Label
 var _recap_bouton: Button
+var _recap_effets: HFlowContainer   # les conséquences en pictogrammes (auteur, 2026-09-26)
+var _recap_annuler: Button
+var _recap_cle := ""
+## 🧪 Une deuxième ville, jamais montrée : on y engage le réglage pour mesurer
+## ses conséquences sans rien payer. Posée par la maquette, sur SA copie des données.
+var ville_essai: Ville
 ## Les deux boutons de la miniature. 🔎 Ils n'apparaissent que lorsque les deux
 ## images DIFFÈRENT : sans réglage posé ni chantier en cours, « avant » et
 ## « après » montreraient la même chose et le geste ne voudrait rien dire.
@@ -760,8 +766,12 @@ const DESSINS := {
 	"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
 	"chantiers": "<rect x='2' y='6' width='20' height='8' rx='1'/><path d='M17 14v7M7 14v7M17 3v3M7 3v3M10 14L2.3 6.3M14 6l7.7 7.7M8 6l8 8'/>",
 	"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
-	# 🌉 Deux moignons de tablier au-dessus de l'eau : le pont emporté du calque Trafic.
-	"pont_casse": "<path d='M2 10h7l1 3M22 10h-7l-1 3M5 10v7M19 10v7M2 21c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0'/>",
+	# 🌉 Deux moignons de tablier cassés net au-dessus de l'eau : le pont emporté.
+	"pont_casse": "<path fill='@' stroke-width='1' d='M0 6h10l-1.8 2.2 1.8 2.3H0zM24 6H14l1.8 2.2-1.8 2.3H24zM10.6 13.2l2.6.6-.6 2.6-2.6-.6z'/><path d='M4 10.5v5.5M20 10.5v5.5M1 20c1.8-1.3 3.7-1.3 5.5 0s3.7 1.3 5.5 0 3.7-1.3 5.5 0 3.7 1.3 5.5 0'/>",
+	"pont": "<path d='M2 9h20M5 9v10M19 9v10M5 16c3-5 11-5 14 0'/>",
+	# Lucide « clock » et « rotate-ccw » : la durée et l'annulation des réglages.
+	"duree": "<circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/>",
+	"annuler": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/>",
 	"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
 	"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
 	# 🏛️🎓 Les deux lieux du rail (Lucide « landmark », « graduation-cap ») :
@@ -1843,15 +1853,40 @@ func _panneau_ilot() -> void:
 	_recap_bloc.add_theme_constant_override("separation", 6)
 	_recap_bloc.visible = false
 	v.add_child(_recap_bloc)
-	_recap_bloc.add_child(HSeparator.new())
+	# 🔄 Les conséquences se lisent en pictogrammes, plus en phrase (auteur,
+	# 2026-09-26) : prix, durée, puis ce qui bouge dans la ville.
+	var cadre := PanelContainer.new()
+	var fond_effets := StyleBoxFlat.new()
+	fond_effets.bg_color = Color8(255, 255, 255, 70)
+	fond_effets.set_corner_radius_all(9)
+	fond_effets.set_content_margin_all(8)
+	cadre.add_theme_stylebox_override("panel", fond_effets)
+	_recap_bloc.add_child(cadre)
+	_recap_effets = HFlowContainer.new()
+	_recap_effets.add_theme_constant_override("h_separation", 12)
+	_recap_effets.add_theme_constant_override("v_separation", 6)
+	cadre.add_child(_recap_effets)
+	# Caché : gardé pour `_alerter_cout`, le refus s'écrit dans la pastille du prix.
 	_recap_texte = _label("", 12, GRIS_FORT)
-	_recap_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_recap_texte.visible = false
 	_recap_bloc.add_child(_recap_texte)
+	var boutons := HBoxContainer.new()
+	boutons.add_theme_constant_override("separation", 6)
+	_recap_bloc.add_child(boutons)
+	_recap_annuler = Button.new()
+	_recap_annuler.icon = _icone("annuler", 18)
+	_recap_annuler.tooltip_text = "Tout remettre comme avant"
+	_habiller_secondaire(_recap_annuler)
+	_recap_annuler.pressed.connect(func() -> void:
+		_vider_pose()
+		_maj_fiche())
+	boutons.add_child(_recap_annuler)
 	_recap_bouton = Button.new()
 	_recap_bouton.text = "Mettre en place"
+	_recap_bouton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_habiller_principal(_recap_bouton)
 	_recap_bouton.pressed.connect(_mettre_en_place)
-	_recap_bloc.add_child(_recap_bouton)
+	boutons.add_child(_recap_bouton)
 
 	_message = _label("", 12, GRIS)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2854,60 +2889,92 @@ func _maj_recap() -> void:
 	_apres_bouton.disabled = not _apercu_avant
 	if r.is_empty():
 		_alerter_cout(false)
+		_recap_cle = ""
 		return
 	var cout := ville.cout_commande_ke(_fiche_couche, _fiche_fid, r, _mois)
 	var duree := ville.duree_commande_mois(_fiche_couche, _fiche_fid, r, _mois)
 	var manque := cout - _caisse_ke
-	# « 3 réglages » ne dit rien ; les nommer, si. C'est la phrase qu'on relit
-	# avant d'engager trois ans de dotation.
-	var quoi := []
-	if r.has("solaire"):
-		quoi.append("panneaux %d %%" % int(roundf(float(r["solaire"]) * 100.0)))
-	if r.has("vert"):
-		quoi.append("toit vert %d %%" % int(roundf(float(r["vert"]) * 100.0)))
-	if r.has("arbres"):
-		quoi.append("%d arbres" % (ville.arbres_a(_fiche_fid, float(r["arbres"]))
-			- ville.arbres_a(_fiche_fid,
-				ville.valeur("r", _fiche_fid, "canopee", _mois))))
-	if r.has("dense"):
-		var e := int(r["dense"]["etages"])
-		var ed := ville.etat_dense(_fiche_fid, _mois)
-		var de := float(ed["montes"]) / maxf(float(ed["batiments"]), 1.0)
-		quoi.append("%d bâtiments à +%d étage%s, %d logements" % [
-			int(roundf(float(r["dense"]["part"]) * float(ed["batiments"])
-				- float(ed["montes"]))),
-			e, "s" if e > 1 else "",
-			int(roundf(ville.dense_logements_tranche(_fiche_fid, de,
-				float(r["dense"]["part"]), e)))])
-	if r.has("places"):
-		quoi.append("places retirées")
-	if r.has("axe"):
-		quoi.append("fermeture aux voitures, places retirées"
-			if ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5
-			else "fermeture aux voitures")
-	if r.has("berge"):
-		quoi.append(Ville.BERGE_NOMS[int(r["berge"])])
-	if r.has("camp"):
-		# 🌾 Le récapitulatif porte les DEUX prix : celui de la caisse est sur
-		# le bouton, celui du champ ici.
-		quoi.append("%d logements · %d places, %s personnes nourries en moins" % [
-			ville.camp_taille(_fiche_fid, _mois),
-			ville.camp_taille(_fiche_fid, _mois) * Ville.CAMP_PERSONNES_LOGEMENT,
-			_nb(ville.champ_nourriture(_fiche_fid), 0)])
-	if r.has("reparer"):
-		quoi.append("pont provisoire" if str(r["reparer"]) == "provisoire" else
-			_verbe_reparation(_fiche_couche, ville.objets(_fiche_couche).get(_fiche_fid, {})).to_lower())
-	var phrase := ", ".join(quoi)
-	# Le prix est sur le bouton et nulle part ailleurs : deux fois le même
-	# nombre à deux lignes d'écart se lit comme deux nombres.
-	_recap_texte.text = "%s · %s · %s" % [
-		phrase.substr(0, 1).to_upper() + phrase.substr(1),
-		_duree(duree),
-		("manque %s k€" % _milliers(manque)) if manque > 0.001
-			else ("reste %s k€" % _milliers(_caisse_ke - cout))]
-	_recap_bouton.text = "Mettre en place · %s k€" % _milliers(cout)
+	_recap_bouton.text = "Mettre en place"
 	_recap_bouton.disabled = manque > 0.001
 	_alerter_cout(manque > 0.001)
+	# ⚠️ Mesurer rejoue la ville entière : une fois par réglage et par mois, pas par image.
+	var cle := "%s%d %s %d %d" % [_fiche_couche, _fiche_fid, r, int(_mois), int(manque > 0.001)]
+	if cle == _recap_cle:
+		return
+	_recap_cle = cle
+	for c in _recap_effets.get_children():
+		_recap_effets.remove_child(c)
+		c.queue_free()
+	_effet("caisse", ("manque %s k€" % _milliers(manque)) if manque > 0.001
+		else "%s k€" % _milliers(cout), -1 if manque > 0.001 else 0)
+	_effet("duree", _duree(duree), 0)
+	for e in consequences(r, duree):
+		_effet(e[0], e[1], e[2])
+
+
+## 🧪 LES CONSÉQUENCES, MESURÉES ET NON ANNONCÉES : la ville d'essai reçoit la
+## partie en cours, engage le réglage, et on compare les deux villes une fois le
+## chantier livré. [pictogramme, texte, +1 bon / −1 mauvais / 0 neutre].
+func consequences(r: Dictionary, duree: float) -> Array:
+	var out := []
+	if ville_essai == null:
+		return out
+	var t := _mois + duree + 0.05
+	ville_essai.importer_partie(ville.exporter_partie())
+	# L'essai ne dit pas non : le refus est déjà sur le bouton.
+	ville_essai.crediter_essai_ke(ville.cout_commande_ke(_fiche_couche, _fiche_fid, r, _mois))
+	ville_essai.commander(_fiche_couche, _fiche_fid, r, _mois)
+	var a := ville.indicateurs(t)
+	var b := ville_essai.indicateurs(t)
+	var da := ville.degats(t)
+	var db := ville_essai.degats(t)
+	var logements := float(da["logements_perdus"]) - float(db["logements_perdus"])
+	if _fiche_couche == "i":
+		logements += ville_essai.valeur("i", _fiche_fid, "logements", t) \
+			- ville.valeur("i", _fiche_fid, "logements", t)
+	if absf(logements) >= 1.0:
+		out.append(["logement", "%+d logements" % int(roundf(logements)), _sens(logements)])
+	var abrites := ville.sans_toit(t) - ville_essai.sans_toit(t)
+	if abrites >= 1.0:
+		out.append(["logement", "+%d abrités" % int(roundf(abrites)), 1])
+	var ponts := int(da["franchissements_coupes"]) - int(db["franchissements_coupes"])
+	if ponts > 0:
+		out.append(["pont", "+%d pont" % ponts, 1])
+	var eau := (float(db.get("eau_prochaine_m", 0.0)) - float(da.get("eau_prochaine_m", 0.0))) * 100.0
+	if absf(eau) >= 1.0:
+		out.append(["eau", "%+d cm de crue" % int(roundf(eau)), -_sens(eau)])
+	var prod := float(b["production_mwh"]) - float(a["production_mwh"])
+	if absf(prod) >= 1.0:
+		out.append(["production", "%+d MWh/an" % int(roundf(prod)), _sens(prod)])
+	var conso := float(b["conso_mwh"]) - float(a["conso_mwh"])
+	if absf(conso) >= 1.0:
+		out.append(["conso", "%+d MWh/an" % int(roundf(conso)), -_sens(conso)])
+	var co2 := (float(b["co2_kt"]) - float(a["co2_kt"])) * 1000.0
+	if absf(co2) >= 1.0:
+		out.append(["co2", "%+d t/an" % int(roundf(co2)), -_sens(co2)])
+	var nourris := float(b["nourriture_personnes"]) - float(a["nourriture_personnes"])
+	if absf(nourris) >= 1.0:
+		out.append(["feuille", "%+d nourris" % int(roundf(nourris)), _sens(nourris)])
+	if r.has("arbres"):
+		out.append(["feuille", "+%d arbres" % (ville.arbres_a(_fiche_fid, float(r["arbres"]))
+			- ville.arbres_a(_fiche_fid, ville.valeur("r", _fiche_fid, "canopee", _mois))), 1])
+	return out
+
+
+static func _sens(x: float) -> int:
+	return 1 if x > 0.0 else -1
+
+
+func _effet(nom: String, texte: String, sens: int) -> void:
+	var coul: Color = TEXTE if sens == 0 else (FAIT_TEXTE if sens > 0 else ALERTE)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 4)
+	var ic := TextureRect.new()
+	ic.texture = _icone(nom, 16, coul)
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	h.add_child(ic)
+	h.add_child(_label(texte, 13, coul))
+	_recap_effets.add_child(h)
 
 
 ## Ce que le curseur solaire annonce. 🔄 Le prix et le refus ont quitté cette

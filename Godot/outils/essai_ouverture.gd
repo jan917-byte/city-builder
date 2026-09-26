@@ -442,6 +442,15 @@ func essayer_ponts(lointain: int) -> void:
 	await cliquer(jeu.interface._repare_provisoire)
 	verifier(str(jeu.interface._pose.get("reparer")) == "provisoire",
 		"Après le pont en dur, un clic sur le provisoire le remplace")
+	var effets := PackedStringArray()
+	for e in jeu.interface._recap_effets.get_children():
+		effets.append((e.get_child(1) as Label).text)
+	print("CONSÉQUENCES du provisoire : ", " · ".join(effets))
+	verifier(effets.size() >= 3 and "+1 pont" in effets,
+		"Les conséquences du provisoire se lisent en pictogrammes : prix, durée, un pont de plus")
+	await cliquer(jeu.interface._recap_annuler)
+	verifier(jeu.interface._pose.is_empty() and not jeu.interface._recap_bloc.visible,
+		"Le bouton d'annulation remet la fiche comme avant")
 	await cliquer(jeu.interface._repare_bouton)
 	var cadrage: Vector3 = jeu.pivot.position
 	var taille: float = jeu.pivot.taille

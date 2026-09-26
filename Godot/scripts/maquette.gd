@@ -244,6 +244,12 @@ func _ready() -> void:
 	interface = Interface.new()
 	interface.name = "Interface"
 	interface.ville = ville
+	# 🧪 SA copie des objets : `reparer` écrit `toit_m2` en base, et deux villes
+	# sur les mêmes dictionnaires se répareraient l'une l'autre.
+	interface.ville_essai = Ville.new()
+	interface.ville_essai.charger({"objets": (donnees["objets"] as Dictionary).duplicate(true),
+		"crue": donnees.get("crue", {}), "riverains": donnees["riverains"],
+		"alignements": donnees.get("alignements", {})})
 	interface.trafic = trafic
 	interface.apercu = apercu.get_texture()
 	# Passées plutôt que preloadées : `interface.gd` importerait `maquette.gd`,
@@ -2287,10 +2293,10 @@ func _batir_marqueurs_crue() -> void:
 			marqueur.add_child(barre)
 
 
-## Même règle que les pastilles : une taille constante à l'écran, bornée.
+## Même règle que les pastilles, un tiers plus grand : une taille constante à l'écran.
 func _taille_icone_pont() -> float:
 	return clampf(pivot.taille * Pastilles.LARGEUR_PAR_TAILLE,
-		Pastilles.LARGEUR_MIN_M, Pastilles.LARGEUR_MAX_M) / float(Pastilles.TAILLE)
+		Pastilles.LARGEUR_MIN_M, Pastilles.LARGEUR_MAX_M) * 1.3 / float(Pastilles.TAILLE)
 
 
 func _icone_pont(fid: int, montrer: bool) -> void:
@@ -2302,7 +2308,7 @@ func _icone_pont(fid: int, montrer: bool) -> void:
 		var boite := tablier.get_aabb()
 		var icone := Sprite3D.new()
 		icone.name = "PontCoupe%d" % fid
-		icone.texture = Pastilles.pictogramme("pont_casse", interface.ACCENT_VIF, interface.TEXTE)
+		icone.texture = Pastilles.pictogramme("pont_casse", interface.ALERTE, Color.WHITE)
 		icone.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		icone.shaded = false
 		icone.no_depth_test = true

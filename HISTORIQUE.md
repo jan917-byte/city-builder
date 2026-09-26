@@ -548,3 +548,6 @@ Essai ouverture à zéro échec, avec un contrôle de plus : dur puis provisoire
 **2026-09-26 — Le calque Trafic montre les ponts coupés, et la liste ne donne plus de prix :** « Rebâtir un pont » nomme les trois ponts ; les prix se comparent en ouvrant chaque fiche (essayé puis retiré : deux boutons prix par pont dans la liste).
 Sur le calque Trafic, un pont emporté montre ses moignons et un pictogramme de pont cassé ; il ne peint plus le tablier manquant (retour en arrière signalé dans `maquette.gd`).
 Essai ouverture à zéro échec, quatre contrôles de plus ; capture `10_comparer_ponts`.
+**2026-09-26 — Les conséquences d'une fiche se lisent en pictogrammes :** prix, durée et ce que la ville gagne ou perd, en vert ou en rouge, à la place de la phrase du récapitulatif ; un bouton ↺ remet tout à côté de « Mettre en place ».
+Les effets sont mesurés sur une seconde ville (`ville_essai`, copie profonde des objets, car `reparer` écrit en base) ; le pictogramme du pont cassé passe en rouge et plus grand.
+Essai ouverture à zéro échec ; pont d'Aval provisoire : 375 k€ · 3 mois · +1 pont.
