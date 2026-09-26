@@ -429,6 +429,10 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(jeu.interface._pose.get("reparer") is bool and not jeu.interface._recap_bouton.disabled,
 		"Le pont en dur est finançable dès le départ dans la fiche")
 	await capture("11_fiche_pont")
+	await cliquer(jeu.interface._repare_provisoire)
+	verifier(str(jeu.interface._pose.get("reparer")) == "provisoire",
+		"Après le pont en dur, un clic sur le provisoire le remplace")
+	await cliquer(jeu.interface._repare_bouton)
 	var cadrage: Vector3 = jeu.pivot.position
 	var taille: float = jeu.pivot.taille
 	jeu._sur_sauvegarde()

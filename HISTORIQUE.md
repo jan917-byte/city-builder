@@ -542,3 +542,6 @@ Barre de gauche : tuiles de même taille, icône et étiquette en capitales, san
 **2026-09-24 — Le pont provisoire a sa propre silhouette :** une teinte grise sur le tablier en dur ne se distinguait pas à l'écran.
 `07` fabrique un second maillage par pont emporté (une voie entre deux treillis verts type Bailey, plancher de madriers, portiques rouges et blancs, palées d'acier) ; Godot le montre à la place du tablier neuf, miniature comprise.
 Essais ouverture, progression et passe rendue à zéro échec ; paire au même cadrage `13c_provisoire_treillis` → `13d_pont_en_dur_meme_cadrage`.
+**2026-09-26 — Le bouton « Pont provisoire » répond après « Rebâtir en dur » :** le clic plantait en silence et le choix restait sur le pont en dur.
+`_basculer` (interface) comparait un oui/non à un mot, ce que Godot refuse ; il vérifie maintenant le type d'abord.
+Essai ouverture à zéro échec, avec un contrôle de plus : dur puis provisoire donne le provisoire.

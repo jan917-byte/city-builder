@@ -2809,7 +2809,8 @@ func _reglages() -> Dictionary:
 ## Une bascule : reposer le même réglage l'enlève. C'est ce qui rend l'essai
 ## réversible — et la berge est exclusive, un seul état visé à la fois.
 func _basculer(cle: String, valeur) -> void:
-	if _pose.get(cle) == valeur:
+	# Le type d'abord : `true == "provisoire"` est une erreur en GDScript.
+	if _pose.has(cle) and typeof(_pose[cle]) == typeof(valeur) and _pose[cle] == valeur:
 		_pose.erase(cle)
 	else:
 		_pose[cle] = valeur
