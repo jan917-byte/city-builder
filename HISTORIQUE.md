@@ -566,3 +566,6 @@ Essais ouverture, progression, relogement et trafic : 0 échec, passe rendue ; c
 **2026-09-26 — Toute rue boueuse se déblaie pendant le chantier du pont, et « Mettre en place » ne disparaît plus :** demande de l'auteur, le quai du centre restait refusé une fois le chemin du pont dégagé.
 Le verrou du pont laisse déblayer toute rue sous la boue dès qu'un pont est engagé ; le récapitulatif reste au bas de la fiche, bouton grisé et ↺ éteint sans réglage.
 Essais ouverture, progression, relogement et trafic : 0 échec ; capture `12c_rue_hors_chemin`.
+**2026-09-26 — Partie jouée jusqu'au pont livré, quatre défauts de lecture corrigés :** 4 minutes, une seule vraie décision (le pont, départagé par le prix seul), la caisse ne mord pas.
+Le guide ne se montre plus derrière le choix du mode ; l'îlot sinistré dit ses logements perdus ; Avant/Après s'enfoncent ; une rue déblayée avant « Choisir la suite » n'est plus le premier lieu relevé (mois sauvegardé).
+Essais ouverture, progression, relogement, trafic : 0 échec ; sauvegarde : les 92 échecs connus (91 lieux sans nom + titre).
