@@ -324,7 +324,7 @@ func description_pont(fid: int) -> String:
 	var acces: Dictionary = p["acces"]
 	var ui = jeu.interface
 	if not acces["possible"]:
-		return "Aucun accès continu aux routes principales : vérifier les fermetures voisines."
+		return "Aucun accès continu : une rue voisine est fermée."
 	# 🌉 Le prix du pont est sur ses deux boutons ; ici, les accès seuls, qui
 	# se déblaient PENDANT le chantier du pont (auteur, 2026-09-24).
 	var a_engager := 0
@@ -337,14 +337,14 @@ func description_pont(fid: int) -> String:
 			delai = maxf(delai, jeu.ville.duree_reparation_mois("r", route))
 	var lignes := []
 	if a_engager > 0:
-		lignes.append("Accès : %d rue%s à déblayer · %s k€ · %s, pendant le chantier du pont." % [
+		lignes.append("Accès : %d rue%s à déblayer · %s k€ · %s" % [
 			a_engager, "s" if a_engager > 1 else "", ui._milliers(cout), ui._duree(delai)])
 	elif not acces["obstacles"].is_empty():
 		lignes.append("Accès en cours de déblaiement.")
 	if jeu.ville.pont_provisoire(fid):
-		lignes.append("Pont provisoire : une seule voie, en alternat. Il sature plus vite.")
+		lignes.append("Provisoire : une voie, en alternat.")
 	if int(p["rue"]) >= 0:
-		lignes.append("%s : trafic %d → %d %%." % [_nom("r", int(p["rue"])),
+		lignes.append("%s : trafic %d → %d %%" % [_nom("r", int(p["rue"])),
 			int(roundf(100.0 * float(p["avant"]))), int(roundf(100.0 * float(p["apres"])))])
 	return "\n".join(lignes)
 
@@ -444,7 +444,7 @@ func actualiser(force := false) -> void:
 		var duree: float = jeu.ville.duree_reparation_mois(premier["couche"], premier["fid"])
 		var reste: float = float(premier["fin"]) - jeu.mois
 		_progression.value = (1.0 - reste / duree) * 100.0
-		_detail.text = "Encore %s · ×12 : environ %d s" % [jeu.interface._duree(reste), int(ceil(reste * 5.0))]
+		_detail.text = "Encore %s · ×12 ≈ %d s" % [jeu.interface._duree(reste), int(ceil(reste * 5.0))]
 	elif etape == "suite":
 		_detail.text = "Eau attendue aux maisons des Forgerons : %s m → %s m." % [
 			jeu.interface._nb(jeu.ville.base("i", MAISONS, "hauteur_eau_annonce"), 2),
@@ -474,12 +474,12 @@ func actualiser(force := false) -> void:
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 		"trafic":
 			_poser_reperes([])
-			_titre.text = "Pourquoi les deux rives restent-elles séparées ?"
-			_texte.text = "Tout le monde est à l'abri. Plus aucun pont ne relie les deux rives : ouvrez le trafic pour choisir lequel rebâtir."
+			_titre.text = "Les deux rives sont coupées"
+			_texte.text = "Tout le monde est à l'abri. Ouvrez le trafic pour choisir un pont."
 			_bouton("Ouvrir le trafic", func() -> void: jeu.interface._sur_rail("trafic"))
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = "Trois ponts emportés. Ouvrez-les pour comparer : provisoire, vite posé, ou en dur. Ses accès se déblaient pendant le chantier."
+			_texte.text = "Trois ponts emportés. Ouvrez-en un pour comparer ses deux chantiers."
 			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
 			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
 			for fid in jeu.ville.ponts_coupes():
@@ -494,7 +494,7 @@ func actualiser(force := false) -> void:
 			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
 			_titre.text = "Le pont provisoire se pose" if jeu.ville.pont_provisoire(int(premier["fid"])) \
 				else "Le pont se reconstruit"
-			_texte.text = "%s : la traversée reste coupée jusqu'à la livraison." % _nom("r", premier["fid"])
+			_texte.text = "%s : traversée coupée jusqu'à la livraison." % _nom("r", premier["fid"])
 			# 🚧 L'ATTENTE A SA MISSION (auteur, 2026-09-24) : les accès se
 			# déblaient pendant que le pont se bâtit.
 			var a_deblayer := []
@@ -502,7 +502,7 @@ func actualiser(force := false) -> void:
 				if not jeu.ville.est_repare("r", fid):
 					a_deblayer.append(fid)
 			if not a_deblayer.is_empty():
-				_texte.text += " En attendant, déblayez ses accès."
+				_texte.text += " Déblayez ses accès en attendant."
 			for fid in a_deblayer:
 				_reparation("r", fid, _nom("r", fid))
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
@@ -511,7 +511,7 @@ func actualiser(force := false) -> void:
 		"pont_livre":
 			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
 			_titre.text = "Les deux rives sont reliées"
-			_texte.text = "%s est rouvert. Les autres rues envasées restent à déblayer." % _nom("r", premier["fid"])
+			_texte.text = "%s est rouvert." % _nom("r", premier["fid"])
 			_bouton("Voir le pont rouvert", func() -> void:
 				jeu._sur_theme("")
 				examiner("r", premier["fid"]))
@@ -531,19 +531,15 @@ func actualiser(force := false) -> void:
 			var coupes: int = int(jeu.ville.degats(jeu.mois)["franchissements_coupes"])
 			var commandees: int = jeu.ville.places_commandees(jeu.mois)
 			_titre.text = "%d personnes sont dehors" % int(sans_toit)
-			_texte.text = "Les %d ponts sont coupés : elles ne peuvent pas quitter leur rive.
-
-Cliquez sur un lieu pour voir ce qu'il peut accueillir." % coupes
+			_texte.text = "%d ponts coupés : elles restent sur leur rive. Cliquez sur un lieu pour les abriter." % coupes
 			if commandees > 0:
-				_texte.text = "Les abris commandés en accueilleront %d. Il manque encore %d places : trouvez un autre terrain." % [
+				_texte.text = "Abris commandés : %d places. Il manque encore %d places." % [
 					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
-					_texte.text += "\n\nPersonne ne peut rejoindre %s : il est sur l'autre rive." % _nom_champ(int(fid))
+					_texte.text += "\n%s est sur l'autre rive : personne ne peut y aller." % _nom_champ(int(fid))
 			if _regards.size() >= INDICE_REGARDS and not _champ_vu:
-				_texte.text += "
-
-Un camp de containers demande un terrain nu : rien de bâti, rien à démolir."
+				_texte.text += "\nUn camp demande un terrain nu."
 			_poser_reperes([])
 		"choix":
 			_poser_reperes([["r", RUE, "①"], ["i", MAISONS, "②"]])
@@ -554,7 +550,7 @@ Un camp de containers demande un terrain nu : rien de bâti, rien à démolir."
 			var logements: float = jeu.ville.base("i", MAISONS, "logements_sinistres")
 			# Tout le monde est abrité à ce stade : ceux qui rentrent quittent un camp.
 			var abrites := int(minf(logements, jeu.ville.sans_toit(jeu.mois) + jeu.ville.reloges(jeu.mois)))
-			_texte.text = "La rue des Forgerons est envasée ; à côté, %.0f logements sont inhabitables. Par quoi commencer ?" % logements
+			_texte.text = "Rue des Forgerons envasée, %.0f logements inhabitables à côté. Par où commencer ?" % logements
 			_reparation("r", RUE, "① Déblayer la rue")
 			_reparation("i", MAISONS, "② Relever les logements" + (
 				" · %d personnes rentrent chez elles" % abrites if abrites > 0 else ""))
@@ -570,16 +566,16 @@ Un camp de containers demande un terrain nu : rien de bâti, rien à démolir."
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
 			if premier["couche"] == "r":
-				_texte.text = "%s est de nouveau praticable.\n\nRéparer ne diminue pas l'exposition à une prochaine crue." % _nom("r", premier["fid"])
+				_texte.text = "%s est praticable. Réparer ne protège pas de la prochaine crue." % _nom("r", premier["fid"])
 			else:
-				_texte.text = "%s : %.0f logements remis en état.\n\nRéparer n'a pas diminué leur exposition à une prochaine crue." % [_nom("i", premier["fid"]), jeu.ville.base("i", premier["fid"], "logements_sinistres")]
+				_texte.text = "%s : %.0f logements remis en état. Réparer ne les protège pas de la prochaine crue." % [_nom("i", premier["fid"]), jeu.ville.base("i", premier["fid"], "logements_sinistres")]
 			_bouton("Voir le résultat", examiner.bind(premier["couche"], premier["fid"]))
 			_bouton("Et maintenant ?", func() -> void:
 				suite = true
 				actualiser(true))
 		"suite":
 			_titre.text = "Réparer, protéger ou investir ?"
-			_texte.text = "Réparer rend les lieux habitables, renaturer la berge baisse l'eau attendue, le solaire rapporte. Tout se paie sur la même caisse."
+			_texte.text = "Tout se paie sur la même caisse."
 			_reparation("i", MAISONS, "Poursuivre les réparations")
 			if not jeu.ville.est_repare("r", RUE):
 				_reparation("r", RUE, "Rendre aussi la rue praticable")
@@ -594,7 +590,7 @@ Un camp de containers demande un terrain nu : rien de bâti, rien à démolir."
 			_maj_protection()
 		"libre":
 			_titre.text = "À vous de choisir la suite"
-			_texte.text = "Votre premier lieu est relevé. La ville reste ouverte à vos projets."
+			_texte.text = "Votre premier lieu est relevé. La suite est à vous."
 			_bouton("Revoir les pistes", func() -> void:
 				termine = false
 				suite = true
@@ -614,9 +610,9 @@ func _maj_protection() -> void:
 	if jeu.ville.berge_etat(BERGE, jeu.mois) == Ville.BERGE_RENATUREE:
 		prix = "Livrée · voir la rive"
 		_titre.text = "La protection commence à agir"
-		_texte.text = "L'eau attendue aux maisons des Forgerons a baissé, mais le secteur reste exposé."
+		_texte.text = "L'eau attendue aux Forgerons a baissé ; le secteur reste exposé."
 	elif jeu.ville.berge_en_cours(BERGE, jeu.mois):
-		prix = "En travaux · la protection attend la livraison"
+		prix = "En travaux"
 	_proteger.text = "Protéger · renaturer la berge\n" + prix
 
 

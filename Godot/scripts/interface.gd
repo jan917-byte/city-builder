@@ -2706,8 +2706,7 @@ func _maj_dense() -> void:
 		_dense_valeur.text = "%d bâtiments sur %d montés · +%d logements" % [
 			montes, n, int(roundf(float(etat["logements"])))]
 	else:
-		_dense_valeur.text = ("%d bâtiments peuvent monter, du plus bas au"
-			+ " plus haut · %d logements par étage") % [
+		_dense_valeur.text = "%d bâtiments peuvent monter · %d logements par étage" % [
 				n, ville.dense_logements_etage(_fiche_fid)]
 
 
@@ -3272,7 +3271,9 @@ func _maj_chantier() -> void:
 	_chantier_bloc.visible = bool(c["actif"])
 	if not _chantier_bloc.visible:
 		return
-	_chantier_quoi.text = CHANTIER_MOTS.get(str(c["quoi"]), "Chantier")
+	_chantier_quoi.text = "Pont provisoire" if str(c["quoi"]) == "pont" \
+		and _fiche_couche == "r" and ville.pont_provisoire(_fiche_fid) \
+		else CHANTIER_MOTS.get(str(c["quoi"]), "Chantier")
 	_chantier_reste.text = "encore %s" % _duree(float(c["reste_mois"]))
 	var part := float(c["part"])
 	_chantier_jauge.regler(part, part)
@@ -3369,7 +3370,7 @@ func _maj_fiche_berge() -> void:
 	elif reste > 0.0:
 		_berge_texte.text = ""   # la barre du haut de fiche le dit déjà
 	else:
-		_berge_texte.text = "%s m de quai minéral séparent la chaussée de l'Ilse." 			% _nb(float(o.get("rive_m", 0.0)), 1)
+		_berge_texte.text = ""   # la rive minérale est déjà dans la grille
 	_berge_texte.visible = _berge_texte.text != ""
 	for k in _berge_boutons.size():
 		var cible: int = Ville.BERGE_APAISEE + k
@@ -3383,15 +3384,11 @@ func _maj_fiche_berge() -> void:
 		if cible <= etat:
 			bouton.text = "%s · fait" % titre
 		else:
-			# 🌊 Le prix seul ne dit rien : c'est la baisse de crue qui fait
-			# choisir entre finir un bief et effleurer les quatre.
-			var gagne := (ville.berge_largeur_rendue_m(_fiche_fid, cible)
-				- ville.berge_largeur_rendue_m(_fiche_fid, etat)) \
-				* Ville.BERGE_BAISSE_M_PAR_M
-			bouton.text = _posee("berge", "%s · %s k€ · %s · crue −%s m" % [titre,
+			# 🔄 La baisse de crue a quitté le bouton (auteur, 2026-09-26) : elle
+			# se lit dans les conséquences, une fois l'état essayé.
+			bouton.text = _posee("berge", "%s · %s k€ · %s" % [titre,
 				_milliers(cout),
-				_duree(Ville.BERGE_MOIS[cible] - Ville.BERGE_MOIS[etat]),
-				_nb(gagne, 2)], cible)
+				_duree(Ville.BERGE_MOIS[cible] - Ville.BERGE_MOIS[etat])], cible)
 	_maj_recap()
 
 
@@ -3505,14 +3502,14 @@ func _maj_acces(pont: bool) -> void:
 ## pose et se paie, et l'avertissement est au-dessus du bouton. L'erreur coûte
 ## du temps et de l'argent, elle ne ferme aucune porte — un pont réparé
 ## remplira le camp plus tard.
-## 🌾 CE QUE LE CHAMP NOURRIT, ET CE QU'IL NOURRIRA APRÈS : la même phrase
-## avant et après la pose, pour que le joueur retrouve ce qu'il a payé.
+## 🌾 Avant la pose, l'irréversible seul (le nombre de nourris est dans les
+## conséquences) ; après, ce que le champ a cessé de nourrir.
 func _champ_perdu(fid: int) -> String:
 	var nourris := ville.champ_nourriture(fid)
 	if nourris < 0.5:
 		return "Ce champ ne nourrit personne."
 	if ville.champ_cultive(fid, _mois):
-		return "Il nourrit %s personnes, et ne sera plus jamais cultivé." % _nb(nourris, 0)
+		return "⚠ Il ne sera plus jamais cultivé."
 	return "Il ne nourrit plus ses %s personnes." % _nb(nourris, 0)
 
 
@@ -3529,14 +3526,14 @@ func _maj_camp() -> void:
 				ville.camp_reste_mois(fid, _mois))
 			_camp_bouton.text = "Chantier en cours"
 		elif ville.camp_accessible(fid, _mois):
-			_camp_texte.text = "%d containers · %d personnes accueillies.\n%s" % [
+			_camp_texte.text = "%d containers · %d abrités\n%s" % [
 				int(ville.camp_taille(fid, _mois)), int(occupants),
 				_champ_perdu(fid)]
 			_camp_bouton.text = "Camp en place"
 		else:
 			# 🌉 Le camp promis, et personne dedans. Ce n'est pas une panne :
 			# c'est la carte, et elle peut encore changer.
-			_camp_texte.text = "Camp vide : aucun pont ne mène ici. Rebâtir un pont le remplira."
+			_camp_texte.text = "Camp vide : aucun pont n'y mène."
 			_camp_bouton.text = "Personne ne peut y venir"
 		_camp_bouton.disabled = true
 		return
@@ -3551,13 +3548,12 @@ func _maj_camp() -> void:
 	var places: int = ville.camp_taille(fid, _mois)
 	var maxi: int = ville.camp_capacite(fid)
 	# Le nombre de sinistrés est déjà au compteur : la fiche dit ce que le champ tient.
-	var phrase := "Accueille %d personnes : %d containers de %d places." % [
-		maxi, ville.camp_places_max(fid), Ville.CAMP_PERSONNES_LOGEMENT]
+	var phrase := "Jusqu'à %d personnes · %d containers" % [maxi, ville.camp_places_max(fid)]
 	# 🌾 LE PRIX QUI N'EST PAS EN k€, annoncé avant le bouton : le camp prend
 	# le champ entier, et la campagne ne le récupère pas.
 	phrase += "\n%s" % _champ_perdu(fid)
 	if not ville.camp_accessible(fid, _mois):
-		phrase += "\n⚠ Les ponts sont coupés : personne ne pourra y aller."
+		phrase += "\n⚠ Autre rive : personne ne pourra y aller."
 	_camp_texte.text = phrase
 	_camp_bouton.text = _posee("camp", "Installer %d containers · %s k€" % [
 		places, _milliers(ville.cout_camp_ke(fid, _mois))])

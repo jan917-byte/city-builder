@@ -128,9 +128,9 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	var prix: String = "−%s k€" % ui._milliers(r["cout_ke"]) if r["cout_ke"] > 0.0 else "décision engagée"
 	var message := "%s : %s · %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
 	if "relogement" in r["faits"]:
-		message += "\n%s personnes nourries en moins." % ui._nb(ui.ville.champ_nourriture(fid), 0)
+		message += " · −%s nourris" % ui._nb(ui.ville.champ_nourriture(fid), 0)
 	elif duree >= ACCELERER_MOIS:
-		message += "\n×12 : environ %d s." % int(ceil(duree * 5.0))
+		message += " · ×12 ≈ %d s" % int(ceil(duree * 5.0))
 	notifier(message, mois)
 	if duree <= 0.0:
 		for genre in r["faits"]:

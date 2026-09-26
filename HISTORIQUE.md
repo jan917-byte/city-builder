@@ -551,3 +551,6 @@ Essai ouverture à zéro échec, quatre contrôles de plus ; capture `10_compare
 **2026-09-26 — Les conséquences d'une fiche se lisent en pictogrammes :** prix, durée et ce que la ville gagne ou perd, en vert ou en rouge, à la place de la phrase du récapitulatif ; un bouton ↺ remet tout à côté de « Mettre en place ».
 Les effets sont mesurés sur une seconde ville (`ville_essai`, copie profonde des objets, car `reparer` écrit en base) ; le pictogramme du pont cassé passe en rouge et plus grand.
 Essai ouverture à zéro échec ; pont d'Aval provisoire : 375 k€ · 3 mois · +1 pont.
+**2026-09-26 — Passe sur les textes du guide et des fiches :** une phrase par bloc, plus de doublon avec la bande des conséquences (nourris du champ, crue sur les boutons de berge, phrase de rive minérale).
+Restent les avertissements irréversibles (« plus jamais cultivé », « autre rive ») ; la barre de chantier dit « Pont provisoire » au lieu de « Tablier rebâti ».
+Essai ouverture à zéro échec, captures d'interface refaites.

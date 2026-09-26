@@ -2041,7 +2041,7 @@ const THEMES := [
 		"couche": "r", "champ": "charge",
 		"resume": "La charge des rues, après la crue",
 		"bas": "Rue calme", "haut": "Saturée",
-		"note": "Violet : coupée par la crue — pont emporté ou boue à déblayer."},
+		"note": "Violet : coupée (pont emporté ou boue)."},
 	{"id": "tissu", "court": "Tissu", "nom": "Tissu urbain", "genre": "tissu",
 		"resume": "Une teinte par type de tissu"},
 ]

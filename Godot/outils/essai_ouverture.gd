@@ -172,8 +172,8 @@ func executer() -> void:
 		"Le champ atteignable ouvre le relogement, et l'indice s'efface")
 	# 🌾 LE COÛT QUI N'EST PAS EN k€, ANNONCÉ AVANT LE BOUTON.
 	var nourri_champ: float = jeu.ville.champ_nourriture(champs[0])
-	verifier(nourri_champ > 0.0 and "nourrit" in jeu.interface._camp_texte.text,
-		"La fiche dit ce que le champ nourrit : %.0f personnes" % nourri_champ)
+	verifier(nourri_champ > 0.0 and "plus jamais cultivé" in jeu.interface._camp_texte.text,
+		"La fiche prévient que le champ (%.0f personnes nourries) ne sera plus cultivé" % nourri_champ)
 	# 🗂️ 🔄 LA FICHE EST À ONGLETS depuis le 2026-09-18 : ce qui portait
 	# « Nourrit » est l'onglet campagne, et il n'existe que sur un champ.
 	verifier(jeu.interface._dispo.has("campagne")
