@@ -1,26 +1,29 @@
 shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled;
+render_mode cull_back, specular_disabled;
+#include "res://shaders/brume.gdshaderinc"
+// Un cumulus de maquette : facettes éclairées, dessous gris bleuté.
 uniform float horloge = -1.0;
-varying vec2 carte;
-varying float graine;
-float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
-float bruit(vec2 p) {
-	vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
-	return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
-}
+uniform vec2 demi_emprise;
+varying vec3 monde;
+varying float bas;
+
 void vertex() {
-	carte = VERTEX.xy*2.0;
-	graine = INSTANCE_CUSTOM.z;
-	vec3 centre = MODEL_MATRIX[3].xyz;
-	vec3 p = centre + INV_VIEW_MATRIX[0].xyz * VERTEX.x * INSTANCE_CUSTOM.x
-		+ INV_VIEW_MATRIX[1].xyz * VERTEX.y * INSTANCE_CUSTOM.y;
-	POSITION = PROJECTION_MATRIX * VIEW_MATRIX * vec4(p,1.0);
+	// Dérive lente vers l'est, bouclée sur 700 m ; le banc fond en bout de course.
+	float t = (horloge < 0.0 ? TIME : horloge) * 0.9 + INSTANCE_CUSTOM.x * 700.0;
+	float course = mod(t, 700.0);
+	float fond = smoothstep(0.0, 90.0, course) * smoothstep(700.0, 610.0, course);
+	vec3 derive = inverse(mat3(MODEL_MATRIX)) * vec3(course - 350.0, 0.0, 0.0);
+	bas = VERTEX.y;
+	VERTEX = VERTEX * fond + derive;
+	monde = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
+
 void fragment() {
-	float t = (horloge < 0.0 ? TIME : horloge)*0.007;
-	vec2 p=carte*vec2(3.5,2.5)+vec2(graine*71.0+t,0);
-	float n=bruit(p)*0.6+bruit(p*2.1)*0.27+bruit(p*4.3)*0.13;
-	float enveloppe=1.0-smoothstep(0.30,1.0,length(carte*vec2(1.0,1.2)));
-	ALPHA = enveloppe*smoothstep(0.23,0.68,n)*0.80;
-	ALBEDO=mix(vec3(0.70,0.77,0.78),vec3(0.96,0.97,0.94),smoothstep(-0.7,0.7,carte.y+n*0.4));
+	vec3 blanc = vec3(0.93, 0.94, 0.93);
+	vec3 dessous = vec3(0.62, 0.67, 0.72);
+	ALBEDO = mix(dessous, blanc, smoothstep(-0.12, 0.10, bas));
+	float brume = brume_bord(monde.xz, demi_emprise);
+	ALBEDO *= 1.0 - brume;
+	EMISSION = ALBEDO * 0.28 + BRUME_CIEL * brume;
+	ROUGHNESS = 1.0;
 }

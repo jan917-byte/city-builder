@@ -117,6 +117,90 @@ class Chenal(object):
     def est_berge(self, a, b):
         return tuple(sorted((_cle(a), _cle(b)))) in self.cles_berges
 
+    def _orienter_rives(self):
+        """Chaque arête de rive reçoit le sens de l'aval : les deux rives sont
+        deux chaînes, parcourues depuis leur bout nord. Tient dans le grand S,
+        où une arête peut courir d'est en ouest."""
+        ysud, ynord = self._y_rive
+        bord = lambda p: min(abs(p[1] - ysud), abs(p[1] - ynord)) < 0.5  # noqa: E731
+        # Le bouchon au bord de la carte traverse l'eau : ce n'est pas une rive.
+        self._rives = [k for k, (p, q) in enumerate(self.berges)
+                       if not (bord(p) and bord(q))]
+        garde = set(self._rives)
+        voisins = {}
+        for k in self._rives:
+            p, q = self.berges[k]
+            for s in (_cle(p), _cle(q)):
+                voisins.setdefault(s, []).append(k)
+        self._aval = {}
+        for k in self._rives:
+            if k in self._aval:
+                continue
+            # La composante de k, puis son bout le plus au nord.
+            comp, pile = {k}, [k]
+            while pile:
+                e = pile.pop()
+                for s in map(_cle, self.berges[e]):
+                    for f in voisins[s]:
+                        if f not in comp:
+                            comp.add(f)
+                            pile.append(f)
+            bouts = [s for e in comp for s in map(_cle, self.berges[e])
+                     if len(voisins[s]) == 1]
+            if not bouts:
+                bouts = [max((s for e in comp for s in map(_cle, self.berges[e])),
+                             key=lambda s: s[1])]
+            s = max(bouts, key=lambda s: s[1])
+            prec = None
+            for _ in range(len(comp)):
+                suite = [f for f in voisins[s] if f != prec and f in comp
+                         and f not in self._aval]
+                if not suite:
+                    break
+                e = suite[0]
+                p, q = self.berges[e]
+                a, b = (p, q) if _cle(p) == s else (q, p)
+                L = math.hypot(b[0] - a[0], b[1] - a[1])
+                self._aval[e] = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+                s, prec = _cle(b), e
+            # Un nœud à trois arêtes coupe la marche : le reste prend le sud.
+            for e in comp:
+                if e not in self._aval:
+                    p, q = self.berges[e]
+                    L = math.hypot(q[0] - p[0], q[1] - p[1])
+                    sg = -1.0 if q[1] > p[1] else 1.0
+                    self._aval[e] = (sg * (q[0] - p[0]) / L, sg * (q[1] - p[1]) / L)
+        self._garde = garde
+
+    def courant(self, x, y, portee=40.0):
+        """(distance à la rive la plus proche, sens de l'aval en carte)."""
+        if not hasattr(self, "_aval"):
+            self._orienter_rives()
+        vus = []
+        for p, q in self.berges_autour(x - portee, y - portee,
+                                       x + portee, y + portee):
+            k = self._index_berge(p, q)
+            if k not in self._garde:
+                continue
+            vus.append((_dist_segment((x, y), p, q), self._aval[k]))
+        if not vus:
+            return portee, 0.0, -1.0
+        d0 = min(d for d, _ in vus)
+        tx = ty = 0.0
+        for d, (ax, ay) in vus:
+            if d <= d0 + 4.0:
+                w = 1.0 / (d + 1.0)
+                tx += ax * w
+                ty += ay * w
+        n = math.hypot(tx, ty) or 1.0
+        return d0, tx / n, ty / n
+
+    def _index_berge(self, p, q):
+        if not hasattr(self, "_ids"):
+            self._ids = {tuple(sorted((_cle(a), _cle(b)))): k
+                         for k, (a, b) in enumerate(self.berges)}
+        return self._ids[tuple(sorted((_cle(p), _cle(q))))]
+
     def niveau_voirie(self, x, y):
         """Un ouvrage relie les terrasses ; toucher l'eau ne le rabaisse pas à zéro."""
         niveau = self.niveau_rive(x, y, False)
@@ -191,6 +275,14 @@ class Chenal(object):
 
 def _cle(p):
     return (round(p[0], 4), round(p[1], 4))
+
+
+def _dist_segment(m, p, q):
+    vx, vy = q[0] - p[0], q[1] - p[1]
+    L2 = vx * vx + vy * vy
+    t = 0.0 if L2 < 1e-12 else max(0.0, min(1.0, ((m[0] - p[0]) * vx
+                                                + (m[1] - p[1]) * vy) / L2))
+    return math.hypot(m[0] - p[0] - t * vx, m[1] - p[1] - t * vy)
 
 
 def _coupe_boite(seg, x0, y0, x1, y1):
@@ -545,7 +637,7 @@ class Maillage(object):
         self._fid = None
 
     def triangle(self, p, q, r, coul, ao=(1.0, 1.0, 1.0), axe_toit=None,
-                 facade=None, genre=None):
+                 facade=None, genre=None, uv2s=None, couleurs=None):
         """Émet un triangle dont la normale main droite est celle de (p, q, r).
 
         ⚠ MAIS LES SOMMETS SORTENT DANS L'ORDRE p, r, q.
@@ -571,7 +663,9 @@ class Maillage(object):
             # POSE au sol — l'AO bakée est la fondation, pas un décor
             # (Direction artistique l.21). Aucun matériau du projet n'active la
             # transparence : ce canal est libre.
-            self.c.append((coul[0] * f, coul[1] * f, coul[2] * f, f))
+            # `couleurs` : une teinte par sommet, ordre naturel (le versant).
+            cs = coul if couleurs is None else couleurs[k]
+            self.c.append((cs[0] * f, cs[1] * f, cs[2] * f, f))
             # UV ne porte pas une texture : sur les seules faces de toiture,
             # il porte l'axe du bâtiment en XZ Godot. Le shader peut ainsi
             # aligner sa recette de panneaux sur le faîtage et reconnaître
@@ -587,7 +681,9 @@ class Maillage(object):
                 self.uv.append(facade[k])
             else:
                 self.uv.append((0.0, 0.0) if axe_toit is None else axe_toit)
-            self.uv2.append((0.0, 0.0) if genre is None else genre)
+            # `uv2s` : un UV2 par sommet, ordre naturel — le courant de l'eau.
+            self.uv2.append(uv2s[k] if uv2s is not None
+                            else (0.0, 0.0) if genre is None else genre)
             # Le seuil est en Y MONDE, posé par l'appelant un demi-mètre sous
             # l'égout : entre le pied du mur et lui, un bâtiment n'a aucun
             # sommet, donc le test ne peut pas se tromper de moitié de mur.
@@ -636,6 +732,61 @@ def _cap_plat(m, anneau, y, coul, G, relief=None, facteur=1.0):
                    G(c[0], c[1], alt(c)), coul)
 
 
+NAPPE_PAS = 8.0      # m : sous ce pas, le dégradé de rive ne se voit plus
+
+
+def _nappe(m, anneau, chenal, coul, G):
+    """La nappe redébitée sur une grille de NAPPE_PAS, découpée par l'anneau
+    comme la plaque de sol l'est par les berges. UV = (distance à la rive + 1,
+    0), UV2 = sens de l'aval en XZ Godot : le shader de l'eau en tire la
+    profondeur, l'écume et le courant. UV nul = eau sans rive connue.
+    ⚠ Pas de bissection des triangles de l'anneau : ses oreilles sont des
+    lamelles de 300 m, et la ville sortait à 418 000 sommets d'eau."""
+    cache = {}
+
+    def lire(p):
+        k = _cle(p)
+        if k not in cache:
+            d, tx, ty = chenal.courant(p[0], p[1])
+            cache[k] = (G(p[0], p[1], NAPPE_ILSE), (round(d + 1.0, 2), 0.0),
+                        (round(tx, 3), round(-ty, 3)))
+        return cache[k]
+
+    ferme = list(anneau) + [anneau[0]]
+    aretes = list(zip(ferme, ferme[1:]))
+    index = {}
+    for k, (p, q) in enumerate(aretes):
+        for gx in range(int(min(p[0], q[0]) // NAPPE_PAS),
+                        int(max(p[0], q[0]) // NAPPE_PAS) + 1):
+            for gy in range(int(min(p[1], q[1]) // NAPPE_PAS),
+                            int(max(p[1], q[1]) // NAPPE_PAS) + 1):
+                index.setdefault((gx, gy), []).append(k)
+    xs = [p[0] for p in anneau]
+    ys = [p[1] for p in anneau]
+    for gy in range(int(min(ys) // NAPPE_PAS), int(max(ys) // NAPPE_PAS) + 1):
+        for gx in range(int(min(xs) // NAPPE_PAS), int(max(xs) // NAPPE_PAS) + 1):
+            ax, ay = gx * NAPPE_PAS, gy * NAPPE_PAS
+            bx, by = ax + NAPPE_PAS, ay + NAPPE_PAS
+            morceaux = [[(ax, ay), (bx, ay), (bx, by), (ax, by)]]
+            for k in index.get((gx, gy), ()):
+                p, q = aretes[k]
+                nrm = (q[1] - p[1], -(q[0] - p[0]))
+                morceaux = [x for mo in morceaux for x in D4C.couper(mo, p, nrm)]
+            for mo in morceaux:
+                if len(mo) < 3:
+                    continue
+                c = (sum(p[0] for p in mo) / len(mo), sum(p[1] for p in mo) / len(mo))
+                if not dedans(ferme, c):
+                    continue
+                if aire_signee(mo) < 0:
+                    mo = list(reversed(mo))
+                sommets = [lire(p) for p in mo]
+                for j in range(1, len(mo) - 1):
+                    (pa, ua, fa), (pb, ub, fb), (pc, uc, fc) =                         sommets[0], sommets[j], sommets[j + 1]
+                    m.triangle(pa, pb, pc, coul, facade=[ua, ub, uc],
+                               uv2s=[fa, fb, fc])
+
+
 def _chenal_eau(m_eau, m_dur, anneau, chenal, coul_eau, coul_mur, G,
                 relief=None, niveau_rive=None, passages=None):
     """Un îlot d'eau : le fond du chenal, la nappe, et les murs de berge.
@@ -661,7 +812,7 @@ def _chenal_eau(m_eau, m_dur, anneau, chenal, coul_eau, coul_mur, G,
     sous l'asphalte, donc une rue de quai surplombait le vide."""
     m = m_dur
     _cap_plat(m_dur, anneau, FOND_ILSE, coul_mur, G)      # le fond
-    _cap_plat(m_eau, anneau, NAPPE_ILSE, coul_eau, G)     # la nappe
+    _nappe(m_eau, anneau, chenal, coul_eau, G)            # la nappe
 
     ok = tot = 0
     n = len(anneau)
@@ -859,12 +1010,40 @@ def _semer_jardin(anneau, aire, batiments=()):
             continue
         if any(dedans(list(emp) + [emp[0]], (x, y)) for emp in batiments):
             continue
-        # 🌲 Le 6e nombre est l'ESSENCE : 0 feuillu, 1 conifère. Un jardin de
-        # ville en compte peu — un thuya, un sapin planté trop près du mur.
+        # 🌲 Le 6e nombre est l'ESSENCE : 0 feuillu, 1 conifère, 6 fruitier.
+        # Un jardin de ville compte peu de conifères — un thuya, un sapin
+        # planté trop près du mur — et beaucoup de pommiers. Le fruitier est
+        # tiré du LIEU, pas de `r` : un tirage de plus déplacerait les arbres.
+        conifere = r.random() < 0.12
         out.append([x, y, 0.0,
                     r.uniform(0.55, 0.95), r.uniform(0.0, 6.2832),
-                    1 if r.random() < 0.12 else 0])
+                    1 if conifere else (6 if _tirage_lieu(x, y) < 0.5 else 0)])
     return out
+
+
+def _tirage_lieu(x, y, graine=0x7A11):
+    """Un nombre de [0, 1[ tiré de la POSITION : même lieu, même essence."""
+    n = (int(x * 7.0) * 374761393 + int(y * 7.0) * 668265263 + graine) & 0xFFFFFFFF
+    n = ((n ^ (n >> 13)) * 1274126177) & 0xFFFFFFFF
+    return ((n ^ (n >> 16)) & 0xFFFFFF) / 16777216.0
+
+
+# 🌳 Les essences de la ville, mêmes codes que `constructeur.gd`.
+FEUILLU, CONIFERE, BUISSON, BOULEAU, PEUPLIER, FRUITIER, SAULE = 0, 1, 3, 4, 5, 6, 7
+
+
+def varier_essence(x, y, essence, eau_m=None):
+    """Le feuillu générique devient saule ou peuplier au bord de l'eau, parfois
+    bouleau ailleurs ; sur une rive rendue, un buisson sur trois est un saule.
+    Tiré du lieu : la même ville plante les mêmes essences."""
+    t = _tirage_lieu(x, y)
+    if essence == BUISSON:
+        return SAULE if t < 0.30 else BUISSON
+    if essence != FEUILLU:
+        return essence
+    if eau_m is not None and eau_m < 30.0:
+        return SAULE if t < 0.35 else PEUPLIER if t < 0.60 else FEUILLU
+    return BOULEAU if t > 0.86 else FEUILLU
 
 
 def _unite(a, b):

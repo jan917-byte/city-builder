@@ -79,6 +79,9 @@ EAU = "#7EA7C3"                        # `sous_type = riviere`
 DECOR = {
     "bois":   "#5D7452",               # sous-bois, sous les instances d'arbres
     "relief": "#7F8C6D",               # versant pâturé — le massif n'est pas nu
+    # Hors du dessin, par l'altitude et la pente (`paysage.py`) :
+    "alpage": "#98A172",               # la chaume, au-dessus des arbres
+    "roche":  "#8E8A7C",               # le rocher des pentes raides et des crêtes
 }
 
 # ================================================== LES MATÉRIAUX DU BÂTI

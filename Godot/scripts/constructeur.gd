@@ -430,6 +430,14 @@ const CONIFERE := 1
 ## deuxième système, elle demande deux recettes de plus.
 const ROSEAU := 2
 const BUISSON := 3
+## 🌳 Quatre silhouettes de plus (2026-09-26), choisies par 07 selon le lieu :
+## le bouleau des parcs, le peuplier et le saule de l'eau, le fruitier des
+## jardins. Toujours la même teinte de feuillage, en valeur (DA l.67).
+const BOULEAU := 4
+const PEUPLIER := 5
+const FRUITIER := 6
+const SAULE := 7
+const VILLE := [FEUILLU, CONIFERE, BOULEAU, PEUPLIER, FRUITIER, SAULE]
 
 ## La teinte d'instance MULTIPLIE celle du sommet : au-dessus de 1, la tête
 ## reste plus claire que le vêtement, quel que soit le vêtement tiré.
@@ -655,6 +663,23 @@ static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 		_cone(v, n, c, i, 1.90, 1.10, 3.20, 6, 0.62, 0.86)
 		_cone(v, n, c, i, 1.45, 3.00, 2.80, 6, 0.78, 1.00)
 		_cone(v, n, c, i, 0.95, 4.90, 2.60, 6, 0.92, 1.12)
+	elif essence == BOULEAU:
+		# Une couronne étroite et haute, sur un fût clair.
+		_lobe(v, n, c, i, Vector3(0.0, 5.2, 0.0), 1.55, 0.70, 1.12)
+		_lobe(v, n, c, i, Vector3(0.35, 6.6, -0.2), 1.05, 0.80, 1.16)
+		_lobe(v, n, c, i, Vector3(-0.45, 4.3, 0.3), 1.10, 0.66, 1.00)
+	elif essence == PEUPLIER:
+		# Le fuseau : un cône qui s'ouvre, puis un cône qui se ferme.
+		_cone(v, n, c, i, 0.70, 1.6, 2.6, 6, 0.62, 0.86, 2.2)
+		_cone(v, n, c, i, 1.54, 4.2, 7.6, 6, 0.86, 1.14, 0.08)
+	elif essence == FRUITIER:
+		# Bas et rond : un pommier se lit à sa couronne qui touche presque le sol.
+		_lobe(v, n, c, i, Vector3(0.0, 2.55, 0.0), 1.70, 0.66, 1.10)
+		_lobe(v, n, c, i, Vector3(0.75, 2.20, 0.45), 1.10, 0.62, 1.00)
+	elif essence == SAULE:
+		# Le dôme, et la jupe qui retombe vers l'eau.
+		_lobe(v, n, c, i, Vector3(0.0, 3.9, 0.0), 2.70, 0.72, 1.12)
+		_cone(v, n, c, i, 3.10, 1.1, 2.9, 8, 0.58, 0.80, 0.84)
 	else:
 		# DÉCENTRÉS : concentriques, ils redonneraient la bille d'avant.
 		_lobe(v, n, c, i, Vector3(0.0, 4.7, 0.0), 2.70, 0.66, 1.10)
@@ -673,8 +698,10 @@ static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
 	var tn := PackedVector3Array()
 	var tc := PackedColorArray()
 	var ti := PackedInt32Array()
-	var haut: float = 1.6 if essence == CONIFERE else 3.4
-	_cone(tv, tn, tc, ti, 0.30, 0.0, haut, 5, 1.0, 1.0, 0.72)
+	var haut: float = {CONIFERE: 1.6, BOULEAU: 4.4, PEUPLIER: 2.0,
+		FRUITIER: 1.4, SAULE: 2.4}.get(essence, 3.4)
+	_cone(tv, tn, tc, ti, 0.20 if essence == BOULEAU else 0.30, 0.0, haut,
+		5, 1.0, 1.0, 0.72)
 	m.add_surface_from_arrays(PRIM, _emballer(tv, tn, tc, ti))
 	m.surface_set_material(1, Materiaux.bois(tronc))
 	return m

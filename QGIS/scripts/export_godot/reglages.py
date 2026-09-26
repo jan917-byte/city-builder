@@ -667,6 +667,21 @@ FACADE_TISSU = {
 
 FACADE_TISSU_DEFAUT = (FACADE_PORTE, FACADE_LOGEMENT)
 
+# 🎨 LA FAMILLE DE FAÇADE : ce que le shader ajoute au percement — volets et
+# soubassement (1, 2), stores (3), allèges de couleur (4), bardage et portes de
+# quai (5), balcons (6). Voyage dans la partie entière de UV2.y, le tirage du
+# bâtiment dans sa partie décimale. 0 = rien de plus que les fenêtres.
+FAMILLE_FACADE = {
+    "coeur_ancien": 1,
+    "maisons_de_ville": 1,
+    "pavillonnaire": 2,
+    "front_commercant": 3,
+    "barre_1970": 4,
+    "friche_industrielle": 5,
+    "collectif_1995": 6,
+    "ilot_compact": 6,
+}
+
 # En dessous, le mur est un pan coupé d'angle ou un décrochement : une travée
 # n'y tient pas, et une demi-fenêtre au coin est pire que rien. C'est aussi le
 # seuil qui sépare `uv` d'un mur de `uv` d'un toit — voir `Maillage.triangle`.

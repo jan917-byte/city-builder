@@ -104,6 +104,17 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// valeur du mur pour qu'un toit se lise planté.\n" \
 		+ "const vec3 SEDUM = vec3(0.072, 0.147, 0.045);\n" \
 		+ "const vec3 SEDUM_SEC = vec3(0.194, 0.254, 0.076);\n" \
+		+ "// 🎨 LES ACCENTS DE FAÇADE (2026-09-26), LINÉAIRES. Volets et portes :\n" \
+		+ "// #5E7A5A #5A6E80 #8A4A3E #6B5440 #B3AEA2. Stores : #B5654A #7A9470\n" \
+		+ "// #3E5670 #C99A45, rayés de #D8CFB8. Allèges de 1970 : #C98B4A #5F8F86\n" \
+		+ "// #B0603F. Portes de quai : #4F7C78 #9C5044 #C9A640. Verre : #A9C2C8.\n" \
+		+ "// Des accents, jamais une teinte de mur : l'enduit reste l'époque (35).\n" \
+		+ "const vec3 VOLETS[5] = { vec3(0.111, 0.195, 0.102), vec3(0.102, 0.155, 0.216), vec3(0.254, 0.069, 0.048), vec3(0.147, 0.089, 0.051), vec3(0.451, 0.423, 0.361) };\n" \
+		+ "const vec3 STORES[4] = { vec3(0.462, 0.130, 0.069), vec3(0.195, 0.296, 0.162), vec3(0.048, 0.092, 0.162), vec3(0.584, 0.323, 0.061) };\n" \
+		+ "const vec3 CREME = vec3(0.687, 0.624, 0.479);\n" \
+		+ "const vec3 ALLEGES[3] = { vec3(0.584, 0.258, 0.069), vec3(0.113, 0.275, 0.238), vec3(0.431, 0.117, 0.050) };\n" \
+		+ "const vec3 QUAIS[3] = { vec3(0.078, 0.202, 0.188), vec3(0.332, 0.080, 0.058), vec3(0.584, 0.381, 0.051) };\n" \
+		+ "const vec3 GARDE_CORPS = vec3(0.397, 0.539, 0.578);\n" \
 		+ "// 🪟 LA FENÊTRE — cotes d'un logement ordinaire. Ne se règlent pas\n" \
 		+ "// à l'œil : c'est leur justesse qui fait qu'un volume annonce sa\n" \
 		+ "// taille sans rien à côté pour comparer.\n" \
@@ -194,6 +205,21 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t\tsmoothstep(0.05 - aj, 0.05 + aj, dj)), vj);\n" \
 		+ "\t\t}\n" \
 		+ "\t}\n" \
+		+ "\t// 🏭 LE TOIT PLAT A UNE MATIÈRE (2026-09-26) : gravier, et les\n" \
+		+ "\t// verrières de la halle en travers de son axe. UV2.x = −famille.\n" \
+		+ "\tif (!neuf && vers_le_ciel >= 0.995 && length(UV) > 0.5 && pos_monde.y > 1.0 && UV2.x < -0.5) {\n" \
+		+ "\t\tvec3 axe_t = normalize(vec3(UV.x, 0.0, UV.y));\n" \
+		+ "\t\tvec2 gt = vec2(dot(pos_monde, axe_t), dot(pos_monde, vec3(-axe_t.z, 0.0, axe_t.x)));\n" \
+		+ "\t\tfloat aat = max(max(fwidth(gt.x), fwidth(gt.y)), 0.0005);\n" \
+		+ "\t\tbase *= mix(1.0, 0.93 + 0.14 * bruit(pos_monde.xz * 2.3), clamp(1.2 - 3.0 * aat, 0.0, 1.0));\n" \
+		+ "\t\tif (UV2.x < -4.5 && UV2.x > -5.5) {\n" \
+		+ "\t\t\tfloat t = abs(fract(gt.x / 7.5) - 0.5) * 7.5;\n" \
+		+ "\t\t\tfloat verriere = smoothstep(0.60 + aat, 0.60 - aat, t);\n" \
+		+ "\t\t\tfloat montant = smoothstep(0.34, 0.46, abs(fract(gt.y / 1.2) - 0.5)) * clamp(1.2 - 3.0 * aat, 0.0, 1.0);\n" \
+		+ "\t\t\tvec3 vitrage = mix(vec3(0.20, 0.25, 0.29), vec3(0.42, 0.48, 0.52), smoothstep(-0.6, 0.6, (fract(gt.x / 7.5) - 0.5) * 7.5));\n" \
+		+ "\t\t\tbase = mix(base, mix(vitrage, vec3(0.28, 0.29, 0.30), montant) * COLOR.a, verriere);\n" \
+		+ "\t\t}\n" \
+		+ "\t}\n" \
 		+ "\tif ((equipe > 0.0 || verdi > 0.0) && vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5) {\n" \
 		+ "\t\t// 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter) : le panneau était un\n" \
 		+ "\t\t// ASSOMBRISSEMENT du toit, indiscernable d'une ombre. Bleu franc\n" \
@@ -256,7 +282,54 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t// Sans liseré : deux cases voisines doivent se souder. La\n" \
 		+ "\t\t// variation est un tirage de la case, pas de la nappe.\n" \
 		+ "\t\tfloat hv = fract(sin(dot(floor(g), vec2(11.917, 57.301))) * 15731.113);\n" \
-		+ "\t\tvec3 c_pan = mix(BLEU, BLANC, bord) * COLOR.a;\n" \
+		+ "\t\t// ☀️ LE PANNEAU A UNE ÉPAISSEUR ET REFLÈTE LE CIEL (2026-09-26).\n" \
+		+ "\t\t// Le bleu franc du 2026-08-17 reste le fond : c'est lui qui se lit\n" \
+		+ "\t\t// de loin. De près : cellules, cadre éclairé en haut, ombre en bas.\n" \
+		+ "\t\tvec2 fr = fract(g);\n" \
+		+ "\t\tfloat monte = pente_axe.y >= 0.0 ? fr.y : 1.0 - fr.y;\n" \
+		+ "\t\tfloat hp = fract(sin(dot(floor(g), vec2(3.113, 91.71))) * 2437.37);\n" \
+		+ "\t\tvec3 verre = BLEU * mix(0.86, 1.06, hp);\n" \
+		+ "\t\tvec2 cel = abs(fract(g * 4.0) - 0.5);\n" \
+		+ "\t\tfloat ac = aa * 4.0;\n" \
+		+ "\t\tfloat net_cel = clamp(1.2 - 6.0 * ac, 0.0, 1.0);\n" \
+		+ "\t\tfloat trait = smoothstep(0.46 - ac, 0.46 + ac, max(cel.x, cel.y));\n" \
+		+ "\t\tverre *= 1.0 - 0.30 * trait * net_cel;\n" \
+		+ "\t\t// Le ciel dans la vitre : il dépend du versant, donc deux pans d'un\n" \
+		+ "\t\t// même toit ne sortent jamais du même bleu.\n" \
+		+ "\t\tvec3 vue = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);\n" \
+		+ "\t\tfloat ciel = clamp(reflect(-vue, normale_monde).y, 0.0, 1.0);\n" \
+		+ "\t\tfloat fresnel = pow(1.0 - clamp(dot(vue, normale_monde), 0.0, 1.0), 3.0);\n" \
+		+ "\t\tverre = mix(verre, vec3(0.578, 0.624, 0.658), clamp(0.05 + 0.35 * fresnel, 0.0, 0.3) * ciel);\n" \
+		+ "\t\tverre *= mix(0.93, 1.07, monte);\n" \
+		+ "\t\tvec3 c_pan = verre;\n" \
+		+ "\t\tbool plat = vers_le_ciel >= 0.995;\n" \
+		+ "\t\tif (!plat) {\n" \
+		+ "\t\t\tfloat cote = smoothstep(0.5 - LISERE - aa, 0.5 - LISERE + aa, abs(fr.x - 0.5));\n" \
+		+ "\t\t\tfloat haut = smoothstep(1.0 - LISERE - aa, 1.0 - LISERE + aa, monte);\n" \
+		+ "\t\t\tfloat bas = smoothstep(LISERE + aa, LISERE - aa, monte);\n" \
+		+ "\t\t\tc_pan = mix(c_pan, BLANC * 0.92, cote);\n" \
+		+ "\t\t\tc_pan = mix(c_pan, BLANC, haut);\n" \
+		+ "\t\t\tc_pan = mix(c_pan, BLEU * 0.22, bas);\n" \
+		+ "\t\t\tc_pan *= COLOR.a;\n" \
+		+ "\t\t} else {\n" \
+		+ "\t\t\t// 🔆 SUR LE PLAT, DES RANGÉES INCLINÉES VERS LE SUD : deux par\n" \
+		+ "\t\t\t// case de 3 m, chacune suivie de son ombre sur l'étanchéité.\n" \
+		+ "\t\t\tfloat s = pente_axe.z >= 0.0 ? 1.0 : -1.0;\n" \
+		+ "\t\t\tfloat v = fract(g.y * 2.0);\n" \
+		+ "\t\t\tfloat q = s > 0.0 ? v : 1.0 - v;\n" \
+		+ "\t\t\tfloat aq = aa * 2.0;\n" \
+		+ "\t\t\tfloat panneau = smoothstep(0.30 - aq, 0.30 + aq, q);\n" \
+		+ "\t\t\tfloat ombre = smoothstep(0.22 + aq, 0.22 - aq, q);\n" \
+		+ "\t\t\tfloat colonne = smoothstep(0.47 - aa * 3.0, 0.47 + aa * 3.0, abs(fract(g.x * 3.0) - 0.5));\n" \
+		+ "\t\t\tvec3 rang = mix(verre * mix(1.08, 0.90, q), BLANC * 0.92, colonne * 0.8);\n" \
+		+ "\t\t\trang = mix(rang, BLANC, smoothstep(0.30 + aq, 0.34, q) * smoothstep(0.37, 0.33, q));\n" \
+		+ "\t\t\tvec3 dessous = base * mix(1.0, 0.55, ombre);\n" \
+		+ "\t\t\tvec3 motif = mix(dessous, rang * COLOR.a, panneau);\n" \
+		+ "\t\t\t// Sous ~2 px de rang, la moyenne, et franche : de loin, un toit\n" \
+		+ "\t\t\t// équipé doit rester BLEU, pas une bâche délavée.\n" \
+		+ "\t\t\tvec3 moyen = mix(BLEU * 0.80, BLANC * 0.90, bord * 0.85) * COLOR.a;\n" \
+		+ "\t\t\tc_pan = mix(moyen, motif, clamp(1.2 - 4.0 * aq, 0.0, 1.0));\n" \
+		+ "\t\t}\n" \
 		+ "\t\tvec3 c_vert = mix(SEDUM, SEDUM_SEC, hv) * COLOR.a;\n" \
 		+ "\t\t// COLOR.a garde le volume sous les deux motifs. Somme et non\n" \
 		+ "\t\t// deux `mix` enchaînés : au loin le second rendrait du carton\n" \
@@ -296,7 +369,10 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat L = UV.y;\n" \
 		+ "\t\tfloat h = pos_monde.y;\n" \
 		+ "\t\tint genre = int(UV2.x + 0.5);\n" \
-		+ "\t\tfloat alea = UV2.y;\n" \
+		+ "\t\t// UV2.y = famille de façade + tirage du bâtiment (FAMILLE_FACADE, 07).\n" \
+		+ "\t\tfloat alea = fract(UV2.y);\n" \
+		+ "\t\tfloat famille = floor(UV2.y);\n" \
+		+ "\t\tbool porte = false;\n" \
 		+ "\t\t// aa = un pixel, EN MÈTRES DE FAÇADE : c'est ce qui rend le\n" \
 		+ "\t\t// fondu indépendant du zoom.\n" \
 		+ "\t\tfloat aa = max(fwidth(u), 0.0005);\n" \
@@ -337,6 +413,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t} else if (etage < 0.5 && genre == 2 && travee == floor(alea * n)) {\n" \
 		+ "\t\t\t// Une porte par bâtiment : 07 ne marque le genre 2 que sur\n" \
 		+ "\t\t\t// sa plus longue façade sur rue.\n" \
+		+ "\t\t\tporte = true;\n" \
 		+ "\t\t\tdemi = 0.5 * min(1.10, pas * 0.42);\n" \
 		+ "\t\t\tbas = 0.02;\n" \
 		+ "\t\t\thaut = 2.15;\n" \
@@ -396,6 +473,71 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\treflet = mix(reflet, vec3(0.32, 0.25, 0.16), step(0.86, interieur) * 0.55);\n" \
 		+ "\t\tbase = mix(base, reflet * mix(1.0, 0.60, ombre) * COLOR.a, vitre);\n" \
 		+ "\t\trugosite = mix(rugosite, 0.18, vitre * net);\n" \
+		+ "\t\t// 🎨 LA FAMILLE DE FAÇADE (2026-09-26). `net_g` rend la main plus\n" \
+		+ "\t\t// tard que `net` : un volet ou un store fait un mètre, il se lit\n" \
+		+ "\t\t// encore quand la fenêtre n'est plus qu'un assombrissement.\n" \
+		+ "\t\tfloat net_g = clamp(1.3 - 0.8 * aa, 0.0, 1.0);\n" \
+		+ "\t\tfloat hb = fract(sin(travee * 12.9898 + etage * 78.233 + alea * 37.719) * 43758.545);\n" \
+		+ "\t\tif (!neuf && (famille == 1.0 || famille == 2.0)) {\n" \
+		+ "\t\t\t// Le soubassement, et le bandeau entre le rez et les étages.\n" \
+		+ "\t\t\tbase *= mix(1.0, 0.80, smoothstep(0.60, 0.52, h) * net_g);\n" \
+		+ "\t\t\tif (famille == 1.0) {\n" \
+		+ "\t\t\t\tbase *= mix(1.0, 1.10, smoothstep(0.10, 0.03, abs(h - ETAGE + 0.05)) * net_g);\n" \
+		+ "\t\t\t}\n" \
+		+ "\t\t\t// Les volets, sur sept bâtiments sur dix, jamais à la porte.\n" \
+		+ "\t\t\tif (!porte && alea > 0.30 && genre <= 2) {\n" \
+		+ "\t\t\t\tfloat x0 = demi + 0.05;\n" \
+		+ "\t\t\t\tfloat x1 = x0 + demi * 0.92;\n" \
+		+ "\t\t\t\tfloat volet = smoothstep(x0 - aa, x0 + aa, du) * smoothstep(x1 + aa, x1 - aa, du)\n" \
+		+ "\t\t\t\t\t* smoothstep(bas - aa, bas + aa, hy) * smoothstep(haut + aa, haut - aa, hy)\n" \
+		+ "\t\t\t\t\t* smoothstep(marge - aa, marge + aa, bord) * tient;\n" \
+		+ "\t\t\t\tfloat lames = mix(1.0, 0.82 + 0.18 * smoothstep(0.15, 0.35, abs(fract(hy / 0.11) - 0.5)), net);\n" \
+		+ "\t\t\t\tbase = mix(base, VOLETS[int(fract(alea * 7.13) * 5.0)] * lames * COLOR.a, volet * net_g);\n" \
+		+ "\t\t\t}\n" \
+		+ "\t\t}\n" \
+		+ "\t\tif (!neuf && porte) {\n" \
+		+ "\t\t\tbase = mix(base, VOLETS[int(fract(alea * 3.71) * 5.0)] * 0.9 * COLOR.a, vitre * net_g);\n" \
+		+ "\t\t}\n" \
+		+ "\t\tif (!neuf && famille == 3.0 && genre == 3 && etage < 0.5 && alea > 0.20) {\n" \
+		+ "\t\t\t// Le store au-dessus de la vitrine, et l'ombre qu'il pose dessus.\n" \
+		+ "\t\t\tfloat large = smoothstep(demi + 0.14 + aa, demi + 0.14 - aa, du);\n" \
+		+ "\t\t\tfloat store = large * smoothstep(2.50 - aa, 2.50 + aa, hy) * smoothstep(2.82 + aa, 2.82 - aa, hy);\n" \
+		+ "\t\t\tfloat raie = smoothstep(-0.25, 0.25, sin(u * 20.94)) * net;\n" \
+		+ "\t\t\tvec3 toile = mix(STORES[int(fract(alea * 5.31) * 4.0)], CREME, raie * 0.85);\n" \
+		+ "\t\t\tbase *= 1.0 - 0.40 * large * smoothstep(2.05, 2.48, hy) * step(hy, 2.50) * net_g;\n" \
+		+ "\t\t\tbase = mix(base, toile * COLOR.a, store * net_g);\n" \
+		+ "\t\t}\n" \
+		+ "\t\tif (!neuf && famille == 4.0 && genre == 4) {\n" \
+		+ "\t\t\t// Les allèges de couleur de 1970, une travée sur trois, du pied\n" \
+		+ "\t\t\t// au toit (au hasard, elles sortaient en confettis), et le nez\n" \
+		+ "\t\t\t// de dalle à chaque plancher.\n" \
+		+ "\t\t\tfloat allege = smoothstep(demi + aa, demi - aa, du) * smoothstep(0.16 - aa, 0.16 + aa, hy)\n" \
+		+ "\t\t\t\t* smoothstep(0.92 + aa, 0.92 - aa, hy) * smoothstep(marge - aa, marge + aa, bord);\n" \
+		+ "\t\t\tbase = mix(base, ALLEGES[int(fract(alea * 3.77) * 3.0)] * COLOR.a, allege * step(mod(travee + floor(alea * 3.0), 3.0), 0.5) * net_g);\n" \
+		+ "\t\t\tbase = mix(base, min(base * 1.22 + 0.02, vec3(1.0)), smoothstep(0.0, 0.03, hy) * smoothstep(0.16, 0.12, hy) * net_g);\n" \
+		+ "\t\t}\n" \
+		+ "\t\tif (!neuf && famille == 5.0) {\n" \
+		+ "\t\t\t// La halle : bardage nervuré, et une porte de quai sur une travée\n" \
+		+ "\t\t\t// sur trois au rez.\n" \
+		+ "\t\t\tfloat nv = u / 0.28;\n" \
+		+ "\t\t\tfloat an = max(fwidth(nv), 0.0005);\n" \
+		+ "\t\t\tfloat nerf = smoothstep(0.30, 0.45, abs(fract(nv) - 0.5));\n" \
+		+ "\t\t\tbase *= mix(1.0, mix(1.05, 0.84, nerf), clamp(1.3 - 4.0 * an, 0.0, 1.0) * (1.0 - vitre));\n" \
+		+ "\t\t\tif (etage < 0.5 && hb < 0.33) {\n" \
+		+ "\t\t\t\tfloat quai = smoothstep(pas * 0.40 + aa, pas * 0.40 - aa, du) * smoothstep(3.30 + aa, 3.30 - aa, h)\n" \
+		+ "\t\t\t\t\t* smoothstep(marge + 0.3 - aa, marge + 0.3 + aa, bord);\n" \
+		+ "\t\t\t\tfloat plis = mix(1.0, 0.86 + 0.14 * smoothstep(0.2, 0.4, abs(fract(h / 0.22) - 0.5)), net);\n" \
+		+ "\t\t\t\tbase = mix(base, QUAIS[int(fract(alea * 2.93) * 3.0)] * plis * COLOR.a, quai * net_g);\n" \
+		+ "\t\t\t}\n" \
+		+ "\t\t}\n" \
+		+ "\t\tif (!neuf && famille == 6.0 && genre <= 2 && etage > 0.5 && hb < 0.55) {\n" \
+		+ "\t\t\t// Le balcon : nez de dalle clair, garde-corps vitré.\n" \
+		+ "\t\t\tfloat large = smoothstep(demi + 0.55 + aa, demi + 0.55 - aa, du) * smoothstep(marge - aa, marge + aa, bord);\n" \
+		+ "\t\t\tfloat dalle = large * smoothstep(0.02, 0.05, hy) * smoothstep(0.17, 0.13, hy);\n" \
+		+ "\t\t\tfloat garde = large * smoothstep(0.17, 0.20, hy) * smoothstep(1.02, 0.98, hy);\n" \
+		+ "\t\t\tbase = mix(base, min(base * 1.25 + 0.03, vec3(1.0)), dalle * net_g);\n" \
+		+ "\t\t\tbase = mix(base, GARDE_CORPS * COLOR.a, garde * 0.55 * net_g);\n" \
+		+ "\t\t}\n" \
 		+ "\t}\n" \
 		+ "\t// 🌊 L'ÉTAT D'UNE BERGE, DANS LA VILLE VIVANTE. `calque` ne\n" \
 		+ "\t// peint que la maquette blanche ; une rive rendue au fleuve doit se\n" \

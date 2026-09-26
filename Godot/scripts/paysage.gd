@@ -20,7 +20,10 @@ func batir(d: Dictionary, teinte_eau: Color, mat_rue: Material) -> void:
 	_maille("IlseExterieure", d.eau, eau)
 	var feuillage := mat.duplicate() as ShaderMaterial
 	feuillage.set_shader_parameter("arbres", true)
-	for essence in 2:
+	# Feuillu, sapin, peuplier : l'essence et la teinte du peuplement (6e
+	# nombre) sont posées par `repartir` dans paysage.py.
+	var teintes := [Color("496640"), Color("304e41"), Color("587246")]
+	for essence in (d.arbres as Array).size():
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.use_colors = true
@@ -30,22 +33,28 @@ func batir(d: Dictionary, teinte_eau: Color, mat_rue: Material) -> void:
 			var a: Array = d.arbres[essence][k]
 			var b := Basis(Vector3.UP, a[4]).scaled(Vector3.ONE * a[3])
 			mm.set_instance_transform(k, Transform3D(b, Vector3(a[0], a[1], a[2])))
-			var couleur := Color("496640") if essence == 0 else Color("304e41")
-			mm.set_instance_color(k, couleur.srgb_to_linear() * (0.85 + fmod(a[4], 1.0)*0.3))
+			var f: float = float(a[5]) if a.size() > 5 else 0.85 + fmod(a[4], 1.0) * 0.3
+			mm.set_instance_color(k, (teintes[essence] as Color).srgb_to_linear() * f)
 		_instances("Foret%d" % essence, mm, feuillage)
 	mat_nuages = ShaderMaterial.new()
 	mat_nuages.shader = preload("res://shaders/nuages.gdshader")
+	mat_nuages.set_shader_parameter("demi_emprise", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	var nuages := MultiMesh.new()
 	nuages.transform_format = MultiMesh.TRANSFORM_3D
 	nuages.use_custom_data = true
-	nuages.mesh = Constructeur.maillage(d.quad)
+	nuages.mesh = Constructeur.maillage(d.nuage)
 	nuages.instance_count = d.nuages.size()
 	for k in nuages.instance_count:
 		var n: Array = d.nuages[k]
-		nuages.set_instance_transform(k, Transform3D(Basis(), Vector3(n[0], n[1], n[2])))
-		nuages.set_instance_custom_data(k, Color(n[3], n[4], n[5], 1))
+		var b := Basis(Vector3.UP, float(n[5]) * TAU).scaled(
+			Vector3(n[3], float(n[3]) * 0.42, float(n[3]) * 0.55))
+		nuages.set_instance_transform(k, Transform3D(b, Vector3(n[0], n[1], n[2])))
+		nuages.set_instance_custom_data(k, Color(n[5], 0, 0, 1))
 	var bancs := _instances("Nuages", nuages, mat_nuages)
 	bancs.extra_cull_margin = 800.0
+	# L'ombre du banc sur le versant est ce qui dit son altitude, vu d'en haut.
+	bancs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
 
 func _maille(nom: String, d: Dictionary, mat: Material) -> void:
 	var mi := MeshInstance3D.new()

@@ -537,7 +537,7 @@ def _rangs_denses(volumes, st, loge):
 
 
 def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
-           coul_toit=None, genres=None, alea=0.0, rang_vert=1.0):
+           coul_toit=None, genres=None, alea=0.0, rang_vert=1.0, famille=0):
     """Un prisme à deux plans horizontaux, base enterrée.
 
     🔄 `y_haut` ajoutait `altitude_relative` — le bâtiment se posait sur le
@@ -579,7 +579,10 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
         if g != FACADE_AVEUGLE:
             Lm = math.hypot(b[0] - a[0], b[1] - a[1])
             pied, tete = (0.0, Lm), (Lm, Lm)
-            genre = (float(g), alea)
+            # Famille en partie entière, tirage en partie décimale : le
+            # tirage est borné sous 0,998 pour que l'arrondi du JSON ne
+            # le fasse pas passer à la famille suivante.
+            genre = (float(g), famille + min(alea, 0.998))
         m.triangle(pa_b, pb_b, pb_h, coul, (fb, fb, fh),
                    facade=None if genre is None else (pied, tete, tete),
                    genre=genre)
@@ -610,7 +613,9 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
     # La direction de rue commande déjà le faîtage. Les rares volumes sans
     # adresse reprennent leur plus longue arête : même dans ce repli, les
     # panneaux suivent donc le bâtiment et jamais une grille mondiale.
-    axe_toit = faitage
+    # 🏭 Sauf la halle : ses verrières suivent sa charpente, pas la rue — sur
+    # une rue en biais, elles traversaient le toit en diagonale.
+    axe_toit = None if famille == 5 else faitage
     if axe_toit is None:
         a, b = max(((anneau[i], anneau[(i + 1) % len(anneau)])
                     for i in range(len(anneau))),
@@ -643,12 +648,12 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
         pa = G(a[0], a[1], y_haut)
         pb = G(b[0], b[1], y_haut)
         pc = G(c[0], c[1], y_haut)
-        # 🌿 UV2 = (0, rang) sur un toit : 0 n'est pas une façade, donc les
-        # fenêtres ne s'y percent pas, et `rang` dit au shader si CE toit-ci
-        # verdit en entier. Les versants gardent (0, 0) : ils ne verdissent
-        # jamais.
+        # 🌿 UV2 = (−famille, rang) sur un toit : ≤ 0 n'est pas une façade,
+        # donc les fenêtres ne s'y percent pas ; la famille y pose les
+        # verrières des halles ; `rang` dit au shader si CE toit-ci verdit en
+        # entier. Les versants gardent (0, 0) : ils ne verdissent jamais.
         m.triangle(pa, pb, pc, coul_toit, axe_toit=axe_uv,
-                   genre=(0.0, rang_vert))
+                   genre=(-float(famille), rang_vert))
         if normale(pa, pb, pc)[1] > 0.0:
             haut_ok += 1
     # L'acrotère est posé sur TOUS les toits plats, y compris les 159 qui le

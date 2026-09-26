@@ -1561,7 +1561,7 @@ func _construire() -> void:
 	_berges_semis = donnees["berges_semis"]
 
 	if not _ignore("Arbres"):
-		for essence in [Constructeur.FEUILLU, Constructeur.CONIFERE]:
+		for essence in Constructeur.VILLE:
 			var mmi := MultiMeshInstance3D.new()
 			mmi.name = "Arbres%d" % essence
 			# ⚠️ PAS de `material_override` : il écraserait les deux surfaces
@@ -1572,11 +1572,12 @@ func _construire() -> void:
 		for essence in _arbres_noeuds:
 			var mm: MultiMesh = (_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh
 			print("  arbres   %-8s %5d instances"
-				% ["conifère" if essence == Constructeur.CONIFERE
-					else "feuillu", 0 if mm == null else mm.instance_count])
+				% [["feuillu", "conifère", "", "", "bouleau", "peuplier",
+					"fruitier", "saule"][essence],
+					0 if mm == null else mm.instance_count])
 
 	if not _ignore("Rives"):
-		for essence in [Constructeur.ROSEAU, Constructeur.BUISSON]:
+		for essence in [Constructeur.ROSEAU, Constructeur.BUISSON, Constructeur.SAULE]:
 			var mmi := MultiMeshInstance3D.new()
 			mmi.name = "Rives%d" % essence
 			monde.add_child(mmi)
@@ -1823,6 +1824,13 @@ static func _dans_un_camp(campements: Array, x: float, z: float) -> bool:
 	return false
 
 
+## Variation de VALEUR sur la teinte de feuillage, par essence (DA l.67) : le
+## bouleau et le saule prennent la lumière, le peuplier la retient.
+const VALEUR_ESSENCE := {Constructeur.BOULEAU: 1.20, Constructeur.PEUPLIER: 0.90,
+	Constructeur.FRUITIER: 1.08, Constructeur.SAULE: 1.14}
+const ECORCE_BOULEAU := Color("d8d3c6")
+
+
 func _montrer_arbres() -> void:
 	if _arbres_noeuds.is_empty():
 		return
@@ -1852,8 +1860,11 @@ func _montrer_arbres() -> void:
 		# la palette (Direction artistique l.67).
 		var t := vert if essence == Constructeur.FEUILLU \
 			else Color(vert.r * 0.70, vert.g * 0.80, vert.b * 0.76)
+		if VALEUR_ESSENCE.has(essence):
+			t = vert * float(VALEUR_ESSENCE[essence])
 		(_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh = \
-			Constructeur.arbres(liste, essence, t, brun)
+			Constructeur.arbres(liste, essence, t,
+				ECORCE_BOULEAU if essence == Constructeur.BOULEAU else brun)
 
 
 ## 🌿 UNE BERGE RENDUE AU FLEUVE SE PLANTE, et c'est ça qui la fait lire — un
@@ -1894,6 +1905,8 @@ func _montrer_rives() -> void:
 		# Variation de VALEUR sur la même teinte (Direction artistique l.67) :
 		# le roseau prend le soleil, le buisson est une masse sombre.
 		var f: float = 1.22 if essence == Constructeur.ROSEAU else 0.74
+		if essence == Constructeur.SAULE:
+			f = float(VALEUR_ESSENCE[essence])
 		(_berges_plantes[essence] as MultiMeshInstance3D).multimesh = \
 			Constructeur.arbres(liste, essence,
 				Color(vert.r * f, vert.g * f, vert.b * f), brun)

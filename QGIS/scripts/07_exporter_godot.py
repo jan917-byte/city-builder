@@ -43,7 +43,7 @@ from export_godot.decor import (
     haies as _haies_domaines,
     semer as _semer_bois,
 )
-from export_godot.paysage import paysage
+from export_godot.paysage import paysage, repartir
 from export_godot.sorties import sorties, hors_routes, Surface
 from export_godot.ponts import _acces_pont, _pont_provisoire
 from export_godot.berges import (
@@ -67,6 +67,7 @@ from export_godot.berges import (
     _tabliers,
 )
 from export_godot.geometrie import (
+    varier_essence,
     Chenal,
     Maillage,
     Relief,
@@ -81,6 +82,7 @@ from export_godot.geometrie import (
     aire_signee,
 )
 from export_godot.reglages import (
+    FAMILLE_FACADE,
     ACCES_LARGEUR,
     ACCES_OUVERTURE,
     ACROTERE,
@@ -901,7 +903,8 @@ def main():
                     n_neuf += 1
                     _masse(repare, emp, d, PAL.vers_lineaire(mur_neuf), G, niv,
                            pente_v, faite, PAL.vers_lineaire(toit_neuf),
-                           genres, alea, rangs_verts.get(k_vol, 1.0))
+                           genres, alea, rangs_verts.get(k_vol, 1.0),
+                           FAMILLE_FACADE.get(st, 0))
                 else:
                     # 🏢 Tout ce que le bâtiment émet à partir d'ici porte son
                     # rang de montée : murs, toit, acrotère, souches.
@@ -915,7 +918,8 @@ def main():
                                         seuil + 0.5)
                     a, b, c, e = _masse(masses, emp, d, c_mur, G, niv,
                                         pente_v, faite, c_toit, genres, alea,
-                                        rangs_verts.get(k_vol, 1.0))
+                                        rangs_verts.get(k_vol, 1.0),
+                                        FAMILLE_FACADE.get(st, 0))
                     masses.dense = None
                 murs_ok += a
                 murs_tot += b
@@ -1893,8 +1897,9 @@ def main():
 
     routes_sortie = sorties(routes, ilots, massifs, relief, G,
                             D4.EMPRISE_CIRCULATION, Surface([terre, sols]))
-    decor_vallee = _avec_bois(paysage(maxx - minx, maxy - miny, chenal, cx, cy,
-                                    massifs, dessin), arbres_bois, arbres_haies)
+    vallee, eau_dehors = paysage(maxx - minx, maxy - miny, chenal, cx, cy,
+                                 massifs, dessin)
+    decor_vallee = _avec_bois(vallee, arbres_bois, arbres_haies)
     for axe in routes_sortie["axes"]:
         axe["points"] = [[p[0] - cx, cy - p[1]] for p in axe["points"]]
     decor_vallee["sorties"] = routes_sortie
@@ -1906,8 +1911,14 @@ def main():
     decor_vallee["arbres"] = _hors_chaussees(decor_vallee["arbres"], chaussees, cx, cy)
     print("    %d arbres des bois et des haies écartés des rues de la ville"
           % (avant - sum(map(len, decor_vallee["arbres"]))))
+    decor_vallee["arbres"] = repartir(decor_vallee["arbres"], lambda x, z: min(
+        eau_dehors(x, z), chenal.courant(x + cx, cy - z, 70.0)[0]))
+    print("    essences du décor : %d feuillus, %d sapins, %d peupliers"
+          % tuple(map(len, decor_vallee["arbres"])))
     arbres_godot = [[round(c, 2) for c in G(a[0], a[1], a[2])]
-                    + [round(a[3], 3), round(a[4], 3), int(a[5])] for a in arbres]
+                    + [round(a[3], 3), round(a[4], 3), varier_essence(
+                        a[0], a[1], int(a[5]), chenal.courant(a[0], a[1], 30.0)[0])]
+                    for a in arbres]
     arbres_godot = hors_routes([arbres_godot, []], a_deboiser)[0]
     print("    %d arbres des champs écartés des prolongements" % (len(arbres) - len(arbres_godot)))
     doc = {
@@ -1970,7 +1981,8 @@ def main():
         # semis, et pas une teinte, qui fait lire la décision.
         "berges_semis": {
             str(b["fid"]): [[round(c, 2) for c in G(a[0], a[1], a[2])]
-                            + [round(a[3], 3), round(a[4], 3), int(a[5])]
+                            + [round(a[3], 3), round(a[4], 3),
+                               varier_essence(a[0], a[1], int(a[5]))]
                             for a in b["semis"]]
             for b in berges
         },
