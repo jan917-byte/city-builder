@@ -343,9 +343,7 @@ func description_pont(fid: int) -> String:
 		lignes.append("Accès en cours de déblaiement.")
 	if jeu.ville.pont_provisoire(fid):
 		lignes.append("Provisoire : une voie, en alternat.")
-	if int(p["rue"]) >= 0:
-		lignes.append("%s : trafic %d → %d %%" % [_nom("r", int(p["rue"])),
-			int(roundf(100.0 * float(p["avant"]))), int(roundf(100.0 * float(p["apres"])))])
+	# 🔄 Le trafic a quitté ce texte (2026-09-26) : il est dans les conséquences.
 	return "\n".join(lignes)
 
 

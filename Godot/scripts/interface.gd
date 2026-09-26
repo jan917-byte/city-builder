@@ -2939,6 +2939,12 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	var ponts := int(da["franchissements_coupes"]) - int(db["franchissements_coupes"])
 	if ponts > 0:
 		out.append(["pont", "+%d pont" % ponts, 1])
+	# 🌉 Ce qui sépare le provisoire du pont en dur : le trafic qu'il porte, rouge s'il sature.
+	if r.has("reparer") and _fiche_couche == "r" and trafic != null 			and _fiche_fid in ville.ponts_coupes():
+		var charge := float(trafic.prevoir_pont(_fiche_fid, _mois,
+			str(r["reparer"]) == "provisoire")["charge_pont"])
+		out.append(["trafic", "%d %% de trafic" % int(roundf(charge * 100.0)),
+			-1 if charge >= 1.0 else 0])
 	var eau := (float(db.get("eau_prochaine_m", 0.0)) - float(da.get("eau_prochaine_m", 0.0))) * 100.0
 	if absf(eau) >= 1.0:
 		out.append(["eau", "%+d cm de crue" % int(roundf(eau)), -_sens(eau)])
@@ -3400,7 +3406,9 @@ func _maj_reparation(o: Dictionary) -> void:
 	var couche := _fiche_couche
 	var pont := couche == "r" and _fiche_fid in ville.ponts_coupes()
 	_maj_acces(pont)
-	_repare_provisoire.visible = false
+	# ⚠️ Jamais caché puis remontré dans la même image : Godot perd le clic entre
+	# l'appui et le relâchement, et le bouton ne répondait plus (2026-09-26).
+	_repare_provisoire.visible = pont and not ville.est_repare(couche, _fiche_fid) 		and float(o.get("cout_reparation_ke", 0.0)) > 0.0
 	_repare_etat.visible = false
 	_repare_bouton.visible = true
 	var prix := float(o.get("cout_reparation_ke", 0.0))
@@ -3439,11 +3447,8 @@ func _maj_reparation(o: Dictionary) -> void:
 		_duree(ville.duree_reparation_mois(couche, _fiche_fid))]
 	_repare_texte.text = _degat_en_clair(couche, o) + "  " + phrase
 	if couche == "r" and str(o.get("etat_crue", "")) == "coupe" and ouverture != null:
-		# Le dégât est déjà dans la grille ; le pont et ses accès font un seul prix.
+		# Le dégât est dans la grille, ce qui manque en caisse dans les conséquences.
 		_repare_texte.text = ouverture.description_pont(_fiche_fid)
-		var manque: float = maxf(0.0, prix - ville.caisse_ke(_mois))
-		if manque > 0.0:
-			_repare_texte.text += "\nÀ épargner : %s k€." % _milliers(manque)
 	_repare_bouton.text = _posee("reparer", "%s · %s k€" % [verbe, _milliers(prix)])
 	_repare_bouton.disabled = false
 	if pont:
@@ -3451,7 +3456,6 @@ func _maj_reparation(o: Dictionary) -> void:
 		# voie, ou en dur et plus long. Reposer l'autre remplace le premier.
 		_repare_bouton.text = _posee("reparer", "%s · %s k€ · %s" % [verbe, _milliers(prix),
 			_duree(ville.duree_reparation_mois(couche, _fiche_fid))])
-		_repare_provisoire.visible = true
 		_repare_provisoire.text = _posee("reparer", "Pont provisoire · %s k€ · %s" % [
 			_milliers(ville.cout_reparation_ke(couche, _fiche_fid, true)),
 			_duree(ville.duree_reparation_mois(couche, _fiche_fid, true))], "provisoire")

@@ -43,6 +43,9 @@ func cliquer(b: Button) -> void:
 		e.button_mask = MOUSE_BUTTON_MASK_LEFT if presse else 0
 		root.push_input(e, true)
 		await process_frame
+		# Comme en jeu, la fiche se redessine entre l'appui et le relâchement.
+		if presse and jeu.interface._fiche_fid >= 0:
+			jeu.interface._maj_fiche()
 
 
 func bouton(texte: String) -> Button:
