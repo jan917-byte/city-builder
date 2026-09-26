@@ -453,7 +453,8 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(effets.size() >= 3 and "+1 pont" in effets,
 		"Les conséquences du provisoire se lisent en pictogrammes : prix, durée, un pont de plus")
 	await cliquer(jeu.interface._recap_annuler)
-	verifier(jeu.interface._pose.is_empty() and not jeu.interface._recap_bloc.visible,
+	verifier(jeu.interface._pose.is_empty() and jeu.interface._recap_bloc.visible
+		and jeu.interface._recap_bouton.disabled,
 		"Le bouton d'annulation remet la fiche comme avant")
 	await cliquer(jeu.interface._repare_bouton)
 	var cadrage: Vector3 = jeu.pivot.position
@@ -518,6 +519,23 @@ func essayer_ponts(lointain: int) -> void:
 		and o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
 		"Le chemin déblayé pendant le chantier ouvre la reconstruction des îlots")
 	await capture("12b_chemin_degage")
+	# 🧹 Toute rue boueuse se déblaie pendant le chantier, sur le chemin ou non (auteur, 2026-09-26).
+	var boueuse := -1
+	for f in jeu.ville.routes:
+		if not int(f) in jeu.ville.ponts_coupes() and not int(f) in acces["obstacles"] \
+				and jeu.ville.cout_reparation_ke("r", int(f)) > 0.0:
+			boueuse = int(f)
+			break
+	verifier(boueuse >= 0 and o.autorise("r", boueuse),
+		"Une rue boueuse hors du chemin se déblaie pendant le chantier du pont")
+	jeu._sur_choix("r", boueuse)
+	verifier(jeu.interface._repare_bloc.visible and jeu.interface._recap_bloc.visible
+		and jeu.interface._recap_bouton.disabled,
+		"Sa fiche propose le déblaiement, « Mettre en place » grisé tant que rien n'est choisi")
+	await capture("12c_rue_hors_chemin")
+	await cliquer(jeu.interface._repare_bouton)
+	verifier(not jeu.interface._recap_bouton.disabled, "Le déblaiement choisi, « Mettre en place » s'allume")
+	jeu.interface._vider_pose()
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(jeu.interface._repare_bloc.visible, "La fiche d'un îlot sinistré propose de le relever")
 	jeu._sur_reprise()
@@ -530,15 +548,10 @@ func essayer_ponts(lointain: int) -> void:
 		and o._actions.get_child_count() == 0,
 		"Le pont livré sans accès met en pause et dit que la boue bloque, sans bouton")
 	await capture("12a_pont_bloque_par_la_boue")
-	# Le joueur cherche : la bonne route répond, une autre rue non.
-	var ailleurs := -1
-	for f in jeu.ville.routes:
-		if jeu.ville.cout_reparation_ke("r", int(f)) > 0.0 and not int(f) in o._rues_du_pont():
-			ailleurs = int(f)
-			break
-	jeu._sur_choix("r", ailleurs)
-	verifier(ailleurs >= 0 and not jeu.interface._repare_bloc.visible,
-		"Une rue envasée qui ne mène à aucun pont ne propose rien")
+	# 🔄 Une rue envasée hors du chemin se déblaie aussi (auteur, 2026-09-26).
+	jeu._sur_choix("r", boueuse)
+	verifier(jeu.interface._repare_bloc.visible,
+		"Une rue envasée qui ne mène à aucun pont se déblaie aussi")
 	var delai := 0.0
 	for rue in acces["obstacles"]:
 		jeu._sur_choix("r", rue)

@@ -2877,7 +2877,10 @@ func _mettre_en_place() -> void:
 ## ici — deux additions dans deux fichiers finissent par diverger.
 func _maj_recap() -> void:
 	var r := _reglages()
-	_recap_bloc.visible = not r.is_empty()
+	# Toujours là, grisé tant que rien n'est réglé (auteur, 2026-09-26).
+	_recap_bloc.visible = _fiche_fid >= 0
+	(_recap_effets.get_parent() as Control).visible = not r.is_empty()
+	_recap_annuler.disabled = r.is_empty()
 	# Les deux boutons de la miniature n'ont de sens que si les deux images
 	# diffèrent : un réglage posé, ou un chantier qui court.
 	var chantier: Dictionary = ville.chantier(_fiche_couche, _fiche_fid, _mois)
@@ -2888,6 +2891,7 @@ func _maj_recap() -> void:
 	_avant_bouton.disabled = _apercu_avant
 	_apres_bouton.disabled = not _apercu_avant
 	if r.is_empty():
+		_recap_bouton.disabled = true
 		_alerter_cout(false)
 		_recap_cle = ""
 		return

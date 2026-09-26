@@ -159,8 +159,8 @@ func verrou() -> String:
 
 ## Ce que le verrou laisse engager : un champ pendant le relogement ; un pont
 ## coupé ou une rue qui barre l'accès à l'un d'eux pendant la phase du pont,
-## puis les îlots sinistrés une fois le chemin d'un pont engagé déblayé
-## (auteur, 2026-09-26).
+## puis les îlots sinistrés une fois le chemin d'un pont engagé déblayé, et
+## toute rue boueuse dès qu'un pont est engagé (auteur, 2026-09-26).
 func autorise(couche: String, fid: int) -> bool:
 	match verrou():
 		"":
@@ -169,7 +169,19 @@ func autorise(couche: String, fid: int) -> bool:
 			return couche == "i" and jeu.ville.camp_possible(fid)
 	if couche == "i":
 		return acces_degage() and jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0
-	return couche == "r" and fid in _rues_du_pont()
+	if couche != "r":
+		return false
+	if fid in _rues_du_pont():
+		return true
+	return _pont_engage() and not fid in jeu.ville.ponts_coupes() \
+		and jeu.ville.base("r", fid, "cout_reparation_ke") > 0.0
+
+
+func _pont_engage() -> bool:
+	for p in jeu.ville.ponts_coupes():
+		if jeu.ville.est_repare("r", p):
+			return true
+	return false
 
 
 var _rues_cle := ""

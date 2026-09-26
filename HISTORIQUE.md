@@ -563,3 +563,6 @@ Essais ouverture et progression, passe rendue : 0 échec ; captures `12a_pont_bl
 **2026-09-26 — Le déblaiement occupe le chantier du pont, et le chemin dégagé ouvre la reconstruction des îlots :** une rue se déblaie en 2 jours au lieu d'un mois ; dès l'engagement du pont, notification et guide disent que la boue barre son chemin, sans nommer la rue (demande de l'auteur).
 Le verrou de la phase du pont laisse relever les îlots sinistrés une fois le chemin d'un pont engagé déblayé ; la fiche du pont ne dit plus « pont livré » pendant le chantier.
 Essais ouverture, progression, relogement et trafic : 0 échec, passe rendue ; capture `12b_chemin_degage`.
+**2026-09-26 — Toute rue boueuse se déblaie pendant le chantier du pont, et « Mettre en place » ne disparaît plus :** demande de l'auteur, le quai du centre restait refusé une fois le chemin du pont dégagé.
+Le verrou du pont laisse déblayer toute rue sous la boue dès qu'un pont est engagé ; le récapitulatif reste au bas de la fiche, bouton grisé et ↺ éteint sans réglage.
+Essais ouverture, progression, relogement et trafic : 0 échec ; capture `12c_rue_hors_chemin`.
