@@ -8,22 +8,24 @@ extends RefCounted
 # l'ancien volume — vu à l'écran par l'auteur le 2026-09-03.
 # `densification` = (avancement, pas d'un bâtiment, mètres gagnés) : un vec4 et
 # non trois flottants, les uniformes d'instance sont comptés.
-# CUSTOM0 = (rang du bâtiment, ce sommet suit-il le toit, égout d'origine), posé
-# par 07. Un bâtiment monte ENTIER, chacun son tour, du plus bas au plus haut —
-# même mécanique que le toit vert, sur les sommets cette fois. Le mur s'étire,
-# donc la recette de fenêtres, qui compte les étages en Y monde, en perce de
-# neuves. ⚠ La collision ne monte pas : cliquer vise l'îlot, pas une façade.
+# CUSTOM0 = (rang du bâtiment, ce sommet suit-il le toit, égout d'origine, pied
+# du bâtiment), posé par 07. Un bâtiment monte ENTIER, chacun son tour, du plus
+# bas au plus haut — même mécanique que le toit vert, sur les sommets cette
+# fois. Le mur s'étire, donc la recette de fenêtres, qui compte les étages
+# depuis le pied, en perce de neuves. ⚠ La collision ne monte pas : cliquer vise l'îlot, pas une façade.
 const DENSE_DECL := "instance uniform vec4 densification = vec4(0.0, 1.0, 0.0, 0.0);\n" \
 	+ "varying float montee;\n" \
-	+ "varying float plafond;\n"
+	+ "varying float plafond;\n" \
+	+ "varying float sol;\n"
 
-# `montee` et `plafond` sont constants sur tout le bâtiment, donc
+# `montee`, `plafond` et `sol` sont constants sur tout le bâtiment, donc
 # l'interpolation ne les déforme pas — au contraire du déplacement du sommet,
 # nul en pied de mur et plein en tête.
 const DENSE_VERTEX := "\tmontee = densification.z * clamp(\n" \
 	+ "\t\t(densification.x - CUSTOM0.x) / max(densification.y, 0.001),\n" \
 	+ "\t\t0.0, 1.0);\n" \
 	+ "\tplafond = CUSTOM0.z;\n" \
+	+ "\tsol = CUSTOM0.w;\n" \
 	+ "\tif (montee > 0.0 && CUSTOM0.y > 0.5) {\n" \
 	+ "\t\tVERTEX.y += montee;\n" \
 	+ "\t}\n"
@@ -163,7 +165,9 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// Patine large : reste stable à tous les zooms, avant les équipements.\n" \
 		+ "\tfloat patine = bruit(pos_monde.xz * 0.32 + vec2(pos_monde.y * 0.17));\n" \
 		+ "\tbase *= mix(0.94, 1.04, patine);\n" \
-		+ "\tif (abs(normale_monde.y) < 0.30 && UV.y > 1.05) {\n" \
+		+ "\t// `plafond` n'est connu que des bâtiments densifiables : ailleurs il\n" \
+		+ "\t// vaut 0, et la corniche barrait la rive gauche à 0,8 m du sol.\n" \
+		+ "\tif (abs(normale_monde.y) < 0.30 && UV.y > 1.05 && plafond > 0.5) {\n" \
 		+ "\t\tfloat corniche = 1.0 - smoothstep(0.0, 0.20, abs(pos_monde.y - plafond + 0.18));\n" \
 		+ "\t\tbase *= 1.0 - corniche * 0.16;\n" \
 		+ "\t}\n" \
@@ -367,7 +371,9 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tif (UV2.x > 0.5 && abs(normale_monde.y) < 0.30 && UV.y > 1.05) {\n" \
 		+ "\t\tfloat u = UV.x;\n" \
 		+ "\t\tfloat L = UV.y;\n" \
-		+ "\t\tfloat h = pos_monde.y;\n" \
+		+ "\t\t// Depuis le PIED du bâtiment, pas depuis le Y monde : les rives\n" \
+		+ "\t\t// le décalent de ±1 m, et la dernière rangée était tranchée.\n" \
+		+ "\t\tfloat h = pos_monde.y - sol;\n" \
 		+ "\t\tint genre = int(UV2.x + 0.5);\n" \
 		+ "\t\t// UV2.y = famille de façade + tirage du bâtiment (FAMILLE_FACADE, 07).\n" \
 		+ "\t\tfloat alea = fract(UV2.y);\n" \
@@ -376,8 +382,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t// aa = un pixel, EN MÈTRES DE FAÇADE : c'est ce qui rend le\n" \
 		+ "\t\t// fondu indépendant du zoom.\n" \
 		+ "\t\tfloat aa = max(fwidth(u), 0.0005);\n" \
-		+ "\t\t// 07 pose y_haut = niveaux × ETAGE_M, un multiple EXACT : aucune\n" \
-		+ "\t\t// fenêtre coupée par l'égout, et pas besoin de la hauteur ici.\n" \
+		+ "\t\t// 07 pose y_haut = niveaux × ETAGE_M, niveaux ENTIERS (04c) :\n" \
+		+ "\t\t// aucune fenêtre coupée par l'égout.\n" \
 		+ "\t\tfloat etage = floor(max(h, 0.0) / ETAGE);\n" \
 		+ "\t\tfloat hy = h - etage * ETAGE;\n" \
 		+ "\t\t// TRAVÉES CENTRÉES sur la façade — d'où le `L` envoyé par 07.\n" \
@@ -425,20 +431,19 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t// \U0001f3e2 DEUX ÉTAGES AJOUTÉS = DEUX RANGÉES, JAMAIS UNE\n" \
 		+ "\t\t// TROISIÈME TRANCHÉE PAR LE TOIT (auteur, 2026-09-03). Les\n" \
 		+ "\t\t// étages ajoutés ont leur PROPRE trame, accrochée à l'ancien\n" \
-		+ "\t\t// égout : celle du monde est décalée de \u00b11 m par la\n" \
-		+ "\t\t// hauteur des deux rives, et couperait une rangée en deux.\n" \
+		+ "\t\t// égout.\n" \
 		+ "\t\tfloat tient = 1.0;\n" \
 		+ "\t\tif (neuf) {\n" \
 		+ "\t\t\tdemi = 0.5 * min(1.90, pas * 0.66);\n" \
 		+ "\t\t\tbas = 0.50;\n" \
 		+ "\t\t\thaut = 2.48;\n" \
-		+ "\t\t\tfloat hn = h - plafond;\n" \
+		+ "\t\t\tfloat hn = pos_monde.y - plafond;\n" \
 		+ "\t\t\tfloat k = floor(hn / ETAGE);\n" \
 		+ "\t\t\thy = hn - k * ETAGE;\n" \
 		+ "\t\t\t// Une rangée n'apparaît qu'une fois son étage LIVRÉ.\n" \
 		+ "\t\t\ttient = (k * ETAGE + haut > montee) ? 0.0 : 1.0;\n" \
 		+ "\t\t} else if (montee > 0.05 && plafond > 0.5\n" \
-		+ "\t\t\t\t&& etage * ETAGE + haut > plafond) {\n" \
+		+ "\t\t\t\t&& etage * ETAGE + haut > plafond - sol) {\n" \
 		+ "\t\t\t// La dernière rangée d'origine traverserait la couture :\n" \
 		+ "\t\t\t// elle laisse un bandeau plein sous l'étage ajouté.\n" \
 		+ "\t\t\ttient = 0.0;\n" \
@@ -465,7 +470,17 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat net = clamp(1.15 - 1.8 * aa, 0.0, 1.0);\n" \
 		+ "\t\tfloat part = clamp(2.0 * demi * (haut - bas)\n" \
 		+ "\t\t\t/ max(pas * ETAGE, 0.1), 0.0, 1.0);\n" \
-		+ "\t\tfloat vitre = mix(part * tient, ouverture, net);\n" \
+		+ "\t\t// 🏢 ENTRE LES DEUX, L'ÉTAGE RESTE UNE BANDE : la travée fond\n" \
+		+ "\t\t// en largeur, la rangée tient en hauteur tant qu'elle fait ~2 px.\n" \
+		+ "\t\t// Sans ce palier, on ne compte plus les étages dès le mi-zoom.\n" \
+		+ "\t\t// La racine : à la part vitrée brute, la bande existait sans se lire.\n" \
+		+ "\t\tfloat aa_h = max(fwidth(h), 0.0005);\n" \
+		+ "\t\tfloat rangee = smoothstep(bas - aa_h, bas + aa_h, hy)\n" \
+		+ "\t\t\t* smoothstep(haut + aa_h, haut - aa_h, hy)\n" \
+		+ "\t\t\t* smoothstep(marge - aa, marge + aa, bord);\n" \
+		+ "\t\tfloat bande = rangee * sqrt(clamp(2.0 * demi / pas, 0.0, 1.0)) * tient;\n" \
+		+ "\t\tfloat net_h = clamp((1.10 - aa_h) / 0.55, 0.0, 1.0);\n" \
+		+ "\t\tfloat vitre = mix(mix(part * tient, bande, net_h), ouverture, net);\n" \
 		+ "\t\t// COLOR.a garde le volume sous le percement.\n" \
 		+ "\t\tbase = mix(base, min(base * 1.28 + 0.012, vec3(1.0)), dormant * net);\n" \
 		+ "\t\tfloat interieur = alea_pt(vec2(floor(u / pas), etage) + vec2(alea * 53.0));\n" \

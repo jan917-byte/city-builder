@@ -612,8 +612,11 @@ class Maillage(object):
         # donc ce que le shader peint en bardage. Rempli seulement pendant
         # qu'un bâtiment s'émet, par `self.dense` — le reste du maillage (sols,
         # jardins, haies, venelles) sort à zéro et ne bouge jamais.
+        # 4e nombre : le PIED du bâtiment en Y monde, posé par `_masse` — les
+        # rives le décalent de ±1 m, et les étages se comptent depuis lui.
         self.d = []
         self.dense = None
+        self.sol = None
         self.i = []
         # Les plages d'indices, un groupe par objet. Godot en refait un nœud
         # par îlot et par tronçon — c'est ce qui rend la ville CLIQUABLE, et
@@ -687,10 +690,11 @@ class Maillage(object):
             # Le seuil est en Y MONDE, posé par l'appelant un demi-mètre sous
             # l'égout : entre le pied du mur et lui, un bâtiment n'a aucun
             # sommet, donc le test ne peut pas se tromper de moitié de mur.
-            self.d.append((0.0, 0.0, 0.0) if self.dense is None
+            sol = 0.0 if self.sol is None else self.sol
+            self.d.append((0.0, 0.0, 0.0, sol) if self.dense is None
                           else (self.dense[0],
                                 1.0 if s[1] >= self.dense[1] else 0.0,
-                                self.dense[2]))
+                                self.dense[2], sol))
         self.i.extend((base, base + 1, base + 2))
 
     def json(self, prec=2):
@@ -707,8 +711,8 @@ class Maillage(object):
         # laisse alors UV2 à zéro, ce qui est exactement « pas une façade ».
         if any(g[0] or g[1] for g in self.uv2):
             d["uv2"] = [[round(c, 3) for c in s] for s in self.uv2]
-        # Même règle : seul le maillage des masses porte la colonne.
-        if any(g[1] for g in self.d):
+        # Même règle : seul un maillage de bâtiments porte la colonne.
+        if any(g[1] or g[3] for g in self.d):
             d["dense"] = [[round(c, 4) for c in s] for s in self.d]
         return d
 

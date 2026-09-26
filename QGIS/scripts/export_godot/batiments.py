@@ -554,6 +554,8 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
         niveaux = d["hauteur"] or 0.0
     y_haut = niveaux * ETAGE_M
     y_bas = -ENFOUISSEMENT
+    # Le pied en Y monde : le shader compte les étages depuis lui.
+    m.sol = G(anneau[0][0], anneau[0][1], 0.0)[1]
 
     def ao(y):
         return AO_MIN + (1.0 - AO_MIN) * min(1.0, max(0.0, (y - y_bas) / AO_HAUTEUR))
@@ -639,6 +641,7 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
               tuple(c * 0.70 for c in coul_toit), G)
         h, t = _toit(m, bord, y_haut + EPAISSEUR_TOIT, pente, axe_toit,
                      coul_toit, G, y_haut)
+        m.sol = None
         return ok, n, h, t
 
     haut_ok = 0
@@ -663,6 +666,7 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
     # les deux erreurs, celle-ci coûte moins cher à l'image.
     if abs(aire_signee(anneau)) >= 20.0:
         _acrotere(m, anneau, y_haut, tuple(c * 0.88 for c in coul), G)
+    m.sol = None
     return ok, n, haut_ok, len(tris)
 
 

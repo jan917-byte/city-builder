@@ -65,10 +65,10 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 	var cs: Array = d["c"]
 	var uvs: Array = d.get("uv", [])
 	var uv2s: Array = d.get("uv2", [])
-	# 🏢 (rang de montée, ce sommet suit-il le toit, égout d'origine). Seul le
-	# maillage des masses le porte ; absent, CUSTOM0 reste à zéro et rien ne se
-	# lève. ⚠️ Un export d'avant le 2026-09-03 n'a que deux colonnes : le
-	# plafond retombe à 0, ce qui veut dire « pas d'étage neuf à peindre ».
+	# 🏢 (rang de montée, ce sommet suit-il le toit, égout d'origine, pied du
+	# bâtiment). Seuls les maillages de bâtiments le portent ; absent, CUSTOM0
+	# reste à zéro et rien ne se lève. ⚠️ Un export ancien a moins de colonnes :
+	# plafond et pied retombent à 0.
 	var denses: Array = d.get("dense", [])
 	var idx: Array = d["i"]
 
@@ -100,6 +100,7 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 				dn.append(float(dd[0]))
 				dn.append(float(dd[1]))
 				dn.append(0.0 if dd.size() < 3 else float(dd[2]))
+				dn.append(0.0 if dd.size() < 4 else float(dd[3]))
 		i[k] = renumerote[src]
 
 	return _surface(v, nm, co, i, uv, uv2, dn)
@@ -131,13 +132,13 @@ static func _surface(v: PackedVector3Array, n: PackedVector3Array,
 		arrays[Mesh.ARRAY_TEX_UV] = uv
 	if not uv2.is_empty():
 		arrays[Mesh.ARRAY_TEX_UV2] = uv2
-	# 🏢 CUSTOM0, trois flottants par sommet. ⚠️ Le FORMAT se déclare en
+	# 🏢 CUSTOM0, quatre flottants par sommet. ⚠️ Le FORMAT se déclare en
 	# drapeau, sinon Godot refuse le tableau : c'est un PackedFloat32Array à
-	# plat, trois valeurs par sommet, jamais un tableau de Vector3.
+	# plat, quatre valeurs par sommet, jamais un tableau de Vector4.
 	var flags := 0
 	if not dense.is_empty():
 		arrays[Mesh.ARRAY_CUSTOM0] = dense
-		flags = Mesh.ARRAY_CUSTOM_RGB_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+		flags = Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
 	arrays[Mesh.ARRAY_INDEX] = i
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(PRIM, arrays, [], {}, flags)

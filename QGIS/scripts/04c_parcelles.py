@@ -2283,6 +2283,11 @@ def main():
             # et une parcelle garde sa hauteur quand sa voisine change.
             # Un chemin ne monte pas : c'est un sol.
             niv = d["haut"] + ((g >> 5) % (2 * JEU_NIVEAUX + 1)) - JEU_NIVEAUX
+            # Un bâtiment a un nombre ENTIER d'étages (auteur, 2026-09-26) :
+            # le demi-étage de TISSU (4,5 à l'îlot compact) se tire en haut
+            # ou en bas par la graine — la moyenne tient, aucune rangée coupée.
+            if niv != math.floor(niv):
+                niv = math.floor(niv) + ((g >> 20) & 1)
             resultats.append({
                 "fid_ilot": fid, "st": st, "anneau": p,
                 "aire": abs(aire_signee(p)), "perim": per, "facade": fac,

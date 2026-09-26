@@ -120,6 +120,7 @@ class Edifice:
 
 def equipement(m, emp, G, role, niveaux, cible, principal=False, eau=0.0):
     e = Edifice(m,emp,G,cible)
+    m.sol = G(emp[0][0], emp[0][1], 0.0)[1]   # le shader compte les étages depuis lui
     def couleur(hexa):
         return PAL.vers_lineaire(PAL.salir(hexa,eau) if eau > 0 else hexa)
     pierre, vitrage = couleur("D6C9AC"), couleur("394F56")
@@ -207,4 +208,5 @@ def equipement(m, emp, G, role, niveaux, cible, principal=False, eau=0.0):
             # Deux bannières de faculté encadrent l'entrée, dans la palette du jeu.
             for x in [-largeur/2-.75,largeur/2+.75]:
                 e.boite(x-.38,x+.38,-.28,-.20,1.7,min(h-.3,4.6),couleur("456E68"))
+    m.sol = None
     return (e.faces,e.faces,0,0), e.toit
