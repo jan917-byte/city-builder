@@ -2737,6 +2737,8 @@ func _partie_valide(p: Dictionary) -> bool:
 		for cle in ["suite", "termine", "ouvert", "trafic_vu", "pont_termine"]:
 			if p["ouverture"].has(cle) and not p["ouverture"][cle] is bool:
 				return false
+		if p["ouverture"].has("pont_termine_mois") and not p["ouverture"]["pont_termine_mois"] is float:
+			return false
 	if not p["mois"] is float or not is_finite(p["mois"]) or p["mois"] < 0.0 or p["mois"] > Ville.HORIZON_MOIS:
 		return false
 	if not p["ville"] is Dictionary or not ville.valider_partie(p["ville"]):

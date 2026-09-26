@@ -14,6 +14,8 @@ var termine := false
 var ouvert := true
 var trafic_vu := false
 var pont_termine := false
+## Le mois de « Choisir la suite » : une rue engagée avant appartient au pont.
+var pont_termine_mois := 0.0
 var etape := ""
 var premier := {}
 var _signature := ""
@@ -313,6 +315,10 @@ func _premiere_reparation() -> Dictionary:
 		var fid := int(morceaux[1])
 		if couche == "r" and fid in jeu.ville.ponts_coupes():
 			continue
+		# 🧹 Une rue déblayée pour le pont n'est pas le premier lieu relevé : la suite
+		# félicitait la rue à 2 k€ au lieu du pont.
+		if couche == "r" and pont_termine and jeu.ville._repare[cle] < pont_termine_mois:
+			continue
 		var livraison: float = jeu.ville._repare[cle] + jeu.ville.duree_reparation_mois(couche, fid)
 		if livraison < fin:
 			fin = livraison
@@ -493,6 +499,7 @@ func actualiser(force := false) -> void:
 			_bouton("Observer le trafic", func() -> void: jeu._sur_theme("trafic"))
 			_bouton("Choisir la suite", func() -> void:
 				pont_termine = true
+				pont_termine_mois = jeu.mois
 				jeu._sur_theme("")
 				jeu.interface._detail_ouvert = false
 				jeu.interface._placer_detail()
@@ -593,7 +600,8 @@ func _maj_protection() -> void:
 
 func exporter() -> Dictionary:
 	return {"suite": suite, "termine": termine, "ouvert": ouvert,
-		"trafic_vu": trafic_vu, "pont_termine": pont_termine}
+		"trafic_vu": trafic_vu, "pont_termine": pont_termine,
+		"pont_termine_mois": pont_termine_mois}
 
 
 func reprendre(etat: Dictionary) -> void:
@@ -604,6 +612,7 @@ func reprendre(etat: Dictionary) -> void:
 	ouvert = bool(etat.get("ouvert", true))
 	trafic_vu = bool(etat.get("trafic_vu", false))
 	pont_termine = bool(etat.get("pont_termine", suite or termine))
+	pont_termine_mois = float(etat.get("pont_termine_mois", 0.0))
 	_degage_annonce = -1
 	etape = ""
 	_signature = ""

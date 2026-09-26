@@ -1498,6 +1498,8 @@ func _panneau_ilot() -> void:
 		b.text = choix[0]
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var avant: bool = choix[1]
+		# Enfoncé, pas grisé, comme la vitesse : grisé, « Après » se lisait éteint alors qu'il est à l'image.
+		b.toggle_mode = true
 		b.pressed.connect(func() -> void: _apercu_avant = avant)
 		_apercu_boutons.add_child(b)
 		if avant:
@@ -1926,8 +1928,11 @@ func cacher_depart() -> void:
 
 func montrer_depart() -> void:
 	# 📖 L'écran de choix fait partie de l'ouverture : pas de compteurs
-	# derrière lui non plus.
+	# derrière lui non plus, ni le guide, que le récit rouvre à sa fin.
 	montrer_jeu(false)
+	if ouverture != null:
+		ouverture.ouvert = false
+		ouverture.actualiser(true)
 	if _depart_panneau != null:
 		_depart_panneau.visible = true
 		return
@@ -2560,8 +2565,11 @@ func _maj_fiche_contenu() -> void:
 		(_fiche_valeurs["surface_champ"] as Label).text = "%s ha" % _nb(hectares, 2)
 		(_fiche_valeurs["rive"] as Label).text = str(o.get("rive", "?"))
 	else:
-		_maj_resume("logement", "aucun logement" if loges < 0.5
+		# 🌊 Les perdus dans la même ligne : sans eux, un îlot en ruine se lisait intact pendant l'urgence.
+		var perdus := 0.0 if ville.reparation_finie("i", _fiche_fid, _mois) 			else float(o.get("logements_sinistres", 0))
+		_maj_resume("logement", ("aucun logement" if loges < 0.5
 			else ("1 logement" if loges < 1.5 else "%s logements" % _nb(loges, 0)))
+			+ (" · %s perdus" % _nb(perdus, 0) if perdus >= 0.5 else ""))
 		(_fiche_valeurs["surface"] as Label).text = "%s ha" % _nb(hectares, 2)
 		(_fiche_valeurs["niveaux"] as Label).text = _nb(
 			float(o.get("hauteur", 0.0)), 0)
@@ -2888,8 +2896,8 @@ func _maj_recap() -> void:
 		and (not r.is_empty() or bool(chantier["actif"]))
 	if not _apercu_boutons.visible:
 		_apercu_avant = false
-	_avant_bouton.disabled = _apercu_avant
-	_apres_bouton.disabled = not _apercu_avant
+	_avant_bouton.set_pressed_no_signal(_apercu_avant)
+	_apres_bouton.set_pressed_no_signal(not _apercu_avant)
 	if r.is_empty():
 		_recap_bouton.disabled = true
 		_alerter_cout(false)
