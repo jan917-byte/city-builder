@@ -560,3 +560,6 @@ La bande des conséquences d'un pont dit son trafic (Aval : provisoire 100 % en 
 **2026-09-26 — Le jeu ne désigne plus les accès d'un pont :** retirés de la fiche « Voir les accès », « Examiner · ⟨rue⟩ » et la ligne « Accès : 1 rue à déblayer · k€ · mois », et de la fenêtre du chantier les boutons de rue et « Déblayez ses accès en attendant » (demande de l'auteur : moins dirigé).
 Pont livré mais barré : pause et « La boue bloque encore le chemin jusqu'au pont. », sans bouton ; seule la fiche d'une route qui barre un pont propose de la déblayer. `voir_acces` supprimé.
 Essais ouverture et progression, passe rendue : 0 échec ; captures `12a_pont_bloque_par_la_boue`, `progression_04_boue_sans_route`.
+**2026-09-26 — Le déblaiement occupe le chantier du pont, et le chemin dégagé ouvre la reconstruction des îlots :** une rue se déblaie en 2 jours au lieu d'un mois ; dès l'engagement du pont, notification et guide disent que la boue barre son chemin, sans nommer la rue (demande de l'auteur).
+Le verrou de la phase du pont laisse relever les îlots sinistrés une fois le chemin d'un pont engagé déblayé ; la fiche du pont ne dit plus « pont livré » pendant le chantier.
+Essais ouverture, progression, relogement et trafic : 0 échec, passe rendue ; capture `12b_chemin_degage`.
