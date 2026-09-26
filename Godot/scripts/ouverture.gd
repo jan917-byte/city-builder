@@ -223,17 +223,13 @@ func _reparation(couche: String, fid: int, titre: String) -> void:
 	_bouton(texte, examiner.bind(couche, fid, reglage))
 
 
-## Un pont coupé, ses deux prix sur une ligne : le provisoire, puis en dur.
+## Un pont coupé, son nom seul : les prix se lisent et se comparent dans sa
+## fiche, en l'ouvrant (auteur, 2026-09-26).
 func _bouton_pont(fid: int) -> void:
-	var v = jeu.ville
-	var ui = jeu.interface
-	if v.est_repare("r", fid):
+	if jeu.ville.est_repare("r", fid):
 		_reparation("r", fid, _nom("r", fid))
 		return
-	_bouton("%s\n%s k€ · %s  ou  %s k€ · %s" % [_nom("r", fid),
-		ui._milliers(v.cout_reparation_ke("r", fid, true)), ui._duree(v.duree_reparation_mois("r", fid, true)),
-		ui._milliers(v.cout_reparation_ke("r", fid)), ui._duree(v.duree_reparation_mois("r", fid))],
-		examiner.bind("r", fid, "", true))
+	_bouton(_nom("r", fid), examiner.bind("r", fid))
 
 
 ## 🌉 Les champs que les sinistrés peuvent atteindre, du plus grand au plus
@@ -483,7 +479,7 @@ func actualiser(force := false) -> void:
 			_bouton("Ouvrir le trafic", func() -> void: jeu.interface._sur_rail("trafic"))
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = "Pont provisoire, vite posé, ou pont en dur : choisissez dans sa fiche. Ses accès se déblaient pendant le chantier."
+			_texte.text = "Trois ponts emportés. Ouvrez-les pour comparer : provisoire, vite posé, ou en dur. Ses accès se déblaient pendant le chantier."
 			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
 			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
 			for fid in jeu.ville.ponts_coupes():

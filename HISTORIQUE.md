@@ -545,3 +545,6 @@ Essais ouverture, progression et passe rendue à zéro échec ; paire au même c
 **2026-09-26 — Le bouton « Pont provisoire » répond après « Rebâtir en dur » :** le clic plantait en silence et le choix restait sur le pont en dur.
 `_basculer` (interface) comparait un oui/non à un mot, ce que Godot refuse ; il vérifie maintenant le type d'abord.
 Essai ouverture à zéro échec, avec un contrôle de plus : dur puis provisoire donne le provisoire.
+**2026-09-26 — Le calque Trafic montre les ponts coupés, et la liste ne donne plus de prix :** « Rebâtir un pont » nomme les trois ponts ; les prix se comparent en ouvrant chaque fiche (essayé puis retiré : deux boutons prix par pont dans la liste).
+Sur le calque Trafic, un pont emporté montre ses moignons et un pictogramme de pont cassé ; il ne peint plus le tablier manquant (retour en arrière signalé dans `maquette.gd`).
+Essai ouverture à zéro échec, quatre contrôles de plus ; capture `10_comparer_ponts`.

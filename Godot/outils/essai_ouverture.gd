@@ -404,6 +404,10 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.etape == "pont_choix" and o.visible and jeu.theme == "trafic",
 		"L'icône Trafic présente les trois ponts sur le calque sans superposer les panneaux")
 	verifier(o._reperes.get_child_count() == 0, "Le joueur repère les ponts sans numéros sur la carte")
+	for fid in jeu.ville.ponts_coupes():
+		verifier(jeu.ruines_ponts[fid].visible and not jeu.reparations["r"][fid].visible
+			and jeu.icones_ponts.has(fid) and jeu.icones_ponts[fid].visible,
+			"Le calque Trafic montre le pont %d coupé, un pictogramme au-dessus" % fid)
 	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
 	var pont := -1
 	var prix := INF
@@ -418,6 +422,12 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(jeu.ville._repare.is_empty() and jeu.ville.caisse_ke(jeu.mois) == caisse,
 		"Comparer les trois réseaux ne modifie ni la partie ni la caisse")
 	await capture("10_comparer_ponts")
+	# 🌉 La liste ne donne que les noms : les prix sont dans la fiche.
+	var nom_pont: Button = bouton(o._nom("r", pont))
+	verifier(nom_pont != null and not "k€" in nom_pont.text, "La liste nomme les ponts sans leur prix")
+	await cliquer(nom_pont)
+	verifier(jeu.interface._fiche_fid == pont and not jeu.interface._pose.has("reparer"),
+		"Un nom de la liste ouvre la fiche du pont, sans rien choisir")
 	o._choisir_pont(pont)
 	verifier(not jeu.interface._camp_bloc.visible, "La fiche du pont ne conserve pas les informations du camp")
 	verifier(not jeu.interface._pose.has("reparer") and jeu.interface._repare_provisoire.visible

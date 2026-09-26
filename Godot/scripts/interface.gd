@@ -760,6 +760,8 @@ const DESSINS := {
 	"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
 	"chantiers": "<rect x='2' y='6' width='20' height='8' rx='1'/><path d='M17 14v7M7 14v7M17 3v3M7 3v3M10 14L2.3 6.3M14 6l7.7 7.7M8 6l8 8'/>",
 	"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
+	# 🌉 Deux moignons de tablier au-dessus de l'eau : le pont emporté du calque Trafic.
+	"pont_casse": "<path d='M2 10h7l1 3M22 10h-7l-1 3M5 10v7M19 10v7M2 21c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0'/>",
 	"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
 	"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
 	# 🏛️🎓 Les deux lieux du rail (Lucide « landmark », « graduation-cap ») :

@@ -148,6 +148,8 @@ var _socles := {}
 # 07 comme tout le reste, Godot ne fabrique rien.
 var reparations := {"i": {}, "r": {}, "b": {}}
 var ruines_ponts := {}
+# 🌉 Calque Trafic : un pictogramme au-dessus de chaque pont encore emporté (auteur, 2026-09-26).
+var icones_ponts := {}
 # 🌉 Le pont provisoire (87) : montré À LA PLACE du tablier neuf, jamais avec.
 var ponts_provisoires := {}
 # 🅿️ Les files de stationnement peintes, un nœud par tronçon : elles se cachent
@@ -1776,14 +1778,13 @@ func _montrer_reparations() -> void:
 		var mi: MeshInstance3D = ruines_ponts[fid]
 		mi.visible = not ville.reparation_finie("r", fid, mois)
 		_corps(mi, mi.visible)
+		_icone_pont(fid, theme == "trafic" and mi.visible)
 	for couche in ["i", "r"]:
 		for fid in reparations[couche]:
 			var mi: MeshInstance3D = reparations[couche][fid]
 			var fini: bool = ville.reparation_finie(couche, fid, mois)
-			# 🌉 Le diagnostic Trafic montre le tablier MANQUANT, peint « coupé » :
-			# sans lui, un pont emporté n'était qu'une paire de moignons.
-			if couche == "r" and theme == "trafic" and fid in ville.ponts_coupes():
-				fini = true
+			# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (auteur, 2026-09-26) : le calque Trafic
+			# peignait le tablier manquant ; il montre la coupure et son pictogramme.
 			if couche == "r" and ponts_provisoires.has(fid):
 				var prov: MeshInstance3D = ponts_provisoires[fid]
 				var p: bool = fini and ville.pont_provisoire(fid) \
@@ -1935,6 +1936,8 @@ func _process(delta: float) -> void:
 
 
 func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
+	for icone in icones_ponts.values():
+		(icone as Sprite3D).pixel_size = _taille_icone_pont()
 	trafic.regler_detail(pivot.taille)
 	travaux.regler_detail(pivot.taille, pivot.camera)
 	if pastilles != null:
@@ -2282,6 +2285,34 @@ func _batir_marqueurs_crue() -> void:
 			barre.material_override = mat
 			barre.rotation_degrees.y = angle
 			marqueur.add_child(barre)
+
+
+## Même règle que les pastilles : une taille constante à l'écran, bornée.
+func _taille_icone_pont() -> float:
+	return clampf(pivot.taille * Pastilles.LARGEUR_PAR_TAILLE,
+		Pastilles.LARGEUR_MIN_M, Pastilles.LARGEUR_MAX_M) / float(Pastilles.TAILLE)
+
+
+func _icone_pont(fid: int, montrer: bool) -> void:
+	if not montrer and not icones_ponts.has(fid):
+		return
+	if not icones_ponts.has(fid):
+		# Au-dessus du milieu du tablier à rebâtir, donc du trou.
+		var tablier: MeshInstance3D = reparations["r"].get(fid, noeuds["r"][fid])
+		var boite := tablier.get_aabb()
+		var icone := Sprite3D.new()
+		icone.name = "PontCoupe%d" % fid
+		icone.texture = Pastilles.pictogramme("pont_casse", interface.ACCENT_VIF, interface.TEXTE)
+		icone.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		icone.shaded = false
+		icone.no_depth_test = true
+		icone.render_priority = 2
+		monde.add_child(icone)
+		icone.global_position = tablier.to_global(boite.get_center())
+		icone.global_position.y = tablier.to_global(boite.end).y + Pastilles.HAUTEUR_M
+		icone.pixel_size = _taille_icone_pont()
+		icones_ponts[fid] = icone
+	(icones_ponts[fid] as Sprite3D).visible = montrer
 
 
 func _disponible(couche: String, fid: int) -> bool:

@@ -137,21 +137,24 @@ func _poser_texte(n: Node3D, p: Array) -> void:
 ## Le pictogramme dans un disque, contour compris : posé sur une ville pastel,
 ## un trait seul disparaît. Même table de dessins que l'interface.
 func _texture(nom: String) -> Texture2D:
-	if _textures.has(nom):
-		return _textures[nom]
+	if not _textures.has(nom):
+		_textures[nom] = pictogramme(nom, _fond, _encre)
+	return _textures[nom]
+
+
+static func pictogramme(nom: String, fond: Color, encre: Color) -> Texture2D:
 	# 🎨 `@` = l'encre du dessin, la même table que l'interface (`_icone`).
-	var corps: String = str(Interface.DESSINS.get(nom, Interface.DESSINS["dangers"])) 		.replace("@", "#" + _encre.to_html(false))
+	var corps: String = str(Interface.DESSINS.get(nom, Interface.DESSINS["dangers"])) 		.replace("@", "#" + encre.to_html(false))
 	var svg := ("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'"
 		+ " viewBox='-4 -4 32 32'>"
-		+ "<circle cx='12' cy='12' r='15' fill='#%s'/>" % _encre.to_html(false)
-		+ "<circle cx='12' cy='12' r='13.2' fill='#%s'/>" % _fond.to_html(false)
-		+ "<g fill='none' stroke='#%s' stroke-width='2.2'" % _encre.to_html(false)
+		+ "<circle cx='12' cy='12' r='15' fill='#%s'/>" % encre.to_html(false)
+		+ "<circle cx='12' cy='12' r='13.2' fill='#%s'/>" % fond.to_html(false)
+		+ "<g fill='none' stroke='#%s' stroke-width='2.2'" % encre.to_html(false)
 		+ " stroke-linecap='round' stroke-linejoin='round'>" + corps + "</g></svg>")
 	var img := Image.new()
 	if img.load_svg_from_string(svg, float(TAILLE) / 32.0) != OK:
 		return null
-	_textures[nom] = ImageTexture.create_from_image(img)
-	return _textures[nom]
+	return ImageTexture.create_from_image(img)
 
 
 ## Une pastille, à la taille du moment.
