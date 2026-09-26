@@ -2513,6 +2513,8 @@ func _maj_fiche() -> void:
 	if muet:
 		_message.text = "Rien à engager ici avant d'avoir abrité les sinistrés." \
 			if verrou == "reloger" else "Rien à engager ici avant d'avoir rouvert un pont et ses accès."
+		if verrou == "pont" and _fiche_couche == "i" and ville.base("i", _fiche_fid, "cout_reparation_ke") > 0.0:
+			_message.text = "Relevable une fois un pont lancé et son chemin déblayé."
 	elif _message_urgence:
 		_message.text = ""
 	_message_urgence = muet
@@ -3333,6 +3335,10 @@ func _maj_fiche_rue() -> void:
 		(_rue_valeurs["etat"] as Label).text = ("liaison provisoire" if ville.pont_provisoire(_fiche_fid)
 			else "liaison ouverte") if trafic.pont_fonctionnel(_fiche_fid, _mois) \
 			else "pont livré · accès coupé"
+		# Engagé n'est pas livré : la fiche disait « pont livré » pendant le chantier.
+		if not ville.reparation_finie("r", _fiche_fid, _mois):
+			(_rue_valeurs["etat"] as Label).text = "en chantier · chemin dégagé" \
+				if trafic.acces_pont(_fiche_fid, _mois)["obstacles"].is_empty() else "en chantier · boue sur le chemin"
 	var l_etat := _rue_valeurs["etat"] as Label
 	l_etat.text = l_etat.text.substr(0, 1).to_upper() + l_etat.text.substr(1)
 	_maj_reparation(o)

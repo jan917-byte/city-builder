@@ -34,6 +34,8 @@ var _champs := []
 ## champ : c'est ce qui décide de l'indice.
 var _regards := {}
 var _champ_vu := false
+## 🧹 L'annonce du chemin dégagé : -1 après une reprise, 0 à dire, 1 dite.
+var _degage_annonce := 0
 
 
 func batir(maquette) -> void:
@@ -156,18 +158,23 @@ func verrou() -> String:
 
 
 ## Ce que le verrou laisse engager : un champ pendant le relogement ; un pont
-## coupé ou une rue qui barre l'accès à l'un d'eux pendant la phase du pont.
+## coupé ou une rue qui barre l'accès à l'un d'eux pendant la phase du pont,
+## puis les îlots sinistrés une fois le chemin d'un pont engagé déblayé
+## (auteur, 2026-09-26).
 func autorise(couche: String, fid: int) -> bool:
 	match verrou():
 		"":
 			return true
 		"reloger":
 			return couche == "i" and jeu.ville.camp_possible(fid)
+	if couche == "i":
+		return acces_degage() and jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0
 	return couche == "r" and fid in _rues_du_pont()
 
 
 var _rues_cle := ""
 var _rues := []
+var _degage := false
 
 
 func _rues_du_pont() -> Array:
@@ -176,12 +183,22 @@ func _rues_du_pont() -> Array:
 	if cle != _rues_cle:
 		_rues_cle = cle
 		_rues = []
+		_degage = false
 		for p in jeu.ville.ponts_coupes():
 			_rues.append(p)
-			for rue in jeu.trafic.acces_pont(p, jeu.mois)["obstacles"]:
+			var acces: Dictionary = jeu.trafic.acces_pont(p, jeu.mois)
+			if jeu.ville.est_repare("r", p) and acces["possible"] and acces["obstacles"].is_empty():
+				_degage = true
+			for rue in acces["obstacles"]:
 				if not rue in _rues:
 					_rues.append(rue)
 	return _rues
+
+
+## 🧹 Un pont engagé dont le chemin ne passe plus par la boue, livré ou non.
+func acces_degage() -> bool:
+	_rues_du_pont()
+	return _degage
 
 
 func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -> void:
@@ -378,6 +395,11 @@ func actualiser(force := false) -> void:
 		etape = "travaux"
 	else:
 		etape = "livraison"
+	var degage := etape == "pont_travaux" and acces_degage()
+	if degage and _degage_annonce == 0:
+		jeu.interface.retours.notifier("Chemin du pont dégagé : les logements abîmés peuvent se relever.", jeu.mois)
+	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
+	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	if (etape == "livraison" and ancienne == "travaux" or
 			etape == "pont_livre" and ancienne != "pont_livre" or
 			etape == "pont_acces" and ancienne == "pont_travaux") and ouvert:
@@ -406,8 +428,8 @@ func actualiser(force := false) -> void:
 		jeu.ville.reparation_finie("i", MAISONS, jeu.mois),
 		jeu.ville.berge_etat(BERGE, jeu.mois), jeu.ville._solaire.has(SOLAIRE),
 		int(jeu.ville.sans_toit(jeu.mois) * 1000.0 + jeu.ville.besoin_non_couvert(jeu.mois))]
-	signature += "/%d/%s/%s/%d/%d" % [_regards.size(), _champ_vu, jeu.trafic._indisponibles_connues,
-		jeu.ville._camps.size(), jeu.ville._repare.size()]
+	signature += "/%d/%s/%s/%d/%d/%s" % [_regards.size(), _champ_vu, jeu.trafic._indisponibles_connues,
+		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -444,7 +466,9 @@ func actualiser(force := false) -> void:
 			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
 			_titre.text = "Le pont provisoire se pose" if jeu.ville.pont_provisoire(int(premier["fid"])) \
 				else "Le pont se reconstruit"
-			_texte.text = "%s : traversée coupée jusqu'à la livraison." % _nom("r", premier["fid"])
+			# 🧹 Dit dès l'engagement, sans nommer les rues (auteur, 2026-09-26).
+			_texte.text = "Chemin dégagé : en attendant le pont, les logements abîmés peuvent se relever." \
+				if acces_degage() else "La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier."
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 			_bouton("Voir mon pont", examiner.bind("r", premier["fid"]))
 		"pont_livre":
@@ -568,6 +592,7 @@ func reprendre(etat: Dictionary) -> void:
 	ouvert = bool(etat.get("ouvert", true))
 	trafic_vu = bool(etat.get("trafic_vu", false))
 	pont_termine = bool(etat.get("pont_termine", suite or termine))
+	_degage_annonce = -1
 	etape = ""
 	_signature = ""
 	actualiser(true)

@@ -273,20 +273,21 @@ func executer() -> void:
 	await cliquer(jeu.interface._recap_bouton)
 	verifier(o.etape == "travaux" and not jeu.ville.route_praticable(o.RUE, 0.0),
 		"La commande engage un chantier sans rouvrir la rue")
-	actualiser(0.99)
+	var fin_rue: float = jeu.ville.duree_reparation_mois("r", o.RUE)
+	actualiser(fin_rue - 0.01)
 	verifier(o.etape == "travaux" and jeu.trafic.doux_visibles_sur(o.RUE)[0] == 0,
 		"Ni réussite ni piéton avant livraison")
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()
-	verifier(o.etape == "travaux" and jeu.mois == 0.99 and not jeu.ville.route_praticable(o.RUE, jeu.mois),
+	verifier(o.etape == "travaux" and is_equal_approx(jeu.mois, fin_rue - 0.01) and not jeu.ville.route_praticable(o.RUE, jeu.mois),
 		"Une reprise pendant le chantier conserve l'attente et la rue fermée")
 	await cliquer(bouton("Laisser avancer"))
 	verifier(jeu.vitesse == 12.0, "Le joueur lance le temps")
-	actualiser(1.0)
+	actualiser(fin_rue)
 	verifier(o.etape == "livraison" and jeu.vitesse == 0.0,
 		"La première livraison met le jeu en pause")
-	verifier(jeu.ville.route_praticable(o.RUE, 1.0)
+	verifier(jeu.ville.route_praticable(o.RUE, fin_rue)
 		and jeu.reparations["r"][o.RUE].visible, "La rue réparée est visible et praticable")
 	var pietons: int = jeu.trafic.doux_visibles_sur(o.RUE)[0]
 	verifier(pietons > 0, "Des piétons reviennent sur la rue : %d" % pietons)
@@ -499,7 +500,29 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._sur_reset()
 	jeu._sur_reprise()
 	verifier(o.etape == "pont_travaux", "La reprise conserve le pont en travaux")
+	# 🧹 Dit dès l'engagement, sans nommer la rue (auteur, 2026-09-26).
+	verifier("boue" in o._texte.text and not o.autorise("i", o.MAISONS),
+		"Pendant le chantier, le guide dit que la boue bloque et les logements attendent")
 	await capture("12_pont_travaux")
+	# Le chemin déblayé pendant le chantier ouvre les îlots sinistrés ; puis on
+	# revient à la sauvegarde pour jouer l'oubli du déblaiement.
+	jeu._sur_sauvegarde()
+	var pendant := debut + 0.5
+	actualiser(pendant)
+	for rue in acces["obstacles"]:
+		jeu._sur_commande("r", rue, {"reparer": true})
+	verifier(is_equal_approx(jeu.ville.duree_reparation_mois("r", int(acces["obstacles"][0])), 2.0 / 30.0),
+		"Une rue se déblaie en deux jours")
+	actualiser(pendant + 2.0 / 30.0)
+	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in o._texte.text
+		and o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
+		"Le chemin déblayé pendant le chantier ouvre la reconstruction des îlots")
+	await capture("12b_chemin_degage")
+	jeu._sur_choix("i", o.MAISONS)
+	verifier(jeu.interface._repare_bloc.visible, "La fiche d'un îlot sinistré propose de le relever")
+	jeu._sur_reprise()
+	actualiser(fin - 0.01)
+	verifier(o.etape == "pont_travaux" and not o.acces_degage(), "La reprise rend la boue")
 	# Livré, le pont reste barré par la boue : le jeu s'arrête et le dit, sans plus.
 	jeu._sur_vitesse(12.0)
 	actualiser(fin)

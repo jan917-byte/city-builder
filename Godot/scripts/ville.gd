@@ -141,7 +141,7 @@ const CHAMPS_MOBILES := {
 # 🎚️ LES TROIS DURÉES, elles, sont d'ici — ce sont des durées de JEU, pas des
 # chiffres de la carte. Repère : la pose solaire d'un îlot tient en un mois.
 const RECONSTRUCTION_MOIS := 12.0    # un îlot relevé : un an de chantier
-const DEBLAIEMENT_MOIS := 1.0        # la vase enlevée d'une rue
+const DEBLAIEMENT_MOIS := 2.0 / 30.0 # la vase enlevée d'une rue : deux jours (auteur, 2026-09-26)
 const PONT_MOIS := 8.0               # un franchissement rebâti en dur (87)
 # 🌉 LE PONT PROVISOIRE (87). 🎚️ Proposition à juger : durée, part du prix en
 # dur, débit d'une voie en alternat (lu par `trafic.gd`).

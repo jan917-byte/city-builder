@@ -132,6 +132,8 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	elif duree >= ACCELERER_MOIS:
 		message += " · ×12 ≈ %d s" % int(ceil(duree * 5.0))
 	notifier(message, mois)
+	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
+		notifier("La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier.", mois)
 	if duree <= 0.0:
 		for genre in r["faits"]:
 			livraison({"couche": couche, "fid": fid, "genre": genre}, mois)
