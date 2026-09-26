@@ -174,6 +174,22 @@ Coût : banc à **11,30 ms/image** sur la ville entière contre **11,27** avant,
 - 🔴 **À juger** : les **couleurs d'accent** sont des teintes nouvelles (volets, stores, allèges, portes de quai) — la DA dit « 8–10 teintes » ; si elles débordent, c'est la question à ouvrir. Les montagnes sont des **ballons sans neige** par défaut (question posée, pas tranchée). La **lumière n'a pas bougé** : la DA la veut fixe.
 - ☐ La miniature (`echantillon.gd`) montre une eau sans rive connue, donc uniforme ; la route du décor sous la forêt (**12** ci-dessus) est toujours là.
 
+## 10. Un étage, une rangée entière (2026-09-26, demande de l'auteur)
+
+Captures `QGIS/rendus/wehrau_etages_{1…7}_{avant,apres}.png`, refaites par `Godot --path Godot --script res://outils/apercu_etages.gd` (la série « avant » vient de la version précédente).
+
+| # | Avant | Après |
+|---|---|---|
+| 1 · 2 | Rive gauche (îlots 59 à 69, posés 1 m plus bas) : la dernière rangée tranchée à mi-hauteur par l'égout | Chaque étage est une rangée entière, un bandeau de mur sous le toit |
+| 3 | Rive droite (1 m plus haut) : fenêtres du rez au ras du trottoir, portes coupées à moitié | Portes pleine hauteur, rez à 95 cm d'allège |
+| 4 | Îlot compact 49 : 3,5 · 4,5 · 5,5 niveaux, un demi-étage coupé | **3 à 6 niveaux entiers** ; moyenne 4,5 → **4,4**, plancher 9 544 → 9 388 m², **94 → 93 logements** |
+| 6 · 7 | De loin, façade en aplat : on ne compte plus les étages | Un trait sombre par étage, tant qu'une rangée tient sur ~2 px |
+
+La corniche ne barre plus la rive gauche à 0,8 m du sol. Essais `--essai` : tout ✅, densification comprise (deux rangées neuves, jamais trois).
+
+- 🔴 **Le demi-étage de `TISSU`** (4,5 à l'îlot compact) se tire maintenant en haut ou en bas, bâtiment par bâtiment (`04c`). Mettre 4 ou 5 dans la table est l'autre option : c'est du level design.
+- Serait un défaut : une rangée coupée par un toit, une porte qui ne touche pas le trottoir, des rayures qui scintillent en zoomant.
+
 ---
 
 **Voir aussi** : [00 - Prototype.md](00%20-%20Prototype.md) · [Parcelles.md](Parcelles.md) · [ETAT.md](../ETAT.md) · `Godot/README.md`
