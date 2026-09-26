@@ -51,6 +51,8 @@ from .reglages import (
     LARGEUR_LIGNE,
     LARGEUR_TROTTOIR,
     LIMITE_MITRE_TROTTOIR,
+    MARCHE_MIN,
+    MARCHE_TOLERANCE,
     MODULE_PARKING,
     PASSAGE_BANDE,
     PASSAGE_ECART,
@@ -1403,9 +1405,13 @@ def _trottoirs(ilots, routes, coudes):
     longe l'arête, pas sous l'îlot — cliquer un trottoir ouvre la fiche du
     tronçon. ⚠️ Les fid d'îlot et de tronçon se recouvrent (71 et 178) : mêlés
     dans le même maillage, ils rendraient la ville cliquable n'importe
-    comment."""
+    comment.
+
+    🚶 Troisième sortie, {fid: [(ligne, largeur)]} : le milieu de ces mêmes
+    dalles, d'un coin de rue à l'autre — là où `trafic.gd` fait marcher."""
     segs, idx = _index_voirie(routes)
     faces = {}
+    marches = {}
     stats = {"ilots": 0, "aretes": 0, "avec_rue": 0, "avec_trottoir": 0,
              "coins": 0, "arrondis": 0, "long": 0.0}
     # Un coude a DEUX bords, et les deux doivent s'arrondir pour que la rue
@@ -1472,6 +1478,8 @@ def _trottoirs(ilots, routes, coudes):
             deb[i] = arc[-1]
             coins[i] = arc
 
+        # Les milieux de dalle, bout à bout tant qu'on longe la même rue.
+        tenu = [None] * n
         for i in range(n):
             e = ar[i]
             if e is None or deb[i] is None or fin[i] is None:
@@ -1482,6 +1490,8 @@ def _trottoirs(ilots, routes, coudes):
             if ((fin[i][0] - deb[i][0]) * e["u"][0]
                     + (fin[i][1] - deb[i][1]) * e["u"][1]) <= 0.05:
                 continue
+            tenu[i] = ((a[0] + deb[i][0]) / 2.0, (a[1] + deb[i][1]) / 2.0,
+                       (b[0] + fin[i][0]) / 2.0, (b[1] + fin[i][1]) / 2.0)
             f = faces.setdefault(e["rue"][0], [])
             f.append(("plat", [a, b, fin[i], deb[i]]))
             f.append(("mur", deb[i], fin[i], e["n"]))          # la bordure
@@ -1499,6 +1509,84 @@ def _trottoirs(ilots, routes, coudes):
                     f.append(("mur", c[k], c[k + 1],
                               ((c[k][0] + c[k + 1][0]) / 2.0 - ring[i][0],
                                (c[k][1] + c[k + 1][1]) / 2.0 - ring[i][1])))
+        # Une ligne ne passe pas un coin de rue : c'est là qu'on traverse.
+        # L'anneau étant fermé, on part d'une arête sans voisine tenue.
+        tenus = [i for i in range(n) if tenu[i] is not None]
+        depart = next((i for i in tenus if tenu[(i - 1) % n] is None
+                       or ar[(i - 1) % n]["rue"][0] != ar[i]["rue"][0]),
+                      tenus[0] if tenus else None)
+        if depart is not None:
+            ligne = None
+            for j in range(n):
+                i = (depart + j) % n
+                t = tenu[i]
+                if t is None:
+                    ligne = None
+                    continue
+                if ligne is None or ligne[2] != ar[i]["rue"][0]:
+                    ligne = [[], ar[i]["w"], ar[i]["rue"][0]]
+                    marches.setdefault(ligne[2], []).append(ligne)
+                ligne[0] += [(t[0], t[1]), (t[2], t[3])]
+                ligne[1] = min(ligne[1], ar[i]["w"])
         stats["ilots"] += 1
     stats["coudes_entiers"] = sum(1 for v in par_coude.values() if v == 2)
-    return faces, stats
+    return faces, stats, {f: [(l[0], l[1]) for l in ls]
+                          for f, ls in marches.items()}
+
+
+def _simplifier(pts, tol):
+    """Douglas-Peucker : la ligne à `tol` près, en gardant ses deux bouts."""
+    if len(pts) < 3:
+        return list(pts)
+    k, loin = 0, -1.0
+    for i in range(1, len(pts) - 1):
+        e = D4C.dist_pt_seg(pts[i], pts[0], pts[-1])
+        if e > loin:
+            k, loin = i, e
+    if loin <= tol:
+        return [pts[0], pts[-1]]
+    return _simplifier(pts[:k + 1], tol)[:-1] + _simplifier(pts[k:], tol)
+
+
+def _marches(lignes, decoupe):
+    """🚶 Où marchent les piétons d'un tronçon : le milieu de ses dalles,
+    amputé de ce que la chaussée recouvre — la même découpe que le dessin du
+    trottoir. Rend [(a, b, largeur)], des segments droits : le GPU fait
+    glisser chaque marcheur d'un bout à l'autre."""
+    out = []
+    for pts, w in lignes:
+        net = [p for k, p in enumerate(pts)
+               if k == 0 or math.dist(p, pts[k - 1]) > 1e-3]
+        net = _simplifier(net, MARCHE_TOLERANCE * w)
+        for p, q in zip(net, net[1:]):
+            for a, b in decoupe.segments(p, q):
+                # Un bout coupé par la chaussée recule d'une demi-dalle : le
+                # marcheur s'écarte de sa ligne, il n'y mettrait pas le pied.
+                L = math.dist(a, b)
+                ra = w / 2.0 if math.dist(a, p) > 1e-6 else 0.0
+                rb = w / 2.0 if math.dist(b, q) > 1e-6 else 0.0
+                if L - ra - rb < MARCHE_MIN:
+                    continue
+                u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+                out.append(((a[0] + u[0] * ra, a[1] + u[1] * ra),
+                            (b[0] - u[0] * rb, b[1] - u[1] * rb), w))
+    return out
+
+
+def _traversees(d, axe, ip, ch, nd, chenal, gardes, marches):
+    """🚶 Les passages piétons de ce morceau, d'un milieu de trottoir à
+    l'autre. Un passage dont un bout ne trouve aucune dalle à portée ne se
+    traverse pas : il mènerait dans le vide. Rend [(a, b)]."""
+    cum = _cumul(axe)
+    tr = d.get("bord_trottoir_m", 0.0)
+    if cum[-1] < 1.0 or tr <= 0.0 or not marches:
+        return []
+    tv = _zones_interdites(d, axe, cum, ip, ch, nd, chenal, gardes)[2]
+    out = []
+    for s in tv:
+        p, u = _le_long(axe, cum, s)
+        bouts = [(p[0] - u[1] * tr * c, p[1] + u[0] * tr * c) for c in (-1, 1)]
+        if all(min(D4C.dist_pt_seg(x, a, b) for a, b, _w in marches)
+               <= LARGEUR_TROTTOIR + 0.5 for x in bouts):
+            out.append((bouts[0], bouts[1]))
+    return out

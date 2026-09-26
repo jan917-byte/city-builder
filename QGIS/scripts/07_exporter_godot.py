@@ -169,6 +169,8 @@ from export_godot.voirie import (
     _passages_ville,
     _places_de_parc,
     _places_de_rue,
+    _marches,
+    _traversees,
     _trottoirs,
 )
 
@@ -1375,7 +1377,7 @@ def main():
     arbres = [a for a in arbres
               if not _dans_chaussee((a[0], a[1]), chaussees,
                                      MARGE_TRONC_CHAUSSEE)]
-    trot, st_tr = _trottoirs(ilots, routes, coudes)
+    trot, st_tr, lignes_pietons = _trottoirs(ilots, routes, coudes)
     # 🎨 Les nœuds du marquage : combien de branches à chaque bout de
     # tronçon. C'est plus riche que le `noeuds` d'à côté (qui ne sert qu'à
     # compter les carrefours) — il faut aussi savoir LEUR LARGEUR.
@@ -1450,6 +1452,31 @@ def main():
     # en fait un ruban plat, invisible, qui ne sert qu'à être détouré.
     couloirs = {}
     fentes_places = {}
+    # 🚶 {fid: {"m": marches, "t": traversées}}, en repère Godot. Lu par
+    # `trafic.gd`, qui ne pose plus un piéton ailleurs.
+    pietons = {}
+    st_pietons = {"m": 0, "m_m": 0.0, "t": 0, "t_m": 0.0, "sur_chaussee_m": 0.0}
+    # Le contrôle lit l'asphalte DESSINÉ — l'axe sans les bouts que
+    # `chaussees` rallonge pour les troncs d'arbre —, en grille.
+    grille_ch = {}
+    for d_ in routes:
+        if not (d_["largeur_m"] or 0.0) > 0.0:
+            continue
+        demi_ = min(D4.EMPRISE_CIRCULATION.get(d_["hierarchie"], 8.5),
+                    d_["largeur_m"]) / 2.0
+        for a_, b_ in ((net_[k], net_[k + 1])
+                       for net_ in axes_voirie.get(d_["fid"], ())
+                       for k in range(len(net_) - 1)):
+            # ⚠️ Pas `cx`/`cy` : ce sont le centre du monde, que `G` relit.
+            for gx in range(int((min(a_[0], b_[0]) - demi_) // 16),
+                            int((max(a_[0], b_[0]) + demi_) // 16) + 1):
+                for gy in range(int((min(a_[1], b_[1]) - demi_) // 16),
+                                int((max(a_[1], b_[1]) + demi_) // 16) + 1):
+                    grille_ch.setdefault((gx, gy), []).append((a_, b_, demi_))
+
+    def _sur_chaussee(p_):
+        return any(D4C.dist_pt_seg(p_, a_, b_) < demi_ for a_, b_, demi_
+                   in grille_ch.get((int(p_[0] // 16), int(p_[1] // 16)), ()))
     par_fid = {d["fid"]: d for d in routes}
     n_align_eau = 0
     n_align_chaussee = 0
@@ -1573,6 +1600,38 @@ def main():
             axes.append(plat)
         couloirs[str(d["fid"])] = [
             round(d.get("corridor_m", larg) + MARGE_COULOIR, 2), axes]
+        # 🚶 LES PIÉTONS NE MARCHENT QUE SUR LE DESSIN : le milieu des dalles
+        # de ce tronçon, puis ses passages. La hauteur est celle de la
+        # terrasse — la rive gauche est 2 m sous la droite.
+        marches = _marches(lignes_pietons.get(d["fid"], ()), decoupe_chaussee)
+        traversees = [t for ip in range(len(d["parts"]))
+                      for axe_ in morceaux_voirie[d["fid"]][ip]
+                      for t in _traversees(d, axe_, ip, ch, nd_marq, chenal,
+                                           passages_gardes, marches)]
+        m_, t_ = [], []
+        for a, b, w in marches:
+            ga = G_voirie(a[0], a[1], Y_TROTTOIR)
+            gb = G_voirie(b[0], b[1], Y_TROTTOIR)
+            m_ += [round(ga[0], 2), round(ga[2], 2), round(gb[0], 2),
+                   round(gb[2], 2), round((ga[1] + gb[1]) / 2.0, 2), round(w, 2)]
+            L_ = math.dist(a, b)
+            st_pietons["m"] += 1
+            st_pietons["m_m"] += L_
+            k_ = max(1, int(L_ / 0.5))
+            st_pietons["sur_chaussee_m"] += L_ / (k_ + 1) * sum(
+                1 for j in range(k_ + 1) if _sur_chaussee(
+                    (a[0] + (b[0] - a[0]) * j / k_, a[1] + (b[1] - a[1]) * j / k_)))
+        for a, b in traversees:
+            ga = G_voirie(a[0], a[1], Y_CHAUSSEE)
+            gb = G_voirie(b[0], b[1], Y_CHAUSSEE)
+            t_ += [round(ga[0], 2), round(ga[2], 2), round(gb[0], 2),
+                   round(gb[2], 2), round(G_voirie((a[0] + b[0]) / 2.0,
+                                                   (a[1] + b[1]) / 2.0,
+                                                   Y_CHAUSSEE)[1], 2)]
+            st_pietons["t"] += 1
+            st_pietons["t_m"] += math.dist(a, b)
+        if m_ or t_:
+            pietons[str(d["fid"])] = {"m": m_, "t": t_}
         # 🚶 Le trottoir de ce tronçon a été fabriqué par les ÎLOTS qui le
         # bordent, pas par lui — mais il est rangé sous SON fid, dans son
         # groupe : cliquer un trottoir ouvre la fiche de la rue.
@@ -1662,10 +1721,12 @@ def main():
     print("        %d coins de trottoir, dont %d arrondis — %d coudes le sont"
           " des DEUX bords, donc à largeur de rue constante"
           % (st_tr["coins"], st_tr["arrondis"], st_tr["coudes_entiers"]))
-    tr_ = [d["bord_trottoir_m"] for d in routes if d["bord_trottoir_m"] > 0.0]
-    print("        %d tronçons sur %d où un piéton a un trottoir — il marche à"
-          " %.1f–%.1f m de l'axe ; les %d autres marchent au bord de la chaussée"
-          % (len(tr_), len(routes), min(tr_), max(tr_), len(routes) - len(tr_)))
+    print("        piétons : %d tronçons où marcher, %d lignes de trottoir sur"
+          " %.2f km, %d passages traversés — %.1f m de marche sur une chaussée"
+          "  %s"
+          % (len(pietons), st_pietons["m"], st_pietons["m_m"] / 1000.0,
+             st_pietons["t"], st_pietons["sur_chaussee_m"],
+             "✅" if st_pietons["sur_chaussee_m"] < 1.0 else "❌"))
     print("        marquage : %d passages piétons (%d bandes de %.2f m),"
           " %d traits d'axe, %d pleins de virage, %d lignes de rive"
           % (st_marq["passages"], st_marq["bandes"], PASSAGE_BANDE,
@@ -2026,6 +2087,7 @@ def main():
         # route — il en fait la SILHOUETTE qu'il détoure quand on la choisit.
         "couloirs": couloirs,
         "places_rue": {f: v for f, v in fentes_places.items() if v},
+        "pietons": pietons,
         # L'emprise au sol de chaque îlot, déjà en repère Godot : [[x, y, z], …],
         # anneau OUVERT. Jamais affichée — c'est la moitié basse du masque de
         # sélection, celle que la silhouette rendue ne peut pas donner.

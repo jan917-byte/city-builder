@@ -811,6 +811,13 @@ PASSAGE_RECUL = 0.80             # ce qui sépare le passage de la zone d'échan
 
 ESPACEMENT_TRAVERSEE = 120.0     # au-delà, un piéton traverse n'importe où
 
+# 🚶 OÙ MARCHE UN PIÉTON : le milieu des dalles de trottoir, et les passages.
+# Le marcheur tient sa droite à ±0,26 largeur du milieu (`trafic.gd`) : la
+# ligne simplifiée ne s'en écarte donc que de 0,2 largeur, et le total reste
+# sous la demi-dalle.
+MARCHE_TOLERANCE = 0.20          # l'écart toléré à la ligne, en largeurs de dalle
+MARCHE_MIN = 3.0                 # en dessous, un bout de dalle ne porte personne
+
 JEU_MARQUAGE = 0.60              # le blanc laissé autour d'une zone interdite
 
 # 🅿️ LA TRAME DE STATIONNEMENT DE LA PLACE-PARKING.
