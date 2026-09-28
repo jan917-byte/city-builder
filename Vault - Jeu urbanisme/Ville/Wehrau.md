@@ -1,7 +1,7 @@
 ---
 tags: [ville, prototype, level-design]
 statut: 🎯 périmètre du prototype
-maj: 2026-09-05
+maj: 2026-09-28
 habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 ---
 
@@ -46,7 +46,7 @@ La table éditoriale `Godot/data/lieux.json` porte les noms des îlots, rues et 
 
 La ville est un **noyau ovale d'environ 900 × 1 000 m**, avec cinq routes radiales qui sortent vers la campagne. Autour, des champs : ce n'est pas un décor en attente, c'est **la réserve foncière et l'espace d'expansion de crue**.
 
-**L'Ilse traverse la carte du nord au sud en décrivant un grand S** : elle entre au nord-est, mord vers l'ouest à mi-hauteur, ressort au sud-est. Trois franchissements relient ses deux rives. Ce méandre n'est pas un détail de dessin — c'est lui qui fait que **Wehrau est une ville de rive droite avec un petit faubourg en face** : 52 îlots d'un côté, 13 de l'autre.
+**L'Ilse traverse la carte en coulant du sud au nord, en décrivant un grand S** (89) : elle entre au sud-est, mord vers l'ouest à mi-hauteur, ressort au nord-est. Trois franchissements relient ses deux rives. Ce méandre n'est pas un détail de dessin — c'est lui qui fait que **Wehrau est une ville de rive gauche avec un petit faubourg en face** : 52 îlots d'un côté, 13 de l'autre.
 
 > ✅ **Trois franchissements** depuis le 2026-08-12 : les tronçons 136 et 171
 > ont disparu, le réseau routier reste d'un seul tenant. → [[Décisions arrêtées]] 30c
@@ -72,14 +72,14 @@ Fichier : `QGIS/data/Prototype_qualifie.gpkg` → [[Pipeline QGIS]]
 
 | | îlots | logements | aléa moyen |
 |---|---|---|---|
-| rive droite (la ville) | 52 | 2 235 | 0,43 |
-| rive gauche (le faubourg) | 13 | 417 | 0,75 |
+| rive gauche (la ville) | 52 | 2 235 | 0,43 |
+| rive droite (le faubourg) | 13 | 417 | 0,75 |
 
 **C'est le faubourg qui est exposé, pas la ville.** Treize îlots, un sixième du parc, un aléa presque deux fois supérieur — et personne pour peser dans un conseil municipal.
 
 ## L'ouverture : la crue
 
-✅ **Arrêté le 2026-08-11 : le jeu s'ouvre sur une crue, et elle tombe sur la rive gauche.** → [[Décisions arrêtées]] 23b
+✅ **Arrêté le 2026-08-11 : le jeu s'ouvre sur une crue, et elle tombe sur la rive droite.** → [[Décisions arrêtées]] 23b
 
 Des ruines encore chaudes sur les treize îlots du faubourg, 417 logements touchés — et **une seconde crue annoncée**. C'est l'annonce qui fait le jeu : sans elle, « ne pas reconstruire » est un choix sentimental ; avec elle, c'est un calcul.
 

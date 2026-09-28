@@ -1,7 +1,7 @@
 ---
 tags: [technique, données, architecture]
 statut: arrêté — schéma réel depuis 2026-08-10
-maj: 2026-08-10
+maj: 2026-09-28
 ---
 
 # Géométrie et données
@@ -80,7 +80,7 @@ Les densités sont calées sur du tissu allemand réel — emprise au sol × niv
 
 Il n'y a pas de modèle de terrain. Le relief est donc **du design assumé**, pas une mesure :
 
-- `position_fil_eau` — 0 en amont, 1 en aval. L'Ilse traverse toute la carte **du nord au sud** en décrivant un grand S ; le fil de l'eau se lit donc en latitude. Un axe droit se tromperait de rive sur les méandres.
+- `position_fil_eau` — 0 en amont, 1 en aval. L'Ilse traverse toute la carte en coulant **du sud au nord** (89), en décrivant un grand S ; le fil de l'eau se lit donc en latitude. Un axe droit se tromperait de rive sur les méandres.
 - `rive` — gauche / droite / lit, calculé sur la **direction locale** de la berge la plus proche, orientée vers l'aval.
 - `altitude_relative` — la vallée remonte en s'éloignant de l'eau. La pente **n'est pas constante** : raide en amont (3,2 %), plate en aval (1,3 %), parce qu'une vallée s'élargit en descendant. C'est ce qui met l'injustice géographique dans le terrain lui-même, et pas seulement dans un coefficient.
 - `alea` — 0 à 1. Décroît avec l'altitude, et **augmente vers l'aval à altitude égale** (× 0,80 en amont, × 1,20 en aval). C'est ce qui donne du mordant à « la digue protège ici et aggrave là ».

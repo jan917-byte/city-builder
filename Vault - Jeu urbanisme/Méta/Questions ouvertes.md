@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose) et n°34 (le prix des panneaux posés toit par toit) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-27
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) — n°11 et n°25 closes le 2026-09-02
+maj: 2026-09-28
 ---
 
 # Questions ouvertes
@@ -251,7 +251,7 @@ La structure est validée. Les noms sont à moi.
 
 **Trois. Deux ponts sautent au tracé.** Le vault visait deux au maximum ; trois est l'arbitrage. Motif : à cinq, la rivière ne coupe plus rien et « ajouter une passerelle » cesse d'être une décision.
 
-⚠️ **Ce qui n'est pas tranché ici : lesquels des cinq** (tronçons 136, 145, 168, 169, 171). Ça se choisit sur la carte, sous trois contraintes — le réseau routier doit rester **d'un seul tenant**, le **faubourg de rive gauche** doit garder un accès qui ne soit pas le quai (c'est lui qui prend la crue d'ouverture), et **l'affectation de trafic se rejoue** : l'axe de transit qui sortait tout seul des données peut se déplacer. → [[Décisions arrêtées]] 30c
+⚠️ **Ce qui n'est pas tranché ici : lesquels des cinq** (tronçons 136, 145, 168, 169, 171). Ça se choisit sur la carte, sous trois contraintes — le réseau routier doit rester **d'un seul tenant**, le **faubourg de rive droite** doit garder un accès qui ne soit pas le quai (c'est lui qui prend la crue d'ouverture), et **l'affectation de trafic se rejoue** : l'axe de transit qui sortait tout seul des données peut se déplacer. → [[Décisions arrêtées]] 30c
 
 *L'énoncé d'origine :*
 
@@ -283,9 +283,9 @@ L'alternative serait de déplacer la barre sur l'îlot 58 (39 m de l'eau, en ava
 
 ### ~~15. Le jeu s'ouvre-t-il sur une crue ?~~ ✅ **close le 2026-08-11**
 
-**Oui — et elle tombe sur la rive gauche.** Le jeu s'ouvre sur une inondation majeure, des ruines encore chaudes, et **une seconde crue annoncée** : c'est elle qui transforme « ne pas reconstruire » d'un choix sentimental en un calcul.
+**Oui — et elle tombe sur la rive droite** (nommée rive gauche jusqu'à la décision 89). Le jeu s'ouvre sur une inondation majeure, des ruines encore chaudes, et **une seconde crue annoncée** : c'est elle qui transforme « ne pas reconstruire » d'un choix sentimental en un calcul.
 
-Ce n'est pas la ville qui est frappée, c'est le **faubourg de rive gauche** — 13 îlots, 417 logements, aléa moyen 0,75 contre 0,43 sur l'autre rive. Le brainstorm d'origine imaginait une rive droite industrielle sinistrée ; la carte dit autre chose, et dit mieux : *le petit bout de ville d'en face qu'on pourrait décider de ne pas reconstruire*. Treize îlots, un sixième du parc, et personne pour peser dans un conseil municipal.
+Ce n'est pas la ville qui est frappée, c'est le **faubourg de rive droite** — 13 îlots, 417 logements, aléa moyen 0,75 contre 0,43 sur l'autre rive. Le brainstorm d'origine imaginait une rive droite industrielle sinistrée ; la carte dit autre chose, et dit mieux : *le petit bout de ville d'en face qu'on pourrait décider de ne pas reconstruire*. Treize îlots, un sixième du parc, et personne pour peser dans un conseil municipal.
 
 Ce que la carte porte : à +2 m, **23 îlots et 935 logements** touchés (37 % du parc) ; à +3 m, 30 îlots et 1 320 logements (52 %).
 
@@ -384,6 +384,18 @@ Demande de l'auteur, le 2026-09-26 : *« la pose des panneaux doit être plus r�
 | **C · Mesurer, puis régler 0,4 dessus** | un nombre, calé sur la moyenne mesurée | un compromis : chiffres stables, écart assumé îlot par îlot |
 
 **Recommandation : B**, mais seulement **après** avoir vu la pose à l'écran : c'est l'image qui dira si le classement des toits est crédible. → `Prototype/Densifier.md` § On commence par le meilleur (la progressivité, jamais consignée dans [[Décisions arrêtées]])
+
+### 35. Qu'est-ce qui rend l'Ilse limpide ? — ouverte le 2026-09-28
+L'Ilse a trois états (89) : brune de la crue au mois 0, **normale** quatre mois plus tard sans rien faire, puis **limpide** — plus verte, et l'on voit les galets du fond près des rives. Le passage de la crue à l'eau normale est le temps. Le passage à la limpide, l'auteur le laisse ouvert : *« on verra »*. La couleur est prête, rien ne la déclenche.
+
+| | Ce qui éclaircit l'eau | Ce que ça vaut |
+|---|---|---|
+| **A · Les berges** | chaque berge renaturée (73) éclaircit son bief | local et lisible : on voit l'eau changer au pied de ce qu'on a fait ; la rivière devient bigarrée |
+| **B · Les toits verts et le sol rendu perméable** | moins de pluie qui déborde des égouts dans l'Ilse, pour toute la ville | vrai, mais lent et diffus — un toit ne se voit pas dans l'eau |
+| **C · La campagne** | haies et prairies le long de l'eau retiennent la terre des champs (77c) | relie la ville et la campagne ; demande que la campagne soit jouable |
+| **D · Les trois ensemble** ⭐ | une seule jauge « eau » que A, B et C remplissent | l'Ilse devient un indicateur qu'on lit sans panneau ; chaque décision y contribue un peu |
+
+**Recommandation : D**, en commençant par **A** seul, puisque les berges existent déjà dans la maquette. **Reste à trancher avec elle** : l'eau limpide rapporte-t-elle autre chose que l'image (baignade, pêche, attrait du quai) ? → [[Décisions arrêtées]] 89 · [[Wehrau]]
 
 ## 🟢 Peut attendre (réversible)
 

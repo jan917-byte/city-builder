@@ -1,7 +1,7 @@
 ---
 tags: [moc, projet]
 statut: vivant
-maj: 2026-09-02
+maj: 2026-09-28
 ---
 
 # 🏙️ Projet jeu — city-builder de transformation urbaine
@@ -78,7 +78,7 @@ maj: 2026-09-02
 ## ⚠️ Les trucs à trancher maintenant
 
 ✅ **Tranché le 2026-08-12** : les **sept indicateurs globaux** et la règle *un chiffre, un calque* (53–54), **pas d'économie chiffrée** (55), le CO2 et le renouvelable **dérivés et non simulés** avec le carbone gris (56), **le max d'un indicateur est un milestone** révélé à l'approche (57), compteurs contre barres (58), **d'où vient l'argent — deux formules** (59), et **l'économie en barre sans nombre** avec ses deux garde-fous (60, 60b).
-✅ **Tranché le 2026-08-11** : la crue d'ouverture (rive gauche), 5 350 habitants, le capital politique en **un chiffre**, les [[Milestones]] cumulables, 2 h de partie, **la ville de t0 avant les décisions** (49) et **Townscaper** comme référence de travail (42b).
+✅ **Tranché le 2026-08-11** : la crue d'ouverture (rive droite), 5 350 habitants, le capital politique en **un chiffre**, les [[Milestones]] cumulables, 2 h de partie, **la ville de t0 avant les décisions** (49) et **Townscaper** comme référence de travail (42b).
 
 🟢 **La phase A n'est plus bloquée.** Les cinq questions qui la tenaient sont closes le 2026-08-12 : le **mitoyen par construction** (61, ferme n°16), le **trafic en flux** (62, ferme n°18), **le dortoir assumé** (50b, ferme n°17), **trois ponts au lieu de cinq** (30c, ferme n°12), **la barre de 1974 reste sur l'îlot 32** (13e, ferme n°14). Et le nom est arrêté : **Wehrau**, l'**Ilse** (13f).
 
@@ -128,7 +128,7 @@ Ce qui reste, et qui ne bloque rien tout de suite :
 
 **2026-08-11**
 - Mise à jour de l'état affiché : la semaine 1 est bouclée.
-- **Quatre questions fermées** : la population de [[Wehrau]] (5 350), le **scénario d'ouverture — une crue sur la rive gauche**, le **capital politique en un chiffre**, et la durée d'une partie. → [[Décisions arrêtées]] 13d · 23b · 16b · 14b
+- **Quatre questions fermées** : la population de [[Wehrau]] (5 350), le **scénario d'ouverture — une crue sur la rive droite**, le **capital politique en un chiffre**, et la durée d'une partie. → [[Décisions arrêtées]] 13d · 23b · 16b · 14b
 - **Système neuf : les [[Milestones]]** — des jalons cumulables, pas des fins. Ce qui les rend durs est un coût d'opportunité : *la rareté est dans le calendrier, pas dans les règles*. → 9b
 - ⏸️ **La durée d'une partie passe de bloquante à reportée** : le jeu n'a **pas de fin imposée**, la rejouabilité vient du redémarrage dans une autre direction. → 14c
 - Brainstorm importé sur les **références, le positionnement et l'UI** — non digéré, 9 décisions et 7 questions y attendent d'être remontées. → [[00 - Brainstorming]]
