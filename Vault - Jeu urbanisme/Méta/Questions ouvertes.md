@@ -399,6 +399,6 @@ L'Ilse a trois états (89) : brune de la crue au mois 0, **normale** quatre mois
 
 ## 🟢 Peut attendre (réversible)
 
-Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · titre du jeu · modèle économique et prix · nombre de langues
+Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · titre du jeu · modèle économique et prix · nombre de langues · traduction humaine ou par IA — par IA, la case Steam se coche (décision 90)
 
 **Voir aussi** : [[Décisions arrêtées]] · [[Plan 3 mois]]
