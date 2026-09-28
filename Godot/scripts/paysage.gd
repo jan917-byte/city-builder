@@ -15,6 +15,9 @@ func batir(d: Dictionary, palette: Dictionary, mat_rue: Material) -> void:
 		_maille("RoutesSorties", d.sorties.sol, mat_rue)
 		if d.sorties.has("marquage"):
 			_maille("MarquageSorties", d.sorties.marquage, mat_rue)
+	if d.has("fermes"):
+		_maille("CheminsFermes", d.fermes.sol, mat_rue)
+		_maille("Fermes", d.fermes.bati, mat_rue).cast_shadow = 			GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	var eau := Materiaux.eau(palette)
 	eau.set_shader_parameter("brume_exterieure", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	_maille("IlseExterieure", d.eau, eau)
@@ -56,13 +59,14 @@ func batir(d: Dictionary, palette: Dictionary, mat_rue: Material) -> void:
 	bancs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 
-func _maille(nom: String, d: Dictionary, mat: Material) -> void:
+func _maille(nom: String, d: Dictionary, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.name = nom
 	mi.mesh = Constructeur.maillage(d)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
+	return mi
 
 func _instances(nom: String, mm: MultiMesh, mat: Material) -> MultiMeshInstance3D:
 	var mi := MultiMeshInstance3D.new()

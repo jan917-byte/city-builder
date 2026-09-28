@@ -35,6 +35,12 @@ from export_godot.batiments import (
 from export_godot.boue import carte_boue
 from export_godot.camps import emplacements as _places_camp
 from export_godot.faubourg import DESSERTE, axe_en_lisiere, separer_champ
+from export_godot.fermes import (
+    a_deboiser as _fermes_a_deboiser,
+    gene as _gene_ferme,
+    maillages as _maillages_fermes,
+    placer as _placer_fermes,
+)
 from export_godot.decor import (
     Decor,
     Massifs,
@@ -524,6 +530,9 @@ def main():
     # et une montagne plate est pire qu'un trou : elle se lit comme une prairie.
     massifs = Massifs(decor)
     massifs.preparer()
+    # 🚜 Placées avant les champs : une cour retire ses places au camp.
+    fermes = _placer_fermes(ilots, routes, domaines,
+                            lambda x, y: relief.z(x, y) + massifs.hauteur(x, y))
     teintes = _coul_decor()
     cellules_bois, cellules_versants = [], []
     aires = {}
@@ -1110,7 +1119,8 @@ def main():
                     cg = (sum(p[0] for p in an) / len(an), sum(p[1] for p in an) / len(an))
                     bords = [p for r in routes for part in r["parts"] for p in part]
                     entree = min(bords, key=lambda p: math.dist(p, cg))
-                places_camp = [p for culture in cultures for p in _places_camp(culture, entree)]
+                places_camp = [p for culture in cultures for p in _places_camp(culture, entree)
+                               if not _gene_ferme(fermes, (p[0], p[1]))]
                 if places_camp:
                     camps[str(fid)] = [
                         [round(c, 2) for c in G(x, y, Y_SOL + relief.z(x, y))]
@@ -1956,17 +1966,28 @@ def main():
     if n_gi != len(ilots):
         print("    ⚠️  des îlots ne seront pas cliquables — anneau dégénéré ?")
 
+    surface = Surface([terre, sols])
     routes_sortie = sorties(routes, ilots, massifs, relief, G,
-                            D4.EMPRISE_CIRCULATION, Surface([terre, sols]))
+                            D4.EMPRISE_CIRCULATION, surface)
     vallee, eau_dehors = paysage(maxx - minx, maxy - miny, chenal, cx, cy,
                                  massifs, dessin)
     decor_vallee = _avec_bois(vallee, arbres_bois, arbres_haies)
     for axe in routes_sortie["axes"]:
         axe["points"] = [[p[0] - cx, cy - p[1]] for p in axe["points"]]
     decor_vallee["sorties"] = routes_sortie
+    decor_vallee["fermes"], murs_ferme_ok, murs_ferme = _maillages_fermes(fermes, G, surface)
+    for f in fermes:
+        print("    ferme %-3s · %-10s · champ %d · %3.0f m de chemin jusqu'à la route %s"
+              % (f["domaine"], f["forme"], f["champ"], f["longueur"], f["route"]))
+    print("  fermes : %d cours, %.0f m de chemins, murs dans le bon sens %d/%d  %s"
+          % (len(fermes), sum(math.dist(a, b) for f in fermes
+                              for a, b in zip(f["chemin"], f["chemin"][1:])),
+             murs_ferme_ok, murs_ferme, "✅" if murs_ferme_ok == murs_ferme else "❌"))
     # La desserte du faubourg longe le bois depuis le 2026-09-18 : ses arbres
     # sont semés par cellule de plaque, qui ne sait rien de la voirie.
-    a_deboiser = routes_sortie["axes"] + axe_en_lisiere(desserte, cx, cy)
+    a_deboiser = routes_sortie["axes"] + axe_en_lisiere(desserte, cx, cy) + [
+        {"points": [[p[0] - cx, cy - p[1]] for p in axe["points"]],
+         "largeur_m": axe["largeur_m"]} for axe in _fermes_a_deboiser(fermes)]
     decor_vallee["arbres"] = hors_routes(decor_vallee["arbres"], a_deboiser)
     avant = sum(map(len, decor_vallee["arbres"]))
     decor_vallee["arbres"] = _hors_chaussees(decor_vallee["arbres"], chaussees, cx, cy)
