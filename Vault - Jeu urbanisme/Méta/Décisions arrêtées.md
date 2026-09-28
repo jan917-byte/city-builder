@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-09-26
+maj: 2026-09-28
 ---
 
 # Décisions arrêtées
@@ -184,6 +184,6 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 
 | 87 | **Le premier pont se choisit provisoire ou en dur, et ses accès se déblaient pendant le chantier** | 🔓 | ✅ 2026-09-24, tranché par l'auteur : *« le choix est laissé : construire un pont provisoire ou reconstruire le pont comme avant avec 8 mois »*, et les routes à déblayer pendant ce temps. Le joueur ne doit pas attendre longtemps avant de pouvoir agir. Le pont en dur passe de 18 à **8 mois**. Réglage d'essai du provisoire : **3 mois**, **25 %** du prix en dur, **une seule voie en alternat** — il sature deux fois plus vite sur le calque Trafic, et il ne ressemble pas au pont en dur : treillis d'acier vert, plancher de bois, une voie. Le remplacer plus tard par un pont en dur reste à trancher. Complété le 2026-09-26 par l'auteur : une rue se déblaie en 1 à 2 jours ; dès le pont lancé, le jeu dit que la boue barre son chemin, sans nommer la rue ; le chemin dégagé ouvre la reconstruction des îlots sinistrés pendant le chantier. → [[Premiers pas après la crue]] · [[Questions ouvertes]] n°33 |
 
-| 88 | **La barre de gauche porte une icône et son mot** | 🔓 | ✅ 2026-09-24, choix de l'auteur entre deux maquettes : toutes les tuiles ont la même taille, l'icône au-dessus, l'étiquette en capitales dessous — VILLE et DÉBUT compris. Remplace les icônes seules, mot en infobulle, du 2026-09-03. La mairie et l'université verrouillées pâlissent sans changer de forme. |
+| 88 | **La barre de gauche ne porte que des icônes, le mot est dans l'infobulle** | 🔓 | ✅ 2026-09-28, demande de l'auteur (« enlève le texte de la barre gauche ») : toutes les tuiles ont la même taille, l'icône seule, VILLE et DÉBUT compris ; la barre s'amincit. Même mouvement ce jour-là : sauvegarder, reprendre, pause, lecture, boussole et vue de dessus deviennent des icônes. Revient sur le 2026-09-24 (icône et mot en capitales dessous, choisi entre deux maquettes), qui remplaçait lui-même les icônes seules du 2026-09-03. La mairie et l'université verrouillées pâlissent sans changer de forme. |
 
 **Voir aussi** : [[Questions ouvertes]] · [[00 - Index]] · [[Indicateurs globaux]]
