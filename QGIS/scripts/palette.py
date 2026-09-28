@@ -68,7 +68,16 @@ SOLS = {
     "place_minerale":    "#CFC7B4",
 }
 
-EAU = "#7EA7C3"                        # `sous_type = riviere`
+EAU = "#7EA7C3"                        # `sous_type = riviere`, aperçus 2D seulement
+
+# 🟤 L'ILSE EN 3D A TROIS ÉTATS (89) : (bord, milieu). Chargée de la crue au
+# mois 0, elle se décante seule (`ville.gd`) ; la limpide n'a pas encore de
+# déclencheur.
+EAU_ETATS = {
+    "crue":    ("#998758", "#736240"),
+    "trouble": ("#859476", "#566a55"),
+    "limpide": ("#7c9e8c", "#426a62"),  # on voit le fond près des rives
+}
 
 # ------------------------------------------------- le décor dessiné (paysage)
 # 🎨 Les formes tracées dans Illustrator sur `bois` et `relief` : elles peignent
@@ -395,6 +404,9 @@ def pour_json():
     d = dict(MASSES)
     d.update(SOLS)
     d["riviere"] = EAU
+    for etat, (bord, milieu) in EAU_ETATS.items():
+        d["_eau_%s_bord" % etat] = bord
+        d["_eau_%s_milieu" % etat] = milieu
     d["_mineral"] = MINERAL
     d["_mineral_clair"] = MINERAL_CLAIR
     d["_trottoir"] = TROTTOIR

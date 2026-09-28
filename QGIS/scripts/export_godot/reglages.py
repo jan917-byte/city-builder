@@ -114,10 +114,10 @@ FOND_ILSE = -2.6           # le lit, sous l'eau, jamais vu
 NAPPE_ILSE = -2.0          # le plan d'eau : 2 m sous la ville
 
 # La crue se lit aussi dans la coupe de ville : le faubourg touché, rive
-# gauche, est 1 m plus bas ; la terrasse intacte, rive droite, 1 m plus haut.
-RIVE_GAUCHE_Y = -1.0
+# droite, est 1 m plus bas ; la terrasse intacte, rive gauche, 1 m plus haut.
+RIVE_DROITE_Y = -1.0
 
-RIVE_DROITE_Y = 1.0
+RIVE_GAUCHE_Y = 1.0
 
 # ⚠️ La VOIRIE reste à 0, comme tout le reste : les trois franchissements
 # passent donc au-dessus du chenal sans qu'aucune ligne de code ne parle de

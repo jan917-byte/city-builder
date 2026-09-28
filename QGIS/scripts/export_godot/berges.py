@@ -453,8 +453,8 @@ def _quais(chenal, relief, grille, tabliers, franchis=None):
         rues = list(fids)
         fids[:] = [None] * n
         # 🔴 LA DEUXIÈME COUPE, ET SANS ELLE LES BERGES SE REJOIGNENT PAR LE
-        # BOUT. Les six îlots d'eau forment UN anneau : la rive gauche descend,
-        # traverse l'Ilse au bout de la carte et remonte en rive droite. Le
+        # BOUT. Les six îlots d'eau forment UN anneau : la rive droite descend,
+        # traverse l'Ilse au bout de la carte et remonte en rive gauche. Le
         # bord où l'anneau traverse est la seule arête qui change de rive — on
         # y coupe, et chaque berge appartient alors à une rive et une seule.
         rives = [chenal.niveau_rive(p[0], p[1], False) for p in net]
@@ -508,12 +508,12 @@ def _quais(chenal, relief, grille, tabliers, franchis=None):
                 "rues": sorted({f for f in rues[a:b + 1] if f is not None}),
                 "rive": "gauche" if rives[(a + b) // 2] == RIVE_GAUCHE_Y
                         else "droite",
-                "amont": max(p[1] for p in net[a:b + 1]),
+                "nord": max(p[1] for p in net[a:b + 1]),
                 # 🌊 LE BIEF QU'ELLE BORDE, en fil d'eau. Élargir la section
                 # abaisse la crue sur toute la traversée, LES DEUX RIVES : c'est
                 # ce couple, et pas la liste des rues, qui dit qui en profite.
-                "fil_amont": chenal.fil(max(p[1] for p in net[a:b + 1])),
-                "fil_aval": chenal.fil(min(p[1] for p in net[a:b + 1])),
+                "fil_amont": chenal.fil(min(p[1] for p in net[a:b + 1])),
+                "fil_aval": chenal.fil(max(p[1] for p in net[a:b + 1])),
             })
         _combler(prendre)
         # ⚠️ LA CORDE PEND. Entre deux stations de berge (2 m), le mur est une
@@ -554,10 +554,10 @@ def _quais(chenal, relief, grille, tabliers, franchis=None):
                 off[i] = max(off[i], off[i + 1] - QUAI_PENTE)
             _decouper_quai(net, eau, off, bord, fids, sous, i0, i1,
                            plan, st, murs, plateformes)
-    # 🔢 LE NUMÉRO D'UNE BERGE SE LIT : rive gauche d'abord, puis de l'amont
-    # vers l'aval. L'Ilse coule vers le sud, donc l'amont est le grand y. Un
-    # numéro tiré de l'ordre de recousage des arêtes n'aurait rien voulu dire.
-    berges.sort(key=lambda b: (b["rive"] != "gauche", -b["amont"]))
+    # 🔢 LE NUMÉRO D'UNE BERGE SE LIT : rive du faubourg d'abord, puis du nord
+    # au sud. Il n'a pas suivi le sens de l'eau (89) : les noms de `lieux.json`
+    # et les sauvegardes tiennent au numéro.
+    berges.sort(key=lambda b: (b["rive"] != "droite", -b["nord"]))
     renum = {}
     for k, b in enumerate(berges):
         b["fid"] = k + 1

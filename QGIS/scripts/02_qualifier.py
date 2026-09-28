@@ -157,7 +157,7 @@ def exceptions(dessine=None):
 #
 # Les trois restants tombent un par tiers de rivière (145, 168, 169).
 # ⚠️ 168 est intouchable : seul accès des 279 logements du faubourg de rive
-# gauche, celui que la crue d'ouverture frappe (23b).
+# droite, celui que la crue d'ouverture frappe (23b).
 # Les dix paires possibles ont été testées, aucune ne coupe le réseau — le
 # contrôle de connexité de `03` doit toujours passer après.
 PONTS_SUPPRIMES = [136, 171]

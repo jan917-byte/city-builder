@@ -81,7 +81,7 @@ class RaccordsRive(unittest.TestCase):
         mesh = d["berges_pente"]
         for fid, debut, nombre in mesh["g"]:
             rive = d["objets"]["berges"][str(fid)]["rive"]
-            haut = 1.14 if rive == "droite" else -0.86
+            haut = 1.14 if rive == "gauche" else -0.86
             for j in mesh["i"][debut:debut + nombre]:
                 self.assertIn(round(mesh["v"][j][1], 2), (-2.6, -2.0, haut))
             for k in range(debut, debut + nombre, 3):

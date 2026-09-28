@@ -30,11 +30,12 @@ class Rives:
             self.coupes[y] = (min(xs), max(xs)) if xs else None
         return self.coupes[y]
 
+    # L'Ilse coule du sud au nord (89) : face à l'aval, la rive droite est à l'est.
     def rive(self, p):
         coupe = self.coupe(p[1])
         if coupe is None:
-            return "droite"
-        return "gauche" if p[0] > sum(coupe) / 2 else "droite"
+            return "gauche"
+        return "droite" if p[0] > sum(coupe) / 2 else "gauche"
 
 
 def limite_est(y, contour=LIMITE_DEPOT_EST):

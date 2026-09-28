@@ -6,7 +6,7 @@
     python3 QGIS/scripts/04e_crue.py --blanc   # mesurer sans écrire
     python3 QGIS/scripts/04e_crue.py           # écrire dans la carte de travail
 
-Décision 23b : le jeu s'ouvre sur une crue, elle frappe la RIVE GAUCHE — le
+Décision 23b : le jeu s'ouvre sur une crue, elle frappe la RIVE DROITE — le
 faubourg de 13 îlots, pas la ville — et une SECONDE CRUE est annoncée. C'est
 l'annonce qui fait de « ne pas reconstruire » un calcul et non un sentiment.
 
@@ -21,10 +21,10 @@ fichier est un profil de calcul, aucune géométrie ne monte.
 LE MODÈLE, EN QUATRE IDÉES
 
   1. Le sol s'élève quand on s'éloigne de l'eau — une pente, pas un MNT.
-  2. La rive gauche est la PLAINE, la rive droite est la TERRASSE : deux pentes,
-     et un décrochement à la rive droite. C'est ce décrochement, et rien d'autre,
+  2. La rive droite est la PLAINE, la rive gauche est la TERRASSE : deux pentes,
+     et un décrochement à la rive gauche. C'est ce décrochement, et rien d'autre,
      qui fait que la ville regarde le faubourg se noyer.
-  3. La plaine s'élargit vers l'aval : la pente de rive gauche se couche avec
+  3. La plaine s'élargit vers le sud, donc vers l'amont (89) : la pente de rive droite suit
      `position_fil_eau`.
   4. UNE SEULE RÈGLE, DEUX NIVEAUX D'EAU. La crue d'ouverture est ce qui EST
      arrivé, la crue annoncée est ce qui PEUT arriver — donc `alea`. Le joueur
@@ -57,17 +57,17 @@ GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
 # qui regarde. Une ligne changée, on relance, on lit le tableau imprimé.
 
 # Mètres de distance à l'eau pour 1 m de terrain gagné. Grand = plat = noyé.
-PENTE_GAUCHE = (38.0, 72.0)     # amont → aval : la plaine s'élargit vers l'aval
-PENTE_DROITE = 26.0             # la terrasse, la même du nord au sud
+PENTE_DROITE = (72.0, 38.0)     # amont → aval : large au sud, à l'amont (89)
+PENTE_GAUCHE = 26.0             # la terrasse, la même du nord au sud
 
-# 🔴 LE DÉCROCHEMENT DE LA RIVE DROITE, en mètres. C'est LUI qui tient la
+# 🔴 LE DÉCROCHEMENT DE LA RIVE GAUCHE, en mètres. C'est LUI qui tient la
 # décision 23b : à 0, la crue d'ouverture mord la ville et le faubourg cesse
 # d'être « le petit bout d'en face qu'on pourrait ne pas reconstruire ».
 # 🔄 MONTÉ AVEC LA CRUE le 2026-08-21 (3,10 → 4,50) : l'auteur veut la rive
-# gauche RASÉE, et le décrochement se mesure à la crue, pas dans l'absolu. À
+# droite RASÉE, et le décrochement se mesure à la crue, pas dans l'absolu. À
 # 3,10 sous une crue de 4,40 le front de quai buvait, et « la ville regarde »
 # devenait « la ville aussi ».
-BERGE_DROITE_M = 4.50
+BERGE_GAUCHE_M = 4.50
 
 # 🔄 REPRIS le 2026-08-21 (3,00 → 4,40 → 3,80) : à 4,40, les 106
 # ruines effaçaient le tissu du faubourg. À 3,80, ruines et bâtiments encore
@@ -94,7 +94,7 @@ BAISSES_M = tuple(0.25 * k for k in range(11))   # 0 à 2,50 m
 # 🎚️ LES PONTS. Level design pur : la liste se corrige à la main, jamais par
 # un calcul. Trois franchissements restent après 30c (145, 168, 169).
 # 🔄 LES TROIS SONT COUPÉS depuis le 2026-08-21, demande de l'auteur : la rive
-# gauche n'est plus accessible du tout. Avant, 168 seul l'était et 169 tenait —
+# droite n'est plus accessible du tout. Avant, 168 seul l'était et 169 tenait —
 # le faubourg restait joignable, donc la crue ne coûtait rien de structurel.
 # ⚠️ Ça contredit frontalement 30c (`le faubourg garde un accès qui n'est pas
 # le quai`) : c'est le prix à payer pour que « rendre à l'eau » soit l'option
@@ -128,18 +128,18 @@ PONTS_CASSES = {
 
 # ------------------------------------------------------------------ le terrain
 
-def pente_gauche(fil):
+def pente_droite(fil):
     """Mètres parcourus pour 1 m de hauteur, à cette hauteur de rivière."""
-    a, b = PENTE_GAUCHE
+    a, b = PENTE_DROITE
     return a + (b - a) * fil
 
 
 def sol_m(dist_eau, fil, rive):
     """Altitude du terrain au-dessus de l'étiage, en mètres. La carte reste
     plate : ce profil ne sort JAMAIS d'ici vers la géométrie."""
-    if rive == "gauche":
-        return dist_eau / pente_gauche(fil)
-    return BERGE_DROITE_M + dist_eau / PENTE_DROITE
+    if rive == "droite":
+        return dist_eau / pente_droite(fil)
+    return BERGE_GAUCHE_M + dist_eau / PENTE_GAUCHE
 
 
 def hauteur_eau(dist_eau, fil, rive, niveau):
@@ -167,10 +167,10 @@ class ChampCrue:
 
     def hauteur(self, p, niveau):
         d = min(D4.dist_pt_seg(p, a, b) for a, b in self.segs)
-        fil = D4.borne((self.nord - p[1]) / max(1e-6, self.nord - self.sud))
+        fil = D4.borne((p[1] - self.sud) / max(1e-6, self.nord - self.sud))
         return hauteur_eau(d, fil, self.rives.rive(p), niveau)
 
-    # 🌳 LE VERGER (2026-09-17, auteur) : le quartier de rive gauche que le
+    # 🌳 LE VERGER (2026-09-17, auteur) : le quartier de rive droite que le
     # limon a couvert. L'Ilse le borne à l'ouest, le contour annoté à l'est.
     def _bord(self, p):
         """La limite est du verger si le point y est, sinon None."""
@@ -244,7 +244,7 @@ def _riviere(cur):
     # sur un méandre, un axe global se tromperait de rive, mais c'est lui qui
     # sert à ORIENTER la berge locale, pas à décider seul.
     _, u = D4.axe_principal([p for a in anneaux for p in a])
-    if u[1] > 0:
+    if u[1] < 0:
         u = (-u[0], -u[1])
     return segs, max(ys), min(ys), u, anneaux
 
@@ -287,14 +287,14 @@ def main():
     def mesurer(anneau):
         c = D4.centroide(anneau)
         d = min(D4.dist_pt_seg(c, a, b) for a, b in segs)
-        return d, D4.borne((ynord - c[1]) / (ynord - ysud))
+        return d, D4.borne((c[1] - ysud) / (ynord - ysud))
 
     ilots = {}
     for fid, blob, st, rive, log in cur.execute(
             "SELECT fid, geom, sous_type, rive, logements FROM ilots"):
         anneau = lire_wkb(gpkg_vers_wkb(blob))[0][0]
         d, fil = mesurer(anneau)
-        ilots[fid] = {"st": st, "rive": rive or "droite", "log": log or 0,
+        ilots[fid] = {"st": st, "rive": rive or "gauche", "log": log or 0,
                       "d": d, "fil": fil, "c": D4.centroide(anneau), "bats": []}
 
     bats = []
@@ -380,7 +380,7 @@ def main():
         c = (sum(p[0] for p in pts) / len(pts),
              sum(p[1] for p in pts) / len(pts))
         d = min(D4.dist_pt_seg(c, a, b) for a, b in segs)
-        f = D4.borne((ynord - c[1]) / (ynord - ysud))
+        f = D4.borne((c[1] - ysud) / (ynord - ysud))
         # La longueur du tronçon, et celle de la part qui passe AU-DESSUS DE
         # L'EAU : la première fait le prix du déblaiement, la seconde celui du
         # tablier. Aucune des deux n'est dans la table `routes`.
@@ -480,11 +480,11 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None,
         c = par_rive[r]
         print("  %-8s %5d %9d %8d %7d"
               % (r, c["ruine"], c["sinistre"], c["mouille"], c["intact"]))
-    n_droite = sum(par_rive.get("droite", {}).get(e, 0)
+    n_gauche = sum(par_rive.get("gauche", {}).get(e, 0)
                    for e in ("ruine", "sinistre"))
-    if n_droite:
-        print("  ⚠️ %d bâtiment(s) sinistré(s) EN RIVE DROITE — la décision 23b"
-              " veut le faubourg SEUL. Remonter BERGE_DROITE_M." % n_droite)
+    if n_gauche:
+        print("  ⚠️ %d bâtiment(s) sinistré(s) EN RIVE GAUCHE — la décision 23b"
+              " veut le faubourg SEUL. Remonter BERGE_GAUCHE_M." % n_gauche)
 
     print("\nLE FAUBOURG, ÎLOT PAR ÎLOT")
     print("  fid  sous_type              log  bât   ruine sinis mouil intact"
@@ -492,7 +492,7 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None,
     tot_log = 0
     for fid in sorted(ilots, key=lambda f: -ilots[f]["log"]):
         d = ilots[fid]
-        if d["rive"] != "gauche" or not d["bats"]:
+        if d["rive"] != "droite" or not d["bats"]:
             continue
         c = {e: sum(1 for b in d["bats"] if b["etat"] == e) for e in ORDRE}
         tot_log += d["log_sinistres"]
@@ -508,13 +508,13 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None,
     # 2026-08-11 par une méthode d'altitude qui n'existe plus. Le chiffre
     # ci-dessous est celui de la règle EN VIGUEUR ; c'est lui qui fait foi.
     print("\nALÉA — enfoncement moyen du bâti sous la crue annoncée, sur son niveau")
-    for r in ("gauche", "droite"):
+    for r in ("droite", "gauche"):
         v = [d["alea"] for d in ilots.values() if d["rive"] == r and d["bats"]]
         if v:
             print("  rive %-8s %2d îlots bâtis   aléa moyen %.2f"
                   "   (le vault annonçait %s)"
                   % (r, len(v), sum(v) / len(v),
-                     "0,75" if r == "gauche" else "0,43"))
+                     "0,75" if r == "droite" else "0,43"))
 
     # 🌊 CE QU'UNE BERGE RENDUE AU FLEUVE PEUT RACHETER. La courbe est
     # exportée îlot par îlot ; ce tableau en donne le total de ville, qui est
@@ -583,12 +583,12 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None,
     for fid in sorted(FRANCHISSEMENTS):
         print("  pont %3d  → %s" % (fid, PONTS_CASSES.get(fid, "intact")))
     passants = [f for f in FRANCHISSEMENTS if PONTS_CASSES.get(f) != "coupe"]
-    log_g = sum(d["log"] for d in ilots.values() if d["rive"] == "gauche")
+    log_g = sum(d["log"] for d in ilots.values() if d["rive"] == "droite")
     if passants:
-        print("  → la rive gauche RESTE ACCESSIBLE par %s"
+        print("  → la rive droite RESTE ACCESSIBLE par %s"
               % ", ".join("le pont %d" % f for f in sorted(passants)))
     else:
-        print("  → RIVE GAUCHE COUPÉE : aucun franchissement, %d logements"
+        print("  → RIVE DROITE COUPÉE : aucun franchissement, %d logements"
               " sans accès routier" % log_g)
     print("  le réseau source reste entier ; Godot exclut les tronçons"
           " endommagés du trafic jusqu'à la fin de leur réparation.")
@@ -598,7 +598,7 @@ def _compte_rendu(ilots, bats, RUES, COUTS=None, LARGEURS=None,
         return
     # 🚗 LE REPORT DE TRAFIC. Ce tableau répond à une seule question : est-ce
     # que couper le faubourg coûte quelque chose à la ville ? Si la colonne
-    # « après » de la rive droite ne bouge pas, la réponse est non — et c'est
+    # « après » de la rive gauche ne bouge pas, la réponse est non — et c'est
     # l'argument chiffré de la décision 23b.
     av, ap = TRAFIC["avant"], TRAFIC["apres"]
     mor = TRAFIC["morceaux"]

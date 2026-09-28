@@ -73,7 +73,7 @@ COLS_R = [c[0] for c in CALQUES_ROUTES] + ["fid"]
 PALETTE = {
     "freiraum": "#8fbf6a", "habitation": "#e8c46a", "industrie": "#b08d6a",
     "mixte": "#d99b6c", "riviere": "#6ba8d9",
-    "gauche": "#d98b6c", "droite": "#6c9dd9", "lit": "#6ba8d9",
+    "droite": "#d98b6c", "gauche": "#6c9dd9", "lit": "#6ba8d9",
     "autoroute": "#c1443c", "boulevard": "#d98b3c", "rue": "#7a7a7a",
     "ruelle": "#adadad", "rive": "#6ba8d9", "voie ferree": "#6b4f8a",
 }

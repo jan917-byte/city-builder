@@ -514,7 +514,7 @@ def main():
                 for f in riv for a in ilots[f]["anneaux"]
                 for i in range(len(a) - 1)]
     # En latitude, pas en projection sur un axe droit : l'Ilse décrit un grand
-    # S mais traverse la carte du nord au sud, donc « où est-on le long de la
+    # S mais coule du sud au nord (89), donc « où est-on le long de la
     # rivière » = « à quelle hauteur est-on ».
     ynord = max(p[1] for p in sommets)
     ysud = min(p[1] for p in sommets)
@@ -526,7 +526,7 @@ def main():
         proche = min(((dist_pt_seg(c, a, b), a, b) for a, b in segs_riv),
                      key=lambda t: t[0])
         d["dist_eau"] = 0.0 if d["st"] == "riviere" else proche[0]
-        d["fil"] = round(borne((ynord - c[1]) / (ynord - ysud)), 3)
+        d["fil"] = round(borne((c[1] - ysud) / (ynord - ysud)), 3)
 
         # La coupe locale évite de retourner la rive dans un coude de l’Ilse.
         d["rive"] = "lit" if d["st"] == "riviere" else rives.rive(c)

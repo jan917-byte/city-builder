@@ -122,8 +122,8 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
             tx, tz = a1[0] - a0[0], a1[1] - a0[1]
             n = math.hypot(tx, tz)
             tx, tz = tx / n, tz / n
-            # L'Ilse coule vers le sud, +z dans Godot, à l'amont comme à l'aval.
-            sens = (tx, tz) if tz >= 0 else (-tx, -tz)
+            # L'Ilse coule du sud au nord (89), −z dans Godot, à l'amont comme à l'aval.
+            sens = (tx, tz) if tz <= 0 else (-tx, -tz)
             rails.append(((x - tz * w, z + tx * w), (x + tz * w, z - tx * w)))
             fils.append(((x, z), w, sens))
         for (a, b), (c, d) in zip(rails, rails[1:]):

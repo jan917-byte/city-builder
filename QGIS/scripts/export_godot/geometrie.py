@@ -87,12 +87,12 @@ class Chenal(object):
         définition qu'en `04` (`position_fil_eau`), sur les mêmes sommets."""
         ysud, ynord = self._y_rive
         return 0.0 if ynord <= ysud else max(0.0, min(1.0,
-            (ynord - y) / (ynord - ysud)))
+            (y - ysud) / (ynord - ysud)))
 
     def niveau_rive(self, x, y, eau_plate=True):
         """Décalage vertical des deux rives ; l'eau reste horizontale.
 
-        L'Ilse coule vers le sud : face à l'aval, sa rive gauche est à l'est.
+        L'Ilse coule du sud au nord (89) : face à l'aval, sa rive droite est à l'est.
         Une coupe horizontale donne son milieu local même dans le grand S.
         """
         # La coupe doit passer par le sommet : l'arrondi à 25 cm le noyait.
@@ -108,18 +108,18 @@ class Chenal(object):
                         xs.append(p[0] + (q[0] - p[0]) * t)
             coupe = (min(xs), max(xs)) if len(xs) >= 2 else (x, x)
             self._coupes_rive[cle] = coupe
-        gauche_x, droite_x = coupe
-        if eau_plate and gauche_x + 1e-5 < x < droite_x - 1e-5:
+        ouest_x, est_x = coupe
+        if eau_plate and ouest_x + 1e-5 < x < est_x - 1e-5:
             return 0.0
-        milieu = (gauche_x + droite_x) / 2.0
-        return RIVE_GAUCHE_Y if x > milieu else RIVE_DROITE_Y
+        milieu = (ouest_x + est_x) / 2.0
+        return RIVE_DROITE_Y if x > milieu else RIVE_GAUCHE_Y
 
     def est_berge(self, a, b):
         return tuple(sorted((_cle(a), _cle(b)))) in self.cles_berges
 
     def _orienter_rives(self):
         """Chaque arête de rive reçoit le sens de l'aval : les deux rives sont
-        deux chaînes, parcourues depuis leur bout nord. Tient dans le grand S,
+        deux chaînes, parcourues depuis leur bout sud. Tient dans le grand S,
         où une arête peut courir d'est en ouest."""
         ysud, ynord = self._y_rive
         bord = lambda p: min(abs(p[1] - ysud), abs(p[1] - ynord)) < 0.5  # noqa: E731
@@ -136,7 +136,7 @@ class Chenal(object):
         for k in self._rives:
             if k in self._aval:
                 continue
-            # La composante de k, puis son bout le plus au nord.
+            # La composante de k, puis son bout le plus au sud.
             comp, pile = {k}, [k]
             while pile:
                 e = pile.pop()
@@ -148,9 +148,9 @@ class Chenal(object):
             bouts = [s for e in comp for s in map(_cle, self.berges[e])
                      if len(voisins[s]) == 1]
             if not bouts:
-                bouts = [max((s for e in comp for s in map(_cle, self.berges[e])),
+                bouts = [min((s for e in comp for s in map(_cle, self.berges[e])),
                              key=lambda s: s[1])]
-            s = max(bouts, key=lambda s: s[1])
+            s = min(bouts, key=lambda s: s[1])
             prec = None
             for _ in range(len(comp)):
                 suite = [f for f in voisins[s] if f != prec and f in comp
@@ -163,12 +163,12 @@ class Chenal(object):
                 L = math.hypot(b[0] - a[0], b[1] - a[1])
                 self._aval[e] = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
                 s, prec = _cle(b), e
-            # Un nœud à trois arêtes coupe la marche : le reste prend le sud.
+            # Un nœud à trois arêtes coupe la marche : le reste prend le nord.
             for e in comp:
                 if e not in self._aval:
                     p, q = self.berges[e]
                     L = math.hypot(q[0] - p[0], q[1] - p[1])
-                    sg = -1.0 if q[1] > p[1] else 1.0
+                    sg = 1.0 if q[1] > p[1] else -1.0
                     self._aval[e] = (sg * (q[0] - p[0]) / L, sg * (q[1] - p[1]) / L)
         self._garde = garde
 
@@ -205,11 +205,11 @@ class Chenal(object):
         """Un ouvrage relie les terrasses ; toucher l'eau ne le rabaisse pas à zéro."""
         niveau = self.niveau_rive(x, y, False)
         cle = min(max(y, self._y_rive[0] + 1e-4), self._y_rive[1] - 1e-4)
-        gauche, droite = self._coupes_rive[cle]
-        if droite - gauche < 1e-6 or not gauche < x < droite:
+        ouest, est = self._coupes_rive[cle]
+        if est - ouest < 1e-6 or not ouest < x < est:
             return niveau
-        t = (x - gauche) / (droite - gauche)
-        return RIVE_DROITE_Y * (1.0 - t) + RIVE_GAUCHE_Y * t
+        t = (x - ouest) / (est - ouest)
+        return RIVE_GAUCHE_Y * (1.0 - t) + RIVE_DROITE_Y * t
 
     def berges_autour(self, x0, y0, x1, y1):
         """Les arêtes de berge qui peuvent traverser la maille."""

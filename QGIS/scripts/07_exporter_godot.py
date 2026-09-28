@@ -372,7 +372,7 @@ def main():
         print("    ⚠️  %s" % ", ".join(str(f) for f in orphelins[:12]))
 
     # 🌉 QUI PEUT ALLER OÙ, UNE FOIS LES PONTS EMPORTÉS. Le morceau 0 est le
-    # gros de la ville ; le faubourg de rive gauche en est détaché, et c'est
+    # gros de la ville ; le faubourg de rive droite en est détaché, et c'est
     # CE fait — pas une liste de fid écrite à la main — qui décide sur quels
     # champs les sinistrés peuvent être relogés. Redessiner un pont ou une
     # desserte déplace la règle toute seule.
@@ -1602,7 +1602,7 @@ def main():
             round(d.get("corridor_m", larg) + MARGE_COULOIR, 2), axes]
         # 🚶 LES PIÉTONS NE MARCHENT QUE SUR LE DESSIN : le milieu des dalles
         # de ce tronçon, puis ses passages. La hauteur est celle de la
-        # terrasse — la rive gauche est 2 m sous la droite.
+        # terrasse — la rive droite est 2 m sous la gauche.
         marches = _marches(lignes_pietons.get(d["fid"], ()), decoupe_chaussee)
         traversees = [t for ip in range(len(d["parts"]))
                       for axe_ in morceaux_voirie[d["fid"]][ip]
@@ -1689,8 +1689,8 @@ def main():
     # 🔧 CE QUE LA RÉPARATION TIENT PRÊT CÔTÉ VOIRIE. À zéro tablier neuf avec
     # un pont coupé, la décision « rebâtir » existerait sans rien à montrer.
     print("  ponts emportés : %d moignons de tablier visibles"
-          " · rives gauche %.0f m / droite +%.0f m"
-          % (n_pont_ruine, RIVE_GAUCHE_Y, RIVE_DROITE_Y))
+          " · rives droite %.0f m / gauche +%.0f m"
+          % (n_pont_ruine, RIVE_DROITE_Y, RIVE_GAUCHE_Y))
     print("  réparation : %d tronçons lavés, %d tablier(s) neuf(s) prêt(s)"
           % (sum(1 for g in repare_voirie.groupes
                  if (par_fid.get(g[0], {}).get("etat_crue") or "") != "coupe"),
@@ -2173,10 +2173,10 @@ def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):
 
     # 🌊 LE FAUBOURG SINISTRÉ (23b). Sans ce point de vue, la crue ne se juge
     # sur aucune capture : `ville` la montre à 1 200 m d'étendue, où une ruine
-    # fait deux pixels. Visé sur le barycentre des îlots de RIVE GAUCHE qui ont
+    # fait deux pixels. Visé sur le barycentre des îlots de RIVE DROITE qui ont
     # bu — donc il suit la table de `04e` au lieu d'une liste de fid écrite ici.
     noyes = [f for f, x in ilots.items()
-             if x.get("rive") == "gauche" and (x.get("hauteur_eau_max") or 0) > 0
+             if x.get("rive") == "droite" and (x.get("hauteur_eau_max") or 0) > 0
              and (x["hauteur"] or 0.0) > 0.0]
     fb = [0.0, 0.0]
     if noyes:
@@ -2216,7 +2216,7 @@ def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):
                  "libelle": "Le plus long franchissement, tablier et pile"},
         "place": place,
         "faubourg": {"cible": fb, "taille": 420.0,
-                     "libelle": "Le faubourg sinistre, rive gauche"},
+                     "libelle": "Le faubourg sinistre, rive droite"},
         "pont_casse": {"cible": cp, "taille": ctaille,
                        "libelle": "Le pont emporte par la crue"},
     }
