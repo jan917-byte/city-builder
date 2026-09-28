@@ -13,6 +13,7 @@ python QGIS/scripts/chaine.py --godot
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5). Le mode choisi, un récit de quatre pages passe à la flèche, puis les premiers pas s'ouvrent en pause ; DÉBUT retrouve l'accompagnement. Le contrôle dédié se lance avec `--script res://outils/essai_ouverture.gd -- --ouverture --captures` ; ses clics simulés se perdent si la vraie souris survole la fenêtre, d'où `--position 6000,6000`. `-- --outils` affiche l'argent d'essai.
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
 `-- --police <clé>` change la police de toute l'interface pour l'essai ; les fichiers et leur licence OFL sont dans `Godot/polices/`, le défaut est en tête de `scripts/interface.gd`.
+L'interface est en habillage brun et crème ; `-- --habillage verre` rend l'ancien verre crème et vert pour comparer, et se combine avec `--police` et `--interface`.
 `Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, les deux menus de lieu, plus chaque miniature seule à sa taille de rendu.
 ## Sauvegarder une partie
 

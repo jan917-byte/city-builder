@@ -267,6 +267,10 @@ func _ready() -> void:
 	interface.theme_demande.connect(_sur_theme)
 	interface.nord_demande.connect(pivot.remettre_nord)
 	interface.dessus_demande.connect(pivot.basculer_dessus)
+	interface.fiche_fermee.connect(func() -> void:
+		selection.sel_couche = ""
+		selection.sel_fid = -1
+		_rafraichir(true))
 	pivot.vue_changee.connect(interface.maj_camera)
 	pivot.vue_changee.connect(_sur_vue_changee)
 	interface.maj_camera(pivot.lacet, pivot.hauteur)

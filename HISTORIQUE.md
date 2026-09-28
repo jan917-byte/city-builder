@@ -581,3 +581,6 @@ Tout retourné au choix de l'auteur : amont au sud, faubourg en rive droite, nom
 **2026-09-28 — Piétons moins réguliers (demande de l'auteur : ils marchaient en défilé) :** chaque piéton est tiré à une place au hasard dans son créneau, avec son écart sur le trottoir et son allure (±20 %) ; un sur cinq marche à côté d'un autre.
 Quand une rue se vide, ceux qui restent sont tirés au sort au lieu d'être répartis à intervalles égaux. Même nombre partout (1 616 sur 4 096, axe 55 : 10 → 42) ; graine fixe, captures reproductibles.
 `--essai` sans erreur ; `apercu_pietons.gd --foule` filme la vraie foule, captures `pietons_*_avant_apres.png`.
+**2026-09-28 — L'interface passe en brun et crème (auteur, sur deux images de référence) :** trois allers-retours sur captures ; fiches en verre crème à liseré et arc au-dessus du titre, barre des compteurs cerclée de brun, rail d'icônes nues, temps sur un verre brun collé au bas.
+L'ombre d'un `StyleBox` grisait le verre (crème à 245 → 220) : elle passe sous le verre ; jauges vides foncées ; « Fermer » remplacé par une croix qui efface aussi la sélection (`fiche_fermee`, une ligne dans `maquette.gd`).
+`--habillage verre` garde l'ancien ; essai de la croix 6/6, ouverture à 0 échec, captures `wehrau_habillage_*` et `wehrau_ouverture_*` refaites.
