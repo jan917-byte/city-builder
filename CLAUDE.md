@@ -43,6 +43,8 @@ Dans le vault, quatre notes commandent les autres : `00 - Index.md` · `Méta/D�
 
 **Non délégué** : aucun **plugin IA dans QGIS** · **les arbitrages de design** — je pose les options et je recommande, l'auteur tranche, et une question se ferme dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`, jamais au détour d'une réponse · **le level design** : les listes de `fid` de `02`, les tables `TISSU`, le tracé des chemins. Un outil peut *proposer* ; la proposition se corrige à la main et ne s'écrase jamais toute seule.
 
+🔴 **IA disclosure Steam (décision 90)** : le code est exempté, pas ce que le joueur voit ou entend. Avant de produire un texte affiché, une image, une icône, un nom de lieu ou un rendu de shader destiné au jeu ou à la page Steam, je **le signale** (« ça, c'est flaggable ») et je propose une voie sans IA. S'il n'y en a pas, l'auteur coche la case.
+
 **Les garde-fous avant d'écrire dans `QGIS/data/source/`** — ils remplacent la relecture, ils ne sont pas optionnels : ① arbre git propre ; ② passe `--blanc` d'abord pour les trois scripts qui touchent la source (`00`, `00b`, `tracer_chemins`) — c'est du level design ; ③ les contrôles imprimés en français. Écrire un `.gpkg` ne demande rien : il est dérivé.
 
 ## 4. L'auteur n'est pas développeur — il ne lit pas le code
