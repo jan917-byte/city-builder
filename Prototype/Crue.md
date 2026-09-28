@@ -22,8 +22,8 @@
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis lancer la maquette, `D` d'abord, `F` et `N` ensuite. **Ce qu'il faut voir** : en une image, le passage de l'eau en bleu, le bâti touché en orange et les trois franchissements bloqués en rouge · de près, des murs à crête cassée et ouverts au ciel en rive gauche · la rive touchée 1 m plus bas et la rive intacte 1 m plus haut · deux moignons de tablier affaissés à chaque coupure.
-**Ce qui prouverait que c'est cassé** : une des trois couleurs absente du diagnostic · une ruine en rive droite · zéro ruine (`04e` n'est pas passé — l'export le dit en clair) · l'eau inclinée · un pont emporté réduit à un trou sans vestige, ou encore franchissable.
+Puis lancer la maquette, `D` d'abord, `F` et `N` ensuite. **Ce qu'il faut voir** : en une image, le passage de l'eau en bleu, le bâti touché en orange et les trois franchissements bloqués en rouge · de près, des murs à crête cassée et ouverts au ciel en rive droite · la rive touchée 1 m plus bas et la rive intacte 1 m plus haut · deux moignons de tablier affaissés à chaque coupure.
+**Ce qui prouverait que c'est cassé** : une des trois couleurs absente du diagnostic · une ruine en rive gauche · zéro ruine (`04e` n'est pas passé — l'export le dit en clair) · l'eau inclinée · un pont emporté réduit à un trou sans vestige, ou encore franchissable.
 
 Puis `X`, **la vue chantiers** : le diagnostic dit ce que l'eau **a pris** et ne bouge plus, celle-ci dit **où on en est**. **Ce qu'il faut voir** : au mois 0, tout le faubourg en rouge et le compteur « Encore cassé » qui le compte · on paie une reconstruction, l'îlot passe **en ambre** et entre dans la liste avec sa durée restante · le chantier fini, il passe **en vert** et le « Reste à payer » a baissé d'autant · une pose de panneaux engagée apparaît dans la même liste, c'est un chantier comme un autre.
 **Ce qui prouverait que c'est cassé** : un îlot rouge et vert à la fois (la ruine et le bâti neuf ne portent pas le même état) · un chantier payé qui reste rouge · une durée restante qui ne descend pas quand le temps avance · le diagnostic et les chantiers ouverts en même temps l'un sur l'autre · la liste vide alors que la caisse vient de payer.
@@ -32,9 +32,9 @@ Puis `X`, **la vue chantiers** : le diagnostic dit ce que l'eau **a pris** et ne
 
 L'essai du 2026-08-12 cherchait une **portée en mètres** et retombait sur la même carte de risque que l'altitude — *« la règle changeait, pas la carte »*. Celui-ci met la **hauteur d'eau en mètres** au centre : c'est elle, et rien d'autre, qui sépare une maison mouillée d'une maison perdue.
 
-Le sol monte quand on s'éloigne de l'eau. **La rive gauche est la plaine, la rive droite est la terrasse** — deux pentes et un décrochement. C'est le décrochement, et lui seul, qui tient la décision 23b : la ville regarde le faubourg se noyer. La plaine s'élargit vers l'aval, donc la pente de rive gauche se couche avec `position_fil_eau`.
+Le sol monte quand on s'éloigne de l'eau. **La rive droite est la plaine, la rive gauche est la terrasse** — deux pentes et un décrochement. C'est le décrochement, et lui seul, qui tient la décision 23b : la ville regarde le faubourg se noyer. La plaine s'élargit vers le sud, qui est l'amont depuis que l'Ilse coule vers le nord (89) : la pente de rive droite suit `position_fil_eau`.
 
-Le profil de calcul reste dans `04e`, sans réintroduire `altitude_relative`. Le rendu en donne une coupe lisible : **−1 m sur la rive gauche touchée, +1 m sur la terrasse droite intacte**, tandis que la nappe reste horizontale. Toute géométrie terrestre lit la même fonction ; ce n'est pas un déplacement posé îlot par îlot.
+Le profil de calcul reste dans `04e`, sans réintroduire `altitude_relative`. Le rendu en donne une coupe lisible : **−1 m sur la rive droite touchée, +1 m sur la terrasse gauche intacte**, tandis que la nappe reste horizontale. Toute géométrie terrestre lit la même fonction ; ce n'est pas un déplacement posé îlot par îlot.
 
 **Une seule règle, deux niveaux d'eau** : la crue d'ouverture est ce qui **est** arrivé, la crue annoncée est ce qui **peut** arriver — donc `alea`. Sur le même îlot le joueur lit les deux, et c'est ça le calcul que 23b réclame.
 
@@ -42,14 +42,14 @@ Le profil de calcul reste dans `04e`, sans réintroduire `altitude_relative`. Le
 
 Tout se réimprime à chaque passage de `04e` : rien de ce qui suit ne s'archive.
 
-| | rive gauche | rive droite |
+| | rive droite | rive gauche |
 |---|---|---|
 | bâtiments ruinés | 68 | **0** |
 | bâtiments sinistrés | 71 | 0 |
 | mouillés · intacts | 0 · 0 | 0 · 618 |
 | `alea` moyen (crue annoncée) | **0,81** | 0,01 |
 
-**Les 417 logements du faubourg sont sinistrés.** Le vault annonçait un aléa de 0,75 en rive gauche : la nouvelle règle tombe à 0,81.
+**Les 417 logements du faubourg sont sinistrés.** Le vault annonçait un aléa de 0,75 en rive droite : la nouvelle règle tombe à 0,81.
 
 La moitié du bâti reste debout : **71 bâtiments sinistrés entre 68 ruines**. Les îlots 61, 62 et 64 ne perdent aucun bâtiment, tandis que 68 et 69 sont entièrement ruinés : le faubourg garde des vestiges sans devenir une tache uniforme. Le tableau complet sort de `04e`.
 
@@ -73,7 +73,7 @@ Le brainstorm du 2026-08-10 les pose ; personne ne les a chiffrées. **C'est du 
 
 ## 5. Les deux réponses de l'auteur
 
-- ✅ **La rive droite reste hors d'atteinte.** La terrasse monte avec la crue : le front de quai regarde le faubourg se noyer sans boire lui-même. Le vault annonce encore 0,43 en face ; le modèle donne 0,01.
+- ✅ **La rive gauche reste hors d'atteinte.** La terrasse monte avec la crue : le front de quai regarde le faubourg se noyer sans boire lui-même. Le vault annonce encore 0,43 en face ; le modèle donne 0,01.
 - ✅ **Les trois franchissements 145, 168 et 169 sont coupés.** Le faubourg n'a plus d'accès routier. Cela contredit volontairement 30c : « rendre à l'eau » peut désormais économiser trois ponts au lieu d'un.
 
 ## 6. La dette de ce chantier

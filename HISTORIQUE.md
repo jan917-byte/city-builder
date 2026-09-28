@@ -575,3 +575,6 @@ Banc 11,30 contre 11,27 ms/image ; essais caméra, relogement, trafic, progressi
 **2026-09-26 — Étages lisibles (demande de l'auteur) :** les fenêtres se comptent depuis le pied de chaque bâtiment, plus depuis le Y monde que les rives décalent de ±1 m ; un bâtiment a un nombre entier d'étages.
 Rive gauche : dernière rangée tranchée sous l'égout ; rive droite : portes coupées ; îlot 49 à 3,5·4,5·5,5 niveaux → 3 à 6 entiers (94 → 93 logements). `CUSTOM0.w` porte le pied ; de loin, une bande par étage.
 Essais `--essai` tout ✅ ; captures `wehrau_etages_1…7` avant/après par `apercu_etages.gd`.
+**2026-09-28 — L'Ilse change de couleur et de sens (demande de l'auteur, décision 89) :** brune de la crue au mois 0, normale au mois 4 (`eau_limon`, uniforme globale), limpide prête sans déclencheur (question 35) ; elle coule désormais du sud au nord.
+Tout retourné au choix de l'auteur : amont au sud, faubourg en rive droite, noms de lieux échangés ; `04`/`04e`/export comparés avant/après : 151 îlots, 713 bâtiments, 177 rues, 825 parcelles identiques au centième, berges au même numéro.
+`--essai` sans erreur ; ouverture ×2, progression, relogement à 0 échec (fenêtre hors souris) ; travaux, sauvegarde et `verifier_berges` : échecs déjà présents avant ; outil `apercu_riviere.gd`, quatre captures.
