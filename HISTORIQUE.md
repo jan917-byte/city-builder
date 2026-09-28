@@ -578,3 +578,6 @@ Essais `--essai` tout ✅ ; captures `wehrau_etages_1…7` avant/après par `ape
 **2026-09-28 — L'Ilse change de couleur et de sens (demande de l'auteur, décision 89) :** brune de la crue au mois 0, normale au mois 4 (`eau_limon`, uniforme globale), limpide prête sans déclencheur (question 35) ; elle coule désormais du sud au nord.
 Tout retourné au choix de l'auteur : amont au sud, faubourg en rive droite, noms de lieux échangés ; `04`/`04e`/export comparés avant/après : 151 îlots, 713 bâtiments, 177 rues, 825 parcelles identiques au centième, berges au même numéro.
 `--essai` sans erreur ; ouverture ×2, progression, relogement à 0 échec (fenêtre hors souris) ; travaux, sauvegarde et `verifier_berges` : échecs déjà présents avant ; outil `apercu_riviere.gd`, quatre captures.
+**2026-09-28 — Piétons moins réguliers (demande de l'auteur : ils marchaient en défilé) :** chaque piéton est tiré à une place au hasard dans son créneau, avec son écart sur le trottoir et son allure (±20 %) ; un sur cinq marche à côté d'un autre.
+Quand une rue se vide, ceux qui restent sont tirés au sort au lieu d'être répartis à intervalles égaux. Même nombre partout (1 616 sur 4 096, axe 55 : 10 → 42) ; graine fixe, captures reproductibles.
+`--essai` sans erreur ; `apercu_pietons.gd --foule` filme la vraie foule, captures `pietons_*_avant_apres.png`.

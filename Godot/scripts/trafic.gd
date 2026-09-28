@@ -423,28 +423,65 @@ static func _bord_velo(route: Dictionary) -> float:
 
 
 ## Les créneaux d'un morceau d'axe, DANS LES DEUX SENS : rang pair vers l'aval,
-## rang impair vers l'amont, chacun tenant sa droite. `ecart` décale un
-## marcheur sur trois en travers du trottoir — trois files bien droites se
-## liraient comme un défilé.
+## rang impair vers l'amont, chacun tenant sa droite.
 func _semer(fam: Famille, chemin: Array, decal: float, y: float,
 		reserve: float, vitesse: float, ecart: float) -> void:
 	var L := float(chemin[1])
 	var creneaux := int(floor(L / reserve))
 	if creneaux < 1:
 		return
+	var a := _allures(creneaux, L, ecart, hash([chemin[0][0], L]))
 	for k in creneaux * 2:
-		@warning_ignore("integer_division")
-		var r: int = k / 2
-		# Les deux sens sont décalés d'un demi-créneau : sinon ils marchent par
-		# paires, épaule contre épaule, tout le long de la rue.
-		var s := fmod((float(r) + 0.35 + 0.5 * float(k % 2)) * L / creneaux, L)
-		var seg := _segment(chemin[0], chemin[2], L, s,
-			decal + ecart * (float(r % 3) - 1.0), -1.0 if k % 2 else 1.0, y)
+		var seg := _segment(chemin[0], chemin[2], L, a[k][0],
+			decal + a[k][1], -1.0 if k % 2 else 1.0, y)
 		fam.t.append(seg[0])
-		fam.rang.append(r)
+		fam.rang.append(a[k][3])
 		fam.creneaux.append(creneaux)
 		fam.longueur.append(L)
-		fam.donnees.append(Color(float(seg[1]), vitesse, float(seg[2]), 1.0))
+		fam.donnees.append(Color(float(seg[1]), vitesse * a[k][2],
+			float(seg[2]), 1.0))
+
+
+## 🚶 CRÉNEAUX RÉGULIERS + MÊME VITESSE = UN DÉFILÉ (retour de l'auteur,
+## 2026-09-28). Par créneau, dans chaque sens : [place tirée dans le créneau,
+## écart en travers, allure ±20 %, rang de sortie]. Un marcheur sur cinq double
+## le précédent, même allure. Le rang de sortie est tiré au sort, le compagnon
+## juste après son guide : une rue calme garde des couples, pas des moitiés.
+## Graine fixe : les captures se refont à l'identique.
+static func _allures(n: int, L: float, ecart: float, graine: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = graine
+	var out := []
+	out.resize(n * 2)
+	for sens in 2:
+		var guides := []                # [guide, compagnon ou -1]
+		for r in n:
+			var k := r * 2 + sens
+			var prec: Array = out[k - 2] if r > 0 else []
+			if ecart > 0.0 and r > 0 and int(guides[-1][1]) < 0 \
+					and rng.randf() < 0.2:
+				var cote := 1.0 if float(prec[1]) < 0.0 else -1.0
+				out[k] = [fmod(float(prec[0]) + rng.randf_range(-0.3, 0.3) + L, L),
+					float(prec[1]) + cote * 0.55, float(prec[2]), 0]
+				guides[-1][1] = k
+				continue
+			out[k] = [fmod((float(r) + 0.5 + rng.randf_range(-0.45, 0.45))
+				* L / n, L), rng.randf_range(-ecart, ecart),
+				clampf(rng.randfn(1.0, 0.1), 0.8, 1.2), 0]
+			guides.append([k, -1])
+		# Fisher-Yates sur les guides, le compagnon suit.
+		for i in range(guides.size() - 1, 0, -1):
+			var j := rng.randi_range(0, i)
+			var tmp = guides[i]
+			guides[i] = guides[j]
+			guides[j] = tmp
+		var rang := 0
+		for g in guides:
+			for k in g:
+				if int(k) >= 0:
+					out[int(k)][3] = rang
+					rang += 1
+	return out
 
 
 ## Le nœud, la teinte et la donnée d'animation : tout ce qui ne changera plus.
@@ -491,10 +528,9 @@ func _maj_famille(fam: Famille, mois: float, force: bool, chasse: float,
 			var n := fam.creneaux[k]
 			var vus := 0 if esp <= 0.0 else \
 				clampi(int(floor(fam.longueur[k] / esp)), 0, n)
-			# Le créneau retenu est étalé sur TOUTE la longueur, jamais pris
-			# dans les premiers : une rue calme ne doit pas grouper ses
-			# marcheurs à un bout.
-			var montre := (fam.rang[k] * vus) % n < vus
+			# Le rang de sortie est tiré au sort (`_allures`) : une rue calme
+			# ne groupe pas ses marcheurs à un bout, ni à intervalles égaux.
+			var montre := fam.rang[k] < vus
 			if montre == (fam.vus[k] == 1):
 				continue
 			fam.vus[k] = 1 if montre else 0
@@ -701,16 +737,13 @@ func _doux_droit(mm: MultiMesh, axe: PackedVector2Array,
 	var creneaux := 0 if int(f * 32.0) == 0 else \
 		int(floor(longueur / lerpf(esp_rare, esp_dense, f)))
 	mm.instance_count = creneaux * 2
+	var a := _allures(creneaux, longueur, ecart, creneaux)
 	for k in creneaux * 2:
-		@warning_ignore("integer_division")
-		var r: int = k / 2
-		var seg := _segment(axe, cum, longueur,
-			fmod((float(r) + 0.35 + 0.5 * float(k % 2)) * longueur / creneaux,
-			longueur), decal + ecart * (float(r % 3) - 1.0),
+		var seg := _segment(axe, cum, longueur, a[k][0], decal + a[k][1],
 			-1.0 if k % 2 else 1.0, y)
 		mm.set_instance_transform(k, seg[0])
 		mm.set_instance_color(k, HABITS[(k * 3 + 1) % HABITS.size()])
-		mm.set_instance_custom_data(k, Color(float(seg[1]), vitesse,
+		mm.set_instance_custom_data(k, Color(float(seg[1]), vitesse * a[k][2],
 			float(seg[2]), 1.0))
 	return creneaux * 2
 

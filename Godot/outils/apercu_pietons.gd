@@ -1,7 +1,8 @@
 extends SceneTree
 ## Où marchent les piétons : quatre cadrages rapprochés, TOUS les créneaux
-## allumés — on juge le tracé, pas la foule.
-## Godot --path Godot --script res://outils/apercu_pietons.gd [-- --suffixe=avant]
+## allumés — on juge le tracé, pas la foule. `--foule` garde la vraie foule :
+## on juge si elle marche en défilé.
+## Godot --path Godot --script res://outils/apercu_pietons.gd [-- --suffixe=avant] [--foule]
 
 const VUES := [
 	["1 · Carrefour de quatre boulevards", Vector2(75.75, -304.0)],
@@ -17,6 +18,7 @@ func _initialize() -> void:
 
 func filmer() -> void:
 	var suffixe := ""
+	var foule := OS.get_cmdline_user_args().has("--foule")
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--suffixe="):
 			suffixe = "_" + a.get_slice("=", 1)
@@ -48,7 +50,7 @@ func filmer() -> void:
 		await process_frame
 		await process_frame
 		# Tous les créneaux, quelle que soit la foule : c'est le TRACÉ qu'on juge.
-		for fam in [t._pieds]:
+		for fam in ([] if foule else [t._pieds]):
 			for i in fam.t.size():
 				fam.mm.set_instance_transform(i, fam.t[i])
 		legende.text = VUES[k][0]
