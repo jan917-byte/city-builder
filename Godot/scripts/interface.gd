@@ -3655,7 +3655,7 @@ func _degat_en_clair(couche: String, o: Dictionary) -> String:
 			int(o.get("batiments_ruines", 0)),
 			int(o.get("logements_sinistres", 0)), apres]
 	if str(o.get("etat_crue", "")) == "coupe":
-		return "Le tablier est parti ; la rive gauche n'a plus d'accès routier."
+		return "Le tablier est parti ; la rive droite n'a plus d'accès routier."
 	return "La rue a gardé %s m de limon." % _nb(
 		float(o.get("hauteur_eau", 0.0)), 1)
 

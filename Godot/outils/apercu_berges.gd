@@ -38,7 +38,7 @@ func capturer() -> void:
 			["1 · Quai du centre", "centre", Vector2(75.12, -9.75), 105.0, 200.0, 38.0],
 			["2 · Raccord du pont", "raccord", Vector2(238.53, 36.75), 100.0, 200.0, 38.0],
 			["3 · Rive des champs", "champs", Vector2(378.9, 376.72), 150.0, 200.0, 24.0],
-			["4 · Rive opposée", "gauche", Vector2(200.0, -72.0), 110.0, 20.0, 32.0]]:
+			["4 · Rive opposée", "droite", Vector2(200.0, -72.0), 110.0, 20.0, 32.0]]:
 			jeu.pivot.viser(vue[2], vue[3])
 			jeu.pivot.position.y = 0.0
 			jeu.pivot.caler(vue[4], vue[5])

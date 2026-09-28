@@ -166,7 +166,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tfloat patine = bruit(pos_monde.xz * 0.32 + vec2(pos_monde.y * 0.17));\n" \
 		+ "\tbase *= mix(0.94, 1.04, patine);\n" \
 		+ "\t// `plafond` n'est connu que des bâtiments densifiables : ailleurs il\n" \
-		+ "\t// vaut 0, et la corniche barrait la rive gauche à 0,8 m du sol.\n" \
+		+ "\t// vaut 0, et la corniche barrait la rive droite à 0,8 m du sol.\n" \
 		+ "\tif (abs(normale_monde.y) < 0.30 && UV.y > 1.05 && plafond > 0.5) {\n" \
 		+ "\t\tfloat corniche = 1.0 - smoothstep(0.0, 0.20, abs(pos_monde.y - plafond + 0.18));\n" \
 		+ "\t\tbase *= 1.0 - corniche * 0.16;\n" \
@@ -623,10 +623,15 @@ static func terrain() -> ShaderMaterial:
 	return m
 
 
-static func eau(teinte: Color) -> ShaderMaterial:
+## 🟤 Les couleurs de la crue et de l'eau normale ; le passage de l'une à
+## l'autre est `eau_limon`, global, que `maquette.gd` pose au fil des mois.
+static func eau(palette: Dictionary) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/eau.gdshader")
-	m.set_shader_parameter("teinte", teinte)
+	for etat in ["crue", "trouble"]:
+		for part in ["bord", "milieu"]:
+			m.set_shader_parameter("%s_%s" % [etat, part],
+				Color(palette["_eau_%s_%s" % [etat, part]] as String))
 	return m
 
 

@@ -5,7 +5,7 @@ const Materiaux := preload("res://scripts/materiaux.gd")
 var mat_nuages: ShaderMaterial
 
 ## `mat_rue` : le matériau des rues de la ville, pour que la sortie les continue sans changer de teinte.
-func batir(d: Dictionary, teinte_eau: Color, mat_rue: Material) -> void:
+func batir(d: Dictionary, palette: Dictionary, mat_rue: Material) -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://shaders/paysage.gdshader")
 	mat.set_shader_parameter("demi_emprise", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
@@ -15,7 +15,7 @@ func batir(d: Dictionary, teinte_eau: Color, mat_rue: Material) -> void:
 		_maille("RoutesSorties", d.sorties.sol, mat_rue)
 		if d.sorties.has("marquage"):
 			_maille("MarquageSorties", d.sorties.marquage, mat_rue)
-	var eau := Materiaux.eau(teinte_eau)
+	var eau := Materiaux.eau(palette)
 	eau.set_shader_parameter("brume_exterieure", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	_maille("IlseExterieure", d.eau, eau)
 	var feuillage := mat.duplicate() as ShaderMaterial

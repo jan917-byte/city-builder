@@ -102,7 +102,7 @@ func _batir_pages() -> void:
 		},
 		{
 			"titre": "La crue",
-			"texte": "L'Ilse est sortie de son lit. Sur la rive gauche, l'eau"
+			"texte": "L'Ilse est sortie de son lit. Sur la rive droite, l'eau"
 				+ " est montée dans le faubourg et y a laissé la boue."
 				+ "\n\n%d îlots ont perdu des logements." % touches,
 			"repere": "faubourg", "lacet": 22.0, "hauteur": 38.0,

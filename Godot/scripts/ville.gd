@@ -31,6 +31,10 @@ const DOTATION_KE_MOIS := 30.0             # 360 k€/an votés pour la transiti
 # `part_trafic`. 🎚️ Level design, à juger devant l'image.
 const PART_TRAFIC_VERGER := 0.20
 
+# 🟤 L'ILSE SE DÉCANTE SEULE (89, auteur) : chargée de la crue au mois 0,
+# redevenue normale après ce nombre de mois. 🎚️ Level design.
+const EAU_DECANTATION_MOIS := 4.0
+
 var ilots := {}            # fid:int -> {champ: float|String}
 var routes := {}
 var berges := {}           # 8 objets : une par rive et par bief (07)
@@ -81,6 +85,11 @@ var livraison_immediate := false
 ## chantier ferait mentir la fiche.
 func _delai(mois: float) -> float:
 	return 0.0 if livraison_immediate else mois
+
+
+## 🟤 Ce que l'Ilse garde de la crue : 1 au mois 0, 0 une fois décantée.
+static func limon_eau(t: float) -> float:
+	return clampf(1.0 - t / EAU_DECANTATION_MOIS, 0.0, 1.0)
 
 # 🔄 Un `_base_avant` figeait en base la part posée pour permettre de réviser
 # une cible en cours de chantier. Retiré avec la caisse : réécrire la base
@@ -675,7 +684,7 @@ func route_praticable(fid: int, t: float) -> bool:
 		or reparation_finie("r", fid, t)
 
 
-## 🌳 LE VERGER — le quartier de rive gauche que le limon a couvert (nommé par
+## 🌳 LE VERGER — le quartier de rive droite que le limon a couvert (nommé par
 ## l'auteur le 2026-09-17). `04e` mesure la boue SUR LA CHAUSSÉE et l'exporte
 ## en `part_boue` ; ici on ne fait qu'en lire les deux conséquences.
 func au_verger(fid: int) -> bool:
@@ -1086,7 +1095,7 @@ func solde_dense_ke(t: float) -> float:
 # ============================ LE RELOGEMENT (auteur, 2026-09-17) ============
 # 🏕️ LA PREMIÈRE DÉCISION DE LA PARTIE : 260 personnes sont dehors, et le seul
 # terrain qu'elles peuvent atteindre est celui que la rivière reprend en
-# premier. Trois champs de rive gauche, aucun assez grand à lui seul.
+# premier. Trois champs de rive droite, aucun assez grand à lui seul.
 #
 # 🌉 CE QUI DÉCIDE OÙ, et ce n'est pas une liste de fid : `morceau` est le
 # morceau de réseau que `07` a mesuré une fois les ponts emportés. Un champ

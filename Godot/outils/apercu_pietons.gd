@@ -6,7 +6,7 @@ extends SceneTree
 const VUES := [
 	["1 · Carrefour de quatre boulevards", Vector2(75.75, -304.0)],
 	["2 · Trois boulevards et une rue", Vector2(-275.5, -317.5)],
-	["3 · Boulevard et rue, rive droite", Vector2(243.25, 170.5)],
+	["3 · Boulevard et rue, rive gauche", Vector2(243.25, 170.5)],
 	["4 · Ruelle sans trottoir", 40],
 ]
 

@@ -42,10 +42,10 @@ func capturer() -> void:
 	jeu._rafraichir(true)
 	# [nom, légende, îlot, lacet, hauteur, taille]
 	var vues := [
-		["1_rive_gauche", "1 · Rive gauche · îlot 62", 62, 30.0, 14.0, 60.0],
-		["2_rive_gauche", "2 · Rive gauche · îlot 66", 66, 210.0, 14.0, 60.0],
-		["3_rive_droite", "3 · Rive droite · cœur ancien, îlot 15", 15, 120.0, 14.0, 60.0],
-		["4_rive_droite", "4 · Rive droite · îlot compact 49", 49, 30.0, 14.0, 60.0],
+		["1_rive_droite", "1 · Rive droite · îlot 62", 62, 30.0, 14.0, 60.0],
+		["2_rive_droite", "2 · Rive droite · îlot 66", 66, 210.0, 14.0, 60.0],
+		["3_rive_gauche", "3 · Rive gauche · cœur ancien, îlot 15", 15, 120.0, 14.0, 60.0],
+		["4_rive_gauche", "4 · Rive gauche · îlot compact 49", 49, 30.0, 14.0, 60.0],
 		["5_distance", "5 · Vue moyenne · rive gauche et droite", 62, 30.0, 30.0, 220.0],
 		["6_loin", "6 · De loin · cœur ancien", 22, 30.0, 32.0, 450.0],
 		["7_plus_loin", "7 · Plus loin · cœur ancien", 22, 30.0, 32.0, 700.0],

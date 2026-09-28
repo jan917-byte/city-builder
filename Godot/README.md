@@ -10,7 +10,7 @@ Relever la ville après la crue et équiper ses toits se disputent la même cais
 python QGIS/scripts/chaine.py --godot
 ```
 
-Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5). Le mode choisi, un récit de quatre pages passe à la flèche, puis les premiers pas s'ouvrent en pause ; DÉBUT retrouve l'accompagnement. Le contrôle dédié se lance avec `--script res://outils/essai_ouverture.gd -- --ouverture --captures`. `-- --outils` affiche l'argent d'essai.
+Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5). Le mode choisi, un récit de quatre pages passe à la flèche, puis les premiers pas s'ouvrent en pause ; DÉBUT retrouve l'accompagnement. Le contrôle dédié se lance avec `--script res://outils/essai_ouverture.gd -- --ouverture --captures` ; ses clics simulés se perdent si la vraie souris survole la fenêtre, d'où `--position 6000,6000`. `-- --outils` affiche l'argent d'essai.
 `Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
 `-- --police <clé>` change la police de toute l'interface pour l'essai ; les fichiers et leur licence OFL sont dans `Godot/polices/`, le défaut est en tête de `scripts/interface.gd`.
 `Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, les deux menus de lieu, plus chaque miniature seule à sa taille de rendu.
@@ -35,7 +35,7 @@ Les noms affichés viennent de `Godot/data/lieux.json`, table éditoriale à mod
 | **G** | le talus des champs, au bord de l'eau |
 | **O** | le plus long franchissement, de près |
 | **M** | la place-parking et ses places peintes — à regarder de haut |
-| **F** | le faubourg sinistré, rive gauche |
+| **F** | le faubourg sinistré, rive droite |
 | **N** | le pont que la crue a emporté |
 | **Q / E** | quart de tour, recalé sur les quatre vues cardinales |
 | **← → ↑ ↓** | lacet par 15°, hauteur du regard par 8° |
@@ -108,7 +108,7 @@ godot --headless --path Godot --script res://outils/sonde_api.gd
 
 La sonde interroge `ClassDB` sur chaque méthode utilisée et construit un vrai `ArrayMesh`. Elle sort en code ≠ 0 au premier manque — **à lancer avant de chercher ailleurs** quand une version de Godot change. Chaque famille imprime son nombre de sommets et son étendue au démarrage : un maillage vide se voit dans la console, il ne se devine pas à l'écran.
 
-- `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`, `Paysage`). `--script res://outils/apercu_vallee.gd` produit les vues de contrôle de la vallée ; `--script res://outils/apercu_campagne.gd` celles du raccord SVG, des champs et des routes de sortie. `--script res://outils/apercu_graphisme.gd` refait les cadrages fixes de la passe graphique (`-- --avant` nomme la série de référence, `-- --seule=<nom>` n'en rend qu'une).
+- `-- --solo=Terrain` n'affiche qu'une famille (`Terrain`, `Eau`, `Ilots`, `Routes`, `Arbres`, `Alignements`, `Paysage`). `--script res://outils/apercu_vallee.gd` produit les vues de contrôle de la vallée ; `--script res://outils/apercu_campagne.gd` celles du raccord SVG, des champs et des routes de sortie. `--script res://outils/apercu_riviere.gd` rend l'Ilse au même cadrage, de la crue à l'eau limpide. `--script res://outils/apercu_graphisme.gd` refait les cadrages fixes de la passe graphique (`-- --avant` nomme la série de référence, `-- --seule=<nom>` n'en rend qu'une).
 - `-- --essai` joue la partie de contrôle et quitte. ⚠️ **pas** avec `--headless` : le pilote de rendu y est factice, aucune image n'en sort.
 - `-- --banc` mesure et quitte : quatre cadrages verrou d'écran levé, puis la pulsation du trafic et le prix d'une image, part par part. 🔴 **À lancer AVANT d'optimiser quoi que ce soit** — le coupable n'est presque jamais celui qu'on croit, et le banc dit s'il est dans le script ou dans le rendu. Les chiffres vivent dans `Prototype/`, pas ici.
 

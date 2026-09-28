@@ -873,7 +873,7 @@ func _chemin_acces(depart: int, cibles: Dictionary, bloquees: Dictionary) -> Dic
 	return {"trouve": false, "rues": []}
 
 
-## Les couloirs rendus s'arrêtent parfois au bord du carrefour (4,25 m au pont aval).
+## Les couloirs rendus s'arrêtent parfois au bord du carrefour (4,25 m au pont amont).
 ## Ne raccorder que les bouts isolés, dans la demi-largeur de la chaussée exportée.
 func _raccorder_bouts_ponts(couloirs: Dictionary) -> void:
 	var points := {}

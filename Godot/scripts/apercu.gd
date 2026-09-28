@@ -186,7 +186,7 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 
 	_eau = MeshInstance3D.new()
 	_eau.name = "Eau"
-	_eau.material_override = Materiaux.eau(_teinte("riviere"))
+	_eau.material_override = Materiaux.eau(_palette)
 	add_child(_eau)
 
 	# La miniature ne joue ni le thème, ni le calque, ni la sélection : elle

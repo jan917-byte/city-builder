@@ -787,7 +787,7 @@ ESSAI — la ville, sans décision")
 
 	# 🌊 LE FAUBOURG SINISTRÉ (23b). Ce qu'il faut y voir : des murs SANS TOIT
 	# le long de l'eau, le limon qui s'arrête quelque part au lieu de couvrir
-	# toute la rive gauche, et la ville d'en face intacte. À 40° : de plus haut
+	# toute la rive droite, et la ville d'en face intacte. À 40° : de plus haut
 	# on perd les toits manquants, de plus bas on perd l'emprise du limon.
 	_repere("faubourg")
 	pivot.caler(120.0, 40.0)
@@ -1527,9 +1527,9 @@ func _construire() -> void:
 		paysage = Paysage.new()
 		paysage.name = "Paysage"
 		monde.add_child(paysage)
-		paysage.batir(donnees["paysage"], Donnees.teinte(donnees, "riviere"), mat_objet)
+		paysage.batir(donnees["paysage"], donnees["palette"], mat_objet)
 	_fusionne("Eau", Constructeur.maillage(donnees["eau"]),
-		Materiaux.eau(Donnees.teinte(donnees, "riviere")))
+		Materiaux.eau(donnees["palette"]))
 
 	# Un nœud par objet, donc une ville cliquable : 5 draw calls deviennent
 	# ~250, invisible sur 40 000 triangles.
@@ -1984,6 +1984,7 @@ func _rafraichir(force: bool) -> void:
 		interface.maj(ville.indicateurs(mois), mois, vitesse)
 		return
 	_dernier_peint = mois
+	RenderingServer.global_shader_parameter_set("eau_limon", Ville.limon_eau(mois))
 	_montrer_reparations()
 	_montrer_arbres()
 	_montrer_rives()

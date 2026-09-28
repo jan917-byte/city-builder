@@ -53,7 +53,7 @@ func capturer() -> void:
 			["i", 31], {}],
 		["06_coeur_facades", "Cœur ancien · façades de près", 120.0, 24.0, 110.0,
 			["i", 15], {}],
-		["07_barre", "Résidence de l'Aval · barre de 1970", 210.0, 30.0, 160.0,
+		["07_barre", "Résidence de l'Amont · barre de 1970", 210.0, 30.0, 160.0,
 			["i", 32], {}],
 		["08_pavillons", "Clos des Noyers · pavillons et jardins", 30.0, 40.0, 150.0,
 			["i", 11], {}],

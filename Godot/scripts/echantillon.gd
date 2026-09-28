@@ -151,7 +151,7 @@ static func berge(d: Dictionary, voie_m: float, pal: Dictionary,
 	# le quai lui-même, sinon la pente monterait sur la chaussée.
 	var rive := maxf(float(d.get("rive_m", BERGE_BANDE_M)), 1.0)
 	var bande := minf(BERGE_BANDE_M, rive)
-	var niveau := 1.0 if d.get("rive", "droite") == "droite" else -1.0
+	var niveau := 1.0 if d.get("rive", "gauche") == "gauche" else -1.0
 	var y_sol := Y_TROTTOIR + 0.02 + niveau
 	var y_trottoir := Y_TROTTOIR + niveau
 	var y_quai := Y_QUAI + niveau
