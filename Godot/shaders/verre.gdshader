@@ -1,5 +1,5 @@
 shader_type canvas_item;
-// 🔷 LE VERRE DES PANNEAUX : la ville floutée sous une teinte bleue.
+// 🔷 LE VERRE DES PANNEAUX : la ville floutée sous une teinte (crème, `interface.VERRE_TEINTE`).
 // Le flou vient des mipmaps de l'écran — la seule façon d'en avoir un en 2D
 // sans passe de rendu en plus. `taille` est réglée par `interface._vitrer` à
 // chaque changement de rectangle : un ColorRect n'a pas de UV en pixels.

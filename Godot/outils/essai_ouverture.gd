@@ -34,6 +34,13 @@ func cliquer(b: Button) -> void:
 	await process_frame
 	await process_frame
 	var pos := b.get_global_rect().get_center()
+	# ⚠️ Le pointeur d'abord : une vraie souris posée sur la fenêtre fait sortir
+	# le survol du bouton, et le clic simulé se perd (vu le 2026-09-28).
+	var survol := InputEventMouseMotion.new()
+	survol.position = pos
+	survol.global_position = pos
+	root.push_input(survol, true)
+	await process_frame
 	for presse in [true, false]:
 		var e := InputEventMouseButton.new()
 		e.position = pos

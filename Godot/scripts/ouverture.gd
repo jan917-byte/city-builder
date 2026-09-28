@@ -50,24 +50,25 @@ func batir(maquette) -> void:
 	offset_top = ui.HAUT
 	custom_minimum_size.x = ui.DETAIL_LARGEUR
 	minimum_size_changed.connect(func() -> void: size.y = get_combined_minimum_size().y)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	add_child(v)
+	_corps = VBoxContainer.new()
+	_corps.add_theme_constant_override("separation", 10)
+	add_child(_corps)
+	# 🔄 Le « − » sur la ligne du titre (auteur, 2026-09-28) : seul en tête, il
+	# creusait une ligne vide au-dessus.
 	var entete := HBoxContainer.new()
-	# Sans titre de chapitre (auteur, 2026-09-18) : le titre de l'étape suffit.
-	entete.alignment = BoxContainer.ALIGNMENT_END
-	v.add_child(entete)
+	_corps.add_child(entete)
+	_titre = ui._label("", 22, ui.TEXTE)
+	_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_titre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entete.add_child(_titre)
 	var fermer := Button.new()
 	fermer.text = "−"
-	fermer.tooltip_text = "Réduire les premiers pas. Le bouton DÉBUT les rouvre."
+	fermer.tooltip_text = "Réduire les premiers pas. Le bouton Début les rouvre."
+	fermer.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	fermer.pressed.connect(func() -> void:
 		ouvert = false
 		actualiser(true))
 	entete.add_child(fermer)
-	_corps = VBoxContainer.new()
-	_corps.add_theme_constant_override("separation", 10)
-	v.add_child(_corps)
-	_titre = _paragraphe("", 22)
 	_texte = _paragraphe("", 14)
 	_legende_trafic(ui)
 	_caisse = _paragraphe("", 13)

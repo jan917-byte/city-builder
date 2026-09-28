@@ -33,24 +33,33 @@ func batir(interface) -> void:
 	ui.add_child(compteur)
 	var lignes := VBoxContainer.new()
 	compteur.add_child(lignes)
+	# 🔄 Le journal est une icône sur la ligne du compteur (auteur, 2026-09-28) :
+	# « Dernières décisions » prenait une ligne pleine largeur.
+	var tete := HBoxContainer.new()
+	lignes.add_child(tete)
 	besoin = ui._label("", 16, ui.TEXTE)
-	lignes.add_child(besoin)
-	preparation = ui._label("", 12, ui.GRIS)
-	lignes.add_child(preparation)
+	besoin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	besoin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tete.add_child(besoin)
 	var bouton := Button.new()
-	bouton.text = "Dernières décisions"
+	bouton.icon = ui._icone("journal", 18)
+	bouton.tooltip_text = "Dernières décisions"
+	bouton.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bouton.pressed.connect(func() -> void:
 		_historique_ouvert = not _historique_ouvert
 		actualiser_affichage())
-	lignes.add_child(bouton)
+	tete.add_child(bouton)
+	preparation = ui._label("", 12, ui.GRIS)
+	lignes.add_child(preparation)
 	avis = PanelContainer.new()
 	avis.theme = ui._theme_ui
 	ui._poser_boite(avis)
+	# Largeur nulle, croissance des deux côtés : le bandeau épouse son texte,
+	# centré (`_ajuster_largeur`). À 410 px fixes, un message court laissait un vide.
 	avis.anchor_left = 0.5
 	avis.anchor_right = 0.5
-	avis.offset_left = -205
-	avis.offset_right = 205
-	avis.offset_top = 20
+	avis.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	avis.offset_top = 66   # sous la barre des compteurs (interface._barre_compteurs)
 	ui.add_child(avis)
 	var contenu := VBoxContainer.new()
 	avis.add_child(contenu)
@@ -89,12 +98,30 @@ func actualiser_affichage() -> void:
 		return
 	avis.visible = compteur.visible and (_historique_ouvert or Time.get_ticks_msec() < _expiration)
 	historique.visible = _historique_ouvert
-	texte.text = "Dernières décisions · cette partie" if _historique_ouvert else "\n\n".join(_recent)
+	# Une ligne par message : la ligne blanche entre deux creusait le bandeau.
+	var nouveau := "Dernières décisions · cette partie" if _historique_ouvert else "\n".join(_recent)
+	if nouveau != texte.text:
+		texte.text = nouveau
+		_ajuster_largeur()
 	if _historique_ouvert:
 		var inverse := journal.duplicate()
 		inverse.reverse()
 		historique.text = "\n\n".join(inverse) if not inverse.is_empty() else "Aucune décision engagée."
 	avis.modulate.a = 1.0 if _historique_ouvert else clampf(float(_expiration - Time.get_ticks_msec()) / 700.0, 0.0, 1.0)
+
+
+## ⚠️ Un Label qui passe à la ligne n'a pas de largeur propre : sans celle-ci,
+## il tomberait à un caractère. On mesure la ligne la plus longue, plafonnée.
+const LARGEUR_MAX := 380.0
+
+
+func _ajuster_largeur() -> void:
+	var police := texte.get_theme_font("font")
+	var taille := texte.get_theme_font_size("font_size")
+	var large := 0.0
+	for ligne in texte.text.split("\n"):
+		large = maxf(large, police.get_string_size(ligne, HORIZONTAL_ALIGNMENT_LEFT, -1, taille).x)
+	texte.custom_minimum_size.x = minf(ceilf(large) + 2.0, LARGEUR_MAX)
 
 
 func _chantiers(mois: float) -> Dictionary:

@@ -45,40 +45,35 @@ const POLICES := {
 	"baloo": "res://polices/Baloo2.ttf",
 }
 const POLICE := "rubik"
-## 🔷 VERRE BLEU (auteur, 2026-09-20), en remplacement du papier crème. Le fond
+## 🔷 VERRE CRÈME ET VERT (auteur, 2026-09-28, essai), après le bleu du 2026-09-20. Le fond
 ## des panneaux n'est plus une couleur mais la ville floutée (`shaders/verre`) ;
 ## `FOND` ne sert donc que de secours si le verre est coupé.
 const VERRE := true
-## 🔴 LEVEL DESIGN, RELEVÉ LE 2026-09-20 après les captures : à 0,66 le petit
-## texte gris se perdait sur les toits rouges. C'est la lisibilité qui tranche,
-## pas l'effet — sous 0,70 on ne lit plus, au-dessus de 0,85 ce n'est plus du verre.
-const VERRE_TEINTE := Color(0.90, 0.94, 1.00, 0.78)
-const FOND := Color8(238, 244, 251, 190)
-const FOND_FORT := Color8(210, 227, 245, 168)
-const BORD := Color8(255, 255, 255, 150)
-const TEXTE := Color8(23, 40, 61)
-const GRIS := Color8(72, 94, 122)
+## 🔴 LEVEL DESIGN : à 0,66 le petit texte gris se perdait sur les toits rouges
+## (2026-09-20). Sous 0,70 on ne lit plus, au-dessus de 0,85 ce n'est plus du verre.
+## 🔄 0,90 → 0,84 et un blanc moins jaune (auteur, 2026-09-28).
+const VERRE_TEINTE := Color(1.0, 0.993, 0.972, 0.84)
+const FOND := Color8(250, 246, 236, 200)
+const FOND_FORT := Color8(234, 226, 206, 170)
+const TEXTE := Color8(36, 42, 33)
+const GRIS := Color8(98, 96, 82)
 ## Le gris des ÉTIQUETTES : plus sombre que celui des phrases, parce qu'un
 ## mot de 11 px a moins de forme à offrir à l'œil.
-const GRIS_FORT := Color8(46, 74, 108)
-const ACCENT := Color8(26, 88, 148)
-## L'azur des onglets ouverts et du bouton qui engage : c'est lui qui
+const GRIS_FORT := Color8(74, 80, 62)
+const ACCENT := Color8(40, 84, 48)
+## Le vert des onglets ouverts et du bouton qui engage : c'est lui qui
 ## fait « jeu » plutôt que « document ». Jamais sous du texte long.
-const ACCENT_VIF := Color8(46, 141, 224)
+const ACCENT_VIF := Color8(62, 124, 70)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
 const ALERTE := Color8(198, 76, 66)
 ## ✓ Un chantier fini se DIT en vert, il ne se grise pas en bouton mort. Plus
 ## sombre que `FAIT`, qui est une couleur de jauge et ne se lit pas en texte.
 const FAIT_TEXTE := Color8(39, 96, 22)
-## 🌑 LE RAIL EST SOMBRE, LE VERRE RESTE CLAIR (2026-09-03, image de l'auteur).
-## C'est le seul endroit du prototype qui n'est pas translucide : la barre
-## d'outils est la MACHINE, les panneaux sont le DOCUMENT. Sans ce contraste,
-## une colonne d'icônes claires sur une ville pastel disparaît.
-const RAIL_FOND := Color8(21, 38, 61, 244)
-const RAIL_TUILE := Color8(38, 60, 90, 255)
-const RAIL_SURVOL := Color8(60, 94, 136, 255)
-const RAIL_ICONE := Color8(223, 235, 250)
+## 🔄 LE RAIL EST DU MÊME VERRE QUE LES PANNEAUX (auteur, 2026-09-28, image de
+## référence) : icônes foncées sur crème, la vue active en vert plein. Il était
+## bleu nuit depuis le 2026-09-03.
+const RAIL_SURVOL := Color8(226, 236, 214, 220)
 # 🔧 LES TROIS COULEURS DE LA VUE CHANTIERS, aussi dans le shader
 # (`materiaux.objet`, en linéaire) : n'en changer qu'une fait mentir la légende.
 const CASSE := Color8(220, 58, 48)
@@ -98,7 +93,7 @@ const CHANTIER_MOTS := {
 ## nombre : il en faut deux pour distinguer « 40 % posés » de « 40 % en route
 ## vers 72 % ». Elle ne se touche pas — le réglage est le curseur d'en dessous.
 class Jauge extends Control:
-	const RESTE := Color8(196, 212, 232, 190)    # le toit encore nu
+	const RESTE := Color8(224, 216, 196, 190)    # le toit encore nu
 	const VISEE := Color8(174, 147, 74)          # l'objectif demandé, pas encore atteint
 	const POSE := Color8(221, 171, 49)           # les panneaux réellement en place
 
@@ -160,7 +155,7 @@ class Jauge extends Control:
 ## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
 ## nulle part ailleurs — un panneau qui s'ancre tout seul se décale du rail.
 const RAIL_X := 14.0
-const RAIL_LARGEUR := 90.0
+const RAIL_LARGEUR := 64.0
 const DETAIL_X := RAIL_X + RAIL_LARGEUR + 10.0
 const DETAIL_LARGEUR := 312.0
 const HAUT := 14.0
@@ -171,7 +166,7 @@ const HAUT := 14.0
 ## sinon la modulation multiplierait deux couleurs.
 class Pictos extends Control:
 	const NB := 10
-	const PALE := Color8(198, 212, 230)
+	const PALE := Color8(222, 214, 196)
 
 	var texture: Texture2D
 	var teinte := Color.WHITE
@@ -205,6 +200,9 @@ var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
 var rampe := []      # `maquette.RAMPE`, en sRGB
 
 var _ville_valeurs := {}
+## 📊 La barre du haut : les mêmes nombres que le bilan, toujours sous les yeux.
+var _barre: PanelContainer
+var _barre_valeurs := {}
 var _ville_jauges := {}
 ## Le repère du mois 0 pour les deux seuls chiffres qui n'ont pas de part
 ## naturelle — la conso et le CO₂ —, mémorisé au premier `maj()`.
@@ -402,6 +400,7 @@ func batir() -> void:
 	_panneau_calque()
 	_panneau_camera()
 	_controles_temps()
+	_barre_compteurs()
 	retours.batir(self)
 	_sans_focus(self)
 
@@ -452,7 +451,7 @@ func _sans_focus(n: Node) -> void:
 		_sans_focus(e)
 
 
-const RAYON := 14
+const RAYON := 16
 const Verre := preload("res://shaders/verre.gdshader")
 
 
@@ -461,17 +460,14 @@ func _boite() -> StyleBoxFlat:
 	# ⚠️ AUCUN FOND QUAND LE VERRE EST LÀ : le `StyleBox` se dessine PAR-DESSUS
 	# le verre, et un fond même à moitié transparent rebouche le flou.
 	sb.bg_color = Color(FOND, 0.0) if VERRE else FOND
-	# Le liseré clair est l'arête du verre : c'est lui, et non le fond, qui
-	# donne l'épaisseur. Le verre s'arrête 1 px en deçà pour le laisser voir.
-	sb.border_color = BORD
-	sb.set_border_width_all(1)
+	# 🔄 Plus de liseré (auteur, 2026-09-28) : seule l'ombre détache le panneau.
 	sb.set_corner_radius_all(RAYON)
 	sb.set_content_margin_all(13)
 	# L'ombre portée est ce qui décolle le panneau de la ville : à 3 px elle
 	# n'existait pas, et tout avait l'air imprimé sur la carte.
-	sb.shadow_color = Color(0.05, 0.10, 0.20, 0.26)
-	sb.shadow_size = 18
-	sb.shadow_offset = Vector2(0, 7)
+	sb.shadow_color = Color(0.12, 0.10, 0.05, 0.18)
+	sb.shadow_size = 16
+	sb.shadow_offset = Vector2(0, 6)
 	return sb
 
 
@@ -490,13 +486,13 @@ func _vitrer(p: Control) -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = Verre
 	mat.set_shader_parameter("teinte", VERRE_TEINTE)
-	mat.set_shader_parameter("rayon", float(RAYON) - 1.0)
+	mat.set_shader_parameter("rayon", float(RAYON))
 	fond.material = mat
 	p.add_child(fond)
 	p.move_child(fond, 0)
 	var suivre := func() -> void:
-		fond.global_position = p.global_position + Vector2.ONE
-		fond.size = p.size - Vector2(2.0, 2.0)
+		fond.global_position = p.global_position
+		fond.size = p.size
 		mat.set_shader_parameter("taille", fond.size)
 	p.item_rect_changed.connect(suivre)
 	suivre.call()
@@ -517,7 +513,7 @@ func _creer_theme() -> Theme:
 	var normal := StyleBoxFlat.new()
 	# Sur du verre, un bouton n'est pas un aplat : c'est une plaque un peu plus
 	# claire que le panneau, sinon il disparaît dans le fond flouté.
-	normal.bg_color = Color8(255, 255, 255, 132)
+	normal.bg_color = Color8(255, 255, 255, 150)
 	normal.border_color = Color8(255, 255, 255, 170)
 	normal.set_border_width_all(1)
 	normal.set_corner_radius_all(9)
@@ -525,16 +521,16 @@ func _creer_theme() -> Theme:
 	normal.content_margin_left = 12
 	normal.content_margin_right = 12
 	var survol := normal.duplicate()
-	survol.bg_color = Color8(180, 214, 248, 190)
+	survol.bg_color = Color8(226, 236, 214, 210)
 	survol.border_color = Color(ACCENT_VIF, 0.85)
-	# 🔧 Un réglage CHOISI est un azur pâle, pas l'azur plein : le seul azur
+	# 🔧 Un réglage CHOISI est un vert pâle, pas le vert plein : le seul vert
 	# plein du jeu est le bouton qui engage la caisse (`_habiller_principal`),
 	# et deux pleins côte à côte ne disent plus lequel paie.
 	var presse := normal.duplicate()
-	presse.bg_color = Color8(158, 203, 243, 235)
+	presse.bg_color = Color8(208, 226, 196, 235)
 	presse.border_color = Color(ACCENT_VIF, 0.9)
 	var inactif := normal.duplicate()
-	inactif.bg_color = Color8(226, 234, 244, 90)
+	inactif.bg_color = Color8(240, 236, 226, 90)
 	inactif.border_color = Color8(255, 255, 255, 80)
 	t.set_stylebox("normal", "Button", normal)
 	t.set_stylebox("hover", "Button", survol)
@@ -552,7 +548,7 @@ func _creer_theme() -> Theme:
 	t.set_constant("icon_max_width", "Button", 30)
 	var ligne := StyleBoxFlat.new()
 	ligne.bg_color = Color(0, 0, 0, 0)
-	ligne.border_color = Color8(140, 172, 206, 110)
+	ligne.border_color = Color8(180, 170, 146, 120)
 	ligne.border_width_top = 1
 	ligne.content_margin_top = 5
 	ligne.content_margin_bottom = 5
@@ -576,11 +572,11 @@ func _titre(txt: String, taille: int, coul: Color) -> Label:
 	return l
 
 
-## Le titre d'un panneau : le nom seul, foncé, sur le verre. 🔄 Plus de plaque
+## Le titre d'un panneau : le nom seul, vert foncé, sur le verre. 🔄 Plus de plaque
 ## ni de filet azur à gauche (auteur, 2026-09-24) : le filet se courbait dans
 ## le coin arrondi et décalait le nom du bord commun.
 func _bandeau(parent: Control, txt: String) -> Label:
-	var l := _titre(txt, 19, TEXTE)
+	var l := _titre(txt, 19, ACCENT)
 	parent.add_child(l)
 	return l
 
@@ -632,10 +628,20 @@ const ONGLETS := [
 ## et c'est ce vide que l'auteur a refusé le 2026-09-18.
 func _tuile(parent: GridContainer, etiquette: String, valeurs: Dictionary,
 		cle: String) -> void:
+	# 🔄 Sur une plaque blanche (auteur, 2026-09-28, image de référence).
+	var plaque := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color8(255, 255, 255, 150)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(8)
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	plaque.add_theme_stylebox_override("panel", sb)
+	plaque.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(plaque)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 1)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(v)
+	plaque.add_child(v)
 	v.add_child(_etiquette(etiquette, 11, GRIS_FORT))
 	var l := _label("", 14, TEXTE)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -649,8 +655,8 @@ func _grille_onglet(parent: Control, cle: String, colonnes: int,
 		valeurs: Dictionary, lignes: Array) -> void:
 	var g := GridContainer.new()
 	g.columns = colonnes
-	g.add_theme_constant_override("h_separation", 12)
-	g.add_theme_constant_override("v_separation", 10)
+	g.add_theme_constant_override("h_separation", 6)
+	g.add_theme_constant_override("v_separation", 6)
 	g.visible = false
 	parent.add_child(g)
 	for l in lignes:
@@ -665,14 +671,14 @@ func ouvrir_onglet(id: String) -> void:
 
 
 ## 🔄 UN SEUL TRAIT SOUS TOUTE LA RANGÉE (auteur, 2026-09-24) : l'onglet ouvert
-## n'a pas de plaque, seulement l'azur de son icône et un soulignement de 2 px.
+## n'a pas de plaque, seulement la couleur de son icône et un soulignement de 2 px.
 ## ⚠️ Rangée à `separation` 0, sinon le trait se coupe entre deux onglets.
 func _habiller_onglet(b: Button, ouvert: bool, dessin: String) -> void:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0, 0, 0, 0)
 	sb.set_content_margin_all(4)
 	sb.border_width_bottom = 2 if ouvert else 1
-	sb.border_color = ACCENT_VIF if ouvert else Color8(140, 172, 206, 150)
+	sb.border_color = ACCENT_VIF if ouvert else Color8(180, 170, 146, 160)
 	var survol := sb.duplicate()
 	survol.bg_color = Color(FOND_FORT, 0.5) if not ouvert else Color(0, 0, 0, 0)
 	for etat in ["normal", "pressed", "focus", "disabled"]:
@@ -786,16 +792,30 @@ const DESSINS := {
 	"logement": "<rect x='4' y='2' width='16' height='20' rx='2'/><path d='M9 22v-3a1 1 0 011-1h4a1 1 0 011 1v3'/><path d='M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01'/>",
 	"feuille": "<path d='M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20'/><path d='M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13'/>",
 	"eau": "<path d='M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/>",
+	# ⏯️ Les commandes du temps et de la caméra en icônes (auteur, 2026-09-28),
+	# Lucide : pause, play, skip-back, save, folder-open, map, box, history.
+	"pause": "<rect x='14' y='4' width='4' height='16' rx='1'/><rect x='6' y='4' width='4' height='16' rx='1'/>",
+	"lecture": "<path fill='@' d='M6 3l14 9-14 9z'/>",
+	"mois_zero": "<path d='M19 20L9 12l10-8zM5 19V5'/>",
+	"sauver": "<path d='M15.2 3a2 2 0 011.4.6l3.8 3.8a2 2 0 01.6 1.4V19a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z'/><path d='M17 21v-7a1 1 0 00-1-1H8a1 1 0 00-1 1v7M7 3v4a1 1 0 001 1h7'/>",
+	"ouvrir": "<path d='M6 14l1.5-2.9A2 2 0 019.24 10H20a2 2 0 011.94 2.5l-1.54 6a2 2 0 01-1.95 1.5H4a2 2 0 01-2-2V5a2 2 0 012-2h3.9a2 2 0 011.69.9l.81 1.2a2 2 0 001.67.9H18a2 2 0 012 2v2'/>",
+	# L'aiguille : moitié nord pleine. `_icone(…, angle)` la tourne vers le nord.
+	"boussole": "<path fill='@' d='M12 2l4.5 10h-9z'/><path d='M7.5 12L12 22l4.5-10'/>",
+	"plan": "<path d='M14.1 5.55a2 2 0 001.8 0l3.65-1.83A1 1 0 0121 4.62v12.76a1 1 0 01-.55.9l-4.55 2.27a2 2 0 01-1.8 0L9.9 18.45a2 2 0 00-1.8 0l-3.65 1.83A1 1 0 013 19.38V6.62a1 1 0 01.55-.9l4.55-2.27a2 2 0 011.8 0zM15 5.76v15M9 3.24v15'/>",
+	"cube": "<path d='M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/><path d='M3.3 7L12 12l8.7-5M12 22V12'/>",
+	"journal": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l4 2'/>",
 }
 
 
-func _icone(nom: String, taille := 25, coul := TEXTE) -> Texture2D:
-	var cle := "%s_%d_%s" % [nom, taille, coul.to_html(false)]
+func _icone(nom: String, taille := 25, coul := TEXTE, angle := 0) -> Texture2D:
+	var cle := "%s_%d_%s_%d" % [nom, taille, coul.to_html(false), angle]
 	if _icones.has(cle):
 		return _icones[cle]
 	# 🎨 `@` = LA COULEUR DU TRAIT : c'est ce qui permet un aplat (`fill='@'`)
 	# dans une table qui est sinon tout en traits.
 	var corps: String = str(DESSINS.get(nom, DESSINS["diagnostic"])) 		.replace("@", "#" + coul.to_html(false))
+	if angle != 0:
+		corps = "<g transform='rotate(%d 12 12)'>%s</g>" % [angle, corps]
 	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='2.0' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [coul.to_html(false), corps]
 	var img := Image.new()
 	var erreur := img.load_svg_from_string(svg, float(taille) / 24.0)
@@ -835,12 +855,12 @@ func _ancrer_detail(p: Control) -> void:
 	p.offset_top = HAUT
 
 
-## Une tuile du rail : sombre, carrée, sans mot. L'azur de l'état enfoncé est
-## le même que celui du bouton qui engage la caisse — un seul accent dans le jeu.
+## Une tuile du rail : transparente, icône et mot. L'accent de l'état enfoncé
+## est celui du bouton qui engage la caisse — un seul accent dans le jeu.
 func _habiller_tuile_rail(b: Button) -> void:
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = RAIL_TUILE
-	normal.set_corner_radius_all(11)
+	normal.bg_color = Color(0, 0, 0, 0)
+	normal.set_corner_radius_all(12)
 	normal.set_content_margin_all(6)
 	var survol := normal.duplicate() as StyleBoxFlat
 	survol.bg_color = RAIL_SURVOL
@@ -853,18 +873,18 @@ func _habiller_tuile_rail(b: Button) -> void:
 	# ⚠️ Sans lui, le thème dessine un cadre pointillé autour de la mairie et
 	# de l'université verrouillées : la tuile pâlit, elle ne change pas de forme.
 	var eteint := normal.duplicate() as StyleBoxFlat
-	eteint.bg_color = Color(RAIL_TUILE, 0.45)
+	eteint.bg_color = Color(0, 0, 0, 0)
 	b.add_theme_stylebox_override("disabled", eteint)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	for etat in ["font_color", "font_hover_color", "icon_normal_color", "icon_hover_color"]:
-		b.add_theme_color_override(etat, RAIL_ICONE)
+		b.add_theme_color_override(etat, TEXTE)
 	for etat in ["font_pressed_color", "font_hover_pressed_color", "icon_pressed_color",
 			"icon_hover_pressed_color"]:
 		b.add_theme_color_override(etat, Color.WHITE)
-	b.add_theme_color_override("font_disabled_color", Color(RAIL_ICONE, 0.35))
-	b.add_theme_color_override("icon_disabled_color", Color(RAIL_ICONE, 0.35))
+	b.add_theme_color_override("font_disabled_color", Color(TEXTE, 0.3))
+	b.add_theme_color_override("icon_disabled_color", Color(TEXTE, 0.3))
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 54)
+	b.custom_minimum_size = Vector2(0, 48)
 
 
 ## Le curseur par défaut de Godot est un trait gris sans remplissage : on y lit
@@ -1060,17 +1080,8 @@ func _ligne_bilan(parent: VBoxContainer, icone: String, teinte: Color,
 ## université — qui étaient deux boutons de plus dans le bandeau du haut.
 func _panneau_rail() -> void:
 	_menu_panneau = PanelContainer.new()
-	_menu_panneau.theme = _theme_ui
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = RAIL_FOND
-	sb.set_corner_radius_all(16)
-	sb.set_content_margin_all(10)
-	# La même ombre que les panneaux de verre : sans elle, le rail sombre est
-	# un trou dans la ville au lieu d'un objet posé dessus.
-	sb.shadow_color = Color(0.04, 0.09, 0.18, 0.40)
-	sb.shadow_size = 12
-	sb.shadow_offset = Vector2(0, 6)
-	_menu_panneau.add_theme_stylebox_override("panel", sb)
+	_poser_boite(_menu_panneau)
+	(_menu_panneau.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(8)
 	_menu_panneau.offset_left = RAIL_X
 	_menu_panneau.offset_right = RAIL_X + RAIL_LARGEUR
 	_menu_panneau.offset_top = HAUT
@@ -1086,7 +1097,7 @@ func _panneau_rail() -> void:
 	var groupe := ButtonGroup.new()
 	groupe.allow_unpress = false
 
-	# 🏙️ L'EN-TÊTE EST AUSSI LE BOUTON DE LA VILLE VIVANTE : azur quand on y est.
+	# 🏙️ L'EN-TÊTE EST AUSSI LE BOUTON DE LA VILLE VIVANTE : accent quand on y est.
 	var accueil := _tuile_rail("ville", "Ville",
 		"Ville — retrouver la matière, les arbres et les voitures.")
 	accueil.toggle_mode = true
@@ -1132,20 +1143,15 @@ func _panneau_rail() -> void:
 	v.add_child(debut)
 
 
-## 🔄 L'ICÔNE ET SON MOT (auteur, 2026-09-24) : toutes les tuiles ont la même
-## taille, le même dessin au-dessus, la même étiquette en capitales dessous —
-## VILLE et DÉBUT ne sont plus des mots seuls au milieu des icônes.
-func _tuile_rail(icone: String, mot: String, bulle: String) -> Button:
+## 🔄 L'ICÔNE SEULE, le mot dans l'infobulle (auteur, 2026-09-28). Elle portait
+## son mot en capitales dessous depuis le 2026-09-24 (décision 88).
+func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	var b := Button.new()
 	# Dessin BLANC : ce sont les couleurs d'état du bouton qui le teintent.
-	b.icon = _icone(icone, 24, Color.WHITE)
+	b.icon = _icone(icone, 26, Color.WHITE)
 	b.expand_icon = false
-	b.text = mot.to_upper()
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-	b.add_theme_font_override("font", _fonte_titre)
-	b.add_theme_font_size_override("font_size", 10)
-	b.add_theme_constant_override("h_separation", 3)
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	b.tooltip_text = bulle
 	_habiller_tuile_rail(b)
 	return b
@@ -1156,7 +1162,7 @@ func _tuile_rail(icone: String, mot: String, bulle: String) -> Button:
 func _filet_rail() -> Control:
 	# `trait` est un mot réservé de GDScript : ne pas renommer la variable.
 	var filet := ColorRect.new()
-	filet.color = Color(RAIL_ICONE, 0.22)
+	filet.color = Color(TEXTE, 0.12)
 	filet.custom_minimum_size = Vector2(0, 1)
 	filet.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return filet
@@ -1511,14 +1517,9 @@ func _panneau_ilot() -> void:
 	# livré — le réglage suit le curseur avant même d'être validé — pendant que
 	# la ville derrière garde son état réel.
 	_apercu_cadre = PanelContainer.new()
-	var fond := StyleBoxFlat.new()
-	# Du papier, pas une lucarne noire : la miniature a un fond transparent et
-	# l'objet s'y pose comme sur le reste de la fiche.
-	# 🔄 SANS FILET depuis le 2026-08-28 : le trait fermait la miniature comme
-	# une vignette collée, au lieu de la laisser être un dessin sur la page.
-	fond.bg_color = FOND_FORT
-	fond.set_corner_radius_all(6)
-	_apercu_cadre.add_theme_stylebox_override("panel", fond)
+	# 🔄 SANS FOND (auteur, 2026-09-28) : la miniature est transparente, l'objet
+	# se pose directement sur le verre. Il avait une plaque beige.
+	_apercu_cadre.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_apercu_cadre.visible = false
 	v.add_child(_apercu_cadre)
 	var vue := TextureRect.new()
@@ -1903,7 +1904,7 @@ func _panneau_ilot() -> void:
 ## se referment et reviendront par leur propre chemin.
 func montrer_jeu(oui: bool) -> void:
 	for panneau in [_ville_panneau, _menu_panneau, _camera_panneau,
-			_temps_panneau, retours.compteur]:
+			_temps_panneau, retours.compteur, _barre]:
 		if panneau != null:
 			(panneau as Control).visible = oui
 	if oui:
@@ -1999,14 +2000,14 @@ const AZIMUTS := ["du sud", "du sud-est", "de l'est", "du nord-est",
 func _habiller_principal(b: Button) -> void:
 	var plein := StyleBoxFlat.new()
 	plein.bg_color = ACCENT_VIF
-	plein.border_color = Color8(22, 96, 166)
+	plein.border_color = Color8(38, 86, 44)
 	plein.set_border_width_all(1)
 	plein.set_corner_radius_all(9)
 	plein.set_content_margin_all(11)
 	var survol := plein.duplicate()
-	survol.bg_color = Color8(74, 163, 240)
+	survol.bg_color = Color8(78, 142, 86)
 	var presse := plein.duplicate()
-	presse.bg_color = Color8(28, 106, 180)
+	presse.bg_color = Color8(46, 100, 54)
 	b.add_theme_stylebox_override("normal", plein)
 	b.add_theme_stylebox_override("hover", survol)
 	b.add_theme_stylebox_override("pressed", presse)
@@ -2229,8 +2230,8 @@ func _panneau_camera() -> void:
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
 	p.offset_left = 16
-	# Au-dessus de la barre du temps, qui tient le coin depuis le 2026-09-01.
-	p.offset_bottom = -88
+	# Le coin est libre depuis que le temps est passé au centre (2026-09-28).
+	p.offset_bottom = -16
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
 	_camera_panneau = p
@@ -2244,12 +2245,15 @@ func _panneau_camera() -> void:
 	v.add_child(boutons)
 	_camera_nord = Button.new()
 	_camera_nord.name = "Boussole"
-	_camera_nord.custom_minimum_size = Vector2(100, 32)
+	_camera_nord.custom_minimum_size = Vector2(44, 36)
+	_camera_nord.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_camera_nord.focus_mode = Control.FOCUS_NONE
 	_camera_nord.pressed.connect(func(): nord_demande.emit())
 	boutons.add_child(_camera_nord)
 	_camera_dessus = Button.new()
 	_camera_dessus.name = "VueDessus"
+	_camera_dessus.custom_minimum_size = Vector2(44, 36)
+	_camera_dessus.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_camera_dessus.focus_mode = Control.FOCUS_NONE
 	_camera_dessus.pressed.connect(func(): dessus_demande.emit())
 	boutons.add_child(_camera_dessus)
@@ -2267,22 +2271,80 @@ func maj_camera(lacet: float, hauteur: float) -> void:
 	var i := int(roundf(l / 45.0)) % 8
 	_camera_nord.tooltip_text = "Vue %s, %d° au-dessus. Remettre le nord en haut." % [
 		AZIMUTS[i], int(roundf(hauteur))]
-	_camera_nord.text = "%s N" % ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"][i]
-	_camera_dessus.text = "3D" if hauteur >= 89.5 else "Dessus"
+	# L'aiguille montre où est le nord à l'écran, en huit crans.
+	_camera_nord.icon = _icone("boussole", 20, TEXTE, i * 45)
+	var dessus := hauteur >= 89.5
+	_camera_dessus.icon = _icone("cube" if dessus else "plan", 20)
+	_camera_dessus.tooltip_text = "Revenir à la vue en 3D." if dessus \
+		else "Vue de dessus, comme un plan."
+
+
+## 📊 LA BARRE DES COMPTEURS (auteur, 2026-09-28, image de référence) : caisse,
+## énergie et CO₂ au centre du haut. Aucun nombre neuf — ceux du bilan, recopiés
+## par `maj`. Elle attend, comme le bilan, la fin du premier pont.
+func _barre_compteurs() -> void:
+	var p := PanelContainer.new()
+	_poser_boite(p)
+	var sb := p.get_theme_stylebox("panel") as StyleBoxFlat
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	p.anchor_left = 0.5
+	p.anchor_right = 0.5
+	p.offset_top = HAUT
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.visible = false
+	add_child(p)
+	_barre = p
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	p.add_child(h)
+	for ligne in [
+		["caisse", "caisse", Color8(78, 121, 67), "Caisse"],
+		["conso", "conso", Color8(198, 126, 32), "Consommation"],
+		["production", "production", Color8(214, 158, 44), "Solaire"],
+		["co2", "co2", Color8(104, 116, 108), "CO₂"],
+	]:
+		if h.get_child_count() > 0:
+			var filet := ColorRect.new()
+			filet.color = Color(TEXTE, 0.12)
+			filet.custom_minimum_size = Vector2(1, 0)
+			h.add_child(filet)
+		# 🔄 Le mot sous le nombre est passé dans l'infobulle (auteur, 2026-09-28).
+		var bloc := HBoxContainer.new()
+		bloc.add_theme_constant_override("separation", 8)
+		bloc.tooltip_text = ligne[3]
+		bloc.mouse_filter = Control.MOUSE_FILTER_STOP
+		h.add_child(bloc)
+		var pic := TextureRect.new()
+		pic.texture = _icone(ligne[1], 22, ligne[2])
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bloc.add_child(pic)
+		var valeur := _titre("—", 15, TEXTE)
+		valeur.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		bloc.add_child(valeur)
+		_barre_valeurs[ligne[0]] = valeur
 
 
 func _controles_temps() -> void:
 	var p := PanelContainer.new()
 	p.theme = _theme_ui
 	_poser_boite(p)
-	# 🔄 AU COIN BAS-GAUCHE depuis le 2026-09-01 : le centre du bas est pris
-	# par la barre des vues.
+	# 🔄 AU CENTRE DU BAS (auteur, 2026-09-28, image de référence) ; il tenait
+	# le coin bas-gauche depuis le 2026-09-01.
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
-	p.offset_left = 16
-	p.offset_right = 412
+	p.anchor_left = 0.5
+	p.anchor_right = 0.5
+	# Largeur nulle et croissance des deux côtés : le panneau épouse ses boutons,
+	# centré. À ±206 px il débordait à droite dès que les boutons dépassaient.
+	p.offset_left = 0
+	p.offset_right = 0
 	p.offset_top = -72
 	p.offset_bottom = -16
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(p)
 	_temps_panneau = p
@@ -2291,13 +2353,21 @@ func _controles_temps() -> void:
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
 	_temps_label = _etiquette("Mois 0", 12, TEXTE)
-	_temps_label.custom_minimum_size.x = 86
+	_temps_label.custom_minimum_size.x = 76
 	_temps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(_temps_label)
-	for choix in [["Ⅱ", 0.0], ["▶", 1.0], ["×4", 4.0], ["×12", 12.0]]:
+	# 🔄 Pause et lecture en icônes (auteur, 2026-09-28) ; ×4 et ×12 restent
+	# écrits, une icône ne dirait pas le chiffre.
+	for choix in [["pause", 0.0, "Pause"], ["lecture", 1.0, "Lecture"],
+			["×4", 4.0, "Accélérer ×4"], ["×12", 12.0, "Accélérer ×12"]]:
 		var b := Button.new()
-		b.text = choix[0]
-		b.custom_minimum_size = Vector2(52, 40)
+		if DESSINS.has(choix[0]):
+			b.icon = _icone(choix[0], 18)
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		else:
+			b.text = choix[0]
+		b.tooltip_text = choix[2]
+		b.custom_minimum_size = Vector2(48, 40)
 		b.add_theme_font_size_override("font_size", 15)
 		var v: float = choix[1]
 		# ⏯️ La vitesse en cours est ENFONCÉE, pas grisée : grisée, elle se lisait
@@ -2311,19 +2381,22 @@ func _controles_temps() -> void:
 	# le temps ET la ville : un temps qui recule seul laisserait des toits noirs
 	# sous un compteur à « Mois 0 ».
 	var raz := Button.new()
-	raz.text = "↺"
-	raz.custom_minimum_size = Vector2(46, 40)
+	raz.icon = _icone("mois_zero", 18)
+	raz.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	raz.custom_minimum_size = Vector2(44, 40)
 	raz.tooltip_text = "Remet le temps au mois 0 et annule les poses décidées."
 	raz.pressed.connect(func() -> void: temps_remis.emit())
 	h.add_child(raz)
 
-	for action in [["Sauvegarder", "F5"], ["Reprendre", "F9"]]:
+	for action in [["sauver", "Sauvegarder la partie", "F5"],
+			["ouvrir", "Reprendre la partie sauvegardée", "F9"]]:
 		var bouton := Button.new()
-		bouton.text = action[0]
-		bouton.tooltip_text = "%s (%s)" % action
-		bouton.custom_minimum_size.y = 40
+		bouton.icon = _icone(action[0], 18)
+		bouton.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bouton.tooltip_text = "%s (%s)" % [action[1], action[2]]
+		bouton.custom_minimum_size = Vector2(44, 40)
 		h.add_child(bouton)
-		if action[1] == "F5":
+		if action[2] == "F5":
 			bouton.pressed.connect(func() -> void: sauvegarde_demandee.emit())
 		else:
 			_reprendre = bouton
@@ -2387,6 +2460,10 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
 	_maj_durabilite(indic)
 	_temps_label.text = "Mois %s" % _nb(mois, 1)
+	_barre.visible = _menu_panneau.visible and not _bilan_differe()
+	if _barre.visible:
+		for cle in _barre_valeurs:
+			(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
 	maj_degats(ville.degats(mois))
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
@@ -2523,6 +2600,8 @@ func _maj_fiche() -> void:
 	elif _message_urgence:
 		_message.text = ""
 	_message_urgence = muet
+	# Vide, il creusait une ligne sous « Mettre en place » (auteur, 2026-09-28).
+	_message.visible = _message.text != ""
 
 
 func _maj_fiche_contenu() -> void:
@@ -3484,7 +3563,7 @@ func _maj_reparation(o: Dictionary) -> void:
 func _habiller_secondaire(b: Button) -> void:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0, 0, 0, 0)
-	sb.border_color = Color8(72, 108, 150, 190)
+	sb.border_color = Color8(120, 112, 90, 190)
 	sb.set_border_width_all(1)
 	sb.set_corner_radius_all(9)
 	sb.set_content_margin_all(9)
