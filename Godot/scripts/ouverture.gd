@@ -427,7 +427,7 @@ func actualiser(force := false) -> void:
 		jeu.interface._placer_detail()
 		visible = true
 	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
-	_caisse.text = "Caisse : %.0f k€" % jeu.ville.caisse_ke(jeu.mois)
+	_caisse.text = "Caisse : " + jeu.interface._millions(jeu.ville.caisse_ke(jeu.mois))
 	_progression.visible = etape in ["travaux", "pont_travaux"]
 	_detail.visible = _progression.visible or etape == "suite"
 	if _progression.visible:

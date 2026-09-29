@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-28
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°11 et n°25 closes le 2026-09-02
+maj: 2026-09-29
 ---
 
 # Questions ouvertes
@@ -138,7 +138,7 @@ Ouverte le 2026-08-12 par l'entrée du trafic visible en phase. → [[Décisions
 
 ⚠️ Ce qui est déjà sûr et ne dépend pas de la réponse : **jamais un nœud par voiture**, et une réserve d'objets réutilisés plutôt qu'une création/destruction continue.
 
-### 19. Onze nombres permanents à l'écran — est-ce que ça tient ?
+### 19. Onze nombres permanents à l'écran — est-ce que ça tient ? — **les indicateurs sont tranchés le 2026-09-29, les ressources non**
 
 Ouverte le 2026-08-12 par la séance sur les [[Indicateurs globaux]].
 
@@ -154,6 +154,8 @@ Ce qui atténue : les indicateurs sont des **barres bornées par des jalons** et
 affiche quatre conséquences de ville à gauche et retire provisoirement budget
 et capital ; la fiche de droite ne porte que l'îlot cliqué. C'est une coupe de
 prototype (68), pas la réponse pour le jeu complet à onze nombres.
+
+✅ **Les indicateurs, tranchés le 2026-09-29 par l'auteur** : plus sept barres, mais **le CO₂ au-dessus et six thèmes** (Énergie · Mobilité · Agriculture · Biodiversité · Dangers naturels · Habitants), une barre par thème vers son jalon, le détail dessous. **Reste ouvert** : les trois nombres du budget et le capital politique. → [[Décisions arrêtées]] 91 · [[Indicateurs globaux]]
 
 ### 20. La jauge globale, refusée par [[Déclin et défaite]]
 
@@ -396,6 +398,9 @@ L'Ilse a trois états (89) : brune de la crue au mois 0, **normale** quatre mois
 | **D · Les trois ensemble** ⭐ | une seule jauge « eau » que A, B et C remplissent | l'Ilse devient un indicateur qu'on lit sans panneau ; chaque décision y contribue un peu |
 
 **Recommandation : D**, en commençant par **A** seul, puisque les berges existent déjà dans la maquette. **Reste à trancher avec elle** : l'eau limpide rapporte-t-elle autre chose que l'image (baignade, pêche, attrait du quai) ? → [[Décisions arrêtées]] 89 · [[Wehrau]]
+
+### 36. Comment le CO₂ réduit agit-il sur la température ? — ouverte le 2026-09-29
+La barre du haut affiche la **météo**, qui suit la saison (92). L'auteur veut que **réduire le CO₂ la fasse baisser**, plus tard. Deux garde-fous viennent du vault : la réduction agit **diffus et en retard** — elle change *la violence des prochains aléas*, pas le jour même ([[Adaptation et réduction]]) ; et une ville de 5 000 habitants ne refroidit pas le climat seule, donc l'effet doit rester **plausible** (78) — il porte plutôt sur **les pics** (canicules moins fortes, moins fréquentes) que sur la moyenne. À trancher avec le système Saison : ce qui baisse (la moyenne, les pics, leur fréquence), avec quel délai, et comment le joueur fait le lien. → [[Décisions arrêtées]] 92
 
 ## 🟢 Peut attendre (réversible)
 

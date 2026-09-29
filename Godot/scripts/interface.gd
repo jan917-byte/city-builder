@@ -2656,7 +2656,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	# ⚠️ Mémorisée ici : `_maj_fiche()` en a besoin à chaque image, et la
 	# recalculer parcourrait la ville une seconde fois par image.
 	_caisse_ke = indic["caisse_ke"]
-	_ville_valeurs["caisse"].text = _milliers(_caisse_ke) + " k€"
+	_ville_valeurs["caisse"].text = _millions(_caisse_ke)
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
 	_maj_durabilite(indic)
 	_temps_label.text = "Mois %s" % _nb(mois, 1)
@@ -3520,8 +3520,8 @@ func _sur_curseur_arbres(v: float) -> void:
 func remis_a_zero() -> void:
 	_vider_pose()
 	_fermer_lieu()
-	_message.text = "Retour au mois 0, caisse à %s k€." \
-		% _milliers(Ville.CAISSE_DEPART_KE)
+	_message.text = "Retour au mois 0, caisse à %s." \
+		% _millions(Ville.CAISSE_DEPART_KE)
 	if _fiche_fid >= 0:
 		_maj_fiche()
 
@@ -3546,6 +3546,12 @@ static func _duree(mois: float) -> String:
 
 static func _nb(v: float, dec: int) -> String:
 	return (("%%.%df" % dec) % v).replace(".", ",")
+
+
+## Le budget se lit en M€ (auteur, 2026-09-29) ; les prix et la recette restent en k€.
+static func _millions(ke: float) -> String:
+	var m := ke / 1000.0
+	return _nb(m, 2 if absf(m) < 10.0 else 1).replace("-", "−") + " M€"
 
 
 ## Avec l'espace des milliers : la caisse passe les 10 000 k€ en vingt ans, et
