@@ -36,6 +36,14 @@ Le joueur voit **une barre de CO₂** et **six barres de thème**. Chaque barre 
 
 **Agriculture et Biodiversité restent deux barres** : cultiver plus intensément fait monter l'une et baisser l'autre, et c'est cette tension que le joueur doit voir. Un même geste peut compter dans deux thèmes — un toit vert abaisse la crue **et** nourrit le vivant.
 
+### La barre du haut
+
+| À gauche | Au centre | À droite |
+|---|---|---|
+| 💶 **Budget**, et ce qu'il gagne par mois | 🏭 **CO₂**, barre vers *zéro carbone* | 🌡️ **Température** (la météo) · 🍂 **saison** |
+
+La température **suit la saison** et n'est pas un indicateur : le joueur la subit. Plus tard, réduire le CO₂ la tirera vers le bas (question 36). Les six thèmes vivent dans le panneau Ville, pas en haut. → [[Décisions arrêtées]] 92
+
 ## Les sept, rangés sous leur thème
 
 Tous affichés **en écart au départ**, jamais en valeur absolue — « +3 pts de canopée », pas « 14 % ». C'est le mode qui a rendu `parties.html` lisible : un mouvement de 0,4 pt sur 14 % est invisible autrement.
