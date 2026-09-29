@@ -526,18 +526,18 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
 		std.vertex_color_use_as_albedo = true
 		std.roughness = 0.72
 		return std
+	# Tout ce qui glisse suit l'horloge partagée, jamais `TIME` : elle s'arrête
+	# quand le temps est en pause (auteur, 2026-09-28), `TIME` jamais.
+	_declarer_horloge()
 	var pas := ""
 	if balance > 0.0:
-		pas = "  VERTEX.y += %f * sin(TIME * %f + INSTANCE_CUSTOM.x);\n" \
-			% [balance, cadence * TAU]
-	var horloge := "TIME"
+		pas = "  VERTEX.y += %f * sin(%s * %f + INSTANCE_CUSTOM.x);\n" \
+			% [balance, HORLOGE, cadence * TAU]
 	var course := "mod(INSTANCE_CUSTOM.x + %s * INSTANCE_CUSTOM.y, longueur)"
-	var entete := ""
 	if circuit:
-		_declarer_horloge()
-		horloge = HORLOGE
 		course = "clamp(INSTANCE_CUSTOM.x + %s * INSTANCE_CUSTOM.y, 0.0, longueur)"
-		entete = "global uniform float %s;\n" % HORLOGE
+	var entete := "global uniform float %s;\n" % HORLOGE
+	var horloge := HORLOGE
 	var shader := Shader.new()
 	shader.code = "shader_type spatial;\n" \
 		+ entete \

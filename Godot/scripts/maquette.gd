@@ -2153,7 +2153,9 @@ func _habiller_monde(diagnostic: bool) -> void:
 	trafic.visible = not diagnostic
 	travaux.visible = not diagnostic
 	for n in monde.get_children():
-		if n is MultiMeshInstance3D and str(n.name).begins_with("Arbres"):
+		# « Rives » aussi : les saules des berges de campagne restaient debout.
+		if n is MultiMeshInstance3D and (str(n.name).begins_with("Arbres")
+				or str(n.name).begins_with("Rives")):
 			n.visible = not diagnostic
 	var terrain := monde.get_node_or_null("Terrain") as MeshInstance3D
 	if terrain != null:
@@ -2723,6 +2725,7 @@ func _sur_reset() -> void:
 
 func _sur_vitesse(nouvelle: float) -> void:
 	vitesse = nouvelle
+	trafic.en_pause = nouvelle == 0.0
 	if nouvelle > 0.0:
 		_derniere_vitesse = nouvelle
 

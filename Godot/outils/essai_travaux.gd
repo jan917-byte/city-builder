@@ -68,6 +68,9 @@ func executer() -> void:
 	jeu._sur_theme("energie")
 	verifier(not jeu.travaux.visible, "Le diagnostic garde les grues")
 	verifier(not jeu.travaux._reperes.visible, "Le diagnostic garde les repères de loin")
+	for n in jeu.monde.get_children():
+		if str(n.name).begins_with("Arbres") or str(n.name).begins_with("Rives"):
+			verifier(not n.visible, "Le diagnostic garde des arbres : " + n.name)
 	jeu._sur_theme("")
 	verifier(jeu.travaux.visible and jeu.travaux.actifs == 5, "Le retour à la ville perd ses chantiers")
 	jeu.pivot.viser(Vector2.ZERO, 1200.0)

@@ -145,6 +145,9 @@ var _arc_vu := PackedInt32Array()       # l'arc écrit dans le MultiMesh
 ## L'horloge partagée avec le GPU (`Constructeur.HORLOGE`) : sans elle, le CPU
 ## ne sait pas où le shader a posé la voiture.
 var _temps_trafic := 0.0
+## Posé par la maquette avec la vitesse : l'horloge s'arrête, et avec elle
+## voitures, piétons et vélos. `--essai` ne passe pas par là et roule toujours.
+var en_pause := false
 var _indispo_courant := {}
 var _long_fid := {}
 const PAS_COURBE := 96
@@ -1409,7 +1412,7 @@ func _ecrire(k: int, a: Dictionary) -> void:
 
 ## Le retard d'une image traverse autant d'arcs que nécessaire, sans perdre de temps.
 func _process(delta: float) -> void:
-	if _arrivee.is_empty():
+	if en_pause:
 		return
 	_temps_trafic += delta
 	RenderingServer.global_shader_parameter_set(Constructeur.HORLOGE,
