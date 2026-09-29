@@ -1,13 +1,13 @@
 ---
 tags: [système, ui, indicateurs]
 statut: arrêté (paramètres ouverts)
-maj: 2026-08-12
+maj: 2026-09-29
 ---
 
 # Indicateurs globaux
 
-> Ce que le joueur a sous les yeux en permanence. **Sept indicateurs et deux ressources.**
-> Issu du brainstorm du 2026-08-12 → [[Décisions arrêtées]] 53 à 59
+> Ce que le joueur a sous les yeux en permanence. **Le CO₂ et six thèmes, qui rangent les indicateurs ; deux ressources à part.**
+> Issu du brainstorm du 2026-08-12 → [[Décisions arrêtées]] 53 à 59 · thèmes : 91
 
 ## 🎯 La règle qui commande tout
 
@@ -20,7 +20,23 @@ Le calque est ce qui répare ça. Sans lui, le chiffre est une jauge qu'on optim
 
 **Corollaire de sélection** : un indicateur dont on ne saurait pas dessiner la carte ne doit pas exister. C'est le filtre qui a taillé dix-neuf candidats à sept.
 
-## Les sept
+## 🗂️ Le CO₂ au-dessus, six thèmes dessous
+
+Le joueur voit **une barre de CO₂** et **six barres de thème**. Chaque barre va de l'état de départ au **jalon** du thème (57) ; les indicateurs du thème s'ouvrent dessous. → [[Décisions arrêtées]] 91
+
+| | Thème | Sa barre → le jalon | Ce qu'il range dessous |
+|---|---|---|---|
+| 🏭 | **CO₂** — au-dessus des thèmes | émissions évitées → *zéro carbone* | la part de l'énergie, celle du trafic, le carbone gris |
+| ⚡ | **Énergie** | part produite ici → *autonome en énergie* | consommation · production · achat au réseau |
+| 🚗 | **Mobilité** | part de rue rendue → *zéro voiture* | emprise voiture · stationnement · desserte |
+| 🌾 | **Agriculture** | part nourrie → *autonome en nourriture* | surface cultivée · jardins sur les toits |
+| 🦋 | **Biodiversité** | ❓ à mesurer → ❓ jalon à nommer | berges renaturées · toits verts · arbres · haies · bois · trames reliées |
+| 🌊 | **Dangers naturels** | part à l'abri → *ville-éponge* | ville exposée · ville relevée · surchauffe · l'eau de l'Ilse |
+| 🏠 | **Habitants** | habitants d'origine → *« personne n'a été chassé »* | relogement · logements |
+
+**Agriculture et Biodiversité restent deux barres** : cultiver plus intensément fait monter l'une et baisser l'autre, et c'est cette tension que le joueur doit voir. Un même geste peut compter dans deux thèmes — un toit vert abaisse la crue **et** nourrit le vivant.
+
+## Les sept, rangés sous leur thème
 
 Tous affichés **en écart au départ**, jamais en valeur absolue — « +3 pts de canopée », pas « 14 % ». C'est le mode qui a rendu `parties.html` lisible : un mouvement de 0,4 pt sur 14 % est invisible autrement.
 

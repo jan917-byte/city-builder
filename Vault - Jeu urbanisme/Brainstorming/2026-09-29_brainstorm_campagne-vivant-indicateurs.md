@@ -1,6 +1,6 @@
 ---
 tags: [brainstorming, système, campagne, biodiversité, indicateurs]
-statut: brut
+statut: en cours
 date: 2026-09-29
 sujet: ajouter l'agriculture ou la biodiversité, les jardins sur les toits, et des indicateurs clairs
 maj: 2026-09-29
@@ -129,5 +129,7 @@ Ajouter la nourriture ou le vivant, c'est ajouter un indicateur. Or ceux d'aujou
 - **La caisse** reste à part : c'est une ressource.
 
 **Questions ajoutées :** 9. Le CO₂ au-dessus des thèmes, ou coupé en deux ? · 10. Un 5ᵉ thème Habitants ? · 11. Le vivant sous Agriculture, ou un thème Nature ?
+
+✅ **Tranché le même jour par l'auteur** : *« oui pour le thème habitants. et CO2 au-dessus aussi. je veux garder agriculture et biodiversité séparés »* — donc **le CO₂ au-dessus, six thèmes** (Énergie · Mobilité · Agriculture · Biodiversité · Dangers naturels · Habitants). Ferme les questions 2, 7, 8, 9, 10 et 11 de cette note. → [[Décisions arrêtées]] 91 · [[Indicateurs globaux]]
 
 **Voir aussi** : [[Indicateurs globaux]] · [[Milestones]] · [[2026-08-12_brainstorm_indicateurs-globaux]] · [[Questions ouvertes]] · [[Décisions arrêtées]]
