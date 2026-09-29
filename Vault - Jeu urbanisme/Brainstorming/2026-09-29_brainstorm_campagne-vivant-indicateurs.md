@@ -10,7 +10,7 @@ maj: 2026-09-29
 
 **Question de départ :** ajouter un système — les champs et la production agricole, ou la biodiversité. Lequel, et comment ? Puis : et les jardins sur les toits ? Puis : quels sont mes indicateurs, sachant qu'ils doivent être clairs ?
 
-**Ce qui en est sorti :** une recommandation (agriculture d'abord, la biodiversité comme conséquence), le jardin comme **manière** du toit vert, et un constat : **les indicateurs du vault et ceux de la maquette ne sont pas les mêmes listes.** Rien n'est tranché.
+**Ce qui en est sorti :** (§ 6 : l'auteur préfère des **thèmes** qui regroupent les indicateurs) une recommandation (agriculture d'abord, la biodiversité comme conséquence), le jardin comme **manière** du toit vert, et un constat : **les indicateurs du vault et ceux de la maquette ne sont pas les mêmes listes.** Rien n'est tranché.
 
 **À remonter où :** [[Questions ouvertes]] (les huit questions en fin de note) · puis [[Décisions arrêtées]] · [[Indicateurs globaux]] · [[Milestones]]
 
@@ -108,5 +108,26 @@ Ajouter la nourriture ou le vivant, c'est ajouter un indicateur. Or ceux d'aujou
 6. Le poids limite-t-il les toits ? (faute de donnée, l'époque du bâtiment peut servir)
 7. La règle de clarté — *une question, une barre vers son jalon, une phrase* — est-elle la bonne ?
 8. Quelle liste fait foi : les sept du vault, ou le bilan de la maquette ? L'autre se réécrit.
+
+## 6. Retour de l'auteur : des thèmes, pas des questions
+
+*« Pas fan de la question qu'on se pose. J'aimerais plutôt des thèmes qui regroupent plusieurs autres indicateurs. Énergie, Mobilité, Agriculture, Dangers naturels ? »* — la règle du § 4 est **écartée**, les thèmes la remplacent.
+
+**Ce qui tombe bien : chaque thème a déjà son jalon, et presque déjà son calque** (le rail porte Énergie, Voitures, Campagne, Après la crue).
+
+| Thème | Sa barre de tête → le jalon | Ce qu'il range dessous | Déjà dans la maquette |
+|---|---|---|---|
+| ⚡ **Énergie** | part produite ici → *autonome en énergie* | consommation · production · achat · CO₂ du chauffage | consommation, production, achat, CO₂ |
+| 🚗 **Mobilité** | part de rue rendue → *zéro voiture* | emprise voiture · stationnement · desserte · CO₂ du trafic | — (le calque seul) |
+| 🌾 **Agriculture** | part nourrie → *autonome en nourriture* | surface cultivée · jardins sur les toits · plus tard le vivant des champs | nourriture |
+| 🌊 **Dangers naturels** | part à l'abri → *ville-éponge* | ville exposée · ville relevée · surchauffe · l'eau de l'Ilse | adaptation |
+
+**Ce qui ne rentre dans aucun des quatre :**
+- **Le CO₂** est à cheval sur Énergie et Mobilité — ou bien une barre au-dessus des thèmes (*zéro carbone*, le but affiché, décision 9), ou bien coupé en deux.
+- **Les habitants d'origine** — le social, le cœur de l'injustice géographique de [[Wehrau]] : un 5ᵉ thème **Habitants** (logement, relogement, personne chassé), ou un avertissement hors thème.
+- **Le vivant** — sous Agriculture tant qu'il vient des champs ; un thème **Nature** le jour où les berges, toits verts et arbres y comptent aussi.
+- **La caisse** reste à part : c'est une ressource.
+
+**Questions ajoutées :** 9. Le CO₂ au-dessus des thèmes, ou coupé en deux ? · 10. Un 5ᵉ thème Habitants ? · 11. Le vivant sous Agriculture, ou un thème Nature ?
 
 **Voir aussi** : [[Indicateurs globaux]] · [[Milestones]] · [[2026-08-12_brainstorm_indicateurs-globaux]] · [[Questions ouvertes]] · [[Décisions arrêtées]]

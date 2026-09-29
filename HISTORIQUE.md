@@ -585,5 +585,5 @@ Quand une rue se vide, ceux qui restent sont tirés au sort au lieu d'être rép
 L'ombre d'un `StyleBox` grisait le verre (crème à 245 → 220) : elle passe sous le verre ; jauges vides foncées ; « Fermer » remplacé par une croix qui efface aussi la sélection (`fiche_fermee`, une ligne dans `maquette.gd`).
 `--habillage verre` garde l'ancien ; essai de la croix 6/6, ouverture à 0 échec, captures `wehrau_habillage_*` et `wehrau_ouverture_*` refaites.
 **2026-09-29 — Brainstorm : agriculture ou biodiversité, jardins sur les toits, indicateurs clairs (vault seulement) :** recommandation *les deux liées* — l'agriculture d'abord, le vivant comme conséquence de la manière de cultiver ; le jardin comme manière du toit vert.
-Constat : les sept indicateurs du vault et le bilan de la maquette ne se recouvrent pas (deux en commun, deux doublons) ; proposé : une question, une barre vers son jalon, une phrase.
-Rien de tranché : huit questions en fin de `Brainstorming/2026-09-29_brainstorm_campagne-vivant-indicateurs.md`.
+Constat : les sept indicateurs du vault et le bilan de la maquette ne se recouvrent pas (deux en commun, deux doublons) ; l'auteur préfère quatre thèmes (Énergie, Mobilité, Agriculture, Dangers naturels), chacun avec la barre de son jalon.
+Rien de tranché : onze questions en fin de `Brainstorming/2026-09-29_brainstorm_campagne-vivant-indicateurs.md`.
