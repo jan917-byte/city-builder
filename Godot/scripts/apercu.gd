@@ -37,8 +37,10 @@ const RECUL := 60.0
 const MARGE := 1.15      # l'objet ne touche pas le bord du cadre
 ## 🔴 CE QUE LE CADRE MONTRE AU PLUS POUR UN ÎLOT, en mètres de large. Mesuré le
 ## 2026-08-26 : 110 m de diamètre à la médiane, 220 m au neuvième décile. Au-delà,
-## l'îlot est montré par son milieu.
+## l'îlot est montré par son milieu. 🌾 Un champ n'a pas de plafond : il est plat,
+## et coupé il ne se reconnaît plus (auteur, 2026-09-29).
 const CADRE_MAX_M := 240.0
+var _champ := false
 ## La plaque passe SOUS le sol dessiné par 07 : au-dessus elle le raye.
 const SOUS_LE_SOL := -0.20
 
@@ -203,6 +205,7 @@ func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ruine: Mesh = null, agricole :
 	_camp_mmi.multimesh = null
 	_objet.mesh = objet
 	_objet.set_instance_shader_parameter("parcelle_agricole", 1.0 if agricole else 0.0)
+	_champ = agricole
 	_futur.mesh = futur
 	_ruine.mesh = ruine
 	for mi in [_objet, _futur, _ruine]:
@@ -222,6 +225,7 @@ func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ruine: Mesh = null, agricole :
 ## L'état de la berge arrive juste après par `regler`, à la même image.
 func echantillon(couche: String, fiche: Dictionary, voie_m := 0.0) -> void:
 	_objet.set_instance_shader_parameter("parcelle_agricole", 0.0)
+	_champ = false
 	_camp_mmi.multimesh = null
 	_ech_couche = couche
 	_ech_fiche = fiche
@@ -398,6 +402,11 @@ func regler(equipe: float, verdi: float, plate: float, futur: bool,
 		mi.set_instance_shader_parameter("densification", dense)
 
 
+## 🌾 La culture du champ montré, codée comme dans la ville (`ville.parcelle_code`).
+func cultiver(code: float) -> void:
+	_objet.set_instance_shader_parameter("parcelle_agricole", code)
+
+
 ## Les points à contenir, calculés UNE FOIS par objet : le cadrage se refait à
 ## chaque quart de tour, il ne peut pas relire des milliers de sommets.
 func _semer_points() -> void:
@@ -507,8 +516,9 @@ func _cadrer() -> void:
 		+ base.z * (z1 + RECUL)
 	# En ortho, `size` est la hauteur vue : la largeur en découle par le format.
 	var format := float(TAILLE.x) / float(TAILLE.y)
-	_cam.size = minf(maxf(y1 - y0, (x1 - x0) / format) * MARGE,
-		CADRE_MAX_M / format)
+	_cam.size = maxf(y1 - y0, (x1 - x0) / format) * MARGE
+	if not _champ:
+		_cam.size = minf(_cam.size, CADRE_MAX_M / format)
 	_regler_ombre()
 
 

@@ -280,10 +280,11 @@ func objets(couche: String) -> Dictionary:
 ## L'historique des décisions suffit : les indicateurs se recalculent au mois repris.
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
-	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire"]
+	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
+	"_cultures"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
-const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire"]
+const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -321,6 +322,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_plantation": [routes, {"debut": 0.0, "duree": 0.0, "cible": 0.0,
 			"cout_ke": 0.0, "arbres": 0}],
 		"_camps": [ilots, {"debut": 0.0, "places": 0, "cout_ke": 0.0}],
+		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
 		"_recherche": [Recherche.SUJETS, 0.0]}
@@ -329,6 +331,10 @@ func valider_partie(etat: Dictionary) -> bool:
 			continue
 		for fid in etat[champ]:
 			if not formes[champ][0].has(fid) or not _forme_partie(etat[champ][fid], formes[champ][1]):
+				return false
+	for fid in etat.get("_cultures", {}):
+		for d in etat["_cultures"][fid]:
+			if int(d["culture"]) < 0 or int(d["culture"]) >= CULTURES.size():
 				return false
 	for cle in etat["_politiques"]:
 		if not Politiques.POLITIQUES.has(cle) or not _forme_partie(etat["_politiques"][cle], [[0.0]]):
@@ -374,6 +380,7 @@ func importer_partie(etat: Dictionary) -> void:
 	for fid in _toit_avant:
 		ilots[fid]["toit_m2"] = ilots[fid]["toit_m2_neuf"]
 	_vert_ha_mois = INF
+	_crue_champs_mois = INF
 
 
 ## 🌊 L'état de DÉPART se mesure, il ne se choisit pas : une berge que nul mur
@@ -466,7 +473,7 @@ func baisse_crue_m(fid: int, t: float) -> float:
 	var fil := base("i", fid, "position_fil_eau")
 	# 🌿 Les toits verts entrent ICI, et pour toute la ville : ce qui n'est pas
 	# tombé dans les gouttières n'arrive pas dans l'Ilse, où que soit le toit.
-	var v := baisse_crue_toits_m(t)
+	var v := baisse_crue_toits_m(t) + baisse_crue_champs_m(t)
 	for b in berges:
 		if fil >= base("b", b, "fil_amont") - 0.001 \
 				and fil <= base("b", b, "fil_aval") + 0.001:
@@ -738,6 +745,8 @@ func reinitialiser() -> void:
 	_plantation.clear()
 	_berge.clear()
 	_camps.clear()
+	_cultures.clear()
+	_crue_champs_mois = INF
 	_depense_ke = 0.0
 	_credit_essai_ke = 0.0
 	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
@@ -1226,6 +1235,7 @@ func abriter(fid: int, t: float) -> bool:
 		return false
 	_camps[fid] = {"debut": t, "places": places, "cout_ke": cout}
 	_depense_ke += cout
+	_crue_champs_mois = INF
 	return true
 
 
@@ -1323,9 +1333,8 @@ func camp_occupants(fid: int, t: float) -> float:
 # Poser des logements sur un champ est toujours possible ; ce bloc est ce que
 # ça coûte. La surface est MESURÉE (`surface_m2`), la conversion ne l'est pas.
 #
-# 🎚️ LEVEL DESIGN, LE SEUL NOMBRE DU SYSTÈME : combien de personnes un hectare
-# de la campagne de Wehrau nourrit sur l'année. 12 = une ceinture nourricière
-# (légumes, fruits, œufs), donc les 68,9 ha mesurés couvrent 15 % de la ville.
+# 🎚️ LEVEL DESIGN : combien de personnes un hectare de CÉRÉALES, la culture
+# de départ, nourrit sur l'année. Les 68,9 ha mesurés couvrent 15 % de la ville.
 # 🔴 À 3 pers./ha — la moyenne française toutes productions confondues — la
 # campagne ne couvrirait que 4 %, et prendre un champ ne coûterait rien de
 # lisible. C'est ce nombre qui décide si le coût se voit.
@@ -1339,11 +1348,86 @@ func est_champ(fid: int) -> bool:
 	return str(ilots.get(fid, {}).get("sous_type", "")) == "champ"
 
 
-## Ce que ce champ nourrit en une année, s'il est encore cultivé.
-func champ_nourriture(fid: int) -> float:
+# 🌾 CE QUE PORTE UN CHAMP (auteur, 2026-09-29) : un usage à la fois (77c).
+# 🎚️ LEVEL DESIGN, choisi « toute l'assiette, chiffres de jeu » : gonflés pour
+# que l'autonomie demande ~60 % des champs en maraîchage (77d : on gonfle
+# tout pareil, on ne choisit pas le gagnant). `attente` : mois entre la fin
+# du chantier et la première récolte. `crue_m_ha` : comme les toits verts,
+# pour toute la ville. 🔴 Tous à juger devant l'écran.
+const CEREALES := 0
+const CULTURES := [
+	{"nom": "céréales", "personnes_ha": NOURRITURE_PERSONNES_HA, "prix_ke_ha": 10.0,
+		"mois": 6.0, "attente": 0.0, "crue_m_ha": 0.0},
+	{"nom": "maraîchage", "personnes_ha": 120.0, "prix_ke_ha": 60.0,
+		"mois": 12.0, "attente": 0.0, "crue_m_ha": 0.0},
+	{"nom": "verger", "personnes_ha": 70.0, "prix_ke_ha": 25.0,
+		"mois": 12.0, "attente": 48.0, "crue_m_ha": 0.002},
+	{"nom": "prairie", "personnes_ha": 0.0, "prix_ke_ha": 5.0,
+		"mois": 6.0, "attente": 0.0, "crue_m_ha": 0.005},
+]
+## 🎚️ Ce que la ville paie par personne qu'elle ne nourrit pas. La dotation
+## couvre déjà l'achat du mois 0 : la caisse ne voit que l'écart au départ.
+## Un hectare de maraîchage se rembourse ainsi en ~9 ans, comme un toit solaire.
+const NOURRITURE_KE_PERSONNE_MOIS := 0.005
+## fid champ -> [{debut, culture, cout_ke}], dans l'ordre : la dernière gagne.
+var _cultures := {}
+var _agri_cle := ""
+var _agri_marches := []   # [début, personnes nourries], triés
+var _crue_champs_mois := INF
+var _crue_champs := 0.0
+
+
+func _hectares(fid: int) -> float:
+	return base("i", fid, "surface_m2") / 10000.0
+
+
+func _derniere_culture(fid: int, t: float) -> Dictionary:
+	var h: Array = _cultures.get(fid, [])
+	for i in range(h.size() - 1, -1, -1):
+		if float(h[i]["debut"]) <= t:
+			return h[i]
+	return {}
+
+
+## La culture visée au mois `t` : en place, ou en cours de mise en place.
+func champ_culture(fid: int, t: float) -> int:
+	var d := _derniere_culture(fid, t)
+	return CEREALES if d.is_empty() else int(d["culture"])
+
+
+func culture_reste_mois(fid: int, t: float) -> float:
+	var d := _derniere_culture(fid, t)
+	if d.is_empty():
+		return 0.0
+	return maxf(0.0, float(d["debut"]) + _delai(CULTURES[int(d["culture"])]["mois"]) - t)
+
+
+func culture_en_cours(fid: int, t: float) -> bool:
+	return culture_reste_mois(fid, t) > 0.0
+
+
+## Mois jusqu'à la première récolte, chantier compris ; 0 si elle est faite.
+func recolte_dans_mois(fid: int, t: float) -> float:
+	var d := _derniere_culture(fid, t)
+	if d.is_empty():
+		return 0.0
+	var c: Dictionary = CULTURES[int(d["culture"])]
+	return maxf(0.0, float(d["debut"]) + _delai(c["mois"]) + _delai(c["attente"]) - t)
+
+
+## Ce que ce champ nourrit une fois sa culture en production.
+func champ_nourriture(fid: int, t := 0.0) -> float:
 	if not est_champ(fid):
 		return 0.0
-	return base("i", fid, "surface_m2") / 10000.0 * NOURRITURE_PERSONNES_HA
+	return _hectares(fid) * float(CULTURES[champ_culture(fid, t)]["personnes_ha"])
+
+
+## Ce qu'il nourrit CE mois-ci : rien sous un camp, pendant le chantier, ni
+## avant la première récolte.
+func champ_rendement(fid: int, t: float) -> float:
+	if not champ_cultive(fid, t) or recolte_dans_mois(fid, t) > 0.0:
+		return 0.0
+	return champ_nourriture(fid, t)
 
 
 ## 🔴 UN CAMP PREND LE CHAMP ENTIER, ET POUR DE BON : les containers coupent la
@@ -1353,19 +1437,114 @@ func champ_cultive(fid: int, t: float) -> bool:
 	return est_champ(fid) and (not _camps.has(fid) or t < float(_camps[fid]["debut"]))
 
 
-## Ce que toute la campagne nourrit encore.
+func cout_culture_ke(fid: int, culture: int) -> float:
+	return _hectares(fid) * float(CULTURES[culture]["prix_ke_ha"])
+
+
+## `false` si ce n'est pas un champ libre, si le chantier d'avant court encore,
+## si la culture est déjà celle-là, ou si la caisse ne suit pas.
+func cultiver(fid: int, culture: int, t: float) -> bool:
+	if not est_champ(fid) or _camps.has(fid) or culture < 0 or culture >= CULTURES.size():
+		return false
+	if culture == champ_culture(fid, t) or culture_en_cours(fid, t):
+		return false
+	var cout := cout_culture_ke(fid, culture)
+	if cout > caisse_ke(t) + 0.001:
+		return false
+	if not _cultures.has(fid):
+		_cultures[fid] = []
+	_cultures[fid].append({"debut": t, "culture": culture, "cout_ke": cout})
+	_depense_ke += cout
+	_crue_champs_mois = INF
+	return true
+
+
+## Ce que toute la campagne nourrit ce mois-ci.
 func nourriture_personnes(t: float) -> float:
 	var n := 0.0
 	for fid in ilots:
-		if champ_cultive(int(fid), t):
-			n += champ_nourriture(int(fid))
+		if est_champ(int(fid)):
+			n += champ_rendement(int(fid), t)
 	return n
 
 
-## La part de Wehrau que sa propre campagne nourrit. Elle ne remonte jamais :
-## aucun champ ne se rend.
+## Le départ, carte intacte : l'étalon de ce que la caisse paie en plus ou en moins.
+func nourriture_depart() -> float:
+	var n := 0.0
+	for fid in ilots:
+		if est_champ(int(fid)):
+			n += _hectares(int(fid)) * NOURRITURE_PERSONNES_HA
+	return n
+
+
 func nourriture_part(t: float) -> float:
 	return nourriture_personnes(t) / HABITANTS
+
+
+func achat_nourriture_ke_mois(t: float) -> float:
+	return maxf(0.0, HABITANTS - nourriture_personnes(t)) * NOURRITURE_KE_PERSONNE_MOIS
+
+
+## ∫ (départ − nourris) de 0 à `t`, exacte : le nombre ne change qu'aux dates
+## des camps, des chantiers et des premières récoltes. Négatif = économisé.
+func achat_nourriture_cumule_ke(t: float) -> float:
+	var cle := "%d/%d/%s" % [_cultures.hash(), _camps.hash(), livraison_immediate]
+	if cle != _agri_cle:
+		_agri_cle = cle
+		var dates := [0.0]
+		for fid in _camps:
+			dates.append(float(_camps[fid]["debut"]))
+		for fid in _cultures:
+			for d in _cultures[fid]:
+				var c: Dictionary = CULTURES[int(d["culture"])]
+				dates.append(float(d["debut"]))
+				dates.append(float(d["debut"]) + _delai(c["mois"]))
+				dates.append(float(d["debut"]) + _delai(c["mois"]) + _delai(c["attente"]))
+		dates.sort()
+		_agri_marches = []
+		for d in dates:
+			_agri_marches.append([d, nourriture_personnes(d)])
+	var depart := nourriture_depart()
+	var ke := 0.0
+	for i in _agri_marches.size():
+		var debut: float = _agri_marches[i][0]
+		if debut >= t:
+			break
+		var fin: float = minf(t, float(_agri_marches[i + 1][0])) if i + 1 < _agri_marches.size() else t
+		ke += (depart - float(_agri_marches[i][1])) * (fin - debut)
+	return ke * NOURRITURE_KE_PERSONNE_MOIS
+
+
+## 🎨 Ce que le shader lit (`champs.gdshaderinc`) : 1 + culture, +10 pendant
+## le chantier, + 0,9 × maturité du verger. `visee` ≥ 0 : l'état livré, pour
+## la miniature.
+func parcelle_code(fid: int, t: float, visee := -1) -> float:
+	if not est_champ(fid):
+		return 0.0
+	if visee >= 0:
+		return 1.0 + visee + (0.0 if visee == CEREALES else 0.9)
+	var c := champ_culture(fid, t)
+	if culture_en_cours(fid, t):
+		return 11.0 + c
+	if c == CEREALES:
+		return 1.0
+	var attente: float = _delai(CULTURES[c]["attente"])
+	var mat := 1.0 if attente <= 0.0 else clampf(1.0 - recolte_dans_mois(fid, t) / attente, 0.0, 1.0)
+	return 1.0 + c + 0.9 * mat
+
+
+## 🌿 Prairies et vergers retiennent la pluie, pour toute la ville — même
+## règle que les toits verts. Sur ce qui est LIVRÉ et hors camp.
+func baisse_crue_champs_m(t: float) -> float:
+	if t == _crue_champs_mois:
+		return _crue_champs
+	var m := 0.0
+	for fid in _cultures:
+		if champ_cultive(fid, t) and not culture_en_cours(fid, t):
+			m += _hectares(fid) * float(CULTURES[champ_culture(fid, t)]["crue_m_ha"])
+	_crue_champs_mois = t
+	_crue_champs = m
+	return m
 
 
 # ================================== l'université et la mairie (décisions 79 · 80)
@@ -1482,7 +1661,7 @@ func _integrale_part_rendue(fid: int, t: float) -> float:
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
-		- _depense_ke - aide_cumulee_ke(t) \
+		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Recherche.depense_ke(self, t) - Politiques.depense_ke(self, t)
 
 
@@ -1521,10 +1700,11 @@ func indicateurs(t: float) -> Dictionary:
 		# et ce qui reste en caisse après les avoir payés.
 		"recette_ke_an": m["production"] * Energie.PRIX_ENERGIE_EUR_MWH / 1000.0,
 		"caisse_ke": caisse_ke(t),
-		# 🌾 Ce que la campagne nourrit encore, et la part de la ville que ça
-		# couvre. Un champ bâti ne revient pas : la jauge ne remonte jamais.
+		# 🌾 Ce que la campagne nourrit, et la part de la ville que ça couvre.
+		# Un champ bâti ne revient pas ; un champ cultivé autrement, si.
 		"nourriture_personnes": nourriture_personnes(t),
 		"nourriture_part": nourriture_part(t),
+		"achat_nourriture_ke_mois": achat_nourriture_ke_mois(t),
 	}
 	out.merge(durabilite(t, co2))
 	return out
@@ -1734,6 +1914,8 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 			float(r["dense"]["part"]), int(r["dense"]["etages"]))
 	if r.has("camp"):
 		ke += cout_camp_ke(fid, t)
+	if r.has("culture"):
+		ke += cout_culture_ke(fid, int(r["culture"]))
 	if r.has("reparer"):
 		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire")
 	return ke
@@ -1764,6 +1946,8 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			- BERGE_MOIS[berge_etat(fid, t)]))
 	if r.has("camp"):
 		m = maxf(m, _delai(CAMP_MOIS))
+	if r.has("culture"):
+		m = maxf(m, _delai(CULTURES[int(r["culture"])]["mois"]))
 	if r.has("reparer"):
 		m = maxf(m, duree_reparation_mois(couche, fid, str(r["reparer"]) == "provisoire"))
 	return m
@@ -1801,6 +1985,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("berge")
 	if r.has("camp") and abriter(fid, t):
 		faits.append("relogement")
+	if r.has("culture") and cultiver(fid, int(r["culture"]), t):
+		faits.append("culture")
 	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire"):
 		faits.append("reparation")
 	return {"ok": not faits.is_empty() or r.has("axe"), "manque": 0.0,
@@ -1823,6 +2009,8 @@ func etat_chantier(couche: String, fid: int, t: float) -> int:
 	if couche == "i" and camp_pose(fid):
 		return CHANTIER_FAIT if camp_livre(fid, t) else CHANTIER_EN_COURS
 	# La pose passe devant : sur un îlot déjà relevé, c'est elle le chantier.
+	if couche == "i" and culture_en_cours(fid, t):
+		return CHANTIER_EN_COURS
 	if couche == "i" and ((_solaire.has(fid) and etat_solaire(fid, t)["en_cours"])
 			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])
 			or (_dense.has(fid) and etat_dense(fid, t)["en_cours"])):
@@ -1857,6 +2045,9 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "i" and _dense.has(fid) and etat_dense(fid, t)["en_cours"]:
 		lot.append(["densification", float(_dense[fid]["duree"]),
 			float(etat_dense(fid, t)["reste_mois"])])
+	if couche == "i" and culture_en_cours(fid, t):
+		lot.append(["culture", _delai(CULTURES[champ_culture(fid, t)]["mois"]),
+			culture_reste_mois(fid, t)])
 	if couche == "b" and berge_en_cours(fid, t):
 		lot.append(["berge", float(_berge[fid]["duree"]),
 			berge_reste_mois(fid, t)])
@@ -1939,6 +2130,11 @@ func chantiers(t: float) -> Dictionary:
 		if not camp_livre(fid, t):
 			en_cours.append({"couche": "i", "fid": fid, "genre": "relogement",
 				"cout_ke": float(_camps[fid]["cout_ke"]), "reste_mois": camp_reste_mois(fid, t)})
+	for fid in _cultures:
+		if culture_en_cours(fid, t):
+			en_cours.append({"couche": "i", "fid": fid, "genre": "culture",
+				"cout_ke": float(_derniere_culture(fid, t)["cout_ke"]),
+				"reste_mois": culture_reste_mois(fid, t)})
 	for fid in _dense:
 		var d := etat_dense(fid, t)
 		if d["en_cours"]:

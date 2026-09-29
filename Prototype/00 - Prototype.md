@@ -12,9 +12,10 @@
 | 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
 | 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | ⏸️ **en pause** | croire qu'on y habite |
 | 5 | **[Le trafic visible](Trafic.md)** | ⏸️ **en pause** | une rue à `charge = 1,00` est désagréable à regarder |
-| 6 | **[Les premiers pas](Premiers%20pas.md)** | 🎯 **ouverte** | après la première réparation livrée, le joueur veut choisir la suite |
+| 6 | **[Les premiers pas](Premiers%20pas.md)** | ⏸️ **en pause** | après la première réparation livrée, le joueur veut choisir la suite |
+| 7 | **[La campagne](Campagne.md)** — ce que porte un champ | 🎯 **ouverte** | on reconnaît à l'œil un champ de maraîchage, un verger, une prairie et des céréales, et la barre Campagne monte quand on cultive |
 
-⏸️ **Les étapes 2, 4 et 5 sont en pause, pas finies** : leurs critères restent à juger. L'auteur ouvre l'essai de gameplay le 2026-09-06 ; une seule étape est ouverte.
+⏸️ **Les étapes 2, 4, 5 et 6 sont en pause, pas finies** : leurs critères restent à juger. L'auteur ouvre la campagne le 2026-09-29 ; une seule étape est ouverte.
 
 ## Ce qui commande le prototype
 
@@ -44,7 +45,7 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 | `DENSE_INTERDIT` · le m² brut par logement | `export_godot/reglages.py`, haut de `04d` | **qui a le droit de monter**, et combien de logements un étage ajoute |
 | les quatre nombres de la plantation | haut de `ville.gd` | prix de l'arbre, durée de reprise, plafond de canopée, et **ce qu'un arbre épargne** |
 | 🏕️ les deux nombres du camp, la case et le rattrapage | haut de `ville.gd`, `export_godot/reglages.py` | prix du logement de containers et durée de montage · **combien de sinistrés tiennent sur un champ**, et à quelle distance un champ hérite d'une route |
-| 🌾 `NOURRITURE_PERSONNES_HA` | bloc nourriture de `ville.gd` | **ce qu'un hectare de campagne nourrit** — donc ce que coûte un champ bâti |
+| 🌾 `CULTURES` · `NOURRITURE_KE_PERSONNE_MOIS` | bloc nourriture de `ville.gd` | **ce qu'un hectare nourrit selon sa culture**, son prix, sa durée, sa crue retenue · ce que la ville paie par personne non nourrie |
 
 🔴 Dans `04d.TISSU`, le retrait latéral à 0 fait le mitoyen, et il n'est **réversible que dans un sens** (61).
 

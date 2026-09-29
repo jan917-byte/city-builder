@@ -98,6 +98,7 @@ const CHANTIER_MOTS := {
 	"berge": "Rive transformée", "stationnement": "Retrait des places",
 	"densification": "Étages ajoutés",
 	"relogement": "Installation des abris",
+	"culture": "Mise en culture",
 }
 
 
@@ -339,6 +340,10 @@ var _repare_bloc: VBoxContainer
 var _camp_bloc: VBoxContainer
 var _camp_texte: Label
 var _camp_bouton: Button
+## 🌾 Ce que porte le champ : un bouton par culture (auteur, 2026-09-29).
+var _culture_bloc: VBoxContainer
+var _culture_texte: Label
+var _culture_boutons := []
 var _repare_texte: Label
 var _repare_bouton: Button
 var _repare_provisoire: Button   # 🌉 l'autre choix d'un pont coupé (auteur, 2026-09-24)
@@ -507,6 +512,8 @@ func _sans_focus(n: Node) -> void:
 
 
 const RAYON := 16
+## L'état choisi du thème, repris par `_posee` sur les boutons qui ne basculent pas.
+var _sb_choisi: StyleBoxFlat
 const Verre := preload("res://shaders/verre.gdshader")
 
 
@@ -619,15 +626,23 @@ func _creer_theme() -> Theme:
 	var inactif := normal.duplicate()
 	inactif.bg_color = Color8(240, 236, 226, 90)
 	inactif.border_color = Color8(255, 255, 255, 80)
+	var encre_choisie := ACCENT.darkened(0.25)
 	if BOIS:
-		# 🔄 Discrets (auteur, 2026-09-28) : une plaque à peine plus foncée que la
-		# fiche, sans liseré. Les tuiles cerclées du premier essai criaient.
-		for sb: StyleBoxFlat in [normal, survol, presse, inactif]:
-			sb.set_border_width_all(0)
-		normal.bg_color = Color8(238, 228, 214, 215)
-		survol.bg_color = Color8(233, 220, 202, 220)
-		presse.bg_color = Color8(222, 204, 181)
-		inactif.bg_color = Color8(244, 237, 228, 160)
+		# 🔄 Bordés et plus foncés (auteur, 2026-09-29 : « pas assez visibles ») ; le
+		# 2026-09-28, sans liseré et à peine plus foncés que la fiche, ils s'y perdaient.
+		# Le choix est en brun plein, comme la vue active du rail.
+		for sb: StyleBoxFlat in [normal, survol, inactif]:
+			sb.set_border_width_all(1)
+		normal.bg_color = Color8(232, 218, 200)
+		normal.border_color = Color8(196, 168, 142)
+		survol.bg_color = Color8(222, 204, 180)
+		survol.border_color = ACCENT
+		presse.set_border_width_all(0)
+		presse.bg_color = ACCENT
+		inactif.bg_color = Color8(242, 235, 226)
+		inactif.border_color = Color8(214, 198, 180)
+		encre_choisie = BOIS_CREME
+	_sb_choisi = presse
 	t.set_stylebox("normal", "Button", normal)
 	t.set_stylebox("hover", "Button", survol)
 	t.set_stylebox("pressed", "Button", presse)
@@ -636,8 +651,12 @@ func _creer_theme() -> Theme:
 	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
 	t.set_color("font_color", "Button", TEXTE)
 	t.set_color("font_hover_color", "Button", TEXTE)
-	t.set_color("font_pressed_color", "Button", ACCENT.darkened(0.25))
-	t.set_color("font_disabled_color", "Button", GRIS.lightened(0.15))
+	t.set_color("font_pressed_color", "Button", encre_choisie)
+	t.set_color("font_hover_pressed_color", "Button", encre_choisie)
+	t.set_color("icon_pressed_color", "Button", encre_choisie)
+	t.set_color("icon_hover_pressed_color", "Button", encre_choisie)
+	# ⚠️ Un bouton grisé doit rester lisible : il dit ce qui manque (« Mettre en place »).
+	t.set_color("font_disabled_color", "Button", GRIS)
 	t.set_font("font", "Button", _fonte_grasse)
 	t.set_font_size("font_size", "Button", 14)
 	t.set_constant("h_separation", "Button", 8)
@@ -1081,14 +1100,16 @@ func _panneau_bilan() -> void:
 		_ville_valeurs[ligne[0]] = l["valeur"]
 		_ville_jauges[ligne[0]] = l["jauge"]
 
-	# 🌾 LA CAMPAGNE EST UN COMPTEUR, PAS UN DÉCOR : c'est elle qui rend
-	# visible le prix d'un logement posé sur un champ. La jauge ne remonte
-	# jamais — un champ bâti ne se rend pas.
+	# 🌾 LA CAMPAGNE : ce que les champs nourrissent, et ce que la ville achète
+	# pour le reste. Un champ bâti ne se rend pas ; un champ recultivé, si.
 	_titre_section(v, "Campagne")
 	var nourriture := _ligne_bilan(v, "nourriture", Color8(150, 128, 44),
-		"Ce que les champs de Wehrau nourrissent, sur les 5 350 habitants. Bâtir un champ le retire pour de bon.", true)
+		"Ce que les champs de Wehrau nourrissent, sur les 5 350 habitants. Bâtir un champ le retire pour de bon ; le maraîchage et le verger en nourrissent plus.", true)
 	_ville_valeurs["nourriture"] = nourriture["valeur"]
 	_ville_jauges["nourriture"] = nourriture["jauge"]
+	var achats := _ligne_bilan(v, "achat", Color8(122, 112, 96),
+		"Ce que la ville paie chaque mois pour nourrir ceux que ses champs ne nourrissent pas. La dotation couvre déjà celui du mois 0 : la caisse ne voit que l'écart.", false)
+	_ville_valeurs["achat_nourriture"] = achats["valeur"]
 
 	_titre_section(v, "Caisse")
 	# Pas de jauge : une caisse n'a pas de plein. Le nombre prend toute la
@@ -1716,8 +1737,8 @@ func _panneau_ilot() -> void:
 	# champ une fois les ponts coupés.
 	_grille_onglet(v, "bati_i", 3, _fiche_valeurs, [
 		["surface", "Surface"], ["niveaux", "Niveaux"], ["emplois", "Emplois"]])
-	_grille_onglet(v, "campagne_i", 2, _fiche_valeurs, [
-		["surface_champ", "Surface"], ["rive", "Rive"]])
+	_grille_onglet(v, "campagne_i", 3, _fiche_valeurs, [
+		["culture", "Culture"], ["surface_champ", "Surface"], ["rive", "Rive"]])
 	_grille_onglet(v, "energie_i", 3, _fiche_valeurs, [
 		["conso", "Conso./an"], ["production", "Solaire/an"], ["retour", "Retour"]])
 	# 🌿 La part PLATE se lit ici et nulle part ailleurs : c'est elle qui décide
@@ -1804,6 +1825,23 @@ func _panneau_ilot() -> void:
 	_camp_bouton.pressed.connect(func() -> void: _basculer("camp", true))
 	_camp_bloc.add_child(_camp_bouton)
 
+	# 🌾 CE QUE PORTE LE CHAMP. Exclusifs, comme la berge : un seul usage visé
+	# (77c). Reposer le même l'enlève.
+	_culture_bloc = VBoxContainer.new()
+	_culture_bloc.add_theme_constant_override("separation", 6)
+	_culture_bloc.visible = false
+	v.add_child(_culture_bloc)
+	_culture_bloc.add_child(HSeparator.new())
+	_titre_section(_culture_bloc, "Culture")
+	_culture_texte = _label("", 12, TEXTE)
+	_culture_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_culture_bloc.add_child(_culture_texte)
+	for k in Ville.CULTURES.size():
+		var b := Button.new()
+		b.pressed.connect(func() -> void: _basculer("culture", k))
+		_culture_bloc.add_child(b)
+		_culture_boutons.append(b)
+
 	_trafic_bloc = VBoxContainer.new()
 	_trafic_bloc.add_theme_constant_override("separation", 6)
 	_trafic_bloc.visible = false
@@ -1813,6 +1851,7 @@ func _panneau_ilot() -> void:
 	_trafic_stationnement = Button.new()
 	_trafic_stationnement.text = "Retirer les places"
 	_trafic_stationnement.icon = _icone("trafic", 22)
+	_trafic_stationnement.set_meta("icone", "trafic")
 	_trafic_stationnement.pressed.connect(func() -> void: _basculer("places", true))
 	_trafic_bloc.add_child(_trafic_stationnement)
 	_trafic_axe = Button.new()
@@ -1954,7 +1993,8 @@ func _panneau_ilot() -> void:
 	# porte les chiffres ET la décision : `vert` en tient deux, parce qu'un toit
 	# et un alignement d'arbres sont le même thème sur deux couches.
 	_bloc_onglet = {
-		_repare_bloc: "crue", _camp_bloc: "campagne", _dense_bloc: "bati",
+		_repare_bloc: "crue", _camp_bloc: "campagne", _culture_bloc: "campagne",
+		_dense_bloc: "bati",
 		_solaire_bloc: "energie", _vert_bloc: "vert", _arbres_bloc: "vert",
 		_trafic_bloc: "trafic", _berge_bloc: "berge",
 	}
@@ -2123,9 +2163,15 @@ func _habiller_principal(b: Button) -> void:
 	survol.bg_color = Color8(104, 160, 78) if BOIS else Color8(78, 142, 86)
 	var presse := plein.duplicate()
 	presse.bg_color = Color8(78, 128, 56) if BOIS else Color8(46, 100, 54)
+	# Grisé, il reste LE bouton vert, éteint : le crème du thème l'effaçait (2026-09-29).
+	var eteint := plein.duplicate()
+	eteint.bg_color = Color8(204, 212, 188)
 	b.add_theme_stylebox_override("normal", plein)
 	b.add_theme_stylebox_override("hover", survol)
 	b.add_theme_stylebox_override("pressed", presse)
+	b.add_theme_stylebox_override("disabled", eteint)
+	b.add_theme_color_override("font_disabled_color", Color8(96, 114, 80))
+	b.add_theme_color_override("icon_disabled_color", Color8(96, 114, 80))
 	b.add_theme_font_size_override("font_size", 15)
 	b.add_theme_color_override("font_color", Color.WHITE)
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
@@ -2653,6 +2699,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	var nourris: float = indic["nourriture_personnes"]
 	_ville_valeurs["nourriture"].text = _nb(nourris, 0) + " pers."
 	_regler_jauge("nourriture", indic["nourriture_part"])
+	_ville_valeurs["achat_nourriture"].text = "achats %s k€/mois" % _nb(indic["achat_nourriture_ke_mois"], 1)
 	# ⚠️ Mémorisée ici : `_maj_fiche()` en a besoin à chaque image, et la
 	# recalculer parcourrait la ville une seconde fois par image.
 	_caisse_ke = indic["caisse_ke"]
@@ -2807,6 +2854,7 @@ func _maj_fiche() -> void:
 func _maj_fiche_contenu() -> void:
 	_maj_chantier()
 	_maj_camp()
+	_maj_culture()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()
 		return
@@ -2834,13 +2882,20 @@ func _maj_fiche_contenu() -> void:
 	# `logements` BOUGE maintenant — la crue en a retiré 417, une
 	# reconstruction les rend, et la base seule affichait toujours 0.
 	var loges := ville.valeur("i", _fiche_fid, "logements", _mois)
-	var nourris := ville.champ_nourriture(_fiche_fid)
+	var nourris := ville.champ_rendement(_fiche_fid, _mois)
 	var hectares := float(o.get("surface_m2", 0.0)) / 10000.0
 	if champ:
 		# 🌾 CE QUE CE CHAMP-LÀ NOURRIT, en clair et avant toute décision.
-		_maj_resume("nourriture", ("%s personnes nourries" % _nb(nourris, 0))
-			if ville.champ_cultive(_fiche_fid, _mois) and nourris >= 1.5
-			else "ne produit plus de nourriture")
+		var recolte := ville.recolte_dans_mois(_fiche_fid, _mois)
+		var resume := "ne produit plus de nourriture"
+		if nourris >= 1.5:
+			resume = "%s personnes nourries" % _nb(nourris, 0)
+		elif ville.champ_cultive(_fiche_fid, _mois) and recolte > 0.0:
+			resume = "première récolte dans %s" % _duree(recolte)
+		_maj_resume("nourriture", resume)
+		var nom: String = Ville.CULTURES[ville.champ_culture(_fiche_fid, _mois)]["nom"]
+		(_fiche_valeurs["culture"] as Label).text = "camp" if ville.camp_pose(_fiche_fid) \
+			else nom.substr(0, 1).to_upper() + nom.substr(1)
 		(_fiche_valeurs["surface_champ"] as Label).text = "%s ha" % _nb(hectares, 2)
 		(_fiche_valeurs["rive"] as Label).text = str(o.get("rive", "?"))
 	else:
@@ -2933,12 +2988,30 @@ func _maj_fiche_contenu() -> void:
 # LES RÉGLAGES POSÉS — on essaie, puis on met en place (2026-08-31)
 # ==========================================================================
 
-## Le libellé d'une bascule, marqué quand le réglage est posé. Une coche plutôt
-## qu'une couleur : elle survit à une capture en noir et blanc, et elle se lit
-## dans un bouton déjà chargé de trois nombres.
-func _posee(cle: String, texte: String, valeur: Variant = true) -> String:
-	return ("✓ " + texte) if _pose.has(cle) and typeof(_pose[cle]) == typeof(valeur) \
-		and _pose[cle] == valeur else texte
+## Le libellé d'une bascule, et le bouton passe en brun plein quand le réglage est
+## posé. 🔄 Plus de coche devant le texte (auteur, 2026-09-29 : il ne l'aime pas).
+func _posee(b: Button, cle: String, texte: String, valeur: Variant = true) -> void:
+	b.text = texte
+	_marquer(b, _pose.has(cle) and typeof(_pose[cle]) == typeof(valeur)
+		and _pose[cle] == valeur)
+
+
+## L'état choisi sur un bouton qui ne bascule pas : le même brun que `pressed`.
+func _marquer(b: Button, choisi: bool) -> void:
+	for etat in ["normal", "hover"]:
+		if choisi:
+			b.add_theme_stylebox_override(etat, _sb_choisi)
+		else:
+			b.remove_theme_stylebox_override(etat)
+	var encre: Color = _theme_ui.get_color("font_pressed_color", "Button")
+	for etat in ["font_color", "font_hover_color"]:
+		if choisi:
+			b.add_theme_color_override(etat, encre)
+		else:
+			b.remove_theme_color_override(etat)
+	# ⚠️ L'icône est cuite dans sa couleur (`_icone`) : la moduler ne l'éclaircit pas.
+	if b.has_meta("icone"):
+		b.icon = _icone(str(b.get_meta("icone")), 22, encre if choisi else TEXTE)
 
 
 ## 🏢 CE QUE DENSIFIER DONNE, EN LOGEMENTS ET JAMAIS EN MÈTRES. La hauteur
@@ -2959,8 +3032,8 @@ func _maj_dense() -> void:
 	# choisit qu'une fois.
 	for k in _dense_boutons.size():
 		var b: Button = _dense_boutons[k]
-		b.text = ("✓ " if k + 1 == etages else "") \
-			+ "+%d étage%s" % [k + 1, "s" if k else ""]
+		b.text = "+%d étage%s" % [k + 1, "s" if k else ""]
+		_marquer(b, k + 1 == etages)
 		b.disabled = ville.dense_engage(_fiche_fid)
 
 	# 🪜 Le curseur compte des BÂTIMENTS. Il repart du cran atteint : on ne
@@ -3241,6 +3314,9 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	var eau := (float(db.get("eau_prochaine_m", 0.0)) - float(da.get("eau_prochaine_m", 0.0))) * 100.0
 	if absf(eau) >= 1.0:
 		out.append(["eau", "%+d cm de crue" % int(roundf(eau)), -_sens(eau)])
+	elif absf(eau) >= 0.1:
+		# 🌾 Une prairie retient quelques millimètres : sous le centimètre, une décimale.
+		out.append(["eau", "%s cm de crue" % ("%+.1f" % eau).replace(".", ","), -_sens(eau)])
 	var prod := float(b["production_mwh"]) - float(a["production_mwh"])
 	if absf(prod) >= 1.0:
 		out.append(["production", "%+d MWh/an" % int(roundf(prod)), _sens(prod)])
@@ -3253,6 +3329,17 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	var nourris := float(b["nourriture_personnes"]) - float(a["nourriture_personnes"])
 	if absf(nourris) >= 1.0:
 		out.append(["feuille", "%+d nourris" % int(roundf(nourris)), _sens(nourris)])
+	# 🌾 Le verger ne rend rien avant cinq ans : sa promesse se lit à la récolte.
+	if r.has("culture") and _fiche_couche == "i":
+		var attente := ville_essai.recolte_dans_mois(_fiche_fid, t)
+		if attente > 0.0:
+			var plus_tard := ville_essai.champ_nourriture(_fiche_fid, t) \
+				- ville.champ_rendement(_fiche_fid, t)
+			out.append(["feuille", "%+d nourris dans %s" % [int(roundf(plus_tard)),
+				_duree(attente)], _sens(plus_tard)])
+	var achats := float(b["achat_nourriture_ke_mois"]) - float(a["achat_nourriture_ke_mois"])
+	if absf(achats) >= 0.05:
+		out.append(["achat", "%s k€/mois d'achats" % ("%+.1f" % achats).replace(".", ","), -_sens(achats)])
 	if r.has("arbres"):
 		out.append(["feuille", "+%d arbres" % (ville.arbres_a(_fiche_fid, float(r["arbres"]))
 			- ville.arbres_a(_fiche_fid, ville.valeur("r", _fiche_fid, "canopee", _mois))), 1])
@@ -3310,6 +3397,7 @@ func apercu_demande() -> Dictionary:
 	# 🏢 (avancement, part d'un bâtiment, mètres) — ce que le shader attend.
 	# ⚠️ Un Vector4, pas une Color : une couleur passerait en espace linéaire.
 	var dense := Vector4(0.0, 1.0, 0.0, 0.0)
+	var culture := 0.0
 	if _fiche_fid < 0:
 		return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 			"verdi": verdi, "plate": plate,
@@ -3344,6 +3432,19 @@ func apercu_demande() -> Dictionary:
 		# c'était le seul chantier qu'on payait sans l'avoir vu. Même règle que
 		# les autres réglages — au survol du bouton comme une fois posé — et en
 		# AVANT, seul le camp déjà livré.
+		# 🌾 La culture LIVRÉE, arbres adultes : la miniature promet l'état final.
+		culture = ville.parcelle_code(_fiche_fid, _mois)
+		if not _apercu_avant:
+			var visee := int(r.get("culture", -1))
+			for k in _culture_boutons.size():
+				if not (_culture_boutons[k] as Button).disabled \
+						and (_culture_boutons[k] as Button).is_hovered():
+					visee = k
+			if visee < 0 and (ville.culture_en_cours(_fiche_fid, _mois)
+					or ville.recolte_dans_mois(_fiche_fid, _mois) > 0.0):
+				visee = ville.champ_culture(_fiche_fid, _mois)
+			if visee >= 0:
+				culture = ville.parcelle_code(_fiche_fid, _mois, visee)
 		if ville.camp_possible(_fiche_fid):
 			if ville.camp_pose(_fiche_fid):
 				if not _apercu_avant or ville.camp_livre(_fiche_fid, _mois):
@@ -3398,7 +3499,8 @@ func apercu_demande() -> Dictionary:
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 		"verdi": verdi, "plate": plate,
 		"futur": futur, "berge": berge, "places": places, "roule": roule,
-		"arbres": arbres, "dense": dense, "camp": camp, "provisoire": provisoire}
+		"arbres": arbres, "dense": dense, "camp": camp, "provisoire": provisoire,
+		"culture": culture}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait
@@ -3611,10 +3713,20 @@ func _maj_fiche_rue() -> void:
 	var a_des_places := ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5
 	# 🅿️ Le bouton s'efface derriere la fermeture, qui emporte deja les places.
 	var emportees: bool = _pose.has("axe") and a_des_places
-	_trafic_stationnement.text = ("Places retirées" if stationnement_fini 		else "Places · 2 mois") if stationnement_engage 		else ("✓ Places emportées par la fermeture" if emportees 		else _posee("places", "Retirer les places"))
+	if stationnement_engage:
+		_trafic_stationnement.text = "Places retirées" if stationnement_fini else "Places · 2 mois"
+		_marquer(_trafic_stationnement, false)
+	elif emportees:
+		_trafic_stationnement.text = "Places emportées par la fermeture"
+		_marquer(_trafic_stationnement, false)
+	else:
+		_posee(_trafic_stationnement, "places", "Retirer les places")
 	_trafic_stationnement.disabled = stationnement_engage or emportees 		or not a_des_places
-	_trafic_axe.text = ("Fermée · report" if trafic.report_en_cours(
-		_fiche_fid, _mois) else "Fermée") if axe_ferme 		else _posee("axe", "Fermer aux voitures")
+	if axe_ferme:
+		_trafic_axe.text = "Fermée · report" if trafic.report_en_cours(_fiche_fid, _mois) 			else "Fermée"
+		_marquer(_trafic_axe, false)
+	else:
+		_posee(_trafic_axe, "axe", "Fermer aux voitures")
 	_trafic_axe.disabled = axe_ferme or not ville.route_praticable(_fiche_fid, _mois) 		or ville.trafic_vu(_fiche_fid, _mois) < 0.20
 	_maj_arbres()
 	# 🌳 Le verger se NOMME sur la fiche : c'est là qu'on comprend pourquoi
@@ -3684,7 +3796,6 @@ func _maj_fiche_berge() -> void:
 	for k in _berge_boutons.size():
 		var cible: int = Ville.BERGE_APAISEE + k
 		var bouton: Button = _berge_boutons[k]
-		var cout := ville.cout_berge_ke(_fiche_fid, cible, _mois)
 		var nom: String = Ville.BERGE_NOMS[cible]
 		bouton.disabled = cible <= etat or reste > 0.0
 		# ⚠️ Pas de `capitalize()` : il met une majuscule à CHAQUE mot, et le
@@ -3692,12 +3803,11 @@ func _maj_fiche_berge() -> void:
 		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
 		if cible <= etat:
 			bouton.text = "%s · fait" % titre
+			_marquer(bouton, false)
 		else:
-			# 🔄 La baisse de crue a quitté le bouton (auteur, 2026-09-26) : elle
-			# se lit dans les conséquences, une fois l'état essayé.
-			bouton.text = _posee("berge", "%s · %s k€ · %s" % [titre,
-				_milliers(cout),
-				_duree(Ville.BERGE_MOIS[cible] - Ville.BERGE_MOIS[etat])], cible)
+			# 🔄 Un bouton de choix ne porte que son nom (auteur, 2026-09-29) :
+			# prix, durée et effets se lisent dans les conséquences.
+			_posee(bouton, "berge", titre, cible)
 	_maj_recap()
 
 
@@ -3745,23 +3855,16 @@ func _maj_reparation(o: Dictionary) -> void:
 	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
 	# récapitulatif, où il porte le TOTAL. Réparer et poser des panneaux séparément
 	# tenaient dans la caisse ; ensemble, non — et seul le total peut le dire.
-	var phrase := "%s · %s k€ · %s." % [
-		verbe, _milliers(prix),
-		_duree(ville.duree_reparation_mois(couche, _fiche_fid))]
-	_repare_texte.text = _degat_en_clair(couche, o) + "  " + phrase
+	_repare_texte.text = _degat_en_clair(couche, o)
 	if couche == "r" and str(o.get("etat_crue", "")) == "coupe" and ouverture != null:
 		# Le dégât est dans la grille, ce qui manque en caisse dans les conséquences.
 		_repare_texte.text = ouverture.description_pont(_fiche_fid)
-	_repare_bouton.text = _posee("reparer", "%s · %s k€" % [verbe, _milliers(prix)])
+	_posee(_repare_bouton, "reparer", verbe)
 	_repare_bouton.disabled = false
 	if pont:
 		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une
 		# voie, ou en dur et plus long. Reposer l'autre remplace le premier.
-		_repare_bouton.text = _posee("reparer", "%s · %s k€ · %s" % [verbe, _milliers(prix),
-			_duree(ville.duree_reparation_mois(couche, _fiche_fid))])
-		_repare_provisoire.text = _posee("reparer", "Pont provisoire · %s k€ · %s" % [
-			_milliers(ville.cout_reparation_ke(couche, _fiche_fid, true)),
-			_duree(ville.duree_reparation_mois(couche, _fiche_fid, true))], "provisoire")
+		_posee(_repare_provisoire, "reparer", "Pont provisoire", "provisoire")
 
 
 ## Un bouton qui MONTRE sans engager : un contour, sans plaque, pour ne pas
@@ -3787,7 +3890,7 @@ func _habiller_secondaire(b: Button) -> void:
 ## 🌾 Avant la pose, l'irréversible seul (le nombre de nourris est dans les
 ## conséquences) ; après, ce que le champ a cessé de nourrir.
 func _champ_perdu(fid: int) -> String:
-	var nourris := ville.champ_nourriture(fid)
+	var nourris := ville.champ_nourriture(fid, _mois)
 	if nourris < 0.5:
 		return "Ce champ ne nourrit personne."
 	if ville.champ_cultive(fid, _mois):
@@ -3818,6 +3921,7 @@ func _maj_camp() -> void:
 			_camp_texte.text = "Camp vide : aucun pont n'y mène."
 			_camp_bouton.text = "Personne ne peut y venir"
 		_camp_bouton.disabled = true
+		_marquer(_camp_bouton, false)
 		return
 	# Sur les places COMMANDÉES : un second champ ne se propose plus quand les
 	# camps en route suffisent.
@@ -3826,6 +3930,7 @@ func _maj_camp() -> void:
 		_camp_texte.text = "Tout le monde a une place."
 		_camp_bouton.text = "Rien à reloger"
 		_camp_bouton.disabled = true
+		_marquer(_camp_bouton, false)
 		return
 	var places: int = ville.camp_taille(fid, _mois)
 	var maxi: int = ville.camp_capacite(fid)
@@ -3837,9 +3942,36 @@ func _maj_camp() -> void:
 	if not ville.camp_accessible(fid, _mois):
 		phrase += "\n⚠ Autre rive : personne ne pourra y aller."
 	_camp_texte.text = phrase
-	_camp_bouton.text = _posee("camp", "Installer %d containers · %s k€" % [
-		places, _milliers(ville.cout_camp_ke(fid, _mois))])
+	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
+
+
+## 🌾 LE BLOC DES CULTURES. Fermé pendant l'urgence (comme le solaire) et sous
+## un camp ; un chantier en cours grise les quatre boutons.
+func _maj_culture() -> void:
+	var fid := _fiche_fid
+	if _fiche_couche != "i" or not ville.est_champ(fid) or ville.camp_pose(fid) \
+			or _solaire_verrouille():
+		_bloc_dispo[_culture_bloc] = false
+		return
+	_bloc_dispo[_culture_bloc] = true
+	var actuelle := ville.champ_culture(fid, _mois)
+	var en_cours := ville.culture_en_cours(fid, _mois)
+	var recolte := ville.recolte_dans_mois(fid, _mois)
+	_culture_texte.text = "Les arbres poussent : première récolte dans %s." % _duree(recolte) \
+		if not en_cours and recolte > 0.0 else ""
+	_culture_texte.visible = _culture_texte.text != ""
+	for k in _culture_boutons.size():
+		var b: Button = _culture_boutons[k]
+		var c: Dictionary = Ville.CULTURES[k]
+		var nom: String = c["nom"]
+		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
+		b.disabled = k == actuelle or en_cours
+		if k == actuelle:
+			b.text = "%s · %s" % [titre, "en chantier" if en_cours else "en place"]
+			_marquer(b, false)
+		else:
+			_posee(b, "culture", titre, k)
 
 
 func _verbe_reparation(couche: String, o: Dictionary) -> String:

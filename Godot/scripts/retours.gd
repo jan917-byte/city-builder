@@ -155,7 +155,7 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	var prix: String = "−%s k€" % ui._milliers(r["cout_ke"]) if r["cout_ke"] > 0.0 else "décision engagée"
 	var message := "%s : %s · %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
 	if "relogement" in r["faits"]:
-		message += " · −%s nourris" % ui._nb(ui.ville.champ_nourriture(fid), 0)
+		message += " · −%s nourris" % ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
 	elif duree >= ACCELERER_MOIS:
 		message += " · ×12 ≈ %d s" % int(ceil(duree * 5.0))
 	notifier(message, mois)
@@ -191,6 +191,13 @@ func livraison(c: Dictionary, mois: float) -> void:
 		resultat = "Surélévation livrée · %.0f logements ajoutés au total ici." % ui.ville.etat_dense(fid, mois)["logements"]
 	elif c["genre"] == "solaire":
 		resultat = "Panneaux en service · %.0f %% du toit équipé." % (100.0 * ui.ville.valeur("i", fid, "part_toit_equipe", mois))
+	elif c["genre"] == "culture":
+		var k: int = ui.ville.champ_culture(fid, mois)
+		var attente: float = ui.ville.recolte_dans_mois(fid, mois)
+		var culture: String = ui.Ville.CULTURES[k]["nom"]
+		resultat = "%s en place · %s." % [culture.substr(0, 1).to_upper() + culture.substr(1),
+			("première récolte dans %s" % ui._duree(attente)) if attente > 0.0
+			else "%s nourris" % ui._nb(ui.ville.champ_rendement(fid, mois), 0)]
 	elif c["genre"] == "toit vert":
 		resultat = "Toiture végétalisée · %.0f %% du toit retient la pluie." % (100.0 * ui.ville.valeur("i", fid, "part_toit_vert", mois))
 	notifier("%s : %s" % [nom, resultat], mois)

@@ -341,6 +341,10 @@ func _essai_interface() -> void:
 	await _fiche("r", 55)
 	await _capturer("interface_rue")
 	await _capturer_apercu("apercu_rue")
+	# Un réglage posé : le bouton passe en brun plein, sans coche.
+	interface._basculer("places", true)
+	await _capturer("interface_rue_posee")
+	interface._basculer("places", true)
 	_sur_theme("trafic")
 	await get_tree().process_frame
 	await _capturer("interface_diagnostic")
@@ -1828,6 +1832,60 @@ static func _dans_un_camp(campements: Array, x: float, z: float) -> bool:
 	return false
 
 
+const VERGER := 2   # `Ville.CULTURES`
+## 🎚️ Rangs de 7 m, un arbre tous les 5 m : un verger haute tige.
+const VERGER_RANG_M := 7.0
+const VERGER_PAS_M := 5.0
+var _vergers_signe := ""
+var _vergers_cache := {}
+
+
+## Les arbres d'un verger, semés une fois : une grille calée sur le plus long
+## côté du champ, à 3 m du bord. [x, y, z, échelle adulte, lacet].
+func _verger_semis(fid: int) -> Array:
+	if _vergers_cache.has(fid):
+		return _vergers_cache[fid]
+	var poly: Array = donnees["emprises"][str(fid)]
+	var pts := PackedVector2Array()
+	var y := 0.0
+	for p in poly:
+		pts.append(Vector2(float(p[0]), float(p[2])))
+		y += float(p[1])
+	y = y / maxf(poly.size(), 1) - 0.05
+	var axe := Vector2.RIGHT
+	var lg := 0.0
+	for i in pts.size():
+		var d := pts[(i + 1) % pts.size()] - pts[i]
+		if d.length() > lg:
+			lg = d.length()
+			axe = d.normalized()
+	var normale := Vector2(-axe.y, axe.x)
+	var bas := INF
+	var haut := -INF
+	var gauche := INF
+	var droite := -INF
+	for p in pts:
+		bas = minf(bas, p.dot(normale))
+		haut = maxf(haut, p.dot(normale))
+		gauche = minf(gauche, p.dot(axe))
+		droite = maxf(droite, p.dot(axe))
+	var out := []
+	var retrait := Geometry2D.offset_polygon(pts, -3.0)
+	var dedans: PackedVector2Array = retrait[0] if not retrait.is_empty() else pts
+	var v := bas + VERGER_RANG_M * 0.5
+	while v < haut:
+		var u := gauche + VERGER_PAS_M * 0.5
+		while u < droite:
+			var q := axe * u + normale * v
+			if Geometry2D.is_point_in_polygon(q, dedans):
+				var h := fposmod(sin(q.x * 12.9898 + q.y * 78.233) * 43758.545, 1.0)
+				out.append([q.x, y, q.y, 1.0 + 0.2 * h, h * TAU])
+			u += VERGER_PAS_M
+		v += VERGER_RANG_M
+	_vergers_cache[fid] = out
+	return out
+
+
 ## Variation de VALEUR sur la teinte de feuillage, par essence (DA l.67) : le
 ## bouleau et le saule prennent la lumière, le peuplier la retient.
 const VALEUR_ESSENCE := {Constructeur.BOULEAU: 1.20, Constructeur.PEUPLIER: 0.90,
@@ -1849,14 +1907,26 @@ func _montrer_arbres() -> void:
 		if campements.is_empty() or not _dans_un_camp(campements,
 				float(a[0]), float(a[2])):
 			liste.append(a)
+	# 🍎 Les vergers se plantent en vrais arbres, et grandissent avec l'âge.
+	var vergers := PackedStringArray()
+	for fid in ville._cultures:
+		var code := ville.parcelle_code(fid, mois)
+		if int(code) == 1 + VERGER and donnees["emprises"].has(str(fid)):
+			var age := snappedf(fposmod(code, 1.0) / 0.9, 0.1)
+			vergers.append("%d:%.1f" % [fid, age])
+			for a in _verger_semis(fid):
+				liste.append([a[0], a[1], a[2], a[3] * lerpf(0.5, 1.0, age), a[4],
+					Constructeur.FRUITIER])
+	var signe := ",".join(vergers)
 	for a in _arbres_slots:
 		if float(a[6]) <= ville.valeur("r", int(a[5]), "canopee", mois):
 			# Un alignement est d'une seule essence, et feuillu : personne ne
 			# plante une haie d'épicéas en ville.
 			liste.append([a[0], a[1], a[2], a[3], a[4], Constructeur.FEUILLU])
-	if liste.size() == _arbres_compte:
+	if liste.size() == _arbres_compte and signe == _vergers_signe:
 		return
 	_arbres_compte = liste.size()
+	_vergers_signe = signe
 	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
 	var brun := Donnees.teinte(donnees, "_tronc")
 	for essence in _arbres_noeuds:
@@ -2240,7 +2310,7 @@ func _peindre() -> void:
 					if couche == "r" and ruines_ponts.has(fid) else 0.0)
 				mj.set_instance_shader_parameter("diagnostic_sol", diagnostic_sol)
 				mj.set_instance_shader_parameter("parcelle_agricole",
-					1.0 if ville.objets(couche).get(fid, {}).get("sous_type", "") == "champ" else 0.0)
+					ville.parcelle_code(fid, mois) if couche == "i" else 0.0)
 				mj.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
 				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
 				mj.set_instance_shader_parameter("calque", c)
@@ -2575,6 +2645,8 @@ func _maj_apercu() -> void:
 	apercu.viser(pivot.lacet)
 	apercu.regler(float(d["equipe"]), float(d["verdi"]), float(d["plate"]),
 		bool(d["futur"]), float(d["berge"]), d["dense"] as Vector4)
+	if couche == "i":
+		apercu.cultiver(float(d.get("culture", 0.0)))
 	# 🏕️ Les abris que la fiche promet. La signature évite de refaire le
 	# MultiMesh à chaque image : il ne change qu'au survol ou à la commande.
 	var signe_camp := "%s%d %d" % [couche, fid, int(d["camp"])]
