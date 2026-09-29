@@ -132,4 +132,18 @@ Ajouter la nourriture ou le vivant, c'est ajouter un indicateur. Or ceux d'aujou
 
 ✅ **Tranché le même jour par l'auteur** : *« oui pour le thème habitants. et CO2 au-dessus aussi. je veux garder agriculture et biodiversité séparés »* — donc **le CO₂ au-dessus, six thèmes** (Énergie · Mobilité · Agriculture · Biodiversité · Dangers naturels · Habitants). Ferme les questions 2, 7, 8, 9, 10 et 11 de cette note. → [[Décisions arrêtées]] 91 · [[Indicateurs globaux]]
 
+## 7. Les unités — non tranché
+
+*« Je me demande si c'est bien d'avoir des unités réelles, ou des unités moins barbantes que des kWh. »* L'auteur ne tranche pas ; seul le budget passe en **M€** (les prix restent en k€).
+
+| | Exemple | Ce que ça vaut |
+|---|---|---|
+| **A · Unités réelles** | 42 GWh/an · 12 kt de CO₂ | crédible, valorise l'expertise ; abstrait — on ne sait pas si c'est beaucoup |
+| **B · Unités de jeu** | 340 points, ★★★ | lisible mais vide, et c'est le piège *Democracy 4* |
+| **C · Unités humaines** ⭐ | « de quoi alimenter 340 foyers sur 2 645 » · « nourrit 820 habitants sur 5 350 » | concret, à l'échelle de la ville ; le vrai chiffre reste dans l'infobulle |
+
+Avec C, quatre thèmes sur six comptent des **habitants ou des foyers** (Énergie, Agriculture, Dangers naturels, Habitants) : une barre pleine veut toujours dire « toute la ville ». Piège : « foyers alimentés » est un raccourci — université et commerces consomment aussi (78 le permet, l'infobulle garde le vrai chiffre).
+
+**Reste à trancher :** A, B ou C ? · le CO₂ en tonnes par habitant, ou en équivalent voitures ?
+
 **Voir aussi** : [[Indicateurs globaux]] · [[Milestones]] · [[2026-08-12_brainstorm_indicateurs-globaux]] · [[Questions ouvertes]] · [[Décisions arrêtées]]
