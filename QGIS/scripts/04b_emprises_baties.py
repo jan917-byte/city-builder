@@ -59,6 +59,10 @@ CLE = 0.25                             # grille de clé des sommets (comme 03)
 # Au-delà, on considère que l'anneau est détruit et on le signale.
 PERTE_ALERTE = 0.35                    # part de surface perdue qui mérite l'œil
 
+# De combien on sonde au-delà d'une arête pour y chercher l'eau : la moitié de
+# TOL_ROUTE ne suffit pas, les rives redessinées flottent de quelques cm.
+SONDE_EAU = 0.50
+
 # Au-delà de LIMITE_MITRE fois le retrait, un sommet reculé passe en biseau.
 # SVG utilise 4 pour le même problème ; ici on préfère un coin coupé à un pic.
 LIMITE_MITRE = 3.0
@@ -89,6 +93,35 @@ def cle_arete(a, b):
     ka = (round(a[0] / CLE), round(a[1] / CLE))
     kb = (round(b[0] / CLE), round(b[1] / CLE))
     return (ka, kb) if ka <= kb else (kb, ka)
+
+
+def dedans(anneau, p):
+    """Point dans un anneau OUVERT (lancer de rayon)."""
+    x, y = p
+    c = False
+    n = len(anneau)
+    for i in range(n):
+        (x1, y1), (x2, y2) = anneau[i], anneau[(i + 1) % n]
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            c = not c
+    return c
+
+
+def eau_en_face(a, b, ext, rivieres):
+    """Vrai si l'Ilse est juste de l'autre côté de l'arête. La clé d'arête ne
+    suffit pas : une rive redessinée n'a pas les sommets de l'îlot d'en face
+    (rue 122, Quai des Sureaux : 155 m de berge vus comme une rue ordinaire)."""
+    L = math.hypot(b[0] - a[0], b[1] - a[1])
+    if L < 1e-9:
+        return False
+    nx, ny = -(b[1] - a[1]) / L, (b[0] - a[0]) / L
+    for t in (0.25, 0.5, 0.75):
+        mx, my = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+        for s in (1.0, -1.0):
+            q = (mx + nx * s * SONDE_EAU, my + ny * s * SONDE_EAU)
+            if not dedans(ext, q) and any(dedans(r, q) for r in rivieres):
+                return True
+    return False
 
 
 def dist_pt_seg(p, a, b):
@@ -337,6 +370,8 @@ def main():
 
     # ------------------------------------------------------------ le retrait
     n_avec_route = 0
+    n_eau_sondee = 0
+    rivieres = [d["ext"] for d in ilots.values() if d["st"] == "riviere"]
     resultats = []
     for fid, d in ilots.items():
         e = d["ext"]
@@ -354,6 +389,9 @@ def main():
             else:
                 voisins = [f for f in proprio[cle_arete(a, b)] if f != fid]
                 bord_eau = any(ilots[f]["st"] == "riviere" for f in voisins)
+                if not bord_eau and eau_en_face(a, b, e, rivieres):
+                    bord_eau = True
+                    n_eau_sondee += 1
                 # Le quai est entièrement sur la terre : sans cette règle, la
                 # voie rapide de berge à 22 m mangerait 11 m d'Ilse.
                 r = larg if bord_eau else larg / 2.0
@@ -373,7 +411,8 @@ def main():
             "rep": n_rep, "cap": cap,
         })
 
-    print("  %d arêtes portent une route" % n_avec_route)
+    print("  %d arêtes portent une route, dont %d au bord de l'eau sans sommet "
+          "commun avec elle" % (n_avec_route, n_eau_sondee))
 
     # ------------------------------------------------------------- contrôles
     casses = [r for r in resultats if r["cap"] or len(r["anneau"]) < 3]

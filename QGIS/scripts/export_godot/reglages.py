@@ -318,6 +318,9 @@ SEMIS_BUISSON_PAS = 7.50   # en retrait, un buisson tous les 7,5 m
 
 # Sous cette largeur de bande, il n'y a de place que pour la ligne d'eau.
 SEMIS_BUISSON_LARGE = 1.60
+# Ce qu'un buisson couvre depuis son pied : lobe 0,62 + 0,60, échelle 1,30 au
+# plus (`constructeur.gd`). Son pied garde cette distance à la chaussée.
+SEMIS_BUISSON_RAYON = 1.60
 
 SEMIS_ROSEAU, SEMIS_BUISSON = 2, 3   # les essences de `constructeur.gd`
 

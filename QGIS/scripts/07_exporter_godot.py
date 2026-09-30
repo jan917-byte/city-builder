@@ -165,6 +165,7 @@ from export_godot.voirie import (
     _bord_libre,
     _bordure,
     _coller_aux_facades,
+    _franchit,
     _coudes,
     _dans_chaussee,
     _dessus_trottoir,
@@ -479,6 +480,9 @@ def main():
 
     def G_voirie(x, y, alt):
         return G_eau(x, y, alt + chenal.niveau_voirie(x, y))
+
+    def G_longe(x, y, alt):
+        return G_eau(x, y, alt + chenal.niveau_rive(x, y, False))
 
     st_colle = _coller_aux_facades(routes, ilots, chenal)
     coudes, (n_coude, n_marque, n_rond) = _coudes(routes)
@@ -1498,6 +1502,7 @@ def main():
             continue                            # 4 tronçons `rive` à 0 m
         ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
         voirie.marque(d["fid"])
+        Gv = G_voirie if _franchit(d, chenal) else G_longe
         # ⚠️ UN SEUL GROUPE PAR TRONÇON, ouvert ici et pas dans la boucle des
         # morceaux : deux groupes de même fid donneraient deux nœuds de même
         # nom dans Godot, et un seul des deux se cacherait.
@@ -1516,24 +1521,24 @@ def main():
                 if manque:
                     n_pont_ruine += _pont_ruine(
                         ponts_ruine, manque, larg, ch,
-                        PAL.vers_lineaire(PAL.GRAVATS), coul_ch, coul_quai, G_voirie)
+                        PAL.vers_lineaire(PAL.GRAVATS), coul_ch, coul_quai, Gv)
                     n_tablier_neuf += _pont_neuf(
                         repare_voirie, manque, larg, ch,
-                        coul_tr, coul_ch, coul_quai, G_voirie, _bord_libre(d, ch), chenal)
+                        coul_tr, coul_ch, coul_quai, Gv, _bord_libre(d, ch), chenal)
                     n_tablier_neuf += _acces_pont(
                         repare_voirie, axe_entier, manque, larg, _bord_libre(d, ch),
-                        coul_tr, G_voirie, decoupe_chaussee)
-                    _pont_provisoire(ponts_provisoires, manque, G_voirie)
+                        coul_tr, Gv, decoupe_chaussee)
+                    _pont_provisoire(ponts_provisoires, manque, Gv)
                     _acces_pont(ponts_provisoires, axe_entier, manque, larg,
-                                _bord_libre(d, ch), coul_tr, G_voirie, decoupe_chaussee)
+                                _bord_libre(d, ch), coul_tr, Gv, decoupe_chaussee)
         # Le shader dépose le limon en coordonnées monde, sur tous les supports.
         lavage = (d.get("part_boue") or 0.0) > 0.0 and etat_crue != "coupe"
         if lavage:
             repare_voirie.marque(d["fid"])
         coul_ch_d, coul_tr_d, coul_marq_d = coul_ch, coul_tr, coul_marq
-        decoupe_chaussee.emettre_noeuds(voirie, d["fid"], coul_ch_d, G_voirie, Y_CHAUSSEE)
+        decoupe_chaussee.emettre_noeuds(voirie, d["fid"], coul_ch_d, Gv, Y_CHAUSSEE)
         if lavage:
-            decoupe_chaussee.emettre_noeuds(repare_voirie, d["fid"], coul_ch, G_voirie,
+            decoupe_chaussee.emettre_noeuds(repare_voirie, d["fid"], coul_ch, Gv,
                                            Y_CHAUSSEE + RELEVE)
         for ip, part in enumerate(d["parts"]):
             axe = axes_voirie[d["fid"]][ip]
@@ -1543,40 +1548,40 @@ def main():
             # c'est là que les voitures se garent.
             libre = _bord_libre(d, ch) - ch / 2.0
             for axe_ in morceaux_voirie[d["fid"]][ip]:
-                decoupe_chaussee.emettre(voirie, axe_, ch, coul_ch_d, G_voirie,
+                decoupe_chaussee.emettre(voirie, axe_, ch, coul_ch_d, Gv,
                                          d["fid"], Y_CHAUSSEE)
                 n_seg += len(axe_) - 1
                 # Ils reçoivent l'asphalte : même teinte, même hauteur que la
                 # chaussée — la file peinte suffit à dire ce que c'est.
                 if libre > 0.05:
                     for sens in (-1.0, 1.0):
-                        decoupe_chaussee.emettre(voirie, axe_, libre, coul_ch_d, G_voirie,
+                        decoupe_chaussee.emettre(voirie, axe_, libre, coul_ch_d, Gv,
                                d["fid"], Y_CHAUSSEE,
                                decal=sens * (ch / 2.0 + libre / 2.0))
                 # 🅿️ Les places peintes vont dans LEUR maillage, un groupe par
                 # tronçon (ouvert plus haut) : Godot les efface quand la rue
                 # n'a plus de stationnement.
                 n_places[0] += _places_de_rue(
-                    places_m, d, axe_, ip, ch, nd_marq, chenal, coul_marq_d, G_voirie,
+                    places_m, d, axe_, ip, ch, nd_marq, chenal, coul_marq_d, Gv,
                     fentes=fentes_places.setdefault(str(d["fid"]), []),
                     gardes=passages_gardes)
                 if lavage:
                     _places_de_rue(repare_voirie, d, axe_, ip, ch, nd_marq,
-                                   chenal, coul_marq, G_voirie, RELEVE,
+                                   chenal, coul_marq, Gv, RELEVE,
                                    gardes=passages_gardes)
                 # 🔧 LA MÊME RUE, LAVÉE, dans le maillage caché. Elle ne coûte
                 # que sur les 36 tronçons envasés — ailleurs `lavage` est faux
                 # et rien n'est émis.
                 if lavage:
-                    decoupe_chaussee.emettre(repare_voirie, axe_, ch, coul_ch, G_voirie,
+                    decoupe_chaussee.emettre(repare_voirie, axe_, ch, coul_ch, Gv,
                            d["fid"], Y_CHAUSSEE + RELEVE)
                     for sens in (-1.0, 1.0):
                         if libre > 0.05:
-                            decoupe_chaussee.emettre(repare_voirie, axe_, libre, coul_ch, G_voirie,
+                            decoupe_chaussee.emettre(repare_voirie, axe_, libre, coul_ch, Gv,
                                    d["fid"], Y_CHAUSSEE + RELEVE,
                                    decal=sens * (ch / 2.0 + libre / 2.0))
                     _marquage(repare_voirie, d, axe_, ip, ch, nd_marq,
-                              chenal, coul_marq, G_voirie, dy=RELEVE,
+                              chenal, coul_marq, Gv, dy=RELEVE,
                               gardes=passages_gardes)
                 # 🎨 Le marquage se pose SUR la chaussée qu'on vient d'émettre,
                 # et dans le même groupe : cliquer une ligne blanche ouvre la
@@ -1584,7 +1589,7 @@ def main():
                 # ⚠️ Sur un pont emporté il tombe de lui-même : le marquage se
                 # cale sur l'axe REÇU, et cet axe s'arrête au bord de l'eau.
                 for k_, v_ in _marquage(voirie, d, axe_, ip, ch, nd_marq,
-                                        chenal, coul_marq_d, G_voirie,
+                                        chenal, coul_marq_d, Gv,
                                         gardes=passages_gardes).items():
                     st_marq[k_] += v_
                 # 🌊 Le mur de quai et le pont, dans le GROUPE DU TRONÇON :
@@ -1593,7 +1598,7 @@ def main():
                 # c'est un état de la route — et c'est déjà ce que dit le
                 # creusement du chenal.
                 k_, pl_, po_, mu_ = _bord_eau(voirie, axe_, ch, chenal, relief,
-                                              coul_quai, coul_chap, G_voirie,
+                                              coul_quai, coul_chap, Gv,
                                               boites_quai)
                 for nom, v_ in k_.items():
                     st_bord[nom] += v_
@@ -1604,7 +1609,7 @@ def main():
             # pouvoir cliquer un pont détruit pour lire sa fiche.
             plat = []
             for pt in axe:
-                g = G_voirie(pt[0], pt[1], 0.0)
+                g = Gv(pt[0], pt[1], 0.0)
                 plat.append(round(g[0], 2))
                 plat.append(round(g[2], 2))
             axes.append(plat)
@@ -1620,8 +1625,8 @@ def main():
                                            passages_gardes, marches)]
         m_, t_ = [], []
         for a, b, w in marches:
-            ga = G_voirie(a[0], a[1], Y_TROTTOIR)
-            gb = G_voirie(b[0], b[1], Y_TROTTOIR)
+            ga = Gv(a[0], a[1], Y_TROTTOIR)
+            gb = Gv(b[0], b[1], Y_TROTTOIR)
             m_ += [round(ga[0], 2), round(ga[2], 2), round(gb[0], 2),
                    round(gb[2], 2), round((ga[1] + gb[1]) / 2.0, 2), round(w, 2)]
             L_ = math.dist(a, b)
@@ -1632,10 +1637,10 @@ def main():
                 1 for j in range(k_ + 1) if _sur_chaussee(
                     (a[0] + (b[0] - a[0]) * j / k_, a[1] + (b[1] - a[1]) * j / k_)))
         for a, b in traversees:
-            ga = G_voirie(a[0], a[1], Y_CHAUSSEE)
-            gb = G_voirie(b[0], b[1], Y_CHAUSSEE)
+            ga = Gv(a[0], a[1], Y_CHAUSSEE)
+            gb = Gv(b[0], b[1], Y_CHAUSSEE)
             t_ += [round(ga[0], 2), round(ga[2], 2), round(gb[0], 2),
-                   round(gb[2], 2), round(G_voirie((a[0] + b[0]) / 2.0,
+                   round(gb[2], 2), round(Gv((a[0] + b[0]) / 2.0,
                                                    (a[1] + b[1]) / 2.0,
                                                    Y_CHAUSSEE)[1], 2)]
             st_pietons["t"] += 1
@@ -1647,16 +1652,16 @@ def main():
         # groupe : cliquer un trottoir ouvre la fiche de la rue.
         for f in trot.get(d["fid"], ()):
             if f[0] == "plat":
-                n_tri_tr += _dessus_trottoir(voirie, f[1], coul_tr_d, G_voirie,
+                n_tri_tr += _dessus_trottoir(voirie, f[1], coul_tr_d, Gv,
                                             decoupe=decoupe_chaussee)
                 if lavage:
-                    _dessus_trottoir(repare_voirie, f[1], coul_tr, G_voirie, RELEVE,
+                    _dessus_trottoir(repare_voirie, f[1], coul_tr, Gv, RELEVE,
                                      decoupe=decoupe_chaussee)
             else:
-                n_tri_tr += _bordure(voirie, f[1], f[2], f[3], coul_bord, G_voirie,
+                n_tri_tr += _bordure(voirie, f[1], f[2], f[3], coul_bord, Gv,
                                     decoupe=decoupe_chaussee)
                 if lavage:
-                    _bordure(repare_voirie, f[1], f[2], f[3], coul_bord, G_voirie,
+                    _bordure(repare_voirie, f[1], f[2], f[3], coul_bord, Gv,
                              RELEVE, decoupe=decoupe_chaussee)
         emplacements = [] if (d["hauteur_eau"] or 0.0) >= CRUE_ARBRE_NOYE_M             else _alignement(d, rng)
         # 🌊 Un franchissement reste une route pour la voirie, mais sa bande

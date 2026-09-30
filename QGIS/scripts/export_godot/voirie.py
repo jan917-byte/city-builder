@@ -318,6 +318,26 @@ def _coller_aux_facades(routes, ilots, chenal):
     return st
 
 
+def _franchit(d, chenal):
+    """Vrai si une station du tronçon a de l'eau sous SES DEUX bords : un pont.
+    Seul un pont descend d'une terrasse à l'autre (`niveau_voirie`) ; une rue
+    qui longe en débordant sur l'Ilse garde le niveau de sa rive — penchée,
+    elle passait sous le sol (Quai des Sureaux)."""
+    ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5),
+             d["largeur_m"] or 0.0)
+    w = ch / 2.0 + COLLE_EAU
+    for part in d["parts"]:
+        net = _densifier(part, COLLE_SONDE)
+        for i, p in enumerate(net):
+            u = _unite(net[max(0, i - 1)], net[min(len(net) - 1, i + 1)])
+            if u is None:
+                continue
+            if (chenal.dans_eau((p[0] - u[1] * w, p[1] + u[0] * w))
+                    and chenal.dans_eau((p[0] + u[1] * w, p[1] - u[0] * w))):
+                return True
+    return False
+
+
 def _raccorder_quais(jonctions):
     """Les branches d'un ancien nœud rejoignent le même carrefour déplacé."""
     for branches in jonctions.values():

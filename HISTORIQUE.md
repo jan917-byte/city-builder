@@ -596,3 +596,9 @@ Dangers a deux onglets, Dégâts et Prochaine crue ; la carte colore l'eau atten
 **2026-09-30 — La fiche perd ses boutons Avant / Après : la miniature ne montre plus que ce qui sera livré (auteur : l'avant, c'est la ville derrière).**
 `interface.apercu_demande` sans mode avant ; captures `apercu_rue_avant` et `apercu_densifier_avant` retirées de `--interface`, contrôle « AVANT rend le champ nu » retiré d'`essai_ouverture`.
 `essai_ouverture` 0 échec sans fenêtre (en fenêtre, la souris vole les clics simulés, ancienne version comprise) ; `--interface` repassé, `wehrau_interface_reglages.png` sans les deux boutons.
+**2026-09-30 — Quai des Sureaux (rue 122, berge 8) : les places côté Ilse retrouvent l'asphalte, la rue ne perce plus sous le sol, les buissons de la berge rendue ne mordent plus la chaussée.**
+Trois causes dans `07` : la bande de berge partait de la ligne d'eau et couvrait 2,3 m de chaussée débordante (`berges._bande_berge`) ; une rue qui longe l'eau penchait vers l'autre rive comme un pont (`voirie._franchit`, `G_longe`) ; un buisson à 0,9 × la bande passait 1,1 m sur la rue (`SEMIS_BUISSON_RAYON`).
+Seuls la rue 122 et ses bandes changent dans `wehrau.json` (ponts, contrôles inchangés) ; planche `wehrau_sureaux_avant_apres.png`. Tracé et îlot non touchés.
+**2026-09-30 — Quai des Sureaux, suite : la rue recule sur l'îlot 31 au lieu de mordre l'Ilse (auteur : « grignote sur les îlots plutôt que sur l'Ilse »).**
+Cause dans `04b` : la rive redessinée n'a pas les sommets de l'îlot 31, donc sa seule arête au bord de l'eau (155 m) reculait de la demi-largeur ; elle est maintenant sondée (`eau_en_face`) et recule de toute la largeur, et `07` colle la rue aux façades comme les 19 autres.
+Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, aucun logement perdu (friche) ; planche `wehrau_sureaux_avant_apres.png`. Essai : même règle sur tous les quais (2 m de trottoir + 3,5 m de bande) = −47 logements, non appliquée.

@@ -48,6 +48,7 @@ from .reglages import (
     RIVE_GAUCHE_Y,
     SEMIS_BUISSON,
     SEMIS_BUISSON_LARGE,
+    SEMIS_BUISSON_RAYON,
     SEMIS_BUISSON_PAS,
     SEMIS_ROSEAU,
     SEMIS_ROSEAU_PAS,
@@ -736,8 +737,12 @@ def _bande_berge(m, b, coul, G, relief, passages=None):
                 p = net[i]
                 large = _large_berge(b, i)
                 # Côté TERRE, donc à l'opposé de la normale eau.
-                q = (p[0] - eau[i][0] * large,
-                     p[1] - eau[i][1] * large)
+                # 🔴 Là où l'asphalte déborde sur l'Ilse, la bande part de son
+                # bord, pas de la ligne d'eau : sinon elle recouvrait la file
+                # de places (Quai des Sureaux, 2,3 m de quai sur la chaussée).
+                recul = large - (max(0.0, b["bord"][i]) if quai else 0.0)
+                q = (p[0] - eau[i][0] * recul,
+                     p[1] - eau[i][1] * recul)
                 # 🔴 EN CAMPAGNE, LA BANDE PASSE SOUS LE TALUS. Posée dessus
                 # elle y traçait un ruban vert à dents de scie le long des deux
                 # rives — un décor que personne n'a demandé, sur des berges
@@ -982,8 +987,11 @@ def _semis_berge(b, rng, relief, chenal):
             db -= SEMIS_BUISSON_PAS
             if large < SEMIS_BUISSON_LARGE:
                 continue
+            # 🔴 Borné côté terre : à 0,9 × la bande, sa couronne passait
+            # jusqu'à 1,1 m sur la chaussée. Vers l'eau, elle peut pencher.
             _poser_plante(out, p, eau[i],
-                          rng.uniform(0.55 * large, 0.90 * large),
+                          max(0.0, min(rng.uniform(0.55 * large, 0.90 * large),
+                                       large - SEMIS_BUISSON_RAYON)),
                           SEMIS_BUISSON, rng, relief)
     return out
 
