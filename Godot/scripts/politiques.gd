@@ -27,10 +27,9 @@ const POLITIQUES := {
 }
 const ORDRE := ["subv_solaire", "subv_vert"]
 
-# 🔴 LES RÈGLES ATTENDENT LE CAPITAL POLITIQUE. Stationnement payant, toit vert
-# obligatoire au neuf : elles ne coûtent pas d'argent mais du capital, qui vit
-# encore dans le classeur et pas dans la maquette. La fiche le dit à l'écran
-# plutôt que de faire semblant.
+# 🔴 LES RÈGLES NE SONT PAS ÉCRITES. Stationnement payant, toit vert obligatoire
+# au neuf : ni argent ni capital dépensé, mais un SEUIL de capital politique pour
+# les signer, relevé à chaque règle signée (98). Leurs effets restent à concevoir.
 
 
 ## Une politique est en vigueur si sa dernière période est encore ouverte.

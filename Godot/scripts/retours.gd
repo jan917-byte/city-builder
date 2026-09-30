@@ -12,6 +12,9 @@ var journal: Array[String] = []
 var _en_cours := {}
 var _ponts := {}
 var _sans_toit := -1
+## 🗳️ Les mouvements de capital déjà dits, par identité et non par date : en mode
+## auteur un gain tombe au mois même de la décision.
+var _capital_dits := {}
 var _recent: Array[String] = []
 var _expiration := 0
 var _historique_ouvert := false
@@ -144,6 +147,10 @@ func reprendre(mois: float, messages: Array = []) -> void:
 	_historique_ouvert = false
 	_en_cours = _chantiers(mois)
 	_sans_toit = int(ui.ville.sans_toit(mois))
+	_capital_dits.clear()
+	for m in ui.ville.capital_mouvements():
+		if float(m["mois"]) <= mois:
+			_capital_dits[_cle_capital(m)] = true
 	_ponts.clear()
 	for pont in ui.ville.ponts_coupes():
 		_ponts[pont] = ui.trafic.pont_fonctionnel(pont, mois)
@@ -154,6 +161,8 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	var lieu: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
 	var prix: String = "−%s k€" % ui._milliers(r["cout_ke"]) if r["cout_ke"] > 0.0 else "décision engagée"
 	var message := "%s : %s · %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
+	if float(r.get("capital", 0.0)) >= 0.5:
+		message += " · −%s confiance" % ui._nb(r["capital"], 0)
 	if "relogement" in r["faits"]:
 		message += " · −%s nourris" % ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
 	elif duree >= ACCELERER_MOIS:
@@ -227,9 +236,44 @@ func actualiser(mois: float) -> void:
 		notifier("%d personnes abritées · %d encore dehors." % [_sans_toit - n, n] if n > 0
 			else "%d personnes abritées · plus personne dehors." % (_sans_toit - n), mois)
 	_sans_toit = n
+	_dire_capital(mois)
 	for pont in ui.ville.ponts_coupes():
 		var ouvert: bool = ui.trafic.pont_fonctionnel(pont, mois)
 		if ouvert and _ponts.has(pont) and not _ponts[pont]:
 			notifier("%s : les deux rives sont reliées." % ui.lieux.nom("r", pont), mois)
 		_ponts[pont] = ouvert
 	actualiser_affichage()
+
+
+static func _cle_capital(m: Dictionary) -> String:
+	return "%s:%s:%s" % [m["quoi"], m["couche"], m["fid"]]
+
+
+## 🗳️ LE COMPTEUR NE BOUGE JAMAIS SANS PHRASE (Ressources, ☐ « comment il se
+## regagne n'a aucune forme à l'écran »). La dépense est dite à l'engagement.
+func _dire_capital(mois: float) -> void:
+	for m in ui.ville.capital_mouvements():
+		if float(m["mois"]) > mois:
+			break
+		var cle := _cle_capital(m)
+		if _capital_dits.has(cle):
+			continue
+		_capital_dits[cle] = true
+		var pourquoi := ""
+		match str(m["quoi"]):
+			"rentres":
+				pourquoi = "%s : les habitants rentrent chez eux" % ui.lieux.nom("i", int(m["fid"]))
+			"pont":
+				pourquoi = "%s rouvert" % ui.lieux.nom("r", int(m["fid"]))
+			"abrites":
+				pourquoi = "plus personne ne dort dehors"
+			"places_retour":
+				var rue: String = ui.lieux.nom("r", int(m["fid"]))
+				if float(m["report_part"]) >= 0.5:
+					pourquoi = "%s : le trafic s'est reporté sur %s" % [rue, ui.lieux.nom("r", int(m["report_rue"]))]
+				elif float(m["videe"]) >= 0.5:
+					pourquoi = "%s : la rue s'est remplie de piétons" % rue
+				else:
+					pourquoi = "%s : la rue est restée aux voitures" % rue
+		if pourquoi != "":
+			notifier("%s · %+d confiance." % [pourquoi, int(roundf(float(m["montant"])))], mois)

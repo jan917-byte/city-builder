@@ -259,6 +259,8 @@ func executer() -> void:
 	jeu.ville.abriter(champs[0], 0.0)
 	jeu.ville.abriter(champs[1], 0.0)
 	o.pont_termine = true
+	o.etude_lue = true
+	o.prochaine_vue = true
 	actualiser(0.0)
 
 	verifier(o.etape == "choix", "Le relogement fait, le budget prend la main")
@@ -353,6 +355,8 @@ func executer() -> void:
 
 	var champs2: Array = o._champs_accessibles()
 	o.pont_termine = true
+	o.etude_lue = true
+	o.prochaine_vue = true
 	jeu._sur_choix("i", champs2[0])
 	jeu.interface.poser("camp")
 	jeu._sur_commande("i", champs2[0], jeu.interface._reglages())
@@ -610,11 +614,11 @@ func essayer_ponts(lointain: int) -> void:
 	await cliquer(bouton("Voir le pont rouvert"))
 	await capture("14_pont_rouvert")
 	await cliquer(bouton("Choisir la suite"))
-	verifier(o.pont_termine and o.etape in ["choix", "livraison"], "Le pont ouvre la suite des interventions locales")
+	verifier(o.pont_termine and o.etape == "etude", "Le pont ouvre l'étude de l'université")
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()
-	verifier(o.pont_termine and o.etape in ["choix", "livraison"], "Une reprise après livraison ne redemande pas un pont")
+	verifier(o.pont_termine and o.etape == "etude", "Une reprise après livraison ne redemande pas un pont")
 	# Reconstruire directement sur la carte ne dépend pas de la visite du calque.
 	jeu._sur_reset()
 	jeu.ville.abriter(bons[0], 0.0)

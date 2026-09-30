@@ -7,6 +7,10 @@ const RUE := 148
 const MAISONS := 59
 const BERGE := 3
 const SOLAIRE := 32
+# 🎚️ Les exemples de la prochaine crue, PROPOSÉS, à régler par l'auteur : le plus
+# grand toit plat de Wehrau, un champ quelconque — la baisse vaut pour toute la ville.
+const TOIT_PLAT := 31
+const PRE := 1065
 
 var jeu
 var suite := false
@@ -16,6 +20,10 @@ var trafic_vu := false
 var pont_termine := false
 ## Le mois de « Choisir la suite » : une rue engagée avant appartient au pont.
 var pont_termine_mois := 0.0
+## 🎓 L'étude de l'université paraît au « Choisir la suite » du pont (auteur,
+## 2026-09-30) : on l'a lue, puis on a ouvert Dangers › Prochaine crue.
+var etude_lue := false
+var prochaine_vue := false
 var etape := ""
 var premier := {}
 var _signature := ""
@@ -217,26 +225,32 @@ func acces_degage() -> bool:
 
 
 func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -> void:
-	# Une proposition ouvre la vraie fiche et sa miniature ; seul son bouton paie.
-	if couche != "r" or not fid in jeu.ville.ponts_coupes():
-		jeu._sur_theme("")
+	jeu.examiner(couche, fid, reglage, valeur)
+
+
+## Le premier pont est derrière nous : l'étude paraît, la suite commence.
+func publier_etude() -> void:
+	pont_termine = true
+	pont_termine_mois = jeu.mois
+	jeu.interface.retours.notifier("Université : une étude annonce une crue plus forte d'ici 6 à 8 ans.", jeu.mois)
+	jeu._sur_theme("")
 	jeu.interface._detail_ouvert = false
 	jeu.interface._placer_detail()
-	jeu.selection.sel_couche = couche
-	jeu.selection.sel_fid = fid
-	jeu.selection.survol_fid = -1
-	jeu._sur_choix(couche, fid)
-	if couche == "r":
-		jeu._viser_route(fid, 180.0)
-	else:
-		jeu._viser_objet(couche, fid, 260.0 if couche == "b" else 200.0)
-	jeu.interface._vider_pose()
-	if reglage == "solaire":
-		jeu.interface.viser(float(valeur) * 100.0)
-	elif reglage != "":
-		jeu.interface.poser(reglage, valeur)
-	jeu._rafraichir(true)
 	actualiser(true)
+
+
+## L'université ouverte après la parution, ou l'onglet de la prochaine crue.
+func etude_ouverte() -> void:
+	if pont_termine and not etude_lue:
+		etude_lue = true
+		actualiser(true)
+
+
+func prochaine_ouverte() -> void:
+	if pont_termine and not prochaine_vue:
+		etude_lue = true
+		prochaine_vue = true
+		actualiser(true)
 
 
 func _reparation(couche: String, fid: int, titre: String) -> void:
@@ -408,6 +422,10 @@ func actualiser(force := false) -> void:
 			etape = "camp_attente"
 		else:
 			etape = "pont_choix" if trafic_vu else "trafic"
+	elif premier.is_empty() and not etude_lue:
+		etape = "etude"
+	elif premier.is_empty() and not prochaine_vue:
+		etape = "prochaine"
 	elif premier.is_empty():
 		etape = "choix"
 	elif jeu.mois < float(premier["fin"]):
@@ -498,13 +516,18 @@ func actualiser(force := false) -> void:
 				jeu._sur_theme("")
 				examiner("r", premier["fid"]))
 			_bouton("Observer le trafic", func() -> void: jeu._sur_theme("trafic"))
-			_bouton("Choisir la suite", func() -> void:
-				pont_termine = true
-				pont_termine_mois = jeu.mois
-				jeu._sur_theme("")
-				jeu.interface._detail_ouvert = false
-				jeu.interface._placer_detail()
-				actualiser(true))
+			_bouton("Choisir la suite", publier_etude)
+		"etude":
+			# 🎓 La menace après la première victoire, jamais pendant l'urgence.
+			_poser_reperes([])
+			_titre.text = "Une nouvelle étude"
+			_texte.text = "L'université vient de publier une étude sur l'Ilse."
+			_bouton("Ouvrir l'université", func() -> void: jeu.interface.ouvrir_lieu("universite"))
+		"prochaine":
+			# 🔴 Aucun bouton (auteur, 2026-09-30) : le joueur apprend où vit la prévision.
+			_poser_reperes([])
+			_titre.text = "Où irait l'eau ?"
+			_texte.text = "La carte de l'étude est dans Dangers, dans la colonne de gauche : ouvrez l'onglet Prochaine crue."
 		"reloger":
 			# 🧭 ON NE MONTRE PAS LES TROIS CHAMPS (auteur, 2026-09-17) :
 			# ni chiffre sur la carte, ni bouton qui y mène. Le joueur cherche
@@ -533,7 +556,8 @@ func actualiser(force := false) -> void:
 			var logements: float = jeu.ville.base("i", MAISONS, "logements_sinistres")
 			# Tout le monde est abrité à ce stade : ceux qui rentrent quittent un camp.
 			var abrites := int(minf(logements, jeu.ville.sans_toit(jeu.mois) + jeu.ville.reloges(jeu.mois)))
-			_texte.text = "Rue des Forgerons envasée, %.0f logements inhabitables à côté. Par où commencer ?" % logements
+			_texte.text = "Rue des Forgerons envasée, %.0f logements inhabitables à côté. La prochaine crue y mettrait %s m d'eau. Par où commencer ?" % [
+				logements, jeu.interface._nb(jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois), 1)]
 			_reparation("r", RUE, "① Déblayer la rue")
 			_reparation("i", MAISONS, "② Relever les logements" + (
 				" · %d personnes rentrent chez elles" % abrites if abrites > 0 else ""))
@@ -602,7 +626,8 @@ func _maj_protection() -> void:
 func exporter() -> Dictionary:
 	return {"suite": suite, "termine": termine, "ouvert": ouvert,
 		"trafic_vu": trafic_vu, "pont_termine": pont_termine,
-		"pont_termine_mois": pont_termine_mois}
+		"pont_termine_mois": pont_termine_mois,
+		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue}
 
 
 func reprendre(etat: Dictionary) -> void:
@@ -614,6 +639,9 @@ func reprendre(etat: Dictionary) -> void:
 	trafic_vu = bool(etat.get("trafic_vu", false))
 	pont_termine = bool(etat.get("pont_termine", suite or termine))
 	pont_termine_mois = float(etat.get("pont_termine_mois", 0.0))
+	# Une partie d'avant l'étude l'a déjà dépassée : on ne la rejoue pas.
+	etude_lue = bool(etat.get("etude_lue", pont_termine))
+	prochaine_vue = bool(etat.get("prochaine_vue", pont_termine))
 	_degage_annonce = -1
 	etape = ""
 	_signature = ""

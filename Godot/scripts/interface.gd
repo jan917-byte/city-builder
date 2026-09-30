@@ -19,6 +19,10 @@ signal theme_demande(id: String)
 signal commande_demandee(couche: String, fid: int, reglages: Dictionary)
 ## ✕ La croix de la fiche : `maquette` efface la sélection.
 signal fiche_fermee()
+## 🎓 Les deux onglets de Dangers : "degats" ou "prochaine".
+signal vue_crue_demandee(id: String)
+## Ouvrir la fiche d'un lieu, déjà réglée — `maquette.examiner`.
+signal examen_demande(couche: String, fid: int, reglage: String, valeur: Variant)
 ## 🛠️ Le mode choisi au lancement : histoire, ou auteur (chantiers livrés au clic).
 signal mode_choisi(auteur: bool)
 
@@ -28,6 +32,7 @@ const Ville := preload("res://scripts/ville.gd")
 const Energie := preload("res://scripts/energie.gd")
 const Apercu := preload("res://scripts/apercu.gd")
 const Recherche := preload("res://scripts/recherche.gd")
+const Ouverture := preload("res://scripts/ouverture.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 const Lieux := preload("res://scripts/lieux.gd")
 var lieux := Lieux.new()
@@ -212,6 +217,7 @@ var _debut: Button
 var apercu: Texture2D
 var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
 var rampe := []      # `maquette.RAMPE`, en sRGB
+var rampe_eau := []  # `maquette.RAMPE_EAU`, en sRGB
 
 var _ville_valeurs := {}
 ## 📊 La barre du haut : les mêmes nombres que le bilan, toujours sous les yeux.
@@ -365,8 +371,15 @@ var _berge_texte: Label
 var _berge_boutons := []
 var _degats := {}
 var _degats_valeurs := {}
+var _vue_crue := "degats"
+var _onglets_crue := {}
+var _vues_crue := {}
+var _prochaine_valeurs := {}
+var _etude_bloc: VBoxContainer
+var _etude_texte: Label
 var _mois := 0.0
 var _caisse_ke := Ville.CAISSE_DEPART_KE
+var _capital := Ville.CAPITAL_DEPART
 var _cout_en_alerte := false
 
 # La position posée par l'auteur et pas encore validée ; -1 = la fiche commande.
@@ -889,6 +902,8 @@ const DESSINS := {
 	"production": "<circle cx='12' cy='12' r='4'/><path d='M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2M19 5l-2 2M7 17l-2 2'/>",
 	"achat": "<path d='M9 3v7m6-7v7m-8 0h10v2a5 5 0 01-5 5v4m-3 0h6'/>",
 	"co2": "<path d='M7 18h11a4 4 0 000-8 6 6 0 00-11-2 5 5 0 000 10z'/>",
+	# 🗳️ Lucide « vote » : le capital politique.
+	"capital": "<path d='M9 12l2 2 4-4'/><path d='M5 7c0-1.1.9-2 2-2h10a2 2 0 012 2v12H5V7z'/><path d='M22 19H2'/>",
 	"caisse": "<circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/>",
 	"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
 	"chantiers": "<rect x='2' y='6' width='20' height='8' rx='1'/><path d='M17 14v7M7 14v7M17 3v3M7 3v3M10 14L2.3 6.3M14 6l7.7 7.7M8 6l8 8'/>",
@@ -1123,6 +1138,10 @@ func _panneau_bilan() -> void:
 	recette.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	(caisse["colonne"] as VBoxContainer).add_child(recette)
 	_ville_valeurs["recette"] = recette
+	# 🗳️ Un compteur, pas une jauge (58) : un stock n'a pas de plein.
+	var capital := _ligne_bilan(v, "capital", Color8(122, 84, 48),
+		"La confiance des habitants. Retirer des places en coûte tout de suite ; des habitants qui rentrent chez eux, un pont rouvert en rendent à la livraison.", false)
+	_ville_valeurs["capital"] = capital["valeur"]
 
 	# 🧪 LE BOUTON D'ESSAI, ET IL DIT QU'IL EN EST UN. Il sert à atteindre en un
 	# clic un état que vingt ans de dotation mettraient à payer — donc à juger
@@ -1408,6 +1427,9 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 			b.set_pressed_no_signal(vue == id)
 	_placer_detail()
 	var genre := str(t.get("genre", ""))
+	if genre == "crue":
+		_vue_crue = "degats"
+		_habiller_onglets_crue()
 	if id != "":
 		var cle := "_calque" if _calque_panneau.visible else id
 		_ecrire_entete(_entetes[cle], t)
@@ -1438,29 +1460,196 @@ func _panneau_diagnostic() -> void:
 	v.add_theme_constant_override("separation", 6)
 	_diagnostic_panneau.add_child(v)
 	_entetes["dangers"] = _entete(v)
-	v.add_child(HSeparator.new())
-	_legende(v, Color8(38, 157, 196), "Passage de la crue · sols et rues noyés")
-	_legende(v, Color8(232, 126, 48), "Bâtiments touchés · sinistrés ou ruinés")
-	_legende(v, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")
-	v.add_child(HSeparator.new())
+	# 🎓 DEUX ONGLETS (auteur, 2026-09-30) : ce que l'eau a pris, ce qu'elle
+	# reprendrait. Le second n'existe qu'une fois l'étude parue.
+	var rangee := HBoxContainer.new()
+	rangee.add_theme_constant_override("separation", 0)
+	v.add_child(rangee)
+	for o in [["degats", "Dégâts"], ["prochaine", "Prochaine crue"]]:
+		var id: String = o[0]
+		var b := Button.new()
+		b.text = o[1]
+		b.focus_mode = Control.FOCUS_NONE
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(func() -> void: choisir_vue_crue(id))
+		rangee.add_child(b)
+		_onglets_crue[id] = b
+		var boite := VBoxContainer.new()
+		boite.add_theme_constant_override("separation", 6)
+		v.add_child(boite)
+		_vues_crue[id] = boite
+
+	var d: VBoxContainer = _vues_crue["degats"]
+	_legende(d, Color8(38, 157, 196), "Passage de la crue · sols et rues noyés")
+	_legende(d, Color8(232, 126, 48), "Bâtiments touchés · sinistrés ou ruinés")
+	_legende(d, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")
+	d.add_child(HSeparator.new())
 	# 🔧 CE QUE LA CRUE COÛTE ENCORE. Ces trois nombres BAISSENT quand on
 	# répare : sans eux, reconstruire un îlot ne changerait rien de visible
 	# ailleurs que sur cet îlot, et la décision n'aurait pas de contrepartie.
-	# 🌊 Le quatrième regarde DEVANT, et c'est le seul que la berge déplace.
 	for ligne in [
 		["logements", "Logements perdus"],
 		["ponts", "Franchissements coupés"],
 		["reste", "Reste à réparer"],
-		["eau", "La prochaine crue, au pire"],
 	]:
-		var h := HBoxContainer.new()
-		h.add_child(_label(ligne[1], 12, GRIS))
-		var val := _label("—", 14, TEXTE)
-		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(val)
-		_degats_valeurs[ligne[0]] = val
-		v.add_child(h)
+		_degats_valeurs[ligne[0]] = _ligne_chiffre(d, ligne[1])
+	_panneau_prochaine(_vues_crue["prochaine"])
+	_habiller_onglets_crue()
+
+
+func _ligne_chiffre(parent: VBoxContainer, etiquette: String) -> Label:
+	var h := HBoxContainer.new()
+	h.add_child(_label(etiquette, 12, GRIS))
+	var val := _label("—", 14, TEXTE)
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(val)
+	parent.add_child(h)
+	return val
+
+
+## 🎓 LA PRÉVISION, toujours ouvrable (94) : où irait l'eau, ce qu'elle
+## ruinerait, et les trois gestes de la maquette qui la font baisser — pas un
+## de plus : le sol rendu perméable n'existe pas encore.
+func _panneau_prochaine(p: VBoxContainer) -> void:
+	var barre := TextureRect.new()
+	var g := Gradient.new()
+	g.colors = PackedColorArray([rampe_eau[0], rampe_eau[1]])
+	var tex := GradientTexture1D.new()
+	tex.gradient = g
+	tex.width = 128
+	barre.texture = tex
+	barre.custom_minimum_size = Vector2(0, 13)
+	barre.stretch_mode = TextureRect.STRETCH_SCALE
+	barre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(barre)
+	var h := HBoxContainer.new()
+	h.add_child(_label("10 cm d'eau", 12, GRIS))
+	var haut := _label("au pire", 12, GRIS)
+	haut.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(haut)
+	p.add_child(h)
+	_legende(p, Color8(232, 126, 48), "Bâtiments que l'eau ruinerait")
+	p.add_child(HSeparator.new())
+	for ligne in [
+		["quand", "Attendue"],
+		["ilots", "Îlots sous l'eau"],
+		["eau", "Eau au pire"],
+		["logements", "Logements perdus"],
+	]:
+		_prochaine_valeurs[ligne[0]] = _ligne_chiffre(p, ligne[1])
+	var ecart := _label("", 11, GRIS)
+	ecart.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.add_child(ecart)
+	_prochaine_valeurs["ecart"] = ecart
+	p.add_child(HSeparator.new())
+	_titre_section(p, "CE QUI LA FAIT BAISSER")
+	var berge_cm := 0.0
+	for b in ville.berges:
+		berge_cm = maxf(berge_cm, (ville.berge_largeur_rendue_m(b, Ville.BERGE_RENATUREE)
+			- ville.berge_largeur_rendue_m(b, ville.berge_depart(b))) * Ville.BERGE_BAISSE_M_PAR_M * 100.0)
+	var plat_ha := 0.0
+	for f in ville.ilots:
+		plat_ha += Energie.toit_plat_equipable_m2(ville, f) / 10000.0
+	var pre_cm_ha: float = float(Ville.CULTURES[3]["crue_m_ha"]) * 100.0
+	_levier(p, "Rendre une berge à l'Ilse",
+		"Jusqu'à −%d cm dans son quartier, sur les deux rives." % int(roundf(berge_cm)),
+		"Voir la berge %d" % Ouverture.BERGE, "b", Ouverture.BERGE, "berge", Ville.BERGE_RENATUREE)
+	_levier(p, "Verdir les toits plats",
+		"−%d cm par hectare, dans toute la ville. Wehrau en a %s ha." % [
+			int(roundf(Ville.TOIT_VERT_BAISSE_M_PAR_HA * 100.0)), _nb(plat_ha, 1)],
+		"Voir un toit plat", "i", Ouverture.TOIT_PLAT, "vert", 1.0)
+	_levier(p, "Laisser l'Ilse déborder dans un pré",
+		"−%s cm par hectare, dans toute la ville ; le champ ne nourrit plus." % _nb(pre_cm_ha, 1),
+		"Voir un champ", "i", Ouverture.PRE, "culture", 3)
+
+
+func _levier(p: VBoxContainer, titre: String, effet: String, voir: String,
+		couche: String, fid: int, reglage: String, valeur: Variant) -> void:
+	p.add_child(_label(titre, 13, TEXTE))
+	var e := _label(effet, 11, GRIS)
+	e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.add_child(e)
+	var b := Button.new()
+	b.text = voir
+	b.focus_mode = Control.FOCUS_NONE
+	_habiller_secondaire(b)
+	b.pressed.connect(func() -> void: examen_demande.emit(couche, fid, reglage, valeur))
+	p.add_child(b)
+	_prochaine_valeurs["levier_" + reglage] = b
+
+
+## L'étude est parue : sans guide (essais, mode auteur), elle l'est toujours.
+func etude_publiee() -> bool:
+	return ouverture == null or ouverture.pont_termine or ouverture.suite or ouverture.termine
+
+
+func _mois_etude() -> float:
+	return ouverture.pont_termine_mois if ouverture != null else 0.0
+
+
+func choisir_vue_crue(id: String) -> void:
+	if id == "prochaine" and not etude_publiee():
+		return
+	_vue_crue = id
+	_habiller_onglets_crue()
+	vue_crue_demandee.emit(id)
+	if id == "prochaine":
+		_maj_prochaine()
+		if ouverture != null:
+			ouverture.prochaine_ouverte()
+
+
+## Même trait que les onglets de la fiche ; « nouveau » tant qu'on ne l'a pas vu.
+func _habiller_onglets_crue() -> void:
+	for id in _onglets_crue:
+		var b: Button = _onglets_crue[id]
+		var ouvert: bool = id == _vue_crue
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.set_content_margin_all(6)
+		sb.border_width_bottom = 2 if ouvert else 1
+		sb.border_color = ACCENT_VIF if ouvert else Color8(180, 170, 146, 160)
+		for etat in ["normal", "pressed", "focus", "disabled", "hover", "hover_pressed"]:
+			b.add_theme_stylebox_override(etat, sb)
+		var coul := ACCENT if ouvert else GRIS
+		for etat in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(etat, coul)
+		b.add_theme_font_size_override("font_size", 13)
+		(_vues_crue[id] as Control).visible = ouvert
+	if _entetes.has("dangers") and _vue_crue == "prochaine":
+		(_entetes["dangers"][1] as Label).text = "Ce que la prochaine crue reprendrait"
+	elif _entetes.has("dangers"):
+		(_entetes["dangers"][1] as Label).text = "Ce que la crue a laissé dans la ville"
+	var nouveau: bool = ouverture != null and not ouverture.prochaine_vue
+	(_onglets_crue["prochaine"] as Button).text = "Prochaine crue" + (" · nouveau" if nouveau else "")
+	(_onglets_crue["prochaine"] as Button).visible = etude_publiee()
+
+
+func _maj_prochaine() -> void:
+	var p := ville.prochaine_crue(_mois)
+	var a := ville.prochaine_crue(_mois_etude())
+	# 6 à 8 ans depuis la parution ; aucune crue ne tombe au bout (question ouverte).
+	var ecoule := (_mois - _mois_etude()) / 12.0
+	var tot := int(ceil(maxf(6.0 - ecoule, 0.0)))
+	var tard := int(ceil(maxf(8.0 - ecoule, 0.0)))
+	var quand := "dans %d à %d ans" % [tot, tard]
+	if tot == 0:
+		quand = "d'ici %d ans" % tard if tard > 0 else "d'un mois à l'autre"
+	(_prochaine_valeurs["quand"] as Label).text = quand
+	(_prochaine_valeurs["ilots"] as Label).text = "%d · %d cette année" % [
+		int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"])]
+	(_prochaine_valeurs["eau"] as Label).text = "%s m" % _nb(float(p["eau_pire_m"]), 2)
+	(_prochaine_valeurs["logements"] as Label).text = _nb(float(p["logements_perdus"]), 0)
+	var cm := (float(a["eau_pire_m"]) - float(p["eau_pire_m"])) * 100.0
+	var lg := float(p["logements_perdus"]) - float(a["logements_perdus"])
+	var texte := "À la parution de l'étude : %s m au pire, %s logements perdus." % [
+		_nb(float(a["eau_pire_m"]), 2), _nb(float(a["logements_perdus"]), 0)]
+	if absf(cm) >= 0.5 or absf(lg) >= 0.5:
+		texte += " Depuis : %+d cm d'eau, %+d logements." % [int(roundf(-cm)), int(roundf(lg))]
+	texte += " Relever un îlot du faubourg remet ses logements sous l'eau."
+	(_prochaine_valeurs["ecart"] as Label).text = texte
 
 
 func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
@@ -2226,6 +2415,20 @@ func _panneau_lieu() -> void:
 	_lieu_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_lieu_intro)
 
+	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE (auteur, 2026-09-30) : l'université annonce,
+	# le diagnostic tient la prévision (n°32). 🔴 Texte de prototype, flaggable (90).
+	_etude_bloc = VBoxContainer.new()
+	_etude_bloc.add_theme_constant_override("separation", 3)
+	v.add_child(_etude_bloc)
+	_etude_bloc.add_child(HSeparator.new())
+	_etude_bloc.add_child(_label("Nouvelle étude · la prochaine crue", 14, TEXTE))
+	_etude_texte = _label("", 12, TEXTE)
+	_etude_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_etude_bloc.add_child(_etude_texte)
+	var ou := _label("La carte de l'étude : Dangers, onglet Prochaine crue.", 11, GRIS)
+	ou.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_etude_bloc.add_child(ou)
+
 	for cle in Politiques.ORDRE:
 		_lieu_lignes[cle] = _ligne_lieu(v, "politique",
 			String(Politiques.POLITIQUES[cle]["nom"]),
@@ -2277,6 +2480,8 @@ func ouvrir_lieu(cle: String) -> void:
 	_lieu_intro.text = String(LIEUX[cle]["quoi"])
 	_brancher_lieu()
 	_maj_lieu()
+	if cle == "universite" and etude_publiee() and ouverture != null:
+		ouverture.etude_ouverte()
 
 
 ## ✕ En haut à droite d'une fiche (auteur, 2026-09-28) ; remplace le bouton « Fermer ».
@@ -2349,6 +2554,17 @@ func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
 	var universite := _lieu_ouvert == "universite"
+	_etude_bloc.visible = universite and etude_publiee()
+	if _etude_bloc.visible:
+		var p := ville.prochaine_crue(_mois)
+		var forgerons := ville.base("i", Ouverture.MAISONS, "hauteur_eau_max")
+		_etude_texte.text = ("Une crue plus forte que celle de cette année est attendue dans 6 à 8 ans. "
+			+ "L'eau irait sur %d îlots, contre %d cette fois ; aux Forgerons, %s m au lieu de %s m. "
+			+ "Si rien ne change, elle ruinerait %s logements.\n"
+			+ "La ville peut la faire baisser : rendre des berges à l'Ilse, verdir les toits plats, "
+			+ "laisser des prés déborder.") % [int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"]),
+			_nb(ville.valeur("i", Ouverture.MAISONS, "hauteur_eau_annonce", _mois), 1),
+			_nb(forgerons, 1), _nb(float(p["logements_perdus"]), 0)]
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
@@ -2359,11 +2575,11 @@ func _maj_lieu() -> void:
 			_maj_ligne_recherche(String(cle), l)
 		else:
 			_maj_ligne_politique(String(cle), l)
-	# 🔴 Ce qui manque est DIT, pas simulé à moitié : les règles se paient en
-	# capital politique, qui vit encore dans le classeur et pas ici.
+	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
+	# capital, elle en demande un seuil (auteur, 2026-09-30) ; aucune n'est écrite.
 	_lieu_message.text = "" if universite else \
 		"Les règles — stationnement payant, toit vert obligatoire au neuf — " \
-		+ "attendent le capital politique, qui n'est pas encore dans la maquette."
+		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
 
 
 func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
@@ -2493,6 +2709,7 @@ func _barre_compteurs() -> void:
 	p.add_child(h)
 	for ligne in [
 		["caisse", "caisse", Color8(78, 121, 67), "Caisse"],
+		["capital", "capital", Color8(122, 84, 48), "Confiance"],
 		["conso", "conso", Color8(198, 126, 32), "Consommation"],
 		["production", "production", Color8(214, 158, 44), "Solaire"],
 		["co2", "co2", Color8(104, 116, 108), "CO₂"],
@@ -2705,6 +2922,8 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_caisse_ke = indic["caisse_ke"]
 	_ville_valeurs["caisse"].text = _millions(_caisse_ke)
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
+	_capital = ville.capital(mois)
+	_ville_valeurs["capital"].text = _nb(_capital, 0)
 	_maj_durabilite(indic)
 	_temps_label.text = "Mois %s" % _nb(mois, 1)
 	_barre.visible = _menu_panneau.visible and not _bilan_differe()
@@ -2712,6 +2931,10 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		for cle in _barre_valeurs:
 			(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
 	maj_degats(ville.degats(mois))
+	if _diagnostic_panneau.visible:
+		(_onglets_crue["prochaine"] as Button).visible = etude_publiee()
+		if _vue_crue == "prochaine":
+			_maj_prochaine()
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
 	var verrou := _verrou()
@@ -3258,11 +3481,14 @@ func _maj_recap() -> void:
 	var cout := ville.cout_commande_ke(_fiche_couche, _fiche_fid, r, _mois)
 	var duree := ville.duree_commande_mois(_fiche_couche, _fiche_fid, r, _mois)
 	var manque := cout - _caisse_ke
+	var capital := ville.capital_commande(_fiche_couche, _fiche_fid, r, _mois)
+	var manque_capital := capital - _capital
 	_recap_bouton.text = "Mettre en place"
-	_recap_bouton.disabled = manque > 0.001
+	_recap_bouton.disabled = manque > 0.001 or manque_capital > 0.001
 	_alerter_cout(manque > 0.001)
 	# ⚠️ Mesurer rejoue la ville entière : une fois par réglage et par mois, pas par image.
-	var cle := "%s%d %s %d %d" % [_fiche_couche, _fiche_fid, r, int(_mois), int(manque > 0.001)]
+	var cle := "%s%d %s %d %d %d" % [_fiche_couche, _fiche_fid, r, int(_mois),
+		int(manque > 0.001), int(manque_capital > 0.001)]
 	if cle == _recap_cle:
 		return
 	_recap_cle = cle
@@ -3271,6 +3497,8 @@ func _maj_recap() -> void:
 		c.queue_free()
 	_effet("caisse", ("manque %s k€" % _milliers(manque)) if manque > 0.001
 		else "%s k€" % _milliers(cout), -1 if manque > 0.001 else 0)
+	if manque_capital > 0.001:
+		_effet("capital", "manque %s de confiance" % _nb(manque_capital, 0), -1)
 	_effet("duree", _duree(duree), 0)
 	for e in consequences(r, duree):
 		_effet(e[0], e[1], e[2])
@@ -3290,6 +3518,24 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	ville_essai.commander(_fiche_couche, _fiche_fid, r, _mois)
 	var a := ville.indicateurs(t)
 	var b := ville_essai.indicateurs(t)
+	# 🗳️ Trois moments : la décision, la livraison, et l'année d'après pour les
+	# places retirées (`Ville.CAPITAL_RETOUR_PLACES_MOIS`).
+	var tard := t + Ville.CAPITAL_RETOUR_PLACES_MOIS
+	var k0 := ville_essai.capital(_mois) - ville.capital(_mois)
+	var k1 := ville_essai.capital(t) - ville.capital(t) - k0
+	var k2 := ville_essai.capital(tard) - ville.capital(tard) - k0 - k1
+	if absf(k0) >= 0.5:
+		out.append(["capital", "%+d confiance" % int(roundf(k0)), _sens(k0)])
+	if absf(k1) >= 0.5:
+		out.append(["capital", "%+d confiance à la livraison" % int(roundf(k1)), _sens(k1)])
+	# 🚶 Le retour des places se juge sur la rue (99) : la fiche ne peut pas le
+	# connaître, elle annonce la fourchette.
+	if absf(k0) >= 0.5 and (r.has("places") or r.has("axe")):
+		out.append(["capital", "+%d à +%d confiance un an après, selon la rue" % [
+			int(roundf(-k0 * Ville.CAPITAL_RETOUR_PLACES_X_MIN)),
+			int(roundf(-k0 * Ville.CAPITAL_RETOUR_PLACES_X_MAX))], 0])
+	elif absf(k2) >= 0.5:
+		out.append(["capital", "%+d confiance un an après" % int(roundf(k2)), _sens(k2)])
 	var da := ville.degats(t)
 	var db := ville_essai.degats(t)
 	var logements := float(da["logements_perdus"]) - float(db["logements_perdus"])
@@ -4011,5 +4257,3 @@ func maj_degats(d: Dictionary) -> void:
 		d["franchissements_coupes"])
 	(_degats_valeurs["reste"] as Label).text = _milliers(
 		float(d["a_reparer_ke"])) + " k€"
-	(_degats_valeurs["eau"] as Label).text = "%s m" % _nb(
-		float(d.get("eau_prochaine_m", 0.0)), 2)

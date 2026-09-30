@@ -381,6 +381,7 @@ func importer_partie(etat: Dictionary) -> void:
 		ilots[fid]["toit_m2"] = ilots[fid]["toit_m2_neuf"]
 	_vert_ha_mois = INF
 	_crue_champs_mois = INF
+	_rampes_version += 1
 
 
 ## 🌊 L'état de DÉPART se mesure, il ne se choisit pas : une berge que nul mur
@@ -578,18 +579,25 @@ static func avancement(t: float, d: float, L: float, M: float) -> float:
 	return clampf((t - d - L) / M, 0.0, 1.0)
 
 
+## Ce qui a changé dans les rampes : le capital relit la charge des rues.
+var _rampes_version := 0
+
+
 func ajouter_rampe(couche: String, fid: int, champ: String, ecart: float,
-		d: float, L: float, M: float) -> void:
+		d: float, L: float, M: float, cause := -1) -> void:
 	_vert_ha_mois = INF
+	_rampes_version += 1
 	if not _rampes[couche].has(fid):
 		_rampes[couche][fid] = []
-	_rampes[couche][fid].append({
-		"champ": champ, "ecart": ecart, "d": d, "L": L, "M": M,
-	})
+	var rampe := {"champ": champ, "ecart": ecart, "d": d, "L": L, "M": M}
+	if cause >= 0:
+		rampe["cause"] = cause
+	_rampes[couche][fid].append(rampe)
 
 
 func vider_rampes() -> void:
 	_vert_ha_mois = INF
+	_rampes_version += 1
 	_rampes = {"i": {}, "r": {}}
 
 
@@ -1670,6 +1678,135 @@ func crediter_essai_ke(montant: float) -> void:
 	_credit_essai_ke += maxf(montant, 0.0)
 
 
+# ==========================================================================
+# LE CAPITAL POLITIQUE — un compteur, pas une jauge (16b · 17 · 58 · 95)
+# Le joueur lit « confiance » (auteur, 2026-09-30, décision 97) ; le code garde « capital ».
+# ==========================================================================
+# Il ne s'achète pas : il se dépense à la décision et se regagne à la LIVRAISON,
+# quand ça se voit. Fonction pure du temps, comme la caisse — rien à sauvegarder.
+# 🎚️ LEVEL DESIGN, tout ce bloc (auteur, 2026-09-30) : les habitants qui rentrent
+# et le pont rouvert rapportent « bien plus » que le reste ; retirer des places
+# coûte tout de suite et rapporte plus tard.
+const CAPITAL_PAR_LOGEMENT_RENTRE := 0.25   # îlot 59 : 43 logements → +11
+const CAPITAL_PONT_ROUVERT := 15.0
+const CAPITAL_TOUS_ABRITES := 5.0
+const CAPITAL_PAR_PLACE_RETIREE := 0.2      # axe 55 : 47 places → −9
+# 🚶 LE RETOUR SE JUGE SUR LA RUE (auteur, 2026-09-30, décision 99) : × MIN si
+# elle garde ses voitures, × MAX si elle s'est vidée de son trafic sans le
+# reporter ; un report de CAPITAL_REPORT_INSUPPORTABLE sur une voisine ramène à MIN.
+const CAPITAL_RETOUR_PLACES_X_MIN := 0.5
+const CAPITAL_RETOUR_PLACES_X_MAX := 1.5
+const CAPITAL_REPORT_INSUPPORTABLE := 0.3   # de charge en plus sur la rue qui encaisse le plus
+# En charge ABSOLUE, pas en part : la foule suit la charge perdue, et une rue déjà
+# vide qu'on ferme ne se remplit de rien (sinon 0,06 → 0 valait un axe vidé).
+const CAPITAL_CHARGE_RETIREE_PLEINE := 0.5
+const CAPITAL_RETOUR_PLACES_MOIS := 12.0    # après la livraison — pas un chantier, le mode auteur n'y touche pas
+
+var _capital_cle := ""
+var _capital_mvts := []   # [{mois, montant, quoi, couche, fid}], triés
+
+
+func capital(t: float) -> float:
+	var k := CAPITAL_DEPART
+	for m in capital_mouvements():
+		if float(m["mois"]) > t:
+			break
+		k += float(m["montant"])
+	return k
+
+
+## Chaque gain et chaque dépense, datés : c'est ce que `retours.gd` annonce, pour
+## que le compteur ne bouge jamais sans qu'une phrase dise pourquoi (☐ de Ressources).
+## 🔗 Le pont compte à sa livraison, accès ou non : le noyau ne voit pas le réseau.
+func capital_mouvements() -> Array:
+	var cle := "%d/%d/%d/%d/%s" % [_repare.hash(), _camps.hash(),
+		_stationnement_supprime.hash(), _rampes_version, livraison_immediate]
+	if cle == _capital_cle:
+		return _capital_mvts
+	_capital_cle = cle
+	_capital_mvts = []
+	for c in _repare:
+		var m: PackedStringArray = str(c).split(":")
+		var couche := m[0]
+		var fid := int(m[1])
+		var fin := float(_repare[c]) + duree_reparation_mois(couche, fid)
+		if couche == "i" and base("i", fid, "logements_sinistres") > 0.0:
+			_capital_mvts.append({"mois": fin, "quoi": "rentres", "couche": "i", "fid": fid,
+				"montant": base("i", fid, "logements_sinistres") * CAPITAL_PAR_LOGEMENT_RENTRE})
+		elif couche == "r" and fid in _ponts:
+			_capital_mvts.append({"mois": fin, "quoi": "pont", "couche": "r", "fid": fid,
+				"montant": CAPITAL_PONT_ROUVERT})
+	var abrites := _mois_tous_abrites()
+	if abrites >= 0.0:
+		_capital_mvts.append({"mois": abrites, "quoi": "abrites", "couche": "", "fid": -1,
+			"montant": CAPITAL_TOUS_ABRITES})
+	for fid in _stationnement_supprime:
+		var debut := float(_stationnement_supprime[fid])
+		var cout := base("r", fid, "stationnement") * CAPITAL_PAR_PLACE_RETIREE
+		_capital_mvts.append({"mois": debut, "quoi": "places", "couche": "r", "fid": fid,
+			"montant": -cout})
+		var retour := debut + _delai(STATIONNEMENT_MOIS) + CAPITAL_RETOUR_PLACES_MOIS
+		var bilan := bilan_rue(fid, debut, retour)
+		var mvt := {"mois": retour, "quoi": "places_retour", "couche": "r", "fid": fid,
+			"montant": cout * lerpf(CAPITAL_RETOUR_PLACES_X_MIN, CAPITAL_RETOUR_PLACES_X_MAX,
+				float(bilan["videe"]) * (1.0 - float(bilan["report_part"])))}
+		mvt.merge(bilan)
+		_capital_mvts.append(mvt)
+	_capital_mvts.sort_custom(func(a, b): return float(a["mois"]) < float(b["mois"]))
+	return _capital_mvts
+
+
+## 🚶 CE QUE LA RUE EST DEVENUE, un an après : la part de son trafic qu'elle a
+## perdue — c'est elle qui ramène les piétons (`trafic.gd`, la foule est l'inverse
+## de la charge) — et le pire report sur une autre rue, lu sur les rampes que
+## `trafic.retirer_axe` marque de sa `cause` : ni la crue ni un pont rouvert le
+## même mois ne sont mis sur le compte de la rue.
+func bilan_rue(fid: int, debut: float, retour: float) -> Dictionary:
+	var avant := valeur("r", fid, "charge", debut)
+	var videe := clampf((avant - trafic_vu(fid, retour)) / CAPITAL_CHARGE_RETIREE_PLEINE, 0.0, 1.0)
+	var report := 0.0
+	var rue := -1
+	for f in _rampes["r"]:
+		if f == fid:
+			continue
+		var e := 0.0
+		for r in _rampes["r"][f]:
+			if r["champ"] == "charge" and int(r.get("cause", -1)) == fid:
+				e += float(r["ecart"])
+		if e > report:
+			report = e
+			rue = f
+	return {"videe": videe, "report": report, "report_rue": rue,
+		"report_part": clampf(report / CAPITAL_REPORT_INSUPPORTABLE, 0.0, 1.0)}
+
+
+## Le mois où plus personne ne dort dehors, -1 si ce n'est pas encore arrivé. Le
+## nombre ne baisse qu'à une livraison : on ne teste que celles-là.
+func _mois_tous_abrites() -> float:
+	if _perdus(0.0) <= 0.0:
+		return -1.0
+	var dates := []
+	for c in _repare:
+		var m: PackedStringArray = str(c).split(":")
+		dates.append(float(_repare[c]) + duree_reparation_mois(m[0], int(m[1])))
+	for fid in _camps:
+		dates.append(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS))
+	dates.sort()
+	for d in dates:
+		if sans_toit(d) <= 0.0:
+			return d
+	return -1.0
+
+
+## Ce qu'une commande dépense EN CAPITAL au mois de la décision, positif. Seules
+## les places retirées en coûtent ; tout le reste en rapporte à la livraison.
+func capital_commande(couche: String, fid: int, r: Dictionary, t: float) -> float:
+	if couche != "r" or not (r.has("places") or r.has("axe")) \
+			or _stationnement_supprime.has(fid) or valeur("r", fid, "stationnement", t) <= 0.0:
+		return 0.0
+	return base("r", fid, "stationnement") * CAPITAL_PAR_PLACE_RETIREE
+
+
 func fids_batis() -> Array:
 	var out := []
 	for fid in ilots:
@@ -1869,6 +2006,32 @@ func degats(t: float) -> Dictionary:
 	}
 
 
+## 🎓 CE QUE L'ÉTUDE DE L'UNIVERSITÉ ANNONCE (auteur, 2026-09-30) : la crue de
+## `04e` à 6 m, relue au mois `t`. Une ruine ne se reperd pas : relever un îlot
+## du faubourg fait MONTER les logements perdus (95). Pertes du bâti seulement —
+## 94 demande tous les thèmes.
+func prochaine_crue(t: float) -> Dictionary:
+	var sous_eau := 0
+	var cette_annee := 0
+	var logements := 0.0
+	for fid in ilots:
+		if str(ilots[fid].get("sous_type", "")) in ["champ", "riviere"]:
+			continue
+		if base("i", fid, "hauteur_eau_max") > SEUIL_EAU_M:
+			cette_annee += 1
+		if valeur("i", fid, "hauteur_eau_annonce", t) > SEUIL_EAU_M:
+			sous_eau += 1
+		logements += valeur("i", fid, "part_ruinee_apres", t) * valeur("i", fid, "logements", t)
+	return {
+		"ilots_sous_eau": sous_eau,
+		"ilots_cette_annee": cette_annee,
+		"logements_perdus": logements,
+		"eau_pire_m": float(degats(t)["eau_prochaine_m"]),
+	}
+## Le seuil de `04e` (`SEUIL_MOUILLE`) : en dessous, l'eau ne passe pas la bordure.
+const SEUIL_EAU_M := 0.10
+
+
 # ==========================================================================
 # LA COMMANDE — on règle, puis on met en place (2026-08-31)
 # ==========================================================================
@@ -1967,6 +2130,13 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 	if cout > caisse + 0.001:
 		return {"ok": false, "manque": cout - caisse, "cout_ke": cout,
 			"faits": [], "axe": false}
+	# 🗳️ Le second refus du jeu, même règle que l'argent : à zéro, on ne dépense
+	# plus de capital (auteur, 2026-09-30) — ce qui en rapporte passe toujours.
+	var manque_capital := capital_commande(couche, fid, r, t) - capital(t)
+	if manque_capital > 0.001:
+		return {"ok": false, "manque": 0.0, "manque_capital": manque_capital,
+			"cout_ke": cout, "faits": [], "axe": false}
+	var capital_depense := capital_commande(couche, fid, r, t)
 	var faits := []
 	if r.has("solaire") and lancer_solaire(fid, float(r["solaire"]), t):
 		faits.append("solaire")
@@ -1990,7 +2160,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire"):
 		faits.append("reparation")
 	return {"ok": not faits.is_empty() or r.has("axe"), "manque": 0.0,
-		"cout_ke": cout, "faits": faits, "axe": r.has("axe")}
+		"cout_ke": cout, "faits": faits, "axe": r.has("axe"),
+		"capital": capital_depense if "stationnement" in faits else 0.0}
 
 
 # ------------------------------------------------- la ville en travaux

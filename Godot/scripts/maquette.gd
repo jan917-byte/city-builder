@@ -66,6 +66,9 @@ const RAMPE := [
 	Color8(42, 74, 110), Color8(90, 140, 150),
 	Color8(214, 190, 110), Color8(196, 84, 62),
 ]
+# 🎓 L'eau de la prochaine crue : pâle à 10 cm, profonde au pire. Aussi la
+# légende de `interface.gd`, en sRGB.
+const RAMPE_EAU := [Color8(196, 226, 240), Color8(22, 84, 150)]
 # 🚧 Hors de la rampe, et d'aucune de ses teintes : un brun se lisait « saturé ».
 const COUPEE := Color8(150, 88, 204)
 # Des facteurs, pas des couleurs : assez forts pour se voir sur un pastel
@@ -256,6 +259,7 @@ func _ready() -> void:
 	# qui l'importe déjà.
 	interface.themes = THEMES
 	interface.rampe = RAMPE
+	interface.rampe_eau = RAMPE_EAU
 	add_child(interface)
 	interface.batir()
 	interface.commande_demandee.connect(_sur_commande)
@@ -265,6 +269,8 @@ func _ready() -> void:
 	interface.reprise_demandee.connect(_sur_reprise)
 	interface.informer_partie("", _sauvegarde_disponible())
 	interface.theme_demande.connect(_sur_theme)
+	interface.vue_crue_demandee.connect(_sur_vue_crue)
+	interface.examen_demande.connect(examiner)
 	interface.nord_demande.connect(pivot.remettre_nord)
 	interface.dessus_demande.connect(pivot.basculer_dessus)
 	interface.fiche_fermee.connect(func() -> void:
@@ -2136,6 +2142,58 @@ const THEMES := [
 
 ## "" = la ville vivante. Sinon l'`id` d'un thème de THEMES.
 var theme := ""
+## 🎓 Les deux onglets de Dangers : ce que l'eau a pris, ce qu'elle reprendrait.
+## Un sous-état du thème et non un thème : il n'a pas de tuile dans le rail.
+var vue_crue := "degats"
+var _eau_max := 0.0
+
+
+func _sur_vue_crue(id: String) -> void:
+	vue_crue = id
+	if _eau_max <= 0.0:
+		for fid in ville.ilots:
+			if str(ville.ilots[fid].get("sous_type", "")) != "riviere":
+				_eau_max = maxf(_eau_max, ville.base("i", fid, "hauteur_eau_annonce"))
+	_dernier_peint = -1.0
+	_rafraichir(true)
+
+
+## La teinte d'un îlot dans la prochaine crue, en linéaire ; transparente au sec.
+func _teinte_eau(fid: int) -> Color:
+	if str(ville.ilots[fid].get("sous_type", "")) == "riviere":
+		return Color(1.0, 1.0, 1.0, 0.0)
+	var h := ville.valeur("i", fid, "hauteur_eau_annonce", mois)
+	if h <= Ville.SEUIL_EAU_M:
+		return Color(1.0, 1.0, 1.0, 0.0)
+	var c: Color = RAMPE_EAU[0].lerp(RAMPE_EAU[1], clampf(h / maxf(_eau_max, 0.01), 0.0, 1.0))
+	return c.srgb_to_linear()
+
+
+## Une proposition ouvre la vraie fiche, réglée d'avance ; seul son bouton paie.
+## Le guide et le panneau de la prochaine crue passent tous deux par ici.
+func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -> void:
+	if couche != "r" or not fid in ville.ponts_coupes():
+		_sur_theme("")
+	interface._detail_ouvert = false
+	interface._placer_detail()
+	selection.sel_couche = couche
+	selection.sel_fid = fid
+	selection.survol_fid = -1
+	_sur_choix(couche, fid)
+	if couche == "r":
+		_viser_route(fid, 180.0)
+	else:
+		_viser_objet(couche, fid, 260.0 if couche == "b" else 200.0)
+	interface._vider_pose()
+	if reglage == "solaire":
+		interface.viser(float(valeur) * 100.0)
+	elif reglage == "vert":
+		interface.viser_vert(float(valeur) * 100.0)
+	elif reglage != "":
+		interface.poser(reglage, valeur)
+	_rafraichir(true)
+	if ouverture != null:
+		ouverture.actualiser(true)
 
 
 func _theme_actif() -> Dictionary:
@@ -2164,6 +2222,7 @@ func _sur_theme(id: String) -> void:
 	if id == theme:
 		return
 	theme = id
+	vue_crue = "degats"
 	var t := _theme_actif()
 	if id != "" and t.is_empty():
 		push_error("thème inconnu : %s" % id)
@@ -2249,7 +2308,12 @@ func _peindre() -> void:
 			var mi: MeshInstance3D = noeuds[couche][fid]
 			var diagnostic_sol := 0.0
 			var diagnostic_bati := 0.0
-			if genre == "crue":
+			if genre == "crue" and vue_crue == "prochaine":
+				# 🎓 Le sol dit la profondeur (`_teinte_eau`), le volume orange
+				# ce que l'eau ruinerait : la légende des Dégâts, au futur.
+				if couche == "i" and ville.valeur("i", fid, "part_ruinee_apres", mois) > 0.001:
+					diagnostic_bati = 1.0
+			elif genre == "crue":
 				var o: Dictionary = ville.objets(couche).get(fid, {})
 				if couche == "i":
 					if float(o.get("hauteur_eau_max", 0.0)) > 0.10:
@@ -2265,6 +2329,8 @@ func _peindre() -> void:
 			# couche : aucun thème ne la peint.
 			if couche == "b":
 				c = BERGE_TEINTES[ville.berge_etat(fid, mois)]
+			elif genre == "crue" and vue_crue == "prochaine" and couche == "i":
+				c = _teinte_eau(fid)
 			elif genre == "tissu" and couche == "i":
 				c = _teintes_tissu.get(fid, Color.MAGENTA)
 				# 1,0 et pas 0,88 : ce thème REMPLACE le carton. Une opacité
@@ -2733,8 +2799,9 @@ func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
 	interface.retours.actualiser(mois)
 	var r := ville.commander(couche, fid, reglages, mois)
 	if not bool(r["ok"]):
-		print("%s %d · refusé : %.0f k€ demandés, il manque %.0f k€"
-			% [_nom_couche(couche), fid, r["cout_ke"], r["manque"]])
+		print("%s %d · refusé : %.0f k€ demandés, il manque %.0f k€ et %.0f de capital"
+			% [_nom_couche(couche), fid, r["cout_ke"], r["manque"],
+				float(r.get("manque_capital", 0.0))])
 		return
 	# ⚠️ Le report de trafic vit dans `trafic.gd`, qui touche des nœuds : le
 	# noyau le renvoie au lieu de l'appliquer.

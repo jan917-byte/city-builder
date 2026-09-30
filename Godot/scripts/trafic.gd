@@ -769,7 +769,7 @@ func retirer_axe(fid: int, mois: float) -> void:
 	if _fermees.has(fid):
 		return
 	_fermees[fid] = mois
-	_reaffecter(mois, 6.0, _indisponibles(mois))
+	_reaffecter(mois, 6.0, _indisponibles(mois), fid)
 	_derniere_charge = -1.0
 
 
@@ -795,12 +795,13 @@ func report_en_cours(fid: int, mois: float) -> bool:
 	return _fermees.has(fid) and mois < float(_fermees[fid]) + 6.0
 
 
-func _reaffecter(mois: float, duree: float, indisponibles: Dictionary) -> void:
+## `cause` : la rue fermée qui provoque ce report — la confiance le lui impute (99).
+func _reaffecter(mois: float, duree: float, indisponibles: Dictionary, cause := -1) -> void:
 	var brut: Array = _affectation(indisponibles)
 	for f in ville.routes:
 		var cible := _charge(brut, indisponibles, f, ville.pont_provisoire(f))
 		ville.ajouter_rampe("r", f, "charge",
-			cible - ville.valeur("r", f, "charge", mois), mois, 0.0, duree)
+			cible - ville.valeur("r", f, "charge", mois), mois, 0.0, duree, cause)
 	_indisponibles_connues = _signature(indisponibles)
 	_derniere_charge = -1.0
 	_dernier_etat = -1.0
