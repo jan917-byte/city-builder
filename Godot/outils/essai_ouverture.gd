@@ -204,15 +204,8 @@ func executer() -> void:
 		and jeu.apercu._camp_mmi.multimesh.instance_count == plus_grand,
 		"Les abris sont dans la miniature, un par logement")
 	await capture("01d_camp_promis")
-	# 🔎 L'autre moitié de la comparaison : AVANT rend le champ nu.
-	jeu.interface.regarder_avant(true)
-	jeu._rafraichir(true)
-	verifier(jeu.apercu._camp_mmi.multimesh == null,
-		"Le bouton AVANT rend le champ nu")
-	jeu.interface.regarder_avant(false)
-	jeu._rafraichir(true)
 	verifier(jeu.ville.caisse_ke(0.0) == caisse0 and not jeu.ville.camp_pose(champs[0]),
-		"Comparer un champ ne dépense rien")
+		"Regarder la miniature ne dépense rien")
 	await cliquer(jeu.interface._recap_bouton)
 	verifier(jeu.ville.camp_pose(champs[0]) and jeu.ville.caisse_ke(0.0) < caisse0,
 		"Le camp est engagé et payé une fois")

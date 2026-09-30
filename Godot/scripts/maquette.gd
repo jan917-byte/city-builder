@@ -392,10 +392,8 @@ func _essai_interface() -> void:
 	await _fiche("i", 49)
 	await _capturer("interface_toit_vert")
 	await _capturer_apercu("apercu_toit_partage")
-	# 🎚️ LES RÉGLAGES POSÉS, ET L'AVANT/APRÈS (2026-08-31). Trois captures au
-	# MÊME cadrage : la fiche réglée, puis la miniature dans ses deux états.
-	# C'est le critère du geste — si les deux images se ressemblent, il n'y a
-	# rien à comparer et la fiche ment.
+	# 🎚️ LES RÉGLAGES POSÉS : la fiche réglée, puis sa miniature, qui montre
+	# l'APRÈS — l'avant, c'est la ville derrière (auteur, 2026-09-30).
 	_viser_route(55, 90.0)
 	pivot.caler(35.0, 28.0)
 	await _fiche("r", 55)
@@ -404,10 +402,6 @@ func _essai_interface() -> void:
 	await _fiche("r", 55)
 	await _capturer("interface_reglages")
 	await _capturer_apercu("apercu_rue_apres")
-	interface.regarder_avant(true)
-	await _fiche("r", 55)
-	await _capturer_apercu("apercu_rue_avant")
-	interface.regarder_avant(false)
 
 	# 🔴 LE CONTRÔLE DE LA COMMANDE : deux réglages partent ENSEMBLE, la caisse
 	# tombe exactement du total annoncé, et l'objet n'a qu'UN chantier.
@@ -452,7 +446,7 @@ func _essai_interface() -> void:
 		% [mwh, conso, 100.0 * mwh / maxf(conso, 1.0)])
 
 	# 🏢 LA FICHE QUI DENSIFIE (2026-09-03). Deux captures au même cadrage :
-	# l'îlot réglé à +2 étages, puis sa miniature dans les deux états.
+	# l'îlot réglé à +2 étages, puis sa miniature.
 	# 🪜 Le curseur est posé à LA MOITIÉ des bâtiments : la miniature doit
 	# montrer un îlot à moitié monté, pas un îlot entier.
 	var moitie := maxi(1, ville.dense_batiments(49) / 2)
@@ -463,10 +457,6 @@ func _essai_interface() -> void:
 	await _fiche("i", 49)
 	await _capturer("interface_densifier")
 	await _capturer_apercu("apercu_densifier_apres")
-	interface.regarder_avant(true)
-	await _fiche("i", 49)
-	await _capturer_apercu("apercu_densifier_avant")
-	interface.regarder_avant(false)
 	interface.viser_dense(0)
 	interface.poser("dense", 2)   # reposer le même réglage l'enlève
 	var part_m := float(moitie) / float(maxi(ville.dense_batiments(49), 1))

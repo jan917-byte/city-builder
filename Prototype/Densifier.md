@@ -99,7 +99,7 @@ Trois captures au **même cadrage**, et c'est le critère :
 
 🪜 **Et deux lignes imprimées, qui sont le second critère** : la première tranche doit coûter moins cher par logement que la dernière (75 contre 113 k€), et les 30 premiers pour cent du toit 32 se rembourser plus vite que les 30 derniers (6 contre 18 ans).
 
-Puis la fiche, par `-- --interface` : `wehrau_interface_densifier.png` — **le curseur est à 5 des 10 bâtiments de l'îlot 49, et la miniature montre un îlot à moitié monté, pas un îlot entier** — et les deux miniatures `wehrau_apercu_densifier_avant/apres.png`.
+Puis la fiche, par `-- --interface` : `wehrau_interface_densifier.png` — **le curseur est à 5 des 10 bâtiments de l'îlot 49, et la miniature montre un îlot à moitié monté, pas un îlot entier** — et la miniature `wehrau_apercu_densifier_apres.png`.
 
 ## Ce qui prouverait que c'est cassé
 

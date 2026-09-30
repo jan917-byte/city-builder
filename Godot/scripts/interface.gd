@@ -291,12 +291,6 @@ var _recap_cle := ""
 ## 🧪 Une deuxième ville, jamais montrée : on y engage le réglage pour mesurer
 ## ses conséquences sans rien payer. Posée par la maquette, sur SA copie des données.
 var ville_essai: Ville
-## Les deux boutons de la miniature. 🔎 Ils n'apparaissent que lorsque les deux
-## images DIFFÈRENT : sans réglage posé ni chantier en cours, « avant » et
-## « après » montreraient la même chose et le geste ne voudrait rien dire.
-var _apercu_boutons: HBoxContainer
-var _avant_bouton: Button
-var _apres_bouton: Button
 var _message: Label
 var _camera_nord: Button
 var _camera_dessus: Button
@@ -359,9 +353,6 @@ var _repare_etat: Label   # « ✓ Chantier terminé » : remplace le bouton gri
 ## survivre à une image sans se replacer sous le doigt ; `_reglages()` réunit
 ## les trois et c'est LUI seul que la commande et la miniature lisent.
 var _pose := {}
-## Vrai quand la miniature montre la ville d'AUJOURD'HUI au lieu de ce qui sera
-## livré. Retombe à faux dès qu'on change d'objet : on veut voir sa promesse.
-var _apercu_avant := false
 var _trafic_bloc: VBoxContainer
 var _trafic_stationnement: Button
 var _trafic_axe: Button
@@ -1812,28 +1803,6 @@ func _panneau_ilot() -> void:
 	_lieu_bouton.pressed.connect(func() -> void:
 		ouvrir_lieu(String(_lieu_du_fid(_fiche_fid))))
 	v.add_child(_lieu_bouton)
-
-	# 🔎 AVANT / APRÈS (2026-08-31). La miniature est la seule image où les deux
-	# états d'un même objet peuvent se comparer : la ville, elle, ne peut montrer
-	# que celui du jour. Deux boutons plutôt qu'un rideau ou une bascule
-	# automatique — on s'arrête sur le détail qu'on veut regarder.
-	_apercu_boutons = HBoxContainer.new()
-	_apercu_boutons.add_theme_constant_override("separation", 4)
-	_apercu_boutons.visible = false
-	v.add_child(_apercu_boutons)
-	for choix in [["Avant", true], ["Après", false]]:
-		var b := Button.new()
-		b.text = choix[0]
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var avant: bool = choix[1]
-		# Enfoncé, pas grisé, comme la vitesse : grisé, « Après » se lisait éteint alors qu'il est à l'image.
-		b.toggle_mode = true
-		b.pressed.connect(func() -> void: _apercu_avant = avant)
-		_apercu_boutons.add_child(b)
-		if avant:
-			_avant_bouton = b
-		else:
-			_apres_bouton = b
 
 	# 🔎 LA MINIATURE (décision 12). Elle montre l'objet dans l'état qui SERA
 	# livré — le réglage suit le curseur avant même d'être validé — pendant que
@@ -3445,7 +3414,6 @@ func _vider_pose() -> void:
 	_vert_choix = -1.0
 	_arbres_choix = -1.0
 	_dense_choix = -1.0
-	_apercu_avant = false
 
 
 func _mettre_en_place() -> void:
@@ -3464,15 +3432,6 @@ func _maj_recap() -> void:
 	_recap_bloc.visible = _fiche_fid >= 0
 	(_recap_effets.get_parent() as Control).visible = not r.is_empty()
 	_recap_annuler.disabled = r.is_empty()
-	# Les deux boutons de la miniature n'ont de sens que si les deux images
-	# diffèrent : un réglage posé, ou un chantier qui court.
-	var chantier: Dictionary = ville.chantier(_fiche_couche, _fiche_fid, _mois)
-	_apercu_boutons.visible = _apercu_cadre.visible \
-		and (not r.is_empty() or bool(chantier["actif"]))
-	if not _apercu_boutons.visible:
-		_apercu_avant = false
-	_avant_bouton.set_pressed_no_signal(_apercu_avant)
-	_apres_bouton.set_pressed_no_signal(not _apercu_avant)
 	if r.is_empty():
 		_recap_bouton.disabled = true
 		_alerter_cout(false)
@@ -3626,8 +3585,7 @@ func _afficher_choix(actuel: float, cible: float) -> void:
 ## 🔎 CE QUE LA MINIATURE DOIT MONTRER (décision 12) : l'ÉTAT QUI SERA LIVRÉ —
 ## les réglages posés devant le chantier engagé, lui-même devant l'état réel.
 ## Survoler un bouton montre en plus ce qu'il livrerait, avant qu'on le presse.
-## 🔎 SAUF EN MODE « AVANT », où elle montre la ville d'aujourd'hui, réglages
-## ignorés : c'est la moitié gauche de la comparaison.
+## 🔄 Plus de mode « avant » (auteur, 2026-09-30) : l'avant, c'est la ville.
 ## Lu à chaque image par `maquette._maj_apercu` : ne rien y calculer de lourd.
 func apercu_demande() -> Dictionary:
 	var equipe := 0.0
@@ -3649,99 +3607,83 @@ func apercu_demande() -> Dictionary:
 			"verdi": verdi, "plate": plate,
 			"futur": futur, "berge": berge, "places": places, "roule": roule,
 			"arbres": arbres, "dense": dense, "camp": camp}
-	var r: Dictionary = {} if _apercu_avant else _reglages()
+	var r := _reglages()
 	if _fiche_couche == "i":
-		equipe = ville.valeur("i", _fiche_fid, "part_toit_equipe", _mois)
-		verdi = ville.valeur("i", _fiche_fid, "part_toit_vert", _mois)
 		plate = ville.valeur("i", _fiche_fid, "_part_plate", _mois)
 		var ed := ville.etat_dense(_fiche_fid, _mois)
 		dense = Vector4(float(ed["avancement"]), float(ed["pas"]),
 			float(ed["metres"]), 0.0)
-		if not _apercu_avant:
-			equipe = maxf(ville.etat_solaire(_fiche_fid, _mois)["cible"],
-				float(r.get("solaire", 0.0)))
-			verdi = maxf(ville.etat_vert(_fiche_fid, _mois)["cible"],
-				float(r.get("vert", 0.0)))
-			# 🏢 La miniature promet l'état LIVRÉ : les bâtiments VISÉS déjà
-			# montés, pas la moitié d'un chantier. 🪜 Et « visés » n'est plus
-			# « tous » — c'est le cran du curseur, sinon l'image promet un îlot
-			# entier pour le prix de trois toits.
-			var e := int(ed["etages"])
-			var vise := float(ed["cible"])
-			if r.has("dense"):
-				e = int(r["dense"]["etages"])
-				vise = maxf(vise, float(r["dense"]["part"]))
-			if e > 0 and vise > 0.0:
-				dense = Vector4(vise, float(ed["pas"]),
-					float(e) * Ville.DENSE_ETAGE_M, 0.0)
+		equipe = maxf(ville.etat_solaire(_fiche_fid, _mois)["cible"],
+			float(r.get("solaire", 0.0)))
+		verdi = maxf(ville.etat_vert(_fiche_fid, _mois)["cible"],
+			float(r.get("vert", 0.0)))
+		# 🏢 La miniature promet l'état LIVRÉ : les bâtiments VISÉS déjà
+		# montés, pas la moitié d'un chantier. 🪜 Et « visés » n'est plus
+		# « tous » — c'est le cran du curseur, sinon l'image promet un îlot
+		# entier pour le prix de trois toits.
+		var e := int(ed["etages"])
+		var vise := float(ed["cible"])
+		if r.has("dense"):
+			e = int(r["dense"]["etages"])
+			vise = maxf(vise, float(r["dense"]["part"]))
+		if e > 0 and vise > 0.0:
+			dense = Vector4(vise, float(ed["pas"]),
+				float(e) * Ville.DENSE_ETAGE_M, 0.0)
 		# 🏕️ LE CAMP DANS LA MINIATURE (auteur, 2026-09-18) : il manquait, et
 		# c'était le seul chantier qu'on payait sans l'avoir vu. Même règle que
-		# les autres réglages — au survol du bouton comme une fois posé — et en
-		# AVANT, seul le camp déjà livré.
+		# les autres réglages — au survol du bouton comme une fois posé.
 		# 🌾 La culture LIVRÉE, arbres adultes : la miniature promet l'état final.
 		culture = ville.parcelle_code(_fiche_fid, _mois)
-		if not _apercu_avant:
-			var visee := int(r.get("culture", -1))
-			for k in _culture_boutons.size():
-				if not (_culture_boutons[k] as Button).disabled \
-						and (_culture_boutons[k] as Button).is_hovered():
-					visee = k
-			if visee < 0 and (ville.culture_en_cours(_fiche_fid, _mois)
-					or ville.recolte_dans_mois(_fiche_fid, _mois) > 0.0):
-				visee = ville.champ_culture(_fiche_fid, _mois)
-			if visee >= 0:
-				culture = ville.parcelle_code(_fiche_fid, _mois, visee)
-		if ville.camp_possible(_fiche_fid):
-			if ville.camp_pose(_fiche_fid):
-				if not _apercu_avant or ville.camp_livre(_fiche_fid, _mois):
-					camp = ville.camp_taille(_fiche_fid, _mois)
-			elif not _apercu_avant and (r.has("camp")
-					or (not _camp_bouton.disabled and _camp_bouton.is_hovered())):
-				camp = ville.camp_taille(_fiche_fid, _mois)
+		var visee := int(r.get("culture", -1))
+		for k in _culture_boutons.size():
+			if not (_culture_boutons[k] as Button).disabled \
+					and (_culture_boutons[k] as Button).is_hovered():
+				visee = k
+		if visee < 0 and (ville.culture_en_cours(_fiche_fid, _mois)
+				or ville.recolte_dans_mois(_fiche_fid, _mois) > 0.0):
+			visee = ville.champ_culture(_fiche_fid, _mois)
+		if visee >= 0:
+			culture = ville.parcelle_code(_fiche_fid, _mois, visee)
+		if ville.camp_possible(_fiche_fid) and (ville.camp_pose(_fiche_fid)
+				or r.has("camp")
+				or (not _camp_bouton.disabled and _camp_bouton.is_hovered())):
+			camp = ville.camp_taille(_fiche_fid, _mois)
 	if _fiche_couche != "b":
-		futur = not _apercu_avant \
-			and (ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
-				or r.has("reparer") or _repare_bouton.is_hovered()
-				or _repare_provisoire.is_hovered())
-		if _apercu_avant:
-			futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois)
+		futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois) \
+			or r.has("reparer") or _repare_bouton.is_hovered() \
+			or _repare_provisoire.is_hovered()
 	# 🌉 Quel pont la miniature promet : le choix posé, sinon le bouton survolé.
 	var provisoire := _fiche_couche == "r" and ville.pont_provisoire(_fiche_fid)
-	if _fiche_couche == "r" and not _apercu_avant:
+	if _fiche_couche == "r":
 		if _repare_provisoire.is_hovered() or _repare_bouton.is_hovered():
 			provisoire = _repare_provisoire.is_hovered()
 		elif r.has("reparer"):
 			provisoire = str(r["reparer"]) == "provisoire"
 	if _fiche_couche == "b":
-		var e := ville.berge_etat(_fiche_fid, _mois) if _apercu_avant \
-			else ville.berge_cible(_fiche_fid)
-		if not _apercu_avant:
-			e = maxi(e, int(r.get("berge", 0)))
-			for k in _berge_boutons.size():
-				if (_berge_boutons[k] as Button).is_hovered():
-					e = k + Ville.BERGE_APAISEE
+		var e := maxi(ville.berge_cible(_fiche_fid), int(r.get("berge", 0)))
+		for k in _berge_boutons.size():
+			if (_berge_boutons[k] as Button).is_hovered():
+				e = k + Ville.BERGE_APAISEE
 		# La même règle que la ville : une berge de campagne naît renaturée, et la
 		# teinte dit un CHANGEMENT, pas un état.
 		berge = 0.0 if e == ville.berge_depart(_fiche_fid) else float(e)
 	if _fiche_couche == "r":
 		# La bordure se vide et la chaussée aussi — au survol comme une fois le
 		# réglage posé. Un bouton grisé, lui, ne promet rien.
-		places = ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5
-		roule = trafic == null or not trafic.axe_ferme(_fiche_fid)
-		if not _apercu_avant:
-			places = places and not r.has("places") \
-				and (_trafic_stationnement.disabled
-					or not _trafic_stationnement.is_hovered())
-			roule = roule and not r.has("axe") \
-				and (_trafic_axe.disabled or not _trafic_axe.is_hovered())
+		places = ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5 \
+			and not r.has("places") \
+			and (_trafic_stationnement.disabled
+				or not _trafic_stationnement.is_hovered())
+		roule = (trafic == null or not trafic.axe_ferme(_fiche_fid)) \
+			and not r.has("axe") \
+			and (_trafic_axe.disabled or not _trafic_axe.is_hovered())
 		# 🅿️ La règle, en une ligne : pas de voitures, pas de places. Au
 		# survol du bouton de fermeture comme une fois le réglage posé.
 		places = places and roule
 		# 🌳 La canopée du moment, ou celle que la commande livrerait : c'est
 		# elle qui décide combien d'arbres l'échantillon plante.
-		arbres = ville.valeur("r", _fiche_fid, "canopee", _mois)
-		if not _apercu_avant:
-			arbres = maxf(arbres, float(r.get("arbres", 0.0)))
+		arbres = maxf(ville.valeur("r", _fiche_fid, "canopee", _mois),
+			float(r.get("arbres", 0.0)))
 	return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 		"verdi": verdi, "plate": plate,
 		"futur": futur, "berge": berge, "places": places, "roule": roule,
@@ -3784,11 +3726,6 @@ func viser_dense(batiments: int) -> void:
 ## annonçait deux étages en en montrant un. Corrigé le 2026-09-03.
 func poser(cle: String, valeur: Variant = true) -> void:
 	_basculer(cle, valeur)
-
-
-func regarder_avant(avant: bool) -> void:
-	_apercu_avant = avant
-	_maj_fiche()
 
 
 func _sur_curseur(v: float) -> void:
