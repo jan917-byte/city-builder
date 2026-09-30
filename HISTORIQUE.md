@@ -599,6 +599,9 @@ Dangers a deux onglets, Dégâts et Prochaine crue ; la carte colore l'eau atten
 **2026-09-30 — Quai des Sureaux (rue 122, berge 8) : les places côté Ilse retrouvent l'asphalte, la rue ne perce plus sous le sol, les buissons de la berge rendue ne mordent plus la chaussée.**
 Trois causes dans `07` : la bande de berge partait de la ligne d'eau et couvrait 2,3 m de chaussée débordante (`berges._bande_berge`) ; une rue qui longe l'eau penchait vers l'autre rive comme un pont (`voirie._franchit`, `G_longe`) ; un buisson à 0,9 × la bande passait 1,1 m sur la rue (`SEMIS_BUISSON_RAYON`).
 Seuls la rue 122 et ses bandes changent dans `wehrau.json` (ponts, contrôles inchangés) ; planche `wehrau_sureaux_avant_apres.png`. Tracé et îlot non touchés.
+**2026-09-30 — Les chantiers en cours ont leur propre boîte en bas à droite, au-dessus du compteur des sans-logement (auteur : deux thèmes différents).**
+`retours.gd` : une colonne `pile` porte deux panneaux, `chantiers` (caché sans chantier, et pendant le récit) puis `compteur` ; `_clamper_fiche` mesure la colonne entière.
+`essai_progression` 0 échec (contrôle ajouté : boîte séparée, au-dessus du compteur) ; capture `wehrau_ouverture_progression_01_engagement.png`.
 **2026-09-30 — Quai des Sureaux, suite : la rue recule sur l'îlot 31 au lieu de mordre l'Ilse (auteur : « grignote sur les îlots plutôt que sur l'Ilse »).**
 Cause dans `04b` : la rive redessinée n'a pas les sommets de l'îlot 31, donc sa seule arête au bord de l'eau (155 m) reculait de la demi-largeur ; elle est maintenant sondée (`eau_en_face`) et recule de toute la largeur, et `07` colle la rue aux façades comme les 19 autres.
 Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, aucun logement perdu (friche) ; planche `wehrau_sureaux_avant_apres.png`. Essai : même règle sur tous les quais (2 m de trottoir + 3,5 m de bande) = −47 logements, non appliquée.

@@ -2,14 +2,24 @@ extends RefCounted
 ## Compteur permanent et constats de chantier, sans élément posé sur la carte.
 
 var ui
+## Colonne bas-droite : les chantiers au-dessus, le compteur des sans-logement en bas.
+var pile: VBoxContainer
 var compteur: PanelContainer
 var besoin: Label
 var preparation: Label
+## 🚧 Les chantiers ont leur boîte, hors du compteur : deux thèmes (auteur, 2026-09-30).
+var chantiers: PanelContainer
+var chantiers_bloc: VBoxContainer
+var chantiers_titre: Label
+var chantiers_lignes := []   # {bloc, nom, quoi, reste, jauge}, bâties une fois
+var chantiers_deborde: Label
+const CHANTIERS_MAX := 5
 var avis: PanelContainer
 var texte: Label
 var historique: RichTextLabel
 var journal: Array[String] = []
 var _en_cours := {}
+var _nb_chantiers := 0
 var _ponts := {}
 var _sans_toit := -1
 ## 🗳️ Les mouvements de capital déjà dits, par identité et non par date : en mode
@@ -25,15 +35,25 @@ const ACCELERER_MOIS := 3.0
 
 func batir(interface) -> void:
 	ui = interface
+	pile = VBoxContainer.new()
+	pile.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	pile.offset_left = -352
+	pile.offset_right = -16
+	pile.offset_bottom = -16
+	pile.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	pile.add_theme_constant_override("separation", 8)
+	pile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(pile)
+	chantiers = PanelContainer.new()
+	chantiers.theme = ui._theme_ui
+	ui._poser_boite(chantiers)
+	chantiers.visible = false
+	pile.add_child(chantiers)
+	_batir_chantiers(chantiers)
 	compteur = PanelContainer.new()
 	compteur.theme = ui._theme_ui
 	ui._poser_boite(compteur)
-	compteur.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	compteur.offset_left = -352
-	compteur.offset_right = -16
-	compteur.offset_bottom = -16
-	compteur.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	ui.add_child(compteur)
+	pile.add_child(compteur)
 	var lignes := VBoxContainer.new()
 	compteur.add_child(lignes)
 	# 🔄 Le journal est une icône sur la ligne du compteur (auteur, 2026-09-28) :
@@ -54,6 +74,7 @@ func batir(interface) -> void:
 	tete.add_child(bouton)
 	preparation = ui._label("", 12, ui.GRIS)
 	lignes.add_child(preparation)
+	pile.minimum_size_changed.connect(ui._clamper_fiche)
 	avis = PanelContainer.new()
 	avis.theme = ui._theme_ui
 	ui._poser_boite(avis)
@@ -99,6 +120,7 @@ func signaler(message: String) -> void:
 func actualiser_affichage() -> void:
 	if avis == null:
 		return
+	chantiers.visible = compteur.visible and _nb_chantiers > 0
 	avis.visible = compteur.visible and (_historique_ouvert or Time.get_ticks_msec() < _expiration)
 	historique.visible = _historique_ouvert
 	# Une ligne par message : la ligne blanche entre deux creusait le bandeau.
@@ -127,9 +149,63 @@ func _ajuster_largeur() -> void:
 	texte.custom_minimum_size.x = minf(ceilf(large) + 2.0, LARGEUR_MAX)
 
 
-func _chantiers(mois: float) -> Dictionary:
+func _batir_chantiers(boite: PanelContainer) -> void:
+	chantiers_bloc = VBoxContainer.new()
+	chantiers_bloc.add_theme_constant_override("separation", 4)
+	boite.add_child(chantiers_bloc)
+	chantiers_titre = ui._label("", 14, ui.TEXTE)
+	chantiers_bloc.add_child(chantiers_titre)
+	for i in CHANTIERS_MAX:
+		var bloc := VBoxContainer.new()
+		bloc.add_theme_constant_override("separation", 1)
+		chantiers_bloc.add_child(bloc)
+		var nom: Label = ui._label("", 12, ui.TEXTE)
+		nom.clip_text = true
+		nom.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		bloc.add_child(nom)
+		var h := HBoxContainer.new()
+		bloc.add_child(h)
+		var quoi: Label = ui._label("", 11, ui.GRIS)
+		quoi.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(quoi)
+		var reste: Label = ui._label("", 11, ui.GRIS)
+		h.add_child(reste)
+		var jauge: Control = ui._jauge_chantier()
+		bloc.add_child(jauge)
+		chantiers_lignes.append({"bloc": bloc, "nom": nom, "quoi": quoi, "reste": reste, "jauge": jauge})
+	chantiers_deborde = ui._label("", 12, ui.GRIS)
+	chantiers_bloc.add_child(chantiers_deborde)
+
+
+## Le plus proche de sa fin en tête, comme `ville.chantiers` les trie.
+func _maj_chantiers(en_cours: Array) -> void:
+	_nb_chantiers = en_cours.size()
+	chantiers.visible = compteur.visible and _nb_chantiers > 0
+	chantiers_titre.text = "Chantiers en cours · %d" % en_cours.size()
+	for i in chantiers_lignes.size():
+		var l: Dictionary = chantiers_lignes[i]
+		(l["bloc"] as Control).visible = i < en_cours.size()
+		if i >= en_cours.size():
+			continue
+		var c: Dictionary = en_cours[i]
+		var couche := str(c["couche"])
+		var fid := int(c["fid"])
+		var genre := str(c["genre"])
+		(l["quoi"] as Label).text = "Pont provisoire" if genre == "pont" and ui.ville.pont_provisoire(fid) else ui.CHANTIER_MOTS.get(genre, genre.capitalize())
+		var lieu: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
+		(l["nom"] as Label).text = lieu
+		(l["reste"] as Label).text = "encore %s" % ui._duree(float(c["reste_mois"]))
+		l["jauge"].regler(float(c["part"]), float(c["part"]))
+	var deborde := en_cours.size() - chantiers_lignes.size()
+	chantiers_deborde.visible = deborde > 0
+	chantiers_deborde.text = "… et %d de plus" % deborde
+
+
+func _chantiers(mois: float, en_cours: Array = []) -> Dictionary:
 	var resultat := {}
-	for c in ui.ville.chantiers(mois)["en_cours"]:
+	if en_cours.is_empty():
+		en_cours = ui.ville.chantiers(mois)["en_cours"]
+	for c in en_cours:
 		resultat["%s:%s:%s" % [c["couche"], c["fid"], c["genre"]]] = c
 	for cle in ui.ville._recherche:
 		if not ui.Recherche.acquis(ui.ville, cle, mois):
@@ -227,7 +303,9 @@ func actualiser(mois: float) -> void:
 		lignes.append("%d places en construction" % places)
 	preparation.text = "\n".join(lignes)
 	preparation.visible = not lignes.is_empty()
-	var courants := _chantiers(mois)
+	var en_cours: Array = ui.ville.chantiers(mois)["en_cours"]
+	_maj_chantiers(en_cours)
+	var courants := _chantiers(mois, en_cours)
 	for cle in _en_cours:
 		if not courants.has(cle):
 			livraison(_en_cours[cle], mois)

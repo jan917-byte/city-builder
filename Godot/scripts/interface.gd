@@ -104,6 +104,7 @@ const CHANTIER_MOTS := {
 	"densification": "Étages ajoutés",
 	"relogement": "Installation des abris",
 	"culture": "Mise en culture",
+	"toit vert": "Toit végétalisé", "plantation": "Plantation",
 }
 
 
@@ -353,6 +354,11 @@ var _repare_etat: Label   # « ✓ Chantier terminé » : remplace le bouton gri
 ## survivre à une image sans se replacer sous le doigt ; `_reglages()` réunit
 ## les trois et c'est LUI seul que la commande et la miniature lisent.
 var _pose := {}
+## [bouton, clé, valeur] des bascules : survolées, elles montrent leurs conséquences.
+var _decisions := []
+## Le bouton qu'on vient de presser ne se prévisualise plus tant que la souris y reste :
+## sinon, décocher montrait encore l'après (auteur, 2026-09-30).
+var _survol_ignore: Button
 var _trafic_bloc: VBoxContainer
 var _trafic_stationnement: Button
 var _trafic_axe: Button
@@ -1051,6 +1057,15 @@ static func _pastille(coul: Color) -> ImageTexture:
 	var img := Image.create_empty(7, 20, false, Image.FORMAT_RGBA8)
 	img.fill(coul)
 	return ImageTexture.create_from_image(img)
+
+
+## Pour `retours.gd`, qui n'atteint pas la classe interne.
+func _jauge_chantier() -> Control:
+	var j := Jauge.new()
+	j.custom_minimum_size = Vector2(0, 7)
+	j.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	j.colorer(EN_TRAVAUX)
+	return j
 
 
 func _label(txt: String, taille: int, coul: Color) -> Label:
@@ -1940,7 +1955,7 @@ func _panneau_ilot() -> void:
 	for cible in [Ville.BERGE_APAISEE, Ville.BERGE_RENATUREE]:
 		var b := Button.new()
 		# Exclusives : une berge n'a qu'un état visé. Reposer le même l'enlève.
-		b.pressed.connect(func() -> void: _basculer("berge", cible))
+		_decision(b, "berge", cible)
 		_berge_bloc.add_child(b)
 		_berge_boutons.append(b)
 
@@ -1954,10 +1969,10 @@ func _panneau_ilot() -> void:
 	_repare_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_repare_bloc.add_child(_repare_texte)
 	_repare_bouton = Button.new()
-	_repare_bouton.pressed.connect(func() -> void: _basculer("reparer", true))
+	_decision(_repare_bouton, "reparer", true)
 	_repare_provisoire = Button.new()
 	_repare_provisoire.visible = false
-	_repare_provisoire.pressed.connect(func() -> void: _basculer("reparer", "provisoire"))
+	_decision(_repare_provisoire, "reparer", "provisoire")
 	_repare_bloc.add_child(_repare_provisoire)
 	_repare_bloc.add_child(_repare_bouton)
 	_repare_etat = _etiquette("", 13, FAIT_TEXTE)
@@ -1980,7 +1995,7 @@ func _panneau_ilot() -> void:
 	_camp_bloc.add_child(_camp_texte)
 	_camp_bouton = Button.new()
 	_camp_bouton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_camp_bouton.pressed.connect(func() -> void: _basculer("camp", true))
+	_decision(_camp_bouton, "camp", true)
 	_camp_bloc.add_child(_camp_bouton)
 
 	# 🌾 CE QUE PORTE LE CHAMP. Exclusifs, comme la berge : un seul usage visé
@@ -1996,7 +2011,7 @@ func _panneau_ilot() -> void:
 	_culture_bloc.add_child(_culture_texte)
 	for k in Ville.CULTURES.size():
 		var b := Button.new()
-		b.pressed.connect(func() -> void: _basculer("culture", k))
+		_decision(b, "culture", k)
 		_culture_bloc.add_child(b)
 		_culture_boutons.append(b)
 
@@ -2010,11 +2025,11 @@ func _panneau_ilot() -> void:
 	_trafic_stationnement.text = "Retirer les places"
 	_trafic_stationnement.icon = _icone("trafic", 22)
 	_trafic_stationnement.set_meta("icone", "trafic")
-	_trafic_stationnement.pressed.connect(func() -> void: _basculer("places", true))
+	_decision(_trafic_stationnement, "places", true)
 	_trafic_bloc.add_child(_trafic_stationnement)
 	_trafic_axe = Button.new()
 	_trafic_axe.text = "Fermer aux voitures"
-	_trafic_axe.pressed.connect(func() -> void: _basculer("axe", true))
+	_decision(_trafic_axe, "axe", true)
 	_trafic_bloc.add_child(_trafic_axe)
 
 	# 🌳 PLANTER. Le curseur compte des ARBRES, pas des pourcents : c'est ce
@@ -2128,7 +2143,7 @@ func _panneau_ilot() -> void:
 	for n in [1, 2]:
 		var b := Button.new()
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.pressed.connect(func() -> void: _basculer("dense", n))
+		_decision(b, "dense", n)
 		etages_ligne.add_child(b)
 		_dense_boutons.append(b)
 	_dense_jauge = Jauge.new()
@@ -2294,7 +2309,11 @@ func montrer_depart() -> void:
 func _clamper_fiche() -> void:
 	if _fiche_defilement == null or _fiche_contenu == null:
 		return
-	var dispo: float = get_viewport().get_visible_rect().size.y - HAUT - 166.0
+	# La colonne bas-droite (chantiers + compteur) grandit : la fiche lui cède la place.
+	var bas := 166.0
+	if retours.compteur != null and retours.compteur.visible:
+		bas = maxf(bas, retours.pile.get_combined_minimum_size().y + 54.0)
+	var dispo: float = get_viewport().get_visible_rect().size.y - HAUT - bas
 	_fiche_defilement.custom_minimum_size.y = minf(
 		_fiche_contenu.get_combined_minimum_size().y, maxf(160.0, dispo))
 
@@ -3395,6 +3414,35 @@ func _reglages() -> Dictionary:
 	return r
 
 
+func _decision(b: Button, cle: String, valeur: Variant) -> void:
+	b.pressed.connect(func() -> void:
+		_survol_ignore = b
+		_basculer(cle, valeur))
+	b.mouse_exited.connect(func() -> void:
+		if _survol_ignore == b:
+			_survol_ignore = null)
+	_decisions.append([b, cle, valeur])
+
+
+func _survole(b: Button) -> bool:
+	return b != _survol_ignore and not b.disabled and b.is_hovered() and b.is_visible_in_tree()
+
+
+## 🖱️ Les réglages posés, plus la bascule sous la souris (auteur, 2026-09-30) :
+## les conséquences se lisent avant le clic. Un bouton déjà posé ne s'enlève pas au survol.
+func _reglages_vus() -> Dictionary:
+	for d in _decisions:
+		var b: Button = d[0]
+		if not _survole(b):
+			continue
+		var sauve := _pose.duplicate()
+		_pose[d[1]] = d[2]
+		var r := _reglages()
+		_pose = sauve
+		return r
+	return _reglages()
+
+
 ## Une bascule : reposer le même réglage l'enlève. C'est ce qui rend l'essai
 ## réversible — et la berge est exclusive, un seul état visé à la fois.
 func _basculer(cle: String, valeur) -> void:
@@ -3427,13 +3475,18 @@ func _mettre_en_place() -> void:
 ## réglages posés : le prix se calcule dans le noyau (`cout_commande_ke`), pas
 ## ici — deux additions dans deux fichiers finissent par diverger.
 func _maj_recap() -> void:
-	var r := _reglages()
+	# Les boutons suivent ce qui est POSÉ ; les conséquences, ce qui est vu.
+	var pose := _reglages()
+	var r := _reglages_vus()
 	# Toujours là, grisé tant que rien n'est réglé (auteur, 2026-09-26).
 	_recap_bloc.visible = _fiche_fid >= 0
 	(_recap_effets.get_parent() as Control).visible = not r.is_empty()
-	_recap_annuler.disabled = r.is_empty()
+	_recap_annuler.disabled = pose.is_empty()
+	_recap_bouton.text = "Mettre en place"
+	var refus := pose.is_empty() or _manque(pose) > 0.001
+	refus = refus or ville.capital_commande(_fiche_couche, _fiche_fid, pose, _mois) > _capital + 0.001
+	_recap_bouton.disabled = refus
 	if r.is_empty():
-		_recap_bouton.disabled = true
 		_alerter_cout(false)
 		_recap_cle = ""
 		return
@@ -3442,8 +3495,6 @@ func _maj_recap() -> void:
 	var manque := cout - _caisse_ke
 	var capital := ville.capital_commande(_fiche_couche, _fiche_fid, r, _mois)
 	var manque_capital := capital - _capital
-	_recap_bouton.text = "Mettre en place"
-	_recap_bouton.disabled = manque > 0.001 or manque_capital > 0.001
 	_alerter_cout(manque > 0.001)
 	# ⚠️ Mesurer rejoue la ville entière : une fois par réglage et par mois, pas par image.
 	var cle := "%s%d %s %d %d %d" % [_fiche_couche, _fiche_fid, r, int(_mois),
@@ -3461,6 +3512,10 @@ func _maj_recap() -> void:
 	_effet("duree", _duree(duree), 0)
 	for e in consequences(r, duree):
 		_effet(e[0], e[1], e[2])
+
+
+func _manque(r: Dictionary) -> float:
+	return ville.cout_commande_ke(_fiche_couche, _fiche_fid, r, _mois) - _caisse_ke
 
 
 ## 🧪 LES CONSÉQUENCES, MESURÉES ET NON ANNONCÉES : la ville d'essai reçoit la
@@ -3636,8 +3691,7 @@ func apercu_demande() -> Dictionary:
 		culture = ville.parcelle_code(_fiche_fid, _mois)
 		var visee := int(r.get("culture", -1))
 		for k in _culture_boutons.size():
-			if not (_culture_boutons[k] as Button).disabled \
-					and (_culture_boutons[k] as Button).is_hovered():
+			if _survole(_culture_boutons[k]):
 				visee = k
 		if visee < 0 and (ville.culture_en_cours(_fiche_fid, _mois)
 				or ville.recolte_dans_mois(_fiche_fid, _mois) > 0.0):
@@ -3646,23 +3700,23 @@ func apercu_demande() -> Dictionary:
 			culture = ville.parcelle_code(_fiche_fid, _mois, visee)
 		if ville.camp_possible(_fiche_fid) and (ville.camp_pose(_fiche_fid)
 				or r.has("camp")
-				or (not _camp_bouton.disabled and _camp_bouton.is_hovered())):
+				or _survole(_camp_bouton)):
 			camp = ville.camp_taille(_fiche_fid, _mois)
 	if _fiche_couche != "b":
 		futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois) \
-			or r.has("reparer") or _repare_bouton.is_hovered() \
-			or _repare_provisoire.is_hovered()
+			or r.has("reparer") or _survole(_repare_bouton) \
+			or _survole(_repare_provisoire)
 	# 🌉 Quel pont la miniature promet : le choix posé, sinon le bouton survolé.
 	var provisoire := _fiche_couche == "r" and ville.pont_provisoire(_fiche_fid)
 	if _fiche_couche == "r":
-		if _repare_provisoire.is_hovered() or _repare_bouton.is_hovered():
-			provisoire = _repare_provisoire.is_hovered()
+		if _survole(_repare_provisoire) or _survole(_repare_bouton):
+			provisoire = _survole(_repare_provisoire)
 		elif r.has("reparer"):
 			provisoire = str(r["reparer"]) == "provisoire"
 	if _fiche_couche == "b":
 		var e := maxi(ville.berge_cible(_fiche_fid), int(r.get("berge", 0)))
 		for k in _berge_boutons.size():
-			if (_berge_boutons[k] as Button).is_hovered():
+			if _survole(_berge_boutons[k]):
 				e = k + Ville.BERGE_APAISEE
 		# La même règle que la ville : une berge de campagne naît renaturée, et la
 		# teinte dit un CHANGEMENT, pas un état.
@@ -3672,11 +3726,10 @@ func apercu_demande() -> Dictionary:
 		# réglage posé. Un bouton grisé, lui, ne promet rien.
 		places = ville.valeur("r", _fiche_fid, "stationnement", _mois) >= 0.5 \
 			and not r.has("places") \
-			and (_trafic_stationnement.disabled
-				or not _trafic_stationnement.is_hovered())
+			and not _survole(_trafic_stationnement)
 		roule = (trafic == null or not trafic.axe_ferme(_fiche_fid)) \
 			and not r.has("axe") \
-			and (_trafic_axe.disabled or not _trafic_axe.is_hovered())
+			and not _survole(_trafic_axe)
 		# 🅿️ La règle, en une ligne : pas de voitures, pas de places. Au
 		# survol du bouton de fermeture comme une fois le réglage posé.
 		places = places and roule

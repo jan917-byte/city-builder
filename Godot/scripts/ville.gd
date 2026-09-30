@@ -2266,7 +2266,8 @@ func chantiers(t: float) -> Dictionary:
 			else:
 				en_cours.append({"couche": couche, "fid": fid,
 					"genre": genre, "cout_ke": prix,
-					"reste_mois": reste_reparation_mois(couche, fid, t)})
+					"reste_mois": reste_reparation_mois(couche, fid, t),
+					"duree": duree_reparation_mois(couche, fid)})
 	# La pose est un chantier comme un autre : sans elle, « tous les chantiers
 	# en cours » en oublierait un, et l'îlot ambre ne serait dans aucune liste.
 	for fid in _solaire:
@@ -2274,13 +2275,15 @@ func chantiers(t: float) -> Dictionary:
 		if not e["en_cours"]:
 			continue
 		en_cours.append({"couche": "i", "fid": fid, "genre": "solaire",
-			"cout_ke": float(e["cout_ke"]), "reste_mois": float(e["reste_mois"])})
+			"cout_ke": float(e["cout_ke"]), "reste_mois": float(e["reste_mois"]),
+			"duree": float(_solaire[fid]["duree"])})
 	for fid in _vert:
 		var ev := etat_vert(fid, t)
 		if not ev["en_cours"]:
 			continue
 		en_cours.append({"couche": "i", "fid": fid, "genre": "toit vert",
-			"cout_ke": float(ev["cout_ke"]), "reste_mois": float(ev["reste_mois"])})
+			"cout_ke": float(ev["cout_ke"]), "reste_mois": float(ev["reste_mois"]),
+			"duree": float(_vert[fid]["duree"])})
 	# La transformation d'une berge dure 6 à 18 mois : c'est le chantier le plus
 	# long du jeu après un pont, et il doit se voir dans la liste.
 	for fid in _berge:
@@ -2288,7 +2291,7 @@ func chantiers(t: float) -> Dictionary:
 			continue
 		en_cours.append({"couche": "b", "fid": fid, "genre": "berge",
 			"cout_ke": float(_berge[fid]["cout_ke"]),
-			"reste_mois": berge_reste_mois(fid, t)})
+			"reste_mois": berge_reste_mois(fid, t), "duree": float(_berge[fid]["duree"])})
 	# 🌳 La plantation est le chantier le plus long après un pont : deux ans
 	# avant que l'ombre y soit. Elle se liste comme les autres.
 	for fid in _plantation:
@@ -2296,26 +2299,33 @@ func chantiers(t: float) -> Dictionary:
 			continue
 		en_cours.append({"couche": "r", "fid": fid, "genre": "plantation",
 			"cout_ke": float(_plantation[fid]["cout_ke"]),
-			"reste_mois": plantation_reste_mois(fid, t)})
+			"reste_mois": plantation_reste_mois(fid, t),
+			"duree": float(_plantation[fid]["duree"])})
 	for fid in _camps:
 		if not camp_livre(fid, t):
 			en_cours.append({"couche": "i", "fid": fid, "genre": "relogement",
-				"cout_ke": float(_camps[fid]["cout_ke"]), "reste_mois": camp_reste_mois(fid, t)})
+				"cout_ke": float(_camps[fid]["cout_ke"]), "reste_mois": camp_reste_mois(fid, t),
+				"duree": _delai(CAMP_MOIS)})
 	for fid in _cultures:
 		if culture_en_cours(fid, t):
 			en_cours.append({"couche": "i", "fid": fid, "genre": "culture",
 				"cout_ke": float(_derniere_culture(fid, t)["cout_ke"]),
-				"reste_mois": culture_reste_mois(fid, t)})
+				"reste_mois": culture_reste_mois(fid, t),
+				"duree": _delai(CULTURES[champ_culture(fid, t)]["mois"])})
 	for fid in _dense:
 		var d := etat_dense(fid, t)
 		if d["en_cours"]:
 			en_cours.append({"couche": "i", "fid": fid, "genre": "densification",
-				"cout_ke": d["cout_ke"], "reste_mois": d["reste_mois"]})
+				"cout_ke": d["cout_ke"], "reste_mois": d["reste_mois"],
+				"duree": float(_dense[fid]["duree"])})
 	for fid in _stationnement_supprime:
 		var reste := float(_stationnement_supprime[fid]) + _delai(STATIONNEMENT_MOIS) - t
 		if reste > 0.0:
 			en_cours.append({"couche": "r", "fid": fid, "genre": "stationnement",
-				"cout_ke": 0.0, "reste_mois": reste})
+				"cout_ke": 0.0, "reste_mois": reste, "duree": _delai(STATIONNEMENT_MOIS)})
+	# `part` : ce qui est fait, 0 → 1 — les barres du coin bas-droit.
+	for c in en_cours:
+		c["part"] = clampf(1.0 - float(c["reste_mois"]) / maxf(float(c["duree"]), 0.001), 0.0, 1.0)
 	# Le plus proche de sa fin en tête : c'est l'ordre dans lequel on lit une
 	# liste qui ne tient pas entière à l'écran.
 	en_cours.sort_custom(func(a, b): return a["reste_mois"] < b["reste_mois"])

@@ -29,9 +29,16 @@ func executer() -> void:
 	verifier(jeu.ville.nourriture_personnes(0.0) < nourris and jeu.ville.sans_toit(0.0) == 260,
 		"Coût agricole immédiat, aucune personne relogée avant livraison")
 	verifier(retours.preparation.visible and "260" in retours.besoin.text, "Places en préparation séparées du besoin")
+	verifier(retours.chantiers.visible and "abris" in retours.chantiers_lignes[0]["quoi"].text,
+		"Le chantier engagé a sa barre en bas à droite")
+	await process_frame
+	verifier(not retours.compteur.is_ancestor_of(retours.chantiers)
+		and retours.chantiers.get_global_rect().end.y < retours.compteur.get_global_rect().position.y,
+		"Les chantiers ont leur boîte, au-dessus du compteur des sans-logement")
 	await capture("progression_01_engagement")
 	actualiser(0.2)
 	verifier("22" in retours.besoin.text and not "construction" in retours.preparation.text, "Le compteur baisse à la livraison")
+	verifier(not retours.chantiers.visible, "La boîte des chantiers part avec le dernier livré")
 	verifier("Aide d'urgence" in retours.preparation.text and "9 k€" in retours.preparation.text,
 		"Les 22 personnes dehors coûtent leur aide chaque mois")
 	verifier(retours.journal.size() >= 3, "Engagement, livraison et relogement sont conservés dans le journal")
@@ -94,8 +101,8 @@ func executer() -> void:
 			await cliquer(retours.compteur.find_children("*", "Button", true, false)[0])
 			await capture("progression_06_journal")
 			await process_frame
-			verifier(jeu.interface._fiche_panneau.get_global_rect().end.y < retours.compteur.get_global_rect().position.y,
-				"La fiche ne recouvre jamais le compteur")
+			verifier(jeu.interface._fiche_panneau.get_global_rect().end.y < retours.pile.get_global_rect().position.y,
+				"La fiche ne recouvre jamais le compteur ni les chantiers")
 	# Les dépenses récurrentes disent leur rythme, sans simuler un débit immédiat.
 	jeu.interface.ouvrir_lieu("universite")
 	await cliquer(jeu.interface._lieu_lignes["sedum"]["bouton"])
