@@ -27,7 +27,7 @@ Colonne EN = terme de jeu, pas traduction littérale. Colonne DE = langue de lan
 |---|---|---|---|
 | décision | decision | Entscheidung | L'intention posée par le joueur |
 | chantier | works / project | Baustelle | Décision en cours de réalisation |
-| capital politique | political capital | politisches Kapital | Se dépense, se regagne par les résultats |
+| capital politique — à l'écran **confiance** (97) | trust | Vertrauen | Se dépense, se regagne par les résultats. « Capital politique » reste le terme de design ; le joueur lit « confiance » |
 | happening | event | Ereignis | Crise : canicule, crue, révolte |
 | délai avant effet | lead time | Vorlaufzeit | |
 | montée en charge | ramp-up | Anlaufphase | |

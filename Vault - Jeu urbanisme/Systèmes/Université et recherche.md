@@ -1,7 +1,7 @@
 ---
 tags: [système, gameplay, progression]
 statut: en cours de spécification
-maj: 2026-09-23
+maj: 2026-09-30
 ---
 
 # Université et recherche
@@ -25,7 +25,7 @@ Une **liste de sujets**. Le joueur pose de l'argent sur un sujet, chaque mois. A
 
 **Les deux existent** (choix de l'auteur). Le rendement seul ferait un jeu sans surprise ; l'objet neuf seul ferait un arbre de technologies qui ne récompense pas ce qu'on a déjà bâti.
 
-🔴 **Tout palier reste plausible à vingt ans** (78). Un objet neuf est une chose qui existe aujourd'hui quelque part et qu'une petite ville pourrait s'offrir — pas une invention. **L'éolienne volante n'est donc pas un palier** : elle vit dans la preview du futur (12 précisée) ou dans la fin *solarpunk high-tech* de [[Fins et pluralisme]], à trancher.
+🔴 **Les premiers paliers existent aujourd'hui ; les derniers vont au-delà** ([[Décisions arrêtées]] 6b, qui étend 78). Tôt dans la partie, un objet neuf est une chose qu'une petite ville pourrait s'offrir aujourd'hui. Tard, il peut être un futur désirable qui n'existe pas encore — **l'éolienne volante redevient candidate**, en palier tardif. Ce qui ne triche jamais : ses effets suivent les mêmes causes que le reste.
 
 ## Un palier profite à toute la ville, déjà-posé compris
 

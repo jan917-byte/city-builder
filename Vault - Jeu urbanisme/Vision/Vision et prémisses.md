@@ -24,6 +24,10 @@ Piège identifié tôt : si « ambitieux » = *grande échelle*, le projet est m
 
 L'antagoniste, c'est la ville voiture-dépendante actuelle. Les buts sont le zéro carbone et la résilience climatique. Mais la **fin est choisie par le joueur**, pas par le jeu → [[Fins et pluralisme]]
 
+## Réaliste au début, utopique à la fin
+
+**Les causes restent vraies du début à la fin. Ce que la ville devient part du réel et finit en utopie** : objets, habitants, rythme, image. Le joueur reconnaît sa ville au départ ; à l'arrivée, elle est plus désirable qu'aucune vraie ville. → [[Décisions arrêtées]] 6b
+
 ## Le geste central
 
 **Aucune manipulation directe du terrain, des routes ou des bâtiments.** Le joueur pose une **intention** sur une zone ; la ville la réalise lentement et automatiquement.

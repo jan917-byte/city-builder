@@ -1,7 +1,7 @@
 ---
 tags: [système, gameplay, prototype]
 statut: en essai, à juger par l'auteur
-maj: 2026-09-24
+maj: 2026-09-30
 ---
 
 # Premiers pas après la crue
@@ -22,13 +22,13 @@ Pendant la première installation, les fiches proposent le relogement. Ensuite l
 
 Les deux premières propositions et la berge sont des choix de lieu pour cet essai, pas un générateur de missions. Leurs identifiants se règlent en haut de `Godot/scripts/ouverture.gd` ; les mesures et les contrôles vivent dans `Prototype/Premiers pas.md`.
 
-La crue annoncée n'a pas encore de date ni de déclenchement. La première victoire est locale : une rue dégagée ne rétablit pas à elle seule les ponts du faubourg.
+Le premier pont livré, l'université publie une étude : une crue plus forte dans 6 à 8 ans. Le guide mène à l'université, puis à Dangers › Prochaine crue, avant de proposer les Forgerons (décision 100). Rien ne tombe encore au bout de l'échéance. La première victoire est locale : une rue dégagée ne rétablit pas à elle seule les ponts du faubourg.
 
 ## Une carte lisible, des conséquences attribuables
 
 Décision 85 : aucune pastille de sinistré, camp, pont ou chantier, aucun numéro du guide sur la carte. Le compteur « Personnes sans logement » reste en bas à droite, même avec le guide réduit ; les places en construction sont distinctes. Il baisse uniquement lorsque des logements sont livrés et accessibles.
 La consigne invite à consulter le trafic et à rétablir une liaison ; elle ne désigne aucun pont. Chaque fiche compare pont et accès : coût restant, délai minimal et report de trafic prévu. Les rues à déblayer peuvent être examinées séparément ; un aperçu temporaire souligne le parcours. Toute autre continuité praticable convient. Les différences viennent du réseau existant ; aucun bonus arbitraire n'est ajouté aux ponts.
-Le paiement et la perte agricole interviennent à l'engagement ; les logements et passages utilisables sont annoncés à la livraison. Palissades, grues, abris, tabliers et circulation rendent ces changements visibles. Les notifications sont des constats brefs dans l'interface, sans confettis ni chiffres flottants ; le journal sauvegardé permet de les relire. Les effets économiques récurrents et la circulation restent ceux de la simulation.
+Le paiement et la perte agricole interviennent à l'engagement ; les logements et passages utilisables sont annoncés à la livraison. Palissades, grues, abris, tabliers et circulation rendent ces changements visibles. Les notifications sont des constats brefs dans l'interface, sans confettis ni chiffres flottants — à la livraison seulement, les icônes des thèmes touchés et une flèche passent deux secondes au-dessus du lieu (93) ; le journal sauvegardé permet de les relire. Les effets économiques récurrents et la circulation restent ceux de la simulation.
 Le budget initial couvre le relogement, un pont au choix et le déblaiement des routes (décision 86). Le relogement progressif et le verrou à zéro restent proposés séparément.
 
 **Voir aussi** : [[Boucle de jeu]] · [[Chantiers et temps]] · [[Wehrau]] · [[Ressources]] · [[Questions ouvertes]]

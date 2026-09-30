@@ -1,7 +1,7 @@
 ---
 tags: [technique, da, actif]
 statut: 🎯 phase active depuis le 2026-08-12 — référence Townscaper depuis le 2026-08-11
-maj: 2026-08-12
+maj: 2026-09-30
 ---
 
 # Direction artistique
@@ -72,6 +72,7 @@ Deux conséquences :
 | **Les teintes** | fixes. Une teinte par `sous_type`, jamais modifiée — sinon ce n'est plus la même ville |
 | **La lumière** | fixe et calme. Pas de météo d'ambiance, pas de golden hour, pas de ciel gris |
 | **La saturation** | bornée et déjà haute à t0. Elle monte un peu, elle ne part pas de zéro |
+| **La vie et le vivant** | 🌱 au départ, une ville réelle ; à la fin, plus luxuriante et plus habitée qu'aucune vraie ville → [[Décisions arrêtées]] 6b |
 | **La part minérale du sol** | 🎯 **c'est elle qui porte tout** — dérivée de `impermeabilise`, `canopee`, `stationnement` |
 
 C'est la règle générale du projet appliquée à la couleur : *aucun état visuel posé à la main, tout dérive d'un attribut.*

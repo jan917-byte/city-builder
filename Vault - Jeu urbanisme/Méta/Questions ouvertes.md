@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-29
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°11 et n°25 closes le 2026-09-02
+maj: 2026-09-30
 ---
 
 # Questions ouvertes
@@ -313,7 +313,7 @@ Ce qui reste à écrire, et qui est le travail de la semaine 2 : quelles décisi
 |---|---|---|
 | 🔴 **La subvention n'a personne à convaincre** | la ville possède tout (**70**) : subventionner déplace de l'argent d'un poste à l'autre dans une seule caisse. ⓐ la subvention vise le **programme** ⭐, ou ⓑ **70 se rouvre** et d'autres propriétaires apparaissent | **ici**, avant qu'une seule politique soit écrite |
 | 🟠 **Retirer une politique** | gratuit, ou payé en capital politique ? Une subvention qu'on coupe sans conséquence n'engage à rien | ici |
-| 🟠 **L'éolienne volante** | écartée des paliers par **78** (plausible à vingt ans) : reste la preview du futur (**12 précisée**) ou la fin *solarpunk high-tech* | [[Fins et pluralisme]] |
+| 🟢 **L'éolienne volante** | ~~écartée des paliers par **78**~~ → **6b** (2026-09-30) : les derniers paliers vont au-delà d'aujourd'hui, elle redevient candidate en palier tardif. Reste à choisir la liste | [[Université et recherche]] |
 | 🟠 **Le nom de l'établissement** | antenne / Hochschule ; **13d** avait prévu l'inverse — le lycée descendait en Realschule | ici ou [[Wehrau]] |
 | 🟠 **L'emploi** | **50b** tenait le moulin et la brasserie pour le seul levier d'emploi ; un labo en est un deuxième | ici |
 | 🟠 **Le toit de la mairie** | `solaire_possible = 1`, quand l'église mitoyenne est protégée (**71**) | ici |
@@ -364,6 +364,10 @@ Idée de l'auteur, en brainstorm : le premier pont livré, le guide mène à l'u
 
 **Précisé par l'auteur le 2026-09-23 : la crue est l'horizon de la partie.** Elle arrive **plusieurs années** après l'annonce ; entre les deux, le joueur arbitre peu à peu entre **adaptation** et **réduction**, dans la même caisse. L'université annonce la crue puis tient la prévision à jour (*« la prochaine crue au pire »*) : c'est le retour du joueur avant l'examen. 🔴 Pour juger ce pari, il faut une partie jouable **jusqu'à la crue**, bilan compris — rien ne le prouve avant.
 
+**Précisé par l'auteur le 2026-09-30 : la crue est l'horizon du premier chapitre, pas de la partie.** Elle reste *« le début du jeu »* : une fois résolue, d'autres aléas suivent (sécheresse, etc.). L'université l'annonce **dans 6 à 8 ans**, introduit la **ville-éponge** et montre ses leviers — sol dur rendu perméable, toits, berges —, en un système à indicateurs compréhensible par un joueur moyen. Une section du diagnostic **prévoit les dégâts**, pour vérifier à tout moment si l'on en fait assez. Options et questions → [[2026-09-30_brainstorm_prochaine-crue-ville-eponge]]
+
+**Précisé par l'auteur le 2026-09-30, dans la maquette :** l'étude paraît juste après le premier pont ; le guide mène à l'université, puis à **Dangers › Prochaine crue** → [[Décisions arrêtées]] 100. L'université **informe** (B) ; reste ouvert si elle **propose un lieu** (C).
+
 **Recommandation : C.** Le guide y mène une fois ; ensuite l'université s'ouvre par la barre du bas, comme tout menu (81). **Restent à trancher avec elle** : ce qu'une proposition ignorée coûte (rien ? une crue plus chère ?), qui porte l'annonce si l'université est abîmée par la crue, et si la place-parking est bien la première — c'est aussi le candidat de la n°5. → [[Université et recherche]] · [[Adaptation et réduction]] · [[Premiers pas après la crue]]
 
 ### 33. Que fait le joueur pendant que le premier pont se bâtit ? — ✅ fermée le 2026-09-24
@@ -401,6 +405,27 @@ L'Ilse a trois états (89) : brune de la crue au mois 0, **normale** quatre mois
 
 ### 36. Comment le CO₂ réduit agit-il sur la température ? — ouverte le 2026-09-29
 La barre du haut affiche la **météo**, qui suit la saison (92). L'auteur veut que **réduire le CO₂ la fasse baisser**, plus tard. Deux garde-fous viennent du vault : la réduction agit **diffus et en retard** — elle change *la violence des prochains aléas*, pas le jour même ([[Adaptation et réduction]]) ; et une ville de 5 000 habitants ne refroidit pas le climat seule, donc l'effet doit rester **plausible** (78) — il porte plutôt sur **les pics** (canicules moins fortes, moins fréquentes) que sur la moyenne. À trancher avec le système Saison : ce qui baisse (la moyenne, les pics, leur fréquence), avec quel délai, et comment le joueur fait le lien. → [[Décisions arrêtées]] 92
+
+### 37. Comment rendre visibles les conséquences d'une décision ? — ✅ fermée le 2026-09-30
+L'auteur veut voir davantage ce que chaque décision change, et propose des chiffres flottants sur l'îlot au moment du clic. Proposé à la place : la même décision montrée **en trois temps** — le bilan par thème dans la fiche avant de décider, la part engagée en hachures dans les barres pendant le chantier, la livraison visible — et, **à la livraison seulement**, les icônes des thèmes touchés avec une flèche, sans chiffre, au-dessus du lieu. L'auteur retient le signe sur la carte. → [[Décisions arrêtées]] 93 (révise 85) · [[2026-09-30_brainstorm_prochaine-crue-ville-eponge]]
+
+### 38. Que compte la prévision des dégâts ? — ✅ fermée le 2026-09-30
+L'auteur veut une section du diagnostic qui prévoit les dégâts de la prochaine crue, pour vérifier à tout moment s'il en fait assez. Proposé : seulement les logements pour commencer, ou les pertes de tous les thèmes. L'auteur retient **tous les thèmes**. → [[Décisions arrêtées]] 94 · [[2026-09-30_brainstorm_prochaine-crue-ville-eponge]]
+
+### 39. Rebâtir en zone basse fait-il monter la prévision, et que choisit-on pour un îlot sinistré ? — ✅ fermée le 2026-09-30
+Proposé : une ruine ne se perd pas deux fois, donc rebâtir au même endroit fait monter la prévision des dégâts. L'auteur retient, et ajoute que **le joueur choisit la posture de chaque îlot sinistré** — à l'identique, dans un autre tissu, en parc inondable, etc. — **et qu'elles se valent** : l'identique rapporte du capital politique mais expose, le parc coûte le capital des habitants relogés mais protège. → [[Décisions arrêtées]] 95 · [[2026-09-30_brainstorm_prochaine-crue-ville-eponge]]
+
+### 40. Qu'est-ce qui dépense et rend le capital politique dans la maquette ? — ✅ fermée le 2026-09-30
+L'auteur demande le capital politique dans la maquette. Proposé : ce qui en coûte (retirer des places, règles de la mairie, camp sur un champ, densifier), ce qui en rend à la livraison (habitants qui rentrent, pont rouvert, tout le monde abrité, rue rendue aux piétons), ce qui se passe à zéro, et les postures de 95 maintenant ou après. L'auteur retient : les places coûtent tout de suite et rendent à long terme ; les règles demandent un seuil sans rien dépenser ; tout rend, les deux premiers bien plus ; à zéro, bouton grisé ; postures après. → [[Décisions arrêtées]] 96
+
+### 41. Comment le joueur nomme-t-il le capital politique ? — ✅ fermée le 2026-09-30
+« Capital politique » est trop long à l'écran. Proposé : confiance, soutien, adhésion, légitimité. L'auteur retient **confiance** (*trust*). → [[Décisions arrêtées]] 97 · [[Glossaire]]
+
+### 42. Le seuil de confiance d'une règle de la mairie : fixe, ou qui monte ? — ✅ fermée le 2026-09-30
+Proposé : A, un seuil seul ; B, un seuil qui monte à chaque règle signée ; C, la confiance bloquée tant que la règle tient. L'auteur retient **B**. → [[Décisions arrêtées]] 98
+
+### 43. La confiance rendue par des places retirées : fixe, ou selon la rue ? — ✅ fermée le 2026-09-30
+Proposé : un retour fixe (toujours plus que le coût), ou un retour qui dépend de ce que la rue est devenue — remplie de piétons, ou son trafic reporté ailleurs. L'auteur retient **selon la rue**. → [[Décisions arrêtées]] 99
 
 ## 🟢 Peut attendre (réversible)
 

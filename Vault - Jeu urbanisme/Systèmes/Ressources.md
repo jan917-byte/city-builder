@@ -1,7 +1,7 @@
 ---
 tags: [système, économie]
 statut: arrêté (paramètres ouverts)
-maj: 2026-08-12
+maj: 2026-09-30
 ---
 
 # Ressources
@@ -116,6 +116,6 @@ Les deux ressources s'affichent en permanence à côté des sept [[Indicateurs g
 
 Dessinés pareil, le joueur lirait onze jauges à remplir — et le capital politique redeviendrait la jauge d'humeur que 16b a écartée. → [[Décisions arrêtées]] 58 · [[Pièges connus]]
 
-☐ **Non résolu** : **comment le capital politique se regagne n'a aucune forme à l'écran.** Un nombre nu ne dit pas *« ça revient parce que ça s'est vu »* — or c'est toute la mécanique de rythme.
+✅ **Sa forme à l'écran (96)** : chaque gain et chaque dépense passe au journal avec sa raison — *« les habitants rentrent chez eux · +11 capital politique »* —, et la fiche annonce avant de décider ce que le geste coûtera tout de suite, à la livraison et un an après. Un nombre nu ne disait pas *« ça revient parce que ça s'est vu »*.
 
 **Voir aussi** : [[Indicateurs globaux]] · [[Décisions]] · [[Boucle de jeu]] · [[Milestones]]
