@@ -34,7 +34,7 @@ Et deux contrôles imprimés, tous deux à ✅ : la subvention qui baisse le pri
 
 ## Ce qui n'est PAS fait, et pourquoi
 
-- **Les règles** (stationnement payant, toit vert obligatoire) : elles se paient en **capital politique**, qui vit encore dans le classeur et pas dans la maquette. La fiche de la mairie le dit à l'écran plutôt que de faire semblant.
+- **Les règles** (stationnement payant, toit vert obligatoire) : elles ne dépensent pas de capital, elles en demandent un **seuil**, relevé à chaque règle signée (**96**, **98**) ; leurs effets ne sont pas conçus. La fiche de la mairie le dit à l'écran plutôt que de faire semblant.
 - **Les objets neufs** (stockage, réseau de chaleur, agrivoltaïsme) : c'est du contenu, pas du branchement. Les trois sujets actuels ne déplacent que des nombres.
 - **L'éolienne volante** : écartée des paliers par **78**. Elle vit ailleurs — preview du futur, ou fin *solarpunk high-tech*.
 
@@ -61,3 +61,31 @@ Repère pour les juger : la dotation est de **30 k€/mois**, la caisse de **800
 - 🔴 **La subvention et le propriétaire unique** : la ville possède tout (**70**), donc subventionner déplace de l'argent d'une poche à l'autre. Soit ça vise le **programme** — accélérer un poste en prenant sur le reste —, soit 70 se rouvre. → vault, question n°25
 - 🟠 **Retirer une politique** est gratuit aujourd'hui. Si ça le reste, signer n'engage à rien.
 - 🟠 **La fiche du menu remplace celle de l'îlot**. C'est le choix fait ; à confirmer sur l'image.
+
+## Le capital politique — 2026-09-30
+
+Un compteur à côté de la caisse, dans le bandeau et en haut (**58**) ; le joueur le lit **« confiance »** (**97**). Il part de **50** et ne passe jamais sous zéro : à zéro, la fiche grise « Mettre en place » et dit ce qui manque (**96**).
+
+| Ce qui le fait bouger | Quand | Combien (haut de `ville.gd`, 🔴 level design) |
+|---|---|---|
+| retirer des places, ou fermer aux voitures | à la décision | −0,2 par place — axe 55 : **−9** |
+| … selon ce que la rue est devenue (**99**) | un an après la livraison | de 0,5 à 1,5 × la dépense : plus elle a perdu de trafic, plus elle rend ; un report sur une voisine retranche |
+| des habitants rentrent chez eux | livraison de l'îlot relevé | +0,25 par logement — îlot 59 : **+11** |
+| un pont rouvert | livraison | **+15** |
+| plus personne ne dort dehors | livraison du dernier abri | **+5** |
+
+Chaque mouvement est **dit dans le journal**, avec sa raison : le compteur ne bouge jamais sans phrase. La fiche annonce les trois moments — tout de suite, à la livraison, un an après.
+
+**À regarder** : `-- --interface`, puis `wehrau_interface_rue_posee.png` (annotée : `wehrau_capital_politique.png`) — ① le compteur en haut, ② sa ligne sous la caisse, ③ la fiche de l'axe 55, places retirées : *−9 confiance, +5 à +14 un an après, selon la rue*. Contrôle : `Godot --headless --path Godot --script res://outils/essai_capital.gd`, 0 échec.
+
+| Fermer aux voitures (mesuré avec le vrai trafic) | Charge avant | Report le pire | Coût, puis retour |
+|---|---|---|---|
+| Boulevard du Marché (55) | 1,00 | +0,42 rue des Fontaines | −9, puis **+5** |
+| Boulevard des Saules (16) | 0,68 | aucun | −15, puis **+23** |
+| Rue des Saules (77) | 0,54 | +0,20 rue des Saules (79) | −14, puis **+12** |
+| Rue de l'Amont (120) | 0,06 | aucun | −16, puis **+10** — elle était déjà vide |
+
+🔴 **Le Boulevard du Marché, le geste phare de l'étape 5, ne rend que la moitié** : son trafic déborde. À juger — c'est honnête, mais c'est aussi le premier exemple que le joueur essaiera.
+**Serait un défaut** : un compteur qui bouge sans ligne au journal, un gain avant la livraison, un refus qui engage quand même, un capital sous zéro, une reprise qui change le compteur.
+**Pas encore** : les postures d'un îlot sinistré (**95**), les règles de la mairie et leur seuil, le signe sur la carte (**93**). Un pont compte à sa livraison, que ses accès soient dégagés ou non.
+

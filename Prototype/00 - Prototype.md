@@ -12,10 +12,10 @@
 | 3 | **[L'énergie](Énergie.md)** — une décision, deux échelles | ✅ **à regarder** | cliquer un îlot, le passer de 0 à 100 % solaire, voir ses toits et les quatre totaux de ville changer |
 | 4 | **[Les toits et le sol](Toits%20et%20sol.md)** | ⏸️ **en pause** | croire qu'on y habite |
 | 5 | **[Le trafic visible](Trafic.md)** | ⏸️ **en pause** | une rue à `charge = 1,00` est désagréable à regarder |
-| 6 | **[Les premiers pas](Premiers%20pas.md)** | ⏸️ **en pause** | après la première réparation livrée, le joueur veut choisir la suite |
-| 7 | **[La campagne](Campagne.md)** — ce que porte un champ | 🎯 **ouverte** | on reconnaît à l'œil un champ de maraîchage, un verger, une prairie et des céréales, et la barre Campagne monte quand on cultive |
+| 6 | **[Les premiers pas](Premiers%20pas.md)** | 🎯 **rouverte** | après la première réparation livrée, le joueur veut choisir la suite |
+| 7 | **[La campagne](Campagne.md)** — ce que porte un champ | ⏸️ **en pause** | on reconnaît à l'œil un champ de maraîchage, un verger, une prairie et des céréales, et la barre Campagne monte quand on cultive |
 
-⏸️ **Les étapes 2, 4, 5 et 6 sont en pause, pas finies** : leurs critères restent à juger. L'auteur ouvre la campagne le 2026-09-29 ; une seule étape est ouverte.
+⏸️ **Les étapes 2, 4, 5 et 7 sont en pause, pas finies** : leurs critères restent à juger. L'auteur rouvre les premiers pas le 2026-09-30 pour l'étude de la prochaine crue ; une seule étape est ouverte.
 
 ## Ce qui commande le prototype
 

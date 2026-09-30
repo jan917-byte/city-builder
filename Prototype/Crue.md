@@ -55,7 +55,7 @@ La moitié du bâti reste debout : **71 bâtiments sinistrés entre 68 ruines**.
 
 **36 tronçons sur 178** ont gardé du limon.
 
-## 4. Les trois postures — à arbitrer avant d'écrire une ligne
+## 4. Les trois postures — ✅ arbitré le 2026-09-30 : le joueur choisit, elles se valent (décision 95)
 
 Le brainstorm du 2026-08-10 les pose ; personne ne les a chiffrées. **C'est du level design : les nombres ci-dessous sont une proposition, pas une décision.**
 

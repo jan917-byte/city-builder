@@ -1,6 +1,6 @@
 # Premiers pas après la crue
 
-> Étape 6 ouverte le 2026-09-06 à la demande de l'auteur. L'étape 5 reste en pause, à juger.
+> Étape 6 ouverte le 2026-09-06, rouverte le 2026-09-30 pour l'étude de la prochaine crue (la Campagne passe en pause).
 > Design : `Vault - Jeu urbanisme/Systèmes/Premiers pas après la crue.md`. Les lieux proposés restent à essayer par l'auteur.
 
 ## À jouer
@@ -91,7 +91,25 @@ Dettes indépendantes : `essai_energie` échoue sur la barre au mois 12 ; `verif
 **L'Ilse coule du sud au nord** (décision 89) : le faubourg devient la rive droite et l'amont passe au sud (169 est le Pont d'Amont). Mêmes ruines, mêmes numéros de berge, mêmes chiffres de `04e` au centième : seuls les noms changent. **Sa couleur dit ce qu'elle porte** : brune de la crue au mois 0, normale au mois 4 sans rien faire (`EAU_DECANTATION_MOIS`, haut de `ville.gd`, 🔴 level design). La limpide a sa couleur dans `palette.py`, pas de déclencheur (question 35).
 À regarder : `--script res://outils/apercu_riviere.gd` → `wehrau_riviere_1_crue.png` → `..._2_mi_chemin.png` → `..._3_normale.png` → `..._4_limpide.png`, même cadrage ; en jeu, les rides remontent vers le nord. Défauts : une eau encore brune après le mois 4, une rivière bleue, des rides qui descendent vers le sud, une miniature de berge d'une autre couleur que la ville.
 
+## L'étude de la prochaine crue — 2026-09-30
+Le pont livré, « Choisir la suite » publie l'étude (journal). Le guide : **Une nouvelle étude** → bouton vers l'université → **Où irait l'eau ?** (sans bouton : Dangers, onglet Prochaine crue) → les Forgerons, dont la phrase dit l'eau attendue. Décision 100.
+Dangers a deux onglets : **Dégâts** (ce que l'eau a pris) et **Prochaine crue**, absent avant l'étude, marqué « nouveau » tant qu'on ne l'a pas ouvert. La carte colore chaque îlot par l'eau attendue (pâle à 10 cm, profond au pire) et passe en orange les bâtiments qu'elle ruinerait. Trois leviers, chacun avec un bouton qui ouvre sa fiche déjà réglée : berge 3, toit plat 31, pré 1065 (proposés, haut de `ouverture.gd`).
+
+| Mesuré au mois 3 | |
+|---|---|
+| Îlots bâtis sous l'eau | **19**, contre **9** pour la crue de cette année |
+| Forgerons (îlot 59) | **5,1 m** attendus, contre **3,5 m** cette année |
+| Eau au pire · logements perdus | **5,58 m** · **229** |
+| Forgerons relevés | 229 → **272** logements perdus (une ruine ne se reperd pas, 95) |
+| Berge 3 + toit vert de l'îlot 31, livrés | 5,58 → **5,21 m** |
+| Leviers affichés | berge jusqu'à **−52 cm** dans son bief · toit vert −25 cm/ha (1,8 ha plats) · pré −0,5 cm/ha |
+
+🟠 Le terrain reste un profil de calcul, sans relief (auteur, 2026-09-30 : « gardons plat pour le proto ») ; la crue annoncée n'est pas bornée par le contour tracé à l'est, d'où une partie du 9 → 19. 🔴 Rien ne tombe au bout des 6 à 8 ans. 🔴 Seul le bâti est compté (94 veut tous les thèmes). 🔴 Texte de l'étude provisoire, flaggable (90).
+Contrôle : `essai_etude.gd -- --ouverture --captures` → `wehrau_ouverture_etude_01_guide.png` à `..._06_levier_pre.png`. Défaut à signaler : onglet visible avant le pont, carte qui ne change pas quand une berge est livrée, guide qui saute l'université.
+
 ## Ce qui attend le joueur
+- L'étude arrive-t-elle comme une douche froide juste après la victoire du pont, ou gâche-t-elle la victoire ?
+- La carte de la prochaine crue fait-elle hésiter à relever les Forgerons ?
 - Après une livraison, a-t-on envie de regarder le résultat puis de choisir la suite ?
 - Le déblaiement et la remise en état font-ils deux débuts suffisamment différents ?
 - La renaturation demande-t-elle trop d'épargne après la première réparation ?
@@ -111,25 +129,6 @@ Les quatre sorties principales suivent exclusivement les limites communes de deu
 Contrôles : `verifier_campagne.py` (6 cas), `verifier_voirie.py` (3 cas), chaîne complète et aires des 88 champs exportés vérifiées (écart maximal 0,013 %), axes des prolongements contrôlés sur les limites communes (écart inférieur à 1 mm), et trois cadrages Godot via `--script res://outils/apercu_campagne.gd`. Aperçus : `QGIS/rendus/wehrau_campagne_dessus_apres.png`, `..._relief_apres.png`, `..._champs_apres.png` ; `..._avant.png` garde le même cadrage avant correction.
 
 À regarder : ① contours des champs, ② sortie ouest posée sur la limite des champs, ③a/b montagnes. Défauts à signaler : route coupant un champ ou dépassant sa lisière, champ réapparu derrière un massif, rupture rectangulaire du paysage. Les chemins d'accès aux fermes restent à dessiner. Les alertes d'export concernant les anciens ponts et les effectifs attendus de l'ancienne carte restent un chantier distinct.
-
-## Emprise de boue — 2026-09-16
-
-Le contour annoté par l'auteur limite le dépôt à l'est, indépendamment des îlots. Le nord et l'ouest de l'Ilse restent propres ; les dégâts des bâtiments et la boue lisent le même champ spatial. La route 177, ancienne desserte traversant le nouveau lit au sud, est retirée de la carte de travail. Aperçu numéroté : `QGIS/rendus/wehrau_emprise_crue_apres.png`.
-
-Chaîne régénérée ; 20 contrôles Python passent et le rendu des trois zones est vérifié. Les premiers lieux passent aux Forgerons, avec la berge de leur bief. **Reste : deux échecs du parcours d'ouverture sur la réparation des logements ; le bouton d'engagement dépasse le bas de la fiche.** Tests arrêtés à la demande de l'auteur avant correction de cette interface ; la passe générale n'est pas déclarée validée.
-
-## Quai amont le long de l'Ilse — 2026-09-17
-
-À la demande de l'auteur, la route 178 suit la rive est jusqu'au bord sud du champ 1082 : six sommets, 235,7 m, raccord au réseau conservé. Son ancien tracé droit disparaît. Les champs rendus cèdent désormais la place aux chaussées qui les traversent ; leur contour source reste intact.
-Chaîne régénérée, neuf contrôles voirie/campagne passent ; aucun centre des 120 triangles du quai n'est masqué par un champ. Aperçu numéroté : `QGIS/rendus/wehrau_quai_aval_apres.png`, reproductible avec `--script res://outils/apercu_quai_aval.gd`. À regarder : ① raccord, ② route continue au bord de l'Ilse, ③ arrêt au dernier champ ; une chaussée recouverte par le champ ou prolongée dans la forêt serait un défaut.
-
-## La desserte passe à la lisière — 2026-09-18
-
-La coupe est **Ilse → berge naturelle → trois champs → route → bois** (demande de l'auteur sur capture) : la route ne s'intercale plus entre le fleuve et les cultures. Son tracé dans `routes.geojson` est désormais la limite commune des trois champs et du bois — 5 sommets, 237,0 m contre 235,7, raccordée au coude de la rue 174 — donc `04b` lui retire sa demi-chaussée comme à n'importe quel îlot, et il n'y a plus rien à caler à l'export. Les arbres du bois s'écartent de la chaussée neuve.
-
-**Les trois champs ont rétréci de 9 %**. Le recul de berge reste de 30 m (`LIMITE_CULTURE_M`, haut de `faubourg.py`) ; le besoin de prendre les trois champs est levé par l'occupation des containers, sans redessiner la rive.
-
-À regarder : `wehrau_lisiere_apres.png` (`--script res://outils/apercu_lisiere.gd`), quatre repères numérotés. Défaut à signaler : chaussée dans un champ ou dans l'Ilse, arbre sur la chaussée, raccord manquant à la rue du faubourg.
 
 ## Rive et containers — 2026-09-18
 
