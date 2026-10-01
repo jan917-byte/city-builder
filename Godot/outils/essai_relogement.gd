@@ -37,13 +37,13 @@ func _initialize() -> void:
 				+ (besoin - v.camp_capacite(premier)) * 0.25)
 			verifier(is_equal_approx(v.aide_cumulee_ke(0.5), aide),
 				"Aide d'urgence : %.1f k€ jusqu'au second camp" % aide)
-			verifier(is_equal_approx(v.caisse_ke(0.5), Ville.CAISSE_DEPART_KE + 0.5 * Ville.DOTATION_KE_MOIS - 195.0 - aide),
+			verifier(is_equal_approx(v.caisse_ke(0.5), Ville.CAISSE_DEPART_KE - 195.0 - aide),
 				"195 k€ payés pour les logements, pas pour les occupants")
 			var sauvegarde := v.exporter_partie()
 			verifier(v.valider_partie(sauvegarde), "Sauvegarde valide")
 			v.importer_partie(sauvegarde)
 			verifier(v.sans_toit(0.5) == 0.0, "Reprise : tous les occupants conservés")
-	# Toute la remise en circulation doit tenir sans dotation ni crédit d'essai.
+	# Toute la remise en circulation doit tenir sans budget annuel ni crédit d'essai.
 	for pont in v.ponts_coupes():
 		v.reinitialiser()
 		verifier(v.abriter(champs[0], 0.0) and v.abriter(champs[1], 0.25),

@@ -21,6 +21,7 @@ Les boutons **Sauvegarder** (F5 dans le jeu) et **Reprendre** (F9) sont à côt�
 Le mois, les décisions, les travaux, la recherche, les politiques, les rues fermées et le cadrage sont conservés. Les réglages non engagés restent des essais et ne sont pas sauvegardés.
 Fichier local : `user://partie.wehrau`, dans le dossier de données Godot de l'utilisateur ; il ne voyage pas par git. Une carte régénérée différente ou un format incompatible est refusé avant de modifier la partie en cours.
 Le contrôle autonome se lance avec `Godot --headless --path Godot --script res://outils/essai_sauvegarde.gd` ; ajouter `-- --captures` et retirer `--headless` pour produire l'aperçu de reprise.
+💶 **Le budget est voté tous les douze mois** : le temps s'arrête sur la fiche de `scripts/budget.gd`, dont les phrases sont dans `TEXTES` ; un contrôle qui pose `mois` à la main passe le vote sans l'ouvrir. Contrôles : `essai_budget.gd` (headless) et `essai_budget_fiche.gd -- --ouverture --captures`.
 Les noms affichés viennent de `Godot/data/lieux.json`, table éditoriale à modifier à la main. Le numéro reste en infobulle sur le titre de la fiche.
 
 ## Le clavier

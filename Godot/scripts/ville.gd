@@ -25,7 +25,19 @@ const CAPITAL_DEPART := 50.0               # décision 16b
 # mais possible ». Trop haut, on équipe sans choisir ; trop bas, on regarde le
 # temps passer. Repère imprimé par `-- --essai`.
 const CAISSE_DEPART_KE := 3500.0           # relogement, un pont au choix et déblaiement (auteur, 2026-09-20)
-const DOTATION_KE_MOIS := 30.0             # 360 k€/an votés pour la transition
+
+# 💶 LE BUDGET EST VOTÉ UNE FOIS PAR AN ET VERSÉ D'UN COUP (décision 101) : il
+# remplace les 30 k€/mois de dotation fixe. Recettes ∝ logements habités,
+# entretien ∝ mètres de rue praticables (59) ; l'économie de la région (60) attend.
+# 🎚️ LEVEL DESIGN : la ville entière remise sur pied vote 360 k€ nets, l'entretien
+# des rues prenant un quart des recettes ; les deux prix en sont DÉDUITS au chargement.
+const BUDGET_PERIODE_MOIS := 12.0
+const BUDGET_VILLE_ENTIERE_KE_AN := 360.0
+const BUDGET_PART_ENTRETIEN := 0.25
+var budget_ke_logement := 0.0              # par an
+var budget_ke_metre := 0.0                 # par an
+var _votes_cle := ""
+var _votes := {}                           # n -> le vote, gardé tant que rien n'est réparé
 
 # 🌳 CE QU'IL RESTE DE TRAFIC AU VERGER tant que la boue y est — voir
 # `part_trafic`. 🎚️ Level design, à juger devant l'image.
@@ -51,7 +63,7 @@ var _recherche := {}
 var _politiques := {}
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
 ## 🧪 OUTIL D'ESSAI, PAS UNE RÈGLE DU JEU : de l'argent tombé du ciel, pour
-## atteindre en un clic un état que vingt ans de dotation mettraient à payer.
+## atteindre en un clic un état que vingt ans de budgets mettraient à payer.
 ## Le jour où la boucle se juge pour de bon, ce champ et son bouton sautent.
 var _credit_essai_ke := 0.0
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
@@ -75,7 +87,7 @@ var _verger := PackedInt32Array()
 var _verger_vu := -1.0
 var _verger_sale := true
 ## 🛠️ MODE AUTEUR, PAS UNE RÈGLE DU JEU : tout chantier engagé est livré
-## immédiatement. Les prix, la caisse et la dotation restent ceux du jeu — sans
+## immédiatement. Les prix, la caisse et le budget annuel restent ceux du jeu — sans
 ## ça, juger la vingtième minute coûterait vingt minutes à chaque essai.
 var livraison_immediate := false
 
@@ -224,6 +236,7 @@ func charger(d: Dictionary) -> void:
 		if str(routes[int(cle)].get("etat_crue", "")) == "coupe":
 			_ponts.append(int(cle))
 	_ponts.sort()
+	_regler_budget()
 	for cle in (d["riverains"] as Dictionary):
 		var liste := []
 		for f in (d["riverains"] as Dictionary)[cle]:
@@ -1373,7 +1386,7 @@ const CULTURES := [
 	{"nom": "prairie", "personnes_ha": 0.0, "prix_ke_ha": 5.0,
 		"mois": 6.0, "attente": 0.0, "crue_m_ha": 0.005},
 ]
-## 🎚️ Ce que la ville paie par personne qu'elle ne nourrit pas. La dotation
+## 🎚️ Ce que la ville paie par personne qu'elle ne nourrit pas. Le budget annuel
 ## couvre déjà l'achat du mois 0 : la caisse ne voit que l'écart au départ.
 ## Un hectare de maraîchage se rembourse ainsi en ~9 ans, comme un toit solaire.
 const NOURRITURE_KE_PERSONNE_MOIS := 0.005
@@ -1664,10 +1677,79 @@ func _integrale_part_rendue(fid: int, t: float) -> float:
 	return s
 
 
+# ============================================================ le budget (101)
+
+## La ville entière : tous les logements d'avant la crue, toutes les rues.
+func _regler_budget() -> void:
+	var logements := 0.0
+	for fid in ilots:
+		logements += base("i", fid, "logements") + base("i", fid, "logements_sinistres")
+	var metres := 0.0
+	for fid in routes:
+		metres += float(routes[fid].get("longueur_m", 0.0))
+	var recettes := BUDGET_VILLE_ENTIERE_KE_AN / (1.0 - BUDGET_PART_ENTRETIEN)
+	budget_ke_logement = recettes / maxf(logements, 1.0)
+	budget_ke_metre = recettes * BUDGET_PART_ENTRETIEN / maxf(metres, 1.0)
+
+
+## ⚠️ `base` et non `valeur` : les étages ajoutés paient déjà leur loyer à part
+## (`solde_dense_ke`). Un îlot sinistré compte à la LIVRAISON de sa réparation.
+func logements_habites(t: float) -> float:
+	var n := 0.0
+	for fid in ilots:
+		n += base("i", fid, "logements")
+		if reparation_finie("i", fid, t):
+			n += base("i", fid, "logements_sinistres")
+	return n
+
+
+## Une rue envasée ou un pont emporté ne s'entretient pas : il compte rouvert.
+func rues_entretenues_m(t: float) -> float:
+	var m := 0.0
+	for fid in routes:
+		if route_praticable(fid, t):
+			m += float(routes[fid].get("longueur_m", 0.0))
+	return m
+
+
+## Le vote n° `n` tombe au mois `n × 12` ; le n° 0 est l'état au lendemain de la
+## crue, jamais versé — il sert d'« an dernier » au premier vote.
+func vote_budget(n: int) -> Dictionary:
+	var cle := "%d/%d/%s" % [_repare.hash(), _provisoire.hash(), livraison_immediate]
+	if cle != _votes_cle:
+		_votes_cle = cle
+		_votes.clear()
+	if not _votes.has(n):
+		var t := float(n) * BUDGET_PERIODE_MOIS
+		var logements := logements_habites(t)
+		var metres := rues_entretenues_m(t)
+		_votes[n] = {"n": n, "mois": t, "logements": logements, "metres": metres,
+			"recettes_ke": logements * budget_ke_logement,
+			"entretien_ke": metres * budget_ke_metre,
+			"ke": maxf(0.0, logements * budget_ke_logement - metres * budget_ke_metre)}
+	return _votes[n]
+
+
+## Combien de votes sont tombés au mois `t` ; le mois 240 vote encore.
+static func votes_passes(t: float) -> int:
+	return int(floor(t / BUDGET_PERIODE_MOIS + 1e-6))
+
+
+func budget_verse_ke(t: float) -> float:
+	var ke := 0.0
+	for n in range(1, votes_passes(t) + 1):
+		ke += float(vote_budget(n)["ke"])
+	return ke
+
+
+func mois_avant_budget(t: float) -> float:
+	return float(votes_passes(t) + 1) * BUDGET_PERIODE_MOIS - t
+
+
 ## En k€. Fonction PURE du temps et des chantiers engagés : « Recommencer »
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
-	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
+	return CAISSE_DEPART_KE + budget_verse_ke(t) \
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Recherche.depense_ke(self, t) - Politiques.depense_ke(self, t)
@@ -1953,9 +2035,7 @@ func reparer(couche: String, fid: int, t: float, provisoire := false) -> bool:
 		# 🔗 CE QUE LA RECONSTRUCTION REND, et c'est tout : les logements que
 		# `04e` avait retirés du parc, et le toit qu'il avait emporté. Les deux
 		# étaient déjà dans la fiche — on ne fabrique aucun nombre ici.
-		# ⚠️ Le budget de la ville ne dépend pas encore de `logements` (dette
-		# nommée du prototype) : reconstruire ne rapporte donc rien d'autre que
-		# des toits équipables. C'est un manque, pas un choix.
+		# 💶 Le budget suivant les compte à la livraison (`logements_habites`).
 		var perdus := base("i", fid, "logements_sinistres")
 		if perdus > 0.0:
 			ajouter_rampe("i", fid, "logements", perdus, t, 0.0,

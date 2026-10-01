@@ -7,7 +7,7 @@ extends RefCounted
 # 🎚️ LEVEL DESIGN — la table que l'auteur règle (décision 80)
 # ==========================================================================
 # 🔴 Le premier coût RÉCURRENT du jeu : signée au mois 6, une subvention pèse
-# encore au mois 240. Repère : la dotation est de 30 k€/mois.
+# encore au mois 240. Repère : le budget annuel vaut au plus 360 k€ (101).
 # ⚠️ Une subvention ne convainc personne — la ville possède tout (70) : elle
 # CHOISIT SON AXE, elle accélère un poste en prenant sur le reste. Question
 # n°25 du vault, à trancher avant d'en ajouter d'autres.

@@ -354,7 +354,7 @@ func executer() -> void:
 	jeu.interface.poser("camp")
 	jeu._sur_commande("i", champs2[0], jeu.interface._reglages())
 	jeu.ville.abriter(champs2[1], 0.0)
-	# Huit mois de dotation : ce que le camp a coûté aux logements.
+	# Huit mois plus tard, avant le premier budget annuel.
 	actualiser(8.0)
 	await cliquer(bouton("②"))
 	await cliquer(jeu.interface._recap_bouton)

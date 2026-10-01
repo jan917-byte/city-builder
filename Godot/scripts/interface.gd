@@ -224,6 +224,7 @@ var _ville_valeurs := {}
 ## 📊 La barre du haut : les mêmes nombres que le bilan, toujours sous les yeux.
 var _barre: PanelContainer
 var _barre_valeurs := {}
+var _barre_budget: Label
 var _ville_jauges := {}
 ## Le repère du mois 0 pour les deux seuls chiffres qui n'ont pas de part
 ## naturelle — la conso et le CO₂ —, mémorisé au premier `maj()`.
@@ -1129,14 +1130,14 @@ func _panneau_bilan() -> void:
 	_ville_valeurs["nourriture"] = nourriture["valeur"]
 	_ville_jauges["nourriture"] = nourriture["jauge"]
 	var achats := _ligne_bilan(v, "achat", Color8(122, 112, 96),
-		"Ce que la ville paie chaque mois pour nourrir ceux que ses champs ne nourrissent pas. La dotation couvre déjà celui du mois 0 : la caisse ne voit que l'écart.", false)
+		"Ce que la ville paie chaque mois pour nourrir ceux que ses champs ne nourrissent pas. Le budget annuel couvre déjà celui du mois 0 : la caisse ne voit que l'écart.", false)
 	_ville_valeurs["achat_nourriture"] = achats["valeur"]
 
 	_titre_section(v, "Caisse")
 	# Pas de jauge : une caisse n'a pas de plein. Le nombre prend toute la
 	# largeur, et la recette reste son petit écart, comme dans la référence.
 	var caisse := _ligne_bilan(v, "caisse", Color8(78, 121, 67),
-		"La caisse, et ce que le solaire lui rapporte chaque année.", false)
+		"La caisse, et ce que le solaire lui rapporte chaque année. Le budget de la ville est voté une fois par an et versé d'un coup.", false)
 	_ville_valeurs["caisse"] = caisse["valeur"]
 	(caisse["valeur"] as Label).add_theme_color_override("font_color", ACCENT)
 	(caisse["valeur"] as Label).add_theme_font_size_override("font_size", 20)
@@ -1144,13 +1145,18 @@ func _panneau_bilan() -> void:
 	recette.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	(caisse["colonne"] as VBoxContainer).add_child(recette)
 	_ville_valeurs["recette"] = recette
+	# 💶 Le compte à rebours du vote (101) : la caisse ne monte plus d'elle-même.
+	var prochain := _label("", 11, GRIS)
+	prochain.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	(caisse["colonne"] as VBoxContainer).add_child(prochain)
+	_ville_valeurs["prochain_budget"] = prochain
 	# 🗳️ Un compteur, pas une jauge (58) : un stock n'a pas de plein.
 	var capital := _ligne_bilan(v, "capital", Color8(122, 84, 48),
 		"La confiance des habitants. Retirer des places en coûte tout de suite ; des habitants qui rentrent chez eux, un pont rouvert en rendent à la livraison.", false)
 	_ville_valeurs["capital"] = capital["valeur"]
 
 	# 🧪 LE BOUTON D'ESSAI, ET IL DIT QU'IL EN EST UN. Il sert à atteindre en un
-	# clic un état que vingt ans de dotation mettraient à payer — donc à juger
+	# clic un état que vingt ans de budgets mettraient à payer — donc à juger
 	# une ville équipée, pas à juger l'économie.
 	# À retirer en même temps que `ville.crediter_essai_ke`.
 	var triche := Button.new()
@@ -2284,7 +2290,7 @@ func montrer_depart() -> void:
 			"La partie normale : les chantiers prennent le temps qu'ils prennent."],
 			["Mode auteur", true,
 			"Pour essayer : tout chantier engagé est livré immédiatement."
-			+ " Les prix et la dotation ne changent pas."]]:
+			+ " Les prix et le budget annuel ne changent pas."]]:
 		var b := Button.new()
 		b.text = String(choix[0])
 		b.tooltip_text = String(choix[2])
@@ -2722,6 +2728,10 @@ func _barre_compteurs() -> void:
 		valeur.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		bloc.add_child(valeur)
 		_barre_valeurs[ligne[0]] = valeur
+		if ligne[0] == "caisse":
+			_barre_budget = _label("", 11, GRIS)
+			_barre_budget.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			bloc.add_child(_barre_budget)
 
 
 func _controles_temps() -> void:
@@ -2910,6 +2920,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_caisse_ke = indic["caisse_ke"]
 	_ville_valeurs["caisse"].text = _millions(_caisse_ke)
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
+	_ville_valeurs["prochain_budget"].text = _texte_prochain_budget(mois)
 	_capital = ville.capital(mois)
 	_ville_valeurs["capital"].text = _nb(_capital, 0)
 	_maj_durabilite(indic)
@@ -2918,6 +2929,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	if _barre.visible:
 		for cle in _barre_valeurs:
 			(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
+		_barre_budget.text = _texte_prochain_budget(mois)
 	maj_degats(ville.degats(mois))
 	if _diagnostic_panneau.visible:
 		(_onglets_crue["prochaine"] as Button).visible = etude_publiee()
@@ -3880,6 +3892,12 @@ static func _duree(mois: float) -> String:
 	# Le dixième ne s'écrit que s'il n'est pas nul : « 6,0 mois » annonce une
 	# précision qu'on n'a pas.
 	return "%s mois" % _nb(mois, 0 if is_equal_approx(mois, roundf(mois)) else 1)
+
+
+## 🔴 FLAGGABLE (90), provisoire : l'auteur écrit la phrase.
+func _texte_prochain_budget(mois: float) -> String:
+	var reste := int(ceil(ville.mois_avant_budget(mois) - 0.001))
+	return "budget dans %d mois" % reste if reste > 1 else "budget le mois prochain"
 
 
 static func _nb(v: float, dec: int) -> String:

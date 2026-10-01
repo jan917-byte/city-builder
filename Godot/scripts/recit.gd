@@ -121,7 +121,12 @@ func _batir_pages() -> void:
 				+ " s'installer, qu'elles puissent rejoindre à pied."
 				# 🔒 Vrai depuis le verrou des premières minutes (auteur, 2026-09-22).
 				+ "\n\nChaque mois dehors se paie en aide d'urgence, et rien"
-				+ " d'autre ne s'engage tant que tout le monde n'est pas abrité.",
+				+ " d'autre ne s'engage tant que tout le monde n'est pas abrité."
+				# 💶 🔴 PROVISOIRE, flaggable (90) : l'auteur écrit la phrase (101).
+				+ "\n\nPour se relever, la ville dispose de %s. Le prochain budget"
+				% jeu.interface._millions(jeu.ville.CAISSE_DEPART_KE)
+				+ " sera voté dans un an : il suivra les logements habités et"
+				+ " les rues à entretenir.",
 			"repere": "", "lacet": 35.0, "hauteur": 42.0,
 		},
 	]

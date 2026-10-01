@@ -102,7 +102,7 @@ static func courbe_rendue(p: float) -> float:
 # 🌿 LE TOIT VERT — étanchéité reprise, substrat, sédum. 🎚️ Level design : il ne
 # rapporte RIEN, donc son prix seul décide s'il vaut de renoncer à des panneaux
 # sur le même mètre carré. Mesuré : verdir les 1,58 ha plats et équipables de
-# Wehrau coûte ~1 800 k€, cinq ans de dotation.
+# Wehrau coûte ~1 800 k€, cinq ans de budget annuel.
 const COUT_TOIT_VERT_EUR_M2 := 140.0
 
 # ⏸️ Ancienne économie en points (PLAN §5, §6 bis b), hors boucle jouable depuis
@@ -286,7 +286,7 @@ static func ville_mwh(v, t: float) -> Dictionary:
 
 
 ## En k€/an. 🔴 Ne passe PAS par la caisse municipale : la facture est payée par
-## les OCCUPANTS. Sinon la mairie paierait 7,7 M€/an avec 0,36 M€ de dotation,
+## les OCCUPANTS. Sinon la mairie paierait 7,7 M€/an avec 0,36 M€ de budget annuel,
 ## donc un jeu sans décision. La ville est propriétaire-bailleur (décision 70) :
 ## elle possède murs et toits, ses locataires paient leur électricité.
 static func facture_ke(v, t: float) -> float:

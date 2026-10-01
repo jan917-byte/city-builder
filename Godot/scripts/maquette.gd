@@ -47,8 +47,10 @@ const Sauvegarde := preload("res://scripts/sauvegarde.gd")
 const Paysage := preload("res://scripts/paysage.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
 const Recit := preload("res://scripts/recit.gd")
+const Budget := preload("res://scripts/budget.gd")
 var ouverture: Ouverture
 var recit: Recit
+var budget: Budget
 var paysage: Paysage
 var _empreinte_carte := ""
 var chemin_sauvegarde := Sauvegarde.CHEMIN
@@ -320,6 +322,10 @@ func _ready() -> void:
 		else:
 			interface.montrer_depart()
 	interface._debut.visible = ouverture != null
+	budget = Budget.new()
+	budget.name = "Budget"
+	interface.add_child(budget)
+	budget.batir(self)
 	interface.retours.reprendre(mois)
 
 	var c: Dictionary = donnees["controles"]
@@ -1121,7 +1127,7 @@ ESSAI — la ville, sans décision")
 	get_tree().quit()
 
 
-## Déverrouille la réduction sans passe-droit : au mois 600 la dotation peut
+## Déverrouille la réduction sans passe-droit : au mois 600 les budgets peuvent
 ## payer les réparations essentielles, puis on attend leur vraie durée. Ce
 ## mois n'est pas du level design ; c'est seulement la caisse de l'essai.
 ## 🌊 CE QUE LA BERGE CHANGE À LA CRUE, en une ligne : l'îlot témoin et la ville.
@@ -1235,7 +1241,7 @@ BERGE — trois états francs")
 
 
 ## 🎚️ LE compte rendu qui sert à régler `CAISSE_DEPART_KE` et
-## `DOTATION_KE_MOIS` : sans lui les deux se règlent à l'aveugle.
+## `BUDGET_VILLE_ENTIERE_KE_AN` : sans lui les deux se règlent à l'aveugle.
 ## Les amortissements sont rangés par tissu parce que c'est LÀ qu'est la
 ## décision — une barre de 1974 et un cœur ancien ne se remboursent pas dans le
 ## même siècle.
@@ -1401,7 +1407,7 @@ RÉPARATION — ce que la crue laisse à payer")
 		await get_tree().process_frame
 		await _capturer("essai_reconstruit")
 
-	# Le temps a passé : la dotation a coulé, le pont devient payable.
+	# Le temps a passé : les budgets sont tombés, le pont devient payable.
 	mois = 96.0
 	_rafraichir(true)
 	if pont >= 0 and ville.reparer("r", pont, mois):
@@ -1488,8 +1494,11 @@ func _essai_economie() -> int:
 	print("
 ÉCONOMIE — au mois 0")
 	print("  caisse de départ        %8.0f k€" % Ville.CAISSE_DEPART_KE)
-	print("  dotation                %8.0f k€/mois (%.0f k€/an)"
-		% [Ville.DOTATION_KE_MOIS, Ville.DOTATION_KE_MOIS * 12.0])
+	var vote0: Dictionary = ville.vote_budget(0)
+	print("  budget annuel           %8.0f k€ au lendemain de la crue, %.0f k€ ville entière"
+		% [vote0["ke"], Ville.BUDGET_VILLE_ENTIERE_KE_AN])
+	print("    ce que paient         %8.0f €/logement habité · %.1f €/m de rue entretenue"
+		% [ville.budget_ke_logement * 1000.0, ville.budget_ke_metre * 1000.0])
 	print("  équiper toute la ville  %8.0f k€  → %.0f k€/an de recette"
 		% [cout_ville, recette_ville])
 	print("  payables au mois 0      %8d îlots sur %d équipables"
@@ -2015,10 +2024,20 @@ func _process(delta: float) -> void:
 	# L'essai pousse artificiellement la caisse au-delà des vingt ans pour
 	# éprouver le déverrouillage avec les prix non calibrés de la crue. En jeu,
 	# l'horizon reste strictement celui du projet.
+	var avant := mois
 	if "--essai" in OS.get_cmdline_user_args():
 		mois += delta * vitesse * MOIS_PAR_SECONDE
 	else:
 		mois = minf(mois + delta * vitesse * MOIS_PAR_SECONDE, Ville.HORIZON_MOIS)
+	# 💶 Le temps s'arrête PILE au mois du vote (101) : à ×12 il le sauterait.
+	var votes := Ville.votes_passes(mois)
+	if votes > Ville.votes_passes(avant) and budget != null:
+		mois = float(votes) * Ville.BUDGET_PERIODE_MOIS
+		_rafraichir(true)
+		if ouverture != null:
+			ouverture.actualiser(true)
+		budget.ouvrir(votes, vitesse)
+		return
 	_rafraichir(false)
 	if ouverture != null:
 		ouverture.actualiser()
@@ -2817,8 +2836,8 @@ func _sur_mode_choisi(auteur: bool) -> void:
 		recit.commencer()
 
 
-## 🛠️ Le mode auteur ne touche qu'aux DURÉES : la caisse, les prix et la
-## dotation restent ceux du jeu.
+## 🛠️ Le mode auteur ne touche qu'aux DURÉES : la caisse, les prix et le
+## budget annuel restent ceux du jeu.
 func _sur_mode(auteur: bool) -> void:
 	interface.cacher_depart()
 	ville.livraison_immediate = auteur
@@ -2840,6 +2859,7 @@ func _sur_reset() -> void:
 	ville.reinitialiser()
 	trafic.reinitialiser()
 	mois = 0.0
+	budget.visible = false
 	_sur_vitesse(0.0)
 	interface.remis_a_zero()
 	interface.retours.reprendre(mois)
@@ -2853,6 +2873,9 @@ func _sur_reset() -> void:
 
 
 func _sur_vitesse(nouvelle: float) -> void:
+	# La fiche du vote garde le temps arrêté jusqu'à « Continuer ».
+	if nouvelle > 0.0 and budget != null and budget.en_cours():
+		return
 	vitesse = nouvelle
 	trafic.en_pause = nouvelle == 0.0
 	if nouvelle > 0.0:
@@ -2926,6 +2949,7 @@ func _sur_reprise() -> void:
 		return
 	ville.importer_partie(p["ville"])
 	mois = p["mois"]
+	budget.visible = false
 	trafic.importer_fermetures(p["fermetures"], mois)
 	interface.retours.reprendre(mois, p.get("journal", []) if p.get("journal", []) is Array else [])
 	_sur_vitesse(0.0)
