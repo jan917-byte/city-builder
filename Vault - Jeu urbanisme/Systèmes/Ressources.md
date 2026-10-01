@@ -1,7 +1,7 @@
 ---
 tags: [système, économie]
 statut: arrêté (paramètres ouverts)
-maj: 2026-09-30
+maj: 2026-10-01
 ---
 
 # Ressources
@@ -56,7 +56,7 @@ Que le joueur ne voie pas l'équation, très bien. Qu'il ne puisse pas dire **po
 
 Et l'interdit explicite : **l'économie cachée ne sert jamais à ajuster la difficulté** (décision 21). Un état qui dérive sans être vu est le terrain rêvé de la difficulté adaptative, et la tentation de le faire dériver contre un joueur qui réussit arrivera **par accident** si elle n'est pas nommée. → [[Décisions arrêtées]] 60b · [[Pièges connus]]
 
-☐ **Non tranché — comment le joueur comprend le lien**, alors que la barre et le budget sont loin l'un de l'autre à l'écran. Trois pistes, dont le **budget voté une fois par an** plutôt que subi. → [[Questions ouvertes]] n°21
+✅ **Le lien passe par un vote annuel** : le budget tombe d'un coup tous les douze mois, sur une fiche qui dit ce qui l'a fait monter ou baisser. → [[Décisions arrêtées]] 101
 
 #### Trois nombres à l'écran, pas un
 

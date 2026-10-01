@@ -605,3 +605,6 @@ Seuls la rue 122 et ses bandes changent dans `wehrau.json` (ponts, contrôles in
 **2026-09-30 — Quai des Sureaux, suite : la rue recule sur l'îlot 31 au lieu de mordre l'Ilse (auteur : « grignote sur les îlots plutôt que sur l'Ilse »).**
 Cause dans `04b` : la rive redessinée n'a pas les sommets de l'îlot 31, donc sa seule arête au bord de l'eau (155 m) reculait de la demi-largeur ; elle est maintenant sondée (`eau_en_face`) et recule de toute la largeur, et `07` colle la rue aux façades comme les 19 autres.
 Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, aucun logement perdu (friche) ; planche `wehrau_sureaux_avant_apres.png`. Essai : même règle sur tous les quais (2 m de trottoir + 3,5 m de bande) = −47 logements, non appliquée.
+**2026-10-01 — Le budget est voté une fois par an et versé d'un coup (décision 101, ferme la question 21) ; au départ la seule somme de reconstruction, l'économie de la région attend.**
+Brainstorm avec l'auteur : fixe, selon la santé de la ville, ou illimité ; comparaison avec SimCity, Cities: Skylines, Frostpunk, Floodland, Democracy, Football Manager, Terra Nil.
+Rien de codé : la maquette se branche sur la machine de l'auteur — plan et contrôle dans `Prototype/Premiers pas.md`.

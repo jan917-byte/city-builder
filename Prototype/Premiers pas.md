@@ -106,6 +106,7 @@ Dangers a deux onglets : **Dégâts** (ce que l'eau a pris) et **Prochaine crue*
 
 🟠 Le terrain reste un profil de calcul, sans relief (auteur, 2026-09-30 : « gardons plat pour le proto ») ; la crue annoncée n'est pas bornée par le contour tracé à l'est, d'où une partie du 9 → 19. 🔴 Rien ne tombe au bout des 6 à 8 ans. 🔴 Seul le bâti est compté (94 veut tous les thèmes). 🔴 Texte de l'étude provisoire, flaggable (90).
 Contrôle : `essai_etude.gd -- --ouverture --captures` → `wehrau_ouverture_etude_01_guide.png` à `..._06_levier_pre.png`. Défaut à signaler : onglet visible avant le pont, carte qui ne change pas quand une berge est livrée, guide qui saute l'université.
+💶 **À brancher, sur la machine de l'auteur — le budget annuel (décision 101)** : la dotation de 30 k€/mois (`ville.gd`) cède la place à un versement tous les douze mois = logements habités × prix − mètres de rue praticables × prix, réglés pour 360 k€/an ville entière ; les foyers des étages ajoutés restent comptés à part (`solde_dense_ke`). Fiche « Budget de l'année » qui met le temps en pause, compte à rebours sous la caisse, ligne au journal, phrase du récit (flaggable). Contrôle : deux parties qui relogent vite ou lentement donnent deux budgets de l'an 2 différents ; identiques = cassé.
 
 ## Ce qui attend le joueur
 - L'étude arrive-t-elle comme une douche froide juste après la victoire du pont, ou gâche-t-elle la victoire ?
