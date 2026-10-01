@@ -608,3 +608,6 @@ Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, 
 **2026-10-01 — Le budget est voté une fois par an et versé d'un coup (décision 101, ferme la question 21) ; au départ la seule somme de reconstruction, l'économie de la région attend.**
 Brainstorm avec l'auteur : fixe, selon la santé de la ville, ou illimité ; comparaison avec SimCity, Cities: Skylines, Frostpunk, Floodland, Democracy, Football Manager, Terra Nil.
 Rien de codé : la maquette se branche sur la machine de l'auteur — plan et contrôle dans `Prototype/Premiers pas.md`.
+**2026-10-01 — Le budget annuel est dans la maquette : plus de dotation mensuelle, un vote tous les douze mois qui arrête le temps sur une fiche (décision 101).**
+`ville.gd` calcule le vote (182 €/logement habité − 8,9 €/m de rue, déduits de 360 k€ ville entière) ; `budget.gd` porte la fiche et ses phrases provisoires ; compte à rebours sous la caisse, phrase au récit.
+`essai_budget` et `essai_budget_fiche` 0 échec ; `essai_campagne` recrédité de 2 000 k€ ; `essai_travaux` (1) et `essai_sauvegarde` (lieux sans nom) échouaient déjà avant.
