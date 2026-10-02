@@ -129,6 +129,9 @@ func actualiser_affichage() -> void:
 		return
 	chantiers.visible = compteur.visible and _nb_chantiers > 0
 	avis.visible = compteur.visible and (_historique_ouvert or Time.get_ticks_msec() < _expiration)
+	# ⚠️ Sous la barre, comme le détail d'un compteur : leurs verres se dessinent au même niveau.
+	if ui._detail_sujet != "" and not _historique_ouvert:
+		avis.visible = false
 	historique.visible = _historique_ouvert
 	# Une ligne par message : la ligne blanche entre deux creusait le bandeau.
 	var nouveau := "Dernières décisions · cette partie" if _historique_ouvert else "\n".join(_recent)

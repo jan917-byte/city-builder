@@ -85,6 +85,24 @@ func executer() -> void:
 	ui._maj_fiche()
 	verifier(ui._demande_boutons["amelioration"].disabled, "L'amélioration livrée ne se recommande pas")
 	await capture("camp_04_ameliore")
+	# 🧾 Au clic sur un compteur du haut, pourquoi il monte ou baisse.
+	ui.ouvrir_detail("capital")
+	var mots: Array = ui._detail_lignes.map(func(l): return str(l[0]))
+	verifier(ui._detail_panneau.visible and "Le camp, mois après mois" in mots
+		and "Camp : campement amélioré" in mots, "Le détail de la confiance nomme l'usure et l'amélioration : %s" % [mots])
+	await capture("camp_05_detail_confiance")
+	await cliquer_compteur(ui, "caisse")
+	mots = ui._detail_lignes.map(func(l): return str(l[0]))
+	var genres: Dictionary = v.depenses_par_genre()
+	var somme := 0.0
+	for g in genres:
+		somme += float(genres[g])
+	verifier("Camps" in mots and "Campement amélioré" in mots and "Aide aux personnes sans abri" in mots
+		and absf(somme - v._depense_ke) < 0.01 and not genres.has("autres"),
+		"Le détail de l'argent range chaque chantier : %s" % [mots])
+	await capture("camp_06_detail_argent")
+	await cliquer_compteur(ui, "caisse")
+	verifier(not ui._detail_panneau.visible, "Un second clic referme le détail")
 
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
@@ -95,3 +113,17 @@ func executer() -> void:
 	jeu.queue_free()
 	await process_frame
 	quit(1 if echecs else 0)
+
+
+## Un vrai clic sur le compteur du haut : il passe par `gui_input`, comme la souris.
+func cliquer_compteur(ui, cle: String) -> void:
+	await process_frame
+	var pos: Vector2 = (ui._barre_valeurs[cle] as Label).get_parent().get_global_rect().get_center()
+	for appui in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = appui
+		e.position = pos
+		e.global_position = pos
+		root.push_input(e, true)
+	await process_frame

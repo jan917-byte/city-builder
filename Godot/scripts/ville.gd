@@ -50,6 +50,7 @@ var _recherche := {}
 ## 🏛️ Politique -> [[début, fin], …] ; fin = -1 tant qu'elle est en vigueur.
 var _politiques := {}
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
+var _depense_genre := {}   # le même total, par genre : ce que le détail de l'argent affiche
 ## 🧪 OUTIL D'ESSAI, PAS UNE RÈGLE DU JEU : de l'argent tombé du ciel, pour
 ## atteindre en un clic un état que vingt ans de dotation mettraient à payer.
 ## Le jour où la boucle se juge pour de bon, ce champ et son bouton sautent.
@@ -283,10 +284,10 @@ func objets(couche: String) -> Dictionary:
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
-	"_cultures", "_demandes"]
+	"_cultures", "_demandes", "_depense_genre"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
-const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes"]
+const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -440,7 +441,7 @@ func transformer_berge(fid: int, cible: int, t: float) -> bool:
 		return false
 	_berge[fid] = {"cible": cible, "depuis": de, "debut": t,
 		"duree": _delai(BERGE_MOIS[cible] - BERGE_MOIS[de]), "cout_ke": cout}
-	_depense_ke += cout
+	_depenser("berge", cout)
 	return true
 
 
@@ -666,7 +667,7 @@ func planter(fid: int, cible: float, t: float) -> bool:
 	ajouter_rampe("r", fid, "canopee", c - actuelle, t, 0.0, _delai(PLANTATION_MOIS))
 	_plantation[fid] = {"debut": t, "duree": _delai(PLANTATION_MOIS), "cible": c,
 		"cout_ke": cout, "arbres": neufs}
-	_depense_ke += cout
+	_depenser("plantation", cout)
 	return true
 
 
@@ -760,6 +761,7 @@ func reinitialiser() -> void:
 	_cultures.clear()
 	_crue_champs_mois = INF
 	_depense_ke = 0.0
+	_depense_genre = {}
 	_credit_essai_ke = 0.0
 	# Les toits reconstruits redeviennent des ruines : `toit_m2` est la seule
 	# donnée que `reparer` écrit en base, donc la seule à défaire.
@@ -817,7 +819,7 @@ func lancer_solaire(fid: int, part: float, t: float) -> bool:
 		Energie.courbe_rendue(cible) - Energie.courbe_rendue(actuelle),
 		t, 0.0, duree)
 	_solaire[fid] = {"debut": t, "duree": duree, "cible": cible, "cout_ke": cout}
-	_depense_ke += cout
+	_depenser("solaire", cout)
 	return true
 
 
@@ -883,7 +885,7 @@ func lancer_vert(fid: int, part: float, t: float) -> bool:
 	ajouter_rampe("i", fid, "part_toit_vert", cible - actuelle, t, 0.0, duree)
 	_vert[fid] = {"debut": t, "duree": duree, "cible": cible, "cout_ke": cout}
 	_vert_ha_mois = INF
-	_depense_ke += cout
+	_depenser("vert", cout)
 	return true
 
 
@@ -1065,7 +1067,7 @@ func densifier(fid: int, part: float, etages: int, t: float) -> bool:
 	lots.append({"debut": t, "duree": duree, "logements": neufs})
 	_dense[fid] = {"debut": t, "duree": duree, "etages": e, "cible": vers,
 		"cout_ke": cout, "lots": lots}
-	_depense_ke += cout
+	_depenser("dense", cout)
 	ajouter_rampe("i", fid, "part_dense", vers - de, t, 0.0, duree)
 	ajouter_rampe("i", fid, "logements", neufs, t, 0.0, duree)
 	return true
@@ -1246,7 +1248,7 @@ func abriter(fid: int, t: float) -> bool:
 	if cout > caisse_ke(t) + 0.001:
 		return false
 	_camps[fid] = {"debut": t, "places": places, "cout_ke": cout}
-	_depense_ke += cout
+	_depenser("camp", cout)
 	_crue_champs_mois = INF
 	return true
 
@@ -1380,10 +1382,12 @@ func cout_demande_ke(cle: String) -> float:
 func equiper_camp(cle: String, t: float) -> bool:
 	if not DEMANDES.has(cle) or _demandes.has(cle) or _camps.is_empty():
 		return false
-	if cout_demande_ke(cle) > caisse_ke(t) + 0.001:
+	var cout := cout_demande_ke(cle)
+	if cout > caisse_ke(t) + 0.001:
 		return false
+	# ⚠️ Le prix AVANT l'inscription : `cout_demande_ke` vaut 0 une fois la demande faite.
 	_demandes[cle] = t
-	_depense_ke += cout_demande_ke(cle)
+	_depenser("demande", cout)
 	return true
 
 
@@ -1565,7 +1569,7 @@ func cultiver(fid: int, culture: int, t: float) -> bool:
 	if not _cultures.has(fid):
 		_cultures[fid] = []
 	_cultures[fid].append({"debut": t, "culture": culture, "cout_ke": cout})
-	_depense_ke += cout
+	_depenser("culture", cout)
 	_crue_champs_mois = INF
 	return true
 
@@ -1774,6 +1778,29 @@ func caisse_ke(t: float) -> float:
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Recherche.depense_ke(self, t) - Politiques.depense_ke(self, t)
+
+
+func _depenser(genre: String, ke: float) -> void:
+	_depense_ke += ke
+	_depense_genre[genre] = float(_depense_genre.get(genre, 0.0)) + ke
+
+
+func _genre_reparation(couche: String, fid: int) -> String:
+	if couche == "i":
+		return "ilot"
+	return "pont" if fid in _ponts else "rue"
+
+
+## Ce que les chantiers ont coûté, par genre. Une partie sauvée avant le détail
+## n'a que le total : l'écart va dans « autres ».
+func depenses_par_genre() -> Dictionary:
+	var out := _depense_genre.duplicate()
+	var reste := _depense_ke
+	for g in out:
+		reste -= float(out[g])
+	if reste > 0.5:
+		out["autres"] = reste
+	return out
 
 
 ## 🧪 Le bouton d'essai. Rendu à zéro par « Recommencer », comme tout le reste.
@@ -2062,7 +2089,7 @@ func reparer(couche: String, fid: int, t: float, provisoire := false) -> bool:
 	# ⚠️ En mode auteur le chantier est livré SANS que le mois bouge : le
 	# verger redeviendrait propre au mois suivant seulement.
 	_verger_vu = -1.0
-	_depense_ke += cout
+	_depenser(_genre_reparation(couche, fid), cout)
 	if couche == "i":
 		# 🔗 CE QUE LA RECONSTRUCTION REND, et c'est tout : les logements que
 		# `04e` avait retirés du parc, et le toit qu'il avait emporté. Les deux

@@ -235,6 +235,10 @@ var _ville_valeurs := {}
 ## 📊 La barre du haut : les mêmes nombres que le bilan, toujours sous les yeux.
 var _barre: PanelContainer
 var _barre_valeurs := {}
+var _detail_panneau: PanelContainer
+var _detail_liste: VBoxContainer
+var _detail_sujet := ""         # "caisse", "capital" ou "" : le compteur dont on lit le détail
+var _detail_lignes := []        # la dernière liste posée : on ne rebâtit que si elle change
 var _ville_jauges := {}
 ## Le repère du mois 0 pour les deux seuls chiffres qui n'ont pas de part
 ## naturelle — la conso et le CO₂ —, mémorisé au premier `maj()`.
@@ -2358,9 +2362,10 @@ func montrer_jeu(oui: bool) -> void:
 	retours.actualiser_affichage()
 	if not oui:
 		for panneau in [_fiche_panneau, _diagnostic_panneau,
-				_chantiers_panneau, _calque_panneau, _lieu_panneau]:
+				_chantiers_panneau, _calque_panneau, _lieu_panneau, _detail_panneau]:
 			if panneau != null:
 				(panneau as Control).visible = false
+		_detail_sujet = ""
 
 
 ## 🛠️ L'ÉCRAN DE DÉPART, ET IL NE PROPOSE QUE DEUX CHOSES. « Auteur » ne
@@ -2845,6 +2850,10 @@ func _barre_compteurs() -> void:
 		bloc.tooltip_text = ligne[3]
 		bloc.mouse_filter = Control.MOUSE_FILTER_STOP
 		h.add_child(bloc)
+		# 🧾 Au clic, pourquoi le compteur monte ou baisse (auteur, 2026-10-02).
+		if ligne[0] in ["caisse", "capital"]:
+			bloc.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			bloc.gui_input.connect(_clic_compteur.bind(ligne[0]))
 		var pic := TextureRect.new()
 		pic.texture = _icone(ligne[1], 22, ligne[2])
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
@@ -2854,6 +2863,197 @@ func _barre_compteurs() -> void:
 		valeur.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		bloc.add_child(valeur)
 		_barre_valeurs[ligne[0]] = valeur
+	_detail_panneau = PanelContainer.new()
+	_poser_boite(_detail_panneau)
+	_detail_panneau.anchor_left = 0.5
+	_detail_panneau.anchor_right = 0.5
+	_detail_panneau.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_detail_panneau.custom_minimum_size.x = 360
+	_detail_panneau.visible = false
+	add_child(_detail_panneau)
+	_detail_liste = VBoxContainer.new()
+	_detail_liste.add_theme_constant_override("separation", 3)
+	_detail_panneau.add_child(_detail_liste)
+
+
+func _clic_compteur(e: InputEvent, sujet: String) -> void:
+	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT):
+		return
+	ouvrir_detail("" if _detail_sujet == sujet else sujet)
+
+
+## "caisse", "capital", ou "" pour fermer. Public : `--interface` le capture.
+func ouvrir_detail(sujet: String) -> void:
+	_detail_sujet = sujet
+	_detail_lignes = []
+	_detail_panneau.offset_top = _barre.position.y + _barre.size.y + 6.0
+	_maj_detail(ville.indicateurs(_mois), _mois)
+	retours.actualiser_affichage()
+
+
+const GENRES_DEPENSE := {
+	"camp": "Camps", "demande": "Campement amélioré", "pont": "Ponts",
+	"rue": "Rues déblayées", "ilot": "Îlots relevés", "solaire": "Panneaux solaires",
+	"vert": "Toits verts", "dense": "Étages ajoutés", "berge": "Berges",
+	"plantation": "Arbres plantés", "culture": "Cultures", "autres": "Autres chantiers",
+}
+
+
+## Une ligne du détail : [texte, valeur affichée, signe, gras]. Valeur nulle = titre de bloc.
+static func _ligne_ke(txt: String, ke: float, par_mois := false) -> Array:
+	var v := (_nb(absf(ke), 1) + " k€/mois") if par_mois else (_milliers(absf(ke)) + " k€")
+	return [txt, ("+" if ke >= 0.0 else "−") + v, signf(ke), false]
+
+
+## 🧾 LE DÉTAIL D'UN COMPTEUR : ce qui le fait bouger chaque mois, puis tout ce
+## qui l'a fait bouger depuis le mois 0 — la somme retombe sur le compteur.
+func _maj_detail(indic: Dictionary, mois: float) -> void:
+	if not _barre.visible:
+		_detail_sujet = ""
+	_detail_panneau.visible = _detail_sujet != ""
+	if _detail_sujet == "":
+		return
+	var lignes := _lignes_caisse(indic, mois) if _detail_sujet == "caisse" else _lignes_capital(mois)
+	if lignes == _detail_lignes:
+		return
+	_detail_lignes = lignes
+	for c in _detail_liste.get_children():
+		_detail_liste.remove_child(c)
+		c.queue_free()
+	for l in lignes:
+		if l[1] == null:
+			if _detail_liste.get_child_count() > 0:
+				var marge := Control.new()
+				marge.custom_minimum_size.y = 6
+				_detail_liste.add_child(marge)
+			_titre_section(_detail_liste, l[0])
+			continue
+		if l[3]:
+			_detail_liste.add_child(HSeparator.new())
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 12)
+		_detail_liste.add_child(h)
+		var mot := _titre(l[0], 13, TEXTE) if l[3] else _label(l[0], 13, TEXTE)
+		mot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		mot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		mot.custom_minimum_size.x = 220
+		h.add_child(mot)
+		var coul := TEXTE
+		if not l[3]:
+			coul = FAIT_TEXTE if l[2] > 0 else (ALERTE if l[2] < 0 else GRIS)
+		var val := _titre(str(l[1]), 13, coul)
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		h.add_child(val)
+
+
+func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
+	var out := [["Chaque mois", null, 0, false]]
+	var dense_mois := 0.0
+	if mois > 0.01:
+		dense_mois = (ville.solde_dense_ke(mois) - ville.solde_dense_ke(mois - 0.01)) / 0.01
+	var nourriture := (ville.nourriture_depart() - ville.nourriture_personnes(mois)) \
+		* Ville.NOURRITURE_KE_PERSONNE_MOIS
+	var flux := [
+		["Dotation de la transition", Ville.DOTATION_KE_MOIS],
+		["Électricité solaire vendue", float(indic["recette_ke_an"]) / 12.0],
+		["Loyers des étages ajoutés", dense_mois],
+		["Aide aux personnes sans abri", -ville.aide_mensuelle_ke(mois)],
+		["Nourriture achetée en plus" if nourriture > 0.0 else "Nourriture économisée", -nourriture],
+		["Université et mairie", -ville.charge_mensuelle_ke(mois)],
+	]
+	var solde := 0.0
+	for f in flux:
+		if absf(f[1]) >= 0.05:
+			out.append(_ligne_ke(f[0], f[1], true))
+			solde += f[1]
+	var l := _ligne_ke("Solde du mois", solde, true)
+	l[3] = true
+	out.append(l)
+	out.append(["Depuis le mois 0", null, 0, false])
+	var cumul := [
+		["Caisse de départ", Ville.CAISSE_DEPART_KE],
+		["Dotation, %s mois" % _nb(mois, 0), Ville.DOTATION_KE_MOIS * mois],
+		["Électricité solaire vendue", ville.recette_cumulee_ke(mois)],
+		["Loyers des étages ajoutés", ville.solde_dense_ke(mois)],
+		["Crédit d'essai", ville._credit_essai_ke],
+	]
+	var genres := ville.depenses_par_genre()
+	var cles := genres.keys()
+	cles.sort_custom(func(a, b): return float(genres[a]) > float(genres[b]))
+	for g in cles:
+		cumul.append([str(GENRES_DEPENSE.get(g, g)), -float(genres[g])])
+	var achat := ville.achat_nourriture_cumule_ke(mois)
+	cumul.append_array([
+		["Aide aux personnes sans abri", -ville.aide_cumulee_ke(mois)],
+		["Nourriture achetée en plus" if achat > 0.0 else "Nourriture économisée", -achat],
+		["Université", -Recherche.depense_ke(ville, mois)],
+		["Mairie", -Politiques.depense_ke(ville, mois)],
+	])
+	for c in cumul:
+		if absf(c[1]) >= 0.5:
+			out.append(_ligne_ke(c[0], c[1]))
+	out.append(["Argent aujourd'hui", _millions(ville.caisse_ke(mois)), 0, true])
+	return out
+
+
+func _lignes_capital(mois: float) -> Array:
+	var out := []
+	var usure := ville.usure_camp_mois(mois)
+	if usure >= 0.05:
+		out.append(["Chaque mois", null, 0, false])
+		out.append(["Le camp use la confiance ; l'améliorer l'arrête",
+			"−%s/mois" % _nb(usure, 1), -1, false])
+	out.append(["Depuis le mois 0", null, 0, false])
+	var passes := [["Confiance de départ", Ville.CAPITAL_DEPART]]
+	var a_venir := []
+	for m in ville.capital_mouvements():
+		if float(m["mois"]) > mois:
+			a_venir.append(m)
+		else:
+			passes.append([_phrase_mouvement(m), float(m["montant"])])
+	var use := ville.usure_camp_cumulee(mois)
+	if use >= 0.5:
+		passes.append(["Le camp, mois après mois", -use])
+	# Les plus anciens se regroupent : la liste ne doit pas sortir de l'écran.
+	if passes.size() > 9:
+		var tot := 0.0
+		for p in passes.slice(1, passes.size() - 7):
+			tot += float(p[1])
+		passes = [passes[0], ["Plus tôt", tot]] + passes.slice(passes.size() - 7)
+	for i in passes.size():
+		var k := int(roundf(float(passes[i][1])))
+		if k != 0 or i == 0:
+			out.append([passes[i][0], ("%d" % k) if i == 0 else ("%+d" % k).replace("-", "−"),
+				0 if i == 0 else signi(k), false])
+	out.append(["Confiance aujourd'hui", _nb(ville.capital(mois), 0), 0, true])
+	var venir := []
+	var debut := ville.usure_debut()
+	if debut > mois and debut < INF:
+		venir.append(["Le camp commence à user la confiance, mois %s" % _nb(debut, 0),
+			"−%s/mois" % _nb(ville.usure_camp_mois(debut), 1), -1, false])
+	for m in a_venir:
+		var v := ("%+d" % int(roundf(float(m["montant"])))).replace("-", "−")
+		if str(m["quoi"]) == "places_retour":
+			v = "selon la rue"
+		venir.append(["%s, mois %s" % [_phrase_mouvement(m), _nb(float(m["mois"]), 0)],
+			v, signf(float(m["montant"])), false])
+	if not venir.is_empty():
+		out.append(["À venir", null, 0, false])
+		out.append_array(venir.slice(0, 5))
+	return out
+
+
+func _phrase_mouvement(m: Dictionary) -> String:
+	var txt: String
+	match str(m["quoi"]):
+		"places":
+			txt = "%s : places retirées" % lieux.nom("r", int(m["fid"]))
+		"places_retour":
+			txt = "%s, un an après" % lieux.nom("r", int(m["fid"])) \
+				if float(m["mois"]) > _mois else retours.phrase_capital(m)
+		_:
+			txt = retours.phrase_capital(m)
+	return txt.left(1).to_upper() + txt.substr(1)
 
 
 func _controles_temps() -> void:
@@ -3120,6 +3320,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		if VITRE:
 			(_barre_valeurs["caisse"] as Label).get_parent().tooltip_text = "Caisse · %s" \
 				% _ville_valeurs["recette"].text
+	_maj_detail(indic, mois)
 	maj_degats(ville.degats(mois))
 	if _diagnostic_panneau.visible:
 		(_onglets_crue["prochaine"] as Button).visible = etude_publiee()
