@@ -1342,21 +1342,20 @@ func camp_occupants(fid: int, t: float) -> float:
 
 # ============================ 🚿 LA VIE AU CAMP (auteur, 2026-10-02) ========
 # Un toit rend de la confiance à la livraison, puis le camp l'use chaque mois
-# tant qu'on y vit ; chaque demande satisfaite retire un tiers de l'usure.
+# tant qu'on y vit ; l'améliorer arrête l'usure.
 # 🎚️ LEVEL DESIGN, tout ce bloc : 260 au camp = +10 puis −2,6 par mois.
 const CAPITAL_PAR_PERSONNE_ABRITEE := 0.04
 const CAMP_USURE_PERSONNE_MOIS := 0.01
-## L'usure attend le premier pont rouvert, plus ce délai : une minute à ×1 de
-## déblaiement avant la plainte (auteur, 2026-10-02).
+## L'usure part ce délai après le LANCEMENT du premier pont : une minute à ×1 de
+## déblaiement, pendant le chantier (auteur, 2026-10-02).
 const CAMP_USURE_APRES_PONT_MOIS := 1.0
-const CAPITAL_PAR_DEMANDE := 2.0
-# 🔴 Noms affichés, flaggables (90).
+const CAPITAL_PAR_DEMANDE := 6.0
+# 🔄 Un seul bouton au lieu de trois (sanitaires, cantine, classe), même prix et
+# même effet cumulés (auteur, 2026-10-02). 🔴 Noms affichés, flaggables (90).
 const DEMANDES := {
-	"sanitaires": {"nom": "Sanitaires", "fait": "Sanitaires installés", "ke": 30.0, "mois": 1.0},
-	"cantine": {"nom": "Cantine", "fait": "Cantine ouverte", "ke": 40.0, "mois": 1.0},
-	"classe": {"nom": "Classe", "fait": "Classe ouverte", "ke": 60.0, "mois": 1.0},
+	"amelioration": {"nom": "Améliorer le campement", "fait": "Campement amélioré", "ke": 130.0, "mois": 1.0},
 }
-const DEMANDES_ORDRE := ["sanitaires", "cantine", "classe"]
+const DEMANDES_ORDRE := ["amelioration"]
 
 var _usure_cle := ""
 var _usure_marches := []   # [début, confiance perdue par mois], triés
@@ -1388,13 +1387,13 @@ func equiper_camp(cle: String, t: float) -> bool:
 	return true
 
 
-## Le mois où le camp commence à user la confiance ; INF tant qu'aucun pont n'est rouvert.
+## Le mois où le camp commence à user la confiance ; INF tant qu'aucun pont n'est lancé.
 func usure_debut() -> float:
 	var debut := INF
 	for c in _repare:
 		var m: PackedStringArray = str(c).split(":")
 		if m[0] == "r" and int(m[1]) in _ponts:
-			debut = minf(debut, float(_repare[c]) + duree_reparation_mois("r", int(m[1])))
+			debut = minf(debut, float(_repare[c]))
 	return debut + CAMP_USURE_APRES_PONT_MOIS
 
 

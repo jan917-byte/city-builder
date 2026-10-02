@@ -2078,13 +2078,10 @@ func _panneau_ilot() -> void:
 	_camp_bouton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_decision(_camp_bouton, "camp", true)
 	_camp_bloc.add_child(_camp_bouton)
-	# 🚿 Les demandes du camp (auteur, 2026-10-02). 🔴 Texte flaggable (90).
+	# 🚿 Améliorer le campement (auteur, 2026-10-02). 🔴 Texte flaggable (90).
 	_demandes_bloc = VBoxContainer.new()
 	_demandes_bloc.add_theme_constant_override("separation", 6)
 	_camp_bloc.add_child(_demandes_bloc)
-	var demandes_titre := _label("Ce que demandent les habitants", 12, TEXTE)
-	demandes_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_demandes_bloc.add_child(demandes_titre)
 	for d in Ville.DEMANDES_ORDRE:
 		var b := Button.new()
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -3081,7 +3078,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		var teinte: Color = ALERTE if baisse else TEXTE
 		if l.get_theme_color("font_color") != teinte:
 			l.add_theme_color_override("font_color", teinte)
-		l.get_parent().tooltip_text = ("Confiance · le camp en use %s par mois ; ses demandes satisfaites la freinent."
+		l.get_parent().tooltip_text = ("Confiance · le camp en use %s par mois ; l'améliorer l'arrête."
 			% _nb(usure, 1)) if baisse else "Confiance"
 	_maj_durabilite(indic)
 	_temps_label.text = "Mois %s" % _nb(mois, 1)
@@ -4311,7 +4308,7 @@ func _maj_camp() -> void:
 		return
 	_bloc_dispo[_camp_bloc] = true
 	var fid := _fiche_fid
-	# 🚿 Les demandes attendent la plainte, après le pont (auteur, 2026-10-02).
+	# 🚿 Le bouton attend la plainte (auteur, 2026-10-02).
 	_demandes_bloc.visible = ville.camp_livre(fid, _mois) and ville.camp_accessible(fid, _mois) \
 		and _mois >= ville.usure_debut()
 	if _demandes_bloc.visible:

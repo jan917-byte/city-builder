@@ -162,7 +162,7 @@ func _remplir_carte() -> void:
 		"camp":
 			_annonce_titre.text = "Les habitants du camp sont mécontents"
 			_annonce_texte.text = "Ils ont un toit, pas de quoi vivre. Tant qu'ils restent au camp, la confiance baisse chaque mois.\nPlus tard, c'est elle qui ouvrira les règles de la mairie."
-			annonce_principal.text = "Voir leurs demandes"
+			annonce_principal.text = "Voir le campement"
 			annonce_second.text = "Plus tard"
 
 

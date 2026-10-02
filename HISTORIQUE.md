@@ -620,3 +620,6 @@ Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, 
 **2026-10-02 — Les chiffres montent sur la carte : +15 de confiance au-dessus du champ livré, −17 k€ sous l'argent à chaque engagement ; le camp n'use la confiance qu'un mois après le premier pont, et sa plainte tombe à ce moment (demande de l'auteur).**
 `bulles.gd` (nouveau) : un chiffre par lieu et par instant, sans lieu sous le compteur ; bandeau des messages descendu de 30 px ; la fiche ne dit plus « un an après » que pour les places ; le chiffre de confiance du haut ne repasse plus au blanc.
 `essai_vie_camp` (pont provisoire, capture `camp_00_bulle`), `essai_ouverture`, `essai_progression`, `essai_etude`, `essai_relogement` : 0 échec.
+**2026-10-02 — La plainte du camp tombe pendant le chantier du pont (un mois après son lancement), et ses trois demandes deviennent un seul bouton « Améliorer le campement » (demande de l'auteur, après une partie où le provisoire était livré avant la plainte).**
+130 k€, 1 mois, +6 de confiance, l'usure tombe de 2,6 à 0 par mois ; la carte mène à « Voir le campement ».
+`essai_vie_camp` (plainte au mois 1,25, pont livré à 3,25), `essai_ouverture`, `essai_progression`, `essai_etude`, `essai_relogement` : 0 échec.
