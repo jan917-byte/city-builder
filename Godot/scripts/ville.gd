@@ -2087,6 +2087,19 @@ func facon_reparation(fid: int, demandee := "") -> String:
 	return demandee if RECONSTRUCTIONS.has(demandee) else "tradition"
 
 
+## 🏗️ Ce que le shader lit d'une façon (`densification.w`, `.z`) : le mode, et
+## l'attique du moderne ou la levée des pilotis, en mètres.
+static func rendu_rebati(facon: String) -> Vector2:
+	match facon:
+		"moderne":
+			return Vector2(1.0, DENSE_ETAGE_M)
+		"pilotis":
+			return Vector2(2.0, float(RECONSTRUCTIONS["pilotis"]["hausse_m"]))
+		"parc":
+			return Vector2(3.0, 0.0)
+	return Vector2.ZERO
+
+
 ## 🏗️ Les logements rebâtis en moderne, déjà livrés : ils naissent isolés (`Energie.conso_mwh`).
 func logements_neufs_isoles(fid: int, t: float) -> float:
 	if not est_repare("i", fid) or facon_reparation(fid) != "moderne":

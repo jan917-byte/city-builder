@@ -602,6 +602,55 @@ static func _boite(v: PackedVector3Array, n: PackedVector3Array,
 		i.append_array(PackedInt32Array([b, b + 1, b + 2, b, b + 2, b + 3]))
 
 
+## 🌿 La noue du parc inondable, recopiée du shader (`noue`, materiaux.gd) :
+## au-dessus de 0,42 commencent les joncs, puis l'eau.
+static func noue(x: float, z: float) -> float:
+	return sin(x * 0.11 + 1.3) * sin(z * 0.13 + 0.7) + 0.6 * sin((x - z) * 0.07 + 2.1)
+
+
+## 🌿 LES ARBRES D'UN PARC INONDABLE (95) : semés sur la dalle des ruines, que
+## 07 marque d'un égout à −1 — là où étaient les maisons. Saules près de l'eau,
+## feuillus ailleurs, aucun dans la noue. Tirage fixe : deux captures égales.
+const PARC_M2_PAR_ARBRE := 110.0
+
+static func semis_parc(mesh: Mesh) -> Array:
+	var liste := []
+	if mesh == null or mesh.get_surface_count() == 0:
+		return liste
+	var a: Array = mesh.surface_get_arrays(0)
+	var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var nm: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	var cu = a[Mesh.ARRAY_CUSTOM0]
+	var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	if cu == null or (cu as PackedFloat32Array).is_empty():
+		return liste
+	var c0: PackedFloat32Array = cu
+	var j := 0
+	for t in range(0, idx.size(), 3):
+		var i0 := idx[t]
+		if c0[i0 * 4 + 2] > -0.5 or nm[i0].y < 0.9:
+			continue
+		var p0 := v[i0]
+		var p1 := v[idx[t + 1]]
+		var p2 := v[idx[t + 2]]
+		var aire := 0.5 * (p1 - p0).cross(p2 - p0).length()
+		var n := int(aire / PARC_M2_PAR_ARBRE + fmod(float(t) * 0.618034, 1.0))
+		for k in n:
+			j += 1
+			var r1 := fmod(float(j) * 0.618034 + 0.31, 1.0)
+			var r2 := fmod(float(j) * 0.381966 + 0.72, 1.0)
+			if r1 + r2 > 1.0:
+				r1 = 1.0 - r1
+				r2 = 1.0 - r2
+			var p := p0 + (p1 - p0) * r1 + (p2 - p0) * r2
+			var w := noue(p.x, p.z)
+			if w > 0.40:
+				continue
+			liste.append([p.x, p.y, p.z, 0.80 + 0.40 * fmod(float(j) * 0.7548, 1.0),
+				float(j) * 1.7, SAULE if w > 0.05 else FEUILLU])
+	return liste
+
+
 static func arbres(liste: Array, essence: int, feuillage: Color,
 		tronc: Color) -> MultiMesh:
 	var pris: Array = []

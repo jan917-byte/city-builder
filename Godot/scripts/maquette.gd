@@ -166,6 +166,7 @@ var places_rue := {}
 var _arbres_semis := []
 var _arbres_slots := []      # [x, y, z, échelle, lacet, fid tronçon, seuil]
 var _arbres_noeuds := {}     # essence -> MultiMeshInstance3D
+var _parcs := {}             # îlot rendu en parc -> ses MultiMeshInstance3D
 var _arbres_compte := -1
 # 🌿 CE QUI POUSSE SUR UNE RIVE RENDUE AU FLEUVE, rangé PAR BERGE : c'est
 # l'état de la berge, et lui seul, qui décide si on le montre. Même semis que
@@ -1796,8 +1797,9 @@ func _montrer_reparations() -> void:
 		for fid in reparations[couche]:
 			var mi: MeshInstance3D = reparations[couche][fid]
 			var fini: bool = ville.reparation_finie(couche, fid, mois)
-			# 🌿 Un parc ne rebâtit rien : les ruines restent jusqu'au rendu du parc (étape 3).
+			# 🌿 Un parc ne rebâtit rien : la ruine devient prairie (shader) et se plante.
 			if couche == "i" and ville.facon_reparation(fid) == "parc":
+				_planter_parc(fid, fini)
 				fini = false
 			# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (auteur, 2026-09-26) : le calque Trafic
 			# peignait le tablier manquant ; il montre la coupure et son pictogramme.
@@ -1813,6 +1815,28 @@ func _montrer_reparations() -> void:
 				continue
 			mi.visible = fini
 			_corps(mi, fini)
+
+
+## 🌿 Les arbres d'un parc inondable livré, semés une fois (`Constructeur.semis_parc`).
+func _planter_parc(fid: int, livre: bool) -> void:
+	if _parcs.has(fid) == livre:
+		return
+	if not livre:   # une partie rechargée
+		for mmi in _parcs[fid]:
+			(mmi as Node).queue_free()
+		_parcs.erase(fid)
+		return
+	var liste := Constructeur.semis_parc((noeuds["i"][fid] as MeshInstance3D).mesh)
+	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
+	var brun := Donnees.teinte(donnees, "_tronc")
+	_parcs[fid] = []
+	for essence in [Constructeur.FEUILLU, Constructeur.SAULE]:
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Parc%d_%d" % [fid, essence]
+		mmi.multimesh = Constructeur.arbres(liste, essence,
+			vert * float(VALEUR_ESSENCE.get(essence, 1.0)), brun)
+		monde.add_child(mmi)
+		(_parcs[fid] as Array).append(mmi)
 
 
 ## 🌳 Un arbre planté sort de terre au rythme de la canopée de sa rue. Le
@@ -2404,9 +2428,14 @@ func _peindre() -> void:
 					# couleur en espace linéaire, et 5,4 m de surélévation en
 					# ressortaient à ~50 — la ville poussait en tours.
 					var dn := ville.etat_dense(fid, mois)
-					mj.set_instance_shader_parameter("densification", Vector4(
-						float(dn["avancement"]), float(dn["pas"]),
-						float(dn["metres"]), 0.0))
+					# 🏗️ La façon de rebâtir (95), une fois livrée : le bâti neuf
+					# en prend l'allure, la ruine s'efface ou devient parc.
+					var rb := Ville.rendu_rebati(ville.facon_reparation(fid)) \
+						if ville.reparation_finie("i", fid, mois) else Vector2.ZERO
+					mj.set_instance_shader_parameter("densification",
+						Vector4(0.0, 1.0, rb.y, rb.x) if mj == reparations["i"].get(fid)
+						else Vector4(float(dn["avancement"]), float(dn["pas"]),
+						float(dn["metres"]), rb.x))
 
 
 
@@ -2651,9 +2680,11 @@ func _maj_contour() -> void:
 	# l'îlot, donc son canal ; il ne lui manquait que le curseur.
 	if couche == "i":
 		var dn := ville.etat_dense(fid, mois)
+		var rb := Ville.rendu_rebati(ville.facon_reparation(fid)) \
+			if ville.reparation_finie("i", fid, mois) else Vector2.ZERO
 		maille_masque.set_instance_shader_parameter("densification", Vector4(
 			float(dn["avancement"]), float(dn["pas"]),
-			float(dn["metres"]), 0.0))
+			float(dn["metres"]), rb.x))
 
 	# LA caméra recopiée : c'est ça, et rien d'autre, qui fait que le trait
 	# épouse la vue.
@@ -2705,7 +2736,8 @@ func _maj_apercu() -> void:
 				_voie_de_berge(fid) if couche == "b" else 0.0)
 	apercu.viser(pivot.lacet)
 	apercu.regler(float(d["equipe"]), float(d["verdi"]), float(d["plate"]),
-		bool(d["futur"]), float(d["berge"]), d["dense"] as Vector4)
+		bool(d["futur"]), float(d["berge"]), d["dense"] as Vector4,
+		d.get("rebati", Vector2.ZERO) as Vector2)
 	if couche == "i":
 		apercu.cultiver(float(d.get("culture", 0.0)))
 	# 🏕️ Les abris que la fiche promet. La signature évite de refaire le

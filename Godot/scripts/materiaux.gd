@@ -16,7 +16,29 @@ extends RefCounted
 const DENSE_DECL := "instance uniform vec4 densification = vec4(0.0, 1.0, 0.0, 0.0);\n" \
 	+ "varying float montee;\n" \
 	+ "varying float plafond;\n" \
-	+ "varying float sol;\n"
+	+ "varying float sol;\n" \
+	+ "varying float rebati;\n" \
+	+ "varying float ruine;\n"
+
+# 🏗️ REBÂTIR UN ÎLOT (95) : `densification.w` = 1 moderne, 2 pilotis, 3 parc,
+# `.z` la hauteur en jeu (l'attique, la levée). 07 marque le bâti neuf d'un
+# rang 1e6, qui ne se densifie donc jamais, et la ruine d'un égout à −1.
+# Moderne : le toit se rabat à plat un étage au-dessus de l'égout, et cet
+# étage se lit comme une `montee` — bardage et grandes baies.
+# Pilotis : tout ce qui sort du sol monte, et le pied passe à la levée.
+const REBATI_VERTEX := "\truine = CUSTOM0.z < -0.5 ? 1.0 : 0.0;\n" \
+	+ "\trebati = CUSTOM0.x > 1.0e5 ? densification.w : 0.0;\n" \
+	+ "\tif (rebati > 0.5 && rebati < 1.5) {\n" \
+	+ "\t\tmontee = densification.z;\n" \
+	+ "\t\tif (CUSTOM0.y > 0.5) {\n" \
+	+ "\t\t\tVERTEX.y = CUSTOM0.z + densification.z;\n" \
+	+ "\t\t\tif (NORMAL.y > 0.3) NORMAL = vec3(0.0, 1.0, 0.0);\n" \
+	+ "\t\t}\n" \
+	+ "\t} else if (rebati > 1.5 && rebati < 2.5) {\n" \
+	+ "\t\tif (VERTEX.y > sol + 0.05) VERTEX.y += densification.z;\n" \
+	+ "\t\tplafond += densification.z;\n" \
+	+ "\t\tsol += densification.z;\n" \
+	+ "\t}\n"
 
 # `montee`, `plafond` et `sol` sont constants sur tout le bâtiment, donc
 # l'interpolation ne les déforme pas — au contraire du déplacement du sommet,
@@ -28,7 +50,8 @@ const DENSE_VERTEX := "\tmontee = densification.z * clamp(\n" \
 	+ "\tsol = CUSTOM0.w;\n" \
 	+ "\tif (montee > 0.0 && CUSTOM0.y > 0.5) {\n" \
 	+ "\t\tVERTEX.y += montee;\n" \
-	+ "\t}\n"
+	+ "\t}\n" \
+	+ REBATI_VERTEX
 
 
 static func surface(rugosite: float = 0.95) -> StandardMaterial3D:
@@ -92,6 +115,18 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// La lame de bardage et le joint debout du zinc, en mètres.\n" \
 		+ "const float LAME_M = 0.22;\n" \
 		+ "const float JOINT_ZINC_M = 0.52;\n" \
+		+ "// 🏗️ REBÂTI (95), LINÉAIRE. Enduit #E6E2D8, toit-terrasse #A9A9A2,\n" \
+		+ "// béton #9C9A93, prairie #6E8B4A / #8FA35C, jonc #56683A, eau #4A6468.\n" \
+		+ "// Un poteau tous les ~4 m, 60 cm de section.\n" \
+		+ "const vec3 ENDUIT_NEUF = vec3(0.791, 0.761, 0.687);\n" \
+		+ "const vec3 TOIT_TERRASSE = vec3(0.397, 0.397, 0.366);\n" \
+		+ "const vec3 BETON = vec3(0.332, 0.323, 0.287);\n" \
+		+ "const vec3 PRAIRIE = vec3(0.155, 0.258, 0.069);\n" \
+		+ "const vec3 PRAIRIE_CLAIRE = vec3(0.275, 0.366, 0.107);\n" \
+		+ "const vec3 JONC = vec3(0.093, 0.138, 0.042);\n" \
+		+ "const vec3 EAU_NOUE = vec3(0.068, 0.128, 0.138);\n" \
+		+ "const float POTEAU_PAS = 4.0;\n" \
+		+ "const float POTEAU_DEMI = 0.30;\n" \
 		+ "// 🧱 LE RANG DE TUILES — 32 cm, la valeur réelle d'une tuile\n" \
 		+ "// mécanique. Une ligne de motif, aucune texture, aucun sommet.\n" \
 		+ "const float RANG_M = 0.32;\n" \
@@ -148,6 +183,12 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\treturn mix(mix(alea_pt(c), alea_pt(c + vec2(1.0, 0.0)), f.x),\n" \
 		+ "\t\tmix(alea_pt(c + vec2(0.0, 1.0)), alea_pt(c + vec2(1.0, 1.0)), f.x), f.y);\n" \
 		+ "}\n" \
+		+ "// 🌿 LA NOUE DU PARC INONDABLE — des sinus et non `bruit` : la maquette\n" \
+		+ "// refait ce calcul pour ne planter aucun arbre dans l'eau\n" \
+		+ "// (`Constructeur.noue`), et un hachage ne se recopie pas au bit.\n" \
+		+ "float noue(vec2 p) {\n" \
+		+ "\treturn sin(p.x * 0.11 + 1.3) * sin(p.y * 0.13 + 0.7) + 0.6 * sin((p.x - p.y) * 0.07 + 2.1);\n" \
+		+ "}\n" \
 		+ "void vertex() {\n" \
 		+ DENSE_VERTEX \
 		+ "\tpos_monde = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n" \
@@ -162,6 +203,28 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tvec3 normale_monde = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);\n" \
 		+ "\tfloat vers_le_ciel = normale_monde.y;\n" \
 		+ "\tfloat rugosite = 0.95;\n" \
+		+ "\t// 🏗️ La ruine s'efface sous ce qui la remplace ; sa dalle reste, sombre\n" \
+		+ "\t// sous les pilotis (claire, le vide ne s'y lisait pas), prairie dans le parc.\n" \
+		+ "\tbool parc = densification.w > 2.5;\n" \
+		+ "\tbool moderne = rebati > 0.5 && rebati < 1.5;\n" \
+		+ "\tif (ruine > 0.5 && densification.w > 0.5) {\n" \
+		+ "\t\tif (vers_le_ciel < 0.9) discard;\n" \
+		+ "\t\tbase = BETON * 0.30 * COLOR.a;\n" \
+		+ "\t}\n" \
+		+ "\t// 🏗️ SOUS LE PLANCHER LEVÉ, des poteaux et du vide, et le nez de\n" \
+		+ "\t// dalle sur 30 cm.\n" \
+		+ "\tif (rebati > 1.5 && rebati < 2.5 && pos_monde.y < sol && abs(normale_monde.y) < 0.30) {\n" \
+		+ "\t\tfloat d;\n" \
+		+ "\t\tif (UV.y > 1.05) {\n" \
+		+ "\t\t\tfloat pas_p = UV.y / max(1.0, floor(UV.y / POTEAU_PAS + 0.5));\n" \
+		+ "\t\t\td = abs(UV.x - floor(UV.x / pas_p + 0.5) * pas_p);\n" \
+		+ "\t\t} else {\n" \
+		+ "\t\t\tvec2 tang_p = normalize(vec2(-normale_monde.z, normale_monde.x));\n" \
+		+ "\t\t\td = abs(fract(dot(pos_monde.xz, tang_p) / POTEAU_PAS + 0.5) - 0.5) * POTEAU_PAS;\n" \
+		+ "\t\t}\n" \
+		+ "\t\tif (d > POTEAU_DEMI && pos_monde.y < sol - 0.30) discard;\n" \
+		+ "\t\tbase = BETON * (pos_monde.y < sol - 0.30 ? 1.0 : 1.25) * COLOR.a;\n" \
+		+ "\t}\n" \
 		+ "\t// Patine large : reste stable à tous les zooms, avant les équipements.\n" \
 		+ "\tfloat patine = bruit(pos_monde.xz * 0.32 + vec2(pos_monde.y * 0.17));\n" \
 		+ "\tbase *= mix(0.94, 1.04, patine);\n" \
@@ -176,6 +239,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// surface se comptent en Y MONDE : au-dessus de l'ancien égout,\n" \
 		+ "\t// ce qu'on voit est ce que la densification a posé.\n" \
 		+ "\tbool neuf = montee > 0.05 && plafond > 0.5 && pos_monde.y > plafond;\n" \
+		+ "\t// 🏗️ Moderne : un enduit clair d'aujourd'hui, l'époque n'y est plus.\n" \
+		+ "\tif (moderne && !neuf && abs(normale_monde.y) < 0.30) base = ENDUIT_NEUF * COLOR.a * mix(0.96, 1.03, patine);\n" \
 		+ "\t// 🧱 Les rangs AVANT les panneaux : un toit équipé est couvert.\n" \
 		+ "\t// La borne 0,995 écarte tout ce qui est PLAT — sol, chaussée,\n" \
 		+ "\t// cours, et les toits-terrasses de 1974, qui ne sont pas en tuile.\n" \
@@ -208,6 +273,11 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tbase *= mix(1.0, mix(1.45, 1.0,\n" \
 		+ "\t\t\t\tsmoothstep(0.05 - aj, 0.05 + aj, dj)), vj);\n" \
 		+ "\t\t}\n" \
+		+ "\t}\n" \
+		+ "\t// 🏗️ Le toit-terrasse du moderne, clair : en zinc il se lisait en trou.\n" \
+		+ "\tif (moderne && vers_le_ciel > 0.5 && pos_monde.y > 1.0) {\n" \
+		+ "\t\tbase = TOIT_TERRASSE * COLOR.a * mix(0.90, 1.06, bruit(pos_monde.xz * 0.9));\n" \
+		+ "\t\trugosite = 0.95;\n" \
 		+ "\t}\n" \
 		+ "\t// 🏭 LE TOIT PLAT A UNE MATIÈRE (2026-09-26) : gravier, et les\n" \
 		+ "\t// verrières de la halle en travers de son axe. UV2.x = −famille.\n" \
@@ -416,7 +486,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tdemi = 0.5 * (pas - 0.80);\n" \
 		+ "\t\t\tbas = 0.45;\n" \
 		+ "\t\t\thaut = 2.45;\n" \
-		+ "\t\t} else if (etage < 0.5 && genre == 2 && travee == floor(alea * n)) {\n" \
+		+ "\t\t} else if (etage < 0.5 && genre == 2 && travee == floor(alea * n) && rebati < 1.5) {\n" \
 		+ "\t\t\t// Une porte par bâtiment : 07 ne marque le genre 2 que sur\n" \
 		+ "\t\t\t// sa plus longue façade sur rue.\n" \
 		+ "\t\t\tporte = true;\n" \
@@ -442,6 +512,10 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\thy = hn - k * ETAGE;\n" \
 		+ "\t\t\t// Une rangée n'apparaît qu'une fois son étage LIVRÉ.\n" \
 		+ "\t\t\ttient = (k * ETAGE + haut > montee) ? 0.0 : 1.0;\n" \
+		+ "\t\t} else if (moderne && !porte && !(etage < 0.5 && genre == 3)) {\n" \
+		+ "\t\t\tdemi = 0.5 * min(1.90, pas * 0.66);\n" \
+		+ "\t\t\tbas = 0.50;\n" \
+		+ "\t\t\thaut = 2.48;\n" \
 		+ "\t\t} else if (montee > 0.05 && plafond > 0.5\n" \
 		+ "\t\t\t\t&& etage * ETAGE + haut > plafond - sol) {\n" \
 		+ "\t\t\t// La dernière rangée d'origine traverserait la couture :\n" \
@@ -493,7 +567,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t// encore quand la fenêtre n'est plus qu'un assombrissement.\n" \
 		+ "\t\tfloat net_g = clamp(1.3 - 0.8 * aa, 0.0, 1.0);\n" \
 		+ "\t\tfloat hb = fract(sin(travee * 12.9898 + etage * 78.233 + alea * 37.719) * 43758.545);\n" \
-		+ "\t\tif (!neuf && (famille == 1.0 || famille == 2.0)) {\n" \
+		+ "\t\tif (!neuf && !moderne && (famille == 1.0 || famille == 2.0)) {\n" \
 		+ "\t\t\t// Le soubassement, et le bandeau entre le rez et les étages.\n" \
 		+ "\t\t\tbase *= mix(1.0, 0.80, smoothstep(0.60, 0.52, h) * net_g);\n" \
 		+ "\t\t\tif (famille == 1.0) {\n" \
@@ -510,10 +584,10 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t\tbase = mix(base, VOLETS[int(fract(alea * 7.13) * 5.0)] * lames * COLOR.a, volet * net_g);\n" \
 		+ "\t\t\t}\n" \
 		+ "\t\t}\n" \
-		+ "\t\tif (!neuf && porte) {\n" \
+		+ "\t\tif (!neuf && !moderne && porte) {\n" \
 		+ "\t\t\tbase = mix(base, VOLETS[int(fract(alea * 3.71) * 5.0)] * 0.9 * COLOR.a, vitre * net_g);\n" \
 		+ "\t\t}\n" \
-		+ "\t\tif (!neuf && famille == 3.0 && genre == 3 && etage < 0.5 && alea > 0.20) {\n" \
+		+ "\t\tif (!neuf && !moderne && famille == 3.0 && genre == 3 && etage < 0.5 && alea > 0.20) {\n" \
 		+ "\t\t\t// Le store au-dessus de la vitrine, et l'ombre qu'il pose dessus.\n" \
 		+ "\t\t\tfloat large = smoothstep(demi + 0.14 + aa, demi + 0.14 - aa, du);\n" \
 		+ "\t\t\tfloat store = large * smoothstep(2.50 - aa, 2.50 + aa, hy) * smoothstep(2.82 + aa, 2.82 - aa, hy);\n" \
@@ -522,7 +596,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tbase *= 1.0 - 0.40 * large * smoothstep(2.05, 2.48, hy) * step(hy, 2.50) * net_g;\n" \
 		+ "\t\t\tbase = mix(base, toile * COLOR.a, store * net_g);\n" \
 		+ "\t\t}\n" \
-		+ "\t\tif (!neuf && famille == 4.0 && genre == 4) {\n" \
+		+ "\t\tif (!neuf && !moderne && famille == 4.0 && genre == 4) {\n" \
 		+ "\t\t\t// Les allèges de couleur de 1970, une travée sur trois, du pied\n" \
 		+ "\t\t\t// au toit (au hasard, elles sortaient en confettis), et le nez\n" \
 		+ "\t\t\t// de dalle à chaque plancher.\n" \
@@ -531,7 +605,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tbase = mix(base, ALLEGES[int(fract(alea * 3.77) * 3.0)] * COLOR.a, allege * step(mod(travee + floor(alea * 3.0), 3.0), 0.5) * net_g);\n" \
 		+ "\t\t\tbase = mix(base, min(base * 1.22 + 0.02, vec3(1.0)), smoothstep(0.0, 0.03, hy) * smoothstep(0.16, 0.12, hy) * net_g);\n" \
 		+ "\t\t}\n" \
-		+ "\t\tif (!neuf && famille == 5.0) {\n" \
+		+ "\t\tif (!neuf && !moderne && famille == 5.0) {\n" \
 		+ "\t\t\t// La halle : bardage nervuré, et une porte de quai sur une travée\n" \
 		+ "\t\t\t// sur trois au rez.\n" \
 		+ "\t\t\tfloat nv = u / 0.28;\n" \
@@ -545,7 +619,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t\tbase = mix(base, QUAIS[int(fract(alea * 2.93) * 3.0)] * plis * COLOR.a, quai * net_g);\n" \
 		+ "\t\t\t}\n" \
 		+ "\t\t}\n" \
-		+ "\t\tif (!neuf && famille == 6.0 && genre <= 2 && etage > 0.5 && hb < 0.55) {\n" \
+		+ "\t\tif (!neuf && (famille == 6.0 || moderne) && genre <= 2 && etage > 0.5 && hb < 0.55) {\n" \
 		+ "\t\t\t// Le balcon : nez de dalle clair, garde-corps vitré.\n" \
 		+ "\t\t\tfloat large = smoothstep(demi + 0.55 + aa, demi + 0.55 - aa, du) * smoothstep(marge - aa, marge + aa, bord);\n" \
 		+ "\t\t\tfloat dalle = large * smoothstep(0.02, 0.05, hy) * smoothstep(0.17, 0.13, hy);\n" \
@@ -561,6 +635,19 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tif (parcelle_agricole > 1.5 && vers_le_ciel > 0.5) base = culture_champ(base, pos_monde.xz, parcelle_agricole, COLOR.a);\n" \
 		+ "\tvec4 depot = boue_hauteur >= 0.0 ? depot_boue_local(pos_monde, boue_hauteur, 0.0) : depot_boue(pos_monde);\n" \
 		+ "\tfloat propre = boue_propre * boue_nettoyage_acces(pos_monde.xz, boue_acces, boue_largeur);\n" \
+		+ "\t// 🌿 LE PARC INONDABLE : là où l'eau est passée, prairie et noues.\n" \
+		+ "\tif (parc && vers_le_ciel > 0.9 && pos_monde.y < 0.6) {\n" \
+		+ "\t\tfloat pre = max(ruine, smoothstep(0.02, 0.25, depot.a));\n" \
+		+ "\t\tfloat g = bruit(pos_monde.xz * 0.35) + 0.4 * bruit(pos_monde.xz * 1.7);\n" \
+		+ "\t\tvec3 herbe = mix(PRAIRIE, PRAIRIE_CLAIRE, clamp(g * 0.6, 0.0, 1.0));\n" \
+		+ "\t\tfloat w = noue(pos_monde.xz);\n" \
+		+ "\t\therbe = mix(herbe, JONC, smoothstep(0.42, 0.58, w) * 0.85);\n" \
+		+ "\t\tfloat eau = smoothstep(0.66, 0.70, w);\n" \
+		+ "\t\therbe = mix(herbe, EAU_NOUE, eau);\n" \
+		+ "\t\tbase = mix(base, herbe * COLOR.a, pre);\n" \
+		+ "\t\trugosite = mix(rugosite, 0.25, eau * pre);\n" \
+		+ "\t\tdepot.a *= 1.0 - pre;\n" \
+		+ "\t}\n" \
 		+ "\tbase = mix(base, depot.rgb * COLOR.a, depot.a * (1.0 - propre));\n" \
 		+ "\tif (etat_berge > 0.5) {\n" \
 		+ "\t\tfloat net_rive = 1.0 - smoothstep(0.25, 1.0, length(fwidth(pos_monde.xz)));\n" \
@@ -663,6 +750,7 @@ static func masque() -> ShaderMaterial:
 		+ DENSE_VERTEX \
 		+ "}\n" \
 		+ "void fragment() {\n" \
+		+ "\tif (ruine > 0.5 && densification.w > 0.5) discard;\n" \
 		+ "\tALBEDO = vec3(1.0);\n" \
 		+ "}\n"
 	var m := ShaderMaterial.new()

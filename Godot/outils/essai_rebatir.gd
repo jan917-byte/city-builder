@@ -88,6 +88,23 @@ func executer() -> void:
 			verifier("2 ans de dotation" in texte, "Le prix se dit en années de dotation")
 		await capture("rebatir_%02d_%s" % [n, f])
 		n += 1
+
+	# --- La ville, livrée, au même cadrage : quatre allures, et la ruine partie.
+	var b0: AABB = (jeu.noeuds["i"][m] as MeshInstance3D).get_aabb()
+	for f in v.RECONSTRUCTIONS_ORDRE:
+		_apres_etude(t0)
+		jeu._sur_commande("i", m, {"reparer": f})
+		actualiser(t0 + v.duree_reparation_mois("i", m, false, f) + 0.1)
+		jeu.selection.sel_fid = -1
+		jeu.interface._fermer_fiche()
+		jeu.pivot.viser(Vector2(b0.get_center().x, b0.get_center().z), 110.0)
+		jeu.pivot.caler(150.0, 32.0)
+		jeu._dernier_peint = -1.0
+		jeu._rafraichir(true)
+		var neuf: MeshInstance3D = jeu.reparations["i"][m]
+		verifier(neuf.visible == (f != "parc") and (f != "parc" or jeu._parcs.has(m)),
+			"%s livré : %s" % [f, "parc planté" if f == "parc" else "bâti neuf visible"])
+		await capture("rebatir_ville_%d_%s" % [v.RECONSTRUCTIONS_ORDRE.find(f) + 1, f])
 	print("REBÂTIR : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame

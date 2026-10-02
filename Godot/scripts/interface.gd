@@ -4081,6 +4081,7 @@ func apercu_demande() -> Dictionary:
 	# ⚠️ Un Vector4, pas une Color : une couleur passerait en espace linéaire.
 	var dense := Vector4(0.0, 1.0, 0.0, 0.0)
 	var culture := 0.0
+	var rebati := Vector2.ZERO
 	if _fiche_fid < 0:
 		return {"couche": _fiche_couche, "fid": _fiche_fid, "equipe": equipe,
 			"verdi": verdi, "plate": plate,
@@ -4136,6 +4137,9 @@ func apercu_demande() -> Dictionary:
 			if _survole(_rebatir_boutons[f]):
 				futur = true
 				facon = f
+		# 🏗️ L'allure promise (95) : moderne, pilotis, ou la ruine rendue en parc.
+		if _fiche_couche == "i" and futur:
+			rebati = Ville.rendu_rebati(facon)
 		if _fiche_couche == "i" and facon == "parc":
 			futur = false
 	# 🌉 Quel pont la miniature promet : le choix posé, sinon le bouton survolé.
@@ -4173,7 +4177,7 @@ func apercu_demande() -> Dictionary:
 		"verdi": verdi, "plate": plate,
 		"futur": futur, "berge": berge, "places": places, "roule": roule,
 		"arbres": arbres, "dense": dense, "camp": camp, "provisoire": provisoire,
-		"culture": culture}
+		"culture": culture, "rebati": rebati}
 
 
 ## ⚠️ Appelé à chaque image : reposer un `theme_color_override` identique fait

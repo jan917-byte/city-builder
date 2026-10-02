@@ -632,3 +632,6 @@ Les dépenses sont rangées par genre de chantier ; ce détail a révélé qu'«
 **2026-10-02 — « Améliorer le campement » est un chantier : une ligne et sa barre dans « Chantiers en cours », la barre en haut de la fiche du camp, un message à la livraison (demande de l'auteur).**
 L'amélioration vaut pour tous les camps ; la liste la range sous le premier camp posé qu'on peut rejoindre.
 `essai_vie_camp` (capture `camp_03b_amelioration_en_cours`), `essai_ouverture`, `essai_etude` : 0 échec.
+**2026-10-02 — Les quatre façons de rebâtir se voient : moderne (toit plat, enduit clair, étage en bois), pilotis (poteaux et vide sous 2,5 m), parc (prairie, noues, saules) ; la ruine s'efface (demande de l'auteur).**
+`07` marque la ruine et le bâti neuf, le shader en tire l'allure : aucun triangle de plus. Planches `wehrau_rebatir_miniatures.png`, `wehrau_rebatir_ville.png`.
+`essai_rebatir`, `essai_ouverture`, `essai_etude` : 0 échec ; `--essai` passe ; `essai_vie_camp` : 1 échec, venu de l'amélioration passée à 3 semaines (autre session).

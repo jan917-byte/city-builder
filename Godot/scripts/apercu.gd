@@ -59,6 +59,9 @@ var _arbres_n := -1
 ## 🏕️ Les abris du champ montré — le camp promis par la fiche, pas celui de la
 ## ville : c'est la seule façon de voir ce qu'on paie avant de le payer.
 var _camp_mmi: MultiMeshInstance3D
+## 🌿 Les arbres du parc inondable promis (95), semés sur la dalle des ruines.
+var _parc_mmi := {}
+var _parc_cle: Mesh
 ## 🌿 Ce qui pousse sur la rive du morceau montré. Deux nœuds, une essence
 ## chacun : un MultiMesh ne répète qu'un seul maillage.
 var _rives := {}
@@ -158,6 +161,12 @@ func batir(mat_objet: Material, palette: Dictionary) -> void:
 	_camp_mmi = MultiMeshInstance3D.new()
 	_camp_mmi.name = "Camp"
 	add_child(_camp_mmi)
+
+	for essence in [Constructeur.FEUILLU, Constructeur.SAULE]:
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Parc%d" % essence
+		add_child(mmi)
+		_parc_mmi[essence] = mmi
 
 	for essence in [Constructeur.ROSEAU, Constructeur.BUISSON]:
 		var mmi := MultiMeshInstance3D.new()
@@ -363,6 +372,8 @@ func eteindre() -> void:
 	if render_target_update_mode == SubViewport.UPDATE_DISABLED:
 		return
 	_camp_mmi.multimesh = null
+	_parc_cle = null
+	_planter_parc()
 	_vider_echantillon()
 	_objet.mesh = null
 	_futur.mesh = null
@@ -387,19 +398,39 @@ func viser(lacet: float) -> void:
 ## vert. `futur` découvre
 ## la géométrie reconstruite, `berge` pousse les trois crans de la rive — et
 ## sur un échantillon il en REFAIT la coupe : le quai recule, la rive s'ouvre.
+## 🏗️ `rebati` = (mode, mètres) de `Ville.rendu_rebati` : le bâti neuf en
+## prend l'allure, la ruine de l'îlot s'efface ou devient parc.
 func regler(equipe: float, verdi: float, plate: float, futur: bool,
-		berge: float, dense := Vector4(0.0, 1.0, 0.0, 0.0)) -> void:
+		berge: float, dense := Vector4(0.0, 1.0, 0.0, 0.0),
+		rebati := Vector2.ZERO) -> void:
 	if _ech_couche == "b" and int(berge) != _ech_etat:
 		_batir_echantillon(int(berge))
 	_futur.visible = futur and _futur.mesh != null
 	_ruine.visible = not futur and _ruine.mesh != null
 	for mi in [_objet, _futur, _ruine]:
-		mi.set_instance_shader_parameter("boue_propre", 1.0 if futur else 0.0)
+		mi.set_instance_shader_parameter("boue_propre",
+			1.0 if futur or rebati.x > 0.5 else 0.0)
 		mi.set_instance_shader_parameter("equipe", equipe)
 		mi.set_instance_shader_parameter("verdi", verdi)
 		mi.set_instance_shader_parameter("part_plate", plate)
 		mi.set_instance_shader_parameter("etat_berge", berge)
 		mi.set_instance_shader_parameter("densification", dense)
+	_objet.set_instance_shader_parameter("densification",
+		Vector4(dense.x, dense.y, dense.z, rebati.x))
+	_futur.set_instance_shader_parameter("densification",
+		Vector4(0.0, 1.0, rebati.y, rebati.x))
+	var cle: Mesh = _objet.mesh if rebati.x > 2.5 and _ech_couche == "" else null
+	if cle != _parc_cle:
+		_parc_cle = cle
+		_planter_parc()
+
+
+func _planter_parc() -> void:
+	var liste := Constructeur.semis_parc(_parc_cle) if _parc_cle != null else []
+	var vert := _teinte("_feuillage").srgb_to_linear()
+	for essence in _parc_mmi:
+		(_parc_mmi[essence] as MultiMeshInstance3D).multimesh = null if liste.is_empty() 			else Constructeur.arbres(liste, essence,
+				vert * (1.14 if essence == Constructeur.SAULE else 1.0), _teinte("_tronc"))
 
 
 ## 🌾 La culture du champ montré, codée comme dans la ville (`ville.parcelle_code`).

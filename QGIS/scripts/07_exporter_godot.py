@@ -197,6 +197,16 @@ GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
 SORTIE = os.path.join(RACINE, "Godot", "data", "wehrau.json")
 
 
+# 🏗️ LE CANAL DE LA RECONSTRUCTION (95) : une ruine porte un égout à −1, que le
+# shader efface sous ce qui la remplace ; le bâti neuf porte le rang REBATI_RANG.
+REBATI_RANG = 1.0e6
+
+
+def _marquer_ruine(m, emp, G):
+    m.sol = G(emp[0][0], emp[0][1], 0.0)[1]
+    m.dense = (0.0, 1.0e9, -1.0)
+
+
 def verifier_colonnes(con, table, cols):
     """Un message clair plutôt qu'un « no such column » de sqlite."""
     presentes = {r[1] for r in con.execute("PRAGMA table_info(%s)" % table)}
@@ -896,9 +906,11 @@ def main():
                         a, b, c, e = compte
                     else:
                         n_neuf += 1
+                        _marquer_ruine(masses, emp, G)
                         a, b, c, e = _ruine(masses, emp, c_mur,
                             PAL.vers_lineaire(PAL.GRAVATS), G,
                             random.Random(gr ^ 0x9C21))
+                        masses.dense = None
                     murs_ok += a
                     murs_tot += b
                     toits_ok += c
@@ -907,19 +919,26 @@ def main():
                           % (role, fid, compte[1], aire_edifice))
                     continue
                 if crue == "ruine":
+                    _marquer_ruine(masses, emp, G)
                     a, b, c, e = _ruine(masses, emp, c_mur,
                                         PAL.vers_lineaire(PAL.GRAVATS), G,
                                         random.Random(gr ^ 0x9C21))
+                    masses.dense = None
                     # 🔧 ET LE MÊME BÂTIMENT NEUF, dans un maillage à part que
                     # Godot garde CACHÉ jusqu'à ce que la décision tombe. C'est
                     # tout ce que « reconstruire » demande à la 3D : la maquette
                     # bâtit sa géométrie une fois, elle ne sait pas en fabriquer
                     # en cours de partie.
                     n_neuf += 1
+                    # 🏗️ Rang 1e6 : le bâti neuf ne se densifie jamais, et le
+                    # shader le reconnaît pour le rebâtir moderne ou sur pilotis (95).
+                    seuil = G(emp[0][0], emp[0][1], niv * ETAGE_M - 0.5)[1]
+                    repare.dense = (REBATI_RANG, seuil, seuil + 0.5)
                     _masse(repare, emp, d, PAL.vers_lineaire(mur_neuf), G, niv,
                            pente_v, faite, PAL.vers_lineaire(toit_neuf),
                            genres, alea, rangs_verts.get(k_vol, 1.0),
                            FAMILLE_FACADE.get(st, 0))
+                    repare.dense = None
                 else:
                     # 🏢 Tout ce que le bâtiment émet à partir d'ici porte son
                     # rang de montée : murs, toit, acrotère, souches.
