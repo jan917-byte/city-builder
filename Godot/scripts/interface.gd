@@ -978,6 +978,8 @@ const DESSINS := {
 	"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
 	"chantiers": "<rect x='2' y='6' width='20' height='8' rx='1'/><path d='M17 14v7M7 14v7M17 3v3M7 3v3M10 14L2.3 6.3M14 6l7.7 7.7M8 6l8 8'/>",
 	"energie": "<path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/>",
+	# 🌾 Lucide « wheat » : ce que les champs nourrissent (sans dessin, l'onglet Campagne prenait le diagnostic).
+	"nourriture": "<path d='M2 22L16 8'/><path d='M3.47 12.53L5 11l1.53 1.53a3.5 3.5 0 010 4.94L5 19l-1.53-1.53a3.5 3.5 0 010-4.94z'/><path d='M7.47 8.53L9 7l1.53 1.53a3.5 3.5 0 010 4.94L9 15l-1.53-1.53a3.5 3.5 0 010-4.94z'/><path d='M11.47 4.53L13 3l1.53 1.53a3.5 3.5 0 010 4.94L13 11l-1.53-1.53a3.5 3.5 0 010-4.94z'/><path d='M20 2h2v2a4 4 0 01-4 4h-2V6a4 4 0 014-4z'/><path d='M11.47 17.47L13 19l-1.53 1.53a3.5 3.5 0 01-4.94 0L5 19l1.53-1.53a3.5 3.5 0 014.94 0z'/><path d='M15.47 13.47L17 15l-1.53 1.53a3.5 3.5 0 01-4.94 0L9 15l1.53-1.53a3.5 3.5 0 014.94 0z'/><path d='M19.47 9.47L21 11l-1.53 1.53a3.5 3.5 0 01-4.94 0L13 11l1.53-1.53a3.5 3.5 0 014.94 0z'/>",
 	# 🌉 Deux moignons de tablier cassés net au-dessus de l'eau : le pont emporté.
 	"pont_casse": "<path fill='@' stroke-width='1' d='M0 6h10l-1.8 2.2 1.8 2.3H0zM24 6H14l1.8 2.2-1.8 2.3H24zM10.6 13.2l2.6.6-.6 2.6-2.6-.6z'/><path d='M4 10.5v5.5M20 10.5v5.5M1 20c1.8-1.3 3.7-1.3 5.5 0s3.7 1.3 5.5 0 3.7-1.3 5.5 0 3.7 1.3 5.5 0'/>",
 	"pont": "<path d='M2 9h20M5 9v10M19 9v10M5 16c3-5 11-5 14 0'/>",

@@ -245,7 +245,10 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	if r["cout_ke"] > 0.0:
 		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "", ui.ALERTE)
 	if "relogement" in r["faits"]:
-		message += " · −%s nourris" % ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
+		var nourris: String = ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
+		message += " · −%s nourris" % nourris
+		# 🌾 La récolte perdue monte sur le champ (auteur, 2026-10-02).
+		ui.bulles.sur_lieu(couche, fid, "−%s" % nourris, "nourriture", ui.ALERTE)
 	elif duree >= ACCELERER_MOIS:
 		message += " · ×12 ≈ %d s" % int(ceil(duree * 5.0))
 	notifier(message, mois)

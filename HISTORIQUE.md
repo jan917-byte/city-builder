@@ -623,3 +623,6 @@ Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, 
 **2026-10-02 — La plainte du camp tombe pendant le chantier du pont (un mois après son lancement), et ses trois demandes deviennent un seul bouton « Améliorer le campement » (demande de l'auteur, après une partie où le provisoire était livré avant la plainte).**
 130 k€, 1 mois, +6 de confiance, l'usure tombe de 2,6 à 0 par mois ; la carte mène à « Voir le campement ».
 `essai_vie_camp` (plainte au mois 1,25, pont livré à 3,25), `essai_ouverture`, `essai_progression`, `essai_etude`, `essai_relogement` : 0 échec.
+**2026-10-02 — Mettre en place un camp fait monter sa récolte perdue sur le champ : « −X » et un épi, comme les chiffres de confiance (demande de l'auteur).**
+L'épi est le dessin Lucide « wheat », qui manquait : l'onglet Campagne et la ligne « nourriture » montraient jusqu'ici des barres.
+`essai_vie_camp` (nouvelle capture `camp_00_recolte` : −8 et −6) : 0 échec.

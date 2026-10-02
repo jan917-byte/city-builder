@@ -24,7 +24,17 @@ func executer() -> void:
 	jeu._sur_commande("i", champs[0], {"camp": true})
 	verifier(ui.bulles._bulles.any(func(b): return b.get("cible") == ui._barre_valeurs["caisse"]),
 		"La dépense descend sous la caisse")
+	verifier(ui.bulles._bulles.any(func(b): return b.has("lieu")),
+		"La récolte perdue monte sur le champ dès la mise en place")
 	jeu._sur_commande("i", champs[1], {"camp": true})
+	for b in ui.bulles._bulles:
+		b["age"] = 0.9 + float(b["age"])
+	ui.bulles._process(0.0)
+	await capture("camp_00_recolte")
+	# Un quart de mois à ×1 dure 15 s : ces bulles sont parties avant la livraison.
+	for b in ui.bulles._bulles:
+		b["age"] = ui.bulles.DUREE
+	ui.bulles._process(0.0)
 	actualiser(0.25)
 	var abrite: float = v.capital(0.25)
 	verifier(abrite > depart + 10.0, "Un toit rend de la confiance : %.1f → %.1f" % [depart, abrite])
