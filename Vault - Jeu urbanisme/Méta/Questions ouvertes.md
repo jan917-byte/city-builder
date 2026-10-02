@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-30
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température), n°44 (les champs dans les moyennes), n°45 (huit arbitrages à consigner) et n°46 (ce qui tombe au bout des 6 à 8 ans) — n°37 à n°43 closes le 2026-09-30 — n°11 et n°25 closes le 2026-09-02
+maj: 2026-10-02
 ---
 
 # Questions ouvertes
@@ -426,6 +426,48 @@ Proposé : A, un seuil seul ; B, un seuil qui monte à chaque règle signée ; C
 
 ### 43. La confiance rendue par des places retirées : fixe, ou selon la rue ? — ✅ fermée le 2026-09-30
 Proposé : un retour fixe (toujours plus que le coût), ou un retour qui dépend de ce que la rue est devenue — remplie de piétons, ou son trafic reporté ailleurs. L'auteur retient **selon la rue**. → [[Décisions arrêtées]] 99
+
+### 44. Les champs comptent-ils dans les moyennes de la ville ? — ouverte le 2026-10-02
+La décision 63 est appliquée dans le classeur (`08_jouer.py`) : canopée et sol imperméable pondérés par la **surface**, fragilité riveraine par les **logements**. Effet de bord : les champs font **57 %** de la surface hors rivière, donc ils dictent la moyenne.
+
+| Au mois 0 | Simple, par îlot | Par la surface, champs compris | Par la surface, sans les champs |
+|---|---|---|---|
+| Canopée | 0,20 | **0,14** | 0,26 |
+| Sol imperméable | 0,60 | **0,28** | 0,63 |
+
+**Options** : A · les champs comptent, la règle telle quelle (Wehrau paraît déjà verte et perméable, il reste peu à gagner) ; B · « la ville », c'est le bâti et les rues, les champs ont leur propre barre (Agriculture, 91) ⭐. **Recommandation : B** — sinon un hectare de pré pèse autant qu'un hectare de parking, et la transformation de la ville ne se voit plus sur la barre. La maquette n'a plus ces moyennes (66) : seul le classeur est touché. → [[Décisions arrêtées]] 63 · [[Indicateurs globaux]]
+
+### 45. Huit arbitrages pris mais jamais consignés : les écrire tels quels ? — ouverte le 2026-10-02
+Tous ont été dits par l'auteur et tournent dans la maquette, mais aucun n'a de numéro ici ni dans [[Décisions arrêtées]]. Il ne s'agit pas de les rejouer : seulement de dire **oui, tel quel**, ou de corriger une ligne.
+
+| | Ce qui a été dit | Quand | Proposé : consigner comme |
+|---|---|---|---|
+| a | La couleur d'un bâtiment suit **son époque**, plus sa typologie | 2026-08-18, photo aérienne | décision ; et [[Direction artistique]] se corrige : elle dit encore « un `sous_type` = une teinte » |
+| b | Le calque **tissu** rend la typologie, à la demande | 2026-08-18 | dans la même décision que a — c'en est la contrepartie |
+| c | **Zéro asset** : tout le rendu sort des données et des matériaux | 2026-08-18 | décision |
+| d | Le détail va jusqu'au sol et aux arbres ; les fenêtres viennent **du matériau**, sans un triangle | 2026-08-18 (fenêtres le soir même) | décision |
+| e | **Deux vues** : la ville vivante, et le diagnostic en maquette blanche où seul le thème choisi est en couleur | 2026-08-25 | décision, à relire avec les six thèmes (91) |
+| f | Le **verrou de l'urgence** est retiré : réparer et équiper se disputent la même caisse | 2026-08-31 | révise **72** ; l'ordre de l'ouverture (abriter, puis un pont) tient toujours, seul le préalable « tout réparé » tombe |
+| g | Un **toit vert** abaisse la prochaine crue dans **toute la ville** ; seul le plat verdit | 2026-08-31 | sœur de **74** ; ferme le volet sol de la n°24 pour les toits |
+| h | Un toit est **solaire ou vert, jamais les deux** — au grain du bâtiment | 2026-08-31 | décision |
+
+L'ouverture de l'étape 4 et la pause de la 2 (même jour que a) vivent dans `Prototype/00 - Prototype.md` : rien à consigner. **Recommandation : tout consigner tel quel**, a+b en une décision, soit sept numéros (101 à 107).
+
+### 46. Que se passe-t-il au bout des 6 à 8 ans ? — ouverte le 2026-10-02
+L'étude (100) annonce une crue plus forte, et **rien ne tombe**. Or [[Happenings]] veut l'inverse : *ne jamais supprimer l'aléa, changer son issue*, et dire au joueur ce que la prévention a sauvé.
+
+| | Ce qui arrive | Ce que ça vaut |
+|---|---|---|
+| **A · La crue tombe, date tirée dans la fourchette** | tirée en secret entre l'an 6 et l'an 8 après l'étude, la fourchette se resserre au fil des années ; l'eau monte à la prévision du moment | une échéance qui avance sans être un compte à rebours exact ; le joueur ne peut pas tout finir la veille |
+| **B · La crue tombe à date fixe, connue** | « en 2033 » | lisible, mais tout se joue au dernier mois |
+| **C · Une répétition d'abord** | vers l'an 2, une montée sans ruine qui montre ce que les travaux retiennent déjà | rend la prévention visible **avant** l'examen (Timberborn) ; un événement de plus à construire |
+| **D · Rien ne tombe dans le prototype** | l'étude reste une prévision ; la crue attend la suite | honnête pour l'étape 6, dont le critère s'arrête à « vouloir choisir la suite » |
+
+Après la crue, quelle que soit l'option : **un bilan** — « sans vos travaux : N logements perdus ; avec : M » — puis le jeu continue (la crue est l'horizon du premier chapitre, pas de la partie).
+
+🔴 **Condition avant de la faire tomber** : avec les chiffres de l'étude, l'eau monte à **5,58 m** au pire et la berge 3 + le toit vert de l'îlot 31 n'en retirent que **37 cm**. Si la crue tombait aujourd'hui, ce qu'on a fait ne changerait presque rien à l'écran — c'est le cynisme que le ton interdit. Les prix et les effets des leviers (question 23, les nombres de `ville.gd`) se règlent **d'abord**.
+
+**Recommandation : D pour le prototype, puis A + C** une fois les leviers réglés : la date tirée et resserrée, et une répétition qui montre que ça marche. → [[Décisions arrêtées]] 100 · [[Premiers pas après la crue]] · [[2026-09-30_brainstorm_prochaine-crue-ville-eponge]]
 
 ## 🟢 Peut attendre (réversible)
 

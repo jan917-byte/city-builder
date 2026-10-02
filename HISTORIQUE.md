@@ -605,3 +605,6 @@ Seuls la rue 122 et ses bandes changent dans `wehrau.json` (ponts, contrôles in
 **2026-09-30 — Quai des Sureaux, suite : la rue recule sur l'îlot 31 au lieu de mordre l'Ilse (auteur : « grignote sur les îlots plutôt que sur l'Ilse »).**
 Cause dans `04b` : la rive redessinée n'a pas les sommets de l'îlot 31, donc sa seule arête au bord de l'eau (155 m) reculait de la demi-largeur ; elle est maintenant sondée (`eau_en_face`) et recule de toute la largeur, et `07` colle la rue aux façades comme les 19 autres.
 Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, aucun logement perdu (friche) ; planche `wehrau_sureaux_avant_apres.png`. Essai : même règle sur tous les quais (2 m de trottoir + 3,5 m de bande) = −47 logements, non appliquée.
+**2026-10-02 — Les moyennes du classeur sont pondérées (63), et trois questions s'ouvrent pour trancher à distance (44, 45, 46).**
+`08_jouer.py` : canopée et sol par la surface, riverain par les logements ; le contrôle du mois 0 se comparait au fichier qu'il venait d'écrire, il lit l'ancien d'abord — et échoue, `ilots.csv` étant plus ancien que la carte.
+Mois 0 : canopée 0,20 → 0,14, sol imperméable 0,60 → 0,28 (champs = 57 % de la surface, n°44) ; n°45 liste huit arbitrages de rendu à consigner, n°46 ce qui tombe au bout de l'étude.

@@ -104,7 +104,7 @@ Dangers a deux onglets : **Dégâts** (ce que l'eau a pris) et **Prochaine crue*
 | Berge 3 + toit vert de l'îlot 31, livrés | 5,58 → **5,21 m** |
 | Leviers affichés | berge jusqu'à **−52 cm** dans son bief · toit vert −25 cm/ha (1,8 ha plats) · pré −0,5 cm/ha |
 
-🟠 Le terrain reste un profil de calcul, sans relief (auteur, 2026-09-30 : « gardons plat pour le proto ») ; la crue annoncée n'est pas bornée par le contour tracé à l'est, d'où une partie du 9 → 19. 🔴 Rien ne tombe au bout des 6 à 8 ans. 🔴 Seul le bâti est compté (94 veut tous les thèmes). 🔴 Texte de l'étude provisoire, flaggable (90).
+🟠 Le terrain reste un profil de calcul, sans relief (auteur, 2026-09-30 : « gardons plat pour le proto ») ; la crue annoncée n'est pas bornée par le contour tracé à l'est, d'où une partie du 9 → 19. 🔴 Rien ne tombe au bout des 6 à 8 ans (options : question n°46). 🔴 Seul le bâti est compté (94 veut tous les thèmes). 🔴 Texte de l'étude provisoire, flaggable (90).
 Contrôle : `essai_etude.gd -- --ouverture --captures` → `wehrau_ouverture_etude_01_guide.png` à `..._06_levier_pre.png`. Défaut à signaler : onglet visible avant le pont, carte qui ne change pas quand une berge est livrée, guide qui saute l'université.
 
 ## Ce qui attend le joueur

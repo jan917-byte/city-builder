@@ -513,15 +513,15 @@ class Partie(object):
             EI, ER = self.etat("i", t), self.etat("r", t)
             bati = [o for o in EI.values() if o["fonction"] != "riviere"]
             log = sum(o["logements"] for o in bati)
-            habites = [o for o in bati if o["logements"] > 0]
             g = [o for o in bati if o["rive"] == "gauche"]
             avl = [o for o in bati if (o.get("position_fil_eau") or 0) > 0.5]
-            moy = lambda s, ch: (sum(o.get(ch) or 0 for o in s) / len(s)) if s else 0.0
-            # ⚠️ Moyennes SIMPLES par îlot, `riverain` sur les seuls habités :
-            # les définitions qui reproduisent le mois 0 de partie.csv. Elles
-            # traitent un champ de 50 ha comme un parc de 0,4 ha — choix
-            # délibéré, que le contrôle de fin de script garde conscient.
-            pond = lambda ch: moy(bati, ch)
+            # Décision 63 : un taux se pondère par ce dont il est le taux —
+            # le sol par la surface, les gens par les logements (population
+            # = logements × 2,1, constante) ; un îlot inhabité pèse zéro.
+            def pond(ch, poids):
+                tot = sum(o.get(poids) or 0 for o in bati)
+                return (sum((o.get(ch) or 0) * (o.get(poids) or 0) for o in bati)
+                        / tot) if tot else 0.0
             r = {
                 "mois": t, "annee": ANNEE_0 + t // 12,
                 "evenement": evts.get(t, ""),
@@ -531,12 +531,12 @@ class Partie(object):
                 "capital": round(cap, 1),
                 "logements": int(round(log)),
                 "logements_a_reloger": int(round(self.ville["logements_a_reloger"][t])),
-                "canopee_moy": round(pond("canopee"), 3),
-                "impermeabilise_moy": round(pond("impermeabilise"), 3),
+                "canopee_moy": round(pond("canopee", "surface_m2"), 3),
+                "impermeabilise_moy": round(pond("impermeabilise", "surface_m2"), 3),
                 "charge_max": round(max(o.get("charge") or 0 for o in ER.values()), 3),
                 "stationnement": int(round(sum(o.get("stationnement") or 0
                                                for o in ER.values()))),
-                "riverain_moy": round(moy(habites, "riverain"), 3),
+                "riverain_moy": round(pond("riverain", "logements"), 3),
                 "note": "",
                 # Le seuil de dégradation nommé par effets.csv. `charge_max`
                 # sature à 1 et ne dit plus rien ; le NOMBRE de tronçons
@@ -967,15 +967,13 @@ def construire_html(geo_i, geo_r, base_i, base_r, parties, ref):
 
 # ------------------------------------------------------------------- contrôle
 
-def controle_mois_zero(lignes):
+def controle_mois_zero(lignes, ref):
     """Le mois 0 calculé doit retrouver la ligne déjà écrite dans partie.csv.
 
     C'est le seul contrôle qui vaille : si l'état de départ ne se reproduit
     pas, tout ce qui suit est du bruit."""
-    chemin = os.path.join(CLASSEUR, "partie.csv")
-    if not os.path.exists(chemin):
+    if ref is None:
         return
-    ref = lire_csv("partie.csv")[0]
     print("\nCONTRÔLE — le mois 0 doit retrouver partie.csv")
     ok = True
     for c in ("logements", "canopee_moy", "impermeabilise_moy", "charge_max",
@@ -1014,6 +1012,10 @@ def main():
           % (sum(len(v) for v in r2i.values()) / float(max(1, len(r2i)))))
     print("  %.1f tronçons voisins par tronçon" %
           (sum(len(v) for v in rvois.values()) / float(max(1, len(rvois)))))
+
+    # Lue AVANT d'écrire : relue après, la référence se comparait à elle-même.
+    ref0 = (lire_csv("partie.csv")[0]
+            if os.path.exists(os.path.join(CLASSEUR, "partie.csv")) else None)
 
     fichiers = []
     if toutes or partiel:
@@ -1055,7 +1057,7 @@ def main():
     vide = Partie("sans décision", base_i, base_r, adj, r2i, i2r, rvois,
                   decisions, effets)
     lref, sref = vide.lignes()
-    controle_mois_zero(lref)
+    controle_mois_zero(lref, ref0)
 
     os.makedirs(os.path.dirname(SORTIE_HTML), exist_ok=True)
     page = construire_html(geo_i, geo_r, base_i, base_r, faites, sref)
