@@ -3,6 +3,8 @@ extends SceneTree
 const Maquette := preload("res://scripts/maquette.gd")
 var jeu
 var echecs := 0
+## 🚿 La plainte du camp a son essai (`essai_vie_camp`) : ailleurs, sa carte bloquerait les clics.
+var plainte_testee := false
 
 
 func _initialize() -> void:
@@ -21,6 +23,8 @@ func actualiser(mois: float) -> void:
 	jeu.trafic.avancer(mois)
 	jeu._rafraichir(true)
 	jeu.ouverture.actualiser(true)
+	if not plainte_testee and jeu.ouverture.carte == "camp":
+		jeu.ouverture._sur_carte(false)
 
 
 func cliquer(b: Button) -> void:
@@ -607,7 +611,7 @@ func essayer_ponts(lointain: int) -> void:
 	jeu.selection.sel_couche = "r"
 	jeu.selection.sel_fid = pont
 	await capture("14_annonce_etude")
-	await cliquer(o.annonce_pont)
+	await cliquer(o.annonce_second)
 	await capture("14_pont_rouvert")
 	verifier(o.pont_termine and o.etape == "etude" and not o.annonce.visible, "Le pont ouvre l'étude de l'université")
 	jeu._sur_sauvegarde()

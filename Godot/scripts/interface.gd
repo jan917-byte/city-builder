@@ -350,6 +350,8 @@ var _repare_bloc: VBoxContainer
 var _camp_bloc: VBoxContainer
 var _camp_texte: Label
 var _camp_bouton: Button
+var _demandes_bloc: VBoxContainer
+var _demande_boutons := {}
 ## 🌾 Ce que porte le champ : un bouton par culture (auteur, 2026-09-29).
 var _culture_bloc: VBoxContainer
 var _culture_texte: Label
@@ -908,6 +910,9 @@ func _calculer_dispo() -> Dictionary:
 	# 🌉 Puis un seul : la crue, sur un pont coupé ou une rue qui y mène.
 	var verrou := _verrou()
 	var garde: String = {"reloger": "campagne", "pont": "crue"}.get(verrou, "")
+	# 🚿 Le camp habité garde ses demandes pendant le chantier du pont.
+	if verrou == "pont" and _fiche_couche == "i" and ville.camp_pose(fid):
+		garde = "campagne"
 	var permis := verrou == "" or _autorise(_fiche_couche, fid)
 	for id in d.keys():
 		if not d[id] or not permis or (garde != "" and id != garde):
@@ -2069,6 +2074,19 @@ func _panneau_ilot() -> void:
 	_camp_bouton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_decision(_camp_bouton, "camp", true)
 	_camp_bloc.add_child(_camp_bouton)
+	# 🚿 Les demandes du camp (auteur, 2026-10-02). 🔴 Texte flaggable (90).
+	_demandes_bloc = VBoxContainer.new()
+	_demandes_bloc.add_theme_constant_override("separation", 6)
+	_camp_bloc.add_child(_demandes_bloc)
+	var demandes_titre := _label("Ce que demandent les habitants", 12, TEXTE)
+	demandes_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_demandes_bloc.add_child(demandes_titre)
+	for d in Ville.DEMANDES_ORDRE:
+		var b := Button.new()
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_decision(b, "demande_" + d, true)
+		_demandes_bloc.add_child(b)
+		_demande_boutons[d] = b
 
 	# 🌾 CE QUE PORTE LE CHAMP. Exclusifs, comme la berge : un seul usage visé
 	# (77c). Reposer le même l'enlève.
@@ -3048,10 +3066,24 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_ville_valeurs["caisse"].text = _millions(_caisse_ke)
 	_ville_valeurs["recette"].text = "+" + _milliers(indic["recette_ke_an"]) + " k€/an"
 	_capital = ville.capital(mois)
-	_ville_valeurs["capital"].text = _nb(_capital, 0)
+	# 🚿 La baisse se voit (auteur, 2026-10-02) : le rythme à côté du nombre, en rouge.
+	var usure := ville.usure_camp_mois(mois)
+	var baisse := usure >= 0.05
+	_ville_valeurs["capital"].text = _nb(_capital, 0) \
+		+ (" · −%s/mois" % _nb(usure, 1) if baisse else "")
+	if _barre_valeurs.has("capital"):
+		var l: Label = _barre_valeurs["capital"]
+		if baisse != l.has_theme_color_override("font_color"):
+			if baisse:
+				l.add_theme_color_override("font_color", ALERTE)
+			else:
+				l.remove_theme_color_override("font_color")
+		l.get_parent().tooltip_text = ("Confiance · le camp en use %s par mois ; ses demandes satisfaites la freinent."
+			% _nb(usure, 1)) if baisse else "Confiance"
 	_maj_durabilite(indic)
 	_temps_label.text = "Mois %s" % _nb(mois, 1)
-	_barre.visible = _menu_panneau.visible and not _bilan_differe()
+	# 🚿 Dès le premier camp, la confiance se lit en haut (auteur, 2026-10-02).
+	_barre.visible = _menu_panneau.visible and (not _bilan_differe() or not ville._camps.is_empty())
 	if _barre.visible:
 		for cle in _barre_valeurs:
 			(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
@@ -4280,6 +4312,9 @@ func _maj_camp() -> void:
 		return
 	_bloc_dispo[_camp_bloc] = true
 	var fid := _fiche_fid
+	_demandes_bloc.visible = ville.camp_livre(fid, _mois) and ville.camp_accessible(fid, _mois)
+	if _demandes_bloc.visible:
+		_maj_demandes()
 	if ville.camp_pose(fid):
 		var occupants: float = ville.camp_occupants(fid, _mois)
 		if not ville.camp_livre(fid, _mois):
@@ -4320,6 +4355,23 @@ func _maj_camp() -> void:
 	_camp_texte.text = phrase
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
+
+
+func _maj_demandes() -> void:
+	for d in Ville.DEMANDES_ORDRE:
+		var b: Button = _demande_boutons[d]
+		var info: Dictionary = Ville.DEMANDES[d]
+		if ville.demande_livree(d, _mois):
+			b.text = str(info["fait"])
+			b.disabled = true
+			_marquer(b, false)
+		elif ville.demande_engagee(d):
+			b.text = "%s · en cours" % info["nom"]
+			b.disabled = true
+			_marquer(b, false)
+		else:
+			_posee(b, "demande_" + d, "%s · %s k€" % [info["nom"], _milliers(float(info["ke"]))])
+			b.disabled = false
 
 
 ## 🌾 LE BLOC DES CULTURES. Fermé pendant l'urgence (comme le solaire) et sous

@@ -67,6 +67,8 @@ var _co2_depart_kt := 0.0
 ## 🏕️ Champ -> {debut, places, cout_ke}. Un camp posé ne se démonte pas : ce
 ## qu'on en fait au bout de vingt ans reste une question ouverte.
 var _camps := {}
+## 🚿 Demande du camp -> mois de la commande. Elles valent pour tous les camps.
+var _demandes := {}
 ## Le morceau de réseau du faubourg sinistré, mesuré au chargement.
 var _morceau_sinistres := -1
 ## 🌳 Les tronçons du verger, relevés au chargement : `part_boue` les nomme.
@@ -281,10 +283,10 @@ func objets(couche: String) -> Dictionary:
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
-	"_cultures"]
+	"_cultures", "_demandes"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
-const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures"]
+const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -325,6 +327,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
+		"_demandes": [DEMANDES, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0]}
 	for champ in formes:
 		if not etat.has(champ):
@@ -753,6 +756,7 @@ func reinitialiser() -> void:
 	_plantation.clear()
 	_berge.clear()
 	_camps.clear()
+	_demandes.clear()
 	_cultures.clear()
 	_crue_champs_mois = INF
 	_depense_ke = 0.0
@@ -1336,6 +1340,89 @@ func camp_occupants(fid: int, t: float) -> float:
 	return 0.0
 
 
+# ============================ 🚿 LA VIE AU CAMP (auteur, 2026-10-02) ========
+# Un toit rend de la confiance à la livraison, puis le camp l'use chaque mois
+# tant qu'on y vit ; chaque demande satisfaite retire un tiers de l'usure.
+# 🎚️ LEVEL DESIGN, tout ce bloc : 260 au camp = +10 puis −2,6 par mois.
+const CAPITAL_PAR_PERSONNE_ABRITEE := 0.04
+const CAMP_USURE_PERSONNE_MOIS := 0.01
+const CAPITAL_PAR_DEMANDE := 2.0
+# 🔴 Noms affichés, flaggables (90).
+const DEMANDES := {
+	"sanitaires": {"nom": "Sanitaires", "fait": "Sanitaires installés", "ke": 30.0, "mois": 1.0},
+	"cantine": {"nom": "Cantine", "fait": "Cantine ouverte", "ke": 40.0, "mois": 1.0},
+	"classe": {"nom": "Classe", "fait": "Classe ouverte", "ke": 60.0, "mois": 1.0},
+}
+const DEMANDES_ORDRE := ["sanitaires", "cantine", "classe"]
+
+var _usure_cle := ""
+var _usure_marches := []   # [début, confiance perdue par mois], triés
+
+
+func demande_engagee(cle: String) -> bool:
+	return _demandes.has(cle)
+
+
+func demande_livree(cle: String, t: float) -> bool:
+	return _demandes.has(cle) and t >= _fin_demande(cle)
+
+
+func _fin_demande(cle: String) -> float:
+	return float(_demandes[cle]) + _delai(float(DEMANDES[cle]["mois"]))
+
+
+func cout_demande_ke(cle: String) -> float:
+	return 0.0 if _demandes.has(cle) else float(DEMANDES[cle]["ke"])
+
+
+func equiper_camp(cle: String, t: float) -> bool:
+	if not DEMANDES.has(cle) or _demandes.has(cle) or _camps.is_empty():
+		return false
+	if cout_demande_ke(cle) > caisse_ke(t) + 0.001:
+		return false
+	_demandes[cle] = t
+	_depense_ke += cout_demande_ke(cle)
+	return true
+
+
+## La confiance que le camp use ce mois-ci, positive.
+func usure_camp_mois(t: float) -> float:
+	var faites := 0
+	for cle in _demandes:
+		if demande_livree(cle, t):
+			faites += 1
+	return reloges(t) * CAMP_USURE_PERSONNE_MOIS * (1.0 - float(faites) / DEMANDES.size())
+
+
+## ∫ `usure_camp_mois` de 0 à `t`, exacte : même marches que `aide_cumulee_ke`,
+## plus les demandes livrées.
+func usure_camp_cumulee(t: float) -> float:
+	var cle := "%d/%d/%d/%d/%s" % [_repare.hash(), _provisoire.hash(), _camps.hash(),
+		_demandes.hash(), livraison_immediate]
+	if cle != _usure_cle:
+		_usure_cle = cle
+		var dates := [0.0]
+		for c in _repare:
+			var m: PackedStringArray = str(c).split(":")
+			dates.append(float(_repare[c]) + duree_reparation_mois(m[0], int(m[1])))
+		for fid in _camps:
+			dates.append(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS))
+		for d in _demandes:
+			dates.append(_fin_demande(d))
+		dates.sort()
+		_usure_marches = []
+		for d in dates:
+			_usure_marches.append([d, usure_camp_mois(d)])
+	var k := 0.0
+	for i in _usure_marches.size():
+		var debut: float = _usure_marches[i][0]
+		if debut >= t:
+			break
+		var fin: float = minf(t, float(_usure_marches[i + 1][0])) if i + 1 < _usure_marches.size() else t
+		k += float(_usure_marches[i][1]) * (fin - debut)
+	return k
+
+
 # ======================================== 🌾 CE QUE LES CHAMPS NOURRISSENT
 #
 # Poser des logements sur un champ est toujours possible ; ce bloc est ce que
@@ -1707,7 +1794,7 @@ var _capital_mvts := []   # [{mois, montant, quoi, couche, fid}], triés
 
 
 func capital(t: float) -> float:
-	var k := CAPITAL_DEPART
+	var k := CAPITAL_DEPART - usure_camp_cumulee(t)
 	for m in capital_mouvements():
 		if float(m["mois"]) > t:
 			break
@@ -1719,7 +1806,7 @@ func capital(t: float) -> float:
 ## que le compteur ne bouge jamais sans qu'une phrase dise pourquoi (☐ de Ressources).
 ## 🔗 Le pont compte à sa livraison, accès ou non : le noyau ne voit pas le réseau.
 func capital_mouvements() -> Array:
-	var cle := "%d/%d/%d/%d/%s" % [_repare.hash(), _camps.hash(),
+	var cle := "%d/%d/%d/%d/%d/%s" % [_repare.hash(), _camps.hash(), _demandes.hash(),
 		_stationnement_supprime.hash(), _rampes_version, livraison_immediate]
 	if cle == _capital_cle:
 		return _capital_mvts
@@ -1736,6 +1823,17 @@ func capital_mouvements() -> Array:
 		elif couche == "r" and fid in _ponts:
 			_capital_mvts.append({"mois": fin, "quoi": "pont", "couche": "r", "fid": fid,
 				"montant": CAPITAL_PONT_ROUVERT})
+	# 🚿 Un toit pour la nuit : ce que la livraison d'un camp ajoute aux abrités.
+	for fid in _camps:
+		var livre := float(_camps[fid]["debut"]) + _delai(CAMP_MOIS)
+		# Ses occupants à la livraison : deux camps livrés le même jour ne comptent pas deux fois.
+		var gain := camp_occupants(int(fid), livre) * CAPITAL_PAR_PERSONNE_ABRITEE
+		if gain >= 0.05:
+			_capital_mvts.append({"mois": livre, "quoi": "camp", "couche": "i", "fid": int(fid),
+				"montant": gain})
+	for d in _demandes:
+		_capital_mvts.append({"mois": _fin_demande(d), "quoi": "demande", "couche": d, "fid": -1,
+			"montant": CAPITAL_PAR_DEMANDE})
 	var abrites := _mois_tous_abrites()
 	if abrites >= 0.0:
 		_capital_mvts.append({"mois": abrites, "quoi": "abrites", "couche": "", "fid": -1,
@@ -2077,6 +2175,9 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 			float(r["dense"]["part"]), int(r["dense"]["etages"]))
 	if r.has("camp"):
 		ke += cout_camp_ke(fid, t)
+	for d in DEMANDES_ORDRE:
+		if r.has("demande_" + d):
+			ke += cout_demande_ke(d)
 	if r.has("culture"):
 		ke += cout_culture_ke(fid, int(r["culture"]))
 	if r.has("reparer"):
@@ -2109,6 +2210,9 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			- BERGE_MOIS[berge_etat(fid, t)]))
 	if r.has("camp"):
 		m = maxf(m, _delai(CAMP_MOIS))
+	for d in DEMANDES_ORDRE:
+		if r.has("demande_" + d) and not _demandes.has(d):
+			m = maxf(m, _delai(float(DEMANDES[d]["mois"])))
 	if r.has("culture"):
 		m = maxf(m, _delai(CULTURES[int(r["culture"])]["mois"]))
 	if r.has("reparer"):
@@ -2155,6 +2259,9 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("berge")
 	if r.has("camp") and abriter(fid, t):
 		faits.append("relogement")
+	for d in DEMANDES_ORDRE:
+		if r.has("demande_" + d) and equiper_camp(d, t):
+			faits.append(str(DEMANDES[d]["nom"]).to_lower())
 	if r.has("culture") and cultiver(fid, int(r["culture"]), t):
 		faits.append("culture")
 	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire"):

@@ -104,6 +104,11 @@ func executer() -> void:
 			verifier(jeu.interface._fiche_panneau.get_global_rect().end.y < retours.pile.get_global_rect().position.y,
 				"La fiche ne recouvre jamais le compteur ni les chantiers")
 	# Les dépenses récurrentes disent leur rythme, sans simuler un débit immédiat.
+	# 🎓 La carte du pont rouvert mène à l'étude, et les sujets attendent sa carte.
+	if jeu.ouverture.carte == "pont":
+		await cliquer(jeu.ouverture.annonce_principal)
+	verifier(jeu.ouverture.pont_termine and not jeu.ouverture.annonce.visible, "La carte du pont rouvert se ferme au clic")
+	jeu.interface.choisir_vue_crue("prochaine")
 	jeu.interface.ouvrir_lieu("universite")
 	await cliquer(jeu.interface._lieu_lignes["sedum"]["bouton"])
 	verifier(jeu.ville.recherche_engagee("sedum") and "k€/mois" in retours.journal[-1], "Le financement de recherche annonce son coût mensuel")

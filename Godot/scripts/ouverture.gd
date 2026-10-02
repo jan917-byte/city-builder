@@ -46,12 +46,18 @@ var _regards := {}
 var _champ_vu := false
 ## 🧹 L'annonce du chemin dégagé : -1 après une reprise, 0 à dire, 1 dite.
 var _degage_annonce := 0
-## 🎓 La carte du pont rouvert, au centre (auteur, 2026-10-02) : elle remplace
-## « Choisir la suite » du guide et mène à l'étude.
+## 🎓 Les cartes au centre (auteur, 2026-10-02) : « pont » remplace « Choisir la
+## suite » et mène à l'étude ; « camp » dit que le camp use la confiance.
 var annonce: Control
-var annonce_lire: Button
-var annonce_pont: Button
+var annonce_principal: Button
+var annonce_second: Button
+var carte := ""
+var _annonce_titre: Label
 var _annonce_texte: Label
+## 🚿 La plainte du camp : 0 à venir, 1 affichée, 2 passée.
+var plainte := 0
+## 🎚️ LEVEL DESIGN : la confiance que le camp a usée quand ses habitants se plaignent.
+const PLAINTE_USURE := 5.0
 
 
 func batir(maquette) -> void:
@@ -129,28 +135,64 @@ func _batir_annonce(ui) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	boite.add_child(v)
-	var titre: Label = ui._label("Les deux rives sont reliées", 22, ui.TEXTE)
-	titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(titre)
-	# 🔴 Texte de prototype, flaggable (90).
+	_annonce_titre = ui._label("", 22, ui.TEXTE)
+	_annonce_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_annonce_titre)
 	_annonce_texte = ui._label("", 14, ui.TEXTE)
 	_annonce_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_annonce_texte)
-	annonce_lire = Button.new()
-	annonce_lire.text = "Lire l'étude"
-	ui._habiller_principal(annonce_lire)
-	annonce_lire.pressed.connect(func() -> void:
-		publier_etude()
-		jeu.interface.ouvrir_lieu("universite"))
-	v.add_child(annonce_lire)
-	annonce_pont = Button.new()
-	annonce_pont.text = "Voir d'abord le pont"
-	annonce_pont.pressed.connect(func() -> void:
+	annonce_principal = Button.new()
+	ui._habiller_principal(annonce_principal)
+	annonce_principal.pressed.connect(_sur_carte.bind(true))
+	v.add_child(annonce_principal)
+	annonce_second = Button.new()
+	annonce_second.pressed.connect(_sur_carte.bind(false))
+	v.add_child(annonce_second)
+	ui._sans_focus(annonce)
+
+
+## 🔴 Textes de prototype, flaggables (90).
+func _remplir_carte() -> void:
+	match carte:
+		"pont":
+			_annonce_titre.text = "Les deux rives sont reliées"
+			_annonce_texte.text = "%s est rouvert.\nL'université vient de publier son étude sur la prochaine crue de l'Ilse." \
+				% _nom("r", premier["fid"])
+			annonce_principal.text = "Lire l'étude"
+			annonce_second.text = "Voir d'abord le pont"
+		"camp":
+			_annonce_titre.text = "Les habitants du camp sont mécontents"
+			_annonce_texte.text = "Ils ont un toit, pas de quoi vivre. Tant qu'ils restent au camp, la confiance baisse chaque mois.\nPlus tard, c'est elle qui ouvrira les règles de la mairie."
+			annonce_principal.text = "Voir leurs demandes"
+			annonce_second.text = "Plus tard"
+
+
+func _sur_carte(principal: bool) -> void:
+	if carte == "pont":
 		var fid := int(premier["fid"])
 		publier_etude()
-		examiner("r", fid))
-	v.add_child(annonce_pont)
-	ui._sans_focus(annonce)
+		if principal:
+			jeu.interface.ouvrir_lieu("universite")
+		else:
+			examiner("r", fid)
+		return
+	plainte = 2
+	if principal:
+		examiner("i", camp_le_plus_plein())
+	else:
+		actualiser(true)
+
+
+## Le camp où vivent le plus de gens : c'est lui que la plainte ouvre.
+func camp_le_plus_plein() -> int:
+	var meilleur := -1
+	var plus := -1.0
+	for fid in jeu.ville._camps:
+		var n: float = jeu.ville.camp_occupants(int(fid), jeu.mois)
+		if n > plus:
+			plus = n
+			meilleur = int(fid)
+	return meilleur
 
 
 ## 🌉 Pendant la phase du pont, ce panneau remplace celui du calque Trafic :
@@ -235,6 +277,8 @@ func autorise(couche: String, fid: int) -> bool:
 			return true
 		"reloger":
 			return couche == "i" and jeu.ville.camp_possible(fid)
+	if couche == "i" and jeu.ville.camp_pose(fid):
+		return true
 	if couche == "i":
 		return acces_degage() and jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0
 	if couche != "r":
@@ -501,9 +545,18 @@ func actualiser(force := false) -> void:
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
 		visible = true
-	annonce.visible = etape == "pont_livre"
-	if annonce.visible:
-		visible = false
+	# 🚿 Le pont passe d'abord : la plainte attend qu'il soit quitté.
+	if plainte == 0 and etape != "pont_livre" \
+			and jeu.ville.usure_camp_cumulee(jeu.mois) >= PLAINTE_USURE:
+		plainte = 1
+		jeu._sur_vitesse(0.0)
+		jeu.interface._detail_ouvert = false
+		jeu.interface._placer_detail()
+	carte = "pont" if etape == "pont_livre" else ("camp" if plainte == 1 else "")
+	annonce.visible = carte != ""
+	_remplir_carte()
+	# Recalculé : la carte a pu se fermer pendant cet appel.
+	visible = ouvert and not jeu.interface._detail_ouvert and not annonce.visible
 	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
 	_caisse.text = "Caisse : " + jeu.interface._millions(jeu.ville.caisse_ke(jeu.mois))
 	_progression.visible = etape in ["travaux", "pont_travaux"]
@@ -570,8 +623,6 @@ func actualiser(force := false) -> void:
 			_bouton("Voir mon pont", examiner.bind("r", premier["fid"]))
 		"pont_livre":
 			_poser_reperes([])
-			_annonce_texte.text = "%s est rouvert.\nL'université vient de publier son étude sur la prochaine crue de l'Ilse." \
-				% _nom("r", premier["fid"])
 		"etude":
 			# 🎓 La menace après la première victoire, jamais pendant l'urgence.
 			_poser_reperes([])
@@ -682,7 +733,7 @@ func exporter() -> Dictionary:
 	return {"suite": suite, "termine": termine, "ouvert": ouvert,
 		"trafic_vu": trafic_vu, "pont_termine": pont_termine,
 		"pont_termine_mois": pont_termine_mois,
-		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue}
+		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte}
 
 
 func reprendre(etat: Dictionary) -> void:
@@ -697,6 +748,7 @@ func reprendre(etat: Dictionary) -> void:
 	# Une partie d'avant l'étude l'a déjà dépassée : on ne la rejoue pas.
 	etude_lue = bool(etat.get("etude_lue", pont_termine))
 	prochaine_vue = bool(etat.get("prochaine_vue", pont_termine))
+	plainte = int(etat.get("plainte", 2 if pont_termine else 0))
 	_degage_annonce = -1
 	etape = ""
 	_signature = ""

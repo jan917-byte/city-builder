@@ -614,3 +614,6 @@ Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, 
 **2026-10-02 — Le pont rouvert s'annonce par une carte au centre de l'écran, qui mène à l'étude ; l'université ne montre que l'étude tant que sa carte n'a pas été ouverte (retour de partie de l'auteur).**
 `ouverture._batir_annonce` remplace « Choisir la suite » du guide ; `interface._maj_lieu` cache intro et sujets de recherche jusqu'à `prochaine_vue`.
 `essai_ouverture` et `essai_etude` 0 échec, capture `wehrau_ouverture_14_annonce_etude.png`. Piste « revendications du camp » pendant le chantier du pont : proposée, en attente.
+**2026-10-02 — La vie au camp : un camp livré rend de la confiance, puis l'use chaque mois ; à 5 usés, ses habitants se plaignent au centre de l'écran et demandent sanitaires, cantine, classe (demande de l'auteur).**
+`ville.gd` intègre l'usure comme l'aide aux sans-abri (marches exactes) ; compteur du haut visible dès le premier camp ; `ouverture.gd` généralise la carte du centre (pont, camp).
+`essai_vie_camp` (nouveau), `essai_ouverture`, `essai_etude`, `essai_progression`, `essai_relogement` 0 échec ; `essai_sauvegarde` garde ses 92 échecs de lieux sans nom, d'avant.

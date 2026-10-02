@@ -345,6 +345,10 @@ func _dire_capital(mois: float) -> void:
 				pourquoi = "%s rouvert" % ui.lieux.nom("r", int(m["fid"]))
 			"abrites":
 				pourquoi = "plus personne ne dort dehors"
+			"camp":
+				pourquoi = "%s : un toit pour la nuit" % ui.lieux.nom("i", int(m["fid"]), "Champ")
+			"demande":
+				pourquoi = "Camp : %s" % str(ui.ville.DEMANDES[str(m["couche"])]["fait"]).to_lower()
 			"places_retour":
 				var rue: String = ui.lieux.nom("r", int(m["fid"]))
 				if float(m["report_part"]) >= 0.5:
