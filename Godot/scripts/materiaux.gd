@@ -25,19 +25,17 @@ const DENSE_DECL := "instance uniform vec4 densification = vec4(0.0, 1.0, 0.0, 0
 # rang 1e6, qui ne se densifie donc jamais, et la ruine d'un égout à −1.
 # Moderne : le toit se rabat à plat un étage au-dessus de l'égout, et cet
 # étage se lit comme une `montee` — bardage et grandes baies.
-# Pilotis : tout ce qui sort du sol monte, et le pied passe à la levée.
+# Pilotis (auteur, 2026-10-02) : le même moderne, rez évidé sur poteaux ; son
+# attique rend l'étage pris par le vide, d'où autant de logements qu'avant.
 const REBATI_VERTEX := "\truine = CUSTOM0.z < -0.5 ? 1.0 : 0.0;\n" \
 	+ "\trebati = CUSTOM0.x > 1.0e5 ? densification.w : 0.0;\n" \
-	+ "\tif (rebati > 0.5 && rebati < 1.5) {\n" \
+	+ "\tif (rebati > 0.5 && rebati < 2.5) {\n" \
 	+ "\t\tmontee = densification.z;\n" \
 	+ "\t\tif (CUSTOM0.y > 0.5) {\n" \
 	+ "\t\t\tVERTEX.y = CUSTOM0.z + densification.z;\n" \
 	+ "\t\t\tif (NORMAL.y > 0.3) NORMAL = vec3(0.0, 1.0, 0.0);\n" \
 	+ "\t\t}\n" \
-	+ "\t} else if (rebati > 1.5 && rebati < 2.5) {\n" \
-	+ "\t\tif (VERTEX.y > sol + 0.05) VERTEX.y += densification.z;\n" \
-	+ "\t\tplafond += densification.z;\n" \
-	+ "\t\tsol += densification.z;\n" \
+	+ "\t\tif (rebati > 1.5) sol += densification.z;\n" \
 	+ "\t}\n"
 
 # `montee`, `plafond` et `sol` sont constants sur tout le bâtiment, donc
@@ -206,7 +204,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// 🏗️ La ruine s'efface sous ce qui la remplace ; sa dalle reste, sombre\n" \
 		+ "\t// sous les pilotis (claire, le vide ne s'y lisait pas), prairie dans le parc.\n" \
 		+ "\tbool parc = densification.w > 2.5;\n" \
-		+ "\tbool moderne = rebati > 0.5 && rebati < 1.5;\n" \
+		+ "\tbool moderne = rebati > 0.5 && rebati < 2.5;\n" \
 		+ "\tif (ruine > 0.5 && densification.w > 0.5) {\n" \
 		+ "\t\tif (vers_le_ciel < 0.9) discard;\n" \
 		+ "\t\tbase = BETON * 0.30 * COLOR.a;\n" \
@@ -240,7 +238,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// ce qu'on voit est ce que la densification a posé.\n" \
 		+ "\tbool neuf = montee > 0.05 && plafond > 0.5 && pos_monde.y > plafond;\n" \
 		+ "\t// 🏗️ Moderne : un enduit clair d'aujourd'hui, l'époque n'y est plus.\n" \
-		+ "\tif (moderne && !neuf && abs(normale_monde.y) < 0.30) base = ENDUIT_NEUF * COLOR.a * mix(0.96, 1.03, patine);\n" \
+		+ "\tif (moderne && !neuf && pos_monde.y >= sol && abs(normale_monde.y) < 0.30) base = ENDUIT_NEUF * COLOR.a * mix(0.96, 1.03, patine);\n" \
 		+ "\t// 🧱 Les rangs AVANT les panneaux : un toit équipé est couvert.\n" \
 		+ "\t// La borne 0,995 écarte tout ce qui est PLAT — sol, chaussée,\n" \
 		+ "\t// cours, et les toits-terrasses de 1974, qui ne sont pas en tuile.\n" \
