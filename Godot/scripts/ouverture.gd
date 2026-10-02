@@ -18,9 +18,9 @@ var termine := false
 var ouvert := true
 var trafic_vu := false
 var pont_termine := false
-## Le mois de « Choisir la suite » : une rue engagée avant appartient au pont.
+## Le mois où l'on quitte la carte du pont rouvert : une rue engagée avant appartient au pont.
 var pont_termine_mois := 0.0
-## 🎓 L'étude de l'université paraît au « Choisir la suite » du pont (auteur,
+## 🎓 L'étude de l'université paraît en quittant cette carte (auteur,
 ## 2026-09-30) : on l'a lue, puis on a ouvert Dangers › Prochaine crue.
 var etude_lue := false
 var prochaine_vue := false
@@ -46,6 +46,12 @@ var _regards := {}
 var _champ_vu := false
 ## 🧹 L'annonce du chemin dégagé : -1 après une reprise, 0 à dire, 1 dite.
 var _degage_annonce := 0
+## 🎓 La carte du pont rouvert, au centre (auteur, 2026-10-02) : elle remplace
+## « Choisir la suite » du guide et mène à l'étude.
+var annonce: Control
+var annonce_lire: Button
+var annonce_pont: Button
+var _annonce_texte: Label
 
 
 func batir(maquette) -> void:
@@ -90,10 +96,61 @@ func batir(maquette) -> void:
 	_actions.add_theme_constant_override("separation", 8)
 	_corps.add_child(_actions)
 	ui._sans_focus(self)
+	_batir_annonce(ui)
 	_reperes = Node3D.new()
 	_reperes.name = "PremiersLieux"
 	jeu.monde.add_child(_reperes)
 	actualiser(true)
+
+
+## Modale : le temps est en pause et rien d'autre ne se clique tant qu'on n'a pas choisi.
+func _batir_annonce(ui) -> void:
+	annonce = Control.new()
+	annonce.name = "AnnonceEtude"
+	annonce.theme = ui._theme_ui
+	annonce.mouse_filter = Control.MOUSE_FILTER_STOP
+	annonce.visible = false
+	jeu.interface.add_child(annonce)
+	# ⚠️ Ancres ET marges, comme le récit : sinon le rectangle reste nul.
+	annonce.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var voile := ColorRect.new()
+	voile.color = Color(0, 0, 0, 0.25)
+	voile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	annonce.add_child(voile)
+	voile.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var centre := CenterContainer.new()
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	annonce.add_child(centre)
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var boite := PanelContainer.new()
+	ui._poser_boite(boite)
+	boite.custom_minimum_size.x = 440
+	centre.add_child(boite)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	boite.add_child(v)
+	var titre: Label = ui._label("Les deux rives sont reliées", 22, ui.TEXTE)
+	titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(titre)
+	# 🔴 Texte de prototype, flaggable (90).
+	_annonce_texte = ui._label("", 14, ui.TEXTE)
+	_annonce_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_annonce_texte)
+	annonce_lire = Button.new()
+	annonce_lire.text = "Lire l'étude"
+	ui._habiller_principal(annonce_lire)
+	annonce_lire.pressed.connect(func() -> void:
+		publier_etude()
+		jeu.interface.ouvrir_lieu("universite"))
+	v.add_child(annonce_lire)
+	annonce_pont = Button.new()
+	annonce_pont.text = "Voir d'abord le pont"
+	annonce_pont.pressed.connect(func() -> void:
+		var fid := int(premier["fid"])
+		publier_etude()
+		examiner("r", fid))
+	v.add_child(annonce_pont)
+	ui._sans_focus(annonce)
 
 
 ## 🌉 Pendant la phase du pont, ce panneau remplace celui du calque Trafic :
@@ -384,7 +441,7 @@ func _choisir_pont(fid: int) -> void:
 
 
 func actualiser(force := false) -> void:
-	visible = ouvert and not jeu.interface._detail_ouvert
+	visible = ouvert and not jeu.interface._detail_ouvert and not annonce.visible
 	if _reperes != null:
 		_reperes.visible = visible and jeu.theme in ["", "trafic"] and not suite and not termine
 		# Même règle que les pastilles : taille constante à l'écran.
@@ -437,13 +494,16 @@ func actualiser(force := false) -> void:
 		jeu.interface.retours.notifier("Chemin du pont dégagé : les logements abîmés peuvent se relever.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
-	if (etape == "livraison" and ancienne == "travaux" or
-			etape == "pont_livre" and ancienne != "pont_livre" or
-			etape == "pont_acces" and ancienne == "pont_travaux") and ouvert:
+	var rouvert := etape == "pont_livre" and ancienne != "pont_livre"
+	if (etape == "livraison" and ancienne == "travaux" or rouvert or
+			etape == "pont_acces" and ancienne == "pont_travaux") and (ouvert or rouvert):
 		jeu._sur_vitesse(0.0)
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
 		visible = true
+	annonce.visible = etape == "pont_livre"
+	if annonce.visible:
+		visible = false
 	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
 	_caisse.text = "Caisse : " + jeu.interface._millions(jeu.ville.caisse_ke(jeu.mois))
 	_progression.visible = etape in ["travaux", "pont_travaux"]
@@ -509,14 +569,9 @@ func actualiser(force := false) -> void:
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 			_bouton("Voir mon pont", examiner.bind("r", premier["fid"]))
 		"pont_livre":
-			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
-			_titre.text = "Les deux rives sont reliées"
-			_texte.text = "%s est rouvert." % _nom("r", premier["fid"])
-			_bouton("Voir le pont rouvert", func() -> void:
-				jeu._sur_theme("")
-				examiner("r", premier["fid"]))
-			_bouton("Observer le trafic", func() -> void: jeu._sur_theme("trafic"))
-			_bouton("Choisir la suite", publier_etude)
+			_poser_reperes([])
+			_annonce_texte.text = "%s est rouvert.\nL'université vient de publier son étude sur la prochaine crue de l'Ilse." \
+				% _nom("r", premier["fid"])
 		"etude":
 			# 🎓 La menace après la première victoire, jamais pendant l'urgence.
 			_poser_reperes([])

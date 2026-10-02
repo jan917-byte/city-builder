@@ -611,3 +611,6 @@ Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, 
 **2026-10-02 — Le verre de la boîte « Chantiers en cours » flottait ~40 px au-dessus d'elle : texte du chantier posé sur la carte nue, cadre vide en haut (capture de l'auteur).**
 `interface._vitrer` : le verre n'est plus en coordonnées d'écran, il suit son panneau et se replace après chaque tri du conteneur ; il restait figé quand la pile bas-droite grandissait.
 `essai_ouverture` 0 échec, avant / après sur `wehrau_ouverture_12b_chemin_degage.png`.
+**2026-10-02 — Le pont rouvert s'annonce par une carte au centre de l'écran, qui mène à l'étude ; l'université ne montre que l'étude tant que sa carte n'a pas été ouverte (retour de partie de l'auteur).**
+`ouverture._batir_annonce` remplace « Choisir la suite » du guide ; `interface._maj_lieu` cache intro et sujets de recherche jusqu'à `prochaine_vue`.
+`essai_ouverture` et `essai_etude` 0 échec, capture `wehrau_ouverture_14_annonce_etude.png`. Piste « revendications du camp » pendant le chantier du pont : proposée, en attente.

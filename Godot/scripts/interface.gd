@@ -467,7 +467,8 @@ func _habiller_vitre() -> void:
 	# 🔴 LEVEL DESIGN : sous 0,70 le texte se perd sur les toits rouges (2026-09-20).
 	VERRE_TEINTE = Color(0.965, 0.968, 0.962, 0.74)
 	Jauge.ARRONDI = 0
-	Jauge.RESTE = Color8(205, 208, 204)
+	# 🔄 205,208,204 se perdait sur le verre (auteur, 2026-10-02) : la barre n'était qu'un bout orange.
+	Jauge.RESTE = Color8(168, 173, 170)
 	Pictos.PALE = Color8(205, 208, 204)
 	FOND = Color8(244, 245, 243)
 	FOND_FORT = Color8(226, 229, 226)
@@ -1419,7 +1420,7 @@ func _placer_detail() -> void:
 	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
 	_calque_panneau.visible = _detail_ouvert and (genre == "calque" or genre == "tissu")
 	if ouverture != null:
-		ouverture.visible = ouverture.ouvert and not _detail_ouvert
+		ouverture.visible = ouverture.ouvert and not _detail_ouvert and not ouverture.annonce.visible
 
 
 ## Les données générales attendent la fin de la découverte du premier pont.
@@ -2613,6 +2614,10 @@ func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
 	var universite := _lieu_ouvert == "universite"
+	# 🎓 L'étude seule tant que sa carte n'a pas été ouverte (auteur, 2026-10-02).
+	var etude_seule: bool = universite and ouverture != null and ouverture.pont_termine \
+		and not ouverture.prochaine_vue
+	_lieu_intro.visible = not etude_seule
 	_etude_bloc.visible = universite and etude_publiee()
 	if _etude_bloc.visible:
 		var p := ville.prochaine_crue(_mois)
@@ -2627,7 +2632,7 @@ func _maj_lieu() -> void:
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
-		bloc.visible = (String(l["genre"]) == "recherche") == universite
+		bloc.visible = (String(l["genre"]) == "recherche") == universite and not etude_seule
 		if not bloc.visible:
 			continue
 		if universite:

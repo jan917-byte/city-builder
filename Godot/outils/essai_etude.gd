@@ -36,6 +36,8 @@ func executer() -> void:
 		"L'étude compare les deux crues : %s" % ui._etude_texte.text)
 	verifier(o.etape == "prochaine" and o._actions.get_child_count() == 0,
 		"Le guide montre le chemin sans bouton")
+	verifier(not ui._lieu_intro.visible and not ui._lieu_lignes[jeu.Recherche.ORDRE[0]]["bloc"].visible,
+		"L'université ne montre que l'étude tant que sa carte n'est pas ouverte")
 	await capture("etude_02_universite")
 	ui._fermer_lieu()
 	ui._sur_rail("dangers")
@@ -50,6 +52,9 @@ func executer() -> void:
 	var bleu: Color = jeu.noeuds["i"][o.MAISONS].get_instance_shader_parameter("calque")
 	verifier(bleu.a > 0.5 and bleu.b > bleu.r, "Les Forgerons sont peints en bleu")
 	await capture("etude_04_prochaine")
+	ui.ouvrir_lieu("universite")
+	verifier(ui._lieu_lignes[jeu.Recherche.ORDRE[0]]["bloc"].visible, "La carte vue, les sujets de recherche reviennent")
+	ui._fermer_lieu()
 	verifier(o.etape == "choix" and "5,1 m d'eau" in o._texte.text,
 		"Après la carte, les Forgerons se choisissent en connaissant l'eau : %s" % o._texte.text)
 	var avant := float(p["logements_perdus"])
