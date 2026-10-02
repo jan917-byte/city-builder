@@ -597,10 +597,10 @@ func _boite() -> StyleBoxFlat:
 	return sb
 
 
-## 🔷 Le fond flouté d'un panneau. ⚠️ DEUX PIÈGES DÉJÀ PAYÉS : `top_level` est
-## ce qui empêche le conteneur de le ranger avec le contenu, mais il le fait
-## aussi passer AU-DESSUS de tout — d'où le `z_index` négatif, qui le remet
-## sous le panneau et son contenu.
+## 🔷 Le fond flouté d'un panneau. ⚠️ PIÈGES DÉJÀ PAYÉS : le conteneur range le
+## verre avec le contenu, donc on le replace APRÈS son tri (`sort_children`) ; et
+## pas de `top_level` : en coordonnées d'écran, il restait en place quand la pile
+## bas-droite bougeait (chantiers, 2026-10-02). Le `z_index` négatif le met sous le panneau.
 func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 	if not VERRE:
 		return
@@ -610,7 +610,6 @@ func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 	var fond := ColorRect.new()
 	fond.name = "Verre"
 	fond.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fond.set_as_top_level(true)
 	fond.z_index = -1
 	var mat := ShaderMaterial.new()
 	mat.shader = Verre
@@ -623,7 +622,6 @@ func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 	if BOIS:
 		ombre = Panel.new()
 		ombre.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ombre.set_as_top_level(true)
 		ombre.z_index = -2
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
@@ -635,13 +633,15 @@ func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 		p.add_child(ombre)
 		p.move_child(ombre, 0)
 	var suivre := func() -> void:
-		fond.global_position = p.global_position
+		fond.position = Vector2.ZERO
 		fond.size = p.size
 		mat.set_shader_parameter("taille", fond.size)
 		if ombre != null:
-			ombre.global_position = p.global_position
+			ombre.position = Vector2.ZERO
 			ombre.size = p.size
 	p.item_rect_changed.connect(suivre)
+	if p is Container:
+		(p as Container).sort_children.connect(suivre)
 	suivre.call()
 
 

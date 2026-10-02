@@ -608,3 +608,6 @@ Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, 
 **2026-10-02 — L'interface passe en habillage « vitre » : verre neutre à angles droits, argent et confiance seuls en haut, temps compact en haut à droite (auteur, après les critiques Reddit « trop IA, trop rempli »).**
 `interface.gd` : `_habiller()` choisit vitre / bois / verre, `_r()` met les arrondis à zéro, le temps se range au-dessus de la fiche (`_haut_fiche`) ; les jetons, la caisse en double et l'aide caméra quittent l'écran.
 `--interface` et `essai_ouverture` (0 échec) rendus ici en Vulkan logiciel ; avant / après numéroté envoyé à l'auteur. Verre à 0,74 d'opacité, à juger sur les toits orange.
+**2026-10-02 — Le verre de la boîte « Chantiers en cours » flottait ~40 px au-dessus d'elle : texte du chantier posé sur la carte nue, cadre vide en haut (capture de l'auteur).**
+`interface._vitrer` : le verre n'est plus en coordonnées d'écran, il suit son panneau et se replace après chaque tri du conteneur ; il restait figé quand la pile bas-droite grandissait.
+`essai_ouverture` 0 échec, avant / après sur `wehrau_ouverture_12b_chemin_degage.png`.
