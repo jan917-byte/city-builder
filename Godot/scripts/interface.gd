@@ -3228,7 +3228,7 @@ func _maj_fiche() -> void:
 		_message.text = "Rien à engager ici avant d'avoir abrité les sinistrés." \
 			if verrou == "reloger" else "Rien à engager ici avant d'avoir rouvert un pont et ses accès."
 		if verrou == "pont" and _fiche_couche == "i" and ville.base("i", _fiche_fid, "cout_reparation_ke") > 0.0:
-			_message.text = "Relevable une fois un pont lancé et son chemin déblayé."
+			_message.text = "Relevable une fois un pont rouvert."
 	elif _message_urgence:
 		_message.text = ""
 	_message_urgence = muet

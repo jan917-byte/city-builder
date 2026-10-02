@@ -513,8 +513,8 @@ func essayer_ponts(lointain: int) -> void:
 	verifier("boue" in o._texte.text and not o.autorise("i", o.MAISONS),
 		"Pendant le chantier, le guide dit que la boue bloque et les logements attendent")
 	await capture("12_pont_travaux")
-	# Le chemin déblayé pendant le chantier ouvre les îlots sinistrés ; puis on
-	# revient à la sauvegarde pour jouer l'oubli du déblaiement.
+	# Le chemin déblayé ne rouvre pas les îlots sinistrés : ils attendent l'étude
+	# (auteur, 2026-10-02). Puis on revient à la sauvegarde pour jouer l'oubli du déblaiement.
 	jeu._sur_sauvegarde()
 	var pendant := debut + 0.5
 	actualiser(pendant)
@@ -524,8 +524,8 @@ func essayer_ponts(lointain: int) -> void:
 		"Une rue se déblaie en deux jours")
 	actualiser(pendant + 2.0 / 30.0)
 	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in o._texte.text
-		and o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
-		"Le chemin déblayé pendant le chantier ouvre la reconstruction des îlots")
+		and not o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
+		"Le chemin déblayé pendant le chantier laisse les îlots sinistrés fermés")
 	await capture("12b_chemin_degage")
 	# 🧹 Toute rue boueuse se déblaie pendant le chantier, sur le chemin ou non (auteur, 2026-09-26).
 	var boueuse := -1
@@ -545,7 +545,8 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(not jeu.interface._recap_bouton.disabled, "Le déblaiement choisi, « Mettre en place » s'allume")
 	jeu.interface._vider_pose()
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(jeu.interface._repare_bloc.visible, "La fiche d'un îlot sinistré propose de le relever")
+	verifier(not jeu.interface._repare_bloc.visible and "pont rouvert" in jeu.interface._message.text,
+		"Pendant le chantier du pont, la fiche d'un îlot sinistré ne propose rien")
 	jeu._sur_reprise()
 	actualiser(fin - 0.01)
 	verifier(o.etape == "pont_travaux" and not o.acces_degage(), "La reprise rend la boue")
@@ -614,6 +615,7 @@ func essayer_ponts(lointain: int) -> void:
 	await cliquer(o.annonce_second)
 	await capture("14_pont_rouvert")
 	verifier(o.pont_termine and o.etape == "etude" and not o.annonce.visible, "Le pont ouvre l'étude de l'université")
+	verifier(o.autorise("i", o.MAISONS), "L'étude parue, les îlots sinistrés se relèvent")
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()

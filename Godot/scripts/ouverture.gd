@@ -267,19 +267,18 @@ func verrou() -> String:
 
 
 ## Ce que le verrou laisse engager : un champ pendant le relogement ; un pont
-## coupé ou une rue qui barre l'accès à l'un d'eux pendant la phase du pont,
-## puis les îlots sinistrés une fois le chemin d'un pont engagé déblayé, et
-## toute rue boueuse dès qu'un pont est engagé (auteur, 2026-09-26).
+## coupé ou une rue qui barre l'accès à l'un d'eux pendant la phase du pont, et
+## toute rue boueuse dès qu'un pont est engagé (auteur, 2026-09-26). Les îlots
+## sinistrés attendent l'étude : on rebâtit en sachant la prochaine crue (auteur,
+## 2026-10-02, retour en arrière sur le 2026-09-26).
 func autorise(couche: String, fid: int) -> bool:
 	match verrou():
 		"":
 			return true
 		"reloger":
 			return couche == "i" and jeu.ville.camp_possible(fid)
-	if couche == "i" and jeu.ville.camp_pose(fid):
-		return true
 	if couche == "i":
-		return acces_degage() and jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0
+		return jeu.ville.camp_pose(fid)
 	if couche != "r":
 		return false
 	if fid in _rues_du_pont():
@@ -534,7 +533,7 @@ func actualiser(force := false) -> void:
 		etape = "livraison"
 	var degage := etape == "pont_travaux" and acces_degage()
 	if degage and _degage_annonce == 0:
-		jeu.interface.retours.notifier("Chemin du pont dégagé : les logements abîmés peuvent se relever.", jeu.mois)
+		jeu.interface.retours.notifier("Chemin du pont dégagé : on passera dès la fin du chantier.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	var rouvert := etape == "pont_livre" and ancienne != "pont_livre"
@@ -616,7 +615,7 @@ func actualiser(force := false) -> void:
 			_titre.text = "Le pont provisoire se pose" if jeu.ville.pont_provisoire(int(premier["fid"])) \
 				else "Le pont se reconstruit"
 			# 🧹 Dit dès l'engagement, sans nommer les rues (auteur, 2026-09-26).
-			_texte.text = "Chemin dégagé : en attendant le pont, les logements abîmés peuvent se relever." \
+			_texte.text = "Chemin dégagé : on passera dès la fin du chantier." \
 				if acces_degage() else "La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier."
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 			_bouton("Voir mon pont", examiner.bind("r", premier["fid"]))
