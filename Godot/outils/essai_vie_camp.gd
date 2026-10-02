@@ -77,7 +77,8 @@ func executer() -> void:
 	await capture("camp_03_ameliorer")
 	await cliquer(ui._recap_bouton)
 	verifier(v.demande_engagee("amelioration"), "L'amélioration se commande depuis la fiche du camp")
-	actualiser(jeu.mois + 0.5)
+	verifier(jeu.vitesse == 1.0, "Améliorer le camp relance le temps à ×1 (vitesse %s)" % jeu.vitesse)
+	actualiser(jeu.mois + 0.5 * float(v.DEMANDES["amelioration"]["mois"]))
 	ui._maj_fiche()
 	var lignes: Array = v.chantiers(jeu.mois)["en_cours"].filter(func(c): return c["genre"] == "amelioration")
 	verifier(lignes.size() == 1 and absf(float(lignes[0]["part"]) - 0.5) < 0.05

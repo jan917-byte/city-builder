@@ -635,3 +635,6 @@ L'amélioration vaut pour tous les camps ; la liste la range sous le premier cam
 **2026-10-02 — Les quatre façons de rebâtir se voient : moderne (toit plat, enduit clair, étage en bois), pilotis (poteaux et vide sous 2,5 m), parc (prairie, noues, saules) ; la ruine s'efface (demande de l'auteur).**
 `07` marque la ruine et le bâti neuf, le shader en tire l'allure : aucun triangle de plus. Planches `wehrau_rebatir_miniatures.png`, `wehrau_rebatir_ville.png`.
 `essai_rebatir`, `essai_ouverture`, `essai_etude` : 0 échec ; `--essai` passe ; `essai_vie_camp` : 1 échec, venu de l'amélioration passée à 3 semaines (autre session).
+**2026-10-02 — Retour de jeu : le bandeau du haut ne porte plus que les annonces (recherche achevée, boue sur le chemin du pont) ; un camp livré fait monter « +N » et l'icône logement ; améliorer le camp dure 3 semaines et relance le temps à ×1 (demande de l'auteur).**
+L'étude parue, Dangers s'ouvre sur la prochaine crue ; université et mairie ne proposent plus de financement, ils viendront plus tard (`financements_ouverts`, haut des lieux dans `interface.gd`).
+`essai_etude`, `essai_vie_camp`, `essai_ouverture`, `essai_progression`, `essai_relogement`, `essai_rebatir`, `essai_camp` : 0 échec ; `essai_sauvegarde` : les 92 lieux sans nom déjà connus.

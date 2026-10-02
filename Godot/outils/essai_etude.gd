@@ -48,11 +48,8 @@ func executer() -> void:
 	verifier(entouree("dangers") and not ui._menu_boutons["dangers"].disabled and not entouree("universite"),
 		"L'étude lue, Dangers s'ouvre et s'entoure")
 	ui._sur_rail("dangers")
-	verifier(ui._vue_crue == "degats" and ui._onglets_crue["prochaine"].visible
-		and "nouveau" in ui._onglets_crue["prochaine"].text, "Dangers s'ouvre sur les dégâts, l'onglet neuf est signalé")
-	await capture("etude_03_degats")
-	await cliquer(ui._onglets_crue["prochaine"])
-	verifier(jeu.vue_crue == "prochaine" and o.prochaine_vue, "L'onglet Prochaine crue repeint la carte")
+	verifier(ui._vue_crue == "prochaine" and jeu.vue_crue == "prochaine" and o.prochaine_vue,
+		"L'étude parue, Dangers s'ouvre sur la prochaine crue et repeint la carte")
 	jeu._rafraichir(true)
 	verifier(not ui._rail_lieux[0].disabled and not ui._menu_boutons["energie"].disabled and not entouree(""),
 		"La prochaine crue vue, toute la colonne s'ouvre")
@@ -63,7 +60,8 @@ func executer() -> void:
 	verifier(bleu.a > 0.5 and bleu.b > bleu.r, "Les Forgerons sont peints en bleu")
 	await capture("etude_04_prochaine")
 	ui.ouvrir_lieu("universite")
-	verifier(ui._lieu_lignes[jeu.Recherche.ORDRE[0]]["bloc"].visible, "La carte vue, les sujets de recherche reviennent")
+	verifier(not ui._lieu_lignes[jeu.Recherche.ORDRE[0]]["bloc"].visible and ui._etude_bloc.visible,
+		"La carte vue, l'université ne montre toujours que l'étude : les sujets viendront plus tard")
 	ui._fermer_lieu()
 	verifier(o.etape == "choix" and "5,1 m d'eau" in o._texte.text,
 		"Après la carte, les Forgerons se choisissent en connaissant l'eau : %s" % o._texte.text)

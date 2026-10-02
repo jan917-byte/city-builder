@@ -1408,7 +1408,7 @@ const CAPITAL_PAR_DEMANDE := 6.0
 # 🔄 Un seul bouton au lieu de trois (sanitaires, cantine, classe), même prix et
 # même effet cumulés (auteur, 2026-10-02). 🔴 Noms affichés, flaggables (90).
 const DEMANDES := {
-	"amelioration": {"nom": "Améliorer le campement", "fait": "Campement amélioré", "ke": 130.0, "mois": 1.0},
+	"amelioration": {"nom": "Améliorer le campement", "fait": "Campement amélioré", "ke": 130.0, "mois": 0.7},   # 3 semaines (auteur, 2026-10-02)
 }
 const DEMANDES_ORDRE := ["amelioration"]
 

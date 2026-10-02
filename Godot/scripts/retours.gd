@@ -99,12 +99,14 @@ func batir(interface) -> void:
 	avis.hide()
 
 
-func notifier(message: String, mois: float) -> void:
+## Le bandeau du haut ne porte que les annonces (université, boue sur le chemin) :
+## un chiffre qui monte dit déjà le reste (auteur, 2026-10-02).
+func annoncer(message: String, mois: float) -> void:
 	consigner(message, mois)
 	signaler(message)
 
 
-## Au journal sans bandeau : ce que le guide dit déjà à l'écran (auteur, 2026-10-02).
+## Au journal sans bandeau.
 func consigner(message: String, mois: float) -> void:
 	journal.append("Mois %s · %s" % [ui._nb(mois, 1), message])
 	if journal.size() > 100:
@@ -260,9 +262,9 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 		ui.bulles.sur_lieu(couche, fid, "−%s" % nourris, "nourriture", ui.ALERTE)
 	elif duree >= ACCELERER_MOIS:
 		message += " · ×12 ≈ %d s" % int(ceil(duree * 5.0))
-	notifier(message, mois)
+	consigner(message, mois)
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
-		notifier("La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier.", mois)
+		annoncer("La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier.", mois)
 	if duree <= 0.0:
 		for genre in r["faits"]:
 			livraison({"couche": couche, "fid": fid, "genre": genre}, mois)
@@ -272,15 +274,17 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 func livraison(c: Dictionary, mois: float) -> void:
 	if c["genre"] == "recherche":
 		var sujet: Dictionary = ui.Recherche.SUJETS[c["cle"]]
-		notifier("%s : recherche achevée · %s." % [sujet["nom"], sujet["quoi"]], mois)
+		annoncer("%s : recherche achevée · %s." % [sujet["nom"], sujet["quoi"]], mois)
 		return
 	var fid := int(c["fid"])
 	var couche := str(c["couche"])
 	var nom: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
 	var resultat := "Travaux terminés : %s." % str(c["genre"])
 	if c["genre"] == "relogement":
+		var accueillis := int(ui.ville.camp_occupants(fid, mois))
 		resultat = "%d containers livrés · %d personnes accueillies." % [
-			ui.ville.camp_taille(fid, mois), int(ui.ville.camp_occupants(fid, mois))]
+			ui.ville.camp_taille(fid, mois), accueillis]
+		ui.bulles.sur_lieu(couche, fid, "+%d" % accueillis, "logement", ui.FAIT_TEXTE)
 	elif couche == "r" and fid in ui.ville.ponts_coupes():
 		resultat = "Pont provisoire posé." if ui.ville.pont_provisoire(fid) else "Pont rebâti."
 		if not ui.trafic.pont_fonctionnel(fid, mois):
@@ -304,7 +308,7 @@ func livraison(c: Dictionary, mois: float) -> void:
 		resultat = "%s · le camp n'use plus la confiance." % ui.Ville.DEMANDES[c["genre"]]["fait"]
 	elif c["genre"] == "toit vert":
 		resultat = "Toiture végétalisée · %.0f %% du toit retient la pluie." % (100.0 * ui.ville.valeur("i", fid, "part_toit_vert", mois))
-	notifier("%s : %s" % [nom, resultat], mois)
+	consigner("%s : %s" % [nom, resultat], mois)
 
 
 func actualiser(mois: float) -> void:
@@ -330,14 +334,14 @@ func actualiser(mois: float) -> void:
 			livraison(_en_cours[cle], mois)
 	_en_cours = courants
 	if _sans_toit >= 0 and n < _sans_toit:
-		notifier("%d personnes abritées · %d encore dehors." % [_sans_toit - n, n] if n > 0
+		consigner("%d personnes abritées · %d encore dehors." % [_sans_toit - n, n] if n > 0
 			else "%d personnes abritées · plus personne dehors." % (_sans_toit - n), mois)
 	_sans_toit = n
 	_dire_capital(mois)
 	for pont in ui.ville.ponts_coupes():
 		var ouvert: bool = ui.trafic.pont_fonctionnel(pont, mois)
 		if ouvert and _ponts.has(pont) and not _ponts[pont]:
-			notifier("%s : les deux rives sont reliées." % ui.lieux.nom("r", pont), mois)
+			consigner("%s : les deux rives sont reliées." % ui.lieux.nom("r", pont), mois)
 		_ponts[pont] = ouvert
 	actualiser_affichage()
 
@@ -385,7 +389,7 @@ func _dire_capital(mois: float) -> void:
 		_capital_dits[cle] = true
 		var pourquoi := phrase_capital(m)
 		if pourquoi != "":
-			notifier("%s · %+d confiance." % [pourquoi, int(roundf(float(m["montant"])))], mois)
+			consigner("%s · %+d confiance." % [pourquoi, int(roundf(float(m["montant"])))], mois)
 			var lieu := _lieu_bulle(m, mois)
 			bulles[lieu] = float(bulles.get(lieu, 0.0)) + float(m["montant"])
 	# 🎈 Un chiffre qui monte par lieu, la somme de ce qui y tombe à cet instant

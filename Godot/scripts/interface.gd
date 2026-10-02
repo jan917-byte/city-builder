@@ -1559,6 +1559,9 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 	if id != "":
 		var cle := "_calque" if _calque_panneau.visible else id
 		_ecrire_entete(_entetes[cle], t)
+	# 🎓 L'étude parue, Dangers s'ouvre sur la prochaine crue (auteur, 2026-10-02).
+	if genre == "crue" and etude_publiee():
+		choisir_vue_crue("prochaine")
 	if _calque_panneau.visible:
 		_calque_note.text = str(t.get("note", ""))
 		_calque_note.visible = _calque_note.text != ""
@@ -1725,6 +1728,7 @@ func choisir_vue_crue(id: String) -> void:
 		_maj_prochaine()
 		if ouverture != null:
 			ouverture.prochaine_ouverte()
+			_habiller_onglets_crue()   # efface « nouveau », vu à l'instant
 
 
 ## Même trait que les onglets de la fiche ; « nouveau » tant qu'on ne l'a pas vu.
@@ -2504,6 +2508,9 @@ const LIEUX := {
 		"quoi": "On finance un sujet, on attend, le palier tombe — et il vaut pour toute la ville, panneaux déjà posés compris."},
 }
 const LIEUX_ORDRE := ["mairie", "universite"]
+## 🎓🏛️ Sujets de recherche et subventions arriveront plus tard (auteur, 2026-10-02) :
+## l'université ne montre que l'étude. Les essais le rouvrent.
+var financements_ouverts := false
 
 
 func _lieu_du_fid(fid: int) -> String:
@@ -2548,7 +2555,7 @@ func _panneau_lieu() -> void:
 	_etude_texte = _label("", 12, TEXTE)
 	_etude_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_etude_bloc.add_child(_etude_texte)
-	var ou := _label("La carte de l'étude : Dangers, onglet Prochaine crue.", 11, GRIS)
+	var ou := _label("La carte de l'étude est dans Dangers.", 11, GRIS)
 	ou.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_etude_bloc.add_child(ou)
 
@@ -2662,14 +2669,14 @@ func _brancher_lieu() -> void:
 			b.pressed.connect(func() -> void:
 				if ville.financer_recherche(k, _mois):
 					var sujet: Dictionary = Recherche.SUJETS[k]
-					retours.notifier("%s : financement engagé, %s k€/mois pendant %s." % [sujet["nom"], _milliers(sujet["ke_mois"]), _duree(sujet["mois"])], _mois)
+					retours.consigner("%s : financement engagé, %s k€/mois pendant %s." % [sujet["nom"], _milliers(sujet["ke_mois"]), _duree(sujet["mois"])], _mois)
 					retours.actualiser(_mois)
 				_maj_lieu())
 		else:
 			b.pressed.connect(func() -> void:
 				if ville.basculer_politique(k, _mois):
 					var politique: Dictionary = Politiques.POLITIQUES[k]
-					retours.notifier("%s : %s" % [politique["nom"], "%s k€/mois · %s" % [_milliers(politique["ke_mois"]), politique["quoi"]] if Politiques.active(ville, k) else "subvention arrêtée, prélèvements terminés."], _mois)
+					retours.consigner("%s : %s" % [politique["nom"], "%s k€/mois · %s" % [_milliers(politique["ke_mois"]), politique["quoi"]] if Politiques.active(ville, k) else "subvention arrêtée, prélèvements terminés."], _mois)
 				_maj_lieu())
 
 
@@ -2680,7 +2687,7 @@ func _maj_lieu() -> void:
 	# 🎓 L'étude seule tant que sa carte n'a pas été ouverte (auteur, 2026-10-02).
 	var etude_seule: bool = universite and ouverture != null and ouverture.pont_termine \
 		and not ouverture.prochaine_vue
-	_lieu_intro.visible = not etude_seule
+	_lieu_intro.visible = not etude_seule and financements_ouverts
 	_etude_bloc.visible = universite and etude_publiee()
 	if _etude_bloc.visible:
 		var p := ville.prochaine_crue(_mois)
@@ -2695,7 +2702,7 @@ func _maj_lieu() -> void:
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
-		bloc.visible = (String(l["genre"]) == "recherche") == universite and not etude_seule
+		bloc.visible = (String(l["genre"]) == "recherche") == universite and not etude_seule 			and financements_ouverts
 		if not bloc.visible:
 			continue
 		if universite:

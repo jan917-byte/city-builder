@@ -665,7 +665,7 @@ func actualiser(force := false) -> void:
 			# 🔴 Aucun bouton (auteur, 2026-09-30) : le joueur apprend où vit la prévision.
 			_poser_reperes([])
 			_titre.text = "Où irait l'eau ?"
-			_texte.text = "La carte de l'étude est dans Dangers, dans la colonne de gauche : ouvrez l'onglet Prochaine crue."
+			_texte.text = "La carte de l'étude est dans Dangers, dans la colonne de gauche."
 		"reloger":
 			# 🧭 ON NE MONTRE PAS LES TROIS CHAMPS (auteur, 2026-09-17) :
 			# ni chiffre sur la carte, ni bouton qui y mène. Le joueur cherche

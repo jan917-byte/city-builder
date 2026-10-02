@@ -109,6 +109,7 @@ func executer() -> void:
 		await cliquer(jeu.ouverture.annonce_principal)
 	verifier(jeu.ouverture.pont_termine and not jeu.ouverture.annonce.visible, "La carte du pont rouvert se ferme au clic")
 	jeu.interface.choisir_vue_crue("prochaine")
+	jeu.interface.financements_ouverts = true
 	jeu.interface.ouvrir_lieu("universite")
 	await cliquer(jeu.interface._lieu_lignes["sedum"]["bouton"])
 	verifier(jeu.ville.recherche_engagee("sedum") and "k€/mois" in retours.journal[-1], "Le financement de recherche annonce son coût mensuel")
