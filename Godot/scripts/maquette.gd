@@ -262,6 +262,8 @@ func _ready() -> void:
 	interface.rampe_eau = RAMPE_EAU
 	add_child(interface)
 	interface.batir()
+	interface.bulles.camera = pivot.camera
+	interface.bulles.ancre_lieu = _ancre_bulle
 	interface.commande_demandee.connect(_sur_commande)
 	interface.vitesse_demandee.connect(_sur_vitesse)
 	interface.temps_remis.connect(_sur_reset)
@@ -3014,6 +3016,15 @@ func _viser_ensemble(fids: Array, marge: float) -> void:
 	var c := boite.get_center()
 	pivot.viser(Vector2(c.x, c.z),
 		maxf(boite.size.x, boite.size.z) + marge)
+
+
+## 🎈 Le dessus d'un objet, où montent ses chiffres ; `null` s'il n'est pas dessiné.
+func _ancre_bulle(couche: String, fid: int) -> Variant:
+	if not noeuds.has(couche) or not noeuds[couche].has(fid):
+		return null
+	var mi: MeshInstance3D = noeuds[couche][fid]
+	var b := mi.get_aabb()
+	return mi.global_transform * (b.get_center() + Vector3.UP * (b.size.y * 0.5 + 6.0))
 
 
 func _viser_objet(couche: String, fid: int, taille: float) -> void:

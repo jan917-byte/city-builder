@@ -54,10 +54,9 @@ var annonce_second: Button
 var carte := ""
 var _annonce_titre: Label
 var _annonce_texte: Label
-## 🚿 La plainte du camp : 0 à venir, 1 affichée, 2 passée.
+## 🚿 La plainte du camp : 0 à venir, 1 affichée, 2 passée. Elle tombe quand
+## l'usure commence (`Ville.CAMP_USURE_APRES_PONT_MOIS`).
 var plainte := 0
-## 🎚️ LEVEL DESIGN : la confiance que le camp a usée quand ses habitants se plaignent.
-const PLAINTE_USURE := 5.0
 
 
 func batir(maquette) -> void:
@@ -547,7 +546,7 @@ func actualiser(force := false) -> void:
 		visible = true
 	# 🚿 Le pont passe d'abord : la plainte attend qu'il soit quitté.
 	if plainte == 0 and etape != "pont_livre" \
-			and jeu.ville.usure_camp_cumulee(jeu.mois) >= PLAINTE_USURE:
+			and jeu.ville.usure_camp_mois(jeu.mois) > 0.0:
 		plainte = 1
 		jeu._sur_vitesse(0.0)
 		jeu.interface._detail_ouvert = false

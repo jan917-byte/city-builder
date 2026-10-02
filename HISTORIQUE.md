@@ -617,3 +617,6 @@ Asphalte au-dessus de l'Ilse 177 → 0 m², berge 8 : rive libre 2,6 → 8,5 m, 
 **2026-10-02 — La vie au camp : un camp livré rend de la confiance, puis l'use chaque mois ; à 5 usés, ses habitants se plaignent au centre de l'écran et demandent sanitaires, cantine, classe (demande de l'auteur).**
 `ville.gd` intègre l'usure comme l'aide aux sans-abri (marches exactes) ; compteur du haut visible dès le premier camp ; `ouverture.gd` généralise la carte du centre (pont, camp).
 `essai_vie_camp` (nouveau), `essai_ouverture`, `essai_etude`, `essai_progression`, `essai_relogement` 0 échec ; `essai_sauvegarde` garde ses 92 échecs de lieux sans nom, d'avant.
+**2026-10-02 — Les chiffres montent sur la carte : +15 de confiance au-dessus du champ livré, −17 k€ sous l'argent à chaque engagement ; le camp n'use la confiance qu'un mois après le premier pont, et sa plainte tombe à ce moment (demande de l'auteur).**
+`bulles.gd` (nouveau) : un chiffre par lieu et par instant, sans lieu sous le compteur ; bandeau des messages descendu de 30 px ; la fiche ne dit plus « un an après » que pour les places ; le chiffre de confiance du haut ne repasse plus au blanc.
+`essai_vie_camp` (pont provisoire, capture `camp_00_bulle`), `essai_ouverture`, `essai_progression`, `essai_etude`, `essai_relogement` : 0 échec.

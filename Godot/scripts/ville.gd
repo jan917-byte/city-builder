@@ -1346,6 +1346,9 @@ func camp_occupants(fid: int, t: float) -> float:
 # 🎚️ LEVEL DESIGN, tout ce bloc : 260 au camp = +10 puis −2,6 par mois.
 const CAPITAL_PAR_PERSONNE_ABRITEE := 0.04
 const CAMP_USURE_PERSONNE_MOIS := 0.01
+## L'usure attend le premier pont rouvert, plus ce délai : une minute à ×1 de
+## déblaiement avant la plainte (auteur, 2026-10-02).
+const CAMP_USURE_APRES_PONT_MOIS := 1.0
 const CAPITAL_PAR_DEMANDE := 2.0
 # 🔴 Noms affichés, flaggables (90).
 const DEMANDES := {
@@ -1385,8 +1388,20 @@ func equiper_camp(cle: String, t: float) -> bool:
 	return true
 
 
+## Le mois où le camp commence à user la confiance ; INF tant qu'aucun pont n'est rouvert.
+func usure_debut() -> float:
+	var debut := INF
+	for c in _repare:
+		var m: PackedStringArray = str(c).split(":")
+		if m[0] == "r" and int(m[1]) in _ponts:
+			debut = minf(debut, float(_repare[c]) + duree_reparation_mois("r", int(m[1])))
+	return debut + CAMP_USURE_APRES_PONT_MOIS
+
+
 ## La confiance que le camp use ce mois-ci, positive.
 func usure_camp_mois(t: float) -> float:
+	if t < usure_debut():
+		return 0.0
 	var faites := 0
 	for cle in _demandes:
 		if demande_livree(cle, t):
@@ -1409,6 +1424,8 @@ func usure_camp_cumulee(t: float) -> float:
 			dates.append(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS))
 		for d in _demandes:
 			dates.append(_fin_demande(d))
+		if usure_debut() < INF:
+			dates.append(usure_debut())
 		dates.sort()
 		_usure_marches = []
 		for d in dates:

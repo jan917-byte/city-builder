@@ -83,7 +83,8 @@ func batir(interface) -> void:
 	avis.anchor_left = 0.5
 	avis.anchor_right = 0.5
 	avis.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	avis.offset_top = 66   # sous la barre des compteurs (interface._barre_compteurs)
+	# Sous la barre des compteurs, et sous le couloir où descend la dépense (`bulles.gd`).
+	avis.offset_top = 96
 	ui.add_child(avis)
 	var contenu := VBoxContainer.new()
 	avis.add_child(contenu)
@@ -239,6 +240,10 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	var message := "%s : %s · %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
 	if float(r.get("capital", 0.0)) >= 0.5:
 		message += " · −%s confiance" % ui._nb(r["capital"], 0)
+		ui.bulles.sous(ui._barre_valeurs.get("capital"), "−%s" % ui._nb(r["capital"], 0), "capital", ui.ALERTE)
+	# 🎈 La dépense descend sous la caisse (auteur, 2026-10-02).
+	if r["cout_ke"] > 0.0:
+		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "", ui.ALERTE)
 	if "relogement" in r["faits"]:
 		message += " · −%s nourris" % ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
 	elif duree >= ACCELERER_MOIS:
@@ -330,6 +335,7 @@ static func _cle_capital(m: Dictionary) -> String:
 ## 🗳️ LE COMPTEUR NE BOUGE JAMAIS SANS PHRASE (Ressources, ☐ « comment il se
 ## regagne n'a aucune forme à l'écran »). La dépense est dite à l'engagement.
 func _dire_capital(mois: float) -> void:
+	var bulles := {}
 	for m in ui.ville.capital_mouvements():
 		if float(m["mois"]) > mois:
 			break
@@ -359,3 +365,48 @@ func _dire_capital(mois: float) -> void:
 					pourquoi = "%s : la rue est restée aux voitures" % rue
 		if pourquoi != "":
 			notifier("%s · %+d confiance." % [pourquoi, int(roundf(float(m["montant"])))], mois)
+			var lieu := _lieu_bulle(m, mois)
+			bulles[lieu] = float(bulles.get(lieu, 0.0)) + float(m["montant"])
+	# 🎈 Un chiffre qui monte par lieu, la somme de ce qui y tombe à cet instant
+	# (camp livré + tout le monde abrité = un seul +15).
+	for lieu in bulles:
+		var n := int(roundf(float(bulles[lieu])))
+		if n == 0:
+			continue
+		var coul: Color = ui.FAIT_TEXTE if n > 0 else ui.ALERTE
+		if lieu.is_empty():
+			ui.bulles.sous(ui._barre_valeurs.get("capital"), "%+d" % n, "capital", coul)
+		else:
+			ui.bulles.sur_lieu(lieu[0], lieu[1], "%+d" % n, "capital", coul)
+
+
+## Où monte le chiffre d'un mouvement : son lieu, sinon celui d'un mouvement du
+## même instant, sinon [] (sous le compteur).
+func _lieu_bulle(m: Dictionary, mois: float) -> Array:
+	var lieu := _lieu_capital(m, mois)
+	if lieu.is_empty():
+		for autre in ui.ville.capital_mouvements():
+			if is_equal_approx(float(autre["mois"]), float(m["mois"])):
+				lieu = _lieu_capital(autre, mois)
+				if not lieu.is_empty():
+					break
+	return lieu
+
+
+func _lieu_capital(m: Dictionary, mois: float) -> Array:
+	match str(m["quoi"]):
+		"camp", "rentres":
+			return ["i", int(m["fid"])]
+		"pont", "places_retour":
+			return ["r", int(m["fid"])]
+		"demande":
+			# Les demandes valent pour tous les camps : le plus peuplé les montre.
+			var meilleur := []
+			var plus := 0.0
+			for fid in ui.ville._camps:
+				var occ: float = ui.ville.camp_occupants(int(fid), mois)
+				if occ > plus:
+					plus = occ
+					meilleur = ["i", int(fid)]
+			return meilleur
+	return []

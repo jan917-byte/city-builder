@@ -222,6 +222,8 @@ var ville: Ville
 var trafic
 var ouverture
 var retours := preload("res://scripts/retours.gd").new()
+## 🎈 Les chiffres qui montent ; sous tous les panneaux.
+var bulles := preload("res://scripts/bulles.gd").new()
 var _debut: Button
 ## 🔎 La texture de la miniature, posée par `maquette.gd` avant `batir()`.
 var apercu: Texture2D
@@ -431,6 +433,8 @@ func batir() -> void:
 	# poids typographique qui dit lequel des trois éléments d'une ligne compte.
 	_fonte_grasse = _peser(700, 0.34)
 	_theme_ui = _creer_theme()
+	bulles.ui = self
+	add_child(bulles)
 	_panneau_bilan()
 	_panneau_ilot()
 	_panneau_lieu()
@@ -3073,11 +3077,10 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		+ (" · −%s/mois" % _nb(usure, 1) if baisse else "")
 	if _barre_valeurs.has("capital"):
 		var l: Label = _barre_valeurs["capital"]
-		if baisse != l.has_theme_color_override("font_color"):
-			if baisse:
-				l.add_theme_color_override("font_color", ALERTE)
-			else:
-				l.remove_theme_color_override("font_color")
+		# ⚠️ Remplacer, jamais retirer : sans sa couleur, le nombre passe au blanc du thème.
+		var teinte: Color = ALERTE if baisse else TEXTE
+		if l.get_theme_color("font_color") != teinte:
+			l.add_theme_color_override("font_color", teinte)
 		l.get_parent().tooltip_text = ("Confiance · le camp en use %s par mois ; ses demandes satisfaites la freinent."
 			% _nb(usure, 1)) if baisse else "Confiance"
 	_maj_durabilite(indic)
@@ -3704,12 +3707,10 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	ville_essai.commander(_fiche_couche, _fiche_fid, r, _mois)
 	var a := ville.indicateurs(t)
 	var b := ville_essai.indicateurs(t)
-	# 🗳️ Trois moments : la décision, la livraison, et l'année d'après pour les
-	# places retirées (`Ville.CAPITAL_RETOUR_PLACES_MOIS`).
-	var tard := t + Ville.CAPITAL_RETOUR_PLACES_MOIS
+	# 🗳️ La décision et la livraison ; l'année d'après n'est dite que pour les places
+	# retirées. 🔄 L'usure du camp n'y passe plus : sa carte la dit (auteur, 2026-10-02).
 	var k0 := ville_essai.capital(_mois) - ville.capital(_mois)
 	var k1 := ville_essai.capital(t) - ville.capital(t) - k0
-	var k2 := ville_essai.capital(tard) - ville.capital(tard) - k0 - k1
 	if absf(k0) >= 0.5:
 		out.append(["capital", "%+d confiance" % int(roundf(k0)), _sens(k0)])
 	if absf(k1) >= 0.5:
@@ -3720,8 +3721,6 @@ func consequences(r: Dictionary, duree: float) -> Array:
 		out.append(["capital", "+%d à +%d confiance un an après, selon la rue" % [
 			int(roundf(-k0 * Ville.CAPITAL_RETOUR_PLACES_X_MIN)),
 			int(roundf(-k0 * Ville.CAPITAL_RETOUR_PLACES_X_MAX))], 0])
-	elif absf(k2) >= 0.5:
-		out.append(["capital", "%+d confiance un an après" % int(roundf(k2)), _sens(k2)])
 	var da := ville.degats(t)
 	var db := ville_essai.degats(t)
 	var logements := float(da["logements_perdus"]) - float(db["logements_perdus"])
@@ -4312,7 +4311,9 @@ func _maj_camp() -> void:
 		return
 	_bloc_dispo[_camp_bloc] = true
 	var fid := _fiche_fid
-	_demandes_bloc.visible = ville.camp_livre(fid, _mois) and ville.camp_accessible(fid, _mois)
+	# 🚿 Les demandes attendent la plainte, après le pont (auteur, 2026-10-02).
+	_demandes_bloc.visible = ville.camp_livre(fid, _mois) and ville.camp_accessible(fid, _mois) \
+		and _mois >= ville.usure_debut()
 	if _demandes_bloc.visible:
 		_maj_demandes()
 	if ville.camp_pose(fid):
