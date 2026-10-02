@@ -629,3 +629,6 @@ L'épi est le dessin Lucide « wheat », qui manquait : l'onglet Campagne et la 
 **2026-10-02 — Un clic sur l'argent ou la confiance, en haut, ouvre leur détail : ce qui les fait bouger chaque mois, tout ce qui les a fait bouger depuis le mois 0, ce qui vient (demande de l'auteur).**
 Les dépenses sont rangées par genre de chantier ; ce détail a révélé qu'« Améliorer le campement » annonçait −130 k€ sans rien retirer de la caisse : corrigé.
 `essai_vie_camp` (captures `camp_05_detail_confiance`, `camp_06_detail_argent`), `essai_ouverture`, `essai_etude` : 0 échec ; `essai_capital` garde ses 2 échecs d'avant.
+**2026-10-02 — « Améliorer le campement » est un chantier : une ligne et sa barre dans « Chantiers en cours », la barre en haut de la fiche du camp, un message à la livraison (demande de l'auteur).**
+L'amélioration vaut pour tous les camps ; la liste la range sous le premier camp posé qu'on peut rejoindre.
+`essai_vie_camp` (capture `camp_03b_amelioration_en_cours`), `essai_ouverture`, `essai_etude` : 0 échec.

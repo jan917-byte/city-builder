@@ -300,6 +300,8 @@ func livraison(c: Dictionary, mois: float) -> void:
 		resultat = "%s en place · %s." % [culture.substr(0, 1).to_upper() + culture.substr(1),
 			("première récolte dans %s" % ui._duree(attente)) if attente > 0.0
 			else "%s nourris" % ui._nb(ui.ville.champ_rendement(fid, mois), 0)]
+	elif ui.Ville.DEMANDES.has(c["genre"]):
+		resultat = "%s · le camp n'use plus la confiance." % ui.Ville.DEMANDES[c["genre"]]["fait"]
 	elif c["genre"] == "toit vert":
 		resultat = "Toiture végétalisée · %.0f %% du toit retient la pluie." % (100.0 * ui.ville.valeur("i", fid, "part_toit_vert", mois))
 	notifier("%s : %s" % [nom, resultat], mois)

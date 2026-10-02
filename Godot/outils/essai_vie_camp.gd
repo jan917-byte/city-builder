@@ -77,6 +77,14 @@ func executer() -> void:
 	await capture("camp_03_ameliorer")
 	await cliquer(ui._recap_bouton)
 	verifier(v.demande_engagee("amelioration"), "L'amélioration se commande depuis la fiche du camp")
+	actualiser(jeu.mois + 0.5)
+	ui._maj_fiche()
+	var lignes: Array = v.chantiers(jeu.mois)["en_cours"].filter(func(c): return c["genre"] == "amelioration")
+	verifier(lignes.size() == 1 and absf(float(lignes[0]["part"]) - 0.5) < 0.05
+		and ui.retours.chantiers.visible and ui._chantier_bloc.is_visible_in_tree()
+		and "campement" in ui._chantier_quoi.text,
+		"L'amélioration est un chantier : une ligne en bas à droite, une barre sur la fiche du camp")
+	await capture("camp_03b_amelioration_en_cours")
 	var avant: float = v.usure_camp_mois(jeu.mois)
 	actualiser(jeu.mois + v.DEMANDES["amelioration"]["mois"] + 0.05)
 	var apres: float = v.usure_camp_mois(jeu.mois)

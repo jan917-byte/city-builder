@@ -105,6 +105,7 @@ const CHANTIER_MOTS := {
 	"densification": "Étages ajoutés",
 	"relogement": "Installation des abris",
 	"culture": "Mise en culture",
+	"amelioration": "Amélioration du campement",
 	"toit vert": "Toit végétalisé", "plantation": "Plantation",
 }
 

@@ -1375,6 +1375,25 @@ func _fin_demande(cle: String) -> float:
 	return float(_demandes[cle]) + _delai(float(DEMANDES[cle]["mois"]))
 
 
+## La demande engagée et pas encore livrée : [clé, durée, reste], ou [] — un chantier à la fois.
+func demande_en_cours(t: float) -> Array:
+	for cle in _demandes:
+		if not demande_livree(cle, t):
+			return [cle, _delai(float(DEMANDES[cle]["mois"])), _fin_demande(cle) - t]
+	return []
+
+
+## Le camp qui porte la ligne de l'amélioration dans la liste : le premier posé
+## qu'on peut rejoindre. L'amélioration vaut pour tous ; la liste veut un lieu.
+func camp_principal(t: float) -> int:
+	var choisi := -1
+	for f in _camps:
+		if camp_accessible(f, t) and (choisi < 0
+				or float(_camps[f]["debut"]) < float(_camps[choisi]["debut"])):
+			choisi = f
+	return choisi
+
+
 func cout_demande_ke(cle: String) -> float:
 	return 0.0 if _demandes.has(cle) else float(DEMANDES[cle]["ke"])
 
@@ -2353,6 +2372,10 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	var lot := []   # [quoi, durée totale, ce qui reste]
 	if couche == "i" and camp_pose(fid) and not camp_livre(fid, t):
 		lot.append(["relogement", _delai(CAMP_MOIS), camp_reste_mois(fid, t)])
+	if couche == "i" and camp_livre(fid, t) and camp_accessible(fid, t):
+		var d := demande_en_cours(t)
+		if not d.is_empty():
+			lot.append([d[0], d[1], d[2]])
 	if est_repare(couche, fid) and not reparation_finie(couche, fid, t):
 		lot.append([_genre_chantier(couche, fid),
 			duree_reparation_mois(couche, fid),
@@ -2456,6 +2479,10 @@ func chantiers(t: float) -> Dictionary:
 			en_cours.append({"couche": "i", "fid": fid, "genre": "relogement",
 				"cout_ke": float(_camps[fid]["cout_ke"]), "reste_mois": camp_reste_mois(fid, t),
 				"duree": _delai(CAMP_MOIS)})
+	var dem := demande_en_cours(t)
+	if not dem.is_empty() and camp_principal(t) >= 0:
+		en_cours.append({"couche": "i", "fid": camp_principal(t), "genre": dem[0],
+			"cout_ke": float(DEMANDES[dem[0]]["ke"]), "reste_mois": dem[2], "duree": dem[1]})
 	for fid in _cultures:
 		if culture_en_cours(fid, t):
 			en_cours.append({"couche": "i", "fid": fid, "genre": "culture",
