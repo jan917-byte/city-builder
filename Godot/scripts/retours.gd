@@ -37,7 +37,8 @@ func batir(interface) -> void:
 	ui = interface
 	pile = VBoxContainer.new()
 	pile.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	pile.offset_left = -352
+	# Même largeur que la fiche et le temps, au-dessus (auteur, 2026-10-02).
+	pile.offset_left = -ui.FICHE_LARGEUR - 16.0
 	pile.offset_right = -16
 	pile.offset_bottom = -16
 	pile.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -99,10 +100,15 @@ func batir(interface) -> void:
 
 
 func notifier(message: String, mois: float) -> void:
+	consigner(message, mois)
+	signaler(message)
+
+
+## Au journal sans bandeau : ce que le guide dit déjà à l'écran (auteur, 2026-10-02).
+func consigner(message: String, mois: float) -> void:
 	journal.append("Mois %s · %s" % [ui._nb(mois, 1), message])
 	if journal.size() > 100:
 		journal.pop_front()
-	signaler(message)
 
 
 ## 💾 Même bandeau, hors du journal : sauvegarder n'est pas une décision. Un
@@ -335,6 +341,30 @@ static func _cle_capital(m: Dictionary) -> String:
 	return "%s:%s:%s" % [m["quoi"], m["couche"], m["fid"]]
 
 
+## La phrase d'un mouvement de confiance ; le détail du compteur la reprend.
+## « places » est dit à l'engagement par la décision, pas ici.
+func phrase_capital(m: Dictionary) -> String:
+	match str(m["quoi"]):
+		"rentres":
+			return "%s : les habitants rentrent chez eux" % ui.lieux.nom("i", int(m["fid"]))
+		"pont":
+			return "%s rouvert" % ui.lieux.nom("r", int(m["fid"]))
+		"abrites":
+			return "plus personne ne dort dehors"
+		"camp":
+			return "%s : un toit pour la nuit" % ui.lieux.nom("i", int(m["fid"]), "Champ")
+		"demande":
+			return "Camp : %s" % str(ui.ville.DEMANDES[str(m["couche"])]["fait"]).to_lower()
+		"places_retour":
+			var rue: String = ui.lieux.nom("r", int(m["fid"]))
+			if float(m["report_part"]) >= 0.5:
+				return "%s : le trafic s'est reporté sur %s" % [rue, ui.lieux.nom("r", int(m["report_rue"]))]
+			if float(m["videe"]) >= 0.5:
+				return "%s : la rue s'est remplie de piétons" % rue
+			return "%s : la rue est restée aux voitures" % rue
+	return ""
+
+
 ## 🗳️ LE COMPTEUR NE BOUGE JAMAIS SANS PHRASE (Ressources, ☐ « comment il se
 ## regagne n'a aucune forme à l'écran »). La dépense est dite à l'engagement.
 func _dire_capital(mois: float) -> void:
@@ -346,26 +376,7 @@ func _dire_capital(mois: float) -> void:
 		if _capital_dits.has(cle):
 			continue
 		_capital_dits[cle] = true
-		var pourquoi := ""
-		match str(m["quoi"]):
-			"rentres":
-				pourquoi = "%s : les habitants rentrent chez eux" % ui.lieux.nom("i", int(m["fid"]))
-			"pont":
-				pourquoi = "%s rouvert" % ui.lieux.nom("r", int(m["fid"]))
-			"abrites":
-				pourquoi = "plus personne ne dort dehors"
-			"camp":
-				pourquoi = "%s : un toit pour la nuit" % ui.lieux.nom("i", int(m["fid"]), "Champ")
-			"demande":
-				pourquoi = "Camp : %s" % str(ui.ville.DEMANDES[str(m["couche"])]["fait"]).to_lower()
-			"places_retour":
-				var rue: String = ui.lieux.nom("r", int(m["fid"]))
-				if float(m["report_part"]) >= 0.5:
-					pourquoi = "%s : le trafic s'est reporté sur %s" % [rue, ui.lieux.nom("r", int(m["report_rue"]))]
-				elif float(m["videe"]) >= 0.5:
-					pourquoi = "%s : la rue s'est remplie de piétons" % rue
-				else:
-					pourquoi = "%s : la rue est restée aux voitures" % rue
+		var pourquoi := phrase_capital(m)
 		if pourquoi != "":
 			notifier("%s · %+d confiance." % [pourquoi, int(roundf(float(m["montant"])))], mois)
 			var lieu := _lieu_bulle(m, mois)
