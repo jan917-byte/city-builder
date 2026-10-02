@@ -59,14 +59,18 @@ func _poser(b: Dictionary, texte: String, icone: String, couleur: Color) -> void
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		pic.mouse_filter = MOUSE_FILTER_IGNORE
 		h.add_child(pic)
-	p.modulate.a = 0.0
-	add_child(p)
+	# 🐢 Porté par un Node2D : une Control s'arrondit au pixel, et 12 px en 2,6 s
+	# sautaient alors un pixel tous les 0,2 s. Le Node2D glisse entre les pixels.
+	var porteur := Node2D.new()
+	porteur.modulate.a = 0.0
+	porteur.add_child(p)
+	add_child(porteur)
 	# Au même endroit, la suivante attend que la précédente ait monté.
 	var age := 0.0
 	for autre in _bulles:
 		if autre.get("lieu") == b.get("lieu") and autre.get("cible") == b.get("cible"):
 			age = minf(age, float(autre["age"]) - ECART)
-	b["noeud"] = p
+	b["noeud"] = porteur
 	b["age"] = age
 	_bulles.append(b)
 	set_process(true)
@@ -75,7 +79,7 @@ func _poser(b: Dictionary, texte: String, icone: String, couleur: Color) -> void
 func _process(delta: float) -> void:
 	for b in _bulles.duplicate():
 		b["age"] = float(b["age"]) + delta
-		var p: PanelContainer = b["noeud"]
+		var p: Node2D = b["noeud"]
 		var age: float = b["age"]
 		if age >= DUREE:
 			p.queue_free()
@@ -99,7 +103,9 @@ func _process(delta: float) -> void:
 		# Sous un compteur, elle descend peu : le bandeau des messages commence 30 px plus bas.
 		if b.has("cible"):
 			y = -y * 0.25
-		p.reset_size()
-		p.position = base + Vector2(-p.size.x * 0.5, y - p.size.y * 0.5)
+		var boite: PanelContainer = p.get_child(0)
+		boite.reset_size()
+		boite.position = (-boite.size * 0.5).round()
+		p.position = base + Vector2(0.0, y)
 		p.modulate.a = minf(age / 0.15, 1.0) * clampf((1.0 - k) * 3.0, 0.0, 1.0)
 	set_process(not _bulles.is_empty())
