@@ -27,6 +27,16 @@ func actualiser(mois: float) -> void:
 		jeu.ouverture._sur_carte(false)
 
 
+## 🧭 Une tuile de la colonne de gauche : ouverte, et entourée.
+func tuile(id: String) -> Button:
+	var ui = jeu.interface
+	return ui._menu_boutons[id] if ui._menu_boutons.has(id) else ui._rail_lieux[ui.LIEUX_ORDRE.find(id)]
+
+
+func entouree(id: String) -> bool:
+	return (tuile(id).get_meta("anneau") as Control).visible
+
+
 func cliquer(b: Button) -> void:
 	await process_frame
 	await process_frame
@@ -151,6 +161,9 @@ func executer() -> void:
 	# carte, ni bouton qui y mène. Le joueur cherche, la fiche répond.
 	verifier(bouton("①") == null and o._reperes.get_child_count() == 0,
 		"Le panneau ne désigne aucun champ")
+	jeu._rafraichir(true)
+	verifier(tuile("trafic").disabled and tuile("dangers").disabled and not tuile("").disabled
+		and not jeu.interface._debut.disabled, "Pendant le relogement, les diagnostics sont gris")
 	await capture("01_relogement")
 	var lointain := -1
 	for fid in jeu.ville.ilots:
@@ -409,12 +422,18 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(not jeu.interface._repare_bloc.visible and "pont" in jeu.interface._message.text,
 		"Un îlot n'ouvre aucun chantier avant qu'un pont soit rouvert")
 	verifier(jeu.interface._rail_lieux[0].disabled, "La mairie et l'université attendent le pont")
+	jeu._rafraichir(true)
+	verifier(not tuile("trafic").disabled and entouree("trafic") and tuile("dangers").disabled
+		and tuile("energie").disabled and not entouree("dangers"),
+		"Seule la tuile Trafic s'ouvre, entourée ; les autres restent grises")
 	jeu._sur_choix("r", jeu.ville.ponts_coupes()[0])
 	verifier(jeu.interface._repare_bloc.visible, "Un pont coupé, lui, s'engage")
 	await capture("09_decouvrir_trafic")
 	await cliquer(jeu.interface._menu_boutons["trafic"])
 	verifier(o.etape == "pont_choix" and o.visible and jeu.theme == "trafic",
 		"L'icône Trafic présente les trois ponts sur le calque sans superposer les panneaux")
+	jeu._rafraichir(true)
+	verifier(not entouree("trafic"), "Le trafic ouvert, son anneau s'efface")
 	verifier(o._reperes.get_child_count() == 0, "Le joueur repère les ponts sans numéros sur la carte")
 	for fid in jeu.ville.ponts_coupes():
 		verifier(jeu.ruines_ponts[fid].visible and not jeu.reparations["r"][fid].visible

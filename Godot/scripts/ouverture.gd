@@ -323,6 +323,35 @@ func acces_degage() -> bool:
 	return _degage
 
 
+## 🧭 La colonne de gauche s'ouvre au fil du guide (auteur, 2026-10-02) : une
+## tuile reste grise tant que le guide ne l'a pas demandée, puis reste ouverte.
+func rail_ouvert(id: String) -> bool:
+	if suite or termine or prochaine_vue or id == "":
+		return true
+	match id:
+		"trafic":
+			return not etape in ["", "reloger", "camp_attente"]
+		"universite":
+			return pont_termine
+		"dangers":
+			return etude_lue
+	return false
+
+
+## La tuile que le guide demande, entourée jusqu'au clic.
+func rail_appel() -> String:
+	if not ouvert:
+		return ""
+	match etape:
+		"trafic":
+			return "trafic" if jeu.theme != "trafic" else ""
+		"etude":
+			return "universite"
+		"prochaine":
+			return "dangers" if jeu.theme != "dangers" else ""
+	return ""
+
+
 func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -> void:
 	jeu.examiner(couche, fid, reglage, valeur)
 
@@ -331,7 +360,7 @@ func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -
 func publier_etude() -> void:
 	pont_termine = true
 	pont_termine_mois = jeu.mois
-	jeu.interface.retours.notifier("Université : une étude annonce une crue plus forte d'ici 6 à 8 ans.", jeu.mois)
+	jeu.interface.retours.consigner("Université : une étude annonce une crue plus forte d'ici 6 à 8 ans.", jeu.mois)
 	jeu._sur_theme("")
 	jeu.interface._detail_ouvert = false
 	jeu.interface._placer_detail()
@@ -533,7 +562,7 @@ func actualiser(force := false) -> void:
 		etape = "livraison"
 	var degage := etape == "pont_travaux" and acces_degage()
 	if degage and _degage_annonce == 0:
-		jeu.interface.retours.notifier("Chemin du pont dégagé : on passera dès la fin du chantier.", jeu.mois)
+		jeu.interface.retours.consigner("Chemin du pont dégagé : on passera dès la fin du chantier.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	var rouvert := etape == "pont_livre" and ancienne != "pont_livre"

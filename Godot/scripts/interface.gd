@@ -1394,7 +1394,35 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	b.tooltip_text = bulle
 	_habiller_tuile_rail(b)
+	# 🧭 L'anneau de la tuile que le guide demande (`_maj_rail`).
+	var anneau := Panel.new()
+	var cadre := StyleBoxFlat.new()
+	cadre.bg_color = Color(ACCENT_VIF, 0.18)
+	cadre.set_corner_radius_all(_r(12))
+	cadre.set_border_width_all(3)
+	cadre.border_color = ACCENT_VIF
+	anneau.add_theme_stylebox_override("panel", cadre)
+	anneau.set_anchors_preset(Control.PRESET_FULL_RECT)
+	anneau.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	anneau.visible = false
+	b.add_child(anneau)
+	b.set_meta("anneau", anneau)
 	return b
+
+
+## 🧭 Grise tant que le guide ne l'a pas demandée, entourée quand il la demande.
+func _maj_rail() -> void:
+	var tuiles := _menu_boutons.duplicate()
+	for i in LIEUX_ORDRE.size():
+		tuiles[LIEUX_ORDRE[i]] = _rail_lieux[i]
+	var appel: String = ouverture.rail_appel() if ouverture != null else ""
+	var pouls := 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.006)
+	for id in tuiles:
+		var b: Button = tuiles[id]
+		b.disabled = ouverture != null and not ouverture.rail_ouvert(id)
+		var anneau: Control = b.get_meta("anneau")
+		anneau.visible = appel != "" and id == appel
+		anneau.modulate.a = pouls
 
 
 ## Le trait qui sépare les vues des lieux : sans lui, sept tuiles identiques
@@ -3099,9 +3127,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 			_maj_prochaine()
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
-	var verrou := _verrou()
-	for b in _rail_lieux:
-		b.disabled = verrou != ""
+	_maj_rail()
 	for v in _vitesses:
 		(_vitesses[v] as Button).set_pressed_no_signal(is_equal_approx(float(v), vitesse))
 	if _fiche_fid >= 0:

@@ -29,6 +29,9 @@ func executer() -> void:
 	o.publier_etude()
 	verifier(o.etape == "etude" and bouton("Ouvrir l'université") != null, "Le pont passé, le guide annonce l'étude")
 	verifier("étude" in ui.retours.journal[-1], "La parution est dans le journal")
+	jeu._rafraichir(true)
+	verifier(entouree("universite") and ui._rail_lieux[0].disabled and ui._menu_boutons["dangers"].disabled,
+		"Le guide entoure l'université ; mairie et Dangers restent grises")
 	await capture("etude_01_guide")
 	await cliquer(bouton("Ouvrir l'université"))
 	verifier(ui._etude_bloc.visible and "6 à 8 ans" in ui._etude_texte.text, "L'université montre l'étude")
@@ -40,12 +43,18 @@ func executer() -> void:
 		"L'université ne montre que l'étude tant que sa carte n'est pas ouverte")
 	await capture("etude_02_universite")
 	ui._fermer_lieu()
+	jeu._rafraichir(true)
+	verifier(entouree("dangers") and not ui._menu_boutons["dangers"].disabled and not entouree("universite"),
+		"L'étude lue, Dangers s'ouvre et s'entoure")
 	ui._sur_rail("dangers")
 	verifier(ui._vue_crue == "degats" and ui._onglets_crue["prochaine"].visible
 		and "nouveau" in ui._onglets_crue["prochaine"].text, "Dangers s'ouvre sur les dégâts, l'onglet neuf est signalé")
 	await capture("etude_03_degats")
 	await cliquer(ui._onglets_crue["prochaine"])
 	verifier(jeu.vue_crue == "prochaine" and o.prochaine_vue, "L'onglet Prochaine crue repeint la carte")
+	jeu._rafraichir(true)
+	verifier(not ui._rail_lieux[0].disabled and not ui._menu_boutons["energie"].disabled and not entouree(""),
+		"La prochaine crue vue, toute la colonne s'ouvre")
 	var p: Dictionary = jeu.ville.prochaine_crue(jeu.mois)
 	print("Prochaine crue : %s" % p)
 	verifier(int(p["ilots_sous_eau"]) > int(p["ilots_cette_annee"]), "La prochaine crue est plus étendue")
