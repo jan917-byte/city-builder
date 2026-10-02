@@ -632,3 +632,6 @@ Les dépenses sont rangées par genre de chantier ; ce détail a révélé qu'«
 **2026-10-02 — « Améliorer le campement » est un chantier : une ligne et sa barre dans « Chantiers en cours », la barre en haut de la fiche du camp, un message à la livraison (demande de l'auteur).**
 L'amélioration vaut pour tous les camps ; la liste la range sous le premier camp posé qu'on peut rejoindre.
 `essai_vie_camp` (capture `camp_03b_amelioration_en_cours`), `essai_ouverture`, `essai_etude` : 0 échec.
+**2026-10-02 — Une rue entre deux parcs peut devenir une allée du parc (décision 101, tranchée par l'auteur).**
+L'étape d'après « fermer aux voitures », si aucune porte ne donne sur la rue et si le réseau reste d'un seul tenant ; les deux îlots gardent leur numéro.
+Reste ouverte la question n°45 : le parc posé sur une partie seulement d'un îlot, et qui choisit l'ordre des parcelles.

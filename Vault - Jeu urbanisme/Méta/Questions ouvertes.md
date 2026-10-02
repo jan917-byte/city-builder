@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-30
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) et n°45 (le parc sur une partie d'un îlot) — n°37 à n°43 closes le 2026-09-30 — n°44 close le 2026-10-02 — n°11 et n°25 closes le 2026-09-02
+maj: 2026-10-02
 ---
 
 # Questions ouvertes
@@ -426,6 +426,12 @@ Proposé : A, un seuil seul ; B, un seuil qui monte à chaque règle signée ; C
 
 ### 43. La confiance rendue par des places retirées : fixe, ou selon la rue ? — ✅ fermée le 2026-09-30
 Proposé : un retour fixe (toujours plus que le coût), ou un retour qui dépend de ce que la rue est devenue — remplie de piétons, ou son trafic reporté ailleurs. L'auteur retient **selon la rue**. → [[Décisions arrêtées]] 99
+
+### 44. Que devient une rue entre deux îlots passés en parc ? — ✅ fermée le 2026-10-02
+L'auteur : *« si on transforme tout en parc, les routes entre-deux ne font plus sens »*. Proposé : la rue devient une **allée du parc**, l'étape d'après « fermer aux voitures », si aucun bâtiment n'a sa porte dessus et si le réseau reste d'un seul tenant ; les deux îlots gardent leur numéro. L'auteur retient. → [[Décisions arrêtées]] 101
+
+### 45. Un îlot peut-il être à moitié logement, à moitié parc ? — ouverte le 2026-10-02
+L'auteur : *« un îlot n'est pas séparé par sa fonction/tissu s'il a en même temps du logement et du parc »*. Proposé : le parc se pose **parcelle par parcelle, au curseur**, comme la densification (un cran = un bâtiment) ; le **tissu** reste la règle de construction de l'îlot, le parc est l'état du sol de chaque parcelle. L'auteur ne sait pas encore. Reste aussi à trancher **qui choisit l'ordre** : la parcelle la plus basse d'abord (automatique, depuis la rivière), ou le joueur qui désigne les parcelles sur la carte. Sans réponse, un îlot est tout logement ou tout parc. → [[Décisions arrêtées]] 95 et 101
 
 ## 🟢 Peut attendre (réversible)
 
