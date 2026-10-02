@@ -384,16 +384,22 @@ func prochaine_ouverte() -> void:
 func _reparation(couche: String, fid: int, titre: String) -> void:
 	var v = jeu.ville
 	var texte := titre
-	var reglage := "reparer"
+	# ⚖️ Un îlot sinistré s'ouvre sans façon posée : le joueur choisit (95).
+	var reglage := "" if couche == "i" and v.base("i", fid, "logements_sinistres") > 0.0 else "reparer"
 	if v.reparation_finie(couche, fid, jeu.mois):
 		texte += "\nLivré · voir le lieu"
 		reglage = ""
 	elif v.est_repare(couche, fid):
 		texte += "\nEn travaux · voir l'avancement"
 		reglage = ""
-	else:
+	elif reglage != "":
 		texte += "\n%.0f k€ · %s" % [v.cout_reparation_ke(couche, fid),
 			jeu.interface._duree(v.duree_reparation_mois(couche, fid))]
+	if couche == "i" and reglage == "" and not v.est_repare(couche, fid):
+		_bouton(texte, func() -> void:
+			examiner(couche, fid)
+			jeu.interface.ouvrir_onglet("crue"))
+		return
 	_bouton(texte, examiner.bind(couche, fid, reglage))
 
 
@@ -623,8 +629,8 @@ func actualiser(force := false) -> void:
 		"trafic":
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
-			_texte.text = "Tout le monde est à l'abri. Ouvrez le trafic pour choisir un pont."
-			_bouton("Ouvrir le trafic", func() -> void: jeu.interface._sur_rail("trafic"))
+			# 🧭 Sans bouton (auteur, 2026-10-02) : la tuile entourée de la colonne y mène.
+			_texte.text = "Tout le monde est à l'abri. Ouvrez le trafic, dans la colonne de gauche, pour choisir un pont."
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
 			_texte.text = "Trois ponts emportés. Ouvrez-en un pour comparer ses deux chantiers."
@@ -654,8 +660,7 @@ func actualiser(force := false) -> void:
 			# 🎓 La menace après la première victoire, jamais pendant l'urgence.
 			_poser_reperes([])
 			_titre.text = "Une nouvelle étude"
-			_texte.text = "L'université vient de publier une étude sur l'Ilse."
-			_bouton("Ouvrir l'université", func() -> void: jeu.interface.ouvrir_lieu("universite"))
+			_texte.text = "L'université vient de publier une étude sur l'Ilse. Ouvrez-la dans la colonne de gauche."
 		"prochaine":
 			# 🔴 Aucun bouton (auteur, 2026-09-30) : le joueur apprend où vit la prévision.
 			_poser_reperes([])
@@ -691,9 +696,13 @@ func actualiser(force := false) -> void:
 			var abrites := int(minf(logements, jeu.ville.sans_toit(jeu.mois) + jeu.ville.reloges(jeu.mois)))
 			_texte.text = "Rue des Forgerons envasée, %.0f logements inhabitables à côté. La prochaine crue y mettrait %s m d'eau. Par où commencer ?" % [
 				logements, jeu.interface._nb(jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois), 1)]
+			# 💶 Dit une fois, ici : la caisse ne relève pas tout (auteur, 2026-10-02).
+			var autres := _sinistres_restants() - 1
+			if autres > 0:
+				_texte.text += "\n%d autres îlots attendent. La caisse ne les relèvera pas tous." % autres
 			_reparation("r", RUE, "① Déblayer la rue")
 			_reparation("i", MAISONS, "② Relever les logements" + (
-				" · %d personnes rentrent chez elles" % abrites if abrites > 0 else ""))
+				" · %d personnes peuvent rentrer" % abrites if abrites > 0 else ""))
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
@@ -708,7 +717,7 @@ func actualiser(force := false) -> void:
 			if premier["couche"] == "r":
 				_texte.text = "%s est praticable. Réparer ne protège pas de la prochaine crue." % _nom("r", premier["fid"])
 			else:
-				_texte.text = "%s : %.0f logements remis en état. Réparer ne les protège pas de la prochaine crue." % [_nom("i", premier["fid"]), jeu.ville.base("i", premier["fid"], "logements_sinistres")]
+				_texte.text = _livraison_ilot(int(premier["fid"]))
 			_bouton("Voir le résultat", examiner.bind(premier["couche"], premier["fid"]))
 			_bouton("Et maintenant ?", func() -> void:
 				suite = true
@@ -736,6 +745,28 @@ func actualiser(force := false) -> void:
 				suite = true
 				actualiser(true))
 	reset_size()
+
+
+func _sinistres_restants() -> int:
+	var n := 0
+	for fid in jeu.ville.ilots:
+		if jeu.ville.base("i", fid, "logements_sinistres") > 0.0 and not jeu.ville.est_repare("i", fid):
+			n += 1
+	return n
+
+
+## 🏗️ Ce que la livraison dit, selon la façon de relever.
+func _livraison_ilot(fid: int) -> String:
+	var n: float = jeu.ville.base("i", fid, "logements_sinistres")
+	match jeu.ville.facon_reparation(fid):
+		"moderne":
+			return "%s : rebâti en moderne, %.0f logements. La prochaine crue les atteindra aussi." % [
+				_nom("i", fid), n * float(Ville.RECONSTRUCTIONS["moderne"]["logements"])]
+		"pilotis":
+			return "%s : %.0f logements sur pilotis. L'eau passera dessous, sauf la plus haute." % [_nom("i", fid), n]
+		"parc":
+			return "%s : rendu à l'eau. Ses habitants restent au camp tant qu'on ne les loge pas ailleurs." % _nom("i", fid)
+	return "%s : %.0f logements remis en état. Réparer ne les protège pas de la prochaine crue." % [_nom("i", fid), n]
 
 
 func _maj_protection() -> void:

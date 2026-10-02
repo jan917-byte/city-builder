@@ -366,6 +366,8 @@ var _culture_boutons := []
 var _repare_texte: Label
 var _repare_bouton: Button
 var _repare_provisoire: Button   # 🌉 l'autre choix d'un pont coupé (auteur, 2026-09-24)
+## 🏗️ Les quatre façons de relever un îlot sinistré (`Ville.RECONSTRUCTIONS`).
+var _rebatir_boutons := {}
 var _repare_etat: Label   # « ✓ Chantier terminé » : remplace le bouton grisé
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
 ## deux curseurs gardent leur propre mémoire, plus bas, parce qu'ils doivent
@@ -2090,6 +2092,12 @@ func _panneau_ilot() -> void:
 	_repare_provisoire.visible = false
 	_decision(_repare_provisoire, "reparer", "provisoire")
 	_repare_bloc.add_child(_repare_provisoire)
+	for facon in Ville.RECONSTRUCTIONS_ORDRE:
+		var b := Button.new()
+		b.visible = false
+		_decision(b, "reparer", facon)
+		_repare_bloc.add_child(b)
+		_rebatir_boutons[facon] = b
 	_repare_bloc.add_child(_repare_bouton)
 	_repare_etat = _etiquette("", 13, FAIT_TEXTE)
 	_repare_etat.visible = false
@@ -3908,12 +3916,21 @@ func _maj_recap() -> void:
 		_recap_effets.remove_child(c)
 		c.queue_free()
 	_effet("caisse", ("manque %s k€" % _milliers(manque)) if manque > 0.001
-		else "%s k€" % _milliers(cout), -1 if manque > 0.001 else 0)
+		else "%s k€%s" % [_milliers(cout), _en_dotation(cout)], -1 if manque > 0.001 else 0)
 	if manque_capital > 0.001:
 		_effet("capital", "manque %s de confiance" % _nb(manque_capital, 0), -1)
 	_effet("duree", _duree(duree), 0)
 	for e in consequences(r, duree):
 		_effet(e[0], e[1], e[2])
+
+
+## 💶 Au-delà d'un an, le prix se dit aussi en années de dotation : « 734 k€ »
+## ne parle pas, « 2 ans » se sent (auteur, 2026-10-02).
+static func _en_dotation(ke: float) -> String:
+	var ans := int(roundf(ke / (Ville.DOTATION_KE_MOIS * 12.0)))
+	if ans < 1:
+		return ""
+	return " · %d an%s de dotation" % [ans, "" if ans == 1 else "s"]
 
 
 func _manque(r: Dictionary) -> float:
@@ -3950,12 +3967,21 @@ func consequences(r: Dictionary, duree: float) -> Array:
 			int(roundf(-k0 * Ville.CAPITAL_RETOUR_PLACES_X_MAX))], 0])
 	var da := ville.degats(t)
 	var db := ville_essai.degats(t)
+	# Sur un îlot, ses propres logements ; ailleurs, ceux que la crue a pris. Les deux
+	# ensemble comptaient deux fois un îlot relevé.
 	var logements := float(da["logements_perdus"]) - float(db["logements_perdus"])
 	if _fiche_couche == "i":
-		logements += ville_essai.valeur("i", _fiche_fid, "logements", t) \
+		logements = ville_essai.valeur("i", _fiche_fid, "logements", t) \
 			- ville.valeur("i", _fiche_fid, "logements", t)
 	if absf(logements) >= 1.0:
 		out.append(["logement", "%+d logements" % int(roundf(logements)), _sens(logements)])
+	# 🏗️ Ce que la prochaine crue emporterait : c'est ce qui départage les façons de rebâtir.
+	if _fiche_couche == "i" and r.has("reparer") and etude_publiee():
+		var exposes := float(ville_essai.prochaine_crue(t)["logements_perdus"]) \
+			- float(ville.prochaine_crue(t)["logements_perdus"])
+		if absf(exposes) >= 1.0:
+			out.append(["eau", "%+d logements perdus à la prochaine crue" % int(roundf(exposes)),
+				-_sens(exposes)])
 	var abrites := ville.sans_toit(t) - ville_essai.sans_toit(t)
 	if abrites >= 1.0:
 		out.append(["logement", "+%d abrités" % int(roundf(abrites)), 1])
@@ -4104,6 +4130,14 @@ func apercu_demande() -> Dictionary:
 		futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois) \
 			or r.has("reparer") or _survole(_repare_bouton) \
 			or _survole(_repare_provisoire)
+		# 🌿 Un parc ne promet aucune maison.
+		var facon := ville.facon_reparation(_fiche_fid, str(r.get("reparer", "")))
+		for f in _rebatir_boutons:
+			if _survole(_rebatir_boutons[f]):
+				futur = true
+				facon = f
+		if _fiche_couche == "i" and facon == "parc":
+			futur = false
 	# 🌉 Quel pont la miniature promet : le choix posé, sinon le bouton survolé.
 	var provisoire := _fiche_couche == "r" and ville.pont_provisoire(_fiche_fid)
 	if _fiche_couche == "r":
@@ -4456,8 +4490,13 @@ func _maj_reparation(o: Dictionary) -> void:
 	# l'appui et le relâchement, et le bouton ne répondait plus (2026-09-26).
 	_repare_provisoire.visible = pont and not ville.est_repare(couche, _fiche_fid) \
 		and float(o.get("cout_reparation_ke", 0.0)) > 0.0
+	# 🏗️ Un îlot sinistré se relève de quatre façons ; elles remplacent le bouton.
+	var rebatir := couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0 \
+		and not ville.est_repare(couche, _fiche_fid) and float(o.get("cout_reparation_ke", 0.0)) > 0.0
+	for facon in _rebatir_boutons:
+		(_rebatir_boutons[facon] as Button).visible = rebatir
 	_repare_etat.visible = false
-	_repare_bouton.visible = true
+	_repare_bouton.visible = not rebatir
 	var prix := float(o.get("cout_reparation_ke", 0.0))
 	if prix <= 0.0:
 		_bloc_dispo[_repare_bloc] = false
@@ -4468,6 +4507,8 @@ func _maj_reparation(o: Dictionary) -> void:
 	var verbe := _verbe_reparation(couche, o)
 	if fini:
 		_repare_texte.text = "Remis en état."
+		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
+			_repare_texte.text = FAIT_REBATI[ville.facon_reparation(_fiche_fid)]
 		if pont:
 			_repare_texte.text = ouverture.description_pont(_fiche_fid) if ouverture != null else "Pont reconstruit."
 		_repare_bouton.visible = false
@@ -4485,6 +4526,9 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_etat.add_theme_color_override("font_color", GRIS_FORT)
 		_repare_etat.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid) \
 			else "Chantier en cours"
+		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
+			_repare_etat.text += " · " + String(Ville.RECONSTRUCTIONS[
+				ville.facon_reparation(_fiche_fid)]["nom"]).to_lower()
 		return
 	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
 	# récapitulatif, où il porte le TOTAL. Réparer et poser des panneaux séparément
@@ -4495,10 +4539,20 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_texte.text = ouverture.description_pont(_fiche_fid)
 	_posee(_repare_bouton, "reparer", verbe)
 	_repare_bouton.disabled = false
+	if rebatir:
+		# ⚖️ Aucune n'est conseillée (95) : le prix et les effets se lisent dans les conséquences.
+		_repare_texte.text += "\nComment le relever ?"
+		for facon in _rebatir_boutons:
+			_posee(_rebatir_boutons[facon], "reparer", str(Ville.RECONSTRUCTIONS[facon]["nom"]), facon)
 	if pont:
 		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une
 		# voie, ou en dur et plus long. Reposer l'autre remplace le premier.
 		_posee(_repare_provisoire, "reparer", "Pont provisoire", "provisoire")
+
+
+## 🏗️ Ce que la fiche dit d'un îlot relevé, selon la façon.
+const FAIT_REBATI := {"tradition": "Relevé comme avant.", "moderne": "Rebâti en moderne.",
+	"pilotis": "Rebâti sur pilotis.", "parc": "Rendu à l'eau : un parc inondable."}
 
 
 ## Un bouton qui MONTRE sans engager : un contour, sans plaque, pour ne pas

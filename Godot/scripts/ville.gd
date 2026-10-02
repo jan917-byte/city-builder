@@ -57,6 +57,7 @@ var _depense_genre := {}   # le même total, par genre : ce que le détail de l'
 var _credit_essai_ke := 0.0
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
 var _provisoire := {}      # fid pont -> true : rétabli par un pont provisoire
+var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTIONS`)
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
 var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbres}
@@ -160,6 +161,21 @@ const PONT_MOIS := 8.0               # un franchissement rebâti en dur (87)
 const PONT_PROVISOIRE_MOIS := 3.0
 const PONT_PROVISOIRE_PART := 0.25
 const PONT_PROVISOIRE_CAPACITE := 0.5
+# 🏗️ REBÂTIR UN ÎLOT SINISTRÉ, quatre façons qui se valent (95, auteur 2026-10-02) :
+# chacune gagne sur un seul plan. 🎚️ LEVEL DESIGN, tout ce bloc, proposé.
+# `hausse_m` : 2,5 m, le dernier palier que `04e` a mesuré (`ruine_apres_baisse`).
+const RECONSTRUCTIONS := {
+	"tradition": {"nom": "Comme avant", "prix": 1.0, "duree": 1.0, "logements": 1.0,
+		"confiance": 1.0, "hausse_m": 0.0},
+	"moderne": {"nom": "Moderne", "prix": 1.3, "duree": 1.5, "logements": 1.3,
+		"confiance": 0.5, "hausse_m": 0.0},
+	"pilotis": {"nom": "Sur pilotis", "prix": 1.6, "duree": 1.25, "logements": 1.0,
+		"confiance": 0.75, "hausse_m": 2.5},
+	"parc": {"nom": "Parc inondable", "prix": 0.2, "duree": 0.5, "logements": 0.0,
+		"confiance": -1.0, "hausse_m": 0.0},
+}
+const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc"]
+const PARC_BAISSE_M_PAR_HA := 0.10   # de crue en moins dans toute la ville, par hectare rendu
 
 
 # ==========================================================================
@@ -284,10 +300,11 @@ func objets(couche: String) -> Dictionary:
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
-	"_cultures", "_demandes", "_depense_genre"]
+	"_cultures", "_demandes", "_depense_genre", "_rebati"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
-const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre"]
+const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
+	"_rebati"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -328,6 +345,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
+		"_rebati": [ilots, ""],
 		"_demandes": [DEMANDES, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0]}
 	for champ in formes:
@@ -336,6 +354,9 @@ func valider_partie(etat: Dictionary) -> bool:
 		for fid in etat[champ]:
 			if not formes[champ][0].has(fid) or not _forme_partie(etat[champ][fid], formes[champ][1]):
 				return false
+	for fid in etat.get("_rebati", {}):
+		if not RECONSTRUCTIONS.has(etat["_rebati"][fid]):
+			return false
 	for fid in etat.get("_cultures", {}):
 		for d in etat["_cultures"][fid]:
 			if int(d["culture"]) < 0 or int(d["culture"]) >= CULTURES.size():
@@ -478,12 +499,22 @@ func baisse_crue_m(fid: int, t: float) -> float:
 	var fil := base("i", fid, "position_fil_eau")
 	# 🌿 Les toits verts entrent ICI, et pour toute la ville : ce qui n'est pas
 	# tombé dans les gouttières n'arrive pas dans l'Ilse, où que soit le toit.
-	var v := baisse_crue_toits_m(t) + baisse_crue_champs_m(t)
+	var v := baisse_crue_toits_m(t) + baisse_crue_champs_m(t) + baisse_crue_parcs_m(t)
 	for b in berges:
 		if fil >= base("b", b, "fil_amont") - 0.001 \
 				and fil <= base("b", b, "fil_aval") + 0.001:
 			v += berge_baisse_m(b, t)
 	return v
+
+
+## 🌿 Un parc inondable retient l'eau pour toute la ville, comme un toit vert :
+## la part ruinée de l'îlot, rendue au sol.
+func baisse_crue_parcs_m(t: float) -> float:
+	var ha := 0.0
+	for fid in _rebati:
+		if _rebati[fid] == "parc" and reparation_finie("i", fid, t):
+			ha += base("i", fid, "surface_m2") * base("i", fid, "part_sinistree") / 10000.0
+	return ha * PARC_BAISSE_M_PAR_HA
 
 
 ## Les îlots qu'une berge soulage, du plus exposé au moins. La fiche en a besoin
@@ -770,6 +801,7 @@ func reinitialiser() -> void:
 	_toit_avant.clear()
 	_repare.clear()
 	_provisoire.clear()
+	_rebati.clear()
 	_verger_vu = -1.0
 	vider_rampes()
 
@@ -1268,16 +1300,35 @@ func abris_places(t: float) -> int:
 ## 🔴 `reparation_finie` et non `est_repare` : on rentre chez soi à la
 ## livraison, pas à la signature du marché. C'est ce qui fait que le nombre est
 ## une fonction du temps, et que la file se vide quand le chantier se termine.
+## 🏠 Les logements neufs d'ailleurs — un îlot rebâti plus dense, une densification
+## livrée — logent ceux qu'un parc ne fera pas rentrer (auteur, 2026-10-02).
 func _perdus(t: float) -> float:
 	var perdus := 0.0
+	var ailleurs := 0.0
 	for fid in ilots:
-		if not reparation_finie("i", fid, t):
-			perdus += base("i", fid, "logements_sinistres")
-	return perdus
+		var s := base("i", fid, "logements_sinistres")
+		if s <= 0.0:
+			continue
+		if not reparation_finie("i", fid, t) or facon_reparation(fid) == "parc":
+			perdus += s
+		else:
+			ailleurs += s * (float(RECONSTRUCTIONS[facon_reparation(fid)]["logements"]) - 1.0)
+	for fid in _dense:
+		ailleurs += float(etat_dense(fid, t)["logements"])
+	return maxf(0.0, perdus - ailleurs)
 
 
 func sans_toit(t: float) -> float:
 	return maxf(0.0, _perdus(t) - float(abris_places(t)))
+
+
+## Une densification loge aussi des sinistrés (`_perdus`) : ses livraisons comptent.
+func _fins_dense() -> Array:
+	var out := []
+	for fid in _dense:
+		for lot in _dense[fid].get("lots", []):
+			out.append(float(lot["debut"]) + float(lot["duree"]))
+	return out
 
 
 func reloges(t: float) -> float:
@@ -1299,7 +1350,8 @@ func aide_mensuelle_ke(t: float) -> float:
 ## ∫ `sans_toit` de 0 à `t`, exacte : le nombre ne change qu'à une livraison
 ## de camp ou de réparation. Les marches sont gardées tant que rien n'est commandé.
 func aide_cumulee_ke(t: float) -> float:
-	var cle := "%d/%d/%d/%s" % [_repare.hash(), _provisoire.hash(), _camps.hash(), livraison_immediate]
+	var cle := "%d/%d/%d/%s/%d/%d" % [_repare.hash(), _provisoire.hash(), _camps.hash(),
+		livraison_immediate, _rebati.hash(), _dense.hash()]
 	if cle != _aide_cle:
 		_aide_cle = cle
 		var dates := [0.0]
@@ -1308,6 +1360,7 @@ func aide_cumulee_ke(t: float) -> float:
 			dates.append(float(_repare[c]) + duree_reparation_mois(m[0], int(m[1])))
 		for fid in _camps:
 			dates.append(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS))
+		dates.append_array(_fins_dense())
 		dates.sort()
 		_aide_marches = []
 		for d in dates:
@@ -1868,8 +1921,8 @@ func capital(t: float) -> float:
 ## que le compteur ne bouge jamais sans qu'une phrase dise pourquoi (☐ de Ressources).
 ## 🔗 Le pont compte à sa livraison, accès ou non : le noyau ne voit pas le réseau.
 func capital_mouvements() -> Array:
-	var cle := "%d/%d/%d/%d/%d/%s" % [_repare.hash(), _camps.hash(), _demandes.hash(),
-		_stationnement_supprime.hash(), _rampes_version, livraison_immediate]
+	var cle := "%d/%d/%d/%d/%d/%s/%d" % [_repare.hash(), _camps.hash(), _demandes.hash(),
+		_stationnement_supprime.hash(), _rampes_version, livraison_immediate, _rebati.hash()]
 	if cle == _capital_cle:
 		return _capital_mvts
 	_capital_cle = cle
@@ -1880,8 +1933,11 @@ func capital_mouvements() -> Array:
 		var fid := int(m[1])
 		var fin := float(_repare[c]) + duree_reparation_mois(couche, fid)
 		if couche == "i" and base("i", fid, "logements_sinistres") > 0.0:
-			_capital_mvts.append({"mois": fin, "quoi": "rentres", "couche": "i", "fid": fid,
-				"montant": base("i", fid, "logements_sinistres") * CAPITAL_PAR_LOGEMENT_RENTRE})
+			var k := float(RECONSTRUCTIONS[facon_reparation(fid)]["confiance"])
+			# Le parc se paie à la décision ; les autres rapportent à la livraison.
+			_capital_mvts.append({"mois": float(_repare[c]) if k < 0.0 else fin,
+				"quoi": "parc" if k < 0.0 else "rentres", "couche": "i", "fid": fid,
+				"montant": base("i", fid, "logements_sinistres") * CAPITAL_PAR_LOGEMENT_RENTRE * k})
 		elif couche == "r" and fid in _ponts:
 			_capital_mvts.append({"mois": fin, "quoi": "pont", "couche": "r", "fid": fid,
 				"montant": CAPITAL_PONT_ROUVERT})
@@ -1951,6 +2007,7 @@ func _mois_tous_abrites() -> float:
 		dates.append(float(_repare[c]) + duree_reparation_mois(m[0], int(m[1])))
 	for fid in _camps:
 		dates.append(float(_camps[fid]["debut"]) + _delai(CAMP_MOIS))
+	dates.append_array(_fins_dense())
 	dates.sort()
 	for d in dates:
 		if sans_toit(d) <= 0.0:
@@ -1961,6 +2018,9 @@ func _mois_tous_abrites() -> float:
 ## Ce qu'une commande dépense EN CAPITAL au mois de la décision, positif. Seules
 ## les places retirées en coûtent ; tout le reste en rapporte à la livraison.
 func capital_commande(couche: String, fid: int, r: Dictionary, t: float) -> float:
+	# 🌿 Un parc coûte la confiance des habitants qui ne rentreront pas (95).
+	if couche == "i" and r.has("reparer") and str(r["reparer"]) == "parc" and not est_repare("i", fid):
+		return base("i", fid, "logements_sinistres") * CAPITAL_PAR_LOGEMENT_RENTRE
 	if couche != "r" or not (r.has("places") or r.has("axe")) \
 			or _stationnement_supprime.has(fid) or valeur("r", fid, "stationnement", t) <= 0.0:
 		return 0.0
@@ -2011,11 +2071,32 @@ func indicateurs(t: float) -> Dictionary:
 
 ## Ce que `04e` a chiffré pour cet objet, 0 s'il n'y a rien à réparer ou si
 ## c'est déjà payé.
-func cout_reparation_ke(couche: String, fid: int, provisoire := false) -> float:
+func cout_reparation_ke(couche: String, fid: int, provisoire := false, facon := "") -> float:
 	if est_repare(couche, fid):
 		return 0.0
 	var part := PONT_PROVISOIRE_PART if provisoire and fid in _ponts and couche == "r" else 1.0
+	if couche == "i":
+		part = float(RECONSTRUCTIONS[facon_reparation(fid, facon)]["prix"])
 	return base(couche, fid, "cout_reparation_ke") * part
+
+
+## La façon engagée, sinon celle qu'on demande (`reparer` de la commande), sinon comme avant.
+func facon_reparation(fid: int, demandee := "") -> String:
+	if _rebati.has(fid):
+		return str(_rebati[fid])
+	return demandee if RECONSTRUCTIONS.has(demandee) else "tradition"
+
+
+## 🏗️ Les logements rebâtis en moderne, déjà livrés : ils naissent isolés (`Energie.conso_mwh`).
+func logements_neufs_isoles(fid: int, t: float) -> float:
+	if not est_repare("i", fid) or facon_reparation(fid) != "moderne":
+		return 0.0
+	return maxf(0.0, valeur("i", fid, "logements", t) - base("i", fid, "logements"))
+
+
+## 🏗️ Les pilotis lèvent le plancher : la prochaine crue le voit plus bas d'autant.
+func hausse_m(fid: int) -> float:
+	return float(RECONSTRUCTIONS[facon_reparation(fid)]["hausse_m"]) if est_repare("i", fid) else 0.0
 
 
 ## Rétabli par un pont provisoire, engagé ou livré.
@@ -2029,15 +2110,19 @@ func est_repare(couche: String, fid: int) -> bool:
 
 ## Combien de mois dure CE chantier-là. Un pont n'est pas une rue. Engagé,
 ## le pont garde son mode ; sinon `provisoire` dit lequel on annonce.
-func duree_reparation_mois(couche: String, fid: int, provisoire := false) -> float:
+func duree_reparation_mois(couche: String, fid: int, provisoire := false, facon := "") -> float:
 	if couche == "i":
-		return _delai(RECONSTRUCTION_MOIS)
+		return _delai(_reconstruction_mois(fid, facon))
 	var coupe := str(objets("r").get(fid, {}).get("etat_crue", "")) == "coupe"
 	if not coupe:
 		return _delai(DEBLAIEMENT_MOIS)
 	if est_repare("r", fid):
 		provisoire = _provisoire.has(fid)
 	return _delai(PONT_PROVISOIRE_MOIS if provisoire else PONT_MOIS)
+
+
+func _reconstruction_mois(fid: int, facon := "") -> float:
+	return RECONSTRUCTION_MOIS * float(RECONSTRUCTIONS[facon_reparation(fid, facon)]["duree"])
 
 
 ## Ce qui reste avant que la géométrie neuve n'apparaisse. 0 = c'est fini.
@@ -2070,7 +2155,7 @@ func durabilite(t: float, co2_kt: float) -> Dictionary:
 		var part := 1.0
 		if est_repare("i", fid):
 			part = clampf(reste_reparation_mois("i", fid, t) \
-				/ RECONSTRUCTION_MOIS, 0.0, 1.0)
+				/ _reconstruction_mois(fid), 0.0, 1.0)
 		reste_ke += base("i", fid, "cout_reparation_ke") * part
 		logements += perdus * part
 	for fid in routes:
@@ -2098,10 +2183,12 @@ func durabilite(t: float, co2_kt: float) -> Dictionary:
 ## `false` si rien à réparer, si c'est déjà engagé, ou si la caisse ne suit pas.
 ## L'interface pré-vérifie et explique ; ici, le verrou seul — même partage que
 ## `lancer_solaire`.
-func reparer(couche: String, fid: int, t: float, provisoire := false) -> bool:
-	var cout := cout_reparation_ke(couche, fid, provisoire)
+func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "") -> bool:
+	var cout := cout_reparation_ke(couche, fid, provisoire, facon)
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
 		return false
+	if couche == "i":
+		_rebati[fid] = facon_reparation(fid, facon)
 	_repare[couche + ":" + str(fid)] = t
 	if provisoire and couche == "r" and fid in _ponts:
 		_provisoire[fid] = true
@@ -2116,12 +2203,14 @@ func reparer(couche: String, fid: int, t: float, provisoire := false) -> bool:
 		# ⚠️ Le budget de la ville ne dépend pas encore de `logements` (dette
 		# nommée du prototype) : reconstruire ne rapporte donc rien d'autre que
 		# des toits équipables. C'est un manque, pas un choix.
-		var perdus := base("i", fid, "logements_sinistres")
+		# 🌿 Un parc ne rend ni logement ni toit.
+		var f: Dictionary = RECONSTRUCTIONS[_rebati[fid]]
+		var perdus := base("i", fid, "logements_sinistres") * float(f["logements"])
 		if perdus > 0.0:
 			ajouter_rampe("i", fid, "logements", perdus, t, 0.0,
-				RECONSTRUCTION_MOIS)
+				_reconstruction_mois(fid))
 		var neuf := base("i", fid, "toit_m2_neuf")
-		if neuf > 0.0:
+		if neuf > 0.0 and float(f["logements"]) > 0.0:
 			_toit_avant[fid] = ilots[fid].get("toit_m2", 0.0)
 			ilots[fid]["toit_m2"] = neuf
 			_vert_ha_mois = INF
@@ -2148,6 +2237,9 @@ func degats(t: float) -> Dictionary:
 			eau_prochaine = maxf(eau_prochaine,
 				valeur("i", fid, "hauteur_eau_annonce", t))
 		if est_repare("i", fid):
+			# 🌿 Un parc ne rend pas les logements : ils restent perdus.
+			if facon_reparation(fid) == "parc":
+				perdus += base("i", fid, "logements_sinistres")
 			continue
 		perdus += base("i", fid, "logements_sinistres")
 		a_reparer += base("i", fid, "cout_reparation_ke")
@@ -2181,7 +2273,12 @@ func prochaine_crue(t: float) -> Dictionary:
 			cette_annee += 1
 		if valeur("i", fid, "hauteur_eau_annonce", t) > SEUIL_EAU_M:
 			sous_eau += 1
-		logements += valeur("i", fid, "part_ruinee_apres", t) * valeur("i", fid, "logements", t)
+		var part := valeur("i", fid, "part_ruinee_apres", t)
+		var tous := valeur("i", fid, "logements", t)
+		# 🏗️ Seuls les logements rebâtis sont sur pilotis ; l'ancien reste au sol.
+		var leves := maxf(0.0, tous - base("i", fid, "logements")) if hausse_m(fid) > 0.0 else 0.0
+		logements += part * (tous - leves) \
+			+ _sur_la_courbe(fid, baisse_crue_m(fid, t) + hausse_m(fid)) * leves
 	return {
 		"ilots_sous_eau": sous_eau,
 		"ilots_cette_annee": cette_annee,
@@ -2243,7 +2340,7 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 	if r.has("culture"):
 		ke += cout_culture_ke(fid, int(r["culture"]))
 	if r.has("reparer"):
-		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire")
+		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire", str(r["reparer"]))
 	return ke
 
 
@@ -2278,7 +2375,8 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 	if r.has("culture"):
 		m = maxf(m, _delai(CULTURES[int(r["culture"])]["mois"]))
 	if r.has("reparer"):
-		m = maxf(m, duree_reparation_mois(couche, fid, str(r["reparer"]) == "provisoire"))
+		m = maxf(m, duree_reparation_mois(couche, fid, str(r["reparer"]) == "provisoire",
+			str(r["reparer"])))
 	return m
 
 
@@ -2326,7 +2424,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 			faits.append(str(DEMANDES[d]["nom"]).to_lower())
 	if r.has("culture") and cultiver(fid, int(r["culture"]), t):
 		faits.append("culture")
-	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire"):
+	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire",
+			str(r["reparer"])):
 		faits.append("reparation")
 	return {"ok": not faits.is_empty() or r.has("axe"), "manque": 0.0,
 		"cout_ke": cout, "faits": faits, "axe": r.has("axe"),

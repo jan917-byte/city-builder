@@ -1796,6 +1796,9 @@ func _montrer_reparations() -> void:
 		for fid in reparations[couche]:
 			var mi: MeshInstance3D = reparations[couche][fid]
 			var fini: bool = ville.reparation_finie(couche, fid, mois)
+			# 🌿 Un parc ne rebâtit rien : les ruines restent jusqu'au rendu du parc (étape 3).
+			if couche == "i" and ville.facon_reparation(fid) == "parc":
+				fini = false
 			# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (auteur, 2026-09-26) : le calque Trafic
 			# peignait le tablier manquant ; il montre la coupure et son pictogramme.
 			if couche == "r" and ponts_provisoires.has(fid):

@@ -27,13 +27,14 @@ func executer() -> void:
 	jeu._sur_theme("")
 
 	o.publier_etude()
-	verifier(o.etape == "etude" and bouton("Ouvrir l'université") != null, "Le pont passé, le guide annonce l'étude")
+	verifier(o.etape == "etude" and o._actions.get_child_count() == 0 and "colonne" in o._texte.text,
+		"Le pont passé, le guide annonce l'étude et montre la colonne, sans bouton")
 	verifier("étude" in ui.retours.journal[-1], "La parution est dans le journal")
 	jeu._rafraichir(true)
 	verifier(entouree("universite") and ui._rail_lieux[0].disabled and ui._menu_boutons["dangers"].disabled,
 		"Le guide entoure l'université ; mairie et Dangers restent grises")
 	await capture("etude_01_guide")
-	await cliquer(bouton("Ouvrir l'université"))
+	await cliquer(ui._rail_lieux[ui.LIEUX_ORDRE.find("universite")])
 	verifier(ui._etude_bloc.visible and "6 à 8 ans" in ui._etude_texte.text, "L'université montre l'étude")
 	verifier("19 îlots" in ui._etude_texte.text and "9 cette fois" in ui._etude_texte.text,
 		"L'étude compare les deux crues : %s" % ui._etude_texte.text)

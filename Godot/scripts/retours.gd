@@ -352,6 +352,8 @@ func phrase_capital(m: Dictionary) -> String:
 	match str(m["quoi"]):
 		"rentres":
 			return "%s : les habitants rentrent chez eux" % ui.lieux.nom("i", int(m["fid"]))
+		"parc":
+			return "%s : les habitants ne rentreront pas" % ui.lieux.nom("i", int(m["fid"]))
 		"pont":
 			return "%s rouvert" % ui.lieux.nom("r", int(m["fid"]))
 		"abrites":

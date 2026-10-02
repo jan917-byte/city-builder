@@ -204,8 +204,11 @@ static func production_mwh(v, fid: int, t: float) -> float:
 static func conso_mwh(v, fid: int, t: float) -> float:
 	var l := ligne(v, fid)
 	var iso: float = v.valeur("i", fid, "part_isolee", t)
-	return v.valeur("i", fid, "logements", t) * l["mwh_log"] \
+	# 🏗️ Un îlot rebâti en moderne : ses logements neufs ont déjà tout le gain d'isolation.
+	var neufs: float = v.logements_neufs_isoles(fid, t)
+	return (v.valeur("i", fid, "logements", t) - neufs) * l["mwh_log"] \
 		* (1.0 - l["gain_iso"] * iso) \
+		+ neufs * l["mwh_log"] * (1.0 - l["gain_iso"]) \
 		+ v.base("i", fid, "emplois") * l["mwh_emp"]
 
 

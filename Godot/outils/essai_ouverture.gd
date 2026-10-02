@@ -374,6 +374,7 @@ func executer() -> void:
 	# Huit mois de dotation : ce que le camp a coûté aux logements.
 	actualiser(8.0)
 	await cliquer(bouton("②"))
+	await cliquer(jeu.interface._rebatir_boutons["tradition"])
 	await cliquer(jeu.interface._recap_bouton)
 	actualiser(20.0)
 	verifier(o.etape == "livraison" and jeu.ville.reparation_finie("i", o.MAISONS, 20.0),
