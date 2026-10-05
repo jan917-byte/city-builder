@@ -641,3 +641,6 @@ L'étude parue, Dangers s'ouvre sur la prochaine crue ; université et mairie ne
 **2026-10-05 — Retour de jeu : le guide se tait pendant le chantier du pont (le bandeau dit la boue puis le chemin dégagé) ; le pont livré, « Trouver l'université » montre la ville entière, l'université entourée, et le clic sur elle ouvre l'étude (demande de l'auteur).**
 La tuile université de la colonne n'apparaît qu'une fois l'université trouvée ; « Déblayer tout le chemin » d'un coup est proposé, pas lancé.
 `essai_etude`, `essai_ouverture`, `essai_progression`, `essai_vie_camp`, `essai_relogement`, `essai_rebatir`, `essai_camp` : 0 échec.
+**2026-10-05 — Tout déblayer d'un coup : à la 3ᵉ rue faite à la main, le bandeau le dit et Trafic propose les rues restantes en un chantier, livrées l'une après l'autre (demande de l'auteur).**
+Pont d'Amont : 19 rues, 165 k€, 1,3 mois, fini avant le provisoire ; le chemin du pont passe en tête ; le panneau Trafic revient pendant le chantier du pont.
+`essai_deblaiement` (nouveau), `essai_ouverture`, `essai_etude`, `essai_progression`, `essai_vie_camp`, `essai_relogement`, `essai_rebatir` : 0 échec ; `essai_sauvegarde` : les 92 lieux sans nom déjà connus.

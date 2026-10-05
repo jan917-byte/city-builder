@@ -205,7 +205,7 @@ func _maj_chantiers(en_cours: Array) -> void:
 		var genre := str(c["genre"])
 		(l["quoi"] as Label).text = "Pont provisoire" if genre == "pont" and ui.ville.pont_provisoire(fid) else ui.CHANTIER_MOTS.get(genre, genre.capitalize())
 		var lieu: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
-		(l["nom"] as Label).text = lieu
+		(l["nom"] as Label).text = "%d rues sous la boue" % int(c["rues"]) if c.has("rues") else lieu
 		(l["reste"] as Label).text = "encore %s" % ui._duree(float(c["reste_mois"]))
 		l["jauge"].regler(float(c["part"]), float(c["part"]))
 	var deborde := en_cours.size() - chantiers_lignes.size()
@@ -245,6 +245,12 @@ func reprendre(mois: float, messages: Array = []) -> void:
 	actualiser(mois)
 
 
+func deblaiement(rues: int, r: Dictionary, mois: float) -> void:
+	consigner("Déblaiement de %d rues : −%s k€ · %s" % [rues, ui._milliers(r["cout_ke"]), ui._duree(r["duree"])], mois)
+	ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "", ui.ALERTE)
+	actualiser(mois)
+
+
 func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: float) -> void:
 	var lieu: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
 	var prix: String = "−%s k€" % ui._milliers(r["cout_ke"]) if r["cout_ke"] > 0.0 else "décision engagée"
@@ -265,6 +271,10 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	consigner(message, mois)
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
 		annoncer("La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier.", mois)
+	# 🧹 À la troisième rue faite à la main, Trafic propose le reste (auteur, 2026-10-05).
+	if couche == "r" and "reparation" in r["faits"] and not fid in ui.ville.ponts_coupes() \
+			and ui.ville.rues_deblayees_main() == ui.Ville.DEBLAIEMENT_SEUIL and ui.deblaiement_propose():
+		annoncer("Encore %d rues sous la boue : Trafic propose de tout déblayer d'un coup." % ui.rues_a_deblayer().size(), mois)
 	if duree <= 0.0:
 		for genre in r["faits"]:
 			livraison({"couche": couche, "fid": fid, "genre": genre}, mois)
@@ -280,7 +290,9 @@ func livraison(c: Dictionary, mois: float) -> void:
 	var couche := str(c["couche"])
 	var nom: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
 	var resultat := "Travaux terminés : %s." % str(c["genre"])
-	if c["genre"] == "relogement":
+	if c["genre"] == "deblaiement_groupe":
+		resultat = "Toutes les rues sont déblayées."
+	elif c["genre"] == "relogement":
 		var accueillis := int(ui.ville.camp_occupants(fid, mois))
 		resultat = "%d containers livrés · %d personnes accueillies." % [
 			ui.ville.camp_taille(fid, mois), accueillis]

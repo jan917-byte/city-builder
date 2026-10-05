@@ -57,6 +57,11 @@ var _depense_genre := {}   # le même total, par genre : ce que le détail de l'
 var _credit_essai_ke := 0.0
 var _repare := {}          # "i:66" -> le mois où la réparation a été engagée
 var _provisoire := {}      # fid pont -> true : rétabli par un pont provisoire
+## 🧹 Le déblaiement groupé (auteur, 2026-10-05) : fid rue -> rang. Une seule
+## équipe : la rue de rang k se libère (k + 1) × deux jours après l'engagement.
+var _file_deblaiement := {}
+## 🎚️ Tout déblayer d'un coup n'est proposé qu'après autant de rues faites à la main.
+const DEBLAIEMENT_SEUIL := 3
 var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTIONS`)
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
@@ -300,11 +305,11 @@ func objets(couche: String) -> Dictionary:
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
-	"_cultures", "_demandes", "_depense_genre", "_rebati"]
+	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati"]
+	"_rebati", "_file_deblaiement"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -345,6 +350,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
+		"_file_deblaiement": [routes, 0.0],
 		"_rebati": [ilots, ""],
 		"_demandes": [DEMANDES, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0]}
@@ -801,6 +807,7 @@ func reinitialiser() -> void:
 	_toit_avant.clear()
 	_repare.clear()
 	_provisoire.clear()
+	_file_deblaiement.clear()
 	_rebati.clear()
 	_verger_vu = -1.0
 	vider_rampes()
@@ -2128,7 +2135,7 @@ func duree_reparation_mois(couche: String, fid: int, provisoire := false, facon 
 		return _delai(_reconstruction_mois(fid, facon))
 	var coupe := str(objets("r").get(fid, {}).get("etat_crue", "")) == "coupe"
 	if not coupe:
-		return _delai(DEBLAIEMENT_MOIS)
+		return _delai(DEBLAIEMENT_MOIS) * (1.0 + float(_file_deblaiement.get(fid, 0.0)))
 	if est_repare("r", fid):
 		provisoire = _provisoire.has(fid)
 	return _delai(PONT_PROVISOIRE_MOIS if provisoire else PONT_MOIS)
@@ -2191,6 +2198,40 @@ func durabilite(t: float, co2_kt: float) -> Dictionary:
 		"adaptation_logements": logements,
 		"adaptation_ponts": ponts,
 	}
+
+
+## Les rues encore sous la boue, ponts exclus.
+func rues_boueuses() -> Array:
+	var out := []
+	for fid in routes:
+		if not est_repare("r", fid) and base("r", fid, "cout_reparation_ke") > 0.0 \
+				and _genre_chantier("r", fid) == "deblaiement":
+			out.append(fid)
+	return out
+
+
+## Les rues déblayées une à une, engagées ou livrées.
+func rues_deblayees_main() -> int:
+	var n := 0
+	for cle in _repare:
+		var m: PackedStringArray = str(cle).split(":")
+		if m[0] == "r" and _genre_chantier("r", int(m[1])) == "deblaiement" \
+				and not _file_deblaiement.has(int(m[1])):
+			n += 1
+	return n
+
+
+## 🧹 Un seul chantier, payé à l'engagement, livré rue après rue dans l'ordre de `rues`.
+func deblayer_tout(rues: Array, t: float) -> Dictionary:
+	var cout := 0.0
+	for fid in rues:
+		cout += cout_reparation_ke("r", int(fid))
+	if rues.is_empty() or cout > caisse_ke(t) + 0.001:
+		return {"ok": false, "cout_ke": cout, "manque": maxf(cout - caisse_ke(t), 0.0)}
+	for i in rues.size():
+		_file_deblaiement[int(rues[i])] = float(i)
+		reparer("r", int(rues[i]), t)
+	return {"ok": true, "cout_ke": cout, "duree": duree_reparation_mois("r", int(rues[-1]))}
 
 
 ## `false` si rien à réparer, si c'est déjà engagé, ou si la caisse ne suit pas.
@@ -2536,6 +2577,8 @@ func chantiers(t: float) -> Dictionary:
 	var casses := 0
 	var reste_ke := 0.0
 	var casses_par_genre := {"reconstruction": 0, "pont": 0, "deblaiement": 0}
+	# 🧹 Le déblaiement groupé est UN chantier : ses rues ne se listent pas une à une.
+	var groupe := {"rues": 0, "reste": 0.0, "cout": 0.0}
 	for couche in ["i", "r"]:
 		for fid in objets(couche):
 			var prix := base(couche, fid, "cout_reparation_ke")
@@ -2548,11 +2591,20 @@ func chantiers(t: float) -> Dictionary:
 				reste_ke += prix
 			elif reparation_finie(couche, fid, t):
 				faits += 1
+			elif couche == "r" and _file_deblaiement.has(fid):
+				groupe["rues"] += 1
+				groupe["reste"] = maxf(groupe["reste"], reste_reparation_mois(couche, fid, t))
 			else:
 				en_cours.append({"couche": couche, "fid": fid,
 					"genre": genre, "cout_ke": prix,
 					"reste_mois": reste_reparation_mois(couche, fid, t),
 					"duree": duree_reparation_mois(couche, fid)})
+	if groupe["rues"] > 0:
+		for fid in _file_deblaiement:
+			groupe["cout"] += base("r", fid, "cout_reparation_ke")
+		en_cours.append({"couche": "r", "fid": -1, "genre": "deblaiement_groupe",
+			"rues": groupe["rues"], "cout_ke": groupe["cout"], "reste_mois": groupe["reste"],
+			"duree": _delai(DEBLAIEMENT_MOIS) * _file_deblaiement.size()})
 	# La pose est un chantier comme un autre : sans elle, « tous les chantiers
 	# en cours » en oublierait un, et l'îlot ambre ne serait dans aucune liste.
 	for fid in _solaire:

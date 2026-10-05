@@ -276,6 +276,7 @@ func _ready() -> void:
 	interface.examen_demande.connect(examiner)
 	interface.nord_demande.connect(pivot.remettre_nord)
 	interface.dessus_demande.connect(pivot.basculer_dessus)
+	interface.deblaiement_demande.connect(_sur_deblayer_tout)
 	interface.fiche_fermee.connect(func() -> void:
 		selection.sel_couche = ""
 		selection.sel_fid = -1
@@ -2846,6 +2847,19 @@ func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
 	# 🚿 La plainte a mis en pause ; améliorer le camp relance à ×1 (auteur, 2026-10-02).
 	if vitesse == 0.0 and reglages.keys().any(func(k) -> bool: return str(k).begins_with("demande_")):
 		_sur_vitesse(1.0)
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	if ouverture != null:
+		ouverture.actualiser(true)
+
+
+## 🧹 Toutes les rues encore sous la boue, en un chantier (auteur, 2026-10-05).
+func _sur_deblayer_tout() -> void:
+	var rues: Array = interface.rues_a_deblayer()
+	var r := ville.deblayer_tout(rues, mois)
+	if not bool(r["ok"]):
+		return
+	interface.retours.deblaiement(rues.size(), r, mois)
 	_dernier_peint = -1.0
 	_rafraichir(true)
 	if ouverture != null:

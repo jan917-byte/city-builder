@@ -19,6 +19,7 @@ signal theme_demande(id: String)
 signal commande_demandee(couche: String, fid: int, reglages: Dictionary)
 ## ✕ La croix de la fiche : `maquette` efface la sélection.
 signal fiche_fermee()
+signal deblaiement_demande()
 ## 🎓 Les deux onglets de Dangers : "degats" ou "prochaine".
 signal vue_crue_demandee(id: String)
 ## Ouvrir la fiche d'un lieu, déjà réglée — `maquette.examiner`.
@@ -100,7 +101,7 @@ const FAIT := Color8(91, 174, 117)
 ## Les genres de `ville.chantier` en clair, pour la barre de la fiche.
 const CHANTIER_MOTS := {
 	"reconstruction": "Reconstruction", "pont": "Tablier rebâti",
-	"deblaiement": "Déblaiement", "solaire": "Pose de panneaux",
+	"deblaiement": "Déblaiement", "deblaiement_groupe": "Déblaiement", "solaire": "Pose de panneaux",
 	"berge": "Rive transformée", "stationnement": "Retrait des places",
 	"densification": "Étages ajoutés",
 	"relogement": "Installation des abris",
@@ -1507,6 +1508,61 @@ func _panneau_calque() -> void:
 	_calque_note = _label("", 11, GRIS)
 	_calque_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_calque_note)
+	# 🧹 Tout déblayer d'un coup (auteur, 2026-10-05). 🔴 Texte de prototype, flaggable (90).
+	_boue_bloc = VBoxContainer.new()
+	_boue_bloc.add_theme_constant_override("separation", 6)
+	_boue_bloc.visible = false
+	v.add_child(_boue_bloc)
+	_boue_bloc.add_child(HSeparator.new())
+	_boue_texte = _label("", 13, TEXTE)
+	_boue_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_boue_bloc.add_child(_boue_texte)
+	_boue_bouton = Button.new()
+	_boue_bouton.text = "Tout déblayer"
+	_habiller_principal(_boue_bouton)
+	_boue_bouton.pressed.connect(func() -> void: deblaiement_demande.emit())
+	_boue_bloc.add_child(_boue_bouton)
+
+
+var _boue_bloc: VBoxContainer
+var _boue_texte: Label
+var _boue_bouton: Button
+
+
+## Les rues que « Tout déblayer » prendrait : celles que le guide laisse engager,
+## celles qui barrent un pont engagé en tête, pour qu'il passe le plus tôt possible.
+func rues_a_deblayer() -> Array:
+	var rues := _rues_permises()
+	var devant := []
+	for p in ville.ponts_coupes():
+		if ville.est_repare("r", p):
+			devant += trafic.acces_pont(p, _mois)["obstacles"]
+	rues.sort_custom(func(a, b) -> bool: return int(a in devant) > int(b in devant))
+	return rues
+
+
+func _rues_permises() -> Array:
+	return ville.rues_boueuses().filter(func(f) -> bool: return _autorise("r", int(f)))
+
+
+## Sans le tri : la colonne le demande à chaque image.
+func deblaiement_propose() -> bool:
+	return ville.rues_deblayees_main() >= Ville.DEBLAIEMENT_SEUIL and not _rues_permises().is_empty()
+
+
+func _maj_boue() -> void:
+	if _boue_bloc == null:
+		return
+	_boue_bloc.visible = _calque_panneau.visible and _theme_courant == "trafic" and deblaiement_propose()
+	if not _boue_bloc.visible:
+		return
+	var rues := rues_a_deblayer()
+	var cout := 0.0
+	for f in rues:
+		cout += ville.cout_reparation_ke("r", int(f))
+	_boue_texte.text = "%d rues encore sous la boue · %s k€ · %s, l'une après l'autre." % [
+		rues.size(), _milliers(cout), _duree(Ville.DEBLAIEMENT_MOIS * rues.size())]
+	_boue_bouton.disabled = cout > ville.caisse_ke(_mois) + 0.001
 
 
 func _entete(parent: VBoxContainer) -> Array:
@@ -1880,8 +1936,8 @@ func maj_chantiers(d: Dictionary) -> void:
 func _ligne_chantier(c: Dictionary) -> String:
 	var genre: String = {"pont": "tablier", "deblaiement": "déblaiement",
 		"solaire": "panneaux", "berge": "transformation"}.get(c["genre"], c["genre"])
-	return "%s · %s · encore %s" % [lieux.nom(c["couche"], int(c["fid"])), genre,
-		_duree(float(c["reste_mois"]))]
+	var nom: String = "%d rues" % int(c["rues"]) if c.has("rues") else lieux.nom(c["couche"], int(c["fid"]))
+	return "%s · %s · encore %s" % [nom, genre, _duree(float(c["reste_mois"]))]
 
 
 ## 🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-08-25 : la fiche se retirait dès qu'un
@@ -3282,6 +3338,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	if indic.is_empty():
 		return
 	_mois = mois
+	_maj_boue()
 	var conso: float = indic["conso_mwh"]
 	var prod: float = indic["production_mwh"]
 	var achat: float = indic["achat_mwh"]

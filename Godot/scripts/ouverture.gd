@@ -57,6 +57,7 @@ var _annonce_texte: Label
 ## 🚿 La plainte du camp : 0 à venir, 1 affichée, 2 passée. Elle tombe quand
 ## l'usure commence (`Ville.CAMP_USURE_APRES_PONT_MOIS`).
 var plainte := 0
+var deblaiement_vu := false
 
 
 func batir(maquette) -> void:
@@ -342,6 +343,9 @@ func rail_ouvert(id: String) -> bool:
 
 ## La tuile que le guide demande, entourée jusqu'au clic.
 func rail_appel() -> String:
+	# 🧹 Trafic s'entoure quand il propose de tout déblayer, jusqu'à ce qu'on l'ouvre.
+	if not deblaiement_vu and jeu.theme != "trafic" and jeu.interface.deblaiement_propose():
+		return "trafic"
 	if not ouvert:
 		return ""
 	match etape:
@@ -522,7 +526,10 @@ func _premier_pont() -> Dictionary:
 
 
 func voir_trafic() -> void:
-	if not _camp_pose() or pont_termine or suite or termine:
+	if jeu.interface.deblaiement_propose():
+		deblaiement_vu = true
+	# Muet pendant le chantier du pont : le calque garde son propre panneau.
+	if not _camp_pose() or pont_termine or suite or termine or etape == "pont_travaux":
 		return
 	var premiere_fois := not trafic_vu
 	trafic_vu = true
@@ -611,6 +618,10 @@ func actualiser(force := false) -> void:
 		jeu.interface.retours.annoncer("Chemin du pont dégagé : on passera dès la fin du chantier.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
+	# Le guide remplaçait le panneau du calque Trafic : muet, il le rend.
+	if etape == "pont_travaux" and ancienne != "pont_travaux" and jeu.theme == "trafic":
+		jeu.interface._detail_ouvert = true
+		jeu.interface._placer_detail()
 	var rouvert := etape == "pont_livre" and ancienne != "pont_livre"
 	if (etape == "livraison" and ancienne == "travaux" or rouvert or
 			etape == "pont_acces" and ancienne == "pont_travaux") and (ouvert or rouvert):
