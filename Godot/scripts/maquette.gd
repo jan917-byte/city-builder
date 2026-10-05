@@ -2809,6 +2809,7 @@ func _sur_choix(couche: String, fid: int) -> void:
 		interface.montrer(couche, fid, false)
 		if ouverture != null:
 			ouverture.regarde(couche, fid)
+			ouverture.trouve(couche, fid)
 	_dernier_peint = -1.0
 
 

@@ -26,15 +26,34 @@ func executer() -> void:
 	verifier(not ui._onglets_crue["prochaine"].visible, "Avant l'étude, Dangers n'a que ses dégâts")
 	jeu._sur_theme("")
 
-	o.publier_etude()
-	verifier(o.etape == "etude" and o._actions.get_child_count() == 0 and "colonne" in o._texte.text,
-		"Le pont passé, le guide annonce l'étude et montre la colonne, sans bouton")
+	var univ: Button = ui._rail_lieux[ui.LIEUX_ORDRE.find("universite")]
+	verifier(not univ.visible, "Avant le pont, la colonne n'a pas de tuile université")
+	# 🎓 La carte du pont rouvert, bouton principal : chercher l'université (auteur, 2026-10-05).
+	o.carte = "pont"
+	o.premier = {"couche": "r", "fid": jeu.ville.ponts_coupes()[0], "fin": 0.0}
+	o._sur_carte(true)
+	verifier(o.etape == "etude" and o._actions.get_child_count() == 1 and "ville" in o._texte.text,
+		"Le pont passé, le guide demande de trouver l'université, un bouton pour la montrer")
 	verifier("étude" in ui.retours.journal[-1], "La parution est dans le journal")
 	jeu._rafraichir(true)
-	verifier(entouree("universite") and ui._rail_lieux[0].disabled and ui._menu_boutons["dangers"].disabled,
-		"Le guide entoure l'université ; mairie et Dangers restent grises")
-	await capture("etude_01_guide")
-	await cliquer(ui._rail_lieux[ui.LIEUX_ORDRE.find("universite")])
+	var fid_univ := int(ui.LIEUX["universite"]["fid"])
+	verifier(jeu.selection.sel_fid == fid_univ and not ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
+		"L'université est entourée sur la carte, aucune fiche ouverte")
+	verifier(jeu.pivot.taille >= float(jeu.donnees["reperes"]["ville"]["taille"]) - 1.0,
+		"La caméra montre toute la ville")
+	verifier(not univ.visible and not entouree("universite") and ui._rail_lieux[0].disabled
+		and ui._menu_boutons["dangers"].disabled,
+		"Pas de raccourci : la tuile université reste cachée ; mairie et Dangers restent grises")
+	await capture("etude_01_trouver")
+	jeu._sur_choix("i", o.MAISONS)
+	verifier(not o.etude_lue and ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
+		"Un autre îlot ouvre sa fiche, pas l'étude")
+	await cliquer(o._actions.get_child(0))
+	verifier(jeu.selection.sel_fid == fid_univ and not ui._fiche_panneau.visible,
+		"« Montrer l'université » la ré-entoure")
+	jeu._sur_choix("i", fid_univ)
+	jeu._rafraichir(true)
+	verifier(o.etude_lue and univ.visible, "Trouvée, l'université ouvre l'étude et sa tuile apparaît")
 	verifier(ui._etude_bloc.visible and "6 à 8 ans" in ui._etude_texte.text, "L'université montre l'étude")
 	verifier("19 îlots" in ui._etude_texte.text and "9 cette fois" in ui._etude_texte.text,
 		"L'étude compare les deux crues : %s" % ui._etude_texte.text)

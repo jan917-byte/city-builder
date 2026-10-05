@@ -638,3 +638,6 @@ L'amélioration vaut pour tous les camps ; la liste la range sous le premier cam
 **2026-10-02 — Retour de jeu : le bandeau du haut ne porte plus que les annonces (recherche achevée, boue sur le chemin du pont) ; un camp livré fait monter « +N » et l'icône logement ; améliorer le camp dure 3 semaines et relance le temps à ×1 (demande de l'auteur).**
 L'étude parue, Dangers s'ouvre sur la prochaine crue ; université et mairie ne proposent plus de financement, ils viendront plus tard (`financements_ouverts`, haut des lieux dans `interface.gd`).
 `essai_etude`, `essai_vie_camp`, `essai_ouverture`, `essai_progression`, `essai_relogement`, `essai_rebatir`, `essai_camp` : 0 échec ; `essai_sauvegarde` : les 92 lieux sans nom déjà connus.
+**2026-10-05 — Retour de jeu : le guide se tait pendant le chantier du pont (le bandeau dit la boue puis le chemin dégagé) ; le pont livré, « Trouver l'université » montre la ville entière, l'université entourée, et le clic sur elle ouvre l'étude (demande de l'auteur).**
+La tuile université de la colonne n'apparaît qu'une fois l'université trouvée ; « Déblayer tout le chemin » d'un coup est proposé, pas lancé.
+`essai_etude`, `essai_ouverture`, `essai_progression`, `essai_vie_camp`, `essai_relogement`, `essai_rebatir`, `essai_camp` : 0 échec.

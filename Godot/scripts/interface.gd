@@ -1427,6 +1427,7 @@ func _maj_rail() -> void:
 	for id in tuiles:
 		var b: Button = tuiles[id]
 		b.disabled = ouverture != null and not ouverture.rail_ouvert(id)
+		b.visible = ouverture == null or ouverture.rail_visible(id)
 		var anneau: Control = b.get_meta("anneau")
 		anneau.visible = appel != "" and id == appel
 		anneau.modulate.a = pouls
@@ -1466,7 +1467,7 @@ func _placer_detail() -> void:
 	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
 	_calque_panneau.visible = _detail_ouvert and (genre == "calque" or genre == "tissu")
 	if ouverture != null:
-		ouverture.visible = ouverture.ouvert and not _detail_ouvert and not ouverture.annonce.visible
+		ouverture.visible = ouverture.paraitre()
 
 
 ## Les données générales attendent la fin de la découverte du premier pont.

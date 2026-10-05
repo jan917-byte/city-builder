@@ -513,13 +513,14 @@ func essayer_ponts(lointain: int) -> void:
 	await cliquer(jeu.interface._recap_bouton)
 	verifier(o.etape == "pont_travaux" and not jeu.ville.route_praticable(pont, debut)
 		and jeu.ville.pont_provisoire(pont), "L'engagement paie le pont provisoire sans ouvrir sa traversée")
-	# 🔄 Rien ne désigne les accès (auteur, 2026-09-26) : ni la fenêtre, ni la fiche.
+	# 🔄 Rien ne désigne les accès (auteur, 2026-09-26) : ni le bandeau, ni la fiche.
+	var boue := str(jeu.interface.retours.journal.back())
 	actualiser(debut)
-	verifier(bouton("Voir les accès") == null and o._actions.get_child_count() == 2,
-		"La fenêtre du chantier ne propose que d'avancer et de voir le pont")
+	# 🔇 Pendant le chantier, le bandeau parle seul (auteur, 2026-10-05).
+	verifier(not o.visible and o._actions.get_child_count() == 0 and "boue" in boue,
+		"Le pont engagé, le guide se tait et le bandeau dit que la boue bloque")
 	for rue in acces["obstacles"]:
-		verifier(bouton(o._nom("r", rue)) == null and not o._nom("r", rue) in o._texte.text,
-			"La fenêtre du chantier ne nomme pas l'accès %d" % rue)
+		verifier(not o._nom("r", rue) in boue, "Le bandeau ne nomme pas l'accès %d" % rue)
 	var fin: float = debut + jeu.ville.duree_reparation_mois("r", pont)
 	verifier(is_equal_approx(fin - debut, jeu.ville.PONT_PROVISOIRE_MOIS), "Le pont provisoire se pose en %s mois" % jeu.ville.PONT_PROVISOIRE_MOIS)
 	actualiser(fin - 0.01)
@@ -530,8 +531,8 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._sur_reprise()
 	verifier(o.etape == "pont_travaux", "La reprise conserve le pont en travaux")
 	# 🧹 Dit dès l'engagement, sans nommer la rue (auteur, 2026-09-26).
-	verifier("boue" in o._texte.text and not o.autorise("i", o.MAISONS),
-		"Pendant le chantier, le guide dit que la boue bloque et les logements attendent")
+	verifier(not o.visible and not o.autorise("i", o.MAISONS),
+		"Pendant le chantier, le guide reste caché et les logements attendent")
 	await capture("12_pont_travaux")
 	# Le chemin déblayé ne rouvre pas les îlots sinistrés : ils attendent l'étude
 	# (auteur, 2026-10-02). Puis on revient à la sauvegarde pour jouer l'oubli du déblaiement.
@@ -543,7 +544,7 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(is_equal_approx(jeu.ville.duree_reparation_mois("r", int(acces["obstacles"][0])), 2.0 / 30.0),
 		"Une rue se déblaie en deux jours")
 	actualiser(pendant + 2.0 / 30.0)
-	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in o._texte.text
+	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in str(jeu.interface.retours._recent)
 		and not o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
 		"Le chemin déblayé pendant le chantier laisse les îlots sinistrés fermés")
 	await capture("12b_chemin_degage")

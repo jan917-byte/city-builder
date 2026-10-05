@@ -155,9 +155,9 @@ func _remplir_carte() -> void:
 	match carte:
 		"pont":
 			_annonce_titre.text = "Les deux rives sont reliées"
-			_annonce_texte.text = "%s est rouvert.\nL'université vient de publier son étude sur la prochaine crue de l'Ilse." \
+			_annonce_texte.text = "%s est rouvert.\nL'université vient de publier son étude sur la prochaine crue de l'Ilse. Trouvez-la dans la ville." \
 				% _nom("r", premier["fid"])
-			annonce_principal.text = "Lire l'étude"
+			annonce_principal.text = "Trouver l'université"
 			annonce_second.text = "Voir d'abord le pont"
 		"camp":
 			_annonce_titre.text = "Les habitants du camp sont mécontents"
@@ -171,7 +171,7 @@ func _sur_carte(principal: bool) -> void:
 		var fid := int(premier["fid"])
 		publier_etude()
 		if principal:
-			jeu.interface.ouvrir_lieu("universite")
+			chercher_universite()
 		else:
 			examiner("r", fid)
 		return
@@ -332,7 +332,7 @@ func rail_ouvert(id: String) -> bool:
 		"trafic":
 			return not etape in ["", "reloger", "camp_attente"]
 		"universite":
-			return pont_termine
+			return etude_lue
 		"dangers":
 			return etude_lue
 	return false
@@ -345,15 +345,40 @@ func rail_appel() -> String:
 	match etape:
 		"trafic":
 			return "trafic" if jeu.theme != "trafic" else ""
-		"etude":
-			return "universite"
 		"prochaine":
 			return "dangers" if jeu.theme != "dangers" else ""
 	return ""
 
 
+## 🎓 La tuile de l'université n'apparaît qu'une fois trouvée sur la carte (auteur, 2026-10-05).
+func rail_visible(id: String) -> bool:
+	return id != "universite" or rail_ouvert(id)
+
+
 func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -> void:
 	jeu.examiner(couche, fid, reglage, valeur)
+
+
+## 🎓 TROUVER L'UNIVERSITÉ (auteur, 2026-10-05) : toute la ville à l'écran,
+## l'université entourée par le trait de sélection, et c'est le clic sur elle
+## qui ouvre l'étude — le joueur apprend où elle est.
+func chercher_universite() -> void:
+	jeu.interface._fermer_fiche()
+	jeu.selection.sel_couche = "i"
+	jeu.selection.sel_fid = _universite()
+	jeu._repere("ville")
+	jeu._dernier_peint = -1.0
+	jeu._rafraichir(true)
+
+
+func _universite() -> int:
+	return int(jeu.interface.LIEUX["universite"]["fid"])
+
+
+## Le clic sur la ville pendant la recherche : l'université ouvre l'étude.
+func trouve(couche: String, fid: int) -> void:
+	if etape == "etude" and couche == "i" and fid == _universite():
+		jeu.interface.ouvrir_lieu("universite")
 
 
 ## Le premier pont est derrière nous : l'étude paraît, la suite commence.
@@ -517,8 +542,15 @@ func _choisir_pont(fid: int) -> void:
 	examiner("r", fid)
 
 
+## Ouvert, sans panneau de détail ni carte au centre, et muet pendant le
+## chantier du pont (auteur, 2026-10-05).
+func paraitre() -> bool:
+	return ouvert and not jeu.interface._detail_ouvert and not annonce.visible \
+		and etape != "pont_travaux"
+
+
 func actualiser(force := false) -> void:
-	visible = ouvert and not jeu.interface._detail_ouvert and not annonce.visible
+	visible = paraitre()
 	if _reperes != null:
 		_reperes.visible = visible and jeu.theme in ["", "trafic"] and not suite and not termine
 		# Même règle que les pastilles : taille constante à l'écran.
@@ -568,7 +600,7 @@ func actualiser(force := false) -> void:
 		etape = "livraison"
 	var degage := etape == "pont_travaux" and acces_degage()
 	if degage and _degage_annonce == 0:
-		jeu.interface.retours.consigner("Chemin du pont dégagé : on passera dès la fin du chantier.", jeu.mois)
+		jeu.interface.retours.annoncer("Chemin du pont dégagé : on passera dès la fin du chantier.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	var rouvert := etape == "pont_livre" and ancienne != "pont_livre"
@@ -589,10 +621,10 @@ func actualiser(force := false) -> void:
 	annonce.visible = carte != ""
 	_remplir_carte()
 	# Recalculé : la carte a pu se fermer pendant cet appel.
-	visible = ouvert and not jeu.interface._detail_ouvert and not annonce.visible
+	visible = paraitre()
 	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
 	_caisse.text = "Caisse : " + jeu.interface._millions(jeu.ville.caisse_ke(jeu.mois))
-	_progression.visible = etape in ["travaux", "pont_travaux"]
+	_progression.visible = etape == "travaux"
 	_detail.visible = _progression.visible or etape == "suite"
 	if _progression.visible:
 		var duree: float = jeu.ville.duree_reparation_mois(premier["couche"], premier["fid"])
@@ -646,21 +678,17 @@ func actualiser(force := false) -> void:
 			if jeu.trafic.acces_pont(int(premier["fid"]), jeu.mois)["possible"]:
 				_texte.text = "La boue bloque encore le chemin jusqu'au pont."
 		"pont_travaux":
-			_poser_reperes([["r", premier["fid"], str(jeu.ville.ponts_coupes().find(premier["fid"]) + 1)]])
-			_titre.text = "Le pont provisoire se pose" if jeu.ville.pont_provisoire(int(premier["fid"])) \
-				else "Le pont se reconstruit"
-			# 🧹 Dit dès l'engagement, sans nommer les rues (auteur, 2026-09-26).
-			_texte.text = "Chemin dégagé : on passera dès la fin du chantier." \
-				if acces_degage() else "La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier."
-			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
-			_bouton("Voir mon pont", examiner.bind("r", premier["fid"]))
+			# 🔇 Le guide se tait (auteur, 2026-10-05) : le bandeau dit la boue puis
+			# le chemin dégagé, les chantiers en cours portent l'avancement.
+			_poser_reperes([])
 		"pont_livre":
 			_poser_reperes([])
 		"etude":
 			# 🎓 La menace après la première victoire, jamais pendant l'urgence.
 			_poser_reperes([])
 			_titre.text = "Une nouvelle étude"
-			_texte.text = "L'université vient de publier une étude sur l'Ilse. Ouvrez-la dans la colonne de gauche."
+			_texte.text = "L'université vient de publier une étude sur l'Ilse. Trouvez-la dans la ville et cliquez dessus."
+			_bouton("Montrer l'université", chercher_universite)
 		"prochaine":
 			# 🔴 Aucun bouton (auteur, 2026-09-30) : le joueur apprend où vit la prévision.
 			_poser_reperes([])
