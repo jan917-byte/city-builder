@@ -39,8 +39,8 @@ func executer() -> void:
 	var fid_univ := int(ui.LIEUX["universite"]["fid"])
 	verifier(jeu.selection.sel_fid == fid_univ and not ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
 		"L'université est entourée sur la carte, aucune fiche ouverte")
-	verifier(jeu.pivot.taille >= float(jeu.donnees["reperes"]["ville"]["taille"]) - 1.0,
-		"La caméra montre toute la ville")
+	verifier(is_equal_approx(jeu.pivot.taille, o.CADRAGE_UNIVERSITE), "La caméra montre la ville bâtie")
+	verifier(o.annonce.z_index > ui.bulles.z_index, "La carte du centre passe devant les chiffres qui montent")
 	verifier(not univ.visible and not entouree("universite") and ui._rail_lieux[0].disabled
 		and ui._menu_boutons["dangers"].disabled,
 		"Pas de raccourci : la tuile université reste cachée ; mairie et Dangers restent grises")

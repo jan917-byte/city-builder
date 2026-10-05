@@ -116,6 +116,8 @@ func _batir_annonce(ui) -> void:
 	annonce.mouse_filter = Control.MOUSE_FILTER_STOP
 	annonce.visible = false
 	jeu.interface.add_child(annonce)
+	# 🎈 Au-dessus des chiffres qui montent (auteur, 2026-10-05) : ils passaient devant le texte.
+	annonce.z_index = 1
 	# ⚠️ Ancres ET marges, comme le récit : sinon le rectangle reste nul.
 	annonce.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var voile := ColorRect.new()
@@ -366,9 +368,15 @@ func chercher_universite() -> void:
 	jeu.interface._fermer_fiche()
 	jeu.selection.sel_couche = "i"
 	jeu.selection.sel_fid = _universite()
-	jeu._repere("ville")
+	var ville: Dictionary = jeu.donnees["reperes"]["ville"]
+	jeu.pivot.viser(Vector2(float(ville["cible"][0]), float(ville["cible"][1])), CADRAGE_UNIVERSITE)
 	jeu._dernier_peint = -1.0
 	jeu._rafraichir(true)
+
+
+## 🎚️ La ville bâtie sans ses champs (auteur, 2026-10-05 : « pas besoin de dézoomer autant ») ;
+## le repère « ville » vaut 1 200 m.
+const CADRAGE_UNIVERSITE := 600.0
 
 
 func _universite() -> int:
