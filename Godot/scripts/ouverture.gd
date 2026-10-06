@@ -419,6 +419,10 @@ func _universite() -> int:
 func trouve(couche: String, fid: int) -> void:
 	if couche != "i":
 		return
+	# Le guide ne désigne plus l'îlot (auteur, 2026-10-06) : celui qu'on ouvre montre sa reconstruction.
+	if pont_termine and not (suite or termine) and jeu.ville.base("i", fid, "logements_sinistres") > 0.0 \
+			and not jeu.ville.est_repare("i", fid):
+		jeu.interface.ouvrir_onglet("crue")
 	if pont_termine and not etude_parue and jeu.ville.base("i", fid, "logements_sinistres") > 0.0 \
 			and not jeu.ville.est_repare("i", fid):
 		publier_etude()
@@ -913,41 +917,21 @@ func actualiser(force := false) -> void:
 					_texte.text += "\n%s est sur l'autre rive : personne ne peut y aller." % _nom_champ(int(fid))
 			_poser_reperes([])
 		"choix":
-			# ⚖️ LE CHOIX SE LIT DANS SES EFFETS (auteur, 2026-09-22) : la rue coûte
-			# peu et ne rend personne chez soi ; les logements coûtent cher et
-			# vident d'autant les camps. 🧹 Rue déjà déblayée avec le pont : les
-			# logements seuls (auteur, 2026-10-06). 🔴 Textes de prototype, flaggables (90).
-			var rue_faite: bool = jeu.ville.est_repare("r", RUE)
-			_titre.text = "Reconstruisons quelque chose pour les habitants" if rue_faite else "Un premier lieu à relever"
-			var logements: float = jeu.ville.base("i", MAISONS, "logements_sinistres")
-			# Tout le monde est abrité à ce stade : ceux qui rentrent quittent un camp.
-			var abrites := int(minf(logements, jeu.ville.sans_toit(jeu.mois) + jeu.ville.reloges(jeu.mois)))
-			_texte.text = ("%s : %.0f logements inhabitables." % [_nom("i", MAISONS), logements]) if rue_faite \
-				else ("Rue des Forgerons envasée, %.0f logements inhabitables à côté." % logements)
-			if etude_parue:
-				_texte.text += " La prochaine crue y mettrait %s m d'eau." % \
-					jeu.interface._nb(jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois), 1)
-			if not rue_faite:
-				_texte.text += " Par où commencer ?"
+			# 🔄 LE JOUEUR CHOISIT SON ÎLOT (auteur, 2026-10-06) : ni bouton ni lieu
+			# désigné ; chaque fiche d'îlot sinistré dit combien quittent le camp.
+			# Remplace la paire rue / logements des Forgerons. 🔴 Flaggable (90).
+			_titre.text = "Le pont est rouvert"
+			_texte.text = "%d personnes vivent encore dans les containers. Choisissez un îlot à reconstruire." % \
+				int(jeu.ville.reloges(jeu.mois))
 			# 💶 Dit une fois, ici : la caisse ne relève pas tout (auteur, 2026-10-02).
-			var autres := _sinistres_restants() - 1
-			if autres > 0:
-				_texte.text += "\n%d autres îlots attendent. La caisse ne les relèvera pas tous." % autres
-			var revenir := " · %d personnes peuvent rentrer" % abrites if abrites > 0 else ""
-			if rue_faite:
-				_reparation("i", MAISONS, "Relever " + _nom("i", MAISONS) + revenir)
-			else:
-				_reparation("r", RUE, "① Déblayer la rue")
-				_reparation("i", MAISONS, "② Relever les logements" + revenir)
+			var restants := _sinistres_restants()
+			if restants > 1:
+				_texte.text += "\n%d îlots attendent. La caisse ne les relèvera pas tous." % restants
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 			_bouton("Voir mon chantier", examiner.bind(premier["couche"], premier["fid"]))
-			if premier["couche"] == "r":
-				_reparation("i", MAISONS, "Comparer les logements")
-			elif not jeu.ville.est_repare("r", RUE):
-				_reparation("r", RUE, "Comparer la rue")
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
 			if premier["couche"] == "r":

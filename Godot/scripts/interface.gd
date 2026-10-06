@@ -2360,7 +2360,7 @@ func _panneau_ilot() -> void:
 	_camp_bloc.visible = false
 	v.add_child(_camp_bloc)
 	_camp_bloc.add_child(HSeparator.new())
-	_titre_section(_camp_bloc, "Relogement")
+	# 🔄 Sans titre de section : le bouton suffit (auteur, 2026-10-06).
 	_camp_texte = _label("", 12, TEXTE)
 	_camp_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_camp_bloc.add_child(_camp_texte)
@@ -5313,7 +5313,7 @@ func _maj_camp() -> void:
 			_camp_bouton.text = "Chantier en cours"
 		elif ville.camp_accessible(fid, _mois):
 			_camp_texte.text = "%d containers · %d abrités\n%s" % [
-				int(ville.camp_taille(fid, _mois)), int(occupants),
+				ville.camp_abris(fid, _mois), int(occupants),
 				_champ_perdu(fid)]
 			_camp_bouton.text = "Camp en place"
 		else:
@@ -5402,9 +5402,13 @@ func _degat_en_clair(couche: String, o: Dictionary) -> String:
 		# faire baisser ce pourcentage depuis l'export.
 		var apres := int(roundf(100.0 * ville.valeur(
 			"i", _fiche_fid, "part_ruinee_apres", _mois)))
-		return "%d bâtiments détruits, %d logements perdus. La crue annoncée en reprendrait %d %%." % [
-			int(o.get("batiments_ruines", 0)),
-			int(o.get("logements_sinistres", 0)), apres]
+		var texte := "%d bâtiments détruits, %d logements perdus." % [
+			int(o.get("batiments_ruines", 0)), int(o.get("logements_sinistres", 0))]
+		# 🏕️ De quoi comparer les îlots à relever (auteur, 2026-10-06). 🔴 Flaggable (90).
+		var rentrent := int(minf(float(o.get("logements_sinistres", 0)), ville.reloges(_mois)))
+		if rentrent > 0 and not ville.est_repare("i", _fiche_fid):
+			texte += " Relevé, %d personnes quittent le camp." % rentrent
+		return texte + " La crue annoncée en reprendrait %d %%." % apres
 	if str(o.get("etat_crue", "")) == "coupe":
 		return "Le tablier est parti ; la rive droite n'a plus d'accès routier."
 	return "La rue a gardé %s m de limon." % _nb(

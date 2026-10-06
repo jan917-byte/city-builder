@@ -63,7 +63,7 @@ func executer() -> void:
 
 	# --- 🚪 Le concours vient en dernier : l'étude seule n'en propose pas.
 	_apres_etude(t0, false)
-	await cliquer(bouton("②"))
+	jeu._sur_choix("i", m)
 	verifier(ui._fiche_fid == m and ui._rebatir_boutons["tradition"].visible
 		and not ui._concours_bouton.visible and not jeu.ouverture.concours_ouvert(),
 		"L'étude lue, sans berge rendue, la fiche n'offre que comme avant")
@@ -76,7 +76,7 @@ func executer() -> void:
 	verifier(jeu.ouverture.concours_ouvert() and "concours" in str(ui.retours.journal[-1]),
 		"Une berge rendue et un sol perméable livré : le concours s'annonce : %s" % ui.retours.journal[-1])
 	var caisse0: float = v.caisse_ke(t0)
-	await cliquer(bouton("②"))
+	jeu._sur_choix("i", m)
 	verifier(ui._fiche_fid == m and ui._rebatir_boutons["tradition"].visible
 		and ui._concours_bouton.visible and not ui._projets_bouton.visible
 		and not ui._rebatir_boutons["parc"].visible,

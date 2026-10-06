@@ -69,9 +69,9 @@ func executer() -> void:
 
 	# --- Le guide et la fiche.
 	_apres_etude(t0)
-	verifier(o.etape == "choix" and "autres îlots attendent" in o._texte.text,
+	verifier(o.etape == "choix" and "îlots attendent" in o._texte.text,
 		"Le guide dit une fois que la caisse ne relèvera pas tout : %s" % o._texte.text)
-	await cliquer(bouton("②"))
+	jeu._sur_choix("i", m)
 	verifier(ui._fiche_fid == m and ui._pose.is_empty() and not ui._repare_bouton.visible
 		and not ui._rebatir_boutons["tradition"].visible and ui._projets_bouton.visible,
 		"Concours rendu : la fiche des Forgerons n'a plus qu'un bouton, les quatre projets, aucun posé")

@@ -1419,6 +1419,31 @@ func sans_toit(t: float) -> float:
 	return maxf(0.0, _perdus(t) - float(abris_places(t)))
 
 
+## 🏕️ Les abris encore debout sur un camp : chaque logement relevé en rend deux
+## places, et le camp posé en dernier se vide le premier, comme le remplit
+## `camp_occupants` (auteur, 2026-10-06). Un camp que personne n'atteint garde tout.
+func camp_abris(fid: int, t: float) -> int:
+	var places := int(_camps[fid]["places"]) if _camps.has(fid) else 0
+	if places == 0 or not camp_livre(fid, t) or not camp_accessible(fid, t):
+		return places
+	var depart := 0.0
+	for f in ilots:
+		depart += base("i", f, "logements_sinistres")
+	var rendus := int(floor((depart - _perdus(t)) / CAMP_PERSONNES_LOGEMENT))
+	var ordre := []
+	for f in _camps:
+		if camp_livre(int(f), t) and camp_accessible(int(f), t):
+			ordre.append(int(f))
+	ordre.sort_custom(func(a, b) -> bool:
+		return [float(_camps[a]["debut"]), int(a)] > [float(_camps[b]["debut"]), int(b)])
+	for f in ordre:
+		var vides: int = mini(rendus, int(_camps[f]["places"]))
+		if f == fid:
+			return places - vides
+		rendus -= vides
+	return places
+
+
 ## Une densification loge aussi des sinistrés (`_perdus`) : ses livraisons comptent.
 func _fins_dense() -> Array:
 	var out := []
@@ -1481,8 +1506,9 @@ func camp_occupants(fid: int, t: float) -> float:
 	for f in _camps:
 		if camp_livre(int(f), t) and camp_accessible(int(f), t):
 			ordre.append(int(f))
+	# Le numéro départage deux camps du même jour : camp_abris vide dans l'ordre inverse.
 	ordre.sort_custom(func(a, b) -> bool:
-		return float(_camps[a]["debut"]) < float(_camps[b]["debut"]))
+		return [float(_camps[a]["debut"]), int(a)] < [float(_camps[b]["debut"]), int(b)])
 	var reste := reloges(t)
 	for f in ordre:
 		var pris: float = minf(reste, float(_camps[f]["places"]) * CAMP_PERSONNES_LOGEMENT)

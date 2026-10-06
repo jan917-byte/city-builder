@@ -1,6 +1,7 @@
 extends Node3D
 ## 🏕️ Les abris posés sur un champ, en un seul MultiMesh.
-## Les places sont semées par `07` ; ici on n'en montre que le nombre payé.
+## Les places sont semées par `07` ; ici on montre le nombre payé, moins les abris
+## que les habitants rendus à leur îlot ont libérés.
 
 const Constructeur := preload("res://scripts/constructeur.gd")
 const MAT_ABRI := preload("res://shaders/container.gdshader")
@@ -56,7 +57,8 @@ func montrer(ville, mois: float) -> void:
 	for fid in _places:
 		if not ville.camp_livre(int(fid), mois):
 			continue
-		var n: int = mini(ville.camp_taille(int(fid), mois), places(int(fid)))
+		# Ceux qui rentrent chez eux emportent leur abri (`camp_abris`, auteur, 2026-10-06).
+		var n: int = mini(ville.camp_abris(int(fid), mois), places(int(fid)))
 		if n <= 0:
 			continue
 		poses.append([int(fid), n])

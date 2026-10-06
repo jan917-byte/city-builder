@@ -279,7 +279,9 @@ func executer() -> void:
 	actualiser(0.0)
 
 	verifier(o.etape == "choix", "Le relogement fait, le budget prend la main")
-	verifier(bouton("①") != null and bouton("②") != null, "Les deux choix sont présents")
+	# 🔄 Le joueur choisit son îlot (auteur, 2026-10-06) : aucun bouton, aucun lieu désigné.
+	verifier(o._actions.get_child_count() == 0 and "Choisissez un îlot" in o._texte.text,
+		"Le guide demande de choisir un îlot, sans en désigner : %s" % o._texte.text)
 	# Ce contrôle isole les choix locaux sans avoir payé de pont.
 	verifier(jeu.ville.cout_reparation_ke("r", o.RUE) < jeu.ville.caisse_ke(0.0),
 		"La rue reste finançable après le camp")
@@ -288,7 +290,7 @@ func executer() -> void:
 		% [jeu.ville.cout_reparation_ke("i", o.MAISONS), jeu.ville.caisse_ke(0.0)])
 	await capture("03_depart")
 	var caisse: float = jeu.ville.caisse_ke(0.0)
-	await cliquer(bouton("①"))
+	jeu.examiner("r", o.RUE, "reparer")
 	verifier(jeu.interface._fiche_fid == o.RUE and jeu.interface._pose.has("reparer"),
 		"Le clic prépare le déblaiement dans la vraie fiche")
 	verifier(jeu.ville.caisse_ke(0.0) == caisse and jeu.ville._repare.is_empty(),
@@ -380,7 +382,9 @@ func executer() -> void:
 	jeu.ville.abriter(champs2[1], 0.0)
 	# Huit mois de dotation : ce que le camp a coûté aux logements.
 	actualiser(8.0)
-	await cliquer(bouton("②"))
+	jeu._sur_choix("i", o.MAISONS)
+	verifier(jeu.interface._onglet_actif == "crue" and "personnes quittent le camp" in jeu.interface._repare_texte.text,
+		"La fiche de l'îlot ouvert dit combien quittent le camp : %s" % jeu.interface._repare_texte.text)
 	await cliquer(jeu.interface._rebatir_boutons["tradition"])
 	await cliquer(jeu.interface._recap_bouton)
 	actualiser(20.0)
@@ -392,14 +396,37 @@ func executer() -> void:
 	verifier(jeu.ville.reloges(20.0) < jeu.ville.reloges(8.0),
 		"Les logements relevés font quitter les camps à %d personnes"
 		% int(jeu.ville.reloges(8.0) - jeu.ville.reloges(20.0)))
+	# 🏕️ Ceux qui rentrent emportent leur abri (auteur, 2026-10-06).
+	var abris := func(m: float) -> int:
+		var n := 0
+		for f in jeu.ville._camps:
+			n += jeu.ville.camp_abris(int(f), m)
+		return n
+	var rendus: int = abris.call(8.0) - abris.call(20.0)
+	jeu._rafraichir(true)
+	verifier(rendus == int(floor(43.0 / jeu.ville.CAMP_PERSONNES_LOGEMENT)) and jeu.camp._mmi.multimesh.instance_count == abris.call(20.0),
+		"43 personnes rentrées, %d containers retirés de la ville" % rendus)
 	await capture("07_logements")
+	# La paire à comparer : le camp qui se vide, même cadrage, avant puis après.
+	var vide := -1
+	for f in jeu.ville._camps:
+		if jeu.ville.camp_abris(int(f), 20.0) < jeu.ville.camp_abris(int(f), 8.0):
+			vide = int(f)
+	jeu.examiner("i", vide)
+	jeu.interface._fermer_fiche()
+	jeu.selection.sel_fid = -1
+	jeu.mois = 8.0
+	jeu._rafraichir(true)
+	await capture("07a_camp_avant_retour")
+	jeu.mois = 20.0
+	jeu._rafraichir(true)
+	await capture("07b_camp_apres_retour")
 	# 🛠️ LE MODE AUTEUR : mêmes prix, même caisse, livraison immédiate.
 	jeu._sur_reset()
 	jeu._sur_mode(true)
 	var caisse_avant: float = jeu.ville.caisse_ke(0.0)
 	var prix_rue: float = jeu.ville.cout_reparation_ke("r", o.RUE)
-	jeu._sur_choix("r", o.RUE)
-	jeu.interface.poser("reparer")
+	jeu.examiner("r", o.RUE, "reparer")
 	jeu._sur_commande("r", o.RUE, jeu.interface._reglages())
 	actualiser(0.0)
 	verifier(jeu.ville.reparation_finie("r", o.RUE, 0.0),
@@ -660,10 +687,8 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.pont_termine and o.etape == "choix" and not o.etude_parue and not o.annonce.visible,
 		"Le pont rouvert propose de relever, l'étude attend")
 	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
-	# 🧹 Rue déjà déblayée : le guide ne propose plus que les logements (auteur, 2026-10-06).
-	var rue_faite: bool = jeu.ville.est_repare("r", o.RUE)
-	verifier((bouton("①") == null) == rue_faite and ("Reconstruisons" in o._titre.text) == rue_faite,
-		"Rue des Forgerons %s : %s" % ["déblayée" if rue_faite else "envasée", o._titre.text])
+	verifier(o._actions.get_child_count() == 0 and "Choisissez un îlot" in o._texte.text,
+		"Le pont rouvert, le guide laisse choisir l'îlot : %s" % o._texte.text)
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()

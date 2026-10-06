@@ -42,7 +42,7 @@ func executer() -> void:
 	verifier(not o.etude_parue, "Une rue envasée ne fait pas paraître l'étude")
 	ui._fermer_fiche()
 	# 🎓 L'îlot sinistré ouvert, l'étude paraît : carte au centre, jeu en pause.
-	await cliquer(o._actions.get_child(1))
+	jeu._sur_choix("i", o.MAISONS)
 	verifier(o.etude_parue and o.carte == "etude" and o.annonce.visible and jeu.vitesse == 0.0,
 		"Ouvrir les Forgerons pour les relever fait paraître l'étude")
 	verifier("étude" in ui.retours.journal[-1], "La parution est dans le journal")
@@ -98,8 +98,11 @@ func executer() -> void:
 	verifier(not ui._lieu_lignes[jeu.Recherche.ORDRE[0]]["bloc"].visible and ui._etude_bloc.visible,
 		"La carte vue, l'université ne montre toujours que l'étude : les sujets viendront plus tard")
 	ui._fermer_lieu()
-	verifier(o.etape == "choix" and "5,1 m d'eau" in o._texte.text,
-		"Après la carte, les Forgerons se choisissent en connaissant l'eau : %s" % o._texte.text)
+	# 🔄 L'eau se lit dans la fiche de l'îlot ouvert, plus dans le guide (auteur, 2026-10-06).
+	jeu._sur_choix("i", o.MAISONS)
+	verifier(o.etape == "choix" and "Choisissez un îlot" in o._texte.text and "reprendrait" in ui._repare_texte.text,
+		"Après la carte, l'îlot ouvert dit ce que la crue en reprendrait : %s" % ui._repare_texte.text)
+	ui._fermer_fiche()
 	var avant := float(p["logements_perdus"])
 
 	# Relever les Forgerons remet leurs logements sous l'eau (95).
