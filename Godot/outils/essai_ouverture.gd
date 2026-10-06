@@ -8,6 +8,9 @@ var plainte_testee := false
 
 
 func _initialize() -> void:
+	# ⚠️ La vraie souris traverse la fenêtre : posée dessus, elle volait les clics simulés (Mac, 2026-10-06).
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_MOUSE_PASSTHROUGH, true)
 	call_deferred("executer")
 
 

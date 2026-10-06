@@ -24,6 +24,8 @@ signal deblaiement_demande()
 signal vue_crue_demandee(id: String)
 ## Ouvrir la fiche d'un lieu, déjà réglée — `maquette.examiner`.
 signal examen_demande(couche: String, fid: int, reglage: String, valeur: Variant)
+## 🏛️ L'écran du concours s'ouvre sur cet îlot : `maquette` le remonte au-dessus.
+signal projets_ouverts(fid: int)
 ## 🛠️ Le mode choisi au lancement : histoire, ou auteur (chantiers livrés au clic).
 signal mode_choisi(auteur: bool)
 
@@ -108,6 +110,7 @@ const CHANTIER_MOTS := {
 	"relogement": "Installation des abris",
 	"culture": "Mise en culture",
 	"amelioration": "Amélioration du campement",
+	"concours": "Concours",
 	"toit vert": "Toit végétalisé", "plantation": "Plantation",
 	"sol perméable": "Sol rendu perméable",
 }
@@ -428,6 +431,14 @@ var _repare_bouton: Button
 var _repare_provisoire: Button   # 🌉 l'autre choix d'un pont coupé (auteur, 2026-09-24)
 ## 🏗️ Les quatre façons de relever un îlot sinistré (`Ville.RECONSTRUCTIONS`).
 var _rebatir_boutons := {}
+## 🏛️ Le concours (104) : lancé une fois, puis l'écran des quatre projets de chaque îlot.
+var _concours_bouton: Button
+var _projets_bouton: Button
+var _projets_panneau: PanelContainer
+var _projets_titre: Label
+var _projets_intro: Label
+var _projets_cartes := {}   # façon -> {bouton, lignes}
+var _projets_cle := ""
 var _repare_etat: Label   # « ✓ Chantier terminé » : remplace le bouton grisé
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
 ## deux curseurs gardent leur propre mémoire, plus bas, parce qu'ils doivent
@@ -526,6 +537,7 @@ func batir() -> void:
 	_panneau_bilan()
 	_panneau_ilot()
 	_panneau_lieu()
+	_panneau_projets()
 	_panneau_rail()
 	_panneau_diagnostic()
 	_panneau_chantiers()
@@ -2308,6 +2320,14 @@ func _panneau_ilot() -> void:
 		_decision(b, "reparer", facon)
 		_repare_bloc.add_child(b)
 		_rebatir_boutons[facon] = b
+	_concours_bouton = Button.new()
+	_concours_bouton.visible = false
+	_decision(_concours_bouton, "concours", true)
+	_repare_bloc.add_child(_concours_bouton)
+	_projets_bouton = Button.new()
+	_projets_bouton.visible = false
+	_projets_bouton.pressed.connect(ouvrir_projets)
+	_repare_bloc.add_child(_projets_bouton)
 	_repare_bloc.add_child(_repare_bouton)
 	_repare_etat = _etiquette("", 13, FAIT_TEXTE)
 	_repare_etat.visible = false
@@ -2893,6 +2913,164 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 		ouverture.etude_ouverte()
 
 
+# ==========================================================================
+# 🏛️ LE CONCOURS (104) — les quatre projets d'un îlot, côte à côte
+# ==========================================================================
+# Le même concours vaut pour toute la zone : ce qui change d'un îlot à l'autre,
+# ce sont les chiffres (l'eau n'y monte pas pareil), pas les projets.
+
+## 🔴 Textes flaggables (90).
+const PROJETS_QUOI := {
+	"tradition": "Les maisons d'avant, au même endroit.",
+	"moderne": "Plus de logements, isolés, sous un toit plat.",
+	"pilotis": "Le rez sur poteaux : l'eau passe dessous.",
+	"parc": "Personne ne revient : une prairie qui boit la crue.",
+}
+
+
+func _panneau_projets() -> void:
+	var p := PanelContainer.new()
+	_projets_panneau = p
+	p.theme = _theme_ui
+	_poser_boite(p)
+	# Au milieu de la place que laissent la colonne et la fiche, en bas : l'îlot reste visible.
+	p.anchor_left = 0.5
+	p.anchor_right = 0.5
+	p.anchor_top = 1.0
+	p.anchor_bottom = 1.0
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	p.offset_left = -FICHE_LARGEUR / 2.0
+	p.offset_right = -FICHE_LARGEUR / 2.0
+	p.offset_bottom = -20.0
+	p.visible = false
+	add_child(p)
+	_croix(p, fermer_projets)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	p.add_child(v)
+	_projets_titre = _bandeau(v, "")
+	_projets_intro = _label("", 12, GRIS)
+	v.add_child(_projets_intro)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	v.add_child(h)
+	for f in Ville.RECONSTRUCTIONS_ORDRE:
+		var carte := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = FOND_FORT
+		sb.set_corner_radius_all(_r(9))
+		sb.set_content_margin_all(10)
+		carte.add_theme_stylebox_override("panel", sb)
+		carte.custom_minimum_size = Vector2(218, 0)
+		h.add_child(carte)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 5)
+		carte.add_child(cv)
+		cv.add_child(_label(str(Ville.RECONSTRUCTIONS[f]["nom"]), 16, TEXTE))
+		var quoi := _label(PROJETS_QUOI[f], 11, GRIS)
+		quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cv.add_child(quoi)
+		cv.add_child(HSeparator.new())
+		var lignes := VBoxContainer.new()
+		lignes.add_theme_constant_override("separation", 4)
+		lignes.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		cv.add_child(lignes)
+		var b := Button.new()
+		_habiller_principal(b)
+		b.focus_mode = Control.FOCUS_NONE
+		# Le choix se pose comme un bouton de la fiche, puis l'écran se retire.
+		_decision(b, "reparer", f)
+		b.pressed.connect(fermer_projets)
+		cv.add_child(b)
+		_projets_cartes[f] = {"bouton": b, "lignes": lignes}
+
+
+func ouvrir_projets() -> void:
+	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_rendu(_mois):
+		return
+	_projets_cle = ""
+	_projets_panneau.visible = true
+	_maj_projets()
+	projets_ouverts.emit(_fiche_fid)
+
+
+func fermer_projets() -> void:
+	if _projets_panneau != null:
+		_projets_panneau.visible = false
+
+
+## Appelé à chaque image avec la fiche : les boutons suivent la pose, les chiffres
+## ne se remesurent qu'au changement d'îlot ou de mois (quatre villes d'essai).
+func _maj_projets() -> void:
+	if not _projets_panneau.visible:
+		return
+	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_rendu(_mois) \
+			or ville.est_repare("i", _fiche_fid):
+		fermer_projets()
+		return
+	for f in _projets_cartes:
+		var b: Button = _projets_cartes[f]["bouton"]
+		_posee(b, "reparer", "Choisir", f)
+		if str(_pose.get("reparer", "")) == f:
+			b.text = "✓ Choisi"
+	var cle := "%d %d" % [_fiche_fid, int(_mois)]
+	if cle == _projets_cle:
+		return
+	_projets_cle = cle
+	_projets_titre.text = "Concours · %s" % lieux.nom("i", _fiche_fid)
+	_projets_intro.text = "%.0f logements perdus. La prochaine crue y mettrait %s m d'eau." % [
+		ville.base("i", _fiche_fid, "logements_sinistres"),
+		_nb(ville.valeur("i", _fiche_fid, "hauteur_eau_annonce", _mois), 1)]
+	for f in _projets_cartes:
+		var lignes: VBoxContainer = _projets_cartes[f]["lignes"]
+		for c in lignes.get_children():
+			lignes.remove_child(c)
+			c.queue_free()
+		for e in _projet(f):
+			_effet(e[0], e[1], e[2], lignes)
+	# La ville d'essai a servi aux quatre : le récapitulatif se remesure.
+	_recap_cle = ""
+
+
+## Les mêmes cinq lignes pour les quatre projets, dans le même ordre : c'est ce qui
+## les rend comparables. Mesurées comme `consequences`, sur la ville d'essai.
+func _projet(f: String) -> Array:
+	var r := {"reparer": f}
+	var cout := ville.cout_commande_ke("i", _fiche_fid, r, _mois)
+	var duree := ville.duree_commande_mois("i", _fiche_fid, r, _mois)
+	var out := [["caisse", "%s k€%s" % [_milliers(cout), _en_dotation(cout)], 0],
+		["duree", _duree(duree), 0]]
+	if ville_essai == null:
+		return out
+	var t := _mois + duree + 0.05
+	ville_essai.importer_partie(ville.exporter_partie())
+	ville_essai.crediter_essai_ke(cout)
+	ville_essai.commander("i", _fiche_fid, r, _mois)
+	var logements := ville_essai.valeur("i", _fiche_fid, "logements", t) \
+		- ville.valeur("i", _fiche_fid, "logements", t)
+	out.append(["logement", "+%d logements" % int(roundf(logements)), 1] if logements >= 1.0
+		else ["logement", "Personne ne rentre", -1])
+	var k0 := ville_essai.capital(_mois) - ville.capital(_mois)
+	var k1 := ville_essai.capital(t) - ville.capital(t) - k0
+	if absf(k0) >= 0.5:
+		out.append(["capital", "%+d confiance tout de suite" % int(roundf(k0)), _sens(k0)])
+	if absf(k1) >= 0.5:
+		out.append(["capital", "%+d confiance à la livraison" % int(roundf(k1)), _sens(k1)])
+	var exposes := float(ville_essai.prochaine_crue(t)["logements_perdus"]) \
+		- float(ville.prochaine_crue(t)["logements_perdus"])
+	var eau := (float(ville_essai.degats(t).get("eau_prochaine_m", 0.0))
+		- float(ville.degats(t).get("eau_prochaine_m", 0.0))) * 100.0
+	if exposes >= 1.0:
+		out.append(["eau", "%d perdus à la prochaine crue" % int(roundf(exposes)), -1])
+	elif eau <= -0.1:
+		out.append(["eau", "%s cm de crue dans toute la ville" % (
+			"%+d" % int(roundf(eau)) if eau <= -1.0 else ("%+.1f" % eau).replace(".", ",")), 1])
+	else:
+		out.append(["eau", "Rien de perdu à la prochaine crue", 1])
+	return out
+
+
 ## ✕ En haut à droite d'une fiche (auteur, 2026-09-28) ; remplace le bouton « Fermer ».
 ## ⚠️ `top_level`, sinon le `PanelContainer` l'étire sur toute la fiche.
 func _croix(p: Control, action: Callable) -> void:
@@ -2922,6 +3100,7 @@ func _croix(p: Control, action: Callable) -> void:
 
 
 func _fermer_fiche() -> void:
+	fermer_projets()
 	_vider_pose()
 	_message.text = ""
 	_fiche_fid = -1
@@ -3271,7 +3450,8 @@ const GENRES_DEPENSE := {
 	"camp": "Camps", "demande": "Campement amélioré", "pont": "Ponts",
 	"rue": "Rues déblayées", "ilot": "Îlots relevés", "solaire": "Panneaux solaires",
 	"vert": "Toits verts", "dense": "Étages ajoutés", "berge": "Berges",
-	"plantation": "Arbres plantés", "culture": "Cultures", "autres": "Autres chantiers",
+	"plantation": "Arbres plantés", "culture": "Cultures", "concours": "Concours",
+	"autres": "Autres chantiers",
 }
 
 
@@ -3757,6 +3937,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 			else "l'université")
 	if fid != _fiche_fid or couche != _fiche_couche:
 		_vider_pose()   # changer d'objet abandonne tout ce qui était posé
+		fermer_projets()
 		_message.text = ""
 	_fiche_fid = fid
 	_fiche_couche = couche
@@ -3905,6 +4086,7 @@ func _maj_permeable() -> void:
 func _maj_fiche() -> void:
 	_dispo_leviers()
 	_maj_fiche_contenu()
+	_maj_projets()
 	_repare_texte.visible = _repare_texte.text != ""
 	var verrou := _verrou()
 	if verrou != "":
@@ -4499,7 +4681,7 @@ static func _sens(x: float) -> int:
 	return 1 if x > 0.0 else -1
 
 
-func _effet(nom: String, texte: String, sens: int) -> void:
+func _effet(nom: String, texte: String, sens: int, parent: Control = null) -> void:
 	var coul: Color = TEXTE if sens == 0 else (FAIT_TEXTE if sens > 0 else ALERTE)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 4)
@@ -4507,8 +4689,12 @@ func _effet(nom: String, texte: String, sens: int) -> void:
 	ic.texture = _icone(nom, 16, coul)
 	ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	h.add_child(ic)
-	h.add_child(_label(texte, 13, coul))
-	_recap_effets.add_child(h)
+	var l := _label(texte, 13, coul)
+	if parent != null:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(l)
+	(parent if parent != null else _recap_effets).add_child(h)
 
 
 ## Ce que le curseur solaire annonce. 🔄 Le prix et le refus ont quitté cette
@@ -4599,7 +4785,8 @@ func apercu_demande() -> Dictionary:
 		# 🌿 Un parc ne promet aucune maison.
 		var facon := ville.facon_reparation(_fiche_fid, str(r.get("reparer", "")))
 		for f in _rebatir_boutons:
-			if _survole(_rebatir_boutons[f]):
+			if _survole(_rebatir_boutons[f]) or (_projets_cartes.has(f)
+					and _survole(_projets_cartes[f]["bouton"])):
 				futur = true
 				facon = f
 		# 🏗️ L'allure promise (95) : moderne, pilotis, ou la ruine rendue en parc.
@@ -4962,8 +5149,12 @@ func _maj_reparation(o: Dictionary) -> void:
 	# 🏗️ Un îlot sinistré se relève de quatre façons ; elles remplacent le bouton.
 	var rebatir := couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0 \
 		and not ville.est_repare(couche, _fiche_fid) and float(o.get("cout_reparation_ke", 0.0)) > 0.0
+	# 🏛️ Avant le concours (104), comme avant ou le concours ; après, l'écran des projets.
+	var rendu := ville.concours_rendu(_mois)
 	for facon in _rebatir_boutons:
-		(_rebatir_boutons[facon] as Button).visible = rebatir
+		(_rebatir_boutons[facon] as Button).visible = rebatir and not rendu and facon == "tradition"
+	_concours_bouton.visible = rebatir and not rendu
+	_projets_bouton.visible = rebatir and rendu
 	_repare_etat.visible = false
 	_repare_bouton.visible = not rebatir
 	var prix := float(o.get("cout_reparation_ke", 0.0))
@@ -5010,9 +5201,22 @@ func _maj_reparation(o: Dictionary) -> void:
 	_repare_bouton.disabled = false
 	if rebatir:
 		# ⚖️ Aucune n'est conseillée (95) : le prix et les effets se lisent dans les conséquences.
+		# 🔴 Textes flaggables (90).
 		_repare_texte.text += "\nComment le relever ?"
-		for facon in _rebatir_boutons:
-			_posee(_rebatir_boutons[facon], "reparer", str(Ville.RECONSTRUCTIONS[facon]["nom"]), facon)
+		_posee(_rebatir_boutons["tradition"], "reparer", "Comme avant", "tradition")
+		var choisi := str(_pose.get("reparer", ""))
+		if rendu:
+			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \
+				else "Projet : %s · revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
+		elif ville.concours_lance():
+			_repare_texte.text += "\nLe concours rend ses projets dans %s." % _duree(ville.concours_reste_mois(_mois))
+			_concours_bouton.text = "Concours en cours"
+			_concours_bouton.disabled = true
+			_marquer(_concours_bouton, false)
+		else:
+			_repare_texte.text += "\nAutrement qu'avant : un concours, pour tous les îlots sinistrés."
+			_posee(_concours_bouton, "concours", "Lancer un concours")
+			_concours_bouton.disabled = false
 	if pont:
 		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une
 		# voie, ou en dur et plus long. Reposer l'autre remplace le premier.

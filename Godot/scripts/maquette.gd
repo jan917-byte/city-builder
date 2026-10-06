@@ -279,6 +279,7 @@ func _ready() -> void:
 	interface.theme_demande.connect(_sur_theme)
 	interface.vue_crue_demandee.connect(_sur_vue_crue)
 	interface.examen_demande.connect(examiner)
+	interface.projets_ouverts.connect(_cadrer_projets)
 	interface.concept_demande.connect(voir_concept)
 	interface.nord_demande.connect(pivot.remettre_nord)
 	interface.dessus_demande.connect(pivot.basculer_dessus)
@@ -3150,6 +3151,24 @@ func _ancre_bulle(couche: String, fid: int) -> Variant:
 
 
 func _viser_objet(couche: String, fid: int, taille: float) -> void:
+	var c := _centre_objet(couche, fid)
+	pivot.viser(Vector2(c.x, c.z), taille)
+
+
+## 🏛️ L'écran du concours prend le bas (104) : l'îlot remonte d'un cinquième d'écran.
+func _cadrer_projets(fid: int) -> void:
+	var c := _centre_objet("i", fid)
+	pivot.viser(Vector2(c.x, c.z), 220.0)
+	# En ortho, un pas au sol vers le haut de l'écran s'y projette × sin(hauteur).
+	var haut := pivot.camera.global_transform.basis.y
+	haut.y = 0.0
+	var h := sin(deg_to_rad(maxf(-pivot.rotation_degrees.x, 5.0)))
+	var cible := c - haut.normalized() * 0.2 * pivot.camera.size / h
+	pivot.viser(Vector2(cible.x, cible.z), 220.0)
+
+
+## Le sommet de l'objet le plus proche de sa moyenne : toujours dessus, même en L.
+func _centre_objet(couche: String, fid: int) -> Vector3:
 	var mi: MeshInstance3D = noeuds[couche][fid]
 	var sommets: PackedVector3Array = (mi.mesh as ArrayMesh).surface_get_arrays(
 		0)[Mesh.ARRAY_VERTEX]
@@ -3161,8 +3180,7 @@ func _viser_objet(couche: String, fid: int, taille: float) -> void:
 	for v in sommets:
 		if v.distance_squared_to(moy) < c.distance_squared_to(moy):
 			c = v
-	c += mi.global_position
-	pivot.viser(Vector2(c.x, c.z), taille)
+	return c + mi.global_position
 
 
 ## Laisser passer du temps D'ÉCRAN sans avancer le mois : les voitures roulent,

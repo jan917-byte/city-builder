@@ -72,14 +72,18 @@ func executer() -> void:
 	verifier(o.etape == "choix" and "autres îlots attendent" in o._texte.text,
 		"Le guide dit une fois que la caisse ne relèvera pas tout : %s" % o._texte.text)
 	await cliquer(bouton("②"))
-	var b: Dictionary = ui._rebatir_boutons
 	verifier(ui._fiche_fid == m and ui._pose.is_empty() and not ui._repare_bouton.visible
-		and b["tradition"].visible and b["parc"].visible,
-		"Les Forgerons s'ouvrent sur quatre façons, aucune posée")
+		and not ui._rebatir_boutons["tradition"].visible and ui._projets_bouton.visible,
+		"Concours rendu : la fiche des Forgerons n'a plus qu'un bouton, les quatre projets, aucun posé")
+	await cliquer(ui._projets_bouton)
+	verifier(ui._projets_panneau.visible, "« Voir les quatre projets » ouvre l'écran du concours")
 	await capture("rebatir_01_quatre_facons")
 	var n := 2
 	for f in v.RECONSTRUCTIONS_ORDRE:
-		await cliquer(b[f])
+		if not ui._projets_panneau.visible:
+			await cliquer(ui._projets_bouton)
+		await cliquer(ui._projets_cartes[f]["bouton"])
+		verifier(not ui._projets_panneau.visible, "%s : choisir referme l'écran" % f)
 		jeu._rafraichir(true)
 		var texte := _effets(ui)
 		verifier(str(ui._pose.get("reparer")) == f and "logements perdus à la prochaine crue" in texte
@@ -112,7 +116,8 @@ func executer() -> void:
 
 
 ## Une partie neuve, tout le monde au camp, l'étude lue : le menu des Forgerons s'ouvre.
-func _apres_etude(t: float) -> void:
+## `concours` : celui de la zone (104), lancé au mois 0 et rendu avant `t`, payé par l'essai.
+func _apres_etude(t: float, concours := true) -> void:
 	var o = jeu.ouverture
 	jeu._sur_reset()
 	var champs: Array = o._champs_accessibles()
@@ -121,6 +126,9 @@ func _apres_etude(t: float) -> void:
 	o.pont_termine = true
 	o.etude_lue = true
 	o.prochaine_vue = true
+	if concours:
+		jeu.ville.crediter_essai_ke(jeu.ville.CONCOURS_KE)
+		jeu.ville.lancer_concours(o.MAISONS, 0.0)
 	actualiser(t)
 
 

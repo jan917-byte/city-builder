@@ -131,9 +131,10 @@ func executer() -> void:
 
 	# --- La ville réparée : un îlot sinistré relevé, la page « Ne pas aggraver » s'ouvre.
 	jeu._sur_theme("")
-	var parc := 62
-	jeu._sur_commande("i", parc, {"reparer": "parc"})
-	var t3: float = t2 + v.duree_reparation_mois("i", parc, false, "parc") + 0.1
+	# Comme avant : le parc attend le concours (104).
+	var lavoir := 62
+	jeu._sur_commande("i", lavoir, {"reparer": "tradition"})
+	var t3: float = t2 + v.duree_reparation_mois("i", lavoir, false, "tradition") + 0.1
 	actualiser(t3)
 	verifier(o.ville_reparee() and o.concept_ouvert("attenuer") and o.levier_ferme("solaire") == "",
 		"Un îlot relevé : la ville est réparée, le solaire s'ouvre")

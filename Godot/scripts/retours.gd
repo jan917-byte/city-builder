@@ -301,6 +301,10 @@ func livraison(c: Dictionary, mois: float) -> void:
 		resultat = "Pont provisoire posé." if ui.ville.pont_provisoire(fid) else "Pont rebâti."
 		if not ui.trafic.pont_fonctionnel(fid, mois):
 			resultat += " Ses accès restent coupés."
+	elif c["genre"] == "concours":
+		# 🏛️ Rendu pour toute la zone (104) : le dire en haut, pas seulement au journal.
+		resultat = "Concours rendu · quatre projets pour chaque îlot sinistré."
+		annoncer("Le concours est rendu : chaque îlot sinistré a ses quatre projets.", mois)
 	elif c["genre"] in ["deblaiement", "reparation"] and couche == "r":
 		resultat = "Rue déblayée."
 	elif c["genre"] in ["reconstruction", "reparation"] and couche == "i":

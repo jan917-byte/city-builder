@@ -63,6 +63,7 @@ var _file_deblaiement := {}
 ## 🎚️ Tout déblayer d'un coup n'est proposé qu'après autant de rues faites à la main.
 const DEBLAIEMENT_SEUIL := 3
 var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTIONS`)
+var _concours := {}        # {debut, fid} : le concours de la zone sinistrée (104), lancé depuis cet îlot
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
 var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbres}
@@ -180,6 +181,11 @@ const RECONSTRUCTIONS := {
 		"confiance": -1.0, "hausse_m": 0.0},
 }
 const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc"]
+# 🏛️ UN CONCOURS POUR TOUTE LA ZONE SINISTRÉE (104, auteur 2026-10-06) : il coûte
+# et prend un mois, puis chaque îlot montre ses quatre projets. « Comme avant »
+# n'en a pas besoin. 🎚️ Prix proposé, à juger : ~4 mois de dotation.
+const CONCOURS_KE := 120.0
+const CONCOURS_MOIS := 1.0
 const PARC_BAISSE_M_PAR_HA := 0.10   # de crue en moins dans toute la ville, par hectare rendu
 
 
@@ -306,11 +312,11 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
-	"_permeable"]
+	"_permeable", "_concours"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati", "_file_deblaiement", "_permeable"]
+	"_rebati", "_file_deblaiement", "_permeable", "_concours"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -813,6 +819,7 @@ func reinitialiser() -> void:
 	_provisoire.clear()
 	_file_deblaiement.clear()
 	_rebati.clear()
+	_concours.clear()
 	_verger_vu = -1.0
 	vider_rampes()
 
@@ -2324,6 +2331,8 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 	var cout := cout_reparation_ke(couche, fid, provisoire, facon)
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
 		return false
+	if couche == "i" and not facon_permise(facon, t):
+		return false
 	if couche == "i":
 		_rebati[fid] = facon_reparation(fid, facon)
 	_repare[couche + ":" + str(fid)] = t
@@ -2351,6 +2360,38 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 			_toit_avant[fid] = ilots[fid].get("toit_m2", 0.0)
 			ilots[fid]["toit_m2"] = neuf
 			_vert_ha_mois = INF
+	return true
+
+
+func concours_lance() -> bool:
+	return not _concours.is_empty()
+
+
+func concours_reste_mois(t: float) -> float:
+	if _concours.is_empty():
+		return 0.0
+	return maxf(float(_concours["debut"]) + _delai(CONCOURS_MOIS) - t, 0.0)
+
+
+func concours_rendu(t: float) -> bool:
+	return concours_lance() and concours_reste_mois(t) <= 0.0
+
+
+func cout_concours_ke() -> float:
+	return 0.0 if concours_lance() else CONCOURS_KE
+
+
+## Sans concours rendu, un îlot ne se relève que comme avant (une façon inconnue en est une).
+func facon_permise(facon: String, t: float) -> bool:
+	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" or concours_rendu(t)
+
+
+func lancer_concours(fid: int, t: float) -> bool:
+	var cout := cout_concours_ke()
+	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
+		return false
+	_concours = {"debut": t, "fid": fid}
+	_depenser("concours", cout)
 	return true
 
 
@@ -2479,6 +2520,8 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 			ke += cout_demande_ke(d)
 	if r.has("culture"):
 		ke += cout_culture_ke(fid, int(r["culture"]))
+	if r.has("concours"):
+		ke += cout_concours_ke()
 	if r.has("reparer"):
 		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire", str(r["reparer"]))
 	return ke
@@ -2516,6 +2559,8 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			m = maxf(m, _delai(float(DEMANDES[d]["mois"])))
 	if r.has("culture"):
 		m = maxf(m, _delai(CULTURES[int(r["culture"])]["mois"]))
+	if r.has("concours") and not concours_lance():
+		m = maxf(m, _delai(CONCOURS_MOIS))
 	if r.has("reparer"):
 		m = maxf(m, duree_reparation_mois(couche, fid, str(r["reparer"]) == "provisoire",
 			str(r["reparer"])))
@@ -2568,6 +2613,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 			faits.append(str(DEMANDES[d]["nom"]).to_lower())
 	if r.has("culture") and cultiver(fid, int(r["culture"]), t):
 		faits.append("culture")
+	if r.has("concours") and lancer_concours(fid, t):
+		faits.append("concours")
 	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire",
 			str(r["reparer"])):
 		faits.append("reparation")
@@ -2620,6 +2667,8 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 		var d := demande_en_cours(t)
 		if not d.is_empty():
 			lot.append([d[0], d[1], d[2]])
+	if couche == "i" and int(_concours.get("fid", -1)) == fid and not concours_rendu(t):
+		lot.append(["concours", _delai(CONCOURS_MOIS), concours_reste_mois(t)])
 	if est_repare(couche, fid) and not reparation_finie(couche, fid, t):
 		lot.append([_genre_chantier(couche, fid),
 			duree_reparation_mois(couche, fid),
@@ -2737,6 +2786,10 @@ func chantiers(t: float) -> Dictionary:
 			en_cours.append({"couche": "i", "fid": fid, "genre": "relogement",
 				"cout_ke": float(_camps[fid]["cout_ke"]), "reste_mois": camp_reste_mois(fid, t),
 				"duree": _delai(CAMP_MOIS)})
+	if concours_lance() and not concours_rendu(t):
+		en_cours.append({"couche": "i", "fid": int(_concours["fid"]), "genre": "concours",
+			"cout_ke": CONCOURS_KE, "reste_mois": concours_reste_mois(t),
+			"duree": _delai(CONCOURS_MOIS)})
 	var dem := demande_en_cours(t)
 	if not dem.is_empty() and camp_principal(t) >= 0:
 		en_cours.append({"couche": "i", "fid": camp_principal(t), "genre": dem[0],
