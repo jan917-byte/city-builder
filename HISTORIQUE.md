@@ -644,3 +644,6 @@ La tuile université de la colonne n'apparaît qu'une fois l'université trouvé
 **2026-10-05 — Tout déblayer d'un coup : à la 3ᵉ rue faite à la main, le bandeau le dit et Trafic propose les rues restantes en un chantier, livrées l'une après l'autre (demande de l'auteur).**
 Pont d'Amont : 19 rues, 165 k€, 1,3 mois, fini avant le provisoire ; le chemin du pont passe en tête ; le panneau Trafic revient pendant le chantier du pont.
 `essai_deblaiement` (nouveau), `essai_ouverture`, `essai_etude`, `essai_progression`, `essai_vie_camp`, `essai_relogement`, `essai_rebatir` : 0 échec ; `essai_sauvegarde` : les 92 lieux sans nom déjà connus.
+**2026-10-06 — Design de l'après-étude : un livre des concepts, rangé à la bibliothèque de l'université ; un concept s'ouvre quand la ville le rencontre et ouvre ses leviers, la ville-éponge d'abord, avec une carte des sols (décision 101).**
+Pas de répétition ni d'orage avant la crue annoncée, six ans pour s'y préparer ; la canicule viendra plus tard comme deuxième urgence (102). Constat posé : le pont livré, tout s'ouvre mais la caisse est vide (~244 k€ après un pont en dur).
+Questions 44 et 45 fermées ; rien dans la maquette encore.

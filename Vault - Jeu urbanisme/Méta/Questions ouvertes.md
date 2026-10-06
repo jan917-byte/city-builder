@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°11 et n°25 closes le 2026-09-02
-maj: 2026-09-30
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°44 et n°45 closes le 2026-10-06 — n°11 et n°25 closes le 2026-09-02
+maj: 2026-10-06
 ---
 
 # Questions ouvertes
@@ -426,6 +426,12 @@ Proposé : A, un seuil seul ; B, un seuil qui monte à chaque règle signée ; C
 
 ### 43. La confiance rendue par des places retirées : fixe, ou selon la rue ? — ✅ fermée le 2026-09-30
 Proposé : un retour fixe (toujours plus que le coût), ou un retour qui dépend de ce que la rue est devenue — remplie de piétons, ou son trafic reporté ailleurs. L'auteur retient **selon la rue**. → [[Décisions arrêtées]] 99
+
+### 44. Comment le jeu introduit-il les concepts d'urbanisme sans tout ouvrir d'un coup ? — ✅ fermée le 2026-10-06
+Constat : le pont livré, toute la ville s'ouvre, mais la caisse est vide. L'auteur propose un **livre des concepts** qu'on débloque, chaque page résumant un concept et ses leviers, avec une carte des sols pour la ville-éponge ; puis le livre **à la bibliothèque**, dans la ville. Proposé : A, la bibliothèque de l'université ; B, un bâtiment du cœur ancien. L'auteur retient **A, pour l'instant**. → [[Décisions arrêtées]] 101
+
+### 45. Une répétition avant la crue annoncée, et quel deuxième aléa ? — ✅ fermée le 2026-10-06
+Proposé : une petite montée des eaux vers l'an 2, puis un orage qui inonde un parking. L'auteur refuse les deux : **six ans pour se préparer**, et **la canicule comme deuxième urgence, plus tard**. → [[Décisions arrêtées]] 102 · [[2026-09-30_brainstorm_prochaine-crue-ville-eponge]]
 
 ## 🟢 Peut attendre (réversible)
 

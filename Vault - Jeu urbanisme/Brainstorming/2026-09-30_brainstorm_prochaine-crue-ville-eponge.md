@@ -168,10 +168,10 @@ L'auteur retient que rebâtir en zone basse fait monter la prévision, et ajoute
 ## 10. Questions à ouvrir
 
 1. L'université porte-t-elle **deux voix** (protéger / transformer), ou une seule proposition à la fois (n°32, C) ?
-2. Une **répétition** vers l'an 2 ?
+2. ~~Une **répétition** vers l'an 2 ?~~ ✅ non → 102.
 3. La section du diagnostic : **hauteur, pertes, ou les deux** ?
 4. La date : **tirée entre 6 et 8 ans**, fixe, ou qui dépend de ce qu'on fait ?
-5. Quel est le **deuxième aléa**, et quand s'annonce-t-il — à la crue, ou quand la barre passe sous le trait ?
+5. Quel est le **deuxième aléa**, et quand s'annonce-t-il — à la crue, ou quand la barre passe sous le trait ? ✅ la canicule, plus tard → 102 ; le « quand » reste ouvert.
 6. Une **digue** comme tentation ?
 7. ~~La prévision compte-t-elle les dégâts~~ ✅ tous les thèmes → 94. **dans tous les thèmes** (§ 7, lien ③), ou seulement le bâti ?
 8. ~~Les conséquences~~ ✅ tranché → 93. **bilan dans la fiche, part engagée dans les barres, livraison visible** (§ 8), ou des chiffres flottants, en révisant 85 ?
