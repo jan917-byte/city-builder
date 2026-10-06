@@ -2328,6 +2328,8 @@ func _sur_theme(id: String) -> void:
 	_rafraichir(true)
 	if id == "trafic" and ouverture != null:
 		ouverture.voir_trafic()
+	elif id == "" and ouverture != null:
+		ouverture.voir_ville()
 
 
 ## Échelle fixée sur l'état de DÉPART (leçon de `parties.html`) : sinon chaque
@@ -2892,7 +2894,6 @@ func _sur_choix(couche: String, fid: int) -> void:
 	if fid >= 0:
 		interface.montrer(couche, fid, false)
 		if ouverture != null:
-			ouverture.regarde(couche, fid)
 			ouverture.trouve(couche, fid)
 	_dernier_peint = -1.0
 

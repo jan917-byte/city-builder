@@ -50,10 +50,6 @@ var _proteger: Button
 var _reperes: Node3D
 var _reperes_poses := ""
 var _champs := []
-## 🧭 Les lieux déjà ouverts pendant le relogement, et si l'un d'eux était un
-## champ : c'est ce qui décide de l'indice.
-var _regards := {}
-var _champ_vu := false
 ## 🧹 L'annonce du chemin dégagé : -1 après une reprise, 0 à dire, 1 dite.
 var _degage_annonce := 0
 ## 🎓 Les cartes au centre (auteur, 2026-10-02) : « pont » fête le pont rouvert,
@@ -68,6 +64,7 @@ var _annonce_texte: Label
 ## l'usure commence (`Ville.CAMP_USURE_APRES_PONT_MOIS`).
 var plainte := 0
 var deblaiement_vu := false
+var boue_vue := false
 ## 📖 Les pages du livre déjà ouvertes : « nouveau » sur les autres (101).
 var pages_lues := {}
 
@@ -369,6 +366,10 @@ func rail_appel() -> String:
 	# 🧹 Trafic s'entoure quand il propose de tout déblayer, jusqu'à ce qu'on l'ouvre.
 	if not deblaiement_vu and jeu.theme != "trafic" and jeu.interface.deblaiement_propose():
 		return "trafic"
+	# 🟫 Le pont engagé, la Ville s'entoure : la boue se voit là, pas sur le calque
+	# (auteur, 2026-10-06). Une fois revenu, plus d'appel.
+	if etape == "pont_travaux" and not boue_vue and jeu.theme != "" and not acces_degage():
+		return "ville"
 	if not ouvert:
 		return ""
 	match etape:
@@ -645,23 +646,6 @@ func _champs_accessibles() -> Array:
 	return _champs
 
 
-## 🧭 CE QUI ORIENTE SANS DIRE OÙ : le panneau ne rappelle ce qu'un camp
-## demande qu'après quelques lieux ouverts, et jamais si le joueur a déjà
-## ouvert un champ. 🎚️ LEVEL DESIGN : le nombre de lieux regardés.
-const INDICE_REGARDS := 3
-
-
-func regarde(couche: String, fid: int) -> void:
-	if etape != "reloger":
-		return
-	var cle := "%s%d" % [couche, fid]
-	if _regards.has(cle):
-		return
-	_regards[cle] = true
-	if couche == "i" and jeu.ville.camp_possible(fid):
-		_champ_vu = true
-	actualiser(true)
-
 
 func _camp_pose() -> bool:
 	for fid in _champs_accessibles():
@@ -705,6 +689,11 @@ func _premier_pont() -> Dictionary:
 		if out.is_empty() or fin < float(out["fin"]):
 			out = {"couche": "r", "fid": fid, "fin": fin}
 	return out
+
+
+func voir_ville() -> void:
+	if etape == "pont_travaux":
+		boue_vue = true
 
 
 func voir_trafic() -> void:
@@ -801,6 +790,9 @@ func actualiser(force := false) -> void:
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	# Le guide remplaçait le panneau du calque Trafic : muet, il le rend.
+	# Pont engagé depuis la ville : la boue est déjà sous les yeux.
+	if etape == "pont_travaux" and jeu.theme == "":
+		boue_vue = true
 	if etape == "pont_travaux" and ancienne != "pont_travaux" and jeu.theme == "trafic":
 		jeu.interface._detail_ouvert = true
 		jeu.interface._placer_detail()
@@ -851,7 +843,7 @@ func actualiser(force := false) -> void:
 		jeu.ville.reparation_finie("i", MAISONS, jeu.mois),
 		jeu.ville.berge_etat(BERGE, jeu.mois), jeu.ville._solaire.has(SOLAIRE),
 		int(jeu.ville.sans_toit(jeu.mois) * 1000.0 + jeu.ville.besoin_non_couvert(jeu.mois))]
-	signature += "/%d/%s/%s/%d/%d/%s" % [_regards.size(), _champ_vu, jeu.trafic._indisponibles_connues,
+	signature += "/%s/%d/%d/%s" % [jeu.trafic._indisponibles_connues,
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	_annoncer_pages()
 	_annoncer_portes()
@@ -906,44 +898,47 @@ func actualiser(force := false) -> void:
 			_titre.text = "Où irait l'eau ?"
 			_texte.text = "La carte de l'étude est dans Dangers, dans la colonne de gauche."
 		"reloger":
-			# 🧭 ON NE MONTRE PAS LES TROIS CHAMPS (auteur, 2026-09-17) :
-			# ni chiffre sur la carte, ni bouton qui y mène. Le joueur cherche
-			# un endroit, et c'est la fiche qui répond — seul un champ ouvre le
-			# bloc de relogement, et un champ de l'autre rive le prévient.
+			# 🧭 Ni chiffre sur la carte ni bouton qui mène aux champs (auteur, 2026-09-17) ;
+			# le guide dit « un champ », les ponts coupés viennent après (auteur, 2026-10-06).
 			var sans_toit: float = jeu.ville.sans_toit(jeu.mois)
-			var coupes: int = int(jeu.ville.degats(jeu.mois)["franchissements_coupes"])
 			var commandees: int = jeu.ville.places_commandees(jeu.mois)
 			_titre.text = "%d personnes sont dehors" % int(sans_toit)
-			_texte.text = "%d ponts coupés : elles restent sur leur rive. Cliquez sur un lieu pour les abriter." % coupes
+			# 🔴 Texte de prototype, flaggable (90).
+			_texte.text = "Trouvez un champ où poser des containers pour les loger."
 			if commandees > 0:
 				_texte.text = "Abris commandés : %d places. Il manque encore %d places." % [
 					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
 					_texte.text += "\n%s est sur l'autre rive : personne ne peut y aller." % _nom_champ(int(fid))
-			if _regards.size() >= INDICE_REGARDS and not _champ_vu:
-				_texte.text += "\nUn camp demande un terrain nu."
 			_poser_reperes([])
 		"choix":
-			_poser_reperes([["r", RUE, "①"], ["i", MAISONS, "②"]])
-			_titre.text = "Un premier lieu à relever"
 			# ⚖️ LE CHOIX SE LIT DANS SES EFFETS (auteur, 2026-09-22) : la rue coûte
 			# peu et ne rend personne chez soi ; les logements coûtent cher et
-			# vident d'autant les camps.
+			# vident d'autant les camps. 🧹 Rue déjà déblayée avec le pont : les
+			# logements seuls (auteur, 2026-10-06). 🔴 Textes de prototype, flaggables (90).
+			var rue_faite: bool = jeu.ville.est_repare("r", RUE)
+			_titre.text = "Reconstruisons quelque chose pour les habitants" if rue_faite else "Un premier lieu à relever"
 			var logements: float = jeu.ville.base("i", MAISONS, "logements_sinistres")
 			# Tout le monde est abrité à ce stade : ceux qui rentrent quittent un camp.
 			var abrites := int(minf(logements, jeu.ville.sans_toit(jeu.mois) + jeu.ville.reloges(jeu.mois)))
-			_texte.text = "Rue des Forgerons envasée, %.0f logements inhabitables à côté. Par où commencer ?" % logements
+			_texte.text = ("%s : %.0f logements inhabitables." % [_nom("i", MAISONS), logements]) if rue_faite \
+				else ("Rue des Forgerons envasée, %.0f logements inhabitables à côté." % logements)
 			if etude_parue:
-				_texte.text = _texte.text.replace(" Par où", " La prochaine crue y mettrait %s m d'eau. Par où" % \
-					jeu.interface._nb(jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois), 1))
+				_texte.text += " La prochaine crue y mettrait %s m d'eau." % \
+					jeu.interface._nb(jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois), 1)
+			if not rue_faite:
+				_texte.text += " Par où commencer ?"
 			# 💶 Dit une fois, ici : la caisse ne relève pas tout (auteur, 2026-10-02).
 			var autres := _sinistres_restants() - 1
 			if autres > 0:
 				_texte.text += "\n%d autres îlots attendent. La caisse ne les relèvera pas tous." % autres
-			_reparation("r", RUE, "① Déblayer la rue")
-			_reparation("i", MAISONS, "② Relever les logements" + (
-				" · %d personnes peuvent rentrer" % abrites if abrites > 0 else ""))
+			var revenir := " · %d personnes peuvent rentrer" % abrites if abrites > 0 else ""
+			if rue_faite:
+				_reparation("i", MAISONS, "Relever " + _nom("i", MAISONS) + revenir)
+			else:
+				_reparation("r", RUE, "① Déblayer la rue")
+				_reparation("i", MAISONS, "② Relever les logements" + revenir)
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
@@ -951,7 +946,7 @@ func actualiser(force := false) -> void:
 			_bouton("Voir mon chantier", examiner.bind(premier["couche"], premier["fid"]))
 			if premier["couche"] == "r":
 				_reparation("i", MAISONS, "Comparer les logements")
-			else:
+			elif not jeu.ville.est_repare("r", RUE):
 				_reparation("r", RUE, "Comparer la rue")
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
@@ -1045,8 +1040,9 @@ func exporter() -> Dictionary:
 
 
 func reprendre(etat: Dictionary) -> void:
-	_regards.clear()
-	_champ_vu = false
+	# Deux appels du rail, rejoués à la reprise : ils ne coûtent qu'un clic.
+	boue_vue = false
+	deblaiement_vu = false
 	suite = bool(etat.get("suite", false))
 	termine = bool(etat.get("termine", false))
 	ouvert = bool(etat.get("ouvert", true))

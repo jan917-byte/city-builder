@@ -270,11 +270,12 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 		message += " · ×12 ≈ %d s" % int(ceil(duree * 5.0))
 	consigner(message, mois)
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
-		annoncer("La boue bloque le chemin jusqu'au pont : déblayez-le pendant le chantier.", mois)
+		# 🔴 Textes de prototype, flaggables (90) : la Ville s'entoure en même temps (auteur, 2026-10-06).
+		annoncer("La boue bloque le chemin jusqu'au pont. Revenez sur la ville pour la voir, et déblayez pendant le chantier.", mois)
 	# 🧹 À la troisième rue faite à la main, Trafic propose le reste (auteur, 2026-10-05).
 	if couche == "r" and "reparation" in r["faits"] and not fid in ui.ville.ponts_coupes() \
 			and ui.ville.rues_deblayees_main() == ui.Ville.DEBLAIEMENT_SEUIL and ui.deblaiement_propose():
-		annoncer("Encore %d rues sous la boue : Trafic propose de tout déblayer d'un coup." % ui.rues_a_deblayer().size(), mois)
+		annoncer("Encore %d rues sous la boue : ouvrez Trafic pour tout déblayer d'un coup." % ui.rues_a_deblayer().size(), mois)
 	if duree <= 0.0:
 		for genre in r["faits"]:
 			livraison({"couche": couche, "fid": fid, "genre": genre}, mois)

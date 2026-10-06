@@ -89,6 +89,9 @@ var ACCENT_VIF := Color8(62, 124, 70)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
 const ALERTE := Color8(198, 76, 66)
+## 🟡 L'anneau de la tuile que le guide demande. Plus franc que le trait de
+## sélection 3D (`maquette.CONTOUR_COULEUR`), qui se perdrait sur le verre clair.
+const APPEL := Color8(240, 190, 40)
 ## ✓ Un chantier fini se DIT en vert, il ne se grise pas en bouton mort. Plus
 ## sombre que `FAIT`, qui est une couleur de jauge et ne se lit pas en texte.
 var FAIT_TEXTE := Color8(39, 96, 22)
@@ -1500,12 +1503,13 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	b.tooltip_text = bulle
 	_habiller_tuile_rail(b)
 	# 🧭 L'anneau de la tuile que le guide demande (`_maj_rail`).
+	# 🟡 Jaune, comme tout ce que le jeu entoure (auteur, 2026-10-06) ; il était vert.
 	var anneau := Panel.new()
 	var cadre := StyleBoxFlat.new()
-	cadre.bg_color = Color(ACCENT_VIF, 0.18)
+	cadre.bg_color = Color(APPEL, 0.22)
 	cadre.set_corner_radius_all(_r(12))
 	cadre.set_border_width_all(3)
-	cadre.border_color = ACCENT_VIF
+	cadre.border_color = APPEL
 	anneau.add_theme_stylebox_override("panel", cadre)
 	anneau.set_anchors_preset(Control.PRESET_FULL_RECT)
 	anneau.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1521,13 +1525,15 @@ func _maj_rail() -> void:
 	for i in LIEUX_ORDRE.size():
 		tuiles[LIEUX_ORDRE[i]] = _rail_lieux[i]
 	var appel: String = ouverture.rail_appel() if ouverture != null else ""
+	# La tuile Ville est rangée sous "" : « ville » la désigne.
+	var cle := "" if appel == "ville" else appel
 	var pouls := 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.006)
 	for id in tuiles:
 		var b: Button = tuiles[id]
 		b.disabled = ouverture != null and not ouverture.rail_ouvert(id)
 		b.visible = ouverture == null or ouverture.rail_visible(id)
 		var anneau: Control = b.get_meta("anneau")
-		anneau.visible = appel != "" and id == appel
+		anneau.visible = appel != "" and id == cle
 		anneau.modulate.a = pouls
 
 
@@ -5279,14 +5285,11 @@ func _habiller_secondaire(b: Button) -> void:
 ## pose et se paie, et l'avertissement est au-dessus du bouton. L'erreur coûte
 ## du temps et de l'argent, elle ne ferme aucune porte — un pont réparé
 ## remplira le camp plus tard.
-## 🌾 Avant la pose, l'irréversible seul (le nombre de nourris est dans les
-## conséquences) ; après, ce que le champ a cessé de nourrir.
+## 🌾 Une fois le camp posé, ce que le champ a cessé de nourrir.
 func _champ_perdu(fid: int) -> String:
 	var nourris := ville.champ_nourriture(fid, _mois)
 	if nourris < 0.5:
 		return "Ce champ ne nourrit personne."
-	if ville.champ_cultive(fid, _mois):
-		return "⚠ Il ne sera plus jamais cultivé."
 	return "Il ne nourrit plus ses %s personnes." % _nb(nourris, 0)
 
 
@@ -5295,6 +5298,7 @@ func _maj_camp() -> void:
 		_bloc_dispo[_camp_bloc] = false
 		return
 	_bloc_dispo[_camp_bloc] = true
+	_camp_texte.visible = true
 	var fid := _fiche_fid
 	# 🚿 Le bouton attend la plainte (auteur, 2026-10-02).
 	_demandes_bloc.visible = ville.camp_livre(fid, _mois) and ville.camp_accessible(fid, _mois) \
@@ -5330,15 +5334,10 @@ func _maj_camp() -> void:
 		_marquer(_camp_bouton, false)
 		return
 	var places: int = ville.camp_taille(fid, _mois)
-	var maxi: int = ville.camp_capacite(fid)
-	# Le nombre de sinistrés est déjà au compteur : la fiche dit ce que le champ tient.
-	var phrase := "Jusqu'à %d personnes · %d containers" % [maxi, ville.camp_places_max(fid)]
-	# 🌾 LE PRIX QUI N'EST PAS EN k€, annoncé avant le bouton : le camp prend
-	# le champ entier, et la campagne ne le récupère pas.
-	phrase += "\n%s" % _champ_perdu(fid)
-	if not ville.camp_accessible(fid, _mois):
-		phrase += "\n⚠ Autre rive : personne ne pourra y aller."
-	_camp_texte.text = phrase
+	# 🔄 Ni capacité ni « plus jamais cultivé » (auteur, 2026-10-06) : prix, abrités
+	# et nourris sont aux conséquences du bas, on ne les répète pas.
+	_camp_texte.text = "⚠ Autre rive : personne ne pourra y aller." if not ville.camp_accessible(fid, _mois) else ""
+	_camp_texte.visible = _camp_texte.text != ""
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
 

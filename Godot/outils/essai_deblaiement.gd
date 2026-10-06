@@ -37,7 +37,7 @@ func executer() -> void:
 		jeu._sur_commande("r", main[i], {"reparer": true})
 		verifier(ui.deblaiement_propose() == (i == main.size() - 1),
 			"Après %d rue(s) à la main, proposé : %s" % [i + 1, ui.deblaiement_propose()])
-	verifier("Trafic propose" in ui.retours.journal.back(), "La troisième rue annonce la proposition : %s" % ui.retours.journal.back())
+	verifier("ouvrez Trafic" in ui.retours.journal.back(), "La troisième rue annonce la proposition : %s" % ui.retours.journal.back())
 	ui._maj_rail()
 	verifier(entouree("trafic"), "La tuile Trafic s'entoure")
 	var reste: Array = ui.rues_a_deblayer()
@@ -80,6 +80,15 @@ func executer() -> void:
 	verifier(jeu.mois < v._repare["r:%d" % pont] + v.duree_reparation_mois("r", pont),
 		"Tout est déblayé avant la fin du pont provisoire")
 	await capture("deblaiement_03_fini")
+	# 🧹 Le pont livré, la rue des Forgerons est faite : le guide ne propose que les logements.
+	actualiser(v._repare["r:%d" % pont] + v.duree_reparation_mois("r", pont) + 0.01)
+	o.pont_livre_ms -= o.ATTENTE_PONT_MS
+	o.actualiser(true)
+	await cliquer(o.annonce_second)
+	verifier(o.etape == "choix" and v.est_repare("r", o.RUE) and "Reconstruisons" in o._titre.text
+		and bouton("①") == null and bouton("Relever") != null,
+		"Rue déjà déblayée : « %s », les logements seuls" % o._titre.text)
+	await capture("deblaiement_04_reconstruisons")
 	print("DÉBLAIEMENT : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame

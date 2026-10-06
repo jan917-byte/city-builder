@@ -189,8 +189,8 @@ func executer() -> void:
 		and not jeu.interface._trafic_bloc.visible, "Une rue non plus")
 	jeu._sur_choix("b", o.BERGE)
 	verifier(not jeu.interface._berge_bloc.visible, "Une berge non plus")
-	verifier("terrain nu" in o._texte.text,
-		"Trois lieux muets, et le panneau rappelle ce qu'un camp demande")
+	verifier("Trouvez un champ" in o._texte.text and not "ponts coupés" in o._texte.text,
+		"Le guide dit de chercher un champ, et ne parle pas encore des ponts")
 	# 🌉 Le champ de l'autre rive prévient et laisse faire.
 	jeu._sur_choix("i", lointain)
 	verifier(jeu.interface._camp_bloc.visible
@@ -200,13 +200,10 @@ func executer() -> void:
 	var caisse0: float = jeu.ville.caisse_ke(0.0)
 	var nourris0: float = jeu.ville.nourriture_personnes(0.0)
 	jeu._sur_choix("i", champs[0])
-	verifier(jeu.interface._camp_bloc.visible
-		and not ("terrain nu" in o._texte.text),
-		"Le champ atteignable ouvre le relogement, et l'indice s'efface")
-	# 🌾 LE COÛT QUI N'EST PAS EN k€, ANNONCÉ AVANT LE BOUTON.
+	verifier(jeu.interface._camp_bloc.visible, "Le champ atteignable ouvre le relogement")
+	# 🔄 Rien au-dessus du bouton (auteur, 2026-10-06) : prix, abrités et nourris sont en bas.
+	verifier(not jeu.interface._camp_texte.visible, "La fiche du champ ne répète pas les conséquences")
 	var nourri_champ: float = jeu.ville.champ_nourriture(champs[0])
-	verifier(nourri_champ > 0.0 and "plus jamais cultivé" in jeu.interface._camp_texte.text,
-		"La fiche prévient que le champ (%.0f personnes nourries) ne sera plus cultivé" % nourri_champ)
 	# 🗂️ 🔄 LA FICHE EST À ONGLETS depuis le 2026-09-18 : ce qui portait
 	# « Nourrit » est l'onglet campagne, et il n'existe que sur un champ.
 	verifier(jeu.interface._dispo.has("campagne")
@@ -531,6 +528,17 @@ func essayer_ponts(lointain: int) -> void:
 		"Le pont engagé, le guide se tait et le bandeau dit que la boue bloque")
 	for rue in acces["obstacles"]:
 		verifier(not o._nom("r", rue) in boue, "Le bandeau ne nomme pas l'accès %d" % rue)
+	# 🟫 Depuis le calque, la Ville s'entoure jusqu'au retour (auteur, 2026-10-06).
+	var theme_avant: String = jeu.theme
+	o.boue_vue = false
+	jeu._sur_theme("trafic")
+	jeu.interface._maj_rail()
+	verifier("ville" in boue and o.rail_appel() == "ville" and tuile("").get_meta("anneau").visible,
+		"Le pont engagé, le bandeau renvoie sur la ville et sa tuile s'entoure")
+	jeu._sur_theme("")
+	jeu._sur_theme("trafic")
+	verifier(o.rail_appel() == "" and o.boue_vue, "Revenu une fois sur la ville, plus d'appel")
+	jeu._sur_theme(theme_avant)
 	var fin: float = debut + jeu.ville.duree_reparation_mois("r", pont)
 	verifier(is_equal_approx(fin - debut, jeu.ville.PONT_PROVISOIRE_MOIS), "Le pont provisoire se pose en %s mois" % jeu.ville.PONT_PROVISOIRE_MOIS)
 	actualiser(fin - 0.01)
@@ -652,6 +660,10 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.pont_termine and o.etape == "choix" and not o.etude_parue and not o.annonce.visible,
 		"Le pont rouvert propose de relever, l'étude attend")
 	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
+	# 🧹 Rue déjà déblayée : le guide ne propose plus que les logements (auteur, 2026-10-06).
+	var rue_faite: bool = jeu.ville.est_repare("r", o.RUE)
+	verifier((bouton("①") == null) == rue_faite and ("Reconstruisons" in o._titre.text) == rue_faite,
+		"Rue des Forgerons %s : %s" % ["déblayée" if rue_faite else "envasée", o._titre.text])
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()
