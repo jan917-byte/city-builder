@@ -656,3 +656,6 @@ Mesuré sur les sept îlots : sur pilotis, Lavoir (4,0 m) 0 perdu, Forgerons (5,
 **2026-10-06 — 5 s avant la carte de l'étude.** Le pont livré, le temps court encore 5 s réelles (voitures sur le pont, guide caché), puis la carte « Les deux rives sont reliées » met en pause.
 Demande de l'auteur. `ATTENTE_ETUDE_MS` dans `ouverture.gd` ; essais ouverture et progression avancent l'horloge.
 essai_ouverture, essai_progression, essai_etude, essai_vie_camp, essai_relogement, essai_rebatir, essai_deblaiement, essai_concours, essai_livre : 0 échec.
+**2026-10-06 — Une livraison, une porte (décision 105) : le pont rouvert ne publie plus l'étude ; elle paraît quand on ouvre un îlot sinistré ; la ville-éponge s'ouvre sur la berge seule, les autres sols après une berge rendue, le concours après un deuxième chantier livré.**
+Demande de l'auteur (« le rythme de complexité est presque un peu trop rapide », « fais 1 à 4 ») ; la proposition 5 (l'usure du camp après le pont) n'est pas retenue. Il demande aussi une interface moins dense au début : inventaire à faire.
+essai_etude, essai_livre, essai_concours, essai_ouverture, essai_progression, essai_rebatir, essai_vie_camp, essai_relogement, essai_deblaiement : 0 échec ; sauvegarde 92 comme avant (lieux sans nom).

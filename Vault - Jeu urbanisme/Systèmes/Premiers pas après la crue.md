@@ -1,7 +1,7 @@
 ---
 tags: [système, gameplay, prototype]
 statut: en essai, à juger par l'auteur
-maj: 2026-09-30
+maj: 2026-10-06
 ---
 
 # Premiers pas après la crue
@@ -22,7 +22,7 @@ Pendant la première installation, les fiches proposent le relogement. Ensuite l
 
 Les deux premières propositions et la berge sont des choix de lieu pour cet essai, pas un générateur de missions. Leurs identifiants se règlent en haut de `Godot/scripts/ouverture.gd` ; les mesures et les contrôles vivent dans `Prototype/Premiers pas.md`.
 
-Le premier pont livré, l'université publie une étude : une crue plus forte dans 6 à 8 ans. Le guide mène à l'université, puis à Dangers › Prochaine crue, avant de proposer les Forgerons (décision 100). Rien ne tombe encore au bout de l'échéance. La première victoire est locale : une rue dégagée ne rétablit pas à elle seule les ponts du faubourg.
+Le premier pont livré, on souffle : rien de neuf ne s'ouvre. L'université publie son étude — une crue plus forte dans 6 à 8 ans — quand le joueur ouvre un îlot sinistré pour le relever ; le guide mène à l'université, puis à Dangers › Prochaine crue (décisions 100 et 105). Ensuite, une livraison ouvre une porte : la berge d'abord, les autres sols après une berge rendue, le concours en dernier (105). Rien ne tombe encore au bout de l'échéance. La première victoire est locale : une rue dégagée ne rétablit pas à elle seule les ponts du faubourg.
 
 ## Une carte lisible, des conséquences attribuables
 
