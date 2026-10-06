@@ -36,6 +36,7 @@ const Recherche := preload("res://scripts/recherche.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 const Lieux := preload("res://scripts/lieux.gd")
+const Livre := preload("res://scripts/livre.gd")
 var lieux := Lieux.new()
 var _reprendre: Button
 
@@ -108,6 +109,7 @@ const CHANTIER_MOTS := {
 	"culture": "Mise en culture",
 	"amelioration": "Amélioration du campement",
 	"toit vert": "Toit végétalisé", "plantation": "Plantation",
+	"sol perméable": "Sol rendu perméable",
 }
 
 
@@ -172,6 +174,54 @@ class Jauge extends Control:
 		if pose > 0.0:
 			draw_style_box(_sb_pose,
 				Rect2(0.0, 0.0, maxf(size.y, size.x * pose), size.y))
+
+
+## 🌊 LA JAUGE DE LA PROCHAINE CRUE (auteur, 2026-10-06), en mètres d'eau en
+## moins au pire depuis l'étude : livré (plein), engagé (hachures), le réglage de
+## la fiche (trait blanc), et le seuil où les premières maisons tiennent (trait
+## sombre). En logements elle ne bougeait pas : sous ce seuil, aucun n'est sauvé.
+class JaugeCrue extends Control:
+	const EAU := Color8(38, 104, 168)
+	const ENGAGE := Color8(120, 176, 214)
+	const FOND := Color8(224, 216, 196, 190)
+	const PLEINE_M := 1.5      # l'échelle : au-delà, la barre est pleine
+	var livre := 0.0
+	var engage := 0.0
+	var apercu := -1.0
+	var seuil := 0.0
+
+	func regler(l: float, e: float, p: float, s: float) -> void:
+		if is_equal_approx(l, livre) and is_equal_approx(e, engage) \
+				and is_equal_approx(p, apercu) and is_equal_approx(s, seuil):
+			return  # ⚠️ appelé à chaque image
+		livre = l
+		engage = e
+		apercu = p
+		seuil = s
+		queue_redraw()
+
+	func _x(m: float) -> float:
+		return size.x * clampf(m / PLEINE_M, 0.0, 1.0)
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), FOND)
+		var x0 := _x(livre)
+		var x1 := _x(engage)
+		if x1 > x0 + 0.5:
+			draw_rect(Rect2(x0, 0.0, x1 - x0, size.y), Color(ENGAGE, 0.45))
+			var x := x0 - size.y
+			while x < x1:
+				var a := Vector2(maxf(x, x0), size.y - (maxf(x, x0) - x))
+				var b := Vector2(minf(x + size.y, x1), size.y - (minf(x + size.y, x1) - x))
+				draw_line(a, b, ENGAGE, 2.0)
+				x += 6.0
+		draw_rect(Rect2(0.0, 0.0, x0, size.y), EAU)
+		var xs := _x(seuil)
+		draw_line(Vector2(xs, -3.0), Vector2(xs, size.y + 3.0), Color8(60, 52, 40), 2.0)
+		if apercu >= 0.0:
+			var xp := _x(apercu)
+			draw_line(Vector2(xp, -4.0), Vector2(xp, size.y + 4.0), Color.WHITE, 3.0)
+			draw_line(Vector2(xp, -4.0), Vector2(xp, size.y + 4.0), Color8(30, 30, 30), 1.0)
 
 
 ## 🧭 LA COLONNE D'ICÔNES, ET LE PANNEAU QUI S'OUVRE À CÔTÉ (2026-09-03, demande
@@ -287,6 +337,15 @@ var _solaire_jauge: Jauge
 ## jauge, même mémoire de position — parce que les deux se partagent un 100 %.
 var _vert_bloc: VBoxContainer
 var _dense_bloc: VBoxContainer
+## 🅿️💧 Le sol de la place-parking (101).
+var _permeable_bloc: VBoxContainer
+var _permeable_texte: Label
+var _permeable_bouton: Button
+## 📖 Le levier de l'onglet ouvert que le livre garde fermé, et ce qui l'ouvrira.
+var _ferme_bloc: VBoxContainer
+var _ferme_texte: Label
+var _ferme_cle := ""
+var _ferme_page := ""
 var _dense_valeur: Label
 var _dense_boutons: Array[Button] = []
 var _dense_curseur: HSlider
@@ -390,11 +449,32 @@ var _berge_boutons := []
 var _degats := {}
 var _degats_valeurs := {}
 var _vue_crue := "degats"
+var _jauge_crue: JaugeCrue
+## Les logements perdus une fois livrés les chantiers engagés : recalculé au jour.
+var _a_venir_cle := ""
+var _a_venir := 0.0
+## L'eau au pire avec le réglage de la fiche ouverte, −1 sans réglage (`consequences`).
+var _apercu_crue := -1.0
+## La baisse où les premières maisons tiennent, mesurée une fois sur les courbes de `04e`.
+var _seuil_crue := -1.0
 var _onglets_crue := {}
 var _vues_crue := {}
 var _prochaine_valeurs := {}
 var _etude_bloc: VBoxContainer
 var _etude_texte: Label
+## 📖 LA BIBLIOTHÈQUE (101) : la liste des pages, ou une page ouverte.
+var _biblio_bloc: VBoxContainer
+var _biblio_liste: VBoxContainer
+var _page_bloc: VBoxContainer
+var _page_titre: Label
+var _page_chapitre: Label
+var _page_texte: Label
+var _page_leviers: VBoxContainer
+var _page_voir: Button
+var _page_ouverte := ""
+var _biblio_cle := ""
+## « Voir à Wehrau » : `maquette.voir_concept`.
+signal concept_demande(id: String)
 var _mois := 0.0
 var _caisse_ke := Ville.CAISSE_DEPART_KE
 var _capital := Ville.CAPITAL_DEPART
@@ -909,8 +989,9 @@ func _calculer_dispo() -> Dictionary:
 		d["crue"] = bool(_bloc_dispo.get(_repare_bloc, false))
 		d["campagne"] = champ
 		d["bati"] = not champ
-		d["energie"] = not _solaire_verrouille() 			and ville.valeur("i", fid, "_toit_equipable_m2", _mois) > 0.0
-		d["vert"] = ville.valeur("i", fid, "_part_plate", _mois) > 0.001
+		d["energie"] = ville.valeur("i", fid, "_toit_equipable_m2", _mois) > 0.0
+		d["vert"] = ville.valeur("i", fid, "_part_plate", _mois) > 0.001 \
+			or ville.permeable_possible(fid)
 	elif _fiche_couche == "r":
 		d["crue"] = bool(_bloc_dispo.get(_repare_bloc, false))
 		d["trafic"] = true
@@ -996,6 +1077,8 @@ const DESSINS := {
 	"annuler": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/>",
 	"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
 	"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
+	# 💧 Lucide « droplets » : la carte des sols (101).
+	"sols": "<path d='M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z'/><path d='M12.56 6.6A10.97 10.97 0 0014 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 01-11.91 4.97'/>",
 	# 🏛️🎓 Les deux lieux du rail (Lucide « landmark », « graduation-cap ») :
 	# sans dessin, ils prenaient celui du diagnostic, deux fois.
 	# Lucide « book-open » : DÉBUT rouvre le récit des premiers pas.
@@ -1466,7 +1549,7 @@ func _placer_detail() -> void:
 	_ville_panneau.visible = _detail_ouvert and _theme_courant == ""
 	_diagnostic_panneau.visible = _detail_ouvert and genre == "crue"
 	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
-	_calque_panneau.visible = _detail_ouvert and (genre == "calque" or genre == "tissu")
+	_calque_panneau.visible = _detail_ouvert and genre in ["calque", "tissu", "sols"]
 	if ouverture != null:
 		ouverture.visible = ouverture.paraitre()
 
@@ -1508,6 +1591,17 @@ func _panneau_calque() -> void:
 	_calque_note = _label("", 11, GRIS)
 	_calque_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_calque_note)
+	# 💧 LA CARTE DES SOLS (101) : trois teintes et le chiffre qui les résume.
+	# ⚠ Les teintes sont aussi dans `maquette.SOLS_*`, en sRGB.
+	_sols_bloc = VBoxContainer.new()
+	_sols_bloc.add_theme_constant_override("separation", 6)
+	_sols_bloc.visible = false
+	v.add_child(_sols_bloc)
+	_legende(_sols_bloc, SOL_BOIT, "Boit la pluie · jardins, prés, toits verts")
+	_legende(_sols_bloc, SOL_DUR, "La renvoie à l'Ilse · rues, toits, cours en dur")
+	_legende(_sols_bloc, SOL_PARKING, "Parking · places de rue et place-parking")
+	_sols_bloc.add_child(HSeparator.new())
+	_sols_chiffre = _ligne_chiffre(_sols_bloc, "Sol de la ville qui boit")
 	# 🧹 Tout déblayer d'un coup (auteur, 2026-10-05). 🔴 Texte de prototype, flaggable (90).
 	_boue_bloc = VBoxContainer.new()
 	_boue_bloc.add_theme_constant_override("separation", 6)
@@ -1526,6 +1620,12 @@ func _panneau_calque() -> void:
 
 var _boue_bloc: VBoxContainer
 var _boue_texte: Label
+var _sols_bloc: VBoxContainer
+var _sols_chiffre: Label
+var _sols_depart := -1.0
+const SOL_BOIT := Color8(92, 160, 92)
+const SOL_DUR := Color8(112, 112, 118)
+const SOL_PARKING := Color8(240, 150, 30)
 var _boue_bouton: Button
 
 
@@ -1625,6 +1725,7 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 		# Le tissu n'a pas d'échelle : une teinte par sous_type, donc ni rampe
 		# ni bornes. C'est la seule différence entre les deux genres ici.
 		var continu := genre == "calque"
+		_sols_bloc.visible = genre == "sols"
 		if continu and _calque_barre.texture == null:
 			_calque_barre.texture = _texture_rampe()
 		_calque_barre.visible = continu
@@ -1695,8 +1796,8 @@ func _ligne_chiffre(parent: VBoxContainer, etiquette: String) -> Label:
 
 
 ## 🎓 LA PRÉVISION, toujours ouvrable (94) : où irait l'eau, ce qu'elle
-## ruinerait, et les trois gestes de la maquette qui la font baisser — pas un
-## de plus : le sol rendu perméable n'existe pas encore.
+## ruinerait, la jauge de ce qu'on a déjà fait, et les quatre gestes de la
+## ville-éponge qui la font baisser (101).
 func _panneau_prochaine(p: VBoxContainer) -> void:
 	var barre := TextureRect.new()
 	var g := Gradient.new()
@@ -1722,9 +1823,19 @@ func _panneau_prochaine(p: VBoxContainer) -> void:
 		["quand", "Attendue"],
 		["ilots", "Îlots sous l'eau"],
 		["eau", "Eau au pire"],
-		["logements", "Logements perdus"],
 	]:
 		_prochaine_valeurs[ligne[0]] = _ligne_chiffre(p, ligne[1])
+	_prochaine_valeurs["logements"] = _ligne_chiffre(p, "Logements qu'elle détruirait")
+	p.add_child(HSeparator.new())
+	_prochaine_valeurs["baisse"] = _ligne_chiffre(p, "Eau en moins depuis l'étude")
+	_jauge_crue = JaugeCrue.new()
+	_jauge_crue.custom_minimum_size = Vector2(0, 16)
+	_jauge_crue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(_jauge_crue)
+	var jl := _label("", 11, GRIS)
+	jl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.add_child(jl)
+	_prochaine_valeurs["jauge"] = jl
 	var ecart := _label("", 11, GRIS)
 	ecart.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	p.add_child(ecart)
@@ -1739,6 +1850,10 @@ func _panneau_prochaine(p: VBoxContainer) -> void:
 	for f in ville.ilots:
 		plat_ha += Energie.toit_plat_equipable_m2(ville, f) / 10000.0
 	var pre_cm_ha: float = float(Ville.CULTURES[3]["crue_m_ha"]) * 100.0
+	_levier(p, "Rendre un parking perméable",
+		"−%d cm par hectare rendu, dans toute la ville ; les places restent." % int(roundf(
+			Ville.PERMEABLE_BAISSE_M_PAR_HA * 100.0)),
+		"Voir la place-parking", "i", Ouverture.PARKING, "permeable", true)
 	_levier(p, "Rendre une berge à l'Ilse",
 		"Jusqu'à −%d cm dans son quartier, sur les deux rives." % int(roundf(berge_cm)),
 		"Voir la berge %d" % Ouverture.BERGE, "b", Ouverture.BERGE, "berge", Ville.BERGE_RENATUREE)
@@ -1829,6 +1944,27 @@ func _maj_prochaine() -> void:
 		int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"])]
 	(_prochaine_valeurs["eau"] as Label).text = "%s m" % _nb(float(p["eau_pire_m"]), 2)
 	(_prochaine_valeurs["logements"] as Label).text = _nb(float(p["logements_perdus"]), 0)
+	var cle := "%d/%d/%d/%d" % [int(_mois * 30.0), ville._rampes_version,
+		ville._repare.size(), ville._berge.size()]
+	if cle != _a_venir_cle:
+		_a_venir_cle = cle
+		_a_venir = float(ville.prochaine_crue(_mois + Ville.HORIZON_MOIS)["eau_pire_m"])
+	if _seuil_crue < 0.0:
+		_seuil_crue = _premieres_maisons_m()
+	var depart := float(a["eau_pire_m"])
+	var livre := depart - float(p["eau_pire_m"])
+	var engage := depart - _a_venir
+	var apercu := depart - _apercu_crue if _apercu_crue >= 0.0 and _fiche_fid >= 0 \
+		and _fiche_panneau.visible and not _reglages_vus().is_empty() else -1.0
+	_jauge_crue.regler(livre, engage, apercu, _seuil_crue)
+	(_prochaine_valeurs["baisse"] as Label).text = "%d cm" % int(roundf(livre * 100.0))
+	var jl := "Trait sombre : à %d cm, les premières maisons tiennent." % int(roundf(_seuil_crue * 100.0))
+	if engage > livre + 0.005:
+		jl = "Hachures, les chantiers en cours : %d cm une fois livrés. " % int(roundf(engage * 100.0)) + jl
+	if apercu >= 0.0:
+		jl = "Trait blanc, avec le réglage de la fiche : %d cm. " % int(roundf(apercu * 100.0)) + jl
+	(_prochaine_valeurs["jauge"] as Label).text = jl
+
 	var cm := (float(a["eau_pire_m"]) - float(p["eau_pire_m"])) * 100.0
 	var lg := float(p["logements_perdus"]) - float(a["logements_perdus"])
 	var texte := "À la parution de l'étude : %s m au pire, %s logements perdus." % [
@@ -1837,6 +1973,19 @@ func _maj_prochaine() -> void:
 		texte += " Depuis : %+d cm d'eau, %+d logements." % [int(roundf(-cm)), int(roundf(lg))]
 	texte += " Relever un îlot du faubourg remet ses logements sous l'eau."
 	(_prochaine_valeurs["ecart"] as Label).text = texte
+
+
+## La plus petite baisse, sur les paliers de `04e`, qui sauve une maison quelque
+## part : en dessous, la crue baisse sans qu'aucun logement soit sauvé.
+func _premieres_maisons_m() -> float:
+	var paliers: Array = ville.crue.get("baisses_m", [])
+	for k in range(1, paliers.size()):
+		for fid in ville.ilots:
+			var c: Array = ville.ilots[fid].get("ruine_apres_baisse", [])
+			if c.size() == paliers.size() and float(c[k]) < float(c[0]) - 0.001 \
+					and ville.base("i", fid, "logements") + ville.base("i", fid, "logements_sinistres") > 0.0:
+				return float(paliers[k - 1])
+	return 0.0
 
 
 func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
@@ -2357,6 +2506,37 @@ func _panneau_ilot() -> void:
 	_dense_curseur.value_changed.connect(_sur_curseur_dense)
 	_dense_bloc.add_child(_dense_curseur)
 
+	# 🅿️💧 LE SOL RENDU PERMÉABLE (101) : un bouton, les places restent.
+	_permeable_bloc = VBoxContainer.new()
+	_permeable_bloc.add_theme_constant_override("separation", 6)
+	_permeable_bloc.visible = false
+	v.add_child(_permeable_bloc)
+	_permeable_bloc.add_child(HSeparator.new())
+	_titre_section(_permeable_bloc, "Sol")
+	_permeable_texte = _label("", 12, TEXTE)
+	_permeable_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_permeable_bloc.add_child(_permeable_texte)
+	_permeable_bouton = Button.new()
+	_permeable_bouton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_decision(_permeable_bouton, "permeable", true)
+	_permeable_bloc.add_child(_permeable_bouton)
+
+	# 📖 Verrouillé mais visible, avec ce qui l'ouvre (Boucle de jeu · 101).
+	_ferme_bloc = VBoxContainer.new()
+	_ferme_bloc.add_theme_constant_override("separation", 6)
+	_ferme_bloc.visible = false
+	v.add_child(_ferme_bloc)
+	_ferme_bloc.add_child(HSeparator.new())
+	_ferme_texte = _label("", 12, GRIS)
+	_ferme_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_ferme_bloc.add_child(_ferme_texte)
+	var biblio := Button.new()
+	biblio.text = "Ouvrir la bibliothèque"
+	biblio.focus_mode = Control.FOCUS_NONE
+	_habiller_secondaire(biblio)
+	biblio.pressed.connect(func() -> void: ouvrir_lieu("universite", _ferme_page))
+	_ferme_bloc.add_child(biblio)
+
 	# 🗂️ CHAQUE BLOC DE RÉGLAGE SOUS SON THÈME. C'est ce qui fait qu'un onglet
 	# porte les chiffres ET la décision : `vert` en tient deux, parce qu'un toit
 	# et un alignement d'arbres sont le même thème sur deux couches.
@@ -2364,6 +2544,7 @@ func _panneau_ilot() -> void:
 		_repare_bloc: "crue", _camp_bloc: "campagne", _culture_bloc: "campagne",
 		_dense_bloc: "bati",
 		_solaire_bloc: "energie", _vert_bloc: "vert", _arbres_bloc: "vert",
+		_permeable_bloc: "vert",
 		_trafic_bloc: "trafic", _berge_bloc: "berge",
 	}
 
@@ -2616,6 +2797,7 @@ func _panneau_lieu() -> void:
 	ou.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_etude_bloc.add_child(ou)
 
+
 	for cle in Politiques.ORDRE:
 		_lieu_lignes[cle] = _ligne_lieu(v, "politique",
 			String(Politiques.POLITIQUES[cle]["nom"]),
@@ -2624,6 +2806,42 @@ func _panneau_lieu() -> void:
 		_lieu_lignes[cle] = _ligne_lieu(v, "recherche",
 			String(Recherche.SUJETS[cle]["nom"]),
 			String(Recherche.SUJETS[cle]["quoi"]))
+
+	# 📖 LA BIBLIOTHÈQUE (101, A : celle de l'université), sous les sujets. 🔴 Textes flaggables (90).
+	_biblio_bloc = VBoxContainer.new()
+	_biblio_bloc.add_theme_constant_override("separation", 6)
+	v.add_child(_biblio_bloc)
+	_biblio_bloc.add_child(HSeparator.new())
+	_titre_section(_biblio_bloc, "Bibliothèque")
+	_biblio_liste = VBoxContainer.new()
+	_biblio_liste.add_theme_constant_override("separation", 4)
+	_biblio_bloc.add_child(_biblio_liste)
+	_page_bloc = VBoxContainer.new()
+	_page_bloc.add_theme_constant_override("separation", 6)
+	_page_bloc.visible = false
+	_biblio_bloc.add_child(_page_bloc)
+	_page_chapitre = _label("", 11, GRIS)
+	_page_bloc.add_child(_page_chapitre)
+	_page_titre = _label("", 15, TEXTE)
+	_page_bloc.add_child(_page_titre)
+	_page_texte = _label("", 12, TEXTE)
+	_page_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_page_bloc.add_child(_page_texte)
+	_page_leviers = VBoxContainer.new()
+	_page_leviers.add_theme_constant_override("separation", 3)
+	_page_bloc.add_child(_page_leviers)
+	_page_voir = Button.new()
+	_page_voir.text = "Voir à Wehrau"
+	_page_voir.focus_mode = Control.FOCUS_NONE
+	_habiller_principal(_page_voir)
+	_page_voir.pressed.connect(func() -> void: concept_demande.emit(_page_ouverte))
+	_page_bloc.add_child(_page_voir)
+	var retour := Button.new()
+	retour.text = "Toutes les pages"
+	retour.focus_mode = Control.FOCUS_NONE
+	_habiller_secondaire(retour)
+	retour.pressed.connect(func() -> void: ouvrir_page(""))
+	_page_bloc.add_child(retour)
 
 	_lieu_message = _label("", 11, GRIS)
 	_lieu_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2657,9 +2875,13 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	return {"bloc": bloc, "genre": genre, "etat": etat, "jauge": jauge, "bouton": b}
 
 
-func ouvrir_lieu(cle: String) -> void:
+func ouvrir_lieu(cle: String, page := "") -> void:
 	if not LIEUX.has(cle):
 		return
+	_page_ouverte = page if _page_ok(page) else ""
+	if _page_ouverte != "" and ouverture != null:
+		ouverture.page_lue(_page_ouverte)
+	_biblio_cle = ""
 	_lieu_ouvert = cle
 	_lieu_panneau.visible = true
 	_fiche_panneau.visible = false
@@ -2744,8 +2966,11 @@ func _maj_lieu() -> void:
 	# 🎓 L'étude seule tant que sa carte n'a pas été ouverte (auteur, 2026-10-02).
 	var etude_seule: bool = universite and ouverture != null and ouverture.pont_termine \
 		and not ouverture.prochaine_vue
-	_lieu_intro.visible = not etude_seule and financements_ouverts
-	_etude_bloc.visible = universite and etude_publiee()
+	_lieu_intro.visible = not etude_seule and financements_ouverts and _page_ouverte == ""
+	_etude_bloc.visible = universite and etude_publiee() and _page_ouverte == ""
+	_biblio_bloc.visible = universite and etude_publiee()
+	if _biblio_bloc.visible:
+		_maj_bibliotheque()
 	if _etude_bloc.visible:
 		var p := ville.prochaine_crue(_mois)
 		var forgerons := ville.base("i", Ouverture.MAISONS, "hauteur_eau_max")
@@ -2753,7 +2978,7 @@ func _maj_lieu() -> void:
 			+ "L'eau irait sur %d îlots, contre %d cette fois ; aux Forgerons, %s m au lieu de %s m. "
 			+ "Si rien ne change, elle ruinerait %s logements.\n"
 			+ "La ville peut la faire baisser : rendre des berges à l'Ilse, verdir les toits plats, "
-			+ "laisser des prés déborder.") % [int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"]),
+			+ "laisser des prés déborder, rendre ses parkings perméables. La bibliothèque explique comment.") % [int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"]),
 			_nb(ville.valeur("i", Ouverture.MAISONS, "hauteur_eau_annonce", _mois), 1),
 			_nb(forgerons, 1), _nb(float(p["logements_perdus"]), 0)]
 	for cle in _lieu_lignes:
@@ -2771,6 +2996,84 @@ func _maj_lieu() -> void:
 	_lieu_message.text = "" if universite else \
 		"Les règles — stationnement payant, toit vert obligatoire au neuf — " \
 		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
+
+
+## 📖 Une page existe dès qu'elle a un texte ; elle s'ouvre quand la ville l'a rencontrée.
+func _page_ok(id: String) -> bool:
+	return Livre.CONCEPTS.has(id) and str(Livre.CONCEPTS[id]["texte"]) != "" \
+		and (ouverture == null or ouverture.concept_ouvert(id))
+
+
+func ouvrir_page(id: String) -> void:
+	_page_ouverte = id if _page_ok(id) else ""
+	if _page_ouverte != "" and ouverture != null:
+		ouverture.page_lue(_page_ouverte)
+	_biblio_cle = ""
+	_maj_lieu()
+
+
+## Refait seulement quand ce qu'elle montre change : appelée à chaque image.
+func _maj_bibliotheque() -> void:
+	var etats := []
+	for id in Livre.ORDRE:
+		etats.append("%s%s%s" % [id, _page_ok(id),
+			ouverture != null and ouverture.page_nouvelle(id)])
+	for l in Livre.LEVIERS:
+		etats.append(_levier_ferme(l))
+	if ouverture != null and not _page_ok("attenuer"):
+		etats.append(str(ouverture.conditions_reparee()))
+	var cle := "%s|%s" % [_page_ouverte, "/".join(etats)]
+	if cle == _biblio_cle:
+		return
+	_biblio_cle = cle
+	_biblio_liste.visible = _page_ouverte == ""
+	_page_bloc.visible = _page_ouverte != ""
+	for c in _biblio_liste.get_children():
+		_biblio_liste.remove_child(c)
+		c.queue_free()
+	if _page_ouverte == "":
+		for id in Livre.ORDRE:
+			var c: Dictionary = Livre.CONCEPTS[id]
+			var ouverte := _page_ok(id)
+			var b := Button.new()
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			b.focus_mode = Control.FOCUS_NONE
+			var nouveau: bool = ouverte and ouverture != null and ouverture.page_nouvelle(id)
+			b.text = ("%s · %s" % [c["chapitre"], c["titre"]] if c["chapitre"] != c["titre"]
+				else str(c["titre"])) + (" · nouveau" if nouveau else "")
+			_habiller_secondaire(b)
+			b.disabled = not ouverte
+			var k: String = id
+			b.pressed.connect(func() -> void: ouvrir_page(k))
+			_biblio_liste.add_child(b)
+			# Verrouillée mais visible, avec ce qui l'ouvrira.
+			if not ouverte:
+				var quand := "Plus tard."
+				if id == "attenuer" and ouverture != null:
+					var lignes := ["S'ouvre quand la ville est réparée :"]
+					for cond in ouverture.conditions_reparee():
+						lignes.append(("✓ " if cond[1] else "○ ") + str(cond[0]))
+					quand = "\n".join(lignes)
+				elif id == "chaleur":
+					quand = "Plus tard, avec les étés plus chauds."
+				var q := _label(quand, 11, GRIS)
+				q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				_biblio_liste.add_child(q)
+		return
+	var p: Dictionary = Livre.CONCEPTS[_page_ouverte]
+	_page_chapitre.text = str(p["chapitre"]).to_upper()
+	_page_titre.text = str(p["titre"])
+	_page_texte.text = str(p["texte"])
+	for c in _page_leviers.get_children():
+		_page_leviers.remove_child(c)
+		c.queue_free()
+	_titre_section(_page_leviers, "Ses leviers")
+	for l in p["leviers"]:
+		var ferme := _levier_ferme(l)
+		_page_leviers.add_child(_label(("✓ " if ferme == "" else "○ ") + str(Livre.LEVIERS[l]),
+			12, TEXTE if ferme == "" else GRIS))
+	_page_voir.visible = str(p["voir"]) != ""
 
 
 func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
@@ -3402,6 +3705,13 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 			_maj_prochaine()
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
+	if _sols_bloc.visible and _calque_panneau.visible:
+		var part := ville.part_sol_permeable(mois)
+		if _sols_depart < 0.0:
+			_sols_depart = ville.part_sol_permeable(0.0)
+		var ecart := (part - _sols_depart) * 100.0
+		_sols_chiffre.text = "%d %%%s" % [int(roundf(part * 100.0)),
+			" · %+d depuis le début" % int(roundf(ecart)) if absf(ecart) >= 0.5 else ""]
 	_maj_rail()
 	for v in _vitesses:
 		(_vitesses[v] as Button).set_pressed_no_signal(is_equal_approx(float(v), vitesse))
@@ -3460,20 +3770,43 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	_bloc_dispo[_camp_bloc] = false
 	# ☀️ VERROUILLÉ JUSQU'À L'ÉCRAN « investir » (auteur, 2026-09-18) : la ville
 	# reloge et relève d'abord ; les panneaux ne s'ouvrent qu'ensuite.
-	_bloc_dispo[_solaire_bloc] = couche == "i" and not _solaire_verrouille()
-	# 🌿 Un îlot tout en versants ne verra JAMAIS ce bloc : un curseur qui ne
-	# peut rien poser n'est pas une décision grisée, c'est du bruit.
-	_bloc_dispo[_vert_bloc] = couche == "i" 		and ville.valeur("i", fid, "_part_plate", _mois) > 0.001
 	# 🏢 Un îlot dont rien ne peut monter n'a pas de bloc : le cœur ancien,
 	# le front commerçant, et tout ce qui n'est pas bâti.
 	_bloc_dispo[_dense_bloc] = couche == "i" and ville.dense_logements_etage(fid) > 0
-	_bloc_dispo[_trafic_bloc] = couche == "r"
+	_leviers_sig = ""
+	_maj_fiche()
+
+
+## 📖 Les blocs que le livre ouvre (101). Refait quand une page s'ouvre, fiche
+## ouverte comprise : sinon le bloc n'apparaîtrait qu'au clic suivant.
+var _leviers_sig := ""
+
+
+func _dispo_leviers() -> void:
+	var sig := ""
+	for l in Livre.LEVIERS:
+		sig += "1" if _levier_ferme(l) == "" else "0"
+	if sig == _leviers_sig:
+		return
+	_leviers_sig = sig
+	var couche := _fiche_couche
+	var fid := _fiche_fid
+	_bloc_dispo[_solaire_bloc] = couche == "i" and _levier_ferme("solaire") == ""
+	# 🌿 Un îlot tout en versants ne verra JAMAIS ce bloc : un curseur qui ne
+	# peut rien poser n'est pas une décision grisée, c'est du bruit.
+	_bloc_dispo[_vert_bloc] = couche == "i" and _levier_ferme("vert") == "" \
+		and ville.valeur("i", fid, "_part_plate", _mois) > 0.001
+	_bloc_dispo[_permeable_bloc] = couche == "i" and _levier_ferme("permeable") == "" \
+		and ville.permeable_possible(fid)
+	_bloc_dispo[_trafic_bloc] = couche == "r" and _levier_ferme("rue") == ""
 	# 🌳 Seulement là où il y a la place d'un arbre entre la chaussée et la
 	# limite d'emprise : `07` l'a tranché, les ruelles du cœur ancien n'en ont
 	# aucune. Un curseur qui ne planterait rien n'a pas à s'afficher.
-	_bloc_dispo[_arbres_bloc] = couche == "r" and ville.arbres_plantables(fid) > 0
-	_bloc_dispo[_berge_bloc] = couche == "b"
-	_maj_fiche()
+	_bloc_dispo[_arbres_bloc] = couche == "r" and _levier_ferme("arbres") == "" \
+		and ville.arbres_plantables(fid) > 0
+	_bloc_dispo[_berge_bloc] = couche == "b" and _levier_ferme("berge") == ""
+	# ⚠️ Pas `{}` : une fiche muette calcule `{}`, et les blocs d'avant resteraient.
+	_dispo = {"_refaire": true}
 
 
 func reprendre_fiche(couche: String, fid: int) -> void:
@@ -3503,11 +3836,74 @@ func _autorise(couche: String, fid: int) -> bool:
 	return ouverture == null or ouverture.autorise(couche, fid)
 
 
-func _solaire_verrouille() -> bool:
-	return ouverture != null and not (ouverture.suite or ouverture.termine)
+## 📖 "" si le levier est ouvert, sinon ce qui l'ouvrira (101). Sans guide, tout l'est.
+func _levier_ferme(levier: String) -> String:
+	return ouverture.levier_ferme(levier) if ouverture != null else ""
+
+
+## 📖 Les leviers que l'onglet ouvert porterait sur cet objet.
+func _leviers_onglet() -> Array:
+	var fid := _fiche_fid
+	match [_fiche_couche, _onglet_actif]:
+		["i", "energie"]:
+			return ["solaire"]
+		["i", "vert"]:
+			var l := []
+			if ville.valeur("i", fid, "_part_plate", _mois) > 0.001:
+				l.append("vert")
+			if ville.permeable_possible(fid):
+				l.append("permeable")
+			return l
+		["i", "campagne"]:
+			return ["pre"] if ville.est_champ(fid) and not ville.camp_pose(fid) else []
+		["r", "trafic"]:
+			return ["rue"]
+		["r", "vert"]:
+			return ["arbres"]
+		["b", "berge"]:
+			return ["berge"]
+	return []
+
+
+func _maj_ferme() -> void:
+	var lignes := []
+	_ferme_page = ""
+	if _verrou() == "":
+		for l in _leviers_onglet():
+			var pourquoi := _levier_ferme(l)
+			if pourquoi != "":
+				lignes.append("%s · %s" % [Livre.LEVIERS[l], pourquoi])
+				_ferme_page = Livre.concept_du_levier(l)
+	var cle := "\n".join(lignes)
+	if cle == _ferme_cle:
+		return
+	_ferme_cle = cle
+	_ferme_texte.text = cle
+	_ferme_bloc.visible = cle != ""
+
+
+func _maj_permeable() -> void:
+	var fid := _fiche_fid
+	if _fiche_couche != "i" or not ville.permeable_possible(fid):
+		return
+	var places := int(ville.base("i", fid, "stationnement"))
+	var dur := int(roundf(ville.valeur("i", fid, "impermeabilise", _mois) * 100.0))
+	_permeable_texte.text = "%d %% du sol en dur : la pluie file à l'Ilse. Dalles drainantes, noues et arbres ; les %d places restent." % [dur, places]
+	if ville.permeable_en_cours(fid, _mois):
+		_permeable_bouton.text = "Chantier en cours"
+		_permeable_bouton.disabled = true
+		_marquer(_permeable_bouton, false)
+	elif ville._permeable.has(fid):
+		_permeable_bouton.text = "Le sol boit l'eau"
+		_permeable_bouton.disabled = true
+		_marquer(_permeable_bouton, false)
+	else:
+		_posee(_permeable_bouton, "permeable", "Rendre le sol perméable · %s k€" % _milliers(ville.cout_permeable_ke(fid)))
+		_permeable_bouton.disabled = false
 
 
 func _maj_fiche() -> void:
+	_dispo_leviers()
 	_maj_fiche_contenu()
 	_repare_texte.visible = _repare_texte.text != ""
 	var verrou := _verrou()
@@ -3541,6 +3937,8 @@ func _maj_fiche_contenu() -> void:
 	_maj_chantier()
 	_maj_camp()
 	_maj_culture()
+	_maj_permeable()
+	_maj_ferme()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()
 		return
@@ -4014,6 +4412,8 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	# L'essai ne dit pas non : le refus est déjà sur le bouton.
 	ville_essai.crediter_essai_ke(ville.cout_commande_ke(_fiche_couche, _fiche_fid, r, _mois))
 	ville_essai.commander(_fiche_couche, _fiche_fid, r, _mois)
+	_apercu_crue = float(ville_essai.prochaine_crue(_mois + Ville.HORIZON_MOIS)["eau_pire_m"]) \
+		if etude_publiee() else -1.0
 	var a := ville.indicateurs(t)
 	var b := ville_essai.indicateurs(t)
 	# 🗳️ La décision et la livraison ; l'année d'après n'est dite que pour les places
@@ -4041,7 +4441,7 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	if absf(logements) >= 1.0:
 		out.append(["logement", "%+d logements" % int(roundf(logements)), _sens(logements)])
 	# 🏗️ Ce que la prochaine crue emporterait : c'est ce qui départage les façons de rebâtir.
-	if _fiche_couche == "i" and r.has("reparer") and etude_publiee():
+	if etude_publiee():
 		var exposes := float(ville_essai.prochaine_crue(t)["logements_perdus"]) \
 			- float(ville.prochaine_crue(t)["logements_perdus"])
 		if absf(exposes) >= 1.0:
@@ -4730,7 +5130,7 @@ func _maj_demandes() -> void:
 func _maj_culture() -> void:
 	var fid := _fiche_fid
 	if _fiche_couche != "i" or not ville.est_champ(fid) or ville.camp_pose(fid) \
-			or _solaire_verrouille():
+			or _levier_ferme("pre") != "":
 		_bloc_dispo[_culture_bloc] = false
 		return
 	_bloc_dispo[_culture_bloc] = true

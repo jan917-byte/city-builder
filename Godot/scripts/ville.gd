@@ -305,11 +305,12 @@ func objets(couche: String) -> Dictionary:
 const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime",
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
-	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement"]
+	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
+	"_permeable"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati", "_file_deblaiement"]
+	"_rebati", "_file_deblaiement", "_permeable"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -347,6 +348,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_plantation": [routes, {"debut": 0.0, "duree": 0.0, "cible": 0.0,
 			"cout_ke": 0.0, "arbres": 0}],
 		"_camps": [ilots, {"debut": 0.0, "places": 0, "cout_ke": 0.0}],
+		"_permeable": [ilots, {"debut": 0.0, "duree": 0.0, "cout_ke": 0.0}],
 		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
@@ -505,7 +507,8 @@ func baisse_crue_m(fid: int, t: float) -> float:
 	var fil := base("i", fid, "position_fil_eau")
 	# 🌿 Les toits verts entrent ICI, et pour toute la ville : ce qui n'est pas
 	# tombé dans les gouttières n'arrive pas dans l'Ilse, où que soit le toit.
-	var v := baisse_crue_toits_m(t) + baisse_crue_champs_m(t) + baisse_crue_parcs_m(t)
+	var v := baisse_crue_toits_m(t) + baisse_crue_champs_m(t) + baisse_crue_parcs_m(t) \
+		+ baisse_crue_sols_m(t)
 	for b in berges:
 		if fil >= base("b", b, "fil_amont") - 0.001 \
 				and fil <= base("b", b, "fil_aval") + 0.001:
@@ -796,6 +799,7 @@ func reinitialiser() -> void:
 	_camps.clear()
 	_demandes.clear()
 	_cultures.clear()
+	_permeable.clear()
 	_crue_champs_mois = INF
 	_depense_ke = 0.0
 	_depense_genre = {}
@@ -973,6 +977,85 @@ func toit_vert_ha(t: float) -> float:
 ## `part_toit_vert` monte en rampe, donc la protection aussi.
 func baisse_crue_toits_m(t: float) -> float:
 	return toit_vert_ha(t) * TOIT_VERT_BAISSE_M_PAR_HA
+
+
+# ==========================================================================
+# 🅿️💧 LE SOL RENDU PERMÉABLE — la place-parking (101, 2026-10-06)
+# ==========================================================================
+# Dalles drainantes, noues, arbres : les places restent, le sol boit. Retient la
+# pluie pour TOUTE la ville, comme un toit vert. 🎚️ LEVEL DESIGN, à tester sur
+# la jauge de Dangers (auteur) : même prix et même retenue par hectare que le
+# toit vert pour commencer.
+const PERMEABLE_SOUS_TYPES := ["place_minerale"]
+const PERMEABLE_PRIX_KE_M2 := 0.14          # par m² rendu perméable
+const PERMEABLE_MOIS := 6.0
+const PERMEABLE_RESTE := 0.30               # allées et bordures restent dures
+const PERMEABLE_BAISSE_M_PAR_HA := 0.25
+var _permeable := {}       # fid -> {debut, duree, cout_ke}
+
+
+func permeable_possible(fid: int) -> bool:
+	return str(ilots.get(fid, {}).get("sous_type", "")) in PERMEABLE_SOUS_TYPES \
+		and base("i", fid, "impermeabilise") > PERMEABLE_RESTE
+
+
+func _permeable_m2(fid: int) -> float:
+	return base("i", fid, "surface_m2") * maxf(0.0, base("i", fid, "impermeabilise") - PERMEABLE_RESTE)
+
+
+func cout_permeable_ke(fid: int) -> float:
+	return 0.0 if _permeable.has(fid) or not permeable_possible(fid) \
+		else _permeable_m2(fid) * PERMEABLE_PRIX_KE_M2
+
+
+func rendre_permeable(fid: int, t: float) -> bool:
+	if _permeable.has(fid) or not permeable_possible(fid):
+		return false
+	var cout := cout_permeable_ke(fid)
+	if cout > caisse_ke(t) + 0.001:
+		return false
+	var duree := _delai(PERMEABLE_MOIS)
+	ajouter_rampe("i", fid, "impermeabilise",
+		PERMEABLE_RESTE - base("i", fid, "impermeabilise"), t, 0.0, duree)
+	_permeable[fid] = {"debut": t, "duree": duree, "cout_ke": cout}
+	_depenser("permeable", cout)
+	return true
+
+
+func permeable_en_cours(fid: int, t: float) -> bool:
+	return _permeable.has(fid) and t < float(_permeable[fid]["debut"]) + float(_permeable[fid]["duree"])
+
+
+func permeable_reste_mois(fid: int, t: float) -> float:
+	if not _permeable.has(fid):
+		return 0.0
+	return maxf(0.0, float(_permeable[fid]["debut"]) + float(_permeable[fid]["duree"]) - t)
+
+
+## Sur ce qui est livré : `impermeabilise` descend en rampe, la retenue aussi.
+func baisse_crue_sols_m(t: float) -> float:
+	var ha := 0.0
+	for fid in _permeable:
+		ha += base("i", fid, "surface_m2") * maxf(0.0,
+			base("i", fid, "impermeabilise") - valeur("i", fid, "impermeabilise", t)) / 10000.0
+	return ha * PERMEABLE_BAISSE_M_PAR_HA
+
+
+## 💧 La part du sol de la ville bâtie qui boit la pluie, toits verts compris ;
+## les rues comptent pour du dur, les champs hors compte (ils noieraient tout).
+## Le chiffre du calque Sols.
+func part_sol_permeable(t: float) -> float:
+	var boit := 0.0
+	var tout := 0.0
+	for fid in ilots:
+		if str(ilots[fid].get("sous_type", "")) in ["riviere", "champ"]:
+			continue
+		var s := base("i", fid, "surface_m2")
+		tout += s
+		boit += s * (1.0 - valeur("i", fid, "impermeabilise", t)) + Energie.toit_vert_m2(self, fid, t)
+	for fid in routes:
+		tout += base("r", fid, "longueur_m") * base("r", fid, "largeur_m")
+	return 0.0 if tout <= 0.0 else clampf(boit / tout, 0.0, 1.0)
 
 
 # ============================================== densifier (auteur, 2026-09-03)
@@ -2366,6 +2449,7 @@ const SEUIL_EAU_M := 0.10
 #                   et il emporte les places : une rue fermée n'a plus où garer
 #   berge    int    l'état visé                    (berge)
 #   camp     true   accueillir les sinistrés       (champ)
+#   permeable true  rendre le sol perméable        (place-parking)
 #   dense    dict   {part, etages} : la part des bâtiments visée et la
 #                   hauteur — 🪜 un cran du curseur = un bâtiment  (îlot)
 
@@ -2388,6 +2472,8 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 			float(r["dense"]["part"]), int(r["dense"]["etages"]))
 	if r.has("camp"):
 		ke += cout_camp_ke(fid, t)
+	if r.has("permeable"):
+		ke += cout_permeable_ke(fid)
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d):
 			ke += cout_demande_ke(d)
@@ -2423,6 +2509,8 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			- BERGE_MOIS[berge_etat(fid, t)]))
 	if r.has("camp"):
 		m = maxf(m, _delai(CAMP_MOIS))
+	if r.has("permeable") and not _permeable.has(fid):
+		m = maxf(m, _delai(PERMEABLE_MOIS))
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d) and not _demandes.has(d):
 			m = maxf(m, _delai(float(DEMANDES[d]["mois"])))
@@ -2473,6 +2561,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("berge")
 	if r.has("camp") and abriter(fid, t):
 		faits.append("relogement")
+	if r.has("permeable") and rendre_permeable(fid, t):
+		faits.append("sol perméable")
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d) and equiper_camp(d, t):
 			faits.append(str(DEMANDES[d]["nom"]).to_lower())
@@ -2506,7 +2596,8 @@ func etat_chantier(couche: String, fid: int, t: float) -> int:
 		return CHANTIER_EN_COURS
 	if couche == "i" and ((_solaire.has(fid) and etat_solaire(fid, t)["en_cours"])
 			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])
-			or (_dense.has(fid) and etat_dense(fid, t)["en_cours"])):
+			or (_dense.has(fid) and etat_dense(fid, t)["en_cours"])
+			or permeable_en_cours(fid, t)):
 		return CHANTIER_EN_COURS
 	if base(couche, fid, "cout_reparation_ke") <= 0.0:
 		return CHANTIER_INTACT
@@ -2542,6 +2633,9 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "i" and _dense.has(fid) and etat_dense(fid, t)["en_cours"]:
 		lot.append(["densification", float(_dense[fid]["duree"]),
 			float(etat_dense(fid, t)["reste_mois"])])
+	if couche == "i" and permeable_en_cours(fid, t):
+		lot.append(["sol perméable", float(_permeable[fid]["duree"]),
+			permeable_reste_mois(fid, t)])
 	if couche == "i" and culture_en_cours(fid, t):
 		lot.append(["culture", _delai(CULTURES[champ_culture(fid, t)]["mois"]),
 			culture_reste_mois(fid, t)])
@@ -2653,6 +2747,11 @@ func chantiers(t: float) -> Dictionary:
 				"cout_ke": float(_derniere_culture(fid, t)["cout_ke"]),
 				"reste_mois": culture_reste_mois(fid, t),
 				"duree": _delai(CULTURES[champ_culture(fid, t)]["mois"])})
+	for fid in _permeable:
+		if permeable_en_cours(fid, t):
+			en_cours.append({"couche": "i", "fid": fid, "genre": "sol perméable",
+				"cout_ke": float(_permeable[fid]["cout_ke"]),
+				"reste_mois": permeable_reste_mois(fid, t), "duree": float(_permeable[fid]["duree"])})
 	for fid in _dense:
 		var d := etat_dense(fid, t)
 		if d["en_cours"]:

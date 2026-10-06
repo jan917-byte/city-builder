@@ -292,6 +292,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tbase = mix(base, mix(vitrage, vec3(0.28, 0.29, 0.30), montant) * COLOR.a, verriere);\n" \
 		+ "\t\t}\n" \
 		+ "\t}\n" \
+		+ "\tfloat toit_vert_ici = 0.0;\n" \
 		+ "\tif ((equipe > 0.0 || verdi > 0.0) && vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5) {\n" \
 		+ "\t\t// 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter) : le panneau était un\n" \
 		+ "\t\t// ASSOMBRISSEMENT du toit, indiscernable d'une ombre. Bleu franc\n" \
@@ -351,6 +352,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t// semis de 2026-08-17.\n" \
 		+ "\t\tfloat posee = mix(pan, step(h, pan), net) * (1.0 - pan_vert);\n" \
 		+ "\t\tfloat posee_v = pan_vert;\n" \
+		+ "\t\ttoit_vert_ici = pan_vert;\n" \
 		+ "\t\t// Sans liseré : deux cases voisines doivent se souder. La\n" \
 		+ "\t\t// variation est un tirage de la case, pas de la nappe.\n" \
 		+ "\t\tfloat hv = fract(sin(dot(floor(g), vec2(11.917, 57.301))) * 15731.113);\n" \
@@ -672,12 +674,23 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\trugosite = 1.0;\n" \
 		+ "\t\t// Le calque continu : énergie, trafic, tissu. Opacité pleine,\n" \
 		+ "\t\t// il n'y a plus de matière sous lui à ménager.\n" \
-		+ "\t\tif (calque.a > 0.0) {\n" \
+		+ "\t\tif (calque.a > 0.0 && diagnostic_sol < 2.5) {\n" \
 		+ "\t\t\tbase = mix(base, calque.rgb * COLOR.a, calque.a);\n" \
+		+ "\t\t}\n" \
+		+ "\t\t// 💧 3 = LA CARTE DES SOLS (101) : le calque prend le sol, un toit\n" \
+		+ "\t\t// nu est en dur, un toit vert boit, les murs restent du papier.\n" \
+		+ "\t\t// ⚠ Les deux teintes sont aussi dans `maquette.SOLS_*`, en sRGB.\n" \
+		+ "\t\tif (diagnostic_sol > 2.5) {\n" \
+		+ "\t\t\tbool toit = vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5;\n" \
+		+ "\t\t\tif (toit) {\n" \
+		+ "\t\t\t\tbase = mix(vec3(0.162, 0.162, 0.181), vec3(0.107, 0.352, 0.107), toit_vert_ici) * COLOR.a;\n" \
+		+ "\t\t\t} else if (vers_le_ciel > 0.55 && calque.a > 0.0) {\n" \
+		+ "\t\t\t\tbase = calque.rgb * COLOR.a;\n" \
+		+ "\t\t\t}\n" \
 		+ "\t\t}\n" \
 		+ "\t\t// Dangers : le sol raconte le passage de l'eau, le volume les\n" \
 		+ "\t\t// bâtiments touchés, les routes coupées ont leur rouge.\n" \
-		+ "\t\tif (diagnostic_sol > 0.5) {\n" \
+		+ "\t\tif (diagnostic_sol > 0.5 && diagnostic_sol < 2.5) {\n" \
 		+ "\t\t\tvec3 signal_sol = diagnostic_sol > 1.5 ? vec3(0.72, 0.035, 0.025) : vec3(0.020, 0.310, 0.550);\n" \
 		+ "\t\t\tbase = mix(base, signal_sol * COLOR.a, 0.88);\n" \
 		+ "\t\t}\n" \

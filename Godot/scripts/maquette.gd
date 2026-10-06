@@ -46,6 +46,7 @@ const Echantillon := preload("res://scripts/echantillon.gd")
 const Sauvegarde := preload("res://scripts/sauvegarde.gd")
 const Paysage := preload("res://scripts/paysage.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
+const Livre := preload("res://scripts/livre.gd")
 const Recit := preload("res://scripts/recit.gd")
 var ouverture: Ouverture
 var recit: Recit
@@ -71,6 +72,10 @@ const RAMPE := [
 const RAMPE_EAU := [Color8(196, 226, 240), Color8(22, 84, 150)]
 # 🚧 Hors de la rampe, et d'aucune de ses teintes : un brun se lisait « saturé ».
 const COUPEE := Color8(150, 88, 204)
+## 💧 Les trois teintes de la carte des sols, aussi dans `interface.SOL_*`.
+const SOLS_BOIT := Color8(92, 160, 92)
+const SOLS_DUR := Color8(112, 112, 118)
+const SOLS_PARKING := Color8(240, 150, 30)
 # Des facteurs, pas des couleurs : assez forts pour se voir sur un pastel
 # clair, assez faibles pour ne pas le brûler.
 const SURVOL := Color(1.15, 1.15, 1.08)
@@ -274,6 +279,7 @@ func _ready() -> void:
 	interface.theme_demande.connect(_sur_theme)
 	interface.vue_crue_demandee.connect(_sur_vue_crue)
 	interface.examen_demande.connect(examiner)
+	interface.concept_demande.connect(voir_concept)
 	interface.nord_demande.connect(pivot.remettre_nord)
 	interface.dessus_demande.connect(pivot.basculer_dessus)
 	interface.deblaiement_demande.connect(_sur_deblayer_tout)
@@ -2139,6 +2145,8 @@ const DISPO := {
 #   genre "tissu"     une teinte par sous_type, pas une échelle continue.
 #   genre "crue"      trois signaux de l'eau + les croix des routes coupées.
 #   genre "chantiers" l'état d'avancement de l'objet entier.
+#   genre "sols"      le sol de l'îlot par sa part en dur, les toits nus en dur,
+#                     les toits verts et les berges rendues qui boivent, les places en orange.
 const THEMES := [
 	{"id": "dangers", "court": "Dangers", "nom": "Dangers naturels", "genre": "crue",
 		"resume": "Ce que la crue a laissé dans la ville"},
@@ -2158,6 +2166,9 @@ const THEMES := [
 		"note": "Violet : coupée (pont emporté ou boue)."},
 	{"id": "tissu", "court": "Tissu", "nom": "Tissu urbain", "genre": "tissu",
 		"resume": "Une teinte par type de tissu"},
+	# 💧 La carte des sols (101) : ce qui boit la pluie, ce qui la renvoie à l'Ilse.
+	{"id": "sols", "court": "Sols", "nom": "Sols", "genre": "sols",
+		"resume": "Ce qui boit la pluie, ce qui la renvoie à l'Ilse"},
 ]
 
 ## "" = la ville vivante. Sinon l'`id` d'un thème de THEMES.
@@ -2189,13 +2200,37 @@ func _teinte_eau(fid: int) -> Color:
 	return c.srgb_to_linear()
 
 
+## 💧 Le sol d'un îlot, de vert (il boit) à gris (en dur) ; la place-parking en
+## orange tant qu'elle est en dur ; une rue en dur ; une berge selon son état.
+func _teinte_sol(couche: String, fid: int) -> Color:
+	var c: Color = SOLS_DUR
+	if couche == "i":
+		var dur := ville.valeur("i", fid, "impermeabilise", mois)
+		c = SOLS_BOIT.lerp(SOLS_DUR, clampf(dur, 0.0, 1.0))
+		if ville.base("i", fid, "stationnement") > 0.0 and ville.permeable_possible(fid):
+			c = SOLS_PARKING.lerp(SOLS_BOIT, clampf((1.0 - dur) / (1.0 - Ville.PERMEABLE_RESTE), 0.0, 1.0))
+		if str(ville.ilots[fid].get("sous_type", "")) == "riviere":
+			return Color(1.0, 1.0, 1.0, 0.0)
+	elif couche == "b":
+		var e := ville.berge_etat(fid, mois)
+		c = SOLS_BOIT if e == Ville.BERGE_RENATUREE else (SOLS_DUR.lerp(SOLS_BOIT, 0.35)
+			if e == Ville.BERGE_APAISEE else SOLS_DUR)
+	var l := c.srgb_to_linear()
+	l.a = 1.0
+	return l
+
+
 ## Une proposition ouvre la vraie fiche, réglée d'avance ; seul son bouton paie.
 ## Le guide et le panneau de la prochaine crue passent tous deux par ici.
 func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -> void:
-	if couche != "r" or not fid in ville.ponts_coupes():
+	# 🌊 Depuis la prochaine crue, le panneau reste : sa jauge montre l'effet du
+	# réglage pendant qu'on le règle (auteur, 2026-10-06).
+	var garder := theme == "dangers" and vue_crue == "prochaine"
+	if not garder and (couche != "r" or not fid in ville.ponts_coupes()):
 		_sur_theme("")
-	interface._detail_ouvert = false
-	interface._placer_detail()
+	if not garder:
+		interface._detail_ouvert = false
+		interface._placer_detail()
 	selection.sel_couche = couche
 	selection.sel_fid = fid
 	selection.survol_fid = -1
@@ -2211,6 +2246,11 @@ func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -
 		interface.viser_vert(float(valeur) * 100.0)
 	elif reglage != "":
 		interface.poser(reglage, valeur)
+	# La fiche s'ouvre sur l'onglet du réglage posé, sinon il est posé hors de vue.
+	var onglet: String = {"solaire": "energie", "vert": "vert", "permeable": "vert",
+		"culture": "campagne", "berge": "berge"}.get(reglage, "")
+	if onglet != "":
+		interface.ouvrir_onglet(onglet)
 	_rafraichir(true)
 	if ouverture != null:
 		ouverture.actualiser(true)
@@ -2347,7 +2387,11 @@ func _peindre() -> void:
 			# 🌊 L'ÉTAT D'UNE BERGE SE VOIT SANS OUVRIR SA FICHE, et c'est tout
 			# l'intérêt d'en avoir fait un objet. Le calque est libre sur cette
 			# couche : aucun thème ne la peint.
-			if couche == "b":
+			if genre == "sols":
+				c = _teinte_sol(couche, fid)
+				# 3 : le calque ne prend que le sol ; toits et murs sont lus par le shader.
+				diagnostic_sol = 3.0
+			elif couche == "b":
 				c = BERGE_TEINTES[ville.berge_etat(fid, mois)]
 			elif genre == "crue" and vue_crue == "prochaine" and couche == "i":
 				c = _teinte_eau(fid)
@@ -2399,7 +2443,9 @@ func _peindre() -> void:
 					ville.parcelle_code(fid, mois) if couche == "i" else 0.0)
 				mj.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
 				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
-				mj.set_instance_shader_parameter("calque", c)
+				# 🅿️ Sur la carte des sols, la file peinte se lit en parking, pas en rue.
+				mj.set_instance_shader_parameter("calque", SOLS_PARKING.srgb_to_linear()
+					if genre == "sols" and mj == places_rue.get(fid) and couche == "r" else c)
 				mj.set_instance_shader_parameter("teinte", _teinte(couche, fid))
 				if couche == "b":
 					# 🔴 LA TEINTE DIT UN CHANGEMENT, PAS UN ÉTAT. Une berge de
@@ -3051,6 +3097,29 @@ func _repere(nom: String) -> void:
 ## l'ordre des sommets suit l'émission (mur, puis bande), donc le milieu du
 ## tableau tombait ailleurs dès qu'on ajoutait une surface.
 ## Le cadrage qui tient plusieurs îlots à la fois, marge comprise.
+## 📖 « Voir à Wehrau » (101) : le thème de la page, cadré sur ses lieux. La
+## fiche du lieu reste ouverte : on lit la page en regardant la ville.
+func voir_concept(id: String) -> void:
+	var c: Dictionary = Livre.CONCEPTS.get(id, {})
+	if c.is_empty():
+		return
+	_sur_theme(str(c["voir"]))
+	var boite := AABB()
+	var premier := true
+	for lieu in c["lieux"]:
+		var mi: MeshInstance3D = noeuds.get(str(lieu[0]), {}).get(int(lieu[1]))
+		if mi == null:
+			continue
+		var b := mi.get_aabb()
+		b.position += mi.global_position
+		boite = b if premier else boite.merge(b)
+		premier = false
+	if not premier:
+		var centre := boite.get_center()
+		pivot.viser(Vector2(centre.x, centre.z), maxf(boite.size.x, boite.size.z) + 160.0)
+	_rafraichir(true)
+
+
 func _viser_ensemble(fids: Array, marge: float) -> void:
 	if fids.is_empty():
 		return

@@ -106,7 +106,8 @@ func executer() -> void:
 	verifier("Depuis" in ui._prochaine_valeurs["ecart"].text, "Le panneau dit l'écart depuis la parution")
 	await capture("etude_05_apres_leviers")
 	await cliquer(ui._prochaine_valeurs["levier_culture"])
-	verifier(jeu.selection.sel_fid == o.PRE and jeu.theme == "", "Le levier ouvre la fiche du champ")
+	verifier(jeu.selection.sel_fid == o.PRE and jeu.theme == "dangers",
+		"Le levier ouvre la fiche du champ, la prochaine crue reste à côté")
 	await capture("etude_06_levier_pre")
 
 	jeu._sur_sauvegarde()

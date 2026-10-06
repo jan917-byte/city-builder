@@ -2,6 +2,7 @@ extends PanelContainer
 ## Première boucle d'essai : les étapes se déduisent des chantiers réellement livrés.
 
 const Ville := preload("res://scripts/ville.gd")
+const Livre := preload("res://scripts/livre.gd")
 # Lieux touchés dans l’emprise corrigée le 2026-09-16.
 const RUE := 148
 const MAISONS := 59
@@ -11,6 +12,7 @@ const SOLAIRE := 32
 # grand toit plat de Wehrau, un champ quelconque — la baisse vaut pour toute la ville.
 const TOIT_PLAT := 31
 const PRE := 1065
+const PARKING := 19   # la place-parking, le sol qu'on rend perméable (101)
 
 var jeu
 var suite := false
@@ -58,6 +60,8 @@ var _annonce_texte: Label
 ## l'usure commence (`Ville.CAMP_USURE_APRES_PONT_MOIS`).
 var plainte := 0
 var deblaiement_vu := false
+## 📖 Les pages du livre déjà ouvertes : « nouveau » sur les autres (101).
+var pages_lues := {}
 
 
 func batir(maquette) -> void:
@@ -358,6 +362,8 @@ func rail_appel() -> String:
 
 ## 🎓 La tuile de l'université n'apparaît qu'une fois trouvée sur la carte (auteur, 2026-10-05).
 func rail_visible(id: String) -> bool:
+	if id == "sols":
+		return concept_ouvert("eponge")
 	return id != "universite" or rail_ouvert(id)
 
 
@@ -415,6 +421,99 @@ func prochaine_ouverte() -> void:
 	if pont_termine and not prochaine_vue:
 		etude_lue = true
 		prochaine_vue = true
+		actualiser(true)
+
+
+# ==========================================================================
+# 📖 LE LIVRE DES CONCEPTS (101) — une page ouvre ses leviers
+# ==========================================================================
+# 🎚️ LEVEL DESIGN : quand chaque page s'ouvre. La ville-éponge à l'étude ; « ne
+# pas aggraver » quand la ville est réparée (A, auteur, 2026-10-06 ; n°23) ;
+# l'îlot de chaleur avec la canicule, plus tard (102). Sans guide, tout est ouvert.
+
+func concept_ouvert(id: String) -> bool:
+	match id:
+		"eponge":
+			return pont_termine
+		"attenuer":
+			return ville_reparee()
+	return false
+
+
+## « La ville réparée », vue sur la carte et non sur un mois (n°23 : les
+## fonctions vitales). [texte, tenu]. Un pont rouvert suffit à ne couper aucun
+## quartier : les trois réunissent les deux mêmes morceaux.
+func conditions_reparee() -> Array:
+	var v = jeu.ville
+	# ⚠️ Demandé plusieurs fois par image (fiche, livre) : une fois par état.
+	var cle := "%f/%d/%d" % [jeu.mois, v._repare.size(), v._camps.size()]
+	if cle == _reparee_cle:
+		return _reparee
+	var coupe := false
+	var acces: Dictionary = v.morceaux_accessibles(jeu.mois)
+	for fid in v.ilots:
+		if v.base("i", fid, "logements") > 0.0 and not acces.has(v.morceau("i", fid)):
+			coupe = true
+			break
+	var releve := false
+	for fid in v.ilots:
+		if v.base("i", fid, "logements_sinistres") > 0.0 and v.reparation_finie("i", fid, jeu.mois):
+			releve = true
+			break
+	_reparee_cle = cle
+	_reparee = [
+		["Tout le monde à l'abri", v.sans_toit(jeu.mois) < 0.5],
+		["Aucun quartier habité coupé du reste", not coupe],
+		["Un îlot sinistré relevé, quelle que soit la façon", releve],
+	]
+	return _reparee
+
+
+var _reparee_cle := ""
+var _reparee := []
+
+
+func ville_reparee() -> bool:
+	for c in conditions_reparee():
+		if not c[1]:
+			return false
+	return true
+
+
+## "" si le levier est ouvert ; sinon ce qui l'ouvrira, en clair.
+func levier_ferme(levier: String) -> String:
+	var id := Livre.concept_du_levier(levier)
+	if id == "" or concept_ouvert(id):
+		return ""
+	match id:
+		"eponge":
+			return "S'ouvre avec la page « La ville-éponge », à la bibliothèque."
+		"attenuer":
+			return "S'ouvre quand la ville sera réparée : voir la page « Ne pas aggraver » à la bibliothèque."
+	return "Plus tard."
+
+
+## 📖 Une page qui s'ouvre se dit une fois, au bandeau et au journal.
+var _pages_dites := {}
+
+
+func _annoncer_pages() -> void:
+	for id in Livre.ORDRE:
+		if id == "eponge" or _pages_dites.has(id) or not concept_ouvert(id):
+			continue
+		_pages_dites[id] = true
+		if pages_lues.has(id):
+			continue
+		jeu.interface.retours.annoncer("Bibliothèque de l'université : une nouvelle page, « %s »." % Livre.CONCEPTS[id]["titre"], jeu.mois)
+
+
+func page_nouvelle(id: String) -> bool:
+	return concept_ouvert(id) and not pages_lues.has(id)
+
+
+func page_lue(id: String) -> void:
+	if concept_ouvert(id) and not pages_lues.has(id):
+		pages_lues[id] = jeu.mois
 		actualiser(true)
 
 
@@ -664,6 +763,8 @@ func actualiser(force := false) -> void:
 		int(jeu.ville.sans_toit(jeu.mois) * 1000.0 + jeu.ville.besoin_non_couvert(jeu.mois))]
 	signature += "/%d/%s/%s/%d/%d/%s" % [_regards.size(), _champ_vu, jeu.trafic._indisponibles_connues,
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
+	_annoncer_pages()
+	signature += "/%s" % concept_ouvert("attenuer")
 	if signature == _signature:
 		return
 	_signature = signature
@@ -777,8 +878,12 @@ func actualiser(force := false) -> void:
 				_reparation("r", RUE, "Rendre aussi la rue praticable")
 			_proteger = _bouton("Protéger · renaturer la berge",
 				examiner.bind("b", BERGE, "berge", Ville.BERGE_RENATUREE))
-			_bouton("Investir · comparer les toits solaires",
+			# 📖 Investir est l'autre chapitre : il attend la ville réparée (101).
+			var investir := _bouton("Investir · comparer les toits solaires",
 				examiner.bind("i", SOLAIRE, "solaire", 0.3))
+			if levier_ferme("solaire") != "":
+				investir.text = "Investir · quand la ville sera réparée"
+				investir.disabled = true
 			_bouton("Continuer à mon rythme", func() -> void:
 				termine = true
 				ouvert = false
@@ -838,7 +943,8 @@ func exporter() -> Dictionary:
 	return {"suite": suite, "termine": termine, "ouvert": ouvert,
 		"trafic_vu": trafic_vu, "pont_termine": pont_termine,
 		"pont_termine_mois": pont_termine_mois,
-		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte}
+		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte,
+		"pages_lues": pages_lues.duplicate()}
 
 
 func reprendre(etat: Dictionary) -> void:
@@ -854,6 +960,13 @@ func reprendre(etat: Dictionary) -> void:
 	etude_lue = bool(etat.get("etude_lue", pont_termine))
 	prochaine_vue = bool(etat.get("prochaine_vue", pont_termine))
 	plainte = int(etat.get("plainte", 2 if pont_termine else 0))
+	pages_lues = {}
+	_pages_dites = {}
+	var lues: Variant = etat.get("pages_lues", {})
+	if lues is Dictionary:
+		for id in lues:
+			if Livre.CONCEPTS.has(id):
+				pages_lues[id] = float(lues[id])
 	_degage_annonce = -1
 	etape = ""
 	_signature = ""
