@@ -22,13 +22,17 @@ var trafic_vu := false
 var pont_termine := false
 ## Le mois où l'on quitte la carte du pont rouvert : une rue engagée avant appartient au pont.
 var pont_termine_mois := 0.0
-## 🎓 L'étude de l'université paraît en quittant cette carte (auteur,
-## 2026-09-30) : on l'a lue, puis on a ouvert Dangers › Prochaine crue.
+## 🎓 L'étude paraît quand le joueur ouvre un îlot sinistré à relever, pas au
+## pont (auteur, 2026-10-06 : une livraison, une porte) ; puis on l'a lue, puis
+## on a ouvert Dangers › Prochaine crue. `carte_etude` : 0 à venir, 1 affichée, 2 passée.
+var etude_parue := false
+var etude_mois := 0.0
+var carte_etude := 0
 var etude_lue := false
 var prochaine_vue := false
 ## ⏳ La carte du pont attend 5 s réelles, le temps qui court (auteur, 2026-10-06) :
-## on voit le pont s'ouvrir et les voitures passer avant l'étude.
-const ATTENTE_ETUDE_MS := 5000
+## on voit le pont s'ouvrir et les voitures passer.
+const ATTENTE_PONT_MS := 5000
 var pont_livre_ms := 0
 var etape := ""
 var premier := {}
@@ -52,8 +56,8 @@ var _regards := {}
 var _champ_vu := false
 ## 🧹 L'annonce du chemin dégagé : -1 après une reprise, 0 à dire, 1 dite.
 var _degage_annonce := 0
-## 🎓 Les cartes au centre (auteur, 2026-10-02) : « pont » remplace « Choisir la
-## suite » et mène à l'étude ; « camp » dit que le camp use la confiance.
+## 🎓 Les cartes au centre (auteur, 2026-10-02) : « pont » fête le pont rouvert,
+## « etude » mène à l'université, « camp » dit que le camp use la confiance.
 var annonce: Control
 var annonce_principal: Button
 var annonce_second: Button
@@ -166,10 +170,15 @@ func _remplir_carte() -> void:
 	match carte:
 		"pont":
 			_annonce_titre.text = "Les deux rives sont reliées"
-			_annonce_texte.text = "%s est rouvert.\nL'université vient de publier son étude sur la prochaine crue de l'Ilse. Trouvez-la dans la ville." \
+			_annonce_texte.text = "%s est rouvert. Les voitures repassent, et le faubourg peut se relever." \
 				% _nom("r", premier["fid"])
+			annonce_principal.text = "Continuer"
+			annonce_second.text = "Voir le pont"
+		"etude":
+			_annonce_titre.text = "Avant de relever, une étude"
+			_annonce_texte.text = "L'université vient de publier son étude sur la prochaine crue de l'Ilse. Trouvez-la dans la ville."
 			annonce_principal.text = "Trouver l'université"
-			annonce_second.text = "Voir d'abord le pont"
+			annonce_second.text = "Voir d'abord l'îlot"
 		"camp":
 			_annonce_titre.text = "Les habitants du camp sont mécontents"
 			_annonce_texte.text = "Ils ont un toit, pas de quoi vivre. Tant qu'ils restent au camp, la confiance baisse chaque mois.\nPlus tard, c'est elle qui ouvrira les règles de la mairie."
@@ -180,11 +189,17 @@ func _remplir_carte() -> void:
 func _sur_carte(principal: bool) -> void:
 	if carte == "pont":
 		var fid := int(premier["fid"])
-		publier_etude()
+		terminer_pont()
 		if principal:
-			chercher_universite()
+			jeu._sur_vitesse(1.0)
 		else:
 			examiner("r", fid)
+		return
+	if carte == "etude":
+		carte_etude = 2
+		actualiser(true)
+		if principal:
+			chercher_universite()
 		return
 	plainte = 2
 	if principal:
@@ -280,8 +295,8 @@ func verrou() -> String:
 ## Ce que le verrou laisse engager : un champ pendant le relogement ; un pont
 ## coupé ou une rue qui barre l'accès à l'un d'eux pendant la phase du pont, et
 ## toute rue boueuse dès qu'un pont est engagé (auteur, 2026-09-26). Les îlots
-## sinistrés attendent l'étude : on rebâtit en sachant la prochaine crue (auteur,
-## 2026-10-02, retour en arrière sur le 2026-09-26).
+## sinistrés attendent le pont, et leur fiche fait paraître l'étude (`trouve`) :
+## on rebâtit en sachant la prochaine crue (auteur, 2026-10-02 et 2026-10-06).
 func autorise(couche: String, fid: int) -> bool:
 	match verrou():
 		"":
@@ -366,8 +381,9 @@ func rail_appel() -> String:
 
 ## 🎓 La tuile de l'université n'apparaît qu'une fois trouvée sur la carte (auteur, 2026-10-05).
 func rail_visible(id: String) -> bool:
+	# 🧱 Les sols viennent avec leurs leviers, après la berge.
 	if id == "sols":
-		return concept_ouvert("eponge")
+		return concept_ouvert("eponge") and levier_ferme("permeable") == ""
 	return id != "universite" or rail_ouvert(id)
 
 
@@ -397,32 +413,46 @@ func _universite() -> int:
 	return int(jeu.interface.LIEUX["universite"]["fid"])
 
 
-## Le clic sur la ville pendant la recherche : l'université ouvre l'étude.
+## Le clic sur la ville : un îlot sinistré à relever fait paraître l'étude ;
+## pendant la recherche, l'université l'ouvre.
 func trouve(couche: String, fid: int) -> void:
-	if etape == "etude" and couche == "i" and fid == _universite():
+	if couche != "i":
+		return
+	if pont_termine and not etude_parue and jeu.ville.base("i", fid, "logements_sinistres") > 0.0 \
+			and not jeu.ville.est_repare("i", fid):
+		publier_etude()
+	elif etude_parue and not etude_lue and fid == _universite():
 		jeu.interface.ouvrir_lieu("universite")
 
 
-## Le premier pont est derrière nous : l'étude paraît, la suite commence.
-func publier_etude() -> void:
+## Le premier pont est derrière nous : on souffle, rien de neuf ne s'ouvre.
+func terminer_pont() -> void:
 	pont_termine = true
 	pont_termine_mois = jeu.mois
-	jeu.interface.retours.consigner("Université : une étude annonce une crue plus forte d'ici 6 à 8 ans.", jeu.mois)
 	jeu._sur_theme("")
 	jeu.interface._detail_ouvert = false
 	jeu.interface._placer_detail()
 	actualiser(true)
 
 
+func publier_etude() -> void:
+	etude_parue = true
+	etude_mois = jeu.mois
+	carte_etude = 1
+	jeu._sur_vitesse(0.0)
+	jeu.interface.retours.consigner("Université : une étude annonce une crue plus forte d'ici 6 à 8 ans.", jeu.mois)
+	actualiser(true)
+
+
 ## L'université ouverte après la parution, ou l'onglet de la prochaine crue.
 func etude_ouverte() -> void:
-	if pont_termine and not etude_lue:
+	if etude_parue and not etude_lue:
 		etude_lue = true
 		actualiser(true)
 
 
 func prochaine_ouverte() -> void:
-	if pont_termine and not prochaine_vue:
+	if etude_parue and not prochaine_vue:
 		etude_lue = true
 		prochaine_vue = true
 		actualiser(true)
@@ -434,11 +464,14 @@ func prochaine_ouverte() -> void:
 # 🎚️ LEVEL DESIGN : quand chaque page s'ouvre. La ville-éponge à l'étude ; « ne
 # pas aggraver » quand la ville est réparée (A, auteur, 2026-10-06 ; n°23) ;
 # l'îlot de chaleur avec la canicule, plus tard (102). Sans guide, tout est ouvert.
+# 🚪 Une livraison, une porte (auteur, 2026-10-06) : l'étude n'ouvre que la berge ;
+# une berge rendue ouvre les autres leviers ; un autre chantier livré, le concours.
+const PREMIER_LEVIER := "berge"
 
 func concept_ouvert(id: String) -> bool:
 	match id:
 		"eponge":
-			return pont_termine
+			return etude_parue
 		"attenuer":
 			return ville_reparee()
 	return false
@@ -487,6 +520,8 @@ func ville_reparee() -> bool:
 ## "" si le levier est ouvert ; sinon ce qui l'ouvrira, en clair.
 func levier_ferme(levier: String) -> String:
 	var id := Livre.concept_du_levier(levier)
+	if id == "eponge" and concept_ouvert(id) and levier != PREMIER_LEVIER and not berge_rendue():
+		return "S'ouvre quand une première berge sera rendue à l'Ilse."
 	if id == "" or concept_ouvert(id):
 		return ""
 	match id:
@@ -495,6 +530,50 @@ func levier_ferme(levier: String) -> String:
 		"attenuer":
 			return "S'ouvre quand la ville sera réparée : voir la page « Ne pas aggraver » à la bibliothèque."
 	return "Plus tard."
+
+
+## Une berge que le joueur a rendue à l'Ilse, chantier livré.
+func berge_rendue() -> bool:
+	var v = jeu.ville
+	for b in v._berge:
+		if v.berge_depart(b) != Ville.BERGE_RENATUREE \
+				and v.berge_etat(b, jeu.mois) == Ville.BERGE_RENATUREE:
+			return true
+	return false
+
+
+## 🏛️ Le concours (104) en dernier : la berge n'a pas suffi, un autre sol boit déjà.
+func concours_ouvert() -> bool:
+	var v = jeu.ville
+	if v.concours_lance():
+		return true
+	if not berge_rendue():
+		return false
+	for fid in v._vert:
+		if jeu.mois >= float(v._vert[fid]["debut"]) + float(v._vert[fid]["duree"]) \
+				and float(v._vert[fid]["cible"]) > 0.0:
+			return true
+	for fid in v._permeable:
+		if not v.permeable_en_cours(fid, jeu.mois):
+			return true
+	for fid in v._cultures:
+		if float(Ville.CULTURES[v.champ_culture(fid, jeu.mois)]["crue_m_ha"]) > 0.0 \
+				and not v.culture_en_cours(fid, jeu.mois):
+			return true
+	return false
+
+
+## 🚪 Ce qui s'ouvre se dit une fois, au bandeau et au journal.
+var _portes_dites := {}
+
+
+func _annoncer_portes() -> void:
+	if not "leviers" in _portes_dites and etude_parue and berge_rendue():
+		_portes_dites["leviers"] = true
+		jeu.interface.retours.annoncer("Berge rendue. La ville-éponge s'étend : toits verts, prés, parkings perméables.", jeu.mois)
+	if not "concours" in _portes_dites and concours_ouvert() and not jeu.ville.concours_lance():
+		_portes_dites["concours"] = true
+		jeu.interface.retours.annoncer("Le faubourg peut se relever autrement : un concours s'ouvre dans la fiche des îlots sinistrés.", jeu.mois)
 
 
 ## 📖 Une page qui s'ouvre se dit une fois, au bandeau et au journal.
@@ -706,9 +785,9 @@ func actualiser(force := false) -> void:
 			etape = "camp_attente"
 		else:
 			etape = "pont_choix" if trafic_vu else "trafic"
-	elif premier.is_empty() and not etude_lue:
+	elif etude_parue and not etude_lue:
 		etape = "etude"
-	elif premier.is_empty() and not prochaine_vue:
+	elif etude_parue and not prochaine_vue:
 		etape = "prochaine"
 	elif premier.is_empty():
 		etape = "choix"
@@ -728,10 +807,10 @@ func actualiser(force := false) -> void:
 	if etape == "pont_livre" and ancienne != "pont_livre":
 		pont_livre_ms = Time.get_ticks_msec()
 		# Sans échelle de temps : la pause ne doit pas geler l'attente.
-		get_tree().create_timer(ATTENTE_ETUDE_MS / 1000.0, true, false, true) \
+		get_tree().create_timer(ATTENTE_PONT_MS / 1000.0, true, false, true) \
 			.timeout.connect(actualiser.bind(true))
 	var carte_pont := etape == "pont_livre" \
-		and Time.get_ticks_msec() - pont_livre_ms >= ATTENTE_ETUDE_MS
+		and Time.get_ticks_msec() - pont_livre_ms >= ATTENTE_PONT_MS
 	var rouvert := carte_pont and carte != "pont"
 	if (etape == "livraison" and ancienne == "travaux" or rouvert or
 			etape == "pont_acces" and ancienne == "pont_travaux") and (ouvert or rouvert):
@@ -746,7 +825,7 @@ func actualiser(force := false) -> void:
 		jeu._sur_vitesse(0.0)
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
-	carte = "pont" if carte_pont else ("camp" if plainte == 1 else "")
+	carte = "pont" if carte_pont else ("etude" if carte_etude == 1 else ("camp" if plainte == 1 else ""))
 	annonce.visible = carte != ""
 	_remplir_carte()
 	# Recalculé : la carte a pu se fermer pendant cet appel.
@@ -775,7 +854,8 @@ func actualiser(force := false) -> void:
 	signature += "/%d/%s/%s/%d/%d/%s" % [_regards.size(), _champ_vu, jeu.trafic._indisponibles_connues,
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	_annoncer_pages()
-	signature += "/%s" % concept_ouvert("attenuer")
+	_annoncer_portes()
+	signature += "/%s/%s" % [concept_ouvert("attenuer"), etude_parue]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -853,8 +933,10 @@ func actualiser(force := false) -> void:
 			var logements: float = jeu.ville.base("i", MAISONS, "logements_sinistres")
 			# Tout le monde est abrité à ce stade : ceux qui rentrent quittent un camp.
 			var abrites := int(minf(logements, jeu.ville.sans_toit(jeu.mois) + jeu.ville.reloges(jeu.mois)))
-			_texte.text = "Rue des Forgerons envasée, %.0f logements inhabitables à côté. La prochaine crue y mettrait %s m d'eau. Par où commencer ?" % [
-				logements, jeu.interface._nb(jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois), 1)]
+			_texte.text = "Rue des Forgerons envasée, %.0f logements inhabitables à côté. Par où commencer ?" % logements
+			if etude_parue:
+				_texte.text = _texte.text.replace(" Par où", " La prochaine crue y mettrait %s m d'eau. Par où" % \
+					jeu.interface._nb(jeu.ville.valeur("i", MAISONS, "hauteur_eau_annonce", jeu.mois), 1))
 			# 💶 Dit une fois, ici : la caisse ne relève pas tout (auteur, 2026-10-02).
 			var autres := _sinistres_restants() - 1
 			if autres > 0:
@@ -880,6 +962,9 @@ func actualiser(force := false) -> void:
 			_bouton("Voir le résultat", examiner.bind(premier["couche"], premier["fid"]))
 			_bouton("Et maintenant ?", func() -> void:
 				suite = true
+				# Protéger demande l'étude : elle paraît ici si aucun îlot ne l'a appelée.
+				if not etude_parue:
+					publier_etude()
 				actualiser(true))
 		"suite":
 			_titre.text = "Réparer, protéger ou investir ?"
@@ -954,6 +1039,7 @@ func exporter() -> Dictionary:
 	return {"suite": suite, "termine": termine, "ouvert": ouvert,
 		"trafic_vu": trafic_vu, "pont_termine": pont_termine,
 		"pont_termine_mois": pont_termine_mois,
+		"etude_parue": etude_parue, "etude_mois": etude_mois, "carte_etude": carte_etude,
 		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte,
 		"pages_lues": pages_lues.duplicate()}
 
@@ -967,18 +1053,27 @@ func reprendre(etat: Dictionary) -> void:
 	trafic_vu = bool(etat.get("trafic_vu", false))
 	pont_termine = bool(etat.get("pont_termine", suite or termine))
 	pont_termine_mois = float(etat.get("pont_termine_mois", 0.0))
-	# Une partie d'avant l'étude l'a déjà dépassée : on ne la rejoue pas.
-	etude_lue = bool(etat.get("etude_lue", pont_termine))
-	prochaine_vue = bool(etat.get("prochaine_vue", pont_termine))
+	# Avant le 2026-10-06, l'étude paraissait avec le pont : on ne la rejoue pas.
+	etude_parue = bool(etat.get("etude_parue", pont_termine))
+	etude_mois = float(etat.get("etude_mois", pont_termine_mois))
+	carte_etude = int(etat.get("carte_etude", 2 if etude_parue else 0))
+	etude_lue = bool(etat.get("etude_lue", etude_parue))
+	prochaine_vue = bool(etat.get("prochaine_vue", etude_parue))
 	plainte = int(etat.get("plainte", 2 if pont_termine else 0))
 	pages_lues = {}
 	_pages_dites = {}
+	_portes_dites = {}
 	var lues: Variant = etat.get("pages_lues", {})
 	if lues is Dictionary:
 		for id in lues:
 			if Livre.CONCEPTS.has(id):
 				pages_lues[id] = float(lues[id])
 	_degage_annonce = -1
+	# Une reprise ne rejoue pas ce qui était déjà ouvert.
+	if etude_parue and berge_rendue():
+		_portes_dites["leviers"] = true
+	if concours_ouvert():
+		_portes_dites["concours"] = true
 	etape = ""
 	_signature = ""
 	actualiser(true)

@@ -1882,26 +1882,33 @@ func _panneau_prochaine(p: VBoxContainer) -> void:
 
 func _levier(p: VBoxContainer, titre: String, effet: String, voir: String,
 		couche: String, fid: int, reglage: String, valeur: Variant) -> void:
-	p.add_child(_label(titre, 13, TEXTE))
+	# 🚪 Un levier fermé ne s'affiche pas ici (une livraison, une porte).
+	var boite := VBoxContainer.new()
+	p.add_child(boite)
+	boite.add_child(_label(titre, 13, TEXTE))
 	var e := _label(effet, 11, GRIS)
 	e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	p.add_child(e)
+	boite.add_child(e)
 	var b := Button.new()
 	b.text = voir
 	b.focus_mode = Control.FOCUS_NONE
 	_habiller_secondaire(b)
 	b.pressed.connect(func() -> void: examen_demande.emit(couche, fid, reglage, valeur))
-	p.add_child(b)
+	boite.add_child(b)
 	_prochaine_valeurs["levier_" + reglage] = b
+	_leviers_crue[{"culture": "pre"}.get(reglage, reglage)] = boite
+
+
+var _leviers_crue := {}
 
 
 ## L'étude est parue : sans guide (essais, mode auteur), elle l'est toujours.
 func etude_publiee() -> bool:
-	return ouverture == null or ouverture.pont_termine or ouverture.suite or ouverture.termine
+	return ouverture == null or ouverture.etude_parue
 
 
 func _mois_etude() -> float:
-	return ouverture.pont_termine_mois if ouverture != null else 0.0
+	return ouverture.etude_mois if ouverture != null else 0.0
 
 
 func choisir_vue_crue(id: String) -> void:
@@ -1958,6 +1965,8 @@ func _maj_prochaine() -> void:
 		int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"])]
 	(_prochaine_valeurs["eau"] as Label).text = "%s m" % _nb(float(p["eau_pire_m"]), 2)
 	(_prochaine_valeurs["logements"] as Label).text = _nb(float(p["logements_perdus"]), 0)
+	for l in _leviers_crue:
+		(_leviers_crue[l] as Control).visible = _levier_ferme(l) == ""
 	var cle := "%d/%d/%d/%d" % [int(_mois * 30.0), ville._rampes_version,
 		ville._repare.size(), ville._berge.size()]
 	if cle != _a_venir_cle:
@@ -3159,7 +3168,7 @@ func _maj_lieu() -> void:
 		return
 	var universite := _lieu_ouvert == "universite"
 	# 🎓 L'étude seule tant que sa carte n'a pas été ouverte (auteur, 2026-10-02).
-	var etude_seule: bool = universite and ouverture != null and ouverture.pont_termine \
+	var etude_seule: bool = universite and ouverture != null and ouverture.etude_parue \
 		and not ouverture.prochaine_vue
 	_lieu_intro.visible = not etude_seule and financements_ouverts and _page_ouverte == ""
 	_etude_bloc.visible = universite and etude_publiee() and _page_ouverte == ""
@@ -3172,8 +3181,8 @@ func _maj_lieu() -> void:
 		_etude_texte.text = ("Une crue plus forte que celle de cette année est attendue dans 6 à 8 ans. "
 			+ "L'eau irait sur %d îlots, contre %d cette fois ; aux Forgerons, %s m au lieu de %s m. "
 			+ "Si rien ne change, elle ruinerait %s logements.\n"
-			+ "La ville peut la faire baisser : rendre des berges à l'Ilse, verdir les toits plats, "
-			+ "laisser des prés déborder, rendre ses parkings perméables. La bibliothèque explique comment.") % [int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"]),
+			+ "La ville peut la faire baisser, à commencer par rendre ses berges à l'Ilse. "
+			+ "La bibliothèque explique comment.") % [int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"]),
 			_nb(ville.valeur("i", Ouverture.MAISONS, "hauteur_eau_annonce", _mois), 1),
 			_nb(forgerons, 1), _nb(float(p["logements_perdus"]), 0)]
 	for cle in _lieu_lignes:
@@ -5168,7 +5177,8 @@ func _maj_reparation(o: Dictionary) -> void:
 	# 🏛️ Avant le concours (104), comme avant ou le concours ; après, l'écran des projets.
 	# Sans maison détruite, comme avant seulement.
 	var rendu := ville.concours_rendu(_mois)
-	var concours := rebatir and ville.concours_utile(_fiche_fid)
+	var concours: bool = rebatir and ville.concours_utile(_fiche_fid) \
+		and (ouverture == null or ouverture.concours_ouvert())
 	for facon in _rebatir_boutons:
 		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition" \
 			and not (concours and rendu)
@@ -5224,7 +5234,8 @@ func _maj_reparation(o: Dictionary) -> void:
 		_posee(_rebatir_boutons["tradition"], "reparer", "Comme avant", "tradition")
 		var choisi := str(_pose.get("reparer", ""))
 		_repare_texte.text += "\nComment le relever ?" if concours \
-			else "\nLes maisons tiennent debout : on les remet en état."
+			else ("\nOn le relève comme avant." if ville.concours_utile(_fiche_fid)
+			else "\nLes maisons tiennent debout : on les remet en état.")
 		if concours and rendu:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \
 				else "Projet : %s · revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()

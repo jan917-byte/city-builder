@@ -61,8 +61,20 @@ func executer() -> void:
 	verifier(not v.commander("i", LAVOIR, {"reparer": "pilotis"}, t0)["ok"],
 		"Concours rendu, le Lavoir ne se relève toujours que comme avant")
 
+	# --- 🚪 Le concours vient en dernier : l'étude seule n'en propose pas.
+	_apres_etude(t0, false)
+	await cliquer(bouton("②"))
+	verifier(ui._fiche_fid == m and ui._rebatir_boutons["tradition"].visible
+		and not ui._concours_bouton.visible and not jeu.ouverture.concours_ouvert(),
+		"L'étude lue, sans berge rendue, la fiche n'offre que comme avant")
+	ui._fermer_fiche()
+
 	# --- La fiche, avant : comme avant, ou le concours.
 	_apres_etude(t0, false)
+	_portes_concours(true)
+	actualiser(t0)
+	verifier(jeu.ouverture.concours_ouvert() and "concours" in str(ui.retours.journal[-1]),
+		"Une berge rendue et un sol perméable livré : le concours s'annonce : %s" % ui.retours.journal[-1])
 	var caisse0: float = v.caisse_ke(t0)
 	await cliquer(bouton("②"))
 	verifier(ui._fiche_fid == m and ui._rebatir_boutons["tradition"].visible
@@ -77,6 +89,7 @@ func executer() -> void:
 	var texte := _effets(ui)
 	verifier(texte.begins_with("120") and "mois" in texte, "La fiche annonce son prix et son mois : %s" % texte)
 	await cliquer(ui._recap_bouton)
+	_portes_concours(false)
 	actualiser(t0)
 	verifier(v.concours_lance() and absf(caisse0 - v.caisse_ke(t0) - v.CONCOURS_KE) < 0.5,
 		"Mettre en place lance le concours et le paie")

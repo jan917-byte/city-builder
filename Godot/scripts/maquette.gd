@@ -3022,11 +3022,12 @@ func _partie_valide(p: Dictionary) -> bool:
 	if p.has("ouverture"):
 		if not p["ouverture"] is Dictionary:
 			return false
-		for cle in ["suite", "termine", "ouvert", "trafic_vu", "pont_termine"]:
+		for cle in ["suite", "termine", "ouvert", "trafic_vu", "pont_termine", "etude_parue"]:
 			if p["ouverture"].has(cle) and not p["ouverture"][cle] is bool:
 				return false
-		if p["ouverture"].has("pont_termine_mois") and not p["ouverture"]["pont_termine_mois"] is float:
-			return false
+		for cle in ["pont_termine_mois", "etude_mois"]:
+			if p["ouverture"].has(cle) and not p["ouverture"][cle] is float:
+				return false
 	if not p["mois"] is float or not is_finite(p["mois"]) or p["mois"] < 0.0 or p["mois"] > Ville.HORIZON_MOIS:
 		return false
 	if not p["ville"] is Dictionary or not ville.valider_partie(p["ville"]):
@@ -3140,10 +3141,16 @@ func voir_concept(id: String) -> void:
 	var c: Dictionary = Livre.CONCEPTS.get(id, {})
 	if c.is_empty():
 		return
-	_sur_theme(str(c["voir"]))
+	var lieux: Array = c["lieux"]
+	var voir := str(c["voir"])
+	# 🚪 La berge seule tant que les autres leviers attendent (une livraison, une porte).
+	if id == "eponge" and ouverture != null and ouverture.levier_ferme("permeable") != "":
+		lieux = lieux.filter(func(l: Array) -> bool: return l[0] == "b")
+		voir = ""
+	_sur_theme(voir)
 	var boite := AABB()
 	var premier := true
-	for lieu in c["lieux"]:
+	for lieu in lieux:
 		var mi: MeshInstance3D = noeuds.get(str(lieu[0]), {}).get(int(lieu[1]))
 		if mi == null:
 			continue

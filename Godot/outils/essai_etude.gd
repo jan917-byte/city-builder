@@ -28,13 +28,29 @@ func executer() -> void:
 
 	var univ: Button = ui._rail_lieux[ui.LIEUX_ORDRE.find("universite")]
 	verifier(not univ.visible, "Avant le pont, la colonne n'a pas de tuile université")
-	# 🎓 La carte du pont rouvert, bouton principal : chercher l'université (auteur, 2026-10-05).
+	# 🚪 Le pont rouvert ne publie rien : on souffle (auteur, 2026-10-06).
 	o.carte = "pont"
 	o.premier = {"couche": "r", "fid": jeu.ville.ponts_coupes()[0], "fin": 0.0}
 	o._sur_carte(true)
-	verifier(o.etape == "etude" and o._actions.get_child_count() == 1 and "ville" in o._texte.text,
-		"Le pont passé, le guide demande de trouver l'université, un bouton pour la montrer")
+	verifier(o.pont_termine and not ui.etude_publiee() and o.etape == "choix"
+		and not "prochaine crue" in o._texte.text and not o.annonce.visible,
+		"Le pont passé, le guide propose de relever, sans étude : %s" % o._texte.text)
+	verifier(not o.concept_ouvert("eponge") and o.levier_ferme("berge") != "", "Sans étude, la ville-éponge reste fermée")
+	verifier(o.autorise("i", o.MAISONS), "Sans étude, les îlots sinistrés se relèvent comme avant")
+	jeu._sur_vitesse(0.0)
+	jeu._sur_choix("r", o.RUE)
+	verifier(not o.etude_parue, "Une rue envasée ne fait pas paraître l'étude")
+	ui._fermer_fiche()
+	# 🎓 L'îlot sinistré ouvert, l'étude paraît : carte au centre, jeu en pause.
+	await cliquer(o._actions.get_child(1))
+	verifier(o.etude_parue and o.carte == "etude" and o.annonce.visible and jeu.vitesse == 0.0,
+		"Ouvrir les Forgerons pour les relever fait paraître l'étude")
 	verifier("étude" in ui.retours.journal[-1], "La parution est dans le journal")
+	await capture("etude_00_avant_de_relever")
+	await cliquer(o.annonce_principal)
+	verifier(o.etape == "etude" and o._actions.get_child_count() == 1 and "ville" in o._texte.text
+		and not o.annonce.visible,
+		"La carte quittée, le guide demande de trouver l'université, un bouton pour la montrer")
 	jeu._rafraichir(true)
 	var fid_univ := int(ui.LIEUX["universite"]["fid"])
 	verifier(jeu.selection.sel_fid == fid_univ and not ui._fiche_panneau.visible and not ui._lieu_panneau.visible,

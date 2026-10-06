@@ -31,14 +31,41 @@ func executer() -> void:
 	v.reparer("r", pont, 0.0, true)
 	o.pont_termine = true
 	o.pont_termine_mois = 4.0
+	o.etude_parue = true
+	o.etude_mois = 4.0
+	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
 	var t := 4.0
 	actualiser(t)
-	verifier(o.concept_ouvert("eponge") and ui._menu_boutons["sols"].visible,
-		"L'étude parue : la page de la ville-éponge et la carte des sols")
+	# 🚪 Une livraison, une porte : l'étude n'ouvre que la berge.
+	verifier(o.concept_ouvert("eponge") and o.levier_ferme("berge") == "" and not ui._menu_boutons["sols"].visible,
+		"L'étude parue : la page de la ville-éponge, la berge seule, pas encore les sols")
+	for l in ["permeable", "vert", "pre"]:
+		verifier("berge" in o.levier_ferme(l), "Fermé jusqu'à une berge rendue : %s" % l)
+	jeu._repere("ville")
+	ui._sur_rail("dangers")
+	await cliquer(ui._onglets_crue["prochaine"])
+	actualiser(t)
+	ui._maj_prochaine()
+	verifier(ui._leviers_crue["berge"].visible and not ui._leviers_crue["vert"].visible
+		and not ui._leviers_crue["permeable"].visible and not ui._leviers_crue["pre"].visible,
+		"La prochaine crue ne propose que la berge")
+	await capture("livre_00_berge_seule")
+	jeu._sur_theme("")
+	jeu.voir_concept("eponge")
+	verifier(jeu.theme == "", "« Voir à Wehrau » montre la berge, sans la carte des sols")
+	# --- La berge livrée : les autres leviers et la carte des sols.
+	v.crediter_essai_ke(v.cout_berge_ke(o.BERGE, v.BERGE_RENATUREE, t))
+	jeu._sur_commande("b", o.BERGE, {"berge": v.BERGE_RENATUREE})
+	t += v.berge_reste_mois(o.BERGE, t) + 0.1
+	actualiser(t)
+	verifier(o.berge_rendue() and ui._menu_boutons["sols"].visible
+		and "Berge rendue" in str(ui.retours.journal[-1]),
+		"La berge livrée ouvre les sols et le dit : %s" % ui.retours.journal[-1])
 	for l in ["permeable", "vert", "berge", "pre"]:
-		verifier(o.levier_ferme(l) == "", "Ouvert avec la ville-éponge : %s" % l)
+		verifier(o.levier_ferme(l) == "", "Ouvert après la berge : %s" % l)
+	verifier(not o.concours_ouvert(), "La berge seule n'ouvre pas encore le concours")
 	for l in ["solaire", "rue", "arbres"]:
 		verifier(o.levier_ferme(l) != "", "Fermé : %s · %s" % [l, o.levier_ferme(l)])
 	var conds: Array = o.conditions_reparee()
@@ -105,6 +132,8 @@ func executer() -> void:
 		int(part0 * 100.0), int(v.part_sol_permeable(t2) * 100.0)])
 	verifier(eau1 < eau0 - 0.05 and v.part_sol_permeable(t2) > part0,
 		"Livré : la crue baisse et la ville boit plus")
+	verifier(o.concours_ouvert() and "concours" in str(ui.retours.journal[-1]),
+		"Après la berge, un sol livré ouvre le concours : %s" % ui.retours.journal[-1])
 	verifier(v.valeur("i", o.PARKING, "stationnement", t2) >= v.base("i", o.PARKING, "stationnement"),
 		"Les places restent")
 	ui._fermer_fiche()
@@ -149,7 +178,11 @@ func executer() -> void:
 	jeu._sur_reset()
 	verifier(o.pages_lues.is_empty() and not o.concept_ouvert("eponge"), "Recommencer referme le livre")
 	jeu._sur_reprise()
-	verifier(o.pages_lues.has("eponge") and v._permeable.has(o.PARKING), "La reprise garde la page lue et le parking")
+	actualiser(jeu.mois)
+	verifier(o.pages_lues.has("eponge") and v._permeable.has(o.PARKING) and o.concours_ouvert(),
+		"La reprise garde la page lue, le parking et le concours ouvert")
+	verifier(ui.retours.journal.filter(func(l) -> bool: return "Berge rendue" in str(l)).size() == 1,
+		"La reprise ne réannonce pas la berge")
 	print("LIVRE : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame

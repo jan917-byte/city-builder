@@ -275,6 +275,8 @@ func executer() -> void:
 	jeu.ville.abriter(champs[0], 0.0)
 	jeu.ville.abriter(champs[1], 0.0)
 	o.pont_termine = true
+	o.etude_parue = true
+	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
 	actualiser(0.0)
@@ -371,6 +373,8 @@ func executer() -> void:
 
 	var champs2: Array = o._champs_accessibles()
 	o.pont_termine = true
+	o.etude_parue = true
+	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
 	jeu._sur_choix("i", champs2[0])
@@ -602,11 +606,11 @@ func essayer_ponts(lointain: int) -> void:
 	actualiser(fin)
 	verifier(o.etape == "pont_livre" and jeu.vitesse == 12.0 and not o.annonce.visible and not o.visible,
 		"Le pont livré, le temps court encore et rien ne couvre la ville")
-	o.pont_livre_ms -= o.ATTENTE_ETUDE_MS
+	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
 	verifier(o.etape == "pont_livre" and jeu.vitesse == 0.0, "5 s plus tard, la carte du pont met le jeu en pause")
-	verifier(o.annonce.visible and not o.visible and "étude" in o._annonce_texte.text,
-		"Le pont rouvert s'annonce au centre, le guide s'efface")
+	verifier(o.annonce.visible and not o.visible and not "étude" in o._annonce_texte.text,
+		"Le pont rouvert s'annonce au centre, sans étude, le guide s'efface")
 	verifier(o.verrou() == "", "Le pont rouvert avec ses accès lève le verrou")
 	verifier(jeu.ville.route_praticable(pont, fin) and jeu.ponts_provisoires[pont].visible
 		and not jeu.reparations["r"][pont].visible and not jeu.ruines_ponts[pont].visible,
@@ -642,15 +646,16 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._rafraichir(true)
 	jeu.selection.sel_couche = "r"
 	jeu.selection.sel_fid = pont
-	await capture("14_annonce_etude")
+	await capture("14_annonce_pont")
 	await cliquer(o.annonce_second)
 	await capture("14_pont_rouvert")
-	verifier(o.pont_termine and o.etape == "etude" and not o.annonce.visible, "Le pont ouvre l'étude de l'université")
-	verifier(o.autorise("i", o.MAISONS), "L'étude parue, les îlots sinistrés se relèvent")
+	verifier(o.pont_termine and o.etape == "choix" and not o.etude_parue and not o.annonce.visible,
+		"Le pont rouvert propose de relever, l'étude attend")
+	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()
-	verifier(o.pont_termine and o.etape == "etude", "Une reprise après livraison ne redemande pas un pont")
+	verifier(o.pont_termine and o.etape == "choix", "Une reprise après livraison ne redemande pas un pont")
 	# Reconstruire directement sur la carte ne dépend pas de la visite du calque.
 	jeu._sur_reset()
 	jeu.ville.abriter(bons[0], 0.0)

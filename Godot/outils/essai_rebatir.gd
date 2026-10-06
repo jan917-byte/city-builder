@@ -124,12 +124,27 @@ func _apres_etude(t: float, concours := true) -> void:
 	jeu.ville.abriter(champs[0], 0.0)
 	jeu.ville.abriter(champs[1], 0.0)
 	o.pont_termine = true
+	o.etude_parue = true
+	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
 	if concours:
 		jeu.ville.crediter_essai_ke(jeu.ville.CONCOURS_KE)
 		jeu.ville.lancer_concours(o.MAISONS, 0.0)
 	actualiser(t)
+
+
+## 🚪 Le concours attend une berge rendue et un autre sol livré : l'essai les pose
+## livrés d'avance, sans rampe ; `fermer` les retire, le concours lancé reste ouvert.
+func _portes_concours(ouvrir: bool) -> void:
+	var v = jeu.ville
+	if ouvrir:
+		v._berge[jeu.ouverture.BERGE] = {"cible": v.BERGE_RENATUREE,
+			"depuis": v.berge_depart(jeu.ouverture.BERGE), "debut": -40.0, "duree": 1.0, "cout_ke": 0.0}
+		v._permeable[jeu.ouverture.PARKING] = {"debut": -40.0, "duree": 1.0, "cout_ke": 0.0}
+	else:
+		v._berge.erase(jeu.ouverture.BERGE)
+		v._permeable.erase(jeu.ouverture.PARKING)
 
 
 func _effets(ui) -> String:
