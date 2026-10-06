@@ -105,6 +105,9 @@ func executer() -> void:
 				"La fiche ne recouvre jamais le compteur ni les chantiers")
 	# Les dépenses récurrentes disent leur rythme, sans simuler un débit immédiat.
 	# 🎓 La carte du pont rouvert mène à l'étude, et les sujets attendent sa carte.
+	if jeu.ouverture.etape == "pont_livre":
+		jeu.ouverture.pont_livre_ms -= jeu.ouverture.ATTENTE_ETUDE_MS
+		jeu.ouverture.actualiser(true)
 	if jeu.ouverture.carte == "pont":
 		await cliquer(jeu.ouverture.annonce_principal)
 	verifier(jeu.ouverture.pont_termine and not jeu.ouverture.annonce.visible, "La carte du pont rouvert se ferme au clic")

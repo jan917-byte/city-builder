@@ -600,7 +600,11 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.etape == "pont_acces", "Le guide attend tant que la boue n'est pas déblayée")
 	jeu._sur_vitesse(12.0)
 	actualiser(fin)
-	verifier(o.etape == "pont_livre" and jeu.vitesse == 0.0, "La livraison du premier pont met le jeu en pause")
+	verifier(o.etape == "pont_livre" and jeu.vitesse == 12.0 and not o.annonce.visible and not o.visible,
+		"Le pont livré, le temps court encore et rien ne couvre la ville")
+	o.pont_livre_ms -= o.ATTENTE_ETUDE_MS
+	o.actualiser(true)
+	verifier(o.etape == "pont_livre" and jeu.vitesse == 0.0, "5 s plus tard, la carte du pont met le jeu en pause")
 	verifier(o.annonce.visible and not o.visible and "étude" in o._annonce_texte.text,
 		"Le pont rouvert s'annonce au centre, le guide s'efface")
 	verifier(o.verrou() == "", "Le pont rouvert avec ses accès lève le verrou")

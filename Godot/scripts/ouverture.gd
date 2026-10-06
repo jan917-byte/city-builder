@@ -26,6 +26,10 @@ var pont_termine_mois := 0.0
 ## 2026-09-30) : on l'a lue, puis on a ouvert Dangers › Prochaine crue.
 var etude_lue := false
 var prochaine_vue := false
+## ⏳ La carte du pont attend 5 s réelles, le temps qui court (auteur, 2026-10-06) :
+## on voit le pont s'ouvrir et les voitures passer avant l'étude.
+const ATTENTE_ETUDE_MS := 5000
+var pont_livre_ms := 0
 var etape := ""
 var premier := {}
 var _signature := ""
@@ -657,10 +661,10 @@ func _choisir_pont(fid: int) -> void:
 
 
 ## Ouvert, sans panneau de détail ni carte au centre, et muet pendant le
-## chantier du pont (auteur, 2026-10-05).
+## chantier du pont (auteur, 2026-10-05) comme pendant l'attente de sa carte.
 func paraitre() -> bool:
 	return ouvert and not jeu.interface._detail_ouvert and not annonce.visible \
-		and etape != "pont_travaux"
+		and etape not in ["pont_travaux", "pont_livre"]
 
 
 func actualiser(force := false) -> void:
@@ -721,7 +725,14 @@ func actualiser(force := false) -> void:
 	if etape == "pont_travaux" and ancienne != "pont_travaux" and jeu.theme == "trafic":
 		jeu.interface._detail_ouvert = true
 		jeu.interface._placer_detail()
-	var rouvert := etape == "pont_livre" and ancienne != "pont_livre"
+	if etape == "pont_livre" and ancienne != "pont_livre":
+		pont_livre_ms = Time.get_ticks_msec()
+		# Sans échelle de temps : la pause ne doit pas geler l'attente.
+		get_tree().create_timer(ATTENTE_ETUDE_MS / 1000.0, true, false, true) \
+			.timeout.connect(actualiser.bind(true))
+	var carte_pont := etape == "pont_livre" \
+		and Time.get_ticks_msec() - pont_livre_ms >= ATTENTE_ETUDE_MS
+	var rouvert := carte_pont and carte != "pont"
 	if (etape == "livraison" and ancienne == "travaux" or rouvert or
 			etape == "pont_acces" and ancienne == "pont_travaux") and (ouvert or rouvert):
 		jeu._sur_vitesse(0.0)
@@ -735,7 +746,7 @@ func actualiser(force := false) -> void:
 		jeu._sur_vitesse(0.0)
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
-	carte = "pont" if etape == "pont_livre" else ("camp" if plainte == 1 else "")
+	carte = "pont" if carte_pont else ("camp" if plainte == 1 else "")
 	annonce.visible = carte != ""
 	_remplir_carte()
 	# Recalculé : la carte a pu se fermer pendant cet appel.
