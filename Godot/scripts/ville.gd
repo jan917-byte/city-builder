@@ -2331,7 +2331,7 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 	var cout := cout_reparation_ke(couche, fid, provisoire, facon)
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
 		return false
-	if couche == "i" and not facon_permise(facon, t):
+	if couche == "i" and not facon_permise(fid, facon, t):
 		return false
 	if couche == "i":
 		_rebati[fid] = facon_reparation(fid, facon)
@@ -2381,14 +2381,20 @@ func cout_concours_ke() -> float:
 	return 0.0 if concours_lance() else CONCOURS_KE
 
 
+## 🏛️ Sans maison détruite, pas de concours : on remet en état (auteur, 2026-10-06, le Lavoir).
+func concours_utile(fid: int) -> bool:
+	return base("i", fid, "batiments_ruines") > 0.0
+
+
 ## Sans concours rendu, un îlot ne se relève que comme avant (une façon inconnue en est une).
-func facon_permise(facon: String, t: float) -> bool:
-	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" or concours_rendu(t)
+func facon_permise(fid: int, facon: String, t: float) -> bool:
+	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" \
+		or (concours_rendu(t) and concours_utile(fid))
 
 
 func lancer_concours(fid: int, t: float) -> bool:
 	var cout := cout_concours_ke()
-	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
+	if cout <= 0.0 or cout > caisse_ke(t) + 0.001 or not concours_utile(fid):
 		return false
 	_concours = {"debut": t, "fid": fid}
 	_depenser("concours", cout)

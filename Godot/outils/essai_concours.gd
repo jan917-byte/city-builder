@@ -2,8 +2,9 @@ extends "res://outils/essai_rebatir.gd"
 ## --script res://outils/essai_concours.gd -- --ouverture [--captures]
 ## 🏛️ Le concours (104) : un pour toute la zone sinistrée, puis quatre projets par îlot.
 
-const LAVOIR := 62   # 4,0 m d'eau : les pilotis y sauvent tout
-const FOUR := 69     # 5,6 m : ils n'y sauvent rien
+const LAVOIR := 62     # aucune maison détruite : pas de concours (auteur, 2026-10-06)
+const COLOMBIER := 63  # 4,3 m d'eau
+const FOUR := 69       # 5,6 m : les pilotis n'y sauvent rien
 
 
 func executer() -> void:
@@ -32,6 +33,9 @@ func executer() -> void:
 	for fid in sinistres:
 		for f in v.RECONSTRUCTIONS_ORDRE:
 			_apres_etude(t0)
+			if not v.facon_permise(fid, f, t0):
+				print("%4d  %-26s        %-9s sans concours" % [fid, ui.lieux.nom("i", fid).left(26), f])
+				continue
 			var duree: float = v.duree_reparation_mois("i", fid, false, f)
 			var t1 := t0 + duree + 0.05
 			var p0 := float(v.prochaine_crue(t1)["logements_perdus"])
@@ -50,7 +54,12 @@ func executer() -> void:
 	v.crediter_essai_ke(5000.0)
 	verifier(not v.commander("i", m, {"reparer": "moderne"}, t0)["ok"] and not v.est_repare("i", m),
 		"Sans concours, le moderne est refusé")
-	verifier(v.facon_permise("tradition", t0), "Sans concours, comme avant reste permis")
+	verifier(v.facon_permise(m, "tradition", t0), "Sans concours, comme avant reste permis")
+	verifier(not v.lancer_concours(LAVOIR, t0), "Le Lavoir, maisons debout, ne lance pas de concours")
+	_apres_etude(t0)
+	v.crediter_essai_ke(5000.0)
+	verifier(not v.commander("i", LAVOIR, {"reparer": "pilotis"}, t0)["ok"],
+		"Concours rendu, le Lavoir ne se relève toujours que comme avant")
 
 	# --- La fiche, avant : comme avant, ou le concours.
 	_apres_etude(t0, false)
@@ -86,7 +95,7 @@ func executer() -> void:
 
 	# --- Les mêmes projets, d'autres chiffres : l'eau ne monte pas pareil.
 	var lignes := {}
-	for fid in [FOUR, LAVOIR]:
+	for fid in [FOUR, COLOMBIER]:
 		jeu.examiner("i", fid)
 		jeu._rafraichir(true)
 		verifier(not ui._projets_panneau.visible, "Changer d'îlot referme l'écran")
@@ -101,12 +110,12 @@ func executer() -> void:
 		lignes[fid] = {}
 		for f in v.RECONSTRUCTIONS_ORDRE:
 			lignes[fid][f] = _lignes(ui, f)
-		await capture("concours_%02d_%s" % [4 if fid == FOUR else 5, "four" if fid == FOUR else "lavoir"])
+		await capture("concours_%02d_%s" % [4 if fid == FOUR else 5, "four" if fid == FOUR else "colombier"])
 	verifier(lignes[FOUR]["pilotis"].contains("26 perdus") and lignes[FOUR]["tradition"].contains("26 perdus"),
 		"Au Four, les pilotis ne sauvent rien : %s" % lignes[FOUR]["pilotis"])
-	verifier(lignes[LAVOIR]["pilotis"].contains("Rien de perdu"),
-		"Au Lavoir, ils sauvent tout : %s" % lignes[LAVOIR]["pilotis"])
-	verifier(lignes[LAVOIR]["parc"].contains("Personne ne rentre"), "Le parc ne rend personne")
+	verifier(lignes[COLOMBIER]["pilotis"] != lignes[FOUR]["pilotis"],
+		"Le Colombier n'a pas les chiffres du Four : %s" % lignes[COLOMBIER]["pilotis"])
+	verifier(lignes[COLOMBIER]["parc"].contains("Personne ne rentre"), "Le parc ne rend personne")
 
 	# --- Choisir un projet le pose, l'écran se retire, la fiche engage.
 	await cliquer(ui._projets_cartes["pilotis"]["bouton"])
@@ -117,7 +126,16 @@ func executer() -> void:
 		return a.render_target_update_mode == SubViewport.UPDATE_DISABLED),
 		"L'écran fermé, les miniatures s'éteignent")
 	await cliquer(ui._recap_bouton)
-	verifier(v.est_repare("i", LAVOIR) and v.facon_reparation(LAVOIR) == "pilotis", "Le Lavoir se relève sur pilotis")
+	verifier(v.est_repare("i", COLOMBIER) and v.facon_reparation(COLOMBIER) == "pilotis",
+		"Le Colombier se relève sur pilotis")
+
+	# --- Le Lavoir : ses maisons tiennent debout, la fiche n'offre que comme avant.
+	jeu.examiner("i", LAVOIR)
+	jeu._rafraichir(true)
+	verifier(ui._rebatir_boutons["tradition"].visible and not ui._concours_bouton.visible
+		and not ui._projets_bouton.visible and "debout" in ui._repare_texte.text,
+		"Au Lavoir, concours rendu, la fiche n'offre que comme avant")
+	await capture("concours_06_lavoir")
 
 	# --- La sauvegarde garde le concours.
 	jeu._sur_sauvegarde()

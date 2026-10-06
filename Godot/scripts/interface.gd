@@ -2997,7 +2997,8 @@ func _panneau_projets() -> void:
 
 
 func ouvrir_projets() -> void:
-	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_rendu(_mois):
+	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_rendu(_mois) \
+			or not ville.concours_utile(_fiche_fid):
 		return
 	_projets_cle = ""
 	_projets_panneau.visible = true
@@ -5165,11 +5166,14 @@ func _maj_reparation(o: Dictionary) -> void:
 	var rebatir := couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0 \
 		and not ville.est_repare(couche, _fiche_fid) and float(o.get("cout_reparation_ke", 0.0)) > 0.0
 	# 🏛️ Avant le concours (104), comme avant ou le concours ; après, l'écran des projets.
+	# Sans maison détruite, comme avant seulement.
 	var rendu := ville.concours_rendu(_mois)
+	var concours := rebatir and ville.concours_utile(_fiche_fid)
 	for facon in _rebatir_boutons:
-		(_rebatir_boutons[facon] as Button).visible = rebatir and not rendu and facon == "tradition"
-	_concours_bouton.visible = rebatir and not rendu
-	_projets_bouton.visible = rebatir and rendu
+		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition" \
+			and not (concours and rendu)
+	_concours_bouton.visible = concours and not rendu
+	_projets_bouton.visible = concours and rendu
 	_repare_etat.visible = false
 	_repare_bouton.visible = not rebatir
 	var prix := float(o.get("cout_reparation_ke", 0.0))
@@ -5217,18 +5221,19 @@ func _maj_reparation(o: Dictionary) -> void:
 	if rebatir:
 		# ⚖️ Aucune n'est conseillée (95) : le prix et les effets se lisent dans les conséquences.
 		# 🔴 Textes flaggables (90).
-		_repare_texte.text += "\nComment le relever ?"
 		_posee(_rebatir_boutons["tradition"], "reparer", "Comme avant", "tradition")
 		var choisi := str(_pose.get("reparer", ""))
-		if rendu:
+		_repare_texte.text += "\nComment le relever ?" if concours \
+			else "\nLes maisons tiennent debout : on les remet en état."
+		if concours and rendu:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \
 				else "Projet : %s · revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
-		elif ville.concours_lance():
+		elif concours and ville.concours_lance():
 			_repare_texte.text += "\nLe concours rend ses projets dans %s." % _duree(ville.concours_reste_mois(_mois))
 			_concours_bouton.text = "Concours en cours"
 			_concours_bouton.disabled = true
 			_marquer(_concours_bouton, false)
-		else:
+		elif concours:
 			_repare_texte.text += "\nAutrement qu'avant : un concours, pour tous les îlots sinistrés."
 			_posee(_concours_bouton, "concours", "Lancer un concours")
 			_concours_bouton.disabled = false
