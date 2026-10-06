@@ -21,6 +21,9 @@ const Echantillon := preload("res://scripts/echantillon.gd")
 ## Le format de la miniature dans la fiche : 320 px de panneau moins ses deux
 ## marges de 12 px. La fiche s'y accorde — elle lit cette constante.
 const TAILLE := Vector2i(296, 168)
+## 🏛️ Une carte du concours (104) : 218 px moins ses deux marges de 10 px.
+const TAILLE_PROJET := Vector2i(198, 104)
+var _taille := TAILLE
 ## 🔴 RENDUE TROIS FOIS PLUS GRANDE, puis réduite par la fiche. Les fenêtres et
 ## les rangs de tuiles sont des motifs qui s'effacent sous ~1,5 px : à 296 px de
 ## large, un étage fait 6 px et la façade sortait nue.
@@ -94,9 +97,10 @@ var _points := PackedVector3Array()
 var _cap := 0.0
 
 
-func batir(mat_objet: Material, palette: Dictionary) -> void:
+func batir(mat_objet: Material, palette: Dictionary, taille := TAILLE) -> void:
 	_palette = palette
-	size = TAILLE * SURECHANTILLON
+	_taille = taille
+	size = taille * SURECHANTILLON
 	own_world_3d = true
 	transparent_bg = true
 	# 2× et non 4× : le suréchantillonnage fait déjà le plus gros du lissage.
@@ -546,7 +550,7 @@ func _cadrer() -> void:
 	_cam.position = base.x * ((x0 + x1) * 0.5) + base.y * ((y0 + y1) * 0.5) \
 		+ base.z * (z1 + RECUL)
 	# En ortho, `size` est la hauteur vue : la largeur en découle par le format.
-	var format := float(TAILLE.x) / float(TAILLE.y)
+	var format := float(_taille.x) / float(_taille.y)
 	_cam.size = maxf(y1 - y0, (x1 - x0) / format) * MARGE
 	if not _champ:
 		_cam.size = minf(_cam.size, CADRE_MAX_M / format)
@@ -556,7 +560,7 @@ func _cadrer() -> void:
 ## Ce que le cadre couvre au sol : sa largeur, ou sa profondeur `size / sin` —
 ## en ortho la seconde est la plus grande dès que la vue est rasante.
 func _regler_ombre() -> void:
-	var etendue := maxf(_cam.size * float(TAILLE.x) / float(TAILLE.y),
+	var etendue := maxf(_cam.size * float(_taille.x) / float(_taille.y),
 		_cam.size / sin(deg_to_rad(HAUTEUR)))
 	_soleil.directional_shadow_max_distance = RECUL + 2.0 * etendue
 

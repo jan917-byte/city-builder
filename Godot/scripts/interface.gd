@@ -282,6 +282,8 @@ var bulles := preload("res://scripts/bulles.gd").new()
 var _debut: Button
 ## 🔎 La texture de la miniature, posée par `maquette.gd` avant `batir()`.
 var apercu: Texture2D
+## 🏛️ Façon → la miniature de sa carte au concours, rendue par la maquette.
+var apercus_projets := {}
 var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
 var rampe := []      # `maquette.RAMPE`, en sRGB
 var rampe_eau := []  # `maquette.RAMPE_EAU`, en sRGB
@@ -2968,6 +2970,14 @@ func _panneau_projets() -> void:
 		cv.add_theme_constant_override("separation", 5)
 		carte.add_child(cv)
 		cv.add_child(_label(str(Ville.RECONSTRUCTIONS[f]["nom"]), 16, TEXTE))
+		# L'îlot livré, comme la miniature de la fiche (auteur, 2026-10-06).
+		var vue := TextureRect.new()
+		vue.texture = apercus_projets.get(f)
+		vue.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		vue.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		vue.custom_minimum_size = Vector2(0, Apercu.TAILLE_PROJET.y)
+		vue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(vue)
 		var quoi := _label(PROJETS_QUOI[f], 11, GRIS)
 		quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cv.add_child(quoi)
@@ -2993,6 +3003,11 @@ func ouvrir_projets() -> void:
 	_projets_panneau.visible = true
 	_maj_projets()
 	projets_ouverts.emit(_fiche_fid)
+
+
+## L'îlot dont l'écran du concours est ouvert, sinon -1 : la maquette y règle les miniatures.
+func projets_fid() -> int:
+	return _fiche_fid if _projets_panneau != null and _projets_panneau.visible else -1
 
 
 func fermer_projets() -> void:

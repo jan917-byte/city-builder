@@ -140,6 +140,9 @@ var _apercu_couche := ""
 var _apercu_voitures := ""
 var _apercu_camp := ""
 var _apercu_provisoire := false
+## 🏛️ Une miniature par carte du concours (104), éteintes tant que l'écran est fermé.
+var apercus_projets := {}
+var _projets_fid := -1
 var _couloirs := {}
 var _plaques := {}
 var _berges_contour := {}
@@ -249,6 +252,12 @@ func _ready() -> void:
 	apercu.name = "Apercu"
 	add_child(apercu)
 	apercu.batir(mat_objet, donnees["palette"])
+	for f in Ville.RECONSTRUCTIONS_ORDRE:
+		var a := Apercu.new()
+		a.name = "Projet_" + f
+		add_child(a)
+		a.batir(mat_objet, donnees["palette"], Apercu.TAILLE_PROJET)
+		apercus_projets[f] = a
 
 	interface = Interface.new()
 	interface.name = "Interface"
@@ -261,6 +270,8 @@ func _ready() -> void:
 		"alignements": donnees.get("alignements", {})})
 	interface.trafic = trafic
 	interface.apercu = apercu.get_texture()
+	for f in apercus_projets:
+		interface.apercus_projets[f] = (apercus_projets[f] as Apercu).get_texture()
 	# Passées plutôt que preloadées : `interface.gd` importerait `maquette.gd`,
 	# qui l'importe déjà.
 	interface.themes = THEMES
@@ -2087,6 +2098,7 @@ func _rafraichir(force: bool) -> void:
 	# quand le temps est en pause.
 	_maj_contour()
 	_maj_apercu()
+	_maj_apercus_projets()
 	if not force and absf(mois - _dernier_peint) < 0.002:
 		interface.maj(ville.indicateurs(mois), mois, vitesse)
 		return
@@ -2815,6 +2827,30 @@ func _maj_apercu() -> void:
 		apercu.mm_velo, fid, mois,
 		bool(d["places"]), bool(d["roule"]), apercu.ech_longueur,
 		apercu.ech_chaussee)
+
+
+## 🏛️ Les quatre cartes du concours : les maillages de la fiche, chacun réglé sur
+## sa façon. Le parc ne montre pas le bâti neuf : la ruine y devient prairie.
+func _maj_apercus_projets() -> void:
+	var fid: int = interface.projets_fid() if interface != null else -1
+	if fid < 0 or not noeuds["i"].has(fid):
+		if _projets_fid >= 0:
+			for a in apercus_projets.values():
+				(a as Apercu).eteindre()
+		_projets_fid = -1
+		return
+	if fid != _projets_fid:
+		_projets_fid = fid
+		var neuf: MeshInstance3D = reparations["i"].get(fid)
+		for a in apercus_projets.values():
+			(a as Apercu).montrer((noeuds["i"][fid] as MeshInstance3D).mesh,
+				neuf.mesh if neuf != null else null, _socle("i", fid))
+	var plate := ville.valeur("i", fid, "_part_plate", mois)
+	for f in apercus_projets:
+		var a: Apercu = apercus_projets[f]
+		a.viser(pivot.lacet)
+		a.regler(ville.etat_solaire(fid, mois)["cible"], ville.etat_vert(fid, mois)["cible"],
+			plate, f != "parc", 0.0, Vector4(0.0, 1.0, 0.0, 0.0), Ville.rendu_rebati(f))
 
 
 ## 🌊 La chaussée de la voie qu'une berge porte : la moyenne de ses tronçons.

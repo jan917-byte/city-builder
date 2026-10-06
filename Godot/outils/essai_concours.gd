@@ -87,10 +87,17 @@ func executer() -> void:
 	# --- Les mêmes projets, d'autres chiffres : l'eau ne monte pas pareil.
 	var lignes := {}
 	for fid in [FOUR, LAVOIR]:
-		ui.montrer("i", fid)
+		jeu.examiner("i", fid)
 		jeu._rafraichir(true)
 		verifier(not ui._projets_panneau.visible, "Changer d'îlot referme l'écran")
 		await cliquer(ui._projets_bouton)
+		jeu._rafraichir(false)
+		verifier(jeu.selection.sel_fid == fid and jeu._contour_fid == fid
+			and jeu.cam_masque.global_transform == jeu.pivot.camera.global_transform,
+			"Le trait entoure l'îlot %d, avec la caméra recadrée" % fid)
+		verifier(jeu.apercus_projets.values().all(func(a) -> bool:
+			return a.render_target_update_mode != SubViewport.UPDATE_DISABLED),
+			"Les quatre cartes montrent leur miniature")
 		lignes[fid] = {}
 		for f in v.RECONSTRUCTIONS_ORDRE:
 			lignes[fid][f] = _lignes(ui, f)
@@ -105,6 +112,10 @@ func executer() -> void:
 	await cliquer(ui._projets_cartes["pilotis"]["bouton"])
 	verifier(str(ui._pose.get("reparer", "")) == "pilotis" and not ui._projets_panneau.visible
 		and "pilotis" in ui._projets_bouton.text, "Choisir les pilotis les pose : %s" % ui._projets_bouton.text)
+	jeu._rafraichir(false)
+	verifier(jeu.apercus_projets.values().all(func(a) -> bool:
+		return a.render_target_update_mode == SubViewport.UPDATE_DISABLED),
+		"L'écran fermé, les miniatures s'éteignent")
 	await cliquer(ui._recap_bouton)
 	verifier(v.est_repare("i", LAVOIR) and v.facon_reparation(LAVOIR) == "pilotis", "Le Lavoir se relève sur pilotis")
 

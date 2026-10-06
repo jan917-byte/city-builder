@@ -82,6 +82,9 @@ func bouton(texte: String) -> Button:
 func capture(nom: String) -> void:
 	if not "--captures" in OS.get_cmdline_user_args():
 		return
+	# Ce que `_process` fait à chaque image, et que l'essai a coupé : sans ça le
+	# trait restait sur la vue d'avant le recadrage (vu le 2026-10-06).
+	jeu._rafraichir(false)
 	await process_frame
 	await process_frame
 	await RenderingServer.frame_post_draw
