@@ -1,9 +1,8 @@
 extends Node
 # Le clic : rend un couple (couche, fid) et ne sait rien de la ville.
 #
-# Le raycast marche en orthographique — `project_ray_origin` y rend un point sur
-# le plan de la caméra. Les corps viennent de `create_trimesh_collision()`, un
-# par objet : d'où un nœud par îlot et par tronçon.
+# Les corps viennent de `create_trimesh_collision()`, un par objet : d'où un
+# nœud par îlot et par tronçon.
 
 signal survole(couche: String, fid: int)
 signal choisi(couche: String, fid: int)

@@ -6,8 +6,14 @@ const Constructeur := preload("res://scripts/constructeur.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
 const Ville := preload("res://scripts/ville.gd")
 
-const Y_ROULE := 0.72
-const Y_GARE := 0.66
+## Comptées depuis la chaussée SOUS la voiture (`niveau`) : la rive droite est
+## 2 m plus bas que la gauche (RIVE_DROITE_Y de 07) et les voitures y volaient.
+## Mêmes valeurs qu'avant sur la rive gauche (0,72 et 0,66 sur 0,98).
+const Y_ROULE := -0.26
+const Y_GARE := -0.32
+## Ce que rend `niveau` hors de toute chaussée : la rive gauche.
+const NIVEAU_DEFAUT := 0.98
+const CASE_SOL := 4.0
 const ESPACEMENT_CALME := 48.0
 const ESPACEMENT_CHARGE := 7.0
 const ESPACEMENT_RESERVE := 12.0
@@ -128,6 +134,7 @@ var _acces_ponts := {}
 ## en désigne un seul suivant, donc les arcs forment des circuits fermés : la
 ## voiture tourne sans fin et ne cherche jamais son chemin (décision 62).
 var _arc_t: Array[Transform3D] = []
+var _arc_dy := PackedFloat32Array()     # montée de l'arc, d'un bout à l'autre
 var _arc_L := PackedFloat32Array()
 var _arc_fid := PackedInt32Array()
 var _arc_dir := PackedVector2Array()
@@ -154,6 +161,11 @@ const PAS_COURBE := 96
 var _arc_longueur_droite := PackedFloat32Array()
 var _trajets_gpu: ImageTexture
 var _trajets_pixels := PackedFloat32Array()
+var _hauteurs_gpu: ImageTexture
+var _hauteurs_pixels := PackedFloat32Array()
+## Les triangles du dessus de la voirie, rangés par case de CASE_SOL mètres.
+var _sol_tri := PackedVector3Array()
+var _sol_cases := {}
 var _courbe_suivant := PackedInt32Array()
 var _signature_circuit := "?"
 
@@ -166,8 +178,90 @@ static func _bord_gare(route: Dictionary) -> float:
 	return maxf(1.45, float(route.get("bord_places_m", 0.0)))
 
 
+func _batir_sol(sources: Array) -> void:
+	for d in sources:
+		if (d as Dictionary).is_empty():
+			continue
+		var vs: Array = d["v"]
+		var ns: Array = d["n"]
+		var idx: Array = d["i"]
+		for t in range(0, idx.size() - 2, 3):
+			var ok := true
+			var tri := []
+			for k in 3:
+				var src := int(idx[t + k])
+				if float(ns[src][1]) < 0.9:
+					ok = false
+					break
+				tri.append(Vector3(vs[src][0], vs[src][1], vs[src][2]))
+			if not ok:
+				continue
+			var rang := _sol_tri.size() / 3
+			_sol_tri.append_array(PackedVector3Array(tri))
+			var x0 := floori(minf(tri[0].x, minf(tri[1].x, tri[2].x)) / CASE_SOL)
+			var x1 := floori(maxf(tri[0].x, maxf(tri[1].x, tri[2].x)) / CASE_SOL)
+			var z0 := floori(minf(tri[0].z, minf(tri[1].z, tri[2].z)) / CASE_SOL)
+			var z1 := floori(maxf(tri[0].z, maxf(tri[1].z, tri[2].z)) / CASE_SOL)
+			for cx in range(x0, x1 + 1):
+				for cz in range(z0, z1 + 1):
+					# ⚠️ Un Packed*Array sort du dictionnaire en COPIE : on le réécrit.
+					var cle := cx * 65536 + cz
+					var liste: PackedInt32Array = _sol_cases.get(cle, PackedInt32Array())
+					liste.append(rang)
+					_sol_cases[cle] = liste
+
+
+## La chaussée sous `p` : le plus bas des dessus qui le couvrent, marquage et
+## trottoir étant au-dessus. Hors voirie, le triangle le plus proche.
+func niveau(p: Vector2) -> float:
+	var cx := floori(p.x / CASE_SOL)
+	var cz := floori(p.y / CASE_SOL)
+	var bas := INF
+	for r in (_sol_cases.get(cx * 65536 + cz, PackedInt32Array()) as PackedInt32Array):
+		var a := _sol_tri[r * 3]
+		var b := _sol_tri[r * 3 + 1]
+		var c := _sol_tri[r * 3 + 2]
+		var bc := _barycentre(p, a, b, c)
+		if bc.x >= -0.001 and bc.y >= -0.001 and bc.z >= -0.001:
+			bas = minf(bas, a.y * bc.x + b.y * bc.y + c.y * bc.z)
+	if bas < INF:
+		return bas
+	var proche := INF
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			for r in (_sol_cases.get((cx + dx) * 65536 + cz + dz,
+					PackedInt32Array()) as PackedInt32Array):
+				var m := (_sol_tri[r * 3] + _sol_tri[r * 3 + 1] + _sol_tri[r * 3 + 2]) / 3.0
+				var d := Vector2(m.x, m.z).distance_squared_to(p)
+				if d < proche:
+					proche = d
+					bas = m.y
+	return bas if bas < INF else NIVEAU_DEFAUT
+
+
+static func _barycentre(p: Vector2, a: Vector3, b: Vector3, c: Vector3) -> Vector3:
+	var v0 := Vector2(b.x - a.x, b.z - a.z)
+	var v1 := Vector2(c.x - a.x, c.z - a.z)
+	var v2 := p - Vector2(a.x, a.z)
+	var den := v0.x * v1.y - v1.x * v0.y
+	if absf(den) < 1e-9:
+		return Vector3(-1.0, -1.0, -1.0)
+	var v := (v2.x * v1.y - v1.x * v2.y) / den
+	var w := (v0.x * v2.y - v2.x * v0.y) / den
+	return Vector3(1.0 - v - w, v, w)
+
+
+func _niveaux(pts: PackedVector2Array) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for q in pts:
+		out.append(niveau(q))
+	return out
+
+
 func batir(donnees: Dictionary, etat_ville) -> void:
 	ville = etat_ville
+	# ⚠️ `repare_voirie` porte les tabliers des ponts emportés, absents de `voirie`.
+	_batir_sol([donnees["voirie"], donnees.get("repare_voirie", {})])
 	var couloirs: Dictionary = donnees["couloirs"].duplicate(true)
 	_raccorder_bouts_ponts(couloirs)
 	var fentes: Dictionary = donnees.get("places_rue", {})
@@ -234,8 +328,9 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 		while i * 4 < f.size():
 			var b3 := Basis(Vector3.UP, atan2(float(f[i * 4 + 2]),
 				float(f[i * 4 + 3])))
+			var place := Vector2(float(f[i * 4]), float(f[i * 4 + 1]))
 			_garees.append({"fid": fid, "t": Transform3D(b3, Vector3(
-				float(f[i * 4]), Y_GARE, float(f[i * 4 + 1])))})
+				place.x, Y_GARE + niveau(place), place.y))})
 			i += pas
 
 	_mm_roule = Constructeur.voitures(_roulantes.size(), true, true)
@@ -434,9 +529,10 @@ func _semer(fam: Famille, chemin: Array, decal: float, y: float,
 	if creneaux < 1:
 		return
 	var a := _allures(creneaux, L, ecart, hash([chemin[0][0], L]))
+	var niveaux := _niveaux(chemin[0])
 	for k in creneaux * 2:
 		var seg := _segment(chemin[0], chemin[2], L, a[k][0],
-			decal + a[k][1], -1.0 if k % 2 else 1.0, y)
+			decal + a[k][1], -1.0 if k % 2 else 1.0, y, niveaux)
 		fam.t.append(seg[0])
 		fam.rang.append(a[k][3])
 		fam.creneaux.append(creneaux)
@@ -687,7 +783,7 @@ func remplir_droit(mm_gare: MultiMesh, mm_roule: MultiMesh,
 		var rang: int = k / 2
 		var cote := -1.0 if k % 2 else 1.0
 		mm_gare.set_instance_transform(k, _transforme(axe, cum, longueur,
-			depart + (rang + 0.5) * LONGUEUR_PLACE, cote * bord, Y_GARE))
+			depart + (rang + 0.5) * LONGUEUR_PLACE, cote * bord, Y_GARE + NIVEAU_DEFAUT))
 		var gris := 0.62 + 0.16 * float(k % 5) / 4.0
 		mm_gare.set_instance_color(k, Color(gris, gris * 1.01, gris * 0.98))
 
@@ -701,7 +797,8 @@ func remplir_droit(mm_gare: MultiMesh, mm_roule: MultiMesh,
 	for k in n_r:
 		var segment := _segment(axe, cum, longueur,
 			fmod((k + 0.35) * longueur / n_r, longueur),
-			maxf(1.35, chaussee * 0.25), -1.0 if k % 2 else 1.0)
+			maxf(1.35, chaussee * 0.25), -1.0 if k % 2 else 1.0,
+			Y_ROULE + NIVEAU_DEFAUT)
 		mm_roule.set_instance_transform(k, segment[0])
 		mm_roule.set_instance_color(k, PALETTE[(k * 5 + 1) % PALETTE.size()])
 		mm_roule.set_instance_custom_data(k, Color(float(segment[1]), vitesse,
@@ -715,13 +812,13 @@ func remplir_droit(mm_gare: MultiMesh, mm_roule: MultiMesh,
 	var trottoir := float(ville.routes[fid].get("bord_trottoir_m", 0.0))
 	var n_p := _doux_droit(mm_pieton, axe, cum, longueur,
 		trottoir if trottoir > 0.0 else maxf(1.0, chaussee * 0.5 - 0.35),
-		Y_ROULE + (Y_MARCHE if trottoir > 0.0 else 0.0),
+		Y_ROULE + NIVEAU_DEFAUT + (Y_MARCHE if trottoir > 0.0 else 0.0),
 		q_doux if praticable else 1.0, CHASSE_PIETON, ESPACEMENT_PIETON_ANIME,
 		ESPACEMENT_PIETON_DESERT, VITESSE_PIETON, 0.26, praticable, hier)
 	var n_v := 0
 	if VELO_ACTIF:
 		n_v = _doux_droit(mm_velo, axe, cum, longueur,
-			_bord_velo(ville.routes[fid]), Y_ROULE,
+			_bord_velo(ville.routes[fid]), Y_ROULE + NIVEAU_DEFAUT,
 			q_doux if praticable else 1.0, CHASSE_VELO, ESPACEMENT_VELO_DENSE,
 			ESPACEMENT_VELO_RARE, VITESSE_VELO, 0.0, praticable, hier)
 	else:
@@ -1227,8 +1324,10 @@ func _ajouter_arc(a: Vector2, b: Vector2, na: int, nb: int, fid: int,
 	var e := _arc_L.size()
 	var u := (b - a).normalized()
 	var pos := a + Vector2(u.y, -u.x) * DECAL_FILE
+	var ya := niveau(a)
 	_arc_t.append(Transform3D(Basis(Vector3.UP, atan2(u.x, u.y)),
-		Vector3(pos.x, Y_ROULE, pos.y)))
+		Vector3(pos.x, Y_ROULE + ya, pos.y)))
+	_arc_dy.append(niveau(b) - ya)
 	_arc_L.append(maxf(a.distance_to(b), 0.01))
 	_arc_fid.append(fid)
 	_arc_dir.append(u)
@@ -1278,6 +1377,7 @@ func _raccorder_circuit() -> void:
 	var anciennes := _arc_L.duplicate()
 	if _trajets_pixels.is_empty():
 		_trajets_pixels.resize(PAS_COURBE * _arc_L.size() * 4)
+		_hauteurs_pixels.resize(PAS_COURBE * _arc_L.size())
 		_courbe_suivant.resize(_arc_L.size())
 		_courbe_suivant.fill(-1)
 	for e in _arc_L.size():
@@ -1305,14 +1405,22 @@ func _raccorder_circuit() -> void:
 			_trajets_pixels[idx + 1] = p.z
 			_trajets_pixels[idx + 2] = direction.x
 			_trajets_pixels[idx + 3] = direction.z
+			_hauteurs_pixels[e * PAS_COURBE + j] = p.y
 	var img := Image.create_from_data(PAS_COURBE, _arc_L.size(), false,
 		Image.FORMAT_RGBAF, _trajets_pixels.to_byte_array())
 	if _trajets_gpu == null:
 		_trajets_gpu = ImageTexture.create_from_image(img)
 	else:
 		_trajets_gpu.update(img)
-	(_mm_roule.mesh.surface_get_material(0) as ShaderMaterial).set_shader_parameter(
-		"trajets", _trajets_gpu)
+	var img_h := Image.create_from_data(PAS_COURBE, _arc_L.size(), false,
+		Image.FORMAT_RF, _hauteurs_pixels.to_byte_array())
+	if _hauteurs_gpu == null:
+		_hauteurs_gpu = ImageTexture.create_from_image(img_h)
+	else:
+		_hauteurs_gpu.update(img_h)
+	var mat := _mm_roule.mesh.surface_get_material(0) as ShaderMaterial
+	mat.set_shader_parameter("trajets", _trajets_gpu)
+	mat.set_shader_parameter("hauteurs", _hauteurs_gpu)
 	for k in _roulantes.size():
 		var a: Dictionary = _roulantes[k]
 		var e := int(a["arc"])
@@ -1329,9 +1437,11 @@ func _courbe_arc(e: int) -> Curve3D:
 	var marge_f := minf(4.0, _arc_longueur_droite[f] * 0.25)
 	var u := _arc_t[e].basis.z
 	var v := _arc_t[f].basis.z
-	var debut := _arc_t[e].origin + u * marge
-	var coin := _arc_t[e].origin + u * (_arc_longueur_droite[e] - marge)
-	var fin := _arc_t[f].origin + v * marge_f
+	var le := _arc_longueur_droite[e]
+	var montee := Vector3.UP * _arc_dy[e] / le
+	var debut := _arc_t[e].origin + (u + montee) * marge
+	var coin := _arc_t[e].origin + (u + montee) * (le - marge)
+	var fin := _arc_t[f].origin + (v + Vector3.UP * _arc_dy[f] / _arc_longueur_droite[f]) * marge_f
 	var poignee := maxf(0.1, coin.distance_to(fin) * 0.55)
 	var courbe := Curve3D.new()
 	courbe.bake_interval = 0.15
@@ -1640,7 +1750,7 @@ static func _chemin(brut: Array) -> Array:
 
 static func _segment(pts: PackedVector2Array, cum: PackedFloat32Array,
 		longueur: float, s: float, decal: float, sens: float,
-		y := Y_ROULE) -> Array:
+		y := Y_ROULE, niveaux := PackedFloat32Array()) -> Array:
 	s = clampf(s, 0.0, longueur)
 	var j := 1
 	while j < cum.size() - 1 and cum[j] < s:
@@ -1653,6 +1763,12 @@ static func _segment(pts: PackedVector2Array, cum: PackedFloat32Array,
 	var phase := s - cum[j - 1] if sens > 0.0 else cum[j] - s
 	var pos := depart + Vector2(u.y, -u.x) * decal
 	var basis := Basis(Vector3.UP, atan2(u.x, u.y))
+	if not niveaux.is_empty():
+		# Penché le long du segment : le shader avance en z local, donc sur la pente.
+		var y0 := niveaux[j - 1] if sens > 0.0 else niveaux[j]
+		var y1 := niveaux[j] if sens > 0.0 else niveaux[j - 1]
+		y += y0
+		basis = basis * Basis(Vector3.RIGHT, -atan((y1 - y0) / segment_m))
 	return [Transform3D(basis, Vector3(pos.x, y, pos.y)), phase, segment_m]
 
 

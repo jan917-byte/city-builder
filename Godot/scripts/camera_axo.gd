@@ -1,22 +1,13 @@
 extends Node3D
-# Caméra ORTHOGRAPHIQUE : zoom, panoramique, et orbite (lacet 360°, hauteur
-# 6°–90°).
+# Caméra en PERSPECTIVE DOUCE : zoom, panoramique, et orbite (lacet 360°,
+# hauteur 6°–90°).
 #
-# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (§3 ter) : ce fichier interdisait l'orbite ;
-# l'auteur l'a demandée le 2026-08-17.
+# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (2026-10-06, auteur) : orthographique jusque-là,
+# vue jugée « pas naturelle » ; choisie sur `wehrau_perspective_comparaison_*`.
+# Perdu : la barre ne projette plus 3× une maison OÙ QU'ELLE SOIT dans le cadre
+# (`Plan 3 mois.md:48`). À porter au vault.
 #
-# ⚠️ L'ORTHOGRAPHIE, elle, reste : deux des trois critères de réussite en
-# dépendent (`Plan 3 mois.md:48`) — la barre doit projeter 3× une maison de 3
-# OÙ QU'ELLE SOIT dans le cadre, idem pour les largeurs de rue. Et comme l'œil
-# ne s'approche jamais (zoomer, c'est réduire `size`), la coupe de
-# `Périmètre et coupes.md:42` tient toujours : pas de LOD, pas de distance.
-# 🔄 2026-08-19 : la barre est passée à 6 niveaux, et il y en a trois. L'argument
-# tient — il porte sur le RAPPORT, 16,2 m contre 8,1 m. Mais le critère du vault
-# dit encore 9 : à trancher dans `Questions ouvertes.md`, pas ici.
-#
-# Le prix payé : sous ~15° on regarde des façades, qui sont des murs nus d'une
-# seule teinte. Angle de contrôle (silhouettes, hauteurs), pas angle de jeu —
-# d'où le plancher à 6°, possible sans devenir la vue par défaut.
+# Sous ~15° on regarde des façades nues : plancher à 6°, jamais la vue par défaut.
 #
 # LES GESTES
 #   molette                zoom
@@ -33,7 +24,8 @@ signal clic_sol(position_ecran: Vector2)
 const HAUTEUR_DEFAUT := 32.0   # l'angle historique : il reste celui du démarrage
 const HAUTEUR_MIN := 6.0       # sous 15° on regarde des façades nues, voir en-tête
 const HAUTEUR_MAX := 90.0      # à pic
-const RECUL := 6500.0          # inclut les versants extérieurs pendant l'orbite
+## L'angle vertical. Au-delà (55° essayé), le premier plan se déforme.
+const FOV := 35.0
 const TAILLE_MIN := 40.0
 const TAILLE_MAX := 2400.0
 
@@ -67,10 +59,9 @@ var _taille_cible := 1200.0
 
 func _ready() -> void:
 	camera = Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.near = 0.05
+	camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+	camera.fov = FOV
 	camera.far = 14000.0
-	camera.position = Vector3(0.0, 0.0, RECUL)
 	add_child(camera)
 	_appliquer()
 
@@ -105,6 +96,11 @@ func _appliquer() -> void:
 	# sin(32°) garde la vue par défaut identique à ce qu'elle était.
 	# Les bâtiments, eux, grandissent — c'est ce qu'on vient chercher.
 	camera.size = taille * sin(deg_to_rad(_hauteur_vu)) / sin(deg_to_rad(HAUTEUR_DEFAUT))
+	# En perspective, `size` reste la hauteur de cadre AU POINT VISÉ : le recul
+	# qui la donne. Le cadrage de chaque `viser(…, taille)` ne bouge donc pas.
+	var recul := camera.size / (2.0 * tan(deg_to_rad(FOV * 0.5)))
+	camera.position = Vector3(0.0, 0.0, recul)
+	camera.near = maxf(0.05, recul * 0.01)
 	rotation_degrees = Vector3(-_hauteur_vu, _lacet_vu, 0.0)
 	vue_changee.emit(_lacet_vu, _hauteur_vu)
 

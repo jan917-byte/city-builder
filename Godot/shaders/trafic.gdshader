@@ -2,6 +2,8 @@ shader_type spatial;
 
 global uniform float temps_trafic;
 uniform sampler2D trajets : filter_nearest, repeat_disable;
+// La chaussée sous la voiture, relative au départ de l'arc (ponts, rive droite).
+uniform sampler2D hauteurs : filter_nearest, repeat_disable;
 varying vec4 teinte;
 
 void vertex() {
@@ -17,6 +19,9 @@ void vertex() {
 	vec2 direction = normalize(pose.zw);
 	mat2 rotation = mat2(vec2(direction.y, -direction.x), direction);
 	VERTEX.xz = pose.xy + rotation * VERTEX.xz;
+	int j = min(i + 1, textureSize(trajets, 0).x - 1);
+	VERTEX.y += mix(texelFetch(hauteurs, ivec2(i, arc), 0).r,
+		texelFetch(hauteurs, ivec2(j, arc), 0).r, fract(s));
 	NORMAL.xz = rotation * NORMAL.xz;
 	teinte = COLOR;
 }

@@ -2751,6 +2751,8 @@ func _maj_contour() -> void:
 	# LA caméra recopiée : c'est ça, et rien d'autre, qui fait que le trait
 	# épouse la vue.
 	cam_masque.global_transform = pivot.camera.global_transform
+	cam_masque.projection = pivot.camera.projection
+	cam_masque.fov = pivot.camera.fov
 	cam_masque.size = pivot.camera.size
 	cam_masque.near = pivot.camera.near
 	cam_masque.far = pivot.camera.far
