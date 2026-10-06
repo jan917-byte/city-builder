@@ -40,7 +40,7 @@ Ce sont **elles, et pas le code**, qui décident de ce qu'on voit. Une ligne cha
 | les sept nombres de la crue | haut de `04e_crue.py` | qui est ruiné, qui est mouillé, quel pont est coupé — **branche `crue`** |
 | `TOITURES` · `ENDUITS` | `palette.py` | les matériaux du bâti — la couleur de la ville depuis le 2026-08-18 |
 | `BATI` | `export_godot/reglages.py` | **la pente du toit seulement** |
-| les six nombres de la berge, **les deux du toit vert** | haut de `ville.gd` | prix et durée, et **combien de crue rachètent un mètre de rive rendue et un hectare verdi** |
+| les six nombres de la berge, **les deux du toit vert**, **les cinq du sol perméable** | haut de `ville.gd` | prix et durée, et **combien de crue rachètent un mètre de rive rendue, un hectare verdi, un hectare de parking rendu perméable** |
 | 🏢 les cinq nombres de la densification | haut de `ville.gd` | prix du logement posé, durée, loyer, entretien, plafond d'étages |
 | `DENSE_INTERDIT` · le m² brut par logement | `export_godot/reglages.py`, haut de `04d` | **qui a le droit de monter**, et combien de logements un étage ajoute |
 | les quatre nombres de la plantation | haut de `ville.gd` | prix de l'arbre, durée de reprise, plafond de canopée, et **ce qu'un arbre épargne** |

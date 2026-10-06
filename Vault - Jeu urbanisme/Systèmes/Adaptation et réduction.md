@@ -1,7 +1,7 @@
 ---
 tags: [système, climat, progression]
-statut: arrêté (seuil ouvert)
-maj: 2026-08-21
+statut: arrêté
+maj: 2026-10-06
 ---
 
 # Adaptation et réduction
@@ -21,10 +21,8 @@ Le jeu s'ouvre après la crue, dans l'urgence. La ville est blessée, les ponts 
 
 La réduction entre seulement après la réparation. Ce décalage évite d'ouvrir le jeu par deux catalogues concurrents et donne un sens concret au changement d'horizon : d'abord *tenir*, ensuite *éviter d'aggraver*.
 
-## Le passage reste à définir
+## Le passage : la ville réparée
 
-Le principe est arrêté ; **l'état exact qui signifie « la ville est réparée » ne l'est pas**. Il doit se lire sur la ville, pas sur un mois arbitraire. → [[Questions ouvertes]] n°23
-
-Recommandation de travail : le passage arrive quand aucun quartier habité n'est isolé, que les fonctions indispensables sont de nouveau accessibles et que l'urgence de relogement est résolue. Il ne demande pas que chaque ruine ait disparu : sinon le prologue devient une liste de nettoyage et repousse indéfiniment le vrai jeu.
+**Tranché le 2026-10-06** → [[Décisions arrêtées]] 103. La réduction s'ouvre quand la carte le dit : **tout le monde à l'abri, aucun quartier habité coupé du reste, un îlot sinistré relevé** — quelle que soit la façon, parc inondable compris. Les ruines restantes deviennent une dette visible, pas une serrure. Le passage se lit dans le livre des concepts : la page « Ne pas aggraver » est visible avant, avec ses trois conditions cochées une à une, et elle ouvre les panneaux solaires et les rues ([[Décisions arrêtées]] 101).
 
 **Voir aussi** : [[Happenings]] · [[Wehrau]] · [[Décisions]] · [[Indicateurs globaux]]

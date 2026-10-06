@@ -647,3 +647,6 @@ Pont d'Amont : 19 rues, 165 k€, 1,3 mois, fini avant le provisoire ; le chemin
 **2026-10-06 — Design de l'après-étude : un livre des concepts, rangé à la bibliothèque de l'université ; un concept s'ouvre quand la ville le rencontre et ouvre ses leviers, la ville-éponge d'abord, avec une carte des sols (décision 101).**
 Pas de répétition ni d'orage avant la crue annoncée, six ans pour s'y préparer ; la canicule viendra plus tard comme deuxième urgence (102). Constat posé : le pont livré, tout s'ouvre mais la caisse est vide (~244 k€ après un pont en dur).
 Questions 44 et 45 fermées ; rien dans la maquette encore.
+**2026-10-06 — Le livre des concepts dans la maquette : bibliothèque de l'université, page « La ville-éponge » qui ouvre ses leviers, carte Sols, place-parking rendue perméable, jauge de la prochaine crue en centimètres ; panneaux et rues attendent la ville réparée (101 à 103, n°23 close).**
+Place-parking : 568 k€, 6 mois, −11 cm au pire partout, places gardées ; seuil où les premières maisons tiennent : 50 cm ; ville réparée au plus court par le parc de l'îlot 62 (13 k€, 6 mois).
+`essai_livre` (nouveau), `essai_ouverture`, `essai_etude`, `essai_progression`, `essai_vie_camp`, `essai_relogement`, `essai_rebatir`, `essai_camp`, `essai_deblaiement` : 0 échec ; `campagne` 7, `capital` 2, `travaux` 1, `sauvegarde` 92 comme avant.

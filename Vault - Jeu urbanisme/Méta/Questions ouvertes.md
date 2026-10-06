@@ -1,6 +1,6 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°23 (le seuil du prologue), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°44 et n°45 closes le 2026-10-06 — n°11 et n°25 closes le 2026-09-02
+statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°23, n°44 et n°45 closes le 2026-10-06 — n°11 et n°25 closes le 2026-09-02
 maj: 2026-10-06
 ---
 
@@ -48,7 +48,9 @@ Celle que le joueur montre en disant *« regarde ce que j'ai fait »*. Candidat 
 ### 6. Le premier clic et les 60 premières secondes
 Toujours sans réponse. Se découvre en jouant, pas en réfléchissant.
 
-### 23. Quand la ville est-elle assez réparée pour parler de réduction ?
+### ~~23. Quand la ville est-elle assez réparée pour parler de réduction ?~~ ✅ **close le 2026-10-06**
+
+✅ **Tranché par l'auteur** : la page « Ne pas aggraver » s'ouvre quand tout le monde est à l'abri, qu'aucun quartier habité n'est coupé et qu'un îlot sinistré est relevé → [[Décisions arrêtées]] 103.
 
 Le principe est arrêté : le prologue ne propose que l'**adaptation** ; la **réduction des émissions** entre après la réparation. Ce qui manque est le seuil qui fait changer d'horizon. → [[Décisions arrêtées]] 72 · [[Adaptation et réduction]]
 
