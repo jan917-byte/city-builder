@@ -1,6 +1,7 @@
 ---
 tags: [ville, level-design]
 statut: proposé — à valider ou renommer
+maj: 2026-10-06
 habitants: 25000  # ordre de grandeur, à confirmer au tracé
 ---
 
@@ -62,5 +63,24 @@ Test à faire : si les structures urbaines sont identiques, **une ville suffit a
 > L'usine vient de fermer. L'été a été terrible. Six décisions sur la table.
 
 C'est l'exercice de spécification à faire. → [[Décisions]]
+
+## Référence : Heidelberg
+
+**Proposé par l'auteur le 2026-10-06, pour quand on dessinera Vallmar.** C'est une source de forme, pas un modèle à recopier.
+
+| Vallmar | Heidelberg | Ce qu'on prend |
+|---|---|---|
+| La rivière à qui la ville tourne le dos | Le Neckar : une route le long de l'Altstadt sur une rive, des pelouses sur l'autre | Le problème et sa réponse face à face, sur la même vue |
+| [[Altstadt]] | Une vieille ville longue et étroite, entre le fleuve et la forêt | La forme |
+| [[Hochfeld]] | Neuenheim et Handschuhsheim, au pied du versant nord | Le coteau à l'abri de l'eau |
+| [[La Fonderie]] · [[Quartier Gare]] | Bahnstadt, l'ancienne gare de marchandises devenue un quartier | Une image de fin plutôt que de départ |
+| La campagne autour | Le damier de champs et de serres au nord-ouest | Le sol libre qui se transforme |
+| L'université de [[Wehrau]] | Le campus de Neuenheimer Feld | La continuité avec le prototype |
+
+**Ce qu'on ne prend pas :**
+- **L'échelle.** Heidelberg compte environ 160 000 habitants, alors que Vallmar fait 2 à 3 fois Wehrau (décision 77). On reprend environ l'Altstadt et ses deux rives.
+- **La mobilité.** Heidelberg est une ville de vélo et de tram, qui ressemble davantage à la ville d'arrivée qu'à celle du départ. → [[Fins et pluralisme]]
+
+**À trancher :** le relief inverse l'amont et l'aval. Le fleuve sort d'une gorge étroite et s'ouvre ensuite sur la plaine, si bien que [[Le Ried]] n'aurait pas la place en amont. Deux solutions : garder la gorge et déplacer la cause des crues, ou adoucir la gorge.
 
 **Voir aussi** : [[Pipeline QGIS]] · [[Happenings]]
