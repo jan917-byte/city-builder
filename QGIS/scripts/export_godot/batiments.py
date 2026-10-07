@@ -466,7 +466,8 @@ def _toit_plat(pente, faite, emp):
     """Le toit de CE volume est-il plat ? Le tissu donne une pente, la
     géométrie la refuse : même test qu'à l'émission, appelé aux deux endroits
     pour qu'ils ne puissent pas diverger."""
-    return not (pente > 0.0 and faite is not None and _convexe(emp))
+    return not (pente > 0.0 and faite is not None
+                and _morceaux_convexes(emp) is not None)
 
 
 def _rangs_verts(volumes, pente):
@@ -629,19 +630,29 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
     # Un vecteur source (x, y) devient (x, -y) dans le plan XZ de Godot.
     axe_uv = (axe_toit[0], -axe_toit[1])
 
-    # ⚠️ TOIT PENTU SUR EMPREINTE CONVEXE SEULEMENT. Mesuré : 93 % des
-    # empreintes le sont, les 7 % restantes prennent un toit plat et le compte
-    # s'imprime. La pente est mise à 0 en amont pour les mêmes empreintes, donc
-    # les deux tests disent la même chose — celui-ci est la ceinture.
-    if pente and pente > 0.0 and faitage is not None and _convexe(anneau):
+    # ⚠️ TOIT PENTU si l'empreinte se découpe en morceaux convexes (un L, un
+    # T…) : même test que `_toit_plat`, appelé en amont pour mettre la pente à 0.
+    morceaux = (_morceaux_convexes(anneau)
+                if pente and pente > 0.0 and faitage is not None else None)
+    if morceaux:
         bord = _decaler(anneau, DEBORD_TOIT)
+        if len(morceaux) > 1:
+            # Découpé APRÈS le débord ; si le bord ne se découpe pas, on garde
+            # les morceaux du mur, sans débord.
+            morceaux = _morceaux_convexes(bord) or morceaux
+        else:
+            morceaux = [bord]
         # La rive est la MÊME couverture, franchement assombrie : c'est une
         # tranche, elle ne reçoit jamais le soleil de face. C'est ce contraste
         # qui dessine le contour de chaque maison vue d'en haut.
         _rive(m, bord, y_haut, EPAISSEUR_TOIT,
               tuple(c * 0.70 for c in coul_toit), G)
-        h, t = _toit(m, bord, y_haut + EPAISSEUR_TOIT, pente, axe_toit,
-                     coul_toit, G, y_haut)
+        h = t = 0
+        for poly, fait in _toits_croises(morceaux, axe_toit):
+            a, b = _toit(m, poly, y_haut + EPAISSEUR_TOIT, pente, fait,
+                         coul_toit, G, y_haut)
+            h += a
+            t += b
         m.sol = None
         return ok, n, h, t
 
@@ -660,11 +671,8 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
                    genre=(-float(famille), rang_vert))
         if normale(pa, pb, pc)[1] > 0.0:
             haut_ok += 1
-    # L'acrotère est posé sur TOUS les toits plats, y compris les 159 qui le
-    # sont faute d'empreinte convexe. Ce n'est pas idéal — ces bâtiments-là
-    # devraient avoir deux pentes — mais un dessus rasé se lit comme une boîte
-    # coupée, alors qu'un dessus bordé se lit comme une toiture ratée. Entre
-    # les deux erreurs, celle-ci coûte moins cher à l'image.
+    # L'acrotère est posé sur TOUS les toits plats : un dessus rasé se lit
+    # comme une boîte coupée.
     if abs(aire_signee(anneau)) >= 20.0:
         _acrotere(m, anneau, y_haut, tuple(c * 0.88 for c in coul), G)
     m.sol = None
@@ -860,6 +868,196 @@ def _couper(poly, f, seuil):
             t = fa / (fa - fb)
             out.append((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
     return out
+
+
+def _morceaux_convexes(anneau, prof=0):
+    """L'empreinte en morceaux convexes, ou None si elle ne se découpe pas.
+
+    On coupe depuis un sommet RENTRANT, dans le prolongement d'une de ses deux
+    arêtes, jusqu'au bord d'en face : un L donne deux rectangles. Des coupes
+    possibles, on garde celle dont le morceau le plus mince est le plus épais.
+    Mesuré le 2026-10-07 : 134 empreintes à un sommet rentrant, 17 à deux.
+    """
+    if _convexe(anneau):
+        return [list(anneau)]
+    n = len(anneau)
+    if prof > 3 or n < 4:
+        return None
+    sens = 1.0 if aire_signee(anneau) > 0.0 else -1.0
+    meilleur = None
+    for i in range(n):
+        p, r, q = anneau[i - 1], anneau[i], anneau[(i + 1) % n]
+        cr = (r[0] - p[0]) * (q[1] - r[1]) - (r[1] - p[1]) * (q[0] - r[0])
+        if cr * sens >= -1e-6:
+            continue
+        for o in (p, q):
+            L = math.hypot(r[0] - o[0], r[1] - o[1])
+            if L < 1e-6:
+                continue
+            coupe = _rayon(anneau, i, (r[0] - o[0]) / L, (r[1] - o[1]) / L)
+            if coupe is None:
+                continue
+            j, h = coupe
+            m1 = [r] + [anneau[(i + 1 + k) % n]
+                        for k in range((j - i) % n)] + [h]
+            m2 = [h] + [anneau[(j + 1 + k) % n]
+                        for k in range((i - j - 1) % n)] + [r]
+            m1, m2 = _sans_doublons(m1), _sans_doublons(m2)
+            if len(m1) < 3 or len(m2) < 3:
+                continue
+            note = (_convexe(m1) + _convexe(m2),
+                    min(_epaisseur(m1), _epaisseur(m2)))
+            if meilleur is None or note > meilleur[0]:
+                meilleur = (note, m1, m2)
+    if meilleur is None:
+        return None
+    a = _morceaux_convexes(meilleur[1], prof + 1)
+    b = _morceaux_convexes(meilleur[2], prof + 1)
+    return a + b if a and b else None
+
+
+def _rayon(anneau, i, dx, dy):
+    """Premier bord touché par le rayon parti du sommet i : (arête, point)."""
+    n = len(anneau)
+    r = anneau[i]
+    best = None
+    for j in range(n):
+        if j == i or j == (i - 1) % n:
+            continue
+        a, b = anneau[j], anneau[(j + 1) % n]
+        ex, ey = b[0] - a[0], b[1] - a[1]
+        den = dx * ey - dy * ex
+        if abs(den) < 1e-12:
+            continue
+        wx, wy = a[0] - r[0], a[1] - r[1]
+        t = (wx * ey - wy * ex) / den
+        u = (wx * dy - wy * dx) / den
+        if t > 1e-6 and -1e-9 <= u <= 1.0 + 1e-9 \
+                and (best is None or t < best[0]):
+            best = (t, j, (r[0] + t * dx, r[1] + t * dy))
+    return None if best is None else (best[1], best[2])
+
+
+def _sans_doublons(poly):
+    out = []
+    for p in poly:
+        if not out or math.hypot(p[0] - out[-1][0], p[1] - out[-1][1]) > 1e-4:
+            out.append(p)
+    if len(out) > 1 and math.hypot(out[0][0] - out[-1][0],
+                                   out[0][1] - out[-1][1]) <= 1e-4:
+        out.pop()
+    return out
+
+
+def _epaisseur(poly):
+    """La plus petite largeur d'un polygone, mesurée arête par arête."""
+    n = len(poly)
+    best = float("inf")
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L < 1e-6:
+            continue
+        nx, ny = -(b[1] - a[1]) / L, (b[0] - a[0]) / L
+        best = min(best, max(abs((p[0] - a[0]) * nx + (p[1] - a[1]) * ny)
+                             for p in poly))
+    return best
+
+
+def _toits_croises(morceaux, faitage):
+    """[(polygone, faîtage)] : un toit par morceau, qui se croisent au joint.
+
+    Un morceau prend le faîtage de la rue, ou sa perpendiculaire s'il est
+    nettement plus long dans l'autre sens (une aile de L). Quand la coupe est
+    un BOUT de ce morceau (pignon), il est prolongé dans son voisin jusqu'à
+    mi-profondeur : son pignon finit sous le toit voisin, et la noue se fait
+    toute seule à l'intersection des deux toits.
+    """
+    if len(morceaux) == 1:
+        return [(morceaux[0], faitage)]
+    ux, uy = faitage
+    faites = []
+    for poly in morceaux:
+        su = [p[0] * ux + p[1] * uy for p in poly]
+        sv = [-p[0] * uy + p[1] * ux for p in poly]
+        long_u, long_v = max(su) - min(su), max(sv) - min(sv)
+        faites.append((ux, uy) if long_u >= 0.8 * long_v else (-uy, ux))
+
+    def voisin(k, a, b):
+        mx, my = (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
+        for j, autre in enumerate(morceaux):
+            if j == k:
+                continue
+            for i in range(len(autre)):
+                c, d = autre[i], autre[(i + 1) % len(autre)]
+                if D4C.dist_pt_seg((mx, my), c, d) < 1e-3:
+                    return j
+        return None
+
+    out = []
+    for k, poly in enumerate(morceaux):
+        fx, fy = faites[k]
+        i = 0
+        while i < len(poly):
+            a, b = poly[i], poly[(i + 1) % len(poly)]
+            L = math.hypot(b[0] - a[0], b[1] - a[1])
+            j = voisin(k, a, b) if L > 1e-6 else None
+            if j is None or \
+                    abs((b[0] - a[0]) * fx + (b[1] - a[1]) * fy) / L >= COS_EGOUT:
+                i += 1
+                continue
+            plus = _prolonger(poly, i, morceaux[j])
+            if plus is None:
+                i += 1
+                continue
+            poly = plus
+            i += 3
+        out.append((poly, faites[k]))
+    return out
+
+
+def _prolonger(poly, i, voisin):
+    """`poly` prolongé au-delà de son arête i, dans `voisin`, jusqu'à
+    mi-profondeur de celui-ci. None si le prolongement sort du voisin."""
+    n = len(poly)
+    a, b = poly[i], poly[(i + 1) % n]
+    L = math.hypot(b[0] - a[0], b[1] - a[1])
+    sens = 1.0 if aire_signee(poly) > 0.0 else -1.0
+    ox, oy = (b[1] - a[1]) / L * sens, -(b[0] - a[0]) / L * sens  # vers dehors
+    w = max((p[0] - a[0]) * ox + (p[1] - a[1]) * oy for p in voisin) / 2.0
+
+    def direction(c, d):
+        l = math.hypot(c[0] - d[0], c[1] - d[1])
+        u = ((c[0] - d[0]) / l, (c[1] - d[1]) / l) if l > 1e-6 else (ox, oy)
+        return u if u[0] * ox + u[1] * oy > 0.3 else (ox, oy)
+
+    da = direction(a, poly[i - 1])
+    db = direction(b, poly[(i + 2) % n])
+    ka = 1.0 / (da[0] * ox + da[1] * oy)
+    kb = 1.0 / (db[0] * ox + db[1] * oy)
+    for _essai in range(4):
+        a2 = (a[0] + da[0] * w * ka, a[1] + da[1] * w * ka)
+        b2 = (b[0] + db[0] * w * kb, b[1] + db[1] * w * kb)
+        neuf = poly[:i + 1] + [a2, b2] + poly[i + 1:]
+        if _dans_convexe(voisin, a2) and _dans_convexe(voisin, b2) \
+                and _convexe(neuf):
+            return neuf
+        w /= 2.0
+    return None
+
+
+def _dans_convexe(poly, q, tol=0.05):
+    sens = 1.0 if aire_signee(poly) > 0.0 else -1.0
+    for i in range(len(poly)):
+        a, b = poly[i], poly[(i + 1) % len(poly)]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L < 1e-9:
+            continue
+        cr = ((b[0] - a[0]) * (q[1] - a[1])
+              - (b[1] - a[1]) * (q[0] - a[0])) / L
+        if cr * sens < -tol:
+            return False
+    return True
 
 
 def _vers_dehors(tri, coeur):

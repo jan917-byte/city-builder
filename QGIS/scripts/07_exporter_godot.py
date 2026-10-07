@@ -828,10 +828,10 @@ def main():
             principal = max(range(len(volumes)), key=lambda k: abs(aire_signee(volumes[k][0]))) if volumes else -1
             for k_vol, (emp, niv, faite, parcelle, crue, eau_m) in \
                     enumerate(volumes):
-                # ⚠️ TOIT À DEUX PENTES SUR EMPREINTE CONVEXE SEULEMENT, et
-                # c'est une limite du procédé, pas une préférence. Sur une
-                # empreinte concave, une arête d'égout peut repartir en arrière
-                # dans un renfoncement et le versant qu'elle porte se retourne.
+                # ⚠️ TOIT PENTU si l'empreinte se découpe en morceaux convexes
+                # (L, T, U : un toit par morceau, croisés au joint). Sinon plat.
+                # 🔴 Coût (2026-10-07) : les 151 concaves ne verdissent plus,
+                # la surface plate tombe de 4,1 à 1,9 ha.
                 pente_v = 0.0
                 if pente > 0.0:
                     if _toit_plat(pente, faite, emp):
@@ -853,8 +853,8 @@ def main():
                     toit_ilot += aire_toit
                     # 🌿 CE QUI PEUT PORTER UN TOIT VERT, et rien d'autre : un
                     # substrat ne tient pas sur un versant. Mesuré ici plutôt
-                    # que déduit du tissu, parce que les empreintes concaves
-                    # d'un tissu à versants retombent AUSSI au toit plat.
+                    # que déduit du tissu : une empreinte qui ne se découpe pas
+                    # retombe au toit plat, même dans un tissu à versants.
                     if pente_v <= 0.0:
                         toit_plat_ilot += aire_toit
                 # ⚠️ Les chemins sont ÉCARTÉS de ce contrôle : un bâtiment qui

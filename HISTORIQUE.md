@@ -677,3 +677,6 @@ essai_trafic : 0 échec. Grain vu par l'auteur → filtre « haut ». Banc avec 
 **2026-10-07 — Les toits pentus ne sont plus vrillés, et les toits plats des tissus à tuiles virent au gris.**
 Demande de l'auteur (capture de toits cassés). Chaque versant est désormais un plan : hauteur = pente × distance à l'égout le plus proche, une arête à plus de 45° du faîtage devient pignon (`_toit`, `export_godot/batiments.py`). Aucun toit de plus ni de moins : 182 plats, comme avant.
 Toit plat sur tissu à tuiles : 60 % vers le gris membrane (`TOIT_PLAT_GRIS`, `palette.py`). Avant/après : `QGIS/rendus/wehrau_toits_avant_apres.png`, six cadrages par `Godot/outils/apercu_toits.gd`.
+**2026-10-07 — Les bâtiments en L, T, U ont un toit pentu : 151 toits plats forcés → 0.**
+Demande de l'auteur. L'empreinte se coupe au sommet rentrant en morceaux convexes, un toit par morceau ; l'aile dont la coupe est un bout se prolonge sous le toit voisin, la noue se fait à l'intersection (`_morceaux_convexes`, `_toits_croises`). 134 L, 17 à deux rentrants.
+🔴 Coût : surface plate 4,1 → 1,9 ha, îlots verdissables 39 → 7 (tissus plats seuls) ; toit total 9,9 → 10,6 ha. Îlots 32 et 49 des essais inchangés. Avant/après : `QGIS/rendus/wehrau_toits_L_avant_apres.png`.
