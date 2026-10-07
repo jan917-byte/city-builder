@@ -451,16 +451,30 @@ const TETE := Color(1.18, 1.06, 0.98)
 ## elle s'arrête au bout et c'est `trafic.gd` qui l'engage sur le suivant. La
 ## fiche, elle, montre un morceau droit sans suite : elle reboucle.
 static func voitures(nombre: int, anime := false, circuit := false) -> MultiMesh:
+	var mesh := _voiture()
+	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, circuit))
+	return _instances(mesh, nombre, anime)
+
+
+## 🚗 La voiture allégée par `outils/voiture_blender.py` (584 triangles, 3,33 m,
+## avant vers +z) : carrosserie blanche, la teinte d'instance la peint. Lue une
+## fois, puis copiée : chaque appelant pose son propre matériau sur la surface 0.
+const VOITURE := "res://data/voiture.json"
+static var _voiture_lue: Dictionary
+
+
+static func _voiture() -> ArrayMesh:
+	if _voiture_lue.is_empty():
+		_voiture_lue = JSON.parse_string(FileAccess.get_file_as_string(VOITURE))
+	var d := _voiture_lue
 	var v := PackedVector3Array()
 	var n := PackedVector3Array()
 	var c := PackedColorArray()
-	var i := PackedInt32Array()
-	_boite(v, n, c, i, Vector3(1.78, 0.62, 4.15), Vector3(0.0, 0.31, 0.0), Color.WHITE)
-	_boite(v, n, c, i, Vector3(1.48, 0.58, 2.05), Vector3(0.0, 0.90, -0.15),
-		Color(0.28, 0.33, 0.36))
-	var mesh := _surface(v, n, c, i)
-	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, circuit))
-	return _instances(mesh, nombre, anime)
+	for k in d["v"].size():
+		v.append(Vector3(d["v"][k][0], d["v"][k][1], d["v"][k][2]))
+		n.append(Vector3(d["n"][k][0], d["n"][k][1], d["n"][k][2]))
+		c.append(Color(d["c"][k][0], d["c"][k][1], d["c"][k][2]))
+	return _surface(v, n, c, PackedInt32Array(d["i"]))
 
 
 ## 🚶 UN PIÉTON — trois boîtes : jambes, buste, tête. 🔴 DEUX NE

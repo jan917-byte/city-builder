@@ -64,6 +64,7 @@ En bas à gauche, la boussole **N** remet le nord en haut ; **Dessus / 3D** alte
 | `scripts/apercu.gd` · `echantillon.gd` | miniature et coupe de rue ou de berge |
 | `scripts/trafic.gd` · `materiaux.gd` · `camera_axo.gd` · `paysage.gd` | trafic, matières, caméra et décor extérieur exporté |
 | `outils/` · `scripts/moniteur_performances.gd` | contrôles autonomes et thermomètre F3 ; `chantiers.gd` reste l'ancien prototype |
+| `assets/FREE_CAR_01.blend` → `data/voiture.json` | la voiture du trafic, allégée par `outils/voiture_blender.py` (`blender -b assets/FREE_CAR_01.blend --python outils/voiture_blender.py`). Le JSON est suivi par git : le Mac n'a pas Blender. `assets/` porte un `.gdignore`, sinon Godot tente d'importer le `.blend` |
 
 
 `ville.gd`, `energie.gd` et `chantiers.gd` **ne touchent aucun nœud**, même discipline que `constructeur.gd` : c'est ce qui les rend relisibles et portables ailleurs le jour venu.
