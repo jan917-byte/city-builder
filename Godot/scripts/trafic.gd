@@ -107,6 +107,12 @@ var _mm_roule: MultiMesh
 var _mm_gare: MultiMesh
 var _node_roule: MultiMeshInstance3D
 var _node_gare: MultiMeshInstance3D
+## 🌗 Les ombres des voitures : des boîtes qui recopient chaque écriture des
+## deux MultiMesh ci-dessus, et ne se dessinent que dans la carte d'ombre.
+var _mm_roule_ombre: MultiMesh
+var _mm_gare_ombre: MultiMesh
+var _node_roule_ombre: MultiMeshInstance3D
+var _node_gare_ombre: MultiMeshInstance3D
 var _actif := true
 var _visibles_roule := PackedByteArray()
 var _visibles_gare := PackedByteArray()
@@ -348,6 +354,11 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	_node_gare.multimesh = _mm_gare
 	_node_gare.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_node_gare)
+	_mm_roule_ombre = Constructeur.voitures_ombre(_roulantes.size(), true)
+	_mm_roule_ombre.mesh.surface_set_material(0, courbes)
+	_mm_gare_ombre = Constructeur.voitures_ombre(_garees.size())
+	_node_roule_ombre = _ombres("OmbresRoulantes", _mm_roule_ombre)
+	_node_gare_ombre = _ombres("OmbresGarees", _mm_gare_ombre)
 	for k in _roulantes.size():
 		_mm_roule.set_instance_color(k, PALETTE[(k * 5 + 1) % PALETTE.size()])
 	_visibles_roule.resize(_roulantes.size())
@@ -420,6 +431,8 @@ func regler_detail(taille_camera: float) -> void:
 	_actif = actif
 	_node_roule.visible = actif
 	_node_gare.visible = actif
+	_node_roule_ombre.visible = actif
+	_node_gare_ombre.visible = actif
 	if actif:
 		_dernier_etat = -1.0
 		_derniere_charge = -1.0
@@ -492,6 +505,7 @@ func _maj_roulantes(mois: float, force: bool) -> void:
 			occupe[fid] = n + 1
 		elif _visibles_roule[k] == 1 or force:
 			_mm_roule.set_instance_transform(k, _vide)
+			_mm_roule_ombre.set_instance_transform(k, _vide)
 			_arc_vu[k] = -1
 		_visibles_roule[k] = 1 if place else 0
 		var v: float = vitesses[fid]
@@ -581,6 +595,15 @@ static func _allures(n: int, L: float, ecart: float, graine: int) -> Array:
 					out[int(k)][3] = rang
 					rang += 1
 	return out
+
+
+func _ombres(nom: String, mm: MultiMesh) -> MultiMeshInstance3D:
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = nom
+	mmi.multimesh = mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	add_child(mmi)
+	return mmi
 
 
 ## Le nœud, la teinte et la donnée d'animation : tout ce qui ne changera plus.
@@ -1515,9 +1538,11 @@ func _semer_circuit() -> void:
 
 func _ecrire(k: int, a: Dictionary) -> void:
 	var e: int = a["arc"]
+	var donnee := Color(float(a["phase"]), float(a["v"]), _arc_L[e], float(e))
 	_mm_roule.set_instance_transform(k, _arc_t[e])
-	_mm_roule.set_instance_custom_data(k, Color(float(a["phase"]),
-		float(a["v"]), _arc_L[e], float(e)))
+	_mm_roule.set_instance_custom_data(k, donnee)
+	_mm_roule_ombre.set_instance_transform(k, _arc_t[e])
+	_mm_roule_ombre.set_instance_custom_data(k, donnee)
 	_arc_vu[k] = e
 
 
@@ -1736,6 +1761,7 @@ func _maj_garees(mois: float, force: bool) -> void:
 			continue
 		_visibles_gare[k] = 1 if montre else 0
 		_mm_gare.set_instance_transform(k, a["t"] if montre else _vide)
+		_mm_gare_ombre.set_instance_transform(k, a["t"] if montre else _vide)
 
 
 static func _chemin(brut: Array) -> Array:

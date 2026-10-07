@@ -456,6 +456,21 @@ static func voitures(nombre: int, anime := false, circuit := false) -> MultiMesh
 	return _instances(mesh, nombre, anime)
 
 
+## 🌗 CE QUI PORTE L'OMBRE D'UNE VOITURE : caisse et habitacle, 24 triangles au
+## lieu de 778. Mesuré sur `voiture.json` : 1,78 × 3,33 m, toit à 1,65 m,
+## habitacle de z −1,32 à +0,06 avec le pare-brise penché jusqu'à +0,75.
+## Mêmes instances que la voiture, donc même matériau (les roulantes y lisent
+## leur trajet).
+static func voitures_ombre(nombre: int, anime := false) -> MultiMesh:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var i := PackedInt32Array()
+	_boite(v, n, c, i, Vector3(1.76, 0.85, 3.3), Vector3(0.0, 0.575, 0.0), Color.WHITE)
+	_boite(v, n, c, i, Vector3(1.38, 0.65, 1.8), Vector3(0.0, 1.325, -0.55), Color.WHITE)
+	return _instances(_surface(v, n, c, i), nombre, anime)
+
+
 ## 🚗 La voiture allégée par `outils/voiture_blender.py` (778 triangles, 3,33 m,
 ## avant vers +z) : carrosserie blanche, la teinte d'instance la peint. Lue une
 ## fois, puis copiée : chaque appelant pose son propre matériau sur la surface 0.

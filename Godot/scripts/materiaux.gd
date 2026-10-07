@@ -851,9 +851,10 @@ static func contour(masque_tex: Texture2D, couleur: Color,
 ## volumes se détachent.
 ## 🔴 `portee_ombre` n'est pas un réglage de goût : la carte d'ombre couvre
 ## cette distance, et l'étaler sur 3 km pour un objet de 100 m fait s'ombrer
-## l'objet lui-même — murs noirs dans la miniature.
+## l'objet lui-même — murs noirs dans la miniature. En perspective, `soleil.gd`
+## la recalcule à chaque mouvement de caméra.
 static func soleil(teinte: Color, portee_ombre := 3000.0) -> DirectionalLight3D:
-	var l := DirectionalLight3D.new()
+	var l: DirectionalLight3D = preload("res://scripts/soleil.gd").new()
 	l.name = "Soleil"
 	l.rotation_degrees = Vector3(-48.0, -125.0, 0.0)
 	l.light_color = teinte
@@ -862,6 +863,8 @@ static func soleil(teinte: Color, portee_ombre := 3000.0) -> DirectionalLight3D:
 	l.light_angular_distance = 1.6
 	l.shadow_enabled = true
 	l.directional_shadow_max_distance = portee_ombre
+	# Sans fondu, le passage d'une tranche à la suivante se lit en couture nette.
+	l.directional_shadow_blend_splits = true
 	return l
 
 
