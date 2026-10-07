@@ -152,8 +152,8 @@ func batir(mat_objet: Material, palette: Dictionary, taille := TAILLE) -> void:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.name = "Usagers"
 		mmi.multimesh = mm
-		# Comme dans la ville : la voiture porte une ombre, le piéton non.
-		if mm != mm_gare and mm != mm_roule:
+		# Comme dans la ville : voiture et piéton portent une ombre, le vélo non.
+		if mm == mm_velo:
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mmi)
 

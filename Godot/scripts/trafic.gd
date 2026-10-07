@@ -398,6 +398,8 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	_visibles_gare.fill(0)
 	_maj_garees(0.0, true)
 	_monter(_pieds, Constructeur.pietons(_pieds.t.size()), "Pietons", HABITS)
+	# 🌗 Ses 36 triangles portent l'ombre eux-mêmes : une boîte n'en ferait que 12.
+	_pieds.noeud.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	_monter(_roues, Constructeur.cyclistes(_roues.t.size()), "Cyclistes", HABITS)
 	var doux := _impraticables(0.0)
 	_maj_famille(_pieds, 0.0, true, CHASSE_PIETON, ESPACEMENT_PIETON_ANIME,
