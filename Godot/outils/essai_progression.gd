@@ -18,28 +18,39 @@ func executer() -> void:
 	verifier(not retours.compteur.visible and not retours.avis.visible, "Le récit masque le compteur et les notifications")
 	jeu.recit.terminer()
 	jeu._sur_vitesse(0.0)
-	verifier(retours.compteur.visible and "260" in retours.besoin.text, "Compteur permanent après le récit")
+	verifier(retours.compteur.visible and "260" in retours.detail(retours.sans_logement), "Compteur permanent après le récit")
 	o.ouvert = false
 	o.actualiser(true)
 	verifier(retours.compteur.visible, "Compteur conservé quand le guide est réduit")
+	verifier(retours.ponts_casses.visible and retours.detail(retours.ponts_casses).count("\n") == jeu.ville.ponts_coupes().size(),
+		"Dès le début, la pastille des ponts cassés nomme chacun : %s" % retours.detail(retours.ponts_casses).replace("\n", " / "))
 	var champ: int = o._champs_accessibles()[0]
 	var nourris: float = jeu.ville.nourriture_personnes(0.0)
 	o.examiner("i", champ, "camp")
 	await cliquer(jeu.interface._recap_bouton)
 	verifier(jeu.ville.nourriture_personnes(0.0) < nourris and jeu.ville.sans_toit(0.0) == 260,
 		"Coût agricole immédiat, aucune personne relogée avant livraison")
-	verifier(retours.preparation.visible and "260" in retours.besoin.text, "Places en préparation séparées du besoin")
+	verifier("construction" in retours.detail(retours.sans_logement) and "260" in retours.detail(retours.sans_logement), "Places en préparation séparées du besoin")
 	verifier(retours.chantiers.visible and "abris" in retours.chantiers_lignes[0]["quoi"].text,
 		"Le chantier engagé a sa barre en bas à droite")
 	await process_frame
-	verifier(not retours.compteur.is_ancestor_of(retours.chantiers)
-		and retours.chantiers.get_global_rect().end.y < retours.compteur.get_global_rect().position.y,
-		"Les chantiers ont leur boîte, au-dessus du compteur des sans-logement")
+	verifier(retours.chantiers.get_global_rect().end.y < retours.journal_bouton.get_global_rect().position.y
+		and absf(retours.sans_logement.get_global_rect().get_center().x - root.size.x / 2.0) < 40.0,
+		"Les chantiers en bas à droite, au-dessus du journal ; les problèmes au centre du bas")
 	await capture("progression_01_engagement")
+	# 🔴 Le détail du problème vit dans l'infobulle de sa pastille.
+	retours.sans_logement.mouse_entered.emit()
+	await process_frame
+	verifier(retours.survol.visible and "260" in retours.survol_titre.text
+		and "k€ par mois" in retours.detail(retours.sans_logement)
+		and retours.survol.get_global_rect().end.y < retours.sans_logement.get_global_rect().position.y,
+		"Le survol de la pastille dit le problème et son coût, au-dessus d'elle")
+	await capture("progression_01b_survol")
+	retours.sans_logement.mouse_exited.emit()
 	actualiser(0.2)
-	verifier("22" in retours.besoin.text and not "construction" in retours.preparation.text, "Le compteur baisse à la livraison")
+	verifier("22" in retours.detail(retours.sans_logement) and not "construction" in retours.detail(retours.sans_logement), "Le compteur baisse à la livraison")
 	verifier(not retours.chantiers.visible, "La boîte des chantiers part avec le dernier livré")
-	verifier("Aide d'urgence" in retours.preparation.text and "9 k€" in retours.preparation.text,
+	verifier("aide d'urgence" in retours.detail(retours.sans_logement) and "9 k€" in retours.detail(retours.sans_logement),
 		"Les 22 personnes dehors coûtent leur aide chaque mois")
 	verifier(retours.journal.size() >= 3, "Engagement, livraison et relogement sont conservés dans le journal")
 	await capture("progression_02_livraison")
@@ -98,7 +109,7 @@ func executer() -> void:
 		if pont == 169:
 			await capture("progression_05_liaison")
 			# Le verre ajoute ses propres enfants au panneau : on cherche le bouton.
-			await cliquer(retours.compteur.find_children("*", "Button", true, false)[0])
+			await cliquer(retours.journal_bouton)
 			await capture("progression_06_journal")
 			await process_frame
 			verifier(jeu.interface._fiche_panneau.get_global_rect().end.y < retours.pile.get_global_rect().position.y,

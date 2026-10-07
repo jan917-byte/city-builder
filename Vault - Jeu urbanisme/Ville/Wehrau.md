@@ -1,7 +1,7 @@
 ---
 tags: [ville, prototype, level-design]
 statut: 🎯 périmètre du prototype
-maj: 2026-09-28
+maj: 2026-10-07
 habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 ---
 
@@ -13,6 +13,8 @@ habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 **Une rivière : l'Ilse. Une petite ville qu'on tient tout entière dans un écran.**
 
 > ✅ **Les noms sont arrêtés le 2026-08-12 : la ville est Wehrau, la rivière est l'Ilse.** Ils étaient proposés depuis le 2026-08-10 et la fenêtre pour renommer sans frais se refermait — le générateur de parcelles est le moment où les noms entrent dans le code. → [[Décisions arrêtées]] 13f
+
+> ✅ **La région est le Grobwald** (auteur, 2026-10-07) : Wehrau est nichée à la sortie d'une de ses vallées. Le nom ouvre la première page du récit.
 
 > ✅ **5 350 habitants, arrêté le 2026-08-11.** Le vault annonçait 18 000 ; la carte, une fois les densités posées, en porte 5 350 sur 38,3 ha bâtis, et c'est la carte qui gagne. Il aurait fallu 470 hab/ha bâti pour tenir 18 000, quand un centre allemand dense plafonne vers 350. Wehrau est une **petite ville de marché** — c'est le cadre le plus lisible pour l'histoire qu'on raconte, puisque la place du marché y est *la* place. → [[Décisions arrêtées]] 13d
 

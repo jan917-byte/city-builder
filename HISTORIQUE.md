@@ -662,3 +662,6 @@ essai_etude, essai_livre, essai_concours, essai_ouverture, essai_progression, es
 **2026-10-06 — Les voitures roulent sur la chaussée de la rive droite, et la caméra passe en perspective douce (35°).**
 Les voitures, garées et piétons étaient à une hauteur fixe réglée sur la rive gauche ; la rive droite est 2 m plus bas (RIVE_DROITE_Y), ils y volaient. Ils lisent maintenant la chaussée sous eux dans le maillage de voirie, ponts en pente compris. Caméra : choix 2 sur trois essais côte à côte, demande de l'auteur (« la perspective n'est pas naturelle »).
 essai_trafic, essai_camera, essai_ouverture, essai_deblaiement, essai_progression : 0 échec ; passe `--essai` complète sans erreur. Reste : sur le pont provisoire, des piétons marchent hors du plancher, au-dessus de l'eau.
+**2026-10-07 — Le compteur des sans-logement devient une pastille rouge (icône seule), le détail au survol, dans une bulle en verre à sa gauche.**
+Demande de l'auteur (« comme Frostpunk »), pour laisser de la place à d'autres problèmes ; le journal reste au bout de la rangée, en cercle neutre.
+essai_progression (+ capture `_01b_survol`), essai_ouverture, essai_vie_camp, essai_relogement, essai_etude, essai_livre : 0 échec.

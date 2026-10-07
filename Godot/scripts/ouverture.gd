@@ -903,18 +903,19 @@ func actualiser(force := false) -> void:
 			_texte.text = "La carte de l'étude est dans Dangers, dans la colonne de gauche."
 		"reloger":
 			# 🧭 Ni chiffre sur la carte ni bouton qui mène aux champs (auteur, 2026-09-17) ;
-			# le guide dit « un champ », les ponts coupés viennent après (auteur, 2026-10-06).
+			# le guide dit « un champ » et les ponts coupés (tableau de l'auteur, 2026-10-07).
 			var sans_toit: float = jeu.ville.sans_toit(jeu.mois)
 			var commandees: int = jeu.ville.places_commandees(jeu.mois)
 			_titre.text = "%d personnes sont dehors" % int(sans_toit)
-			# 🔴 Texte de prototype, flaggable (90).
-			_texte.text = "Trouvez un champ où poser des containers pour les loger."
+			var coupes: int = int(jeu.ville.degats(jeu.mois)["franchissements_coupes"])
+			# 🔴 Texte du tableau de l'auteur (2026-10-07), flaggable (90).
+			_texte.text = "%d ponts coupés : elles restent sur leur rive. Cliquez sur un champ pour les abriter." % coupes
 			if commandees > 0:
 				_texte.text = "Abris commandés : %d places. Il manque encore %d places." % [
 					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
-					_texte.text += "\n%s est sur l'autre rive : personne ne peut y aller." % _nom_champ(int(fid))
+					_texte.text += "\n%s est sur l'autre rive. Elle n'est pas accessible tant qu'un pont n'a pas été rebâti." % _nom_champ(int(fid))
 			_poser_reperes([])
 		"choix":
 			# 🔄 LE JOUEUR CHOISIT SON ÎLOT (auteur, 2026-10-06) : ni bouton ni lieu

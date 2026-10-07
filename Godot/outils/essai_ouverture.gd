@@ -183,14 +183,16 @@ func executer() -> void:
 		and not jeu.interface._camp_bloc.visible
 		and not jeu.interface._solaire_bloc.visible,
 		"Un îlot bâti n'ouvre aucun chantier pendant l'urgence")
+	verifier("abrité" in jeu.interface._message.text,
+		"La fiche de l'îlot dit pourquoi rien ne s'engage")
 	await capture("01b_ilot_muet")
 	jeu._sur_choix("r", o.RUE)
 	verifier(not jeu.interface._repare_bloc.visible
 		and not jeu.interface._trafic_bloc.visible, "Une rue non plus")
 	jeu._sur_choix("b", o.BERGE)
 	verifier(not jeu.interface._berge_bloc.visible, "Une berge non plus")
-	verifier("Trouvez un champ" in o._texte.text and not "ponts coupés" in o._texte.text,
-		"Le guide dit de chercher un champ, et ne parle pas encore des ponts")
+	verifier("champ" in o._texte.text and not ("terrain nu" in o._texte.text),
+		"Trois lieux muets : le guide dit « un champ », sans autre indice")
 	# 🌉 Le champ de l'autre rive prévient et laisse faire.
 	jeu._sur_choix("i", lointain)
 	verifier(jeu.interface._camp_bloc.visible
@@ -200,10 +202,12 @@ func executer() -> void:
 	var caisse0: float = jeu.ville.caisse_ke(0.0)
 	var nourris0: float = jeu.ville.nourriture_personnes(0.0)
 	jeu._sur_choix("i", champs[0])
-	verifier(jeu.interface._camp_bloc.visible, "Le champ atteignable ouvre le relogement")
-	# 🔄 Rien au-dessus du bouton (auteur, 2026-10-06) : prix, abrités et nourris sont en bas.
-	verifier(not jeu.interface._camp_texte.visible, "La fiche du champ ne répète pas les conséquences")
+	verifier(jeu.interface._camp_bloc.visible,
+		"Le champ atteignable ouvre le relogement")
+	# 🌾 Ce que le champ nourrit n'est que dans les conséquences (auteur, 2026-10-07).
 	var nourri_champ: float = jeu.ville.champ_nourriture(champs[0])
+	verifier(nourri_champ > 0.0 and not ("cultivé" in jeu.interface._camp_texte.text),
+		"La fiche du champ (%.0f personnes nourries) ne parle plus de culture" % nourri_champ)
 	# 🗂️ 🔄 LA FICHE EST À ONGLETS depuis le 2026-09-18 : ce qui portait
 	# « Nourrit » est l'onglet campagne, et il n'existe que sur un champ.
 	verifier(jeu.interface._dispo.has("campagne")
@@ -247,8 +251,8 @@ func executer() -> void:
 	verifier(is_equal_approx(jeu.ville.nourriture_personnes(0.2),
 		nourris0 - nourri_champ),
 		"La campagne perd les %.0f personnes du champ" % nourri_champ)
-	verifier("ne nourrit plus" in jeu.interface._camp_texte.text,
-		"La fiche du camp rappelle ce que le champ ne nourrit plus")
+	verifier(not ("nourrit" in jeu.interface._camp_texte.text),
+		"La fiche du camp ne rappelle plus ce que le champ nourrissait")
 	# 🔒 LE RELOGEMENT SE FINIT AVANT LE PONT (auteur, 2026-09-22).
 	verifier(o.etape == "reloger" and o.verrou() == "reloger" and "Il manque encore" in o._texte.text,
 		"Avec %d personnes dehors, le guide demande un autre terrain" % int(besoin - float(capacite)))

@@ -1121,6 +1121,7 @@ const DESSINS := {
 	"plan": "<path d='M14.1 5.55a2 2 0 001.8 0l3.65-1.83A1 1 0 0121 4.62v12.76a1 1 0 01-.55.9l-4.55 2.27a2 2 0 01-1.8 0L9.9 18.45a2 2 0 00-1.8 0l-3.65 1.83A1 1 0 013 19.38V6.62a1 1 0 01.55-.9l4.55-2.27a2 2 0 011.8 0zM15 5.76v15M9 3.24v15'/>",
 	"cube": "<path d='M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/><path d='M3.3 7L12 12l8.7-5M12 22V12'/>",
 	"croix": "<path d='M18 6L6 18M6 6l12 12'/>",
+	"camp": "<path d='M3.5 21L14 3M20.5 21L10 3M15.5 21L12 15l-3.5 6M2 21h20'/>",
 	"journal": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l4 2'/>",
 }
 
@@ -2690,18 +2691,9 @@ func montrer_depart() -> void:
 	v.add_theme_constant_override("separation", 12)
 	p.add_child(v)
 	v.add_child(_titre("Wehrau, après la crue", 17, ACCENT))
-	var mot := _label("La ville est sinistrée et la caisse est courte."
-		+ " Choisissez comment vous voulez jouer.", 13, TEXTE)
-	mot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(mot)
-	for choix in [["Mode histoire", false,
-			"La partie normale : les chantiers prennent le temps qu'ils prennent."],
-			["Mode auteur", true,
-			"Pour essayer : tout chantier engagé est livré immédiatement."
-			+ " Les prix et la dotation ne changent pas."]]:
+	for choix in [["Mode histoire", false], ["Mode auteur", true]]:
 		var b := Button.new()
 		b.text = String(choix[0])
-		b.tooltip_text = String(choix[2])
 		b.focus_mode = Control.FOCUS_NONE
 		if not bool(choix[1]):
 			_habiller_principal(b)
@@ -2710,9 +2702,6 @@ func montrer_depart() -> void:
 			centre.visible = false
 			mode_choisi.emit(auteur))
 		v.add_child(b)
-		var sous := _label(String(choix[2]), 11, GRIS)
-		sous.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(sous)
 	_sans_focus(centre)
 
 
@@ -3018,6 +3007,7 @@ func ouvrir_projets() -> void:
 	_projets_cle = ""
 	_projets_panneau.visible = true
 	_maj_projets()
+	retours.actualiser_affichage()
 	projets_ouverts.emit(_fiche_fid)
 
 
@@ -3029,6 +3019,7 @@ func projets_fid() -> int:
 func fermer_projets() -> void:
 	if _projets_panneau != null:
 		_projets_panneau.visible = false
+		retours.actualiser_affichage()
 
 
 ## Appelé à chaque image avec la fiche : les boutons suivent la pose, les chiffres
@@ -5285,14 +5276,7 @@ func _habiller_secondaire(b: Button) -> void:
 ## pose et se paie, et l'avertissement est au-dessus du bouton. L'erreur coûte
 ## du temps et de l'argent, elle ne ferme aucune porte — un pont réparé
 ## remplira le camp plus tard.
-## 🌾 Une fois le camp posé, ce que le champ a cessé de nourrir.
-func _champ_perdu(fid: int) -> String:
-	var nourris := ville.champ_nourriture(fid, _mois)
-	if nourris < 0.5:
-		return "Ce champ ne nourrit personne."
-	return "Il ne nourrit plus ses %s personnes." % _nb(nourris, 0)
-
-
+## 🌾 Ce que le champ cesse de nourrir n'est que dans les conséquences (auteur, 2026-10-07).
 func _maj_camp() -> void:
 	if _fiche_couche != "i" or not ville.camp_possible(_fiche_fid):
 		_bloc_dispo[_camp_bloc] = false
@@ -5312,9 +5296,8 @@ func _maj_camp() -> void:
 				ville.camp_reste_mois(fid, _mois))
 			_camp_bouton.text = "Chantier en cours"
 		elif ville.camp_accessible(fid, _mois):
-			_camp_texte.text = "%d containers · %d abrités\n%s" % [
-				ville.camp_abris(fid, _mois), int(occupants),
-				_champ_perdu(fid)]
+			_camp_texte.text = "%d containers · %d abrités" % [
+				ville.camp_abris(fid, _mois), int(occupants)]
 			_camp_bouton.text = "Camp en place"
 		else:
 			# 🌉 Le camp promis, et personne dedans. Ce n'est pas une panne :
@@ -5334,10 +5317,12 @@ func _maj_camp() -> void:
 		_marquer(_camp_bouton, false)
 		return
 	var places: int = ville.camp_taille(fid, _mois)
-	# 🔄 Ni capacité ni « plus jamais cultivé » (auteur, 2026-10-06) : prix, abrités
-	# et nourris sont aux conséquences du bas, on ne les répète pas.
-	_camp_texte.text = "⚠ Autre rive : personne ne pourra y aller." if not ville.camp_accessible(fid, _mois) else ""
-	_camp_texte.visible = _camp_texte.text != ""
+	var maxi: int = ville.camp_capacite(fid)
+	# Le nombre de sinistrés est déjà au compteur : la fiche dit ce que le champ tient.
+	var phrase := "Jusqu'à %d personnes · %d containers" % [maxi, ville.camp_places_max(fid)]
+	if not ville.camp_accessible(fid, _mois):
+		phrase += "\n⚠ Autre rive : inaccessible"
+	_camp_texte.text = phrase
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
 
