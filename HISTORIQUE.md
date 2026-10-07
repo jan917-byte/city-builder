@@ -686,3 +686,6 @@ Demande de l'auteur (« environ 3 ha »). Complexité = versants de plus de 2 m�
 **2026-10-07 — Les arbres : chaque couronne est tirée de sa position, et la forêt est plantée des recettes de la ville.**
 Demande de l'auteur (« plus de variété, cohérents entre eux »). Lobes satellites grossis, déplacés ou absents par le shader (`feuillage.gdshader`), pose élancée ou trapue et un peu penchée (`Constructeur.pose`) ; saule à rideau, fruitier étalé, épicéa à quatre étages. Les trois modèles exportés par `paysage.py` disparaissent.
 🔴 Coût au banc : la forêt prend ~1,6 ms par image en vue d'ensemble, ombres comprises (4,7 sans elle, ~6,5 avec), rien de près (tuiles de 600 m). La forêt porte maintenant son ombre, comme la ville. À juger : la forêt de loin, plus claire qu'avant. `QGIS/rendus/wehrau_arbres_avant_apres.png`, pépinière `wehrau_arbres_01_pepiniere_apres.png`.
+**2026-10-07 — L'Ilse s'arrête avec la pause ; pictogrammes de pont et pastilles gardent leurs pixels en plein écran.**
+Demande de l'auteur. Le courant lit l'horloge du trafic (`temps_trafic`, déclarée dans `project.godot`) au lieu de `TIME` ; il est donc figé aussi pendant le récit d'ouverture.
+Les pictogrammes grandissaient avec la fenêtre (×1,6 à 2560×1440) quand l'interface ne grandit pas ; réglés sur 900 px (`Pastilles.largeur`). `QGIS/rendus/wehrau_icones_ponts_avant_apres.png`.

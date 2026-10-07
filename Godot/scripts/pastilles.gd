@@ -22,6 +22,14 @@ const TAILLE := 128
 const LARGEUR_PAR_TAILLE := 0.050
 const LARGEUR_MIN_M := 12.0
 const LARGEUR_MAX_M := 90.0
+## Réglée dans la fenêtre de 900 px : plus haute (plein écran), le pictogramme
+## garde ses pixels au lieu de grandir avec elle, comme l'interface (auteur, 2026-10-07).
+const HAUTEUR_REFERENCE_PX := 900.0
+
+
+static func largeur(distance: float, hauteur_px: float) -> float:
+	return clampf(distance * LARGEUR_PAR_TAILLE, LARGEUR_MIN_M, LARGEUR_MAX_M) \
+		* HAUTEUR_REFERENCE_PX / maxf(hauteur_px, 1.0)
 
 var jeu
 ## 📖 Le récit d'ouverture les tient éteintes jusqu'à la page des dégâts.
@@ -169,8 +177,7 @@ func _dimensionner(n: Node3D) -> void:
 ## qu'elles sont là, elles gardent la même taille à l'écran.
 func regler_portee(distance: float) -> void:
 	visible = not muettes and distance <= PORTEE_M
-	var large := clampf(distance * LARGEUR_PAR_TAILLE,
-		LARGEUR_MIN_M, LARGEUR_MAX_M)
+	var large := largeur(distance, get_viewport().get_visible_rect().size.y)
 	if is_equal_approx(large, _largeur_m):
 		return
 	_largeur_m = large

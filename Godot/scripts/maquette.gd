@@ -301,6 +301,7 @@ func _ready() -> void:
 		_rafraichir(true))
 	pivot.vue_changee.connect(interface.maj_camera)
 	pivot.vue_changee.connect(_sur_vue_changee)
+	get_viewport().size_changed.connect(func() -> void: _sur_vue_changee(0.0, 0.0))
 	interface.maj_camera(pivot.lacet, pivot.hauteur)
 	horloge_trafic = Timer.new()
 	horloge_trafic.wait_time = 0.25
@@ -2635,8 +2636,8 @@ func _batir_marqueurs_crue() -> void:
 
 ## Même règle que les pastilles, un tiers plus grand : une taille constante à l'écran.
 func _taille_icone_pont() -> float:
-	return clampf(pivot.taille * Pastilles.LARGEUR_PAR_TAILLE,
-		Pastilles.LARGEUR_MIN_M, Pastilles.LARGEUR_MAX_M) * 1.3 / float(Pastilles.TAILLE)
+	return Pastilles.largeur(pivot.taille, get_viewport().get_visible_rect().size.y) \
+		* 1.3 / float(Pastilles.TAILLE)
 
 
 func _icone_pont(fid: int, montrer: bool) -> void:
