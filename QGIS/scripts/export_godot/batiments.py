@@ -31,6 +31,7 @@ from .reglages import (
     CHEMINEE_AIRE_MIN,
     CHEMINEE_COTE,
     CHEMINEE_HAUT,
+    COS_EGOUT,
     COUL_CHEMINEE,
     DEBORD_TOIT,
     DENSE_INTERDIT,
@@ -725,108 +726,140 @@ def _ruine(m, anneau, coul_mur, coul_gravats, G, rng):
 
 
 def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
-    """Un toit à deux pentes, sans un seul asset.
+    """Un toit pentu sur une empreinte CONVEXE, sans un seul asset.
 
-    LA RECETTE, et c'est tout : on pose une DROITE DE FAÎTAGE au milieu de
-    l'empreinte, parallèle à la rue, puis chaque sommet de l'égout est relié à
-    sa propre projection sur cette droite.
+    Chaque arête de l'égout est un ÉGOUT (elle porte un versant) si elle court
+    à moins de ANGLE_EGOUT_DEG du faîtage, un PIGNON (mur vertical) sinon. La
+    hauteur d'un point est `pente × distance à l'égout le plus proche` : chaque
+    versant est donc un PLAN, quelle que soit la forme. Rectangle → deux pentes
+    et deux pignons ; trapèze → faîtage en biais, versants plans ; pan coupé →
+    une petite croupe.
 
-    Ce que ça produit tout seul, sans cas particulier :
-      · les deux arêtes le long de la rue donnent les deux versants ;
-      · les deux arêtes de bout donnent des pignons VERTICAUX, parce que leurs
-        deux sommets se projettent au même endroit du faîtage et que le quad
-        s'écrase en triangle ;
-      · deux maisons mitoyennes ont donc deux pignons dans le MÊME plan, celui
-        du mur qu'elles partagent déjà (61) — le joint en toiture entre deux
-        hauteurs différentes se fait tout seul, en décrochement franc. C'est
-        exactement ce que 61 laissait à faire, et ça n'a demandé aucun code.
-
-    ⚠️ Le faîtage est parallèle à la RUE, pas à l'axe long de l'empreinte. Sur
-    une maison de ville plus profonde que large, l'axe long est perpendiculaire
-    à la rue : le toit partirait de travers, et toute une rangée avec.
+    🔄 Remplace (2026-10-07) « chaque sommet relié à sa projection sur une
+    droite de faîtage » : hors rectangle, les pans sortaient vrillés et de
+    pentes différentes — les toits cassés vus par l'auteur.
+    ⚠️ Le faîtage est parallèle à la RUE, pas à l'axe long de l'empreinte.
     """
     ux, uy = faitage
     axe_uv = (ux, -uy)
-    vx, vy = -uy, ux                        # perpendiculaire, vers la profondeur
-    cx = sum(p[0] for p in anneau) / len(anneau)
-    cy = sum(p[1] for p in anneau) / len(anneau)
-    vs = [(p[0] - cx) * vx + (p[1] - cy) * vy for p in anneau]
-    demi = (max(vs) - min(vs)) / 2.0
-    y_fait = y_egout + min(FAITAGE_MAX, pente * demi)
-    # Le faîtage passe par le milieu de la profondeur, pas par le centroïde :
-    # sur une empreinte de travers le centroïde décentre le toit.
-    mv = (max(vs) + min(vs)) / 2.0
-    ox, oy = cx + vx * mv, cy + vy * mv
-
-    def sur_faitage(p):
-        t = (p[0] - ox) * ux + (p[1] - oy) * uy
-        return (ox + ux * t, oy + uy * t)
-
-    # 🔴 FENDRE L'ANNEAU SUR LA LIGNE DE FAÎTAGE, avant tout le reste.
-    # Une arête d'égout qui TRAVERSE le faîtage donne un quadrilatère plié en
-    # deux : la moitié qui est du bon côté regarde le ciel, l'autre regarde le
-    # sol et disparaît au culling. Mesuré : 519 triangles sur 5 615, soit 9 %
-    # des toits, tous sur des empreintes non rectangulaires. En posant un
-    # sommet à la traversée, plus aucune arête ne chevauche les deux versants.
-    fendu = []
     n = len(anneau)
+    sens = 1.0 if aire_signee(anneau) > 0.0 else -1.0
+    lignes = []                    # (origine, normale intérieure, égout ?)
     for i in range(n):
         a, b = anneau[i], anneau[(i + 1) % n]
-        sa = (a[0] - ox) * vx + (a[1] - oy) * vy
-        sb = (b[0] - ox) * vx + (b[1] - oy) * vy
-        fendu.append(a)
-        if (sa > 1e-9 and sb < -1e-9) or (sa < -1e-9 and sb > 1e-9):
-            t = sa / (sa - sb)
-            fendu.append((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
-    anneau = fendu
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L < 1e-6:
+            lignes.append(None)
+            continue
+        ex, ey = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+        lignes.append((a, (-ey * sens, ex * sens),
+                       abs(ex * ux + ey * uy) >= COS_EGOUT))
+    egouts = [i for i, l in enumerate(lignes) if l and l[2]]
+    if not egouts:                 # aucun égout : croupe sur tout le tour
+        egouts = [i for i, l in enumerate(lignes) if l]
 
-    # Le contrôle d'orientation d'un toit ne peut pas se faire par cas — un
-    # versant regarde le ciel, un pignon regarde de côté, et entre les deux il
-    # y a tout le reste. Le seul critère qui vaut pour les trois : la face
-    # tourne-t-elle le dos au CŒUR du bâtiment ? On prend ce cœur au milieu de
-    # la hauteur du toit, et on demande que la normale s'en éloigne.
-    coeur = G(ox, oy, (y_egout + y_fait) / 2.0)
+    def dist(i, p):
+        a, (nx, ny), _e = lignes[i]
+        return (p[0] - a[0]) * nx + (p[1] - a[1]) * ny
+
+    # Le pan de l'égout i : là où i est l'égout le plus proche. Empreinte
+    # convexe ⇒ chaque pan est un polygone convexe, coupé demi-plan par
+    # demi-plan. Égalité parfaite (arêtes alignées) : le premier garde le pan.
+    pans = {}
+    for i in egouts:
+        poly = list(anneau)
+        for j in egouts:
+            if j != i and len(poly) >= 3:
+                poly = _couper(poly, lambda p, j=j: dist(j, p) - dist(i, p),
+                               -1e-9 if j > i else 1e-9)
+        if len(poly) >= 3 and abs(aire_signee(poly)) > 1e-4:
+            pans[i] = poly
+    d_max = max((dist(i, p) for i, poly in pans.items() for p in poly),
+                default=0.0)
+    s = min(pente, FAITAGE_MAX / d_max) if d_max > 1e-6 else 0.0
+
+    def haut(p):
+        return y_egout + s * max(0.0, min(dist(i, p) for i in egouts))
+
+    cx = sum(p[0] for p in anneau) / n
+    cy = sum(p[1] for p in anneau) / n
+    coeur = G(cx, cy, y_egout + s * d_max / 2.0)
 
     ok = tot = 0
-    n = len(anneau)
-    for i in range(n):
-        a, b = anneau[i], anneau[(i + 1) % n]
-        ra, rb = sur_faitage(a), sur_faitage(b)
-        pa = G(a[0], a[1], y_egout)
-        pb = G(b[0], b[1], y_egout)
-        qa = G(ra[0], ra[1], y_fait)
-        qb = G(rb[0], rb[1], y_fait)
-        for tri in _decouper_quad(pa, pb, qb, qa, coeur):
-            # 🔴 L'ORIENTATION EST CALCULÉE, PAS DÉDUITE — et c'est la leçon de
-            # la soirée. Pour un MUR, le sens du parcours de l'anneau décide de
-            # l'extérieur, et le vérifier a du sens. Pour un TOIT, non : un
-            # pignon n'est pas un versant, une arête presque perpendiculaire au
-            # faîtage a un sens de parcours arbitraire, et trois recettes
-            # successives ont échoué à le deviner. Le critère « la face tourne
-            # le dos au cœur du bâtiment », lui, est vrai dans tous les cas et
-            # se calcule directement. On l'applique au lieu de l'espérer.
-            if not _vers_dehors(tri, coeur):
+    for i, poly in pans.items():
+        pts = [G(p[0], p[1], y_egout + s * max(0.0, dist(i, p))) for p in poly]
+        for k in range(1, len(pts) - 1):
+            tri = (pts[0], pts[k], pts[k + 1])
+            if _degenere(tri):
+                continue
+            if normale(*tri)[1] < 0.0:
                 tri = (tri[0], tri[2], tri[1])
                 retournes[0] += 1
             m.triangle(tri[0], tri[1], tri[2], coul, axe_toit=axe_uv)
             tot += 1
             ok += 1
 
-    # 🔥 LA SOUCHE, posée sur la ligne de faîtage — donc forcément à l'intérieur
-    # de l'empreinte, sans avoir à tester quoi que ce soit. Sa position le long
-    # du faîtage et son existence sont tirées du LIEU (35) : la même ville
-    # ressort toujours avec les mêmes cheminées aux mêmes endroits.
+    # Les pignons : un mur vertical sous le profil du toit, pris aux points où
+    # l'égout le plus proche change le long de l'arête.
+    for k, l in enumerate(lignes):
+        if l is None or k in pans or k in egouts:
+            continue
+        a, b = anneau[k], anneau[(k + 1) % n]
+        ts = {0.0, 1.0}
+        for x in range(len(egouts)):
+            for y in range(x + 1, len(egouts)):
+                fa = dist(egouts[x], a) - dist(egouts[y], a)
+                fb = dist(egouts[x], b) - dist(egouts[y], b)
+                if (fa > 0.0) != (fb > 0.0) and abs(fa - fb) > 1e-12:
+                    ts.add(fa / (fa - fb))
+        profil = []
+        for t in sorted(ts, reverse=True):
+            p = (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))
+            profil.append(G(p[0], p[1], haut(p)))
+        bas_a, bas_b = G(a[0], a[1], y_egout), G(b[0], b[1], y_egout)
+        contour = [bas_a, bas_b] + profil
+        for j in range(1, len(contour) - 1):
+            tri = (contour[0], contour[j], contour[j + 1])
+            if _degenere(tri):
+                continue
+            if not _vers_dehors(tri, coeur):
+                tri = (tri[0], tri[2], tri[1])
+            m.triangle(tri[0], tri[1], tri[2], coul, axe_toit=axe_uv)
+            tot += 1
+            ok += 1
+
+    # 🔥 LA SOUCHE, sur la ligne médiane de l'empreinte. Position et existence
+    # tirées du LIEU (35) : mêmes cheminées aux mêmes endroits.
     if y_mur is not None and abs(aire_signee(anneau)) >= CHEMINEE_AIRE_MIN:
         r = random.Random(_graine_lieu(anneau) ^ 0xC17E)
         if r.random() <= PART_CHEMINEES:
+            vx, vy = -uy, ux
+            vs = [(p[0] - cx) * vx + (p[1] - cy) * vy for p in anneau]
+            mv = (max(vs) + min(vs)) / 2.0
+            ox, oy = cx + vx * mv, cy + vy * mv
             ts = [(p[0] - ox) * ux + (p[1] - oy) * uy for p in anneau]
-            f = r.uniform(0.22, 0.78)
-            t = min(ts) + f * (max(ts) - min(ts))
-            cheminees[0] += 1
-            _cheminee(m, ox + ux * t, oy + uy * t,
-                      y_mur, y_fait + CHEMINEE_HAUT, (ux, uy),
-                      COUL_CHEMINEE, G)
+            t = min(ts) + r.uniform(0.22, 0.78) * (max(ts) - min(ts))
+            x, y = ox + ux * t, oy + uy * t
+            if min(dist(i, (x, y)) for i, l in enumerate(lignes) if l) > 0.5:
+                cheminees[0] += 1
+                _cheminee(m, x, y, y_mur, haut((x, y)) + CHEMINEE_HAUT,
+                          (ux, uy), COUL_CHEMINEE, G)
     return ok, tot
+
+
+def _couper(poly, f, seuil):
+    """Sutherland–Hodgman : la part de `poly` où f(p) ≥ seuil, f affine."""
+    out = []
+    n = len(poly)
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        fa, fb = f(a) - seuil, f(b) - seuil
+        if fa >= 0.0:
+            out.append(a)
+        if (fa >= 0.0) != (fb >= 0.0):
+            t = fa / (fa - fb)
+            out.append((a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
+    return out
 
 
 def _vers_dehors(tri, coeur):

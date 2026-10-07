@@ -154,6 +154,12 @@ TOITURES = {
     ],
 }
 
+# 🏠 Un toit PLAT dans un tissu à tuiles (empreinte concave) n'est pas en
+# tuile : sa teinte part vers le gris de la membrane, la nuance du bâtiment
+# reste. Demande de l'auteur, 2026-10-07.
+TOIT_PLAT_GRIS = "#8A857D"
+TOIT_PLAT_PART = 0.6
+
 TOIT_TISSU = {
     "coeur_ancien":        "tuile",
     "front_commercant":    "tuile",
@@ -363,12 +369,16 @@ def _varier(base, r, amp):
                          rgb[2] * f * (1.0 - w)))
 
 
-def couleur_toit(sous_type, graine):
+def couleur_toit(sous_type, graine, plat=False):
     """La couverture d'UN bâtiment. `graine` vient de sa position (35)."""
     import random
     r = random.Random(graine ^ 0x7017)
-    bases = TOITURES[TOIT_TISSU.get(sous_type, "tuile")]
-    return _varier(bases[r.randrange(len(bases))], r, 0.07)
+    famille = TOIT_TISSU.get(sous_type, "tuile")
+    bases = TOITURES[famille]
+    c = _varier(bases[r.randrange(len(bases))], r, 0.07)
+    if plat and famille == "tuile":
+        c = melanger(c, TOIT_PLAT_GRIS, TOIT_PLAT_PART)
+    return c
 
 
 def couleur_mur(sous_type, graine):

@@ -872,7 +872,7 @@ def main():
                 # toute la ville.
                 gr = _graine_lieu(emp)
                 mur_neuf = PAL.couleur_mur(st, gr)
-                toit_neuf = PAL.couleur_toit(st, gr)
+                toit_neuf = PAL.couleur_toit(st, gr, plat=pente_v <= 0.0)
                 mur, toit = mur_neuf, toit_neuf
                 # 🌊 CE QUE LA CRUE A LAISSÉ. Les teintes se MÉLANGENT à celles
                 # du bâtiment, elles ne les remplacent pas : la couleur dit

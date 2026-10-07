@@ -674,3 +674,6 @@ Trois gains : sommes et repeinte sur deux images différentes · `rendu_dense` a
 **2026-10-07 — Les voitures portent une ombre, et l'ombre de la ville se resserre sur ce que la caméra voit.**
 Demande de l'auteur. Ombre de voiture = deux boîtes (24 triangles) dessinées dans la carte d'ombre seulement, au lieu des 778 du modèle ; voiture de la miniature aussi. Le soleil (`soleil.gd`) règle portée et tranches au sol visible : 143 m de près au lieu de 3 000, première tranche 61 m au lieu de 300 ; carte d'ombre 8192, tranches fondues.
 essai_trafic : 0 échec. Grain vu par l'auteur → filtre « haut ». Banc avec / sans ombres (`--sans-ombre`) : GPU 5,5 → 2,1 ms (ville), 5,7 → 2,1 ms (axe 55) ; 144 ips au pire, donc pas d'ombre précalculée pour l'instant.
+**2026-10-07 — Les toits pentus ne sont plus vrillés, et les toits plats des tissus à tuiles virent au gris.**
+Demande de l'auteur (capture de toits cassés). Chaque versant est désormais un plan : hauteur = pente × distance à l'égout le plus proche, une arête à plus de 45° du faîtage devient pignon (`_toit`, `export_godot/batiments.py`). Aucun toit de plus ni de moins : 182 plats, comme avant.
+Toit plat sur tissu à tuiles : 60 % vers le gris membrane (`TOIT_PLAT_GRIS`, `palette.py`). Avant/après : `QGIS/rendus/wehrau_toits_avant_apres.png`, six cadrages par `Godot/outils/apercu_toits.gd`.

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Réglages du rendu et compteurs de fabrication, sans changement de valeurs."""
 
+import math
 import palette as PAL
 
 # --- les constantes de la maquette ---------------------------------------
@@ -581,6 +582,11 @@ ACCES_OUVERTURE = ACCES_LARGEUR + HAIE_LARGEUR
 # ce plafond, une empreinte profonde se coiffe d'un chapeau de dix mètres qui
 # écrase tout le reste.
 FAITAGE_MAX = 5.5
+
+# Une arête à moins de ça du faîtage porte un versant, au-delà c'est un pignon.
+# 45° : un pan coupé d'angle devient une petite croupe, pas un pignon de biais.
+ANGLE_EGOUT_DEG = 45.0
+COS_EGOUT = math.cos(math.radians(ANGLE_EGOUT_DEG))
 
 # ============================ LE RELIEF DU TOIT (2026-08-18) ==============
 # 🏠 LE DÉBORD, et c'est LA ligne qui fait qu'un volume cesse d'être une boîte.
