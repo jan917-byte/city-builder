@@ -2675,18 +2675,9 @@ func montrer_depart() -> void:
 	v.add_theme_constant_override("separation", 12)
 	p.add_child(v)
 	v.add_child(_titre("Wehrau, après la crue", 17, ACCENT))
-	var mot := _label("La ville est sinistrée et la caisse est courte."
-		+ " Choisissez comment vous voulez jouer.", 13, TEXTE)
-	mot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(mot)
-	for choix in [["Mode histoire", false,
-			"La partie normale : les chantiers prennent le temps qu'ils prennent."],
-			["Mode auteur", true,
-			"Pour essayer : tout chantier engagé est livré immédiatement."
-			+ " Les prix et la dotation ne changent pas."]]:
+	for choix in [["Mode histoire", false], ["Mode auteur", true]]:
 		var b := Button.new()
 		b.text = String(choix[0])
-		b.tooltip_text = String(choix[2])
 		b.focus_mode = Control.FOCUS_NONE
 		if not bool(choix[1]):
 			_habiller_principal(b)
@@ -2695,9 +2686,6 @@ func montrer_depart() -> void:
 			centre.visible = false
 			mode_choisi.emit(auteur))
 		v.add_child(b)
-		var sous := _label(String(choix[2]), 11, GRIS)
-		sous.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(sous)
 	_sans_focus(centre)
 
 
@@ -5268,17 +5256,7 @@ func _habiller_secondaire(b: Button) -> void:
 ## pose et se paie, et l'avertissement est au-dessus du bouton. L'erreur coûte
 ## du temps et de l'argent, elle ne ferme aucune porte — un pont réparé
 ## remplira le camp plus tard.
-## 🌾 Avant la pose, l'irréversible seul (le nombre de nourris est dans les
-## conséquences) ; après, ce que le champ a cessé de nourrir.
-func _champ_perdu(fid: int) -> String:
-	var nourris := ville.champ_nourriture(fid, _mois)
-	if nourris < 0.5:
-		return "Ce champ ne nourrit personne."
-	if ville.champ_cultive(fid, _mois):
-		return "⚠ Il ne sera plus jamais cultivé."
-	return "Il ne nourrit plus ses %s personnes." % _nb(nourris, 0)
-
-
+## 🌾 Ce que le champ cesse de nourrir n'est que dans les conséquences (auteur, 2026-10-07).
 func _maj_camp() -> void:
 	if _fiche_couche != "i" or not ville.camp_possible(_fiche_fid):
 		_bloc_dispo[_camp_bloc] = false
@@ -5297,9 +5275,8 @@ func _maj_camp() -> void:
 				ville.camp_reste_mois(fid, _mois))
 			_camp_bouton.text = "Chantier en cours"
 		elif ville.camp_accessible(fid, _mois):
-			_camp_texte.text = "%d containers · %d abrités\n%s" % [
-				int(ville.camp_taille(fid, _mois)), int(occupants),
-				_champ_perdu(fid)]
+			_camp_texte.text = "%d containers · %d abrités" % [
+				int(ville.camp_taille(fid, _mois)), int(occupants)]
 			_camp_bouton.text = "Camp en place"
 		else:
 			# 🌉 Le camp promis, et personne dedans. Ce n'est pas une panne :
@@ -5322,11 +5299,8 @@ func _maj_camp() -> void:
 	var maxi: int = ville.camp_capacite(fid)
 	# Le nombre de sinistrés est déjà au compteur : la fiche dit ce que le champ tient.
 	var phrase := "Jusqu'à %d personnes · %d containers" % [maxi, ville.camp_places_max(fid)]
-	# 🌾 LE PRIX QUI N'EST PAS EN k€, annoncé avant le bouton : le camp prend
-	# le champ entier, et la campagne ne le récupère pas.
-	phrase += "\n%s" % _champ_perdu(fid)
 	if not ville.camp_accessible(fid, _mois):
-		phrase += "\n⚠ Autre rive : personne ne pourra y aller."
+		phrase += "\n⚠ Autre rive : inaccessible"
 	_camp_texte.text = phrase
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false

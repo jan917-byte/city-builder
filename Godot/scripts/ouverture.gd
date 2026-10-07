@@ -566,12 +566,8 @@ func _champs_accessibles() -> Array:
 	return _champs
 
 
-## 🧭 CE QUI ORIENTE SANS DIRE OÙ : le panneau ne rappelle ce qu'un camp
-## demande qu'après quelques lieux ouverts, et jamais si le joueur a déjà
-## ouvert un champ. 🎚️ LEVEL DESIGN : le nombre de lieux regardés.
-const INDICE_REGARDS := 3
-
-
+## Les lieux ouverts pendant le relogement. L'indice « terrain nu » est retiré
+## (auteur, 2026-10-07) : le guide dit déjà « un champ ».
 func regarde(couche: String, fid: int) -> void:
 	if etape != "reloger":
 		return
@@ -834,15 +830,13 @@ func actualiser(force := false) -> void:
 			var coupes: int = int(jeu.ville.degats(jeu.mois)["franchissements_coupes"])
 			var commandees: int = jeu.ville.places_commandees(jeu.mois)
 			_titre.text = "%d personnes sont dehors" % int(sans_toit)
-			_texte.text = "%d ponts coupés : elles restent sur leur rive. Cliquez sur un lieu pour les abriter." % coupes
+			_texte.text = "%d ponts coupés : elles restent sur leur rive. Cliquez sur un champ pour les abriter." % coupes
 			if commandees > 0:
 				_texte.text = "Abris commandés : %d places. Il manque encore %d places." % [
 					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
-					_texte.text += "\n%s est sur l'autre rive : personne ne peut y aller." % _nom_champ(int(fid))
-			if _regards.size() >= INDICE_REGARDS and not _champ_vu:
-				_texte.text += "\nUn camp demande un terrain nu."
+					_texte.text += "\n%s est sur l'autre rive. Elle n'est pas accessible tant qu'un pont n'a pas été rebâti." % _nom_champ(int(fid))
 			_poser_reperes([])
 		"choix":
 			_poser_reperes([["r", RUE, "①"], ["i", MAISONS, "②"]])

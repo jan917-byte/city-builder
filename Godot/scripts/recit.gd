@@ -84,44 +84,32 @@ func batir(maquette) -> void:
 ## dernière, qui reprend le cadrage de la première décision.
 func _batir_pages() -> void:
 	var d: Dictionary = jeu.ville.degats(0.0)
-	# Les seuls franchissements de la ville sont ceux que la crue a pris : le
-	# compte des coupés est donc aussi celui des ponts.
-	var ponts: int = int(d["franchissements_coupes"])
-	var touches := 0
-	for fid in jeu.ville.ilots:
-		if jeu.ville.base("i", fid, "logements_sinistres") > 0.0:
-			touches += 1
+	# ✍️ Textes de l'auteur (2026-10-07).
 	_pages = [
 		{
 			"titre": "Wehrau",
-			"texte": "Cinq mille habitants sur les deux rives de l'Ilse."
-				+ " Le centre ancien d'un côté, le faubourg ouvrier de"
-				+ " l'autre, les champs tout autour."
-				+ "\n\n%d ponts la tiennent ensemble." % ponts,
+			"texte": "Petite ville du Grobwald nichée à la sortie d'une vallée,"
+				+ " Wehrau subit souvent des crues. Mais celle-ci est inhabituelle.",
 			"repere": "batie", "lacet": 35.0, "hauteur": 55.0,
 		},
 		{
 			"titre": "La crue",
-			"texte": "L'Ilse est sortie de son lit. Sur la rive droite, l'eau"
-				+ " est montée dans le faubourg et y a laissé la boue."
-				+ "\n\n%d îlots ont perdu des logements." % touches,
+			"texte": "L'Ilse est sortie de son lit et a dévasté une partie de la"
+				+ " ville. Les trois ponts reliant le faubourg au"
+				+ " centre-ville ont été arrachés par le courant.",
 			"repere": "faubourg", "lacet": 22.0, "hauteur": 38.0,
 		},
 		{
-			"titre": "Ce qu'elle a laissé",
-			"texte": "%d personnes n'ont plus de toit, et les %d"
-				% [int(d["logements_perdus"]), ponts]
-				+ " ponts sont coupés : de ce côté de l'eau, on ne"
-				+ " sort plus qu'à pied.",
+			"titre": "Les dégâts",
+			"texte": "%d personnes ont perdu leur logement du jour au lendemain"
+				% int(d["logements_perdus"])
+				+ " et il n'y a plus aucun moyen de traverser l'Ilse.",
 			"repere": "pont_casse", "taille": 340.0, "lacet": 40.0, "hauteur": 26.0,
 		},
 		{
-			"titre": "Le premier soir",
-			"texte": "Ces personnes dorment dehors. Trouvez-leur un endroit où"
-				+ " s'installer, qu'elles puissent rejoindre à pied."
-				# 🔒 Vrai depuis le verrou des premières minutes (auteur, 2026-09-22).
-				+ "\n\nChaque mois dehors se paie en aide d'urgence, et rien"
-				+ " d'autre ne s'engage tant que tout le monde n'est pas abrité.",
+			"titre": "Que faire ?",
+			"texte": "Trouvez un champ libre pour accueillir temporairement"
+				+ " les sinistrés.",
 			"repere": "", "lacet": 35.0, "hauteur": 42.0,
 		},
 	]
