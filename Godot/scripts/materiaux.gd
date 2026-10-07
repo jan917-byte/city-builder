@@ -734,18 +734,23 @@ static func eau(palette: Dictionary) -> ShaderMaterial:
 	return m
 
 
-static func feuillage() -> ShaderMaterial:
+## `foret` = la demi-emprise du décor, où l'arbre se perd dans la brume ; zéro
+## en ville.
+static func feuillage(foret := Vector2.ZERO) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/feuillage.gdshader")
+	if foret != Vector2.ZERO:
+		m.set_shader_parameter("demi_emprise", foret)
 	return m
 
 
 ## Le tronc, en seconde surface pour que sa teinte soit FIXE : sinon un tronc
-## sous un feuillage vert ressortirait vert.
-static func bois(teinte: Color) -> StandardMaterial3D:
-	var m := surface(0.95)
-	m.vertex_color_use_as_albedo = false
-	m.albedo_color = teinte
+## sous un feuillage vert ressortirait vert. Même shader que la couronne, pour
+## qu'il plie au même vent et entre dans la même brume.
+static func ecorce(teinte: Color, foret := Vector2.ZERO) -> ShaderMaterial:
+	var m := feuillage(foret)
+	m.set_shader_parameter("tronc", true)
+	m.set_shader_parameter("ecorce", teinte)
 	return m
 
 

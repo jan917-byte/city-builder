@@ -712,19 +712,12 @@ static func arbres(liste: Array, essence: int, feuillage: Color,
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
-	mm.mesh = _arbre(essence, tronc)
+	mm.mesh = arbre(essence, tronc)
 	mm.instance_count = pris.size()
 
 	for k in pris.size():
 		var a: Array = pris[k]
-		var ech: float = float(a[3])
-		var t := Transform3D(Basis(), Vector3.ZERO)
-		t = t.rotated(Vector3.UP, float(a[4]))
-		t = t.scaled(Vector3(ech, ech, ech))
-		# 🔄 Le mesh a son PIED À L'ORIGINE : plus de demi-blob à remonter,
-		# comme le faisait l'ancienne sphère centrée sur elle-même.
-		t.origin = Vector3(float(a[0]), float(a[1]), float(a[2]))
-		mm.set_instance_transform(k, t)
+		mm.set_instance_transform(k, pose(a, essence))
 		# Variation de valeur, pas de teinte (Direction artistique l.67).
 		var f: float = 0.86 + 0.28 * fmod(abs(float(a[4])) * 7.3, 1.0)
 		mm.set_instance_color(k, Color(feuillage.r * f, feuillage.g * f,
@@ -732,160 +725,202 @@ static func arbres(liste: Array, essence: int, feuillage: Color,
 	return mm
 
 
-## Deux surfaces : la couronne suit la teinte d'instance, le tronc non. C'est
-## ce qui permet un tronc brun sous un feuillage vert dans un seul MultiMesh —
-## et pourquoi les arbres n'ont pas de `material_override`.
-static func _arbre(essence: int, tronc: Color) -> ArrayMesh:
-	var m := ArrayMesh.new()
+## 🌳 La pose d'un arbre : [x, y, z, échelle, lacet]. Élancé ou trapu, un peu
+## penché — tiré du lacet, donc la même ville plante les mêmes arbres. Le
+## bouleau et le saule penchent plus : c'est ce qui les fait lire.
+## 🔄 Le mesh a son PIED À L'ORIGINE : il penche autour de son pied.
+static func pose(a: Array, essence: int) -> Transform3D:
+	var ech := float(a[3])
+	var lacet := float(a[4])
+	var h := fmod(absf(lacet) * 3.17 + 0.21, 1.0)
+	var l := fmod(absf(lacet) * 5.31 + 0.47, 1.0)
+	var b := Basis(Vector3.UP, lacet).scaled(Vector3(
+		ech * lerpf(0.92, 1.08, l), ech * lerpf(0.88, 1.14, h), ech * lerpf(0.92, 1.08, l)))
+	var penche := deg_to_rad(6.0 if essence == BOULEAU or essence == SAULE else 2.5) \
+		* fmod(absf(lacet) * 11.7, 1.0)
+	b = Basis(Vector3(cos(lacet * 2.3), 0.0, sin(lacet * 2.3)), penche) * b
+	return Transform3D(b, Vector3(float(a[0]), float(a[1]), float(a[2])))
 
-	var v := PackedVector3Array()
-	var n := PackedVector3Array()
-	var c := PackedColorArray()
-	var i := PackedInt32Array()
+
+## 🌳 UNE RECETTE PAR ESSENCE, et chaque arbre la joue à sa façon : chaque lobe
+## porte son centre et son rôle, et `feuillage.gdshader` grossit, déplace ou
+## efface les lobes satellites d'après la position de l'arbre. Mille arbres,
+## mille couronnes, un seul mesh et un seul appel par essence.
+## Deux surfaces : la couronne suit la teinte d'instance, le tronc non — d'où
+## l'absence de `material_override` sur les arbres.
+## `foret` = la demi-emprise du décor : l'arbre de la forêt est la même
+## recette en plus léger, et se perd dans la brume du bord.
+const FIXE := 0.0       # ni grossi ni déplacé : brins, tronc
+const COURONNE := 1.0   # le corps de l'arbre : ±10 %, jamais effacé
+const SATELLITE := 2.0  # 2, 3, 4… : grossi, déplacé, parfois absent
+
+static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMesh:
+	var m := ArrayMesh.new()
+	var f := _Volume.new()
+	f.cotes = 6 if foret != Vector2.ZERO else 8
+	# En forêt, deux satellites suffisent : 22 000 arbres, vus de loin.
+	f.satellites = 2 if foret != Vector2.ZERO else 9
 
 	if essence == ROSEAU:
-		# La touffe : trois brins penchés en éventail. Ce qui la fait lire de
+		# La touffe : cinq brins penchés en éventail. Ce qui la fait lire de
 		# loin est qu'ils ne sont ni de la même hauteur ni du même côté.
-		_brin(v, n, c, i, Vector3(0.00, 0.0, 0.00), 2.05, 0.16, 0.0)
-		_brin(v, n, c, i, Vector3(0.26, 0.0, -0.15), 1.70, 0.30, 2.1)
-		_brin(v, n, c, i, Vector3(-0.20, 0.0, 0.22), 1.42, 0.26, 4.3)
-		_brin(v, n, c, i, Vector3(0.13, 0.0, 0.30), 1.15, 0.34, 5.5)
-		_brin(v, n, c, i, Vector3(-0.28, 0.0, -0.10), 0.92, 0.30, 1.0)
+		f.brin(Vector3(0.00, 0.0, 0.00), 2.05, 0.16, 0.0)
+		f.brin(Vector3(0.26, 0.0, -0.15), 1.70, 0.30, 2.1)
+		f.brin(Vector3(-0.20, 0.0, 0.22), 1.42, 0.26, 4.3)
+		f.brin(Vector3(0.13, 0.0, 0.30), 1.15, 0.34, 5.5)
+		f.brin(Vector3(-0.28, 0.0, -0.10), 0.92, 0.30, 1.0)
 	elif essence == BUISSON:
-		# Deux lobes bas et décentrés : un buisson, pas un arbre nain.
-		_lobe(v, n, c, i, Vector3(0.0, 0.72, 0.0), 0.86, 0.52, 1.02)
-		_lobe(v, n, c, i, Vector3(0.52, 0.50, 0.34), 0.60, 0.48, 0.94)
+		# Bas et décentré : un buisson, pas un arbre nain.
+		f.lobe(Vector3(0.0, 0.72, 0.0), 0.86, 0.52, 1.02, COURONNE)
+		f.lobe(Vector3(0.52, 0.50, 0.34), 0.60, 0.48, 0.94, SATELLITE)
+		f.lobe(Vector3(-0.45, 0.46, -0.30), 0.52, 0.46, 0.92, SATELLITE + 1)
 	elif essence == CONIFERE:
-		# Un épicéa se lit à sa SILHOUETTE, pas à son détail : budget
-		# polygonal, le détail va dans le matériau.
-		_cone(v, n, c, i, 1.90, 1.10, 3.20, 6, 0.62, 0.86)
-		_cone(v, n, c, i, 1.45, 3.00, 2.80, 6, 0.78, 1.00)
-		_cone(v, n, c, i, 0.95, 4.90, 2.60, 6, 0.92, 1.12)
+		# Un épicéa se lit à sa SILHOUETTE : quatre étages, chacun à sa largeur.
+		f.cone(2.00, 1.00, 2.70, 0.60, 0.80, COURONNE)
+		f.cone(1.60, 2.40, 2.60, 0.72, 0.92, COURONNE)
+		f.cone(1.18, 3.80, 2.50, 0.84, 1.04, COURONNE)
+		f.cone(0.74, 5.20, 2.30, 0.96, 1.14, COURONNE)
 	elif essence == BOULEAU:
-		# Une couronne étroite et haute, sur un fût clair.
-		_lobe(v, n, c, i, Vector3(0.0, 5.2, 0.0), 1.55, 0.70, 1.12)
-		_lobe(v, n, c, i, Vector3(0.35, 6.6, -0.2), 1.05, 0.80, 1.16)
-		_lobe(v, n, c, i, Vector3(-0.45, 4.3, 0.3), 1.10, 0.66, 1.00)
+		# Une couronne étroite, haute et ajourée, sur un fût clair.
+		f.lobe(Vector3(0.0, 5.2, 0.0), 1.45, 0.70, 1.12, COURONNE)
+		f.lobe(Vector3(0.35, 6.6, -0.2), 1.00, 0.80, 1.18, SATELLITE)
+		f.lobe(Vector3(-0.45, 4.3, 0.3), 1.05, 0.66, 1.00, SATELLITE + 1)
+		f.lobe(Vector3(-0.15, 7.5, 0.25), 0.68, 0.86, 1.20, SATELLITE + 2)
+		f.lobe(Vector3(0.55, 4.5, 0.45), 0.80, 0.66, 1.00, SATELLITE + 3)
 	elif essence == PEUPLIER:
 		# Le fuseau : un cône qui s'ouvre, puis un cône qui se ferme.
-		_cone(v, n, c, i, 0.70, 1.6, 2.6, 6, 0.62, 0.86, 2.2)
-		_cone(v, n, c, i, 1.54, 4.2, 7.6, 6, 0.86, 1.14, 0.08)
+		f.cone(0.70, 1.6, 2.6, 0.62, 0.86, COURONNE, 2.2)
+		f.cone(1.54, 4.2, 7.6, 0.86, 1.14, COURONNE, 0.08)
+		f.lobe(Vector3(0.35, 6.4, 0.2), 1.05, 0.84, 1.08, SATELLITE, 1.9)
+		f.lobe(Vector3(-0.30, 8.0, -0.25), 0.85, 0.92, 1.14, SATELLITE + 1, 1.9)
 	elif essence == FRUITIER:
-		# Bas et rond : un pommier se lit à sa couronne qui touche presque le sol.
-		_lobe(v, n, c, i, Vector3(0.0, 2.55, 0.0), 1.70, 0.66, 1.10)
-		_lobe(v, n, c, i, Vector3(0.75, 2.20, 0.45), 1.10, 0.62, 1.00)
+		# Plus large que haut, la couronne presque au sol : un pommier.
+		f.lobe(Vector3(0.0, 2.45, 0.0), 1.75, 0.66, 1.10, COURONNE, 0.72)
+		f.lobe(Vector3(0.95, 2.25, 0.50), 1.15, 0.62, 1.02, SATELLITE, 0.80)
+		f.lobe(Vector3(-0.90, 2.35, -0.45), 1.10, 0.62, 1.02, SATELLITE + 1, 0.80)
+		f.lobe(Vector3(0.10, 3.05, -0.85), 0.95, 0.74, 1.12, SATELLITE + 2, 0.85)
 	elif essence == SAULE:
-		# Le dôme, et la jupe qui retombe vers l'eau.
-		_lobe(v, n, c, i, Vector3(0.0, 3.9, 0.0), 2.70, 0.72, 1.12)
-		_cone(v, n, c, i, 3.10, 1.1, 2.9, 8, 0.58, 0.80, 0.84)
+		# Le dôme, et le rideau qui retombe : six lobes étirés vers le sol.
+		f.lobe(Vector3(0.0, 4.0, 0.0), 2.50, 0.72, 1.14, COURONNE, 0.78)
+		for k in 6:
+			var a := float(k) * TAU / 6.0 + 0.4
+			f.lobe(Vector3(cos(a) * 2.05, 2.75, sin(a) * 2.05), 0.95, 0.56, 0.94,
+				SATELLITE + k, 2.0)
 	else:
 		# DÉCENTRÉS : concentriques, ils redonneraient la bille d'avant.
-		_lobe(v, n, c, i, Vector3(0.0, 4.7, 0.0), 2.70, 0.66, 1.10)
-		_lobe(v, n, c, i, Vector3(1.35, 3.85, -0.65), 2.00, 0.60, 0.96)
-		_lobe(v, n, c, i, Vector3(-1.10, 4.15, 0.90), 1.80, 0.60, 0.98)
+		f.lobe(Vector3(0.0, 4.7, 0.0), 2.55, 0.66, 1.10, COURONNE)
+		f.lobe(Vector3(1.35, 3.95, -0.65), 1.90, 0.60, 0.98, SATELLITE)
+		f.lobe(Vector3(-1.10, 4.20, 0.90), 1.75, 0.60, 0.98, SATELLITE + 1)
+		f.lobe(Vector3(0.30, 6.05, 0.35), 1.45, 0.82, 1.16, SATELLITE + 2)
+		f.lobe(Vector3(-0.80, 3.75, -1.25), 1.45, 0.58, 0.94, SATELLITE + 3)
 
-	m.add_surface_from_arrays(PRIM, _emballer(v, n, c, i))
-	m.surface_set_material(0, Materiaux.feuillage())
+	m.add_surface_from_arrays(PRIM, f.surface(), [], {}, _Volume.FORMAT)
+	m.surface_set_material(0, Materiaux.feuillage(foret))
 
 	# 🔴 Ni roseau ni buisson n'a de tronc : une deuxième surface pour un fût
 	# de 3 cm coûterait un matériau et ne se verrait jamais.
 	if essence == ROSEAU or essence == BUISSON:
 		return m
 
-	var tv := PackedVector3Array()
-	var tn := PackedVector3Array()
-	var tc := PackedColorArray()
-	var ti := PackedInt32Array()
+	var t := _Volume.new()
+	t.cotes = 4 if foret != Vector2.ZERO else 5
 	var haut: float = {CONIFERE: 1.6, BOULEAU: 4.4, PEUPLIER: 2.0,
 		FRUITIER: 1.4, SAULE: 2.4}.get(essence, 3.4)
-	_cone(tv, tn, tc, ti, 0.20 if essence == BOULEAU else 0.30, 0.0, haut,
-		5, 1.0, 1.0, 0.72)
-	m.add_surface_from_arrays(PRIM, _emballer(tv, tn, tc, ti))
-	m.surface_set_material(1, Materiaux.bois(tronc))
+	t.cone(0.20 if essence == BOULEAU else 0.30, 0.0, haut, 1.0, 1.0, FIXE, 0.72)
+	m.add_surface_from_arrays(PRIM, t.surface(), [], {}, _Volume.FORMAT)
+	m.surface_set_material(1, Materiaux.ecorce(tronc, foret))
 	return m
 
 
-## 🌿 UN BRIN DE ROSEAU : un cône très effilé, penché de `inclinaison` radians
-## dans la direction `cap`. Posé sur son PIED, comme l'arbre — le semis donne
-## un point au sol, pas un centre.
-static func _brin(v: PackedVector3Array, n: PackedVector3Array,
-		c: PackedColorArray, i: PackedInt32Array,
-		pied: Vector3, hauteur: float, inclinaison: float,
-		cap: float) -> void:
-	var cy := CylinderMesh.new()
-	cy.bottom_radius = 0.115
-	cy.top_radius = 0.012
-	cy.height = hauteur
-	# 🔴 TROIS CÔTÉS ET AUCUN CHAPEAU : un brin fait deux pixels, et il y en a
-	# cinq par touffe pour 1 091 touffes si les huit berges sont rendues.
-	cy.radial_segments = 3
-	cy.rings = 0
-	cy.cap_bottom = false
-	cy.cap_top = false
-	var b := Basis(Vector3.UP, cap) * Basis(Vector3(0.0, 0.0, 1.0), inclinaison)
-	var t := Transform3D(b, pied + b * Vector3(0.0, hauteur * 0.5, 0.0))
-	_fondre(v, n, c, i, cy, t, pied.y, pied.y + hauteur, 0.58, 1.16)
+## Les tableaux d'une surface d'arbre. CUSTOM0 = centre du lobe et son rôle,
+## lus par `feuillage.gdshader`.
+class _Volume:
+	const FORMAT := Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var x := PackedFloat32Array()
+	var i := PackedInt32Array()
+	var cotes := 8
+	var satellites := 9
 
+	## Huit méridiens, deux anneaux : silhouette ronde à petit budget. Le
+	## dégradé bas → haut fait le volume : sans lui, une sphère sous une
+	## lumière fixe est un disque plat. `etire` < 1 aplatit, > 1 fait tomber.
+	func lobe(centre: Vector3, rayon: float, bas: float, haut: float,
+			role: float, etire := 1.0) -> void:
+		if role >= SATELLITE + float(satellites):
+			return
+		var s := SphereMesh.new()
+		s.radius = rayon
+		s.height = rayon * 1.85
+		s.radial_segments = cotes
+		s.rings = 2
+		var e := rayon * 0.93 * etire
+		fondre(s, Transform3D(Basis.from_scale(Vector3(1.0, etire, 1.0)), centre),
+			centre.y - e, centre.y + e, bas, haut, centre, role)
 
-## Huit méridiens, deux anneaux : silhouette plus ronde à budget comparable.
-## sans lui, une sphère sous une lumière fixe est un disque plat.
-static func _lobe(v: PackedVector3Array, n: PackedVector3Array,
-		c: PackedColorArray, i: PackedInt32Array,
-		centre: Vector3, rayon: float, bas: float, haut: float) -> void:
-	var s := SphereMesh.new()
-	s.radius = rayon
-	s.height = rayon * 1.85
-	s.radial_segments = 8
-	s.rings = 2
-	_fondre(v, n, c, i, s, Transform3D(Basis(), centre),
-		centre.y - rayon * 0.93, centre.y + rayon * 0.93, bas, haut)
+	## Posé sur `y0`. `pointe` < 1 le laisse ouvert en haut : un tronc plutôt
+	## qu'une aiguille.
+	func cone(rayon: float, y0: float, hauteur: float, bas: float, haut: float,
+			role: float, pointe := 0.04) -> void:
+		var cy := CylinderMesh.new()
+		cy.bottom_radius = rayon
+		cy.top_radius = rayon * pointe
+		cy.height = hauteur
+		cy.radial_segments = cotes
+		cy.rings = 0
+		cy.cap_bottom = false          # jamais vue : le pied est dans le sol
+		var centre := Vector3(0.0, y0 + hauteur * 0.5, 0.0)
+		fondre(cy, Transform3D(Basis(), centre), y0, y0 + hauteur, bas, haut,
+			centre, role)
 
+	## 🌿 UN BRIN DE ROSEAU : un cône très effilé, penché de `inclinaison`
+	## radians dans la direction `cap`, posé sur son PIED.
+	func brin(pied: Vector3, hauteur: float, inclinaison: float, cap: float) -> void:
+		var cy := CylinderMesh.new()
+		cy.bottom_radius = 0.115
+		cy.top_radius = 0.012
+		cy.height = hauteur
+		# 🔴 TROIS CÔTÉS ET AUCUN CHAPEAU : un brin fait deux pixels, et il y en
+		# a cinq par touffe pour 1 091 touffes si les huit berges sont rendues.
+		cy.radial_segments = 3
+		cy.rings = 0
+		cy.cap_bottom = false
+		cy.cap_top = false
+		var b := Basis(Vector3.UP, cap) * Basis(Vector3(0.0, 0.0, 1.0), inclinaison)
+		fondre(cy, Transform3D(b, pied + b * Vector3(0.0, hauteur * 0.5, 0.0)),
+			pied.y, pied.y + hauteur, 0.58, 1.16, pied, FIXE)
 
-## Posé sur `y0`. `pointe` < 1 le laisse ouvert en haut : un tronc plutôt
-## qu'une aiguille.
-static func _cone(v: PackedVector3Array, n: PackedVector3Array,
-		c: PackedColorArray, i: PackedInt32Array,
-		rayon: float, y0: float, hauteur: float, cotes: int,
-		bas: float, haut: float, pointe: float = 0.04) -> void:
-	var cy := CylinderMesh.new()
-	cy.bottom_radius = rayon
-	cy.top_radius = rayon * pointe
-	cy.height = hauteur
-	cy.radial_segments = cotes
-	cy.rings = 0
-	cy.cap_bottom = false          # jamais vue : le pied est dans le sol
-	_fondre(v, n, c, i, cy,
-		Transform3D(Basis(), Vector3(0.0, y0 + hauteur * 0.5, 0.0)),
-		y0, y0 + hauteur, bas, haut)
+	## Verse une primitive transformée, avec son dégradé vertical en couleur
+	## de sommet.
+	func fondre(source: PrimitiveMesh, t: Transform3D, y0: float, y1: float,
+			bas: float, haut: float, centre: Vector3, role: float) -> void:
+		var a := source.surface_get_arrays(0)
+		var pv: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+		var pn: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+		var pi: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+		var base := v.size()
+		var normale := t.basis.inverse().transposed()
+		for k in pv.size():
+			var p: Vector3 = t * pv[k]
+			v.append(p)
+			n.append((normale * pn[k]).normalized())
+			var g := lerpf(bas, haut, clampf(inverse_lerp(y0, y1, p.y), 0.0, 1.0))
+			c.append(Color(g, g, g, 1.0))
+			x.append(centre.x)
+			x.append(centre.y)
+			x.append(centre.z)
+			x.append(role)
+		for k in pi.size():
+			i.append(base + pi[k])
 
-
-## Verse une primitive transformée dans les tableaux, avec son dégradé vertical
-## en couleur de sommet.
-static func _fondre(v: PackedVector3Array, n: PackedVector3Array,
-		c: PackedColorArray, i: PackedInt32Array, source: PrimitiveMesh,
-		t: Transform3D, y0: float, y1: float, bas: float, haut: float) -> void:
-	var a := source.surface_get_arrays(0)
-	var pv: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
-	var pn: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
-	var pi: PackedInt32Array = a[Mesh.ARRAY_INDEX]
-	var base := v.size()
-	for k in pv.size():
-		var p: Vector3 = t * pv[k]
-		v.append(p)
-		n.append((t.basis * pn[k]).normalized())
-		var f := clampf(inverse_lerp(y0, y1, p.y), 0.0, 1.0)
-		var g := lerpf(bas, haut, f)
-		c.append(Color(g, g, g, 1.0))
-	for k in pi.size():
-		i.append(base + pi[k])
-
-
-static func _emballer(v: PackedVector3Array, n: PackedVector3Array,
-		c: PackedColorArray, i: PackedInt32Array) -> Array:
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = v
-	arrays[Mesh.ARRAY_NORMAL] = n
-	arrays[Mesh.ARRAY_COLOR] = c
-	arrays[Mesh.ARRAY_INDEX] = i
-	return arrays
+	func surface() -> Array:
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = v
+		arrays[Mesh.ARRAY_NORMAL] = n
+		arrays[Mesh.ARRAY_COLOR] = c
+		arrays[Mesh.ARRAY_CUSTOM0] = x
+		arrays[Mesh.ARRAY_INDEX] = i
+		return arrays

@@ -3,6 +3,11 @@ extends Node3D
 const Constructeur := preload("res://scripts/constructeur.gd")
 const Materiaux := preload("res://scripts/materiaux.gd")
 var mat_nuages: ShaderMaterial
+# Un arbre de forêt pousse en peuplement : plus haut qu'un pommier, et sa
+# couronne s'étale pour fermer le couvert, sinon le bois se lit en savane.
+const FORET_ECHELLE := 1.4
+const FORET_LARGEUR := 1.45
+const FORET_TUILE := 600.0
 
 ## `mat_rue` : le matériau des rues de la ville, pour que la sortie les continue sans changer de teinte.
 func batir(d: Dictionary, palette: Dictionary, mat_rue: Material) -> void:
@@ -21,24 +26,49 @@ func batir(d: Dictionary, palette: Dictionary, mat_rue: Material) -> void:
 	var eau := Materiaux.eau(palette)
 	eau.set_shader_parameter("brume_exterieure", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
 	_maille("IlseExterieure", d.eau, eau)
-	var feuillage := mat.duplicate() as ShaderMaterial
-	feuillage.set_shader_parameter("arbres", true)
-	# Feuillu, sapin, peuplier : l'essence et la teinte du peuplement (6e
-	# nombre) sont posées par `repartir` dans paysage.py.
-	var teintes := [Color("496640"), Color("304e41"), Color("587246")]
-	for essence in (d.arbres as Array).size():
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = Constructeur.maillage(d.modeles[essence])
-		mm.instance_count = d.arbres[essence].size()
-		for k in mm.instance_count:
-			var a: Array = d.arbres[essence][k]
-			var b := Basis(Vector3.UP, a[4]).scaled(Vector3.ONE * a[3])
-			mm.set_instance_transform(k, Transform3D(b, Vector3(a[0], a[1], a[2])))
-			var f: float = float(a[5]) if a.size() > 5 else 0.85 + fmod(a[4], 1.0) * 0.3
-			mm.set_instance_color(k, (teintes[essence] as Color).srgb_to_linear() * f)
-		_instances("Foret%d" % essence, mm, feuillage)
+	# 🌳 La forêt est plantée des RECETTES DE LA VILLE (`Constructeur.arbre`),
+	# en plus léger : un bois et un jardin sont le même monde. Feuillu, sapin,
+	# peuplier : l'essence et la teinte du peuplement (6e nombre) sont posées
+	# par `repartir` dans paysage.py.
+	var demi := Vector2(d.demi_emprise[0], d.demi_emprise[1])
+	var vert := Color(palette["_feuillage"]).srgb_to_linear()
+	var brun := Color(palette["_tronc"])
+	# Les valeurs de la ville (`maquette.gd`, VALEUR_ESSENCE), un cran plus
+	# sombres : un bois se lit en masse.
+	var teintes := [vert * 0.56, Color(vert.r * 0.42, vert.g * 0.50, vert.b * 0.47),
+		vert * 0.54]
+	var essences := [Constructeur.FEUILLU, Constructeur.CONIFERE, Constructeur.PEUPLIER]
+	for k in (d.arbres as Array).size():
+		var mesh := Constructeur.arbre(essences[k], brun, demi)
+		# Un lot par TUILE et non un pour toute la vallée : un MultiMesh ne se
+		# découpe pas à l'écran, et de près on dessinait la forêt entière.
+		var tuiles := {}
+		for a in d.arbres[k]:
+			var cle := Vector2i(floori(float(a[0]) / FORET_TUILE),
+				floori(float(a[2]) / FORET_TUILE))
+			if not tuiles.has(cle):
+				tuiles[cle] = []
+			(tuiles[cle] as Array).append(a)
+		for cle in tuiles:
+			var liste: Array = tuiles[cle]
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.use_colors = true
+			mm.mesh = mesh
+			mm.instance_count = liste.size()
+			for j in mm.instance_count:
+				var a: Array = (liste[j] as Array).duplicate()
+				a[3] = float(a[3]) * FORET_ECHELLE
+				var t := Constructeur.pose(a, essences[k])
+				if essences[k] == Constructeur.FEUILLU:
+					t.basis = t.basis * Basis.from_scale(
+						Vector3(FORET_LARGEUR, 1.0, FORET_LARGEUR))
+				mm.set_instance_transform(j, t)
+				var f: float = float(a[5]) if a.size() > 5 else 0.85 + fmod(a[4], 1.0) * 0.3
+				mm.set_instance_color(j, (teintes[k] as Color) * f)
+			# ⚠️ Sans `material_override` : la couronne et le tronc portent
+			# chacun le leur, sinon le tronc ressort vert.
+			_instances("Foret%d_%d_%d" % [k, cle.x, cle.y], mm, null)
 	mat_nuages = ShaderMaterial.new()
 	mat_nuages.shader = preload("res://shaders/nuages.gdshader")
 	mat_nuages.set_shader_parameter("demi_emprise", Vector2(d.demi_emprise[0], d.demi_emprise[1]))

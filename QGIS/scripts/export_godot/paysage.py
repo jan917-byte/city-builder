@@ -355,7 +355,7 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
     print("  vallée : %d triangles de sol, %d arbres extérieurs, %d bancs de nuages"
           % (len(sol), sum(map(len, arbres)), len(nuages)))
     return {"demi_emprise": [hx, hz], "sol": sol.json(), "eau": eau.json(),
-            "arbres": arbres, "modeles": [_arbre("feuillu"), _arbre("sapin"), _arbre("peuplier")],
+            "arbres": arbres,
             "nuages": nuages, "nuage": _nuage()}, bord_riviere
 
 
@@ -384,23 +384,4 @@ def _nuage():
                 nx, ny, nz = q[0] - bx, (q[1] - by) / 0.62, (q[2] - bz) / 0.8
                 n = math.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
                 m.n[k] = (nx / n, ny / n, nz / n)
-    return m.json()
-
-
-def _arbre(genre):
-    m = Maillage()
-    # Silhouettes de fond : 30/40 triangles, sans branches ni ombres projetées.
-    anneaux = {
-        "feuillu": [(1.5, 1.0), (3.0, 4.5), (8.0, 5.2), (12.5, 0.0)],
-        "sapin": [(0, 0.5), (2, 0.5), (2.1, 4.5), (8, 2.8), (17, 0)],
-        # Le peuplier : une colonne, lisible de loin au bord de l'eau.
-        "peuplier": [(0, 0.4), (2.2, 0.4), (2.4, 2.0), (9, 2.7), (16, 1.6), (20, 0)],
-    }[genre]
-    for (ya, ra), (yb, rb) in zip(anneaux, anneaux[1:]):
-        for k in range(5):
-            a, b = k * math.tau / 5, (k + 1) * math.tau / 5
-            p, q = (ra * math.cos(a), ya, ra * math.sin(a)), (ra * math.cos(b), ya, ra * math.sin(b))
-            r, s = (rb * math.cos(b), yb, rb * math.sin(b)), (rb * math.cos(a), yb, rb * math.sin(a))
-            m.triangle(p, s, r, (1, 1, 1))
-            m.triangle(p, r, q, (1, 1, 1))
     return m.json()
