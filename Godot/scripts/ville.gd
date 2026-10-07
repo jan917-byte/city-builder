@@ -1207,6 +1207,14 @@ func densifier(fid: int, part: float, etages: int, t: float) -> bool:
 ## 🪜 `avancement` est désormais la part LIVRÉE (`part_dense`), pas une rampe
 ## reconstruite : un îlot densifié en trois fois a trois chantiers derrière lui,
 ## et le shader n'en voit qu'un seul nombre.
+## Ce que le shader lit de `etat_dense` (avancement, pas, mètres), sans le
+## bilan de logements : la repeinte en payait 1,9 ms par image.
+func rendu_dense(fid: int, t: float) -> Vector3:
+	return Vector3(valeur("i", fid, "part_dense", t),
+		1.0 / maxf(float(dense_batiments(fid)), 1.0),
+		float(int((_dense.get(fid, {}) as Dictionary).get("etages", 0))) * DENSE_ETAGE_M)
+
+
 func etat_dense(fid: int, t: float) -> Dictionary:
 	var c: Dictionary = _dense.get(fid, {})
 	var n := dense_batiments(fid)

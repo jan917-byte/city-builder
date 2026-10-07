@@ -3900,7 +3900,8 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 			(_barre_valeurs["caisse"] as Label).get_parent().tooltip_text = "Caisse · %s" \
 				% _ville_valeurs["recette"].text
 	_maj_detail(indic, mois)
-	maj_degats(ville.degats(mois))
+	# Calculés par la maquette au rythme du bandeau : 2,5 ms par appel.
+	maj_degats(indic["degats"] if indic.has("degats") else ville.degats(mois))
 	if _diagnostic_panneau.visible:
 		(_onglets_crue["prochaine"] as Button).visible = etude_publiee()
 		if _vue_crue == "prochaine":

@@ -566,6 +566,9 @@ func _banc() -> void:
 	# 🔴 Un banc doit se rejouer à l'identique : la molette de la souris qui
 	# traîne au-dessus de la fenêtre changeait le cadrage en cours de mesure.
 	pivot.set_process_unhandled_input(false)
+	# Qui limite : image ≈ GPU → la carte graphique ; image ≫ GPU → le processeur (les scripts).
+	var vp_rid := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vp_rid, true)
 	print("\n--- BANC · %s · %s ---" % [
 		RenderingServer.get_video_adapter_name(),
 		str(DisplayServer.window_get_size())])
@@ -589,16 +592,59 @@ func _banc() -> void:
 		for i in 10:
 			await get_tree().process_frame
 		var t0 := Time.get_ticks_usec()
+		var gpu := 0.0
+		var rendu_cpu := 0.0
 		for i in BANC_IMAGES:
 			await get_tree().process_frame
+			gpu += RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)
+			rendu_cpu += RenderingServer.viewport_get_measured_render_time_cpu(
+				vp_rid) + RenderingServer.get_frame_setup_time_cpu()
 		var ms := float(Time.get_ticks_usec() - t0) / 1000.0 / float(BANC_IMAGES)
+		var n := float(BANC_IMAGES)
 		print(("  %-30s %5.1f m de cadrage · %6.2f ms/image (%3d ips)"
+			+ " · GPU %5.2f · rendu CPU %5.2f ms"
 			+ " · %d appels · %d triangles") % [v[0], pivot.taille, ms,
 			roundi(1000.0 / maxf(ms, 0.001)),
+			gpu / n, rendu_cpu / n,
 			int(Performance.get_monitor(
 				Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			int(Performance.get_monitor(
 				Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
+
+	# ⏩ Le banc tourne EN PAUSE ; c'est en jouant, temps qui court, qu'on juge.
+	_repere("ville")
+	print("\n  le temps qui court, ville entière :")
+	for v in [0.0, 1.0, 4.0, 12.0]:
+		_sur_vitesse(v)
+		for i in 10:
+			await get_tree().process_frame
+		var t4 := Time.get_ticks_usec()
+		var gpu4 := 0.0
+		var pire := 0.0
+		var avant := t4
+		for i in BANC_IMAGES:
+			await get_tree().process_frame
+			gpu4 += RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)
+			var maintenant := Time.get_ticks_usec()
+			pire = maxf(pire, float(maintenant - avant) / 1000.0)
+			avant = maintenant
+		var ms4 := float(Time.get_ticks_usec() - t4) / 1000.0 / float(BANC_IMAGES)
+		# La PIRE image compte autant que la moyenne : au-delà de 16,7 ms, ça saccade.
+		print("    ×%-4s %6.2f ms/image (%3d ips) · pire %5.2f ms · GPU %5.2f ms" % [
+			str(int(v)), ms4, roundi(1000.0 / maxf(ms4, 0.001)), pire,
+			gpu4 / float(BANC_IMAGES)])
+	_sur_vitesse(0.0)
+
+	print("\n  les indicateurs de ville, part par part, en microsecondes :")
+	for m in [["énergie de la ville", func(): Energie.ville_mwh(ville, mois)],
+			["caisse", func(): ville.caisse_ke(mois)],
+			["nourriture (×3 dedans)", func(): ville.nourriture_personnes(mois)],
+			["durabilité", func(): ville.durabilite(mois, 0.0)]]:
+		var t5 := Time.get_ticks_usec()
+		for i in 20:
+			(m[1] as Callable).call()
+		print("    %-26s %8.0f µs" % [m[0],
+			float(Time.get_ticks_usec() - t5) / 20.0])
 
 	# Le trafic est mesuré de PRÈS : de loin ses familles sont éteintes et la
 	# pulsation sort tout de suite — on mesurerait zéro.
@@ -618,6 +664,11 @@ func _banc() -> void:
 			["les réparations livrées", _montrer_reparations],
 			["les arbres plantés", _montrer_arbres],
 			["les rives plantées", _montrer_rives],
+			["le camp", func(): camp.montrer(ville, mois)],
+			["les pastilles", func(): if pastilles != null: pastilles.actualiser(mois)],
+			["les palissades", func(): travaux.actualiser(ville, mois)],
+			["les messages", func(): interface.retours.actualiser(mois)],
+			["les projets en cours", _maj_apercus_projets],
 			["repeindre les objets", _peindre]]:
 		var t2 := Time.get_ticks_usec()
 		for i in 20:
@@ -1940,6 +1991,27 @@ const ECORCE_BOULEAU := Color("d8d3c6")
 func _montrer_arbres() -> void:
 	if _arbres_noeuds.is_empty():
 		return
+	# ⏱️ La signature d'abord (camps, vergers, arbres en terre par rue), la liste
+	# seulement si elle change : refaire la liste à chaque repeinte coûtait 1,9 ms.
+	var vergers := PackedStringArray()
+	var ages := {}
+	for fid in ville._cultures:
+		var code := ville.parcelle_code(fid, mois)
+		if int(code) == 1 + VERGER and donnees["emprises"].has(str(fid)):
+			ages[fid] = snappedf(fposmod(code, 1.0) / 0.9, 0.1)
+			vergers.append("%d:%.1f" % [fid, ages[fid]])
+	var canopee := {}
+	var en_terre := 0
+	for a in _arbres_slots:
+		var r := int(a[5])
+		if not canopee.has(r):
+			canopee[r] = ville.valeur("r", r, "canopee", mois)
+		if float(a[6]) <= float(canopee[r]):
+			en_terre += 1
+	var signe := "%s|%s|%d" % [str(ville._camps.keys()), ",".join(vergers), en_terre]
+	if _arbres_compte >= 0 and signe == _vergers_signe:
+		return
+	_vergers_signe = signe
 	# 🏕️ UN CAMP DÉGAGE SON CHAMP : sans ça les arbres traversent les
 	# containers, et c'est la première chose qu'on voit.
 	var campements := []
@@ -1952,25 +2024,16 @@ func _montrer_arbres() -> void:
 				float(a[0]), float(a[2])):
 			liste.append(a)
 	# 🍎 Les vergers se plantent en vrais arbres, et grandissent avec l'âge.
-	var vergers := PackedStringArray()
-	for fid in ville._cultures:
-		var code := ville.parcelle_code(fid, mois)
-		if int(code) == 1 + VERGER and donnees["emprises"].has(str(fid)):
-			var age := snappedf(fposmod(code, 1.0) / 0.9, 0.1)
-			vergers.append("%d:%.1f" % [fid, age])
-			for a in _verger_semis(fid):
-				liste.append([a[0], a[1], a[2], a[3] * lerpf(0.5, 1.0, age), a[4],
-					Constructeur.FRUITIER])
-	var signe := ",".join(vergers)
+	for fid in ages:
+		for a in _verger_semis(fid):
+			liste.append([a[0], a[1], a[2], a[3] * lerpf(0.5, 1.0, ages[fid]), a[4],
+				Constructeur.FRUITIER])
 	for a in _arbres_slots:
-		if float(a[6]) <= ville.valeur("r", int(a[5]), "canopee", mois):
+		if float(a[6]) <= float(canopee[int(a[5])]):
 			# Un alignement est d'une seule essence, et feuillu : personne ne
 			# plante une haie d'épicéas en ville.
 			liste.append([a[0], a[1], a[2], a[3], a[4], Constructeur.FEUILLU])
-	if liste.size() == _arbres_compte and signe == _vergers_signe:
-		return
 	_arbres_compte = liste.size()
-	_vergers_signe = signe
 	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
 	var brun := Donnees.teinte(donnees, "_tronc")
 	for essence in _arbres_noeuds:
@@ -2088,21 +2151,54 @@ func _sur_pulsation_trafic() -> void:
 		_dernier_peint = -1.0
 
 
-## 🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-09-01 : le bandeau a été rafraîchi 10 fois
-## par seconde au lieu de 60, pour économiser les deux sommes de ville qu'il
-## demande. Ça ne gagnait RIEN à l'écran — l'image est tenue par la carte
-## graphique, pas par le script — et le contrôle du clic de `--essai` tombait à
-## côté de la berge 6. Ne pas le refaire sans avoir compris ce lien.
+## ⏱️ Les sommes de ville (~9 ms) et la repeinte (~11 ms) ne passent qu'au plus
+## 10×/s, et tout de suite après une décision ou un clic. Mesuré par `--banc`
+## (2026-10-07) : l'image est tenue par le SCRIPT, GPU ~3 ms — à ×12 la maquette
+## tombait à 43 ips. 🔄 Un essai à 10 Hz retiré le 2026-09-01 faisait rater le
+## clic de `--essai` sur la berge 6 : il ne rafraîchissait pas après le clic.
+const RAFRAICHIR_MS := 100
+
+var _indic := {}
+var _indic_mois := -1.0
+var _indic_ms := -RAFRAICHIR_MS
+var _peint_ms := -RAFRAICHIR_MS
+var _clic := false
+
+
+func _input(e: InputEvent) -> void:
+	# Un curseur qu'on tire change la fiche : glisser compte comme un clic.
+	if e is InputEventMouseButton or e is InputEventKey \
+			or (e is InputEventMouseMotion and e.button_mask != 0):
+		_clic = true
+
+
+## Le dictionnaire de `ville.indicateurs`, plus `degats` que le bandeau lit aussi.
+func _indicateurs(force: bool, attendre := false) -> Dictionary:
+	var ms := Time.get_ticks_msec()
+	if force or _clic or _indic.is_empty() or (not attendre
+			and mois != _indic_mois and ms - _indic_ms >= RAFRAICHIR_MS):
+		_indic = ville.indicateurs(mois)
+		_indic["degats"] = ville.degats(mois)
+		_indic_mois = mois
+		_indic_ms = ms
+	return _indic
+
+
 func _rafraichir(force: bool) -> void:
 	# Hors du raccourci ci-dessous : le trait suit la CAMÉRA, qui bouge même
 	# quand le temps est en pause.
 	_maj_contour()
 	_maj_apercu()
 	_maj_apercus_projets()
-	if not force and absf(mois - _dernier_peint) < 0.002:
-		interface.maj(ville.indicateurs(mois), mois, vitesse)
+	force = force or _dernier_peint < 0.0
+	var ms := Time.get_ticks_msec()
+	if not force and (absf(mois - _dernier_peint) < 0.002
+			or ms - _peint_ms < RAFRAICHIR_MS):
+		interface.maj(_indicateurs(false), mois, vitesse)
+		_clic = false
 		return
 	_dernier_peint = mois
+	_peint_ms = ms
 	RenderingServer.global_shader_parameter_set("eau_limon", Ville.limon_eau(mois))
 	_montrer_reparations()
 	_montrer_arbres()
@@ -2112,7 +2208,10 @@ func _rafraichir(force: bool) -> void:
 		pastilles.actualiser(mois)
 	travaux.actualiser(ville, mois)
 	_peindre()
-	interface.maj(ville.indicateurs(mois), mois, vitesse)
+	# Sans décision, les sommes attendent l'image suivante : deux calculs
+	# lourds sur la même image faisaient un à-coup de 24 ms.
+	interface.maj(_indicateurs(force, true), mois, vitesse)
+	_clic = false
 	interface.retours.actualiser(mois)
 
 
@@ -2489,15 +2588,14 @@ func _peindre() -> void:
 					# ⚠️ UN Vector4 ET JAMAIS UNE Color : Godot fait passer une
 					# couleur en espace linéaire, et 5,4 m de surélévation en
 					# ressortaient à ~50 — la ville poussait en tours.
-					var dn := ville.etat_dense(fid, mois)
+					var dn := ville.rendu_dense(fid, mois)
 					# 🏗️ La façon de rebâtir (95), une fois livrée : le bâti neuf
 					# en prend l'allure, la ruine s'efface ou devient parc.
 					var rb := Ville.rendu_rebati(ville.facon_reparation(fid)) \
 						if ville.reparation_finie("i", fid, mois) else Vector2.ZERO
 					mj.set_instance_shader_parameter("densification",
 						Vector4(0.0, 1.0, rb.y, rb.x) if mj == reparations["i"].get(fid)
-						else Vector4(float(dn["avancement"]), float(dn["pas"]),
-						float(dn["metres"]), rb.x))
+						else Vector4(dn.x, dn.y, dn.z, rb.x))
 
 
 
