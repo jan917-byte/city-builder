@@ -680,3 +680,6 @@ Toit plat sur tissu à tuiles : 60 % vers le gris membrane (`TOIT_PLAT_GRIS`, `p
 **2026-10-07 — Les bâtiments en L, T, U ont un toit pentu : 151 toits plats forcés → 0.**
 Demande de l'auteur. L'empreinte se coupe au sommet rentrant en morceaux convexes, un toit par morceau ; l'aile dont la coupe est un bout se prolonge sous le toit voisin, la noue se fait à l'intersection (`_morceaux_convexes`, `_toits_croises`). 134 L, 17 à deux rentrants.
 🔴 Coût : surface plate 4,1 → 1,9 ha, îlots verdissables 39 → 7 (tissus plats seuls) ; toit total 9,9 → 10,6 ha. Îlots 32 et 49 des essais inchangés. Avant/après : `QGIS/rendus/wehrau_toits_L_avant_apres.png`.
+**2026-10-07 — Les 70 toits les plus complexes redeviennent plats : 1,9 → 3,0 ha de toit plat, sur 34 îlots.**
+Demande de l'auteur (« environ 3 ha »). Complexité = versants de plus de 2 m² + écart des angles à l'équerre ; plat au-delà de 4,12 (`COMPLEXITE_PLAT`) : surtout des L de biais, des T et des U. Leur teinte part vers le gris.
+17 îlots n'ont qu'un ou deux toits plats (7 avant le passage aux L). Captures `QGIS/rendus/wehrau_toits_*_3ha.png`.

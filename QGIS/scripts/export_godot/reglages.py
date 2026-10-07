@@ -588,6 +588,13 @@ FAITAGE_MAX = 5.5
 ANGLE_EGOUT_DEG = 45.0
 COS_EGOUT = math.cos(math.radians(ANGLE_EGOUT_DEG))
 
+# 🏠 Les toits les plus COMPLEXES restent plats (auteur, 2026-10-07 : « environ
+# 3 ha de toits plats »). Complexité = versants de plus de PAN_MIN_M2 + écart
+# des angles à l'équerre (0 à 1). À 4,12 : ~70 bâtiments, surtout des L de
+# biais et des T/U, et la surface plate passe de 1,9 à ~3 ha. Level design.
+COMPLEXITE_PLAT = 4.12
+PAN_MIN_M2 = 2.0
+
 # ============================ LE RELIEF DU TOIT (2026-08-18) ==============
 # 🏠 LE DÉBORD, et c'est LA ligne qui fait qu'un volume cesse d'être une boîte.
 # Jusqu'ici le toit s'arrêtait exactement sur le mur : aucune ombre portée sur

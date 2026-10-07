@@ -31,6 +31,7 @@ from .reglages import (
     CHEMINEE_AIRE_MIN,
     CHEMINEE_COTE,
     CHEMINEE_HAUT,
+    COMPLEXITE_PLAT,
     COS_EGOUT,
     COUL_CHEMINEE,
     DEBORD_TOIT,
@@ -53,6 +54,7 @@ from .reglages import (
     MITOYEN_SINUS,
     PAN_COUPE_M,
     PART_CHEMINEES,
+    PAN_MIN_M2,
     PART_COTE_MAX,
     RECTANGULAIRE,
     RETRAIT_MAX,
@@ -466,8 +468,10 @@ def _toit_plat(pente, faite, emp):
     """Le toit de CE volume est-il plat ? Le tissu donne une pente, la
     géométrie la refuse : même test qu'à l'émission, appelé aux deux endroits
     pour qu'ils ne puissent pas diverger."""
-    return not (pente > 0.0 and faite is not None
-                and _morceaux_convexes(emp) is not None)
+    if not (pente > 0.0 and faite is not None):
+        return True
+    c = _complexite(emp, faite)
+    return c is None or c >= COMPLEXITE_PLAT
 
 
 def _rangs_verts(volumes, pente):
@@ -733,23 +737,10 @@ def _ruine(m, anneau, coul_mur, coul_gravats, G, rng):
     return ok, n, len(tris), len(tris)
 
 
-def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
-    """Un toit pentu sur une empreinte CONVEXE, sans un seul asset.
-
-    Chaque arête de l'égout est un ÉGOUT (elle porte un versant) si elle court
-    à moins de ANGLE_EGOUT_DEG du faîtage, un PIGNON (mur vertical) sinon. La
-    hauteur d'un point est `pente × distance à l'égout le plus proche` : chaque
-    versant est donc un PLAN, quelle que soit la forme. Rectangle → deux pentes
-    et deux pignons ; trapèze → faîtage en biais, versants plans ; pan coupé →
-    une petite croupe.
-
-    🔄 Remplace (2026-10-07) « chaque sommet relié à sa projection sur une
-    droite de faîtage » : hors rectangle, les pans sortaient vrillés et de
-    pentes différentes — les toits cassés vus par l'auteur.
-    ⚠️ Le faîtage est parallèle à la RUE, pas à l'axe long de l'empreinte.
-    """
+def _pans(anneau, faitage):
+    """Les versants d'une empreinte convexe : (lignes, égouts, pans, dist).
+    Un pan = la part de l'empreinte dont l'égout i est le plus proche."""
     ux, uy = faitage
-    axe_uv = (ux, -uy)
     n = len(anneau)
     sens = 1.0 if aire_signee(anneau) > 0.0 else -1.0
     lignes = []                    # (origine, normale intérieure, égout ?)
@@ -782,6 +773,49 @@ def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
                                -1e-9 if j > i else 1e-9)
         if len(poly) >= 3 and abs(aire_signee(poly)) > 1e-4:
             pans[i] = poly
+    return lignes, egouts, pans, dist
+
+
+def _complexite(emp, faite):
+    """Versants de plus de PAN_MIN_M2 que porterait ce toit, plus l'écart
+    moyen de ses angles à l'équerre (0 à 1). Rectangle ≈ 2, L ≈ 4. None si
+    l'empreinte ne se découpe pas."""
+    morceaux = _morceaux_convexes(emp)
+    if morceaux is None:
+        return None
+    pans = sum(1 for poly, f in _toits_croises(morceaux, faite)
+               for pan in _pans(poly, f)[2].values()
+               if abs(aire_signee(pan)) >= PAN_MIN_M2)
+    n = len(emp)
+    ecart = 0.0
+    for i in range(n):
+        a, b, c = emp[i - 1], emp[i], emp[(i + 1) % n]
+        u, v = (a[0] - b[0], a[1] - b[1]), (c[0] - b[0], c[1] - b[1])
+        ang = math.degrees(math.atan2(abs(u[0] * v[1] - u[1] * v[0]),
+                                      u[0] * v[0] + u[1] * v[1]))
+        ecart += min(abs(ang - 90.0) if ang < 135.0 else 180.0 - ang, 45.0)
+    return pans + ecart / 45.0 / n
+
+
+def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
+    """Un toit pentu sur une empreinte CONVEXE, sans un seul asset.
+
+    Chaque arête de l'égout est un ÉGOUT (elle porte un versant) si elle court
+    à moins de ANGLE_EGOUT_DEG du faîtage, un PIGNON (mur vertical) sinon. La
+    hauteur d'un point est `pente × distance à l'égout le plus proche` : chaque
+    versant est donc un PLAN, quelle que soit la forme. Rectangle → deux pentes
+    et deux pignons ; trapèze → faîtage en biais, versants plans ; pan coupé →
+    une petite croupe.
+
+    🔄 Remplace (2026-10-07) « chaque sommet relié à sa projection sur une
+    droite de faîtage » : hors rectangle, les pans sortaient vrillés et de
+    pentes différentes — les toits cassés vus par l'auteur.
+    ⚠️ Le faîtage est parallèle à la RUE, pas à l'axe long de l'empreinte.
+    """
+    ux, uy = faitage
+    axe_uv = (ux, -uy)
+    n = len(anneau)
+    lignes, egouts, pans, dist = _pans(anneau, faitage)
     d_max = max((dist(i, p) for i, poly in pans.items() for p in poly),
                 default=0.0)
     s = min(pente, FAITAGE_MAX / d_max) if d_max > 1e-6 else 0.0

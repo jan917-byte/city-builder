@@ -829,9 +829,8 @@ def main():
             for k_vol, (emp, niv, faite, parcelle, crue, eau_m) in \
                     enumerate(volumes):
                 # ⚠️ TOIT PENTU si l'empreinte se découpe en morceaux convexes
-                # (L, T, U : un toit par morceau, croisés au joint). Sinon plat.
-                # 🔴 Coût (2026-10-07) : les 151 concaves ne verdissent plus,
-                # la surface plate tombe de 4,1 à 1,9 ha.
+                # (L, T, U : un toit par morceau, croisés au joint) et n'est
+                # pas trop complexe (COMPLEXITE_PLAT) ; sinon plat, verdissable.
                 pente_v = 0.0
                 if pente > 0.0:
                     if _toit_plat(pente, faite, emp):
@@ -1213,7 +1212,7 @@ def main():
         print("        %d parcelles pavillonnaires bâties vertes sur %d"
               % (n_pav_vert, n_parcelle_haie))
         print("        %d à deux pentes · %d plats par dessin (le tissu les"
-              " veut plats) · %d plats faute d'empreinte convexe"
+              " veut plats) · %d plats par complexité"
               % (n_pentu, n_vol - n_pentu - n_plat_force, n_plat_force))
         if n_deborde:
             print("        ⚠️  %d bâtiments sur %d débordent de leur parcelle,"
