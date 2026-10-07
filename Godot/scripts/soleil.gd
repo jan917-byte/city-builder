@@ -16,6 +16,12 @@ var _portee_vue := 0.0
 var _proche_vu := 0.0
 
 
+## 📊 `-- --banc --sans-ombre` : ce que coûtent les ombres, par différence.
+func _ready() -> void:
+	if "--sans-ombre" in OS.get_cmdline_user_args():
+		shadow_enabled = false
+
+
 func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE:
