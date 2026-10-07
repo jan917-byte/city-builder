@@ -574,8 +574,8 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
 		std.roughness = 0.72
 		return std
 	# Tout ce qui glisse suit l'horloge partagée, jamais `TIME` : elle s'arrête
-	# quand le temps est en pause (auteur, 2026-09-28), `TIME` jamais.
-	_declarer_horloge()
+	# quand le temps est en pause (auteur, 2026-09-28), `TIME` jamais. Déclarée
+	# dans `project.godot`, parce que l'eau la lit avant la première voiture.
 	var pas := ""
 	if balance > 0.0:
 		pas = "  VERTEX.y += %f * sin(%s * %f + INSTANCE_CUSTOM.x);\n" \
@@ -600,20 +600,6 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	return mat
-
-
-## ⚠️ On ne DEMANDE pas au serveur si l'horloge existe : la liste des uniformes
-## globaux n'est lisible que dans l'éditeur, et hors éditeur elle imprime une
-## erreur. Un drapeau de classe suffit — le matériau n'est bâti qu'une fois.
-static var _horloge_posee := false
-
-
-static func _declarer_horloge() -> void:
-	if _horloge_posee:
-		return
-	_horloge_posee = true
-	RenderingServer.global_shader_parameter_add(HORLOGE,
-		RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 
 
 static func _instances(mesh: Mesh, nombre: int, anime: bool) -> MultiMesh:

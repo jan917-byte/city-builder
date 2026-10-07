@@ -8,6 +8,8 @@ uniform vec2 brume_exterieure = vec2(0.0);
 // global pour que ville, paysage et miniature changent ensemble ; `limpidite`
 // découvre les galets du fond près des rives.
 global uniform float eau_limon;
+// L'horloge du trafic, pas `TIME` : le courant s'arrête avec la pause (auteur, 2026-10-07).
+global uniform float temps_trafic;
 uniform vec4 crue_bord : source_color;
 uniform vec4 crue_milieu : source_color;
 uniform vec4 trouble_bord : source_color;
@@ -38,7 +40,7 @@ void fragment() {
 	// Le courant : deux phases décalées d'un demi-cycle, fondues l'une dans
 	// l'autre — la ride avance vers l'aval sans jamais sauter.
 	vec2 f = length(aval) > 0.1 ? normalize(aval) : vec2(0.0, -1.0);
-	float cycle = TIME * 0.16;
+	float cycle = temps_trafic * 0.16;
 	float ph0 = fract(cycle), ph1 = fract(cycle + 0.5);
 	float w0 = 1.0 - abs(1.0 - 2.0 * ph0);
 	vec2 o0 = f * ph0 * 3.4, o1 = f * ph1 * 3.4 + vec2(13.7, 5.1);

@@ -32,6 +32,10 @@ lights_and_shadows/directional_shadow/soft_shadow_filter_quality=4
 
 [shader_globals]
 
+temps_trafic={
+"type": "float",
+"value": 0.0
+}
 eau_limon={
 "type": "float",
 "value": 1.0
