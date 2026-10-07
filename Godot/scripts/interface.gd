@@ -1118,6 +1118,7 @@ const DESSINS := {
 	"plan": "<path d='M14.1 5.55a2 2 0 001.8 0l3.65-1.83A1 1 0 0121 4.62v12.76a1 1 0 01-.55.9l-4.55 2.27a2 2 0 01-1.8 0L9.9 18.45a2 2 0 00-1.8 0l-3.65 1.83A1 1 0 013 19.38V6.62a1 1 0 01.55-.9l4.55-2.27a2 2 0 011.8 0zM15 5.76v15M9 3.24v15'/>",
 	"cube": "<path d='M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/><path d='M3.3 7L12 12l8.7-5M12 22V12'/>",
 	"croix": "<path d='M18 6L6 18M6 6l12 12'/>",
+	"camp": "<path d='M3.5 21L14 3M20.5 21L10 3M15.5 21L12 15l-3.5 6M2 21h20'/>",
 	"journal": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l4 2'/>",
 }
 
@@ -2991,6 +2992,7 @@ func ouvrir_projets() -> void:
 	_projets_cle = ""
 	_projets_panneau.visible = true
 	_maj_projets()
+	retours.actualiser_affichage()
 	projets_ouverts.emit(_fiche_fid)
 
 
@@ -3002,6 +3004,7 @@ func projets_fid() -> int:
 func fermer_projets() -> void:
 	if _projets_panneau != null:
 		_projets_panneau.visible = false
+		retours.actualiser_affichage()
 
 
 ## Appelé à chaque image avec la fiche : les boutons suivent la pose, les chiffres

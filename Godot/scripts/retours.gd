@@ -2,16 +2,23 @@ extends RefCounted
 ## Problèmes en pastilles et constats de chantier, sans élément posé sur la carte.
 
 var ui
-## Colonne bas-droite : les chantiers au-dessus, la rangée des problèmes en bas.
+## Colonne bas-droite : les chantiers au-dessus, le journal en bas.
 var pile: VBoxContainer
-## 🔴 Un problème = une icône dans un cercle rouge, le détail au survol (auteur,
-## 2026-10-07, « comme Frostpunk ») : la phrase pleine largeur prenait la place.
-var compteur: HBoxContainer
+var journal_bouton: Button
+## 🔴 Un problème = une icône dans un cercle rouge, au centre du bas, le détail au
+## survol (auteur, 2026-10-07, « comme Frostpunk »). `compteur` = le jeu est à l'écran ;
+## `rangee` s'efface sous les quatre projets du concours, posés au même endroit.
+var compteur: Control
+var rangee: HBoxContainer
+var ponts_casses: PanelContainer
 var sans_logement: PanelContainer
+var camp_mecontent: PanelContainer
 const PASTILLE := 44
 ## Le survol d'une pastille : en verre comme les panneaux, pas l'infobulle grise de Godot.
+## Ce que le problème coûte chaque mois (argent, confiance) en rouge, le reste en gris.
 var survol: PanelContainer
 var survol_titre: Label
+var survol_couts := {}   # icône → {ligne, texte}
 var survol_lignes: Label
 var _survolee: Control
 ## 🚧 Les chantiers ont leur boîte, hors du compteur : deux thèmes (auteur, 2026-09-30).
@@ -58,13 +65,25 @@ func batir(interface) -> void:
 	chantiers.visible = false
 	pile.add_child(chantiers)
 	_batir_chantiers(chantiers)
-	compteur = HBoxContainer.new()
-	compteur.alignment = BoxContainer.ALIGNMENT_END
-	compteur.add_theme_constant_override("separation", 8)
+	compteur = Control.new()
+	compteur.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	compteur.offset_top = -16 - PASTILLE
+	compteur.offset_bottom = -16
 	compteur.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pile.add_child(compteur)
+	ui.add_child(compteur)
+	rangee = HBoxContainer.new()
+	rangee.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	rangee.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	rangee.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	rangee.add_theme_constant_override("separation", 10)
+	rangee.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	compteur.add_child(rangee)
+	ponts_casses = _pastille("pont_casse")
+	rangee.add_child(ponts_casses)
 	sans_logement = _pastille("logement")
-	compteur.add_child(sans_logement)
+	rangee.add_child(sans_logement)
+	camp_mecontent = _pastille("camp")
+	rangee.add_child(camp_mecontent)
 	survol = PanelContainer.new()
 	ui._poser_boite(survol)
 	survol.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -72,11 +91,22 @@ func batir(interface) -> void:
 	survol.add_child(bloc)
 	survol_titre = ui._label("", 16, ui.ALERTE)
 	bloc.add_child(survol_titre)
+	for icone in ["caisse", "capital"]:
+		var ligne := HBoxContainer.new()
+		bloc.add_child(ligne)
+		var pic := TextureRect.new()
+		pic.texture = ui._icone(icone, 16, ui.ALERTE)
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		ligne.add_child(pic)
+		var t: Label = ui._label("", 14, ui.ALERTE)
+		ligne.add_child(t)
+		survol_couts[icone] = {"ligne": ligne, "texte": t}
 	survol_lignes = ui._label("", 12, ui.GRIS)
 	bloc.add_child(survol_lignes)
 	survol.hide()
-	# 🔄 Le journal reste au bout de la rangée (auteur, 2026-09-28), en cercle neutre.
+	# 🔄 Le journal reste en bas à droite (auteur, 2026-09-28), en cercle neutre.
 	var bouton := Button.new()
+	journal_bouton = bouton
 	bouton.icon = ui._icone("journal", 22)
 	bouton.tooltip_text = "Dernières décisions"
 	bouton.custom_minimum_size = Vector2(PASTILLE, PASTILLE)
@@ -89,7 +119,8 @@ func batir(interface) -> void:
 	bouton.pressed.connect(func() -> void:
 		_historique_ouvert = not _historique_ouvert
 		actualiser_affichage())
-	compteur.add_child(bouton)
+	bouton.size_flags_horizontal = Control.SIZE_SHRINK_END
+	pile.add_child(bouton)
 	pile.minimum_size_changed.connect(ui._clamper_fiche)
 	ui.add_child(survol)
 	avis = PanelContainer.new()
@@ -132,7 +163,8 @@ func _pastille(icone: String) -> PanelContainer:
 	p.add_theme_stylebox_override("panel", sb)
 	p.custom_minimum_size = Vector2(PASTILLE, PASTILLE)
 	p.mouse_filter = Control.MOUSE_FILTER_STOP
-	p.set_meta("detail", PackedStringArray())
+	p.set_meta("detail", {})
+	p.visible = false
 	p.mouse_entered.connect(func() -> void:
 		_survolee = p
 		_remplir_survol())
@@ -147,19 +179,26 @@ func _pastille(icone: String) -> PanelContainer:
 	return p
 
 
-## Première ligne = le problème, en rouge ; la suite, ce qu'il coûte et ce qui vient.
+## `detail` : {titre, couts {icône: texte}, lignes} — posé par `actualiser`.
 func _remplir_survol() -> void:
-	var lignes: PackedStringArray = _survolee.get_meta("detail") if _survolee != null else PackedStringArray()
-	survol.visible = _survolee != null and _survolee.is_visible_in_tree() and not lignes.is_empty()
+	var d: Dictionary = _survolee.get_meta("detail") if _survolee != null else {}
+	survol.visible = _survolee != null and _survolee.is_visible_in_tree() and not d.is_empty()
 	if not survol.visible:
 		return
-	survol_titre.text = lignes[0]
-	survol_lignes.text = "\n".join(lignes.slice(1))
-	survol_lignes.visible = lignes.size() > 1
-	# À gauche de la pastille, calé sur son bas : la boîte des chantiers reste lisible.
+	survol_titre.text = d["titre"]
+	for icone in survol_couts:
+		var c: Dictionary = survol_couts[icone]
+		(c["ligne"] as Control).visible = d["couts"].has(icone)
+		(c["texte"] as Label).text = d["couts"].get(icone, "")
+	survol_lignes.text = "\n".join(d["lignes"])
+	survol_lignes.visible = not d["lignes"].is_empty()
+	# Au-dessus de la pastille, centré sur elle, sans sortir de l'écran.
 	survol.reset_size()
 	var cible := _survolee.get_global_rect()
-	survol.global_position = Vector2(cible.position.x - 8.0 - survol.size.x, cible.end.y - survol.size.y)
+	var large: float = ui.get_viewport().get_visible_rect().size.x
+	survol.global_position = Vector2(
+		clampf(cible.get_center().x - survol.size.x / 2.0, 16.0, large - 16.0 - survol.size.x),
+		cible.position.y - 8.0 - survol.size.y)
 
 
 ## Le bandeau du haut ne porte que les annonces (université, boue sur le chemin) :
@@ -193,6 +232,10 @@ func actualiser_affichage() -> void:
 	if avis == null:
 		return
 	chantiers.visible = compteur.visible and _nb_chantiers > 0
+	journal_bouton.visible = compteur.visible
+	rangee.visible = ui.projets_fid() < 0
+	if not rangee.visible:
+		survol.hide()
 	avis.visible = compteur.visible and (_historique_ouvert or Time.get_ticks_msec() < _expiration)
 	# ⚠️ Sous la barre, comme le détail d'un compteur : leurs verres se dessinent au même niveau.
 	if ui._detail_sujet != "" and not _historique_ouvert:
@@ -397,16 +440,41 @@ func actualiser(mois: float) -> void:
 	for fid in ui.ville._camps:
 		if not ui.ville.camp_livre(fid, mois) and ui.ville.camp_accessible(fid, mois):
 			places += ui.ville.camp_taille(fid, mois) * ui.ville.CAMP_PERSONNES_LOGEMENT
-	var lignes := ["Personnes sans logement : %d" % n]
+	# 🔴 Textes affichés, flaggables (90).
+	var couts := {}
 	if aide > 0.0:
-		lignes.append("Aide d'urgence : −%s k€ par mois" % ui._milliers(aide))
-	if places > 0:
-		lignes.append("%d places en construction" % places)
-	sans_logement.set_meta("detail", PackedStringArray(lignes))
+		couts["caisse"] = "−%s k€ par mois · aide d'urgence" % ui._milliers(aide)
+	sans_logement.set_meta("detail", {"titre": "%d personnes sans logement" % n, "couts": couts,
+		"lignes": ["%d places en construction" % places] if places > 0 else []})
 	sans_logement.visible = n > 0
+	var en_cours: Array = ui.ville.chantiers(mois)["en_cours"]
+	# Un pont reste cassé tant que ses deux rives ne sont pas reliées, chantier livré ou non.
+	var coupes := []
+	for pont in ui.ville.ponts_coupes():
+		if ui.trafic.pont_fonctionnel(pont, mois):
+			continue
+		var etat := ""
+		for c in en_cours:
+			if str(c["couche"]) == "r" and int(c["fid"]) == pont:
+				etat = " · chantier, encore %s" % ui._duree(float(c["reste_mois"]))
+		if etat == "" and ui.ville.route_praticable(pont, mois):
+			etat = " · ses accès restent coupés"
+		coupes.append(ui.lieux.nom("r", pont) + etat)
+	ponts_casses.set_meta("detail", {"titre": "Les deux rives ne sont pas reliées" if coupes.size() == ui.ville.ponts_coupes().size()
+		else "%d ponts encore coupés" % coupes.size() if coupes.size() > 1 else "Un pont encore coupé",
+		"couts": {}, "lignes": coupes})
+	ponts_casses.visible = not coupes.is_empty()
+	var usure: float = ui.ville.usure_camp_mois(mois)
+	var lignes := ["%d personnes vivent dans les containers" % int(ui.ville.reloges(mois))]
+	for cle in ui.Ville.DEMANDES_ORDRE:
+		if not ui.ville.demande_engagee(cle):
+			lignes.append("« %s » l'arrête" % ui.Ville.DEMANDES[cle]["nom"])
+	camp_mecontent.set_meta("detail", {"titre": "Les habitants du camp se plaignent",
+		"couts": {"capital": "−%s confiance par mois" % ui._nb(usure, 1)}, "lignes": lignes})
+	# Même seuil que le rouge de la confiance, en haut.
+	camp_mecontent.visible = usure >= 0.05
 	if _survolee != null:
 		_remplir_survol()
-	var en_cours: Array = ui.ville.chantiers(mois)["en_cours"]
 	_maj_chantiers(en_cours)
 	var courants := _chantiers(mois, en_cours)
 	for cle in _en_cours:
@@ -519,4 +587,5 @@ func _lieu_capital(m: Dictionary, mois: float) -> Array:
 
 ## Le texte du survol d'une pastille, d'un seul bloc (pour les essais).
 func detail(p: Control) -> String:
-	return "\n".join(p.get_meta("detail"))
+	var d: Dictionary = p.get_meta("detail")
+	return "\n".join([d["titre"]] + d["couts"].values() + d["lignes"])

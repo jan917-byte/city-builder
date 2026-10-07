@@ -73,6 +73,16 @@ func executer() -> void:
 		"« Voir le campement » ouvre le camp et son bouton d'amélioration")
 	verifier(ui._demande_boutons.size() == 1 and "Améliorer le campement" in ui._demande_boutons["amelioration"].text,
 		"Un seul bouton : %s" % ui._demande_boutons["amelioration"].text)
+	# 🔴 La plainte a sa pastille au centre du bas ; son survol dit la confiance perdue.
+	var pastille: Control = ui.retours.camp_mecontent
+	pastille.mouse_entered.emit()
+	await process_frame
+	verifier(pastille.visible and ui.retours.survol.visible
+		and "−2,6 confiance par mois" in ui.retours.detail(pastille)
+		and "Améliorer le campement" in ui.retours.detail(pastille),
+		"La pastille du camp dit la confiance perdue et ce qui l'arrête : %s" % ui.retours.detail(pastille))
+	await capture("camp_02b_pastille")
+	pastille.mouse_exited.emit()
 	await cliquer(ui._demande_boutons["amelioration"])
 	await capture("camp_03_ameliorer")
 	await cliquer(ui._recap_bouton)
@@ -91,6 +101,7 @@ func executer() -> void:
 	var apres: float = v.usure_camp_mois(jeu.mois)
 	verifier(avant > 2.0 and apres == 0.0, "Le campement amélioré arrête l'usure : %.2f → %.2f" % [avant, apres])
 	verifier(not o.annonce.visible, "La plainte ne revient pas")
+	verifier(not ui.retours.camp_mecontent.visible, "La pastille du camp part avec l'usure")
 	ui._maj_fiche()
 	verifier(ui._demande_boutons["amelioration"].disabled, "L'amélioration livrée ne se recommande pas")
 	await capture("camp_04_ameliore")
