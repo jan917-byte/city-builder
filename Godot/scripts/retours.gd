@@ -1,12 +1,19 @@
 extends RefCounted
-## Compteur permanent et constats de chantier, sans élément posé sur la carte.
+## Problèmes en pastilles et constats de chantier, sans élément posé sur la carte.
 
 var ui
-## Colonne bas-droite : les chantiers au-dessus, le compteur des sans-logement en bas.
+## Colonne bas-droite : les chantiers au-dessus, la rangée des problèmes en bas.
 var pile: VBoxContainer
-var compteur: PanelContainer
-var besoin: Label
-var preparation: Label
+## 🔴 Un problème = une icône dans un cercle rouge, le détail au survol (auteur,
+## 2026-10-07, « comme Frostpunk ») : la phrase pleine largeur prenait la place.
+var compteur: HBoxContainer
+var sans_logement: PanelContainer
+const PASTILLE := 44
+## Le survol d'une pastille : en verre comme les panneaux, pas l'infobulle grise de Godot.
+var survol: PanelContainer
+var survol_titre: Label
+var survol_lignes: Label
+var _survolee: Control
 ## 🚧 Les chantiers ont leur boîte, hors du compteur : deux thèmes (auteur, 2026-09-30).
 var chantiers: PanelContainer
 var chantiers_bloc: VBoxContainer
@@ -51,31 +58,40 @@ func batir(interface) -> void:
 	chantiers.visible = false
 	pile.add_child(chantiers)
 	_batir_chantiers(chantiers)
-	compteur = PanelContainer.new()
-	compteur.theme = ui._theme_ui
-	ui._poser_boite(compteur)
+	compteur = HBoxContainer.new()
+	compteur.alignment = BoxContainer.ALIGNMENT_END
+	compteur.add_theme_constant_override("separation", 8)
+	compteur.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pile.add_child(compteur)
-	var lignes := VBoxContainer.new()
-	compteur.add_child(lignes)
-	# 🔄 Le journal est une icône sur la ligne du compteur (auteur, 2026-09-28) :
-	# « Dernières décisions » prenait une ligne pleine largeur.
-	var tete := HBoxContainer.new()
-	lignes.add_child(tete)
-	besoin = ui._label("", 16, ui.TEXTE)
-	besoin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	besoin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	tete.add_child(besoin)
+	sans_logement = _pastille("logement")
+	compteur.add_child(sans_logement)
+	survol = PanelContainer.new()
+	ui._poser_boite(survol)
+	survol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bloc := VBoxContainer.new()
+	survol.add_child(bloc)
+	survol_titre = ui._label("", 16, ui.ALERTE)
+	bloc.add_child(survol_titre)
+	survol_lignes = ui._label("", 12, ui.GRIS)
+	bloc.add_child(survol_lignes)
+	survol.hide()
+	# 🔄 Le journal reste au bout de la rangée (auteur, 2026-09-28), en cercle neutre.
 	var bouton := Button.new()
-	bouton.icon = ui._icone("journal", 18)
+	bouton.icon = ui._icone("journal", 22)
 	bouton.tooltip_text = "Dernières décisions"
-	bouton.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bouton.custom_minimum_size = Vector2(PASTILLE, PASTILLE)
+	bouton.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	for etat in ["normal", "hover", "pressed", "focus"]:
+		var sb := _rond(Color(ui.VERRE_TEINTE, 0.92 if etat == "normal" else 1.0))
+		sb.border_color = ui.GRIS if etat == "normal" else ui.TEXTE
+		sb.set_border_width_all(1)
+		bouton.add_theme_stylebox_override(etat, sb)
 	bouton.pressed.connect(func() -> void:
 		_historique_ouvert = not _historique_ouvert
 		actualiser_affichage())
-	tete.add_child(bouton)
-	preparation = ui._label("", 12, ui.GRIS)
-	lignes.add_child(preparation)
+	compteur.add_child(bouton)
 	pile.minimum_size_changed.connect(ui._clamper_fiche)
+	ui.add_child(survol)
 	avis = PanelContainer.new()
 	avis.theme = ui._theme_ui
 	ui._poser_boite(avis)
@@ -97,6 +113,53 @@ func batir(interface) -> void:
 	historique.bbcode_enabled = false
 	contenu.add_child(historique)
 	avis.hide()
+
+
+func _rond(fond: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fond
+	sb.set_corner_radius_all(PASTILLE / 2)
+	sb.anti_aliasing = true
+	return sb
+
+
+## Cercle rouge, icône blanche : ronde même en vitre, c'est ce qui la sépare des panneaux.
+func _pastille(icone: String) -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := _rond(ui.ALERTE)
+	sb.border_color = Color(1, 1, 1, 0.9)
+	sb.set_border_width_all(2)
+	p.add_theme_stylebox_override("panel", sb)
+	p.custom_minimum_size = Vector2(PASTILLE, PASTILLE)
+	p.mouse_filter = Control.MOUSE_FILTER_STOP
+	p.set_meta("detail", PackedStringArray())
+	p.mouse_entered.connect(func() -> void:
+		_survolee = p
+		_remplir_survol())
+	p.mouse_exited.connect(func() -> void:
+		_survolee = null
+		survol.hide())
+	var pic := TextureRect.new()
+	pic.texture = ui._icone(icone, 24, Color.WHITE)
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(pic)
+	return p
+
+
+## Première ligne = le problème, en rouge ; la suite, ce qu'il coûte et ce qui vient.
+func _remplir_survol() -> void:
+	var lignes: PackedStringArray = _survolee.get_meta("detail") if _survolee != null else PackedStringArray()
+	survol.visible = _survolee != null and _survolee.is_visible_in_tree() and not lignes.is_empty()
+	if not survol.visible:
+		return
+	survol_titre.text = lignes[0]
+	survol_lignes.text = "\n".join(lignes.slice(1))
+	survol_lignes.visible = lignes.size() > 1
+	# À gauche de la pastille, calé sur son bas : la boîte des chantiers reste lisible.
+	survol.reset_size()
+	var cible := _survolee.get_global_rect()
+	survol.global_position = Vector2(cible.position.x - 8.0 - survol.size.x, cible.end.y - survol.size.y)
 
 
 ## Le bandeau du haut ne porte que les annonces (université, boue sur le chemin) :
@@ -329,19 +392,20 @@ func livraison(c: Dictionary, mois: float) -> void:
 
 func actualiser(mois: float) -> void:
 	var n := int(ui.ville.sans_toit(mois))
-	besoin.text = "Personnes sans logement : %d" % n
 	var aide: float = ui.ville.aide_mensuelle_ke(mois)
 	var places := 0
 	for fid in ui.ville._camps:
 		if not ui.ville.camp_livre(fid, mois) and ui.ville.camp_accessible(fid, mois):
 			places += ui.ville.camp_taille(fid, mois) * ui.ville.CAMP_PERSONNES_LOGEMENT
-	var lignes := []
+	var lignes := ["Personnes sans logement : %d" % n]
 	if aide > 0.0:
 		lignes.append("Aide d'urgence : −%s k€ par mois" % ui._milliers(aide))
 	if places > 0:
 		lignes.append("%d places en construction" % places)
-	preparation.text = "\n".join(lignes)
-	preparation.visible = not lignes.is_empty()
+	sans_logement.set_meta("detail", PackedStringArray(lignes))
+	sans_logement.visible = n > 0
+	if _survolee != null:
+		_remplir_survol()
 	var en_cours: Array = ui.ville.chantiers(mois)["en_cours"]
 	_maj_chantiers(en_cours)
 	var courants := _chantiers(mois, en_cours)
@@ -451,3 +515,8 @@ func _lieu_capital(m: Dictionary, mois: float) -> Array:
 					meilleur = ["i", int(fid)]
 			return meilleur
 	return []
+
+
+## Le texte du survol d'une pastille, d'un seul bloc (pour les essais).
+func detail(p: Control) -> String:
+	return "\n".join(p.get_meta("detail"))

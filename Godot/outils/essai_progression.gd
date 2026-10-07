@@ -18,7 +18,7 @@ func executer() -> void:
 	verifier(not retours.compteur.visible and not retours.avis.visible, "Le récit masque le compteur et les notifications")
 	jeu.recit.terminer()
 	jeu._sur_vitesse(0.0)
-	verifier(retours.compteur.visible and "260" in retours.besoin.text, "Compteur permanent après le récit")
+	verifier(retours.compteur.visible and "260" in retours.detail(retours.sans_logement), "Compteur permanent après le récit")
 	o.ouvert = false
 	o.actualiser(true)
 	verifier(retours.compteur.visible, "Compteur conservé quand le guide est réduit")
@@ -28,7 +28,7 @@ func executer() -> void:
 	await cliquer(jeu.interface._recap_bouton)
 	verifier(jeu.ville.nourriture_personnes(0.0) < nourris and jeu.ville.sans_toit(0.0) == 260,
 		"Coût agricole immédiat, aucune personne relogée avant livraison")
-	verifier(retours.preparation.visible and "260" in retours.besoin.text, "Places en préparation séparées du besoin")
+	verifier("construction" in retours.detail(retours.sans_logement) and "260" in retours.detail(retours.sans_logement), "Places en préparation séparées du besoin")
 	verifier(retours.chantiers.visible and "abris" in retours.chantiers_lignes[0]["quoi"].text,
 		"Le chantier engagé a sa barre en bas à droite")
 	await process_frame
@@ -36,10 +36,18 @@ func executer() -> void:
 		and retours.chantiers.get_global_rect().end.y < retours.compteur.get_global_rect().position.y,
 		"Les chantiers ont leur boîte, au-dessus du compteur des sans-logement")
 	await capture("progression_01_engagement")
+	# 🔴 Le détail du problème vit dans l'infobulle de sa pastille.
+	retours.sans_logement.mouse_entered.emit()
+	await process_frame
+	verifier(retours.survol.visible and "260" in retours.survol_titre.text
+		and retours.survol.get_global_rect().end.x < retours.sans_logement.get_global_rect().position.x,
+		"Le survol de la pastille dit le problème, à sa gauche")
+	await capture("progression_01b_survol")
+	retours.sans_logement.mouse_exited.emit()
 	actualiser(0.2)
-	verifier("22" in retours.besoin.text and not "construction" in retours.preparation.text, "Le compteur baisse à la livraison")
+	verifier("22" in retours.detail(retours.sans_logement) and not "construction" in retours.detail(retours.sans_logement), "Le compteur baisse à la livraison")
 	verifier(not retours.chantiers.visible, "La boîte des chantiers part avec le dernier livré")
-	verifier("Aide d'urgence" in retours.preparation.text and "9 k€" in retours.preparation.text,
+	verifier("Aide d'urgence" in retours.detail(retours.sans_logement) and "9 k€" in retours.detail(retours.sans_logement),
 		"Les 22 personnes dehors coûtent leur aide chaque mois")
 	verifier(retours.journal.size() >= 3, "Engagement, livraison et relogement sont conservés dans le journal")
 	await capture("progression_02_livraison")

@@ -656,3 +656,6 @@ Mesuré sur les sept îlots : sur pilotis, Lavoir (4,0 m) 0 perdu, Forgerons (5,
 **2026-10-06 — 5 s avant la carte de l'étude.** Le pont livré, le temps court encore 5 s réelles (voitures sur le pont, guide caché), puis la carte « Les deux rives sont reliées » met en pause.
 Demande de l'auteur. `ATTENTE_ETUDE_MS` dans `ouverture.gd` ; essais ouverture et progression avancent l'horloge.
 essai_ouverture, essai_progression, essai_etude, essai_vie_camp, essai_relogement, essai_rebatir, essai_deblaiement, essai_concours, essai_livre : 0 échec.
+**2026-10-07 — Le compteur des sans-logement devient une pastille rouge (icône seule), le détail au survol, dans une bulle en verre à sa gauche.**
+Demande de l'auteur (« comme Frostpunk »), pour laisser de la place à d'autres problèmes ; le journal reste au bout de la rangée, en cercle neutre.
+essai_progression (+ capture `_01b_survol`), essai_ouverture, essai_vie_camp, essai_relogement, essai_etude, essai_livre : 0 échec.
