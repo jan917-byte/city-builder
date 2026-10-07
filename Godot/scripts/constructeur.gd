@@ -456,7 +456,7 @@ static func voitures(nombre: int, anime := false, circuit := false) -> MultiMesh
 	return _instances(mesh, nombre, anime)
 
 
-## 🚗 La voiture allégée par `outils/voiture_blender.py` (584 triangles, 3,33 m,
+## 🚗 La voiture allégée par `outils/voiture_blender.py` (778 triangles, 3,33 m,
 ## avant vers +z) : carrosserie blanche, la teinte d'instance la peint. Lue une
 ## fois, puis copiée : chaque appelant pose son propre matériau sur la surface 0.
 const VOITURE := "res://data/voiture.json"

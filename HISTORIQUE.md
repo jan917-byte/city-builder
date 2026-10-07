@@ -665,6 +665,6 @@ essai_trafic, essai_camera, essai_ouverture, essai_deblaiement, essai_progressio
 **2026-10-07 — Le compteur des sans-logement devient une pastille rouge (icône seule), le détail au survol, dans une bulle en verre à sa gauche.**
 Demande de l'auteur (« comme Frostpunk »), pour laisser de la place à d'autres problèmes ; le journal reste au bout de la rangée, en cercle neutre.
 essai_progression (+ capture `_01b_survol`), essai_ouverture, essai_vie_camp, essai_relogement, essai_etude, essai_livre : 0 échec.
-**2026-10-07 — Les voitures du trafic sont un vrai modèle (FREE_CAR_01) au lieu de deux boîtes.**
-Demande de l'auteur : intérieur, rétros, poignées et faces jamais vues retirés, roues refaites à 8 côtés, carrosserie peinte par la teinte d'instance ; 3 244 → 584 triangles, 3,33 m de long (4,15 avant). Un Decimate à 0,6 fondait les feux et les montants : rejeté.
-essai_trafic : 0 échec. Banc : +1 M de triangles en vue rapprochée (2,3 → 3,3 M), images par seconde dans le bruit (56 à 72 avant comme après). Licence de l'asset à vérifier pour Steam.
+**2026-10-07 — Les voitures du trafic sont un vrai modèle (FREE_CAR_01) au lieu de deux boîtes ; Blender passe en 5.2.2 avec le MCP officiel.**
+Intérieur, rétros, poignées et faces jamais vues retirés, roues refaites à 10 côtés ; 3 244 → 778 triangles, 3,33 m (4,15 avant). Première version cassée (roues trouées, dessus des phares) : le tri des faces cachées ne testait que le centre, et un flanc de roue sur deux regardait l'essieu. Decimate à 0,6 rejeté (fond les feux).
+essai_trafic : 0 échec ; banc : ips dans le bruit (+1 M triangles). MCP Blender Lab 1.0.3 hors dépôt (dossier blender_mcp du profil), branché dans .mcp.json. Licence de l'asset à vérifier pour Steam.
