@@ -7,6 +7,8 @@ uniform sampler2D hauteurs : filter_nearest, repeat_disable;
 varying vec4 teinte;
 
 void vertex() {
+	// L'allongement dans l'alpha de la teinte : Constructeur.ALLONGE, à l'identique.
+	VERTEX.z += sign(VERTEX.z) * (1.0 - COLOR.a) * 2.0;
 	float longueur = max(INSTANCE_CUSTOM.z, 0.01);
 	float s = clamp((INSTANCE_CUSTOM.x + temps_trafic * INSTANCE_CUSTOM.y)
 		/ longueur, 0.0, 1.0) * float(textureSize(trajets, 0).x - 1);

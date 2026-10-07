@@ -24,10 +24,31 @@ const LARGEUR_PLACE := 2.5
 const DECAL_FILE := 1.35
 const ECHANTILLON_STATIONNEMENT := 0.30
 const TAILLE_VISIBLE_MAX := 700.0
+## 🚗 Cinq teintes sombres sur onze qui roulent, trois sur sept garées
+## (auteur, 2026-10-07 : « plus de couleurs sombres dans le mix »).
 const PALETTE := [
 	Color8(194, 92, 73), Color8(70, 91, 112), Color8(216, 198, 157),
 	Color8(116, 130, 119), Color8(151, 116, 92), Color8(205, 207, 198),
+	Color8(30, 31, 34), Color8(54, 57, 62), Color8(36, 46, 68),
+	Color8(40, 58, 48), Color8(88, 34, 38),
 ]
+const GAREES := [
+	Color(0.78, 0.79, 0.76), Color(0.70, 0.71, 0.69), Color(0.62, 0.63, 0.61),
+	Color(0.42, 0.43, 0.42), Color(0.22, 0.23, 0.24), Color(0.12, 0.12, 0.13),
+	Color(0.16, 0.19, 0.25),
+]
+## 📏 L'alpha de la teinte = la longueur (Constructeur.ALLONGE) : la moitié des
+## voitures à 3,33 m, un tiers à 3,83, un sixième à 4,23 — toujours sous la place.
+const ALLONGES := [1.0, 1.0, 0.875, 1.0, 0.775, 0.875]
+
+
+## Teinte et longueur de la voiture de rang k : deux tirages premiers entre eux,
+## pour qu'une couleur ne soit pas toujours de la même taille.
+static func allure(k: int, garee: bool) -> Color:
+	var teintes: Array = GAREES if garee else PALETTE
+	var t: Color = teintes[(k * 5 + 1) % teintes.size()]
+	t.a = ALLONGES[(k * 7 + 3) % ALLONGES.size()]
+	return t
 ## 🚗 Fermer une rue ne déplace pas tout le monde. Un trajet dont le chemin
 ## s'allonge perd d'abord une part fixe — ceux qui ne reprennent pas la voiture
 ## du tout —, puis une part qui grandit avec le détour :
@@ -359,8 +380,10 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	_mm_gare_ombre = Constructeur.voitures_ombre(_garees.size())
 	_node_roule_ombre = _ombres("OmbresRoulantes", _mm_roule_ombre)
 	_node_gare_ombre = _ombres("OmbresGarees", _mm_gare_ombre)
+	# L'ombre prend la teinte de sa voiture : c'est son alpha qui l'allonge.
 	for k in _roulantes.size():
-		_mm_roule.set_instance_color(k, PALETTE[(k * 5 + 1) % PALETTE.size()])
+		_mm_roule.set_instance_color(k, allure(k, false))
+		_mm_roule_ombre.set_instance_color(k, allure(k, false))
 	_visibles_roule.resize(_roulantes.size())
 	_visibles_roule.fill(0)
 	_arc_vu.resize(_roulantes.size())
@@ -369,8 +392,8 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	_semer_circuit()
 	_maj_roulantes(0.0, true)
 	for k in _garees.size():
-		var gris := 0.62 + 0.16 * float(k % 5) / 4.0
-		_mm_gare.set_instance_color(k, Color(gris, gris * 1.01, gris * 0.98))
+		_mm_gare.set_instance_color(k, allure(k, true))
+		_mm_gare_ombre.set_instance_color(k, allure(k, true))
 	_visibles_gare.resize(_garees.size())
 	_visibles_gare.fill(0)
 	_maj_garees(0.0, true)
@@ -807,8 +830,7 @@ func remplir_droit(mm_gare: MultiMesh, mm_roule: MultiMesh,
 		var cote := -1.0 if k % 2 else 1.0
 		mm_gare.set_instance_transform(k, _transforme(axe, cum, longueur,
 			depart + (rang + 0.5) * LONGUEUR_PLACE, cote * bord, Y_GARE + NIVEAU_DEFAUT))
-		var gris := 0.62 + 0.16 * float(k % 5) / 4.0
-		mm_gare.set_instance_color(k, Color(gris, gris * 1.01, gris * 0.98))
+		mm_gare.set_instance_color(k, allure(k, true))
 
 	var q := float(ville.valeur("r", fid, "charge", mois))
 	var esp: float = lerpf(ESPACEMENT_CALME, ESPACEMENT_CHARGE,
@@ -823,7 +845,7 @@ func remplir_droit(mm_gare: MultiMesh, mm_roule: MultiMesh,
 			maxf(1.35, chaussee * 0.25), -1.0 if k % 2 else 1.0,
 			Y_ROULE + NIVEAU_DEFAUT)
 		mm_roule.set_instance_transform(k, segment[0])
-		mm_roule.set_instance_color(k, PALETTE[(k * 5 + 1) % PALETTE.size()])
+		mm_roule.set_instance_color(k, allure(k, false))
 		mm_roule.set_instance_custom_data(k, Color(float(segment[1]), vitesse,
 			float(segment[2]), 1.0))
 

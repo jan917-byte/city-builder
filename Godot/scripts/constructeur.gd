@@ -452,8 +452,15 @@ const TETE := Color(1.18, 1.06, 0.98)
 ## fiche, elle, montre un morceau droit sans suite : elle reboucle.
 static func voitures(nombre: int, anime := false, circuit := false) -> MultiMesh:
 	var mesh := _voiture()
-	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, circuit))
+	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, circuit, true))
 	return _instances(mesh, nombre, anime)
+
+
+## 📏 L'ALLONGEMENT d'une voiture voyage dans l'ALPHA de sa teinte d'instance :
+## 1 → 3,33 m, et chaque 0,25 en dessous ajoute 1 m, partagé entre l'avant et
+## l'arrière. Les roues sont entières d'un côté de z = 0 : elles glissent sans
+## s'étirer. 🔴 Recopié dans `trafic.gdshader` : les deux changent ensemble.
+const ALLONGE := "  VERTEX.z += sign(VERTEX.z) * (1.0 - COLOR.a) * 2.0;\n"
 
 
 ## 🌗 CE QUI PORTE L'OMBRE D'UNE VOITURE : caisse et habitacle, 24 triangles au
@@ -468,7 +475,9 @@ static func voitures_ombre(nombre: int, anime := false) -> MultiMesh:
 	var i := PackedInt32Array()
 	_boite(v, n, c, i, Vector3(1.76, 0.85, 3.3), Vector3(0.0, 0.575, 0.0), Color.WHITE)
 	_boite(v, n, c, i, Vector3(1.38, 0.65, 1.8), Vector3(0.0, 1.325, -0.55), Color.WHITE)
-	return _instances(_surface(v, n, c, i), nombre, anime)
+	var mesh := _surface(v, n, c, i)
+	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, false, true))
+	return _instances(mesh, nombre, anime)
 
 
 ## 🚗 La voiture allégée par `outils/voiture_blender.py` (778 triangles, 3,33 m,
@@ -549,7 +558,16 @@ const HORLOGE := "temps_trafic"
 ## d'y reboucler, et un retard d'une image se voit comme un arrêt, pas comme un
 ## saut en arrière.
 static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
-		circuit := false) -> Material:
+		circuit := false, allonge := false) -> Material:
+	var etire := ALLONGE if allonge else ""
+	if not anime and allonge:
+		var fixe := Shader.new()
+		fixe.code = "shader_type spatial;\nvarying vec4 teinte;\nvoid vertex() {\n" \
+			+ etire + "  teinte = COLOR;\n}\n" \
+			+ "void fragment() { ALBEDO = teinte.rgb; ROUGHNESS = 0.72; }\n"
+		var garee := ShaderMaterial.new()
+		garee.shader = fixe
+		return garee
 	if not anime:
 		var std := StandardMaterial3D.new()
 		std.vertex_color_use_as_albedo = true
@@ -572,6 +590,7 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
 		+ entete \
 		+ "varying vec4 teinte;\n" \
 		+ "void vertex() {\n" \
+		+ etire \
 		+ "  float longueur = max(INSTANCE_CUSTOM.z, 0.01);\n" \
 		+ "  VERTEX.z += " + (course % horloge) + ";\n" \
 		+ pas \
