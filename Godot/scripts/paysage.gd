@@ -68,7 +68,9 @@ func batir(d: Dictionary, palette: Dictionary, mat_rue: Material) -> void:
 				mm.set_instance_color(j, (teintes[k] as Color) * f)
 			# ⚠️ Sans `material_override` : la couronne et le tronc portent
 			# chacun le leur, sinon le tronc ressort vert.
-			_instances("Foret%d_%d_%d" % [k, cle.x, cle.y], mm, null)
+			# 🌳 Avec son ombre, comme l'arbre de ville d'à côté : sans elle la
+			# lisière flotte. Banc : ~0,6 ms en vue d'ensemble, rien de près.
+			_instances("Foret%d_%d_%d" % [k, cle.x, cle.y], mm, null).cast_shadow = 				GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	mat_nuages = ShaderMaterial.new()
 	mat_nuages.shader = preload("res://shaders/nuages.gdshader")
 	mat_nuages.set_shader_parameter("demi_emprise", Vector2(d.demi_emprise[0], d.demi_emprise[1]))
