@@ -692,3 +692,6 @@ Les pictogrammes grandissaient avec la fenêtre (×1,6 à 2560×1440) quand l'in
 **2026-10-08 — L'habillage vitre se règle sans code : `Godot/habillage.tres`, ouvert dans l'inspecteur.**
 Demande de l'auteur (« changer l'UI moi-même »). 38 réglages en 6 rubriques (texte, couleurs du jeu, panneaux, boutons, bouton qui engage, jauges) ; l'origine reste dans `scripts/habillage.gd`, `bois` et `verre` n'en dépendent pas. Vérifié : 39 valeurs identiques à avant, 0 écart.
 🔴 Sur ce Mac, `essai_sauvegarde` donne 92 échecs **avec ou sans** la modification : `Godot/data/wehrau.json` est périmé (151 îlots au lieu de 71) — relancer `07`. La mise en page reste dans le code : elle se dessine (Illustrator) et je la reproduis.
+**2026-10-08 — Le détail de l'argent et de la confiance sépare ce qui rentre chaque mois de ce qui part.**
+Demande de l'auteur. Deux blocs totalisés, « Rentre chaque mois » et « Part chaque mois », puis le solde ; la confiance n'a aucune entrée fixe, seul le camp la fait bouger (`_blocs_mensuels`, `interface.gd`).
+`essai_vie_camp` : 0 échec, en headless — l'auteur jouait, pas de capture prise.

@@ -3500,9 +3500,8 @@ const GENRES_DEPENSE := {
 
 
 ## Une ligne du détail : [texte, valeur affichée, signe, gras]. Valeur nulle = titre de bloc.
-static func _ligne_ke(txt: String, ke: float, par_mois := false) -> Array:
-	var v := (_nb(absf(ke), 1) + " k€/mois") if par_mois else (_milliers(absf(ke)) + " k€")
-	return [txt, ("+" if ke >= 0.0 else "−") + v, signf(ke), false]
+static func _ligne_ke(txt: String, ke: float) -> Array:
+	return [txt, ("+" if ke >= 0.0 else "−") + _milliers(absf(ke)) + " k€", signf(ke), false]
 
 
 ## 🧾 LE DÉTAIL D'UN COMPTEUR : ce qui le fait bouger chaque mois, puis tout ce
@@ -3546,8 +3545,29 @@ func _maj_detail(indic: Dictionary, mois: float) -> void:
 		h.add_child(val)
 
 
+## 🧾 Ce qui rentre et ce qui part chaque mois, en deux blocs totalisés (auteur, 2026-10-08).
+## `flux` : [texte, montant signé par mois] ; `fmt` met en forme un montant absolu.
+static func _blocs_mensuels(flux: Array, fmt: Callable, seuil: float) -> Array:
+	var out := []
+	var solde := 0.0
+	for sens in [1.0, -1.0]:
+		out.append(["Rentre chaque mois" if sens > 0.0 else "Part chaque mois", null, 0, false])
+		var tot := 0.0
+		for f in flux:
+			if absf(f[1]) >= seuil and signf(f[1]) == sens:
+				out.append([f[0], ("+" if sens > 0.0 else "−") + fmt.call(absf(f[1])), sens, false])
+				tot += f[1]
+		if tot == 0.0:
+			out.append(["Rien pour l'instant", fmt.call(0.0), 0, false])
+		else:
+			out.append(["Total", ("+" if sens > 0.0 else "−") + fmt.call(absf(tot)), sens, true])
+		solde += tot
+	out.append(["Solde du mois", ("+" if solde >= 0.0 else "−") + fmt.call(absf(solde)), signf(solde), true])
+	return out
+
+
 func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
-	var out := [["Chaque mois", null, 0, false]]
+	var out := []
 	var dense_mois := 0.0
 	if mois > 0.01:
 		dense_mois = (ville.solde_dense_ke(mois) - ville.solde_dense_ke(mois - 0.01)) / 0.01
@@ -3561,14 +3581,7 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		["Nourriture achetée en plus" if nourriture > 0.0 else "Nourriture économisée", -nourriture],
 		["Université et mairie", -ville.charge_mensuelle_ke(mois)],
 	]
-	var solde := 0.0
-	for f in flux:
-		if absf(f[1]) >= 0.05:
-			out.append(_ligne_ke(f[0], f[1], true))
-			solde += f[1]
-	var l := _ligne_ke("Solde du mois", solde, true)
-	l[3] = true
-	out.append(l)
+	out.append_array(_blocs_mensuels(flux, func(v): return _nb(v, 1) + " k€/mois", 0.05))
 	out.append(["Depuis le mois 0", null, 0, false])
 	var cumul := [
 		["Caisse de départ", Ville.CAISSE_DEPART_KE],
@@ -3599,10 +3612,10 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 func _lignes_capital(mois: float) -> Array:
 	var out := []
 	var usure := ville.usure_camp_mois(mois)
+	# La confiance n'a aucune entrée fixe : seul le camp la fait bouger chaque mois.
 	if usure >= 0.05:
-		out.append(["Chaque mois", null, 0, false])
-		out.append(["Le camp use la confiance ; l'améliorer l'arrête",
-			"−%s/mois" % _nb(usure, 1), -1, false])
+		out.append_array(_blocs_mensuels([["Le camp use la confiance ; l'améliorer l'arrête", -usure]],
+			func(v): return _nb(v, 1) + "/mois", 0.05))
 	out.append(["Depuis le mois 0", null, 0, false])
 	var passes := [["Confiance de départ", Ville.CAPITAL_DEPART]]
 	var a_venir := []
