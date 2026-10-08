@@ -26,7 +26,7 @@ func executer() -> void:
 	var camp: int = champs[1]
 
 	# --- Le campement : plus de culture, des personnes logées.
-	jeu._sur_choix("i", camp)
+	jeu.examiner("i", camp)
 	ui.ouvrir_onglet("campagne")
 	ui._maj_fiche()
 	verifier(ui._fiche_titre.text.begins_with("Campement"), "Le champ s'appelle campement : %s" % ui._fiche_titre.text)
@@ -47,7 +47,7 @@ func executer() -> void:
 	actualiser(t)
 	verifier(v.camp_abris(camp, t) == 0 and v.labour_possible(camp, t),
 		"Les habitants rentrés, le campement vide se laboure (%d containers)" % v.camp_abris(camp, t))
-	jeu._sur_choix("i", camp)
+	jeu.examiner("i", camp)
 	ui.ouvrir_onglet("campagne")
 	ui._maj_fiche()
 	verifier(ui._labour_bouton.visible and "personne" in ui._resume_texte.text,
@@ -64,7 +64,7 @@ func executer() -> void:
 	# --- Rendu au champ, en céréales.
 	var apres: float = t + v.LABOUR_MOIS + 0.1
 	actualiser(apres)
-	jeu._sur_choix("i", camp)
+	jeu.examiner("i", camp)
 	ui.ouvrir_onglet("campagne")
 	ui._maj_fiche()
 	verifier(v.champ_cultive(camp, apres) and is_equal_approx(v.champ_rendement(camp, apres), nourrit0),

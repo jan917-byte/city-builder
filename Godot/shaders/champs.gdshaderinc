@@ -6,8 +6,8 @@ float grain_champ(vec2 p) {
 
 // 🌾 CE QUE PORTE LE CHAMP (auteur, 2026-09-29). `code` vient de
 // `ville.parcelle_code` : partie entière = 1 + culture (+10 pendant le
-// chantier), partie fractionnaire = 0,9 × maturité du verger, lue par les
-// arbres. Encodé dans `parcelle_agricole` : le matériau a ses 16 uniformes d'instance.
+// chantier ; 6 = terre battue d'un campement), partie fractionnaire = 0,9 ×
+// maturité du verger, lue par les arbres. Encodé dans `parcelle_agricole` : le matériau a ses 16 uniformes d'instance.
 // Couleurs LINÉAIRES ; sRGB en commentaire. Aucune texture (règle 52).
 float champ_alea(vec2 c) {
 	return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.545);
@@ -33,6 +33,15 @@ vec3 culture_champ(vec3 base, vec2 p, float code, float ao) {
 		float net = 1.0 - smoothstep(0.08, 0.4, px);
 		vec3 terre = vec3(0.195, 0.102, 0.045) * mix(0.9, 1.08, tache);
 		return mix(terre, vec3(0.102, 0.053, 0.025), smoothstep(0.7, 0.95, s) * net * 0.7) * ao;
+	}
+	if (genre > 5.5) {
+		// 🏕️ Terre battue du campement (auteur, 2026-10-08) : #8B7A5E, plaques
+		// tassées #6E5E46, gravier #A79A82 qui s'éteint de loin.
+		vec3 sol = mix(vec3(0.263, 0.198, 0.112), vec3(0.157, 0.112, 0.059),
+			smoothstep(0.3, 0.8, champ_bruit(p * 0.15)) * 0.4);
+		sol *= mix(0.92, 1.06, champ_bruit(p * 1.3));
+		float gravier = step(0.9, champ_alea(floor(p * 3.0))) * (1.0 - smoothstep(0.02, 0.08, px));
+		return mix(sol, vec3(0.394, 0.330, 0.227), gravier * 0.6) * ao;
 	}
 	if (genre < 1.5) {
 		return base;   // céréales : la teinte du SVG, telle quelle

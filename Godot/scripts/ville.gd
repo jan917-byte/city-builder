@@ -1894,9 +1894,15 @@ func achat_nourriture_cumule_ke(t: float) -> float:
 ## 🎨 Ce que le shader lit (`champs.gdshaderinc`) : 1 + culture, +10 pendant
 ## le chantier, + 0,9 × maturité du verger. `visee` ≥ 0 : l'état livré, pour
 ## la miniature.
+## 🏕️ Le sol d'un campement : de la terre battue (`champs.gdshaderinc`, genre 6).
+const PARCELLE_CAMP := 6.0
+
+
 func parcelle_code(fid: int, t: float, visee := -1) -> float:
 	if not est_champ(fid):
 		return 0.0
+	if visee < 0 and est_campement(fid, t):
+		return PARCELLE_CAMP
 	if visee >= 0:
 		return 1.0 + visee + (0.0 if visee == CEREALES else 0.9)
 	var c := champ_culture(fid, t)

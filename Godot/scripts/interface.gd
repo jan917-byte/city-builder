@@ -4778,6 +4778,10 @@ func apercu_demande() -> Dictionary:
 				or _survole(_camp_bouton)) and not r.has("labour") and not _survole(_labour_bouton):
 			camp = ville.camp_abris(_fiche_fid, _mois) if ville.camp_livre(_fiche_fid, _mois) \
 				else ville.camp_taille(_fiche_fid, _mois)
+			culture = Ville.PARCELLE_CAMP
+		# 🚜 Le labour promet le champ rendu, en céréales.
+		if r.has("labour") or _survole(_labour_bouton):
+			culture = ville.parcelle_code(_fiche_fid, _mois, Ville.CEREALES)
 	if _fiche_couche != "b":
 		futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois) \
 			or r.has("reparer") or _survole(_repare_bouton) \
