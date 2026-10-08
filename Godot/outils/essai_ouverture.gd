@@ -204,6 +204,11 @@ func executer() -> void:
 	jeu._sur_choix("i", champs[0])
 	verifier(jeu.interface._camp_bloc.visible,
 		"Le champ atteignable ouvre le relogement")
+	var abrite: Array = jeu.interface.consequences({"camp": true}, 0.0).filter(
+		func(e: Array) -> bool: return e[0] == "camp")
+	verifier(jeu.interface._camp_texte.text == "" and abrite.size() == 1
+		and "personnes" in str(abrite[0][1]),
+		"Ce que le camp abrite est dans les conséquences : %s" % str(abrite))
 	# 🌾 Ce que le champ nourrit n'est que dans les conséquences (auteur, 2026-10-07).
 	var nourri_champ: float = jeu.ville.champ_nourriture(champs[0])
 	verifier(nourri_champ > 0.0 and not ("cultivé" in jeu.interface._camp_texte.text),

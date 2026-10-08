@@ -440,7 +440,7 @@ var _projets_titre: Label
 var _projets_intro: Label
 var _projets_cartes := {}   # façon -> {bouton, lignes}
 var _projets_cle := ""
-var _repare_etat: Label   # « ✓ Chantier terminé » : remplace le bouton grisé
+var _repare_etat: Label   # « Chantier en cours » : remplace le bouton grisé
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
 ## deux curseurs gardent leur propre mémoire, plus bas, parce qu'ils doivent
 ## survivre à une image sans se replacer sous le doigt ; `_reglages()` réunit
@@ -4649,7 +4649,10 @@ func consequences(r: Dictionary, duree: float) -> Array:
 			out.append(["eau", "%+d logements perdus à la prochaine crue" % int(roundf(exposes)),
 				-_sens(exposes)])
 	var abrites := ville.sans_toit(t) - ville_essai.sans_toit(t)
-	if abrites >= 1.0:
+	if r.has("camp") and _fiche_couche == "i":
+		out.append(["camp", "%d personnes" % (ville.camp_taille(_fiche_fid, _mois)
+			* Ville.CAMP_PERSONNES_LOGEMENT), 1])
+	elif abrites >= 1.0:
 		out.append(["logement", "+%d abrités" % int(roundf(abrites)), 1])
 	var ponts := int(da["franchissements_coupes"]) - int(db["franchissements_coupes"])
 	if ponts > 0:
@@ -5189,15 +5192,13 @@ func _maj_reparation(o: Dictionary) -> void:
 	var engage: bool = ville.est_repare(couche, _fiche_fid)
 	var verbe := _verbe_reparation(couche, o)
 	if fini:
-		_repare_texte.text = "Remis en état."
+		# 🔄 Ni « Remis en état » ni « ✓ Chantier terminé » (auteur, 2026-10-08) : la tuile Crue le dit.
+		_repare_texte.text = ""
 		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
 			_repare_texte.text = FAIT_REBATI[ville.facon_reparation(_fiche_fid)]
 		if pont:
 			_repare_texte.text = ouverture.description_pont(_fiche_fid) if ouverture != null else "Pont reconstruit."
 		_repare_bouton.visible = false
-		_repare_etat.visible = true
-		_repare_etat.add_theme_color_override("font_color", FAIT_TEXTE)
-		_repare_etat.text = "✓ Chantier terminé"
 		return
 	if engage:
 		# La barre du haut de fiche dit déjà le temps qui reste.
@@ -5311,12 +5312,8 @@ func _maj_camp() -> void:
 		_marquer(_camp_bouton, false)
 		return
 	var places: int = ville.camp_taille(fid, _mois)
-	var maxi: int = ville.camp_capacite(fid)
-	# Le nombre de sinistrés est déjà au compteur : la fiche dit ce que le champ tient.
-	var phrase := "Jusqu'à %d personnes · %d containers" % [maxi, ville.camp_places_max(fid)]
-	if not ville.camp_accessible(fid, _mois):
-		phrase += "\n⚠ Autre rive : inaccessible"
-	_camp_texte.text = phrase
+	# 🔄 Ce que le camp abrite est passé dans les conséquences (auteur, 2026-10-08).
+	_camp_texte.text = "" if ville.camp_accessible(fid, _mois) else "⚠ Autre rive : inaccessible"
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
 
