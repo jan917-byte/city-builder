@@ -1,0 +1,199 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='940' height='1220' viewBox='0 0 940 1220'>
+<rect width='940' height='1220' fill='#FFFFFF'/>
+<g id='consignes' font-family='Helvetica, Arial, sans-serif' fill='#1C2023'>
+<text x='20' y='40' font-size='24' font-weight='bold'>Les icônes de Wehrau</text>
+<text x='20' y='72' font-size='14'>Chaque icône tient dans le carré gris de 24 × 24. Garder ce carré, des traits de 2 et des bouts ronds.</text>
+<text x='20' y='94' font-size='14'>Une seule couleur : le jeu la remplace selon l'endroit (encre, vert, rouge).</text>
+<text x='20' y='116' font-size='14'>Pour la remettre dans le jeu : enregistrer en SVG, sous le même nom, dans le dossier Icônes, puis le dire à Claude.</text>
+</g>
+<g id='01-ville'>
+<rect x='59.0' y='158' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(59.0 158) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 21h18M5 21V9h5v12M10 21V4h6v17M16 21v-9h4v9M7 12h1m-1 3h1m-1 3h1m5-11h1m-1 4h1m-1 4h1m4 0h1m-1 3h1'/></g>
+<text x='95.0' y='256' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>01</tspan> ville</text>
+</g>
+<g id='02-diagnostic'>
+<rect x='209.0' y='158' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(209.0 158) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 20h16M6 18v-6h3v6m3 0V6h3v12m3 0v-9h3v9'/></g>
+<text x='245.0' y='256' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>02</tspan> diagnostic</text>
+</g>
+<g id='03-adaptation'>
+<rect x='359.0' y='158' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(359.0 158) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3zM8 12c2-2 6-2 8 0m-8 3c2-2 6-2 8 0'/></g>
+<text x='395.0' y='256' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>03</tspan> adaptation</text>
+</g>
+<g id='04-reduction'>
+<rect x='509.0' y='158' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(509.0 158) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 4C10 4 5 9 5 15c0 3 2 5 5 5 7 0 10-8 10-16zM5 20c3-6 7-9 12-12'/></g>
+<text x='545.0' y='256' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>04</tspan> reduction</text>
+</g>
+<g id='05-conso'>
+<rect x='659.0' y='158' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(659.0 158) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/></g>
+<text x='695.0' y='256' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>05</tspan> conso</text>
+</g>
+<g id='06-production'>
+<rect x='809.0' y='158' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(809.0 158) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='4'/><path d='M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2M19 5l-2 2M7 17l-2 2'/></g>
+<text x='845.0' y='256' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>06</tspan> production</text>
+</g>
+<g id='07-achat'>
+<rect x='59.0' y='308' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(59.0 308) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 3v7m6-7v7m-8 0h10v2a5 5 0 01-5 5v4m-3 0h6'/></g>
+<text x='95.0' y='406' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>07</tspan> achat</text>
+</g>
+<g id='08-co2'>
+<rect x='209.0' y='308' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(209.0 308) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 18h11a4 4 0 000-8 6 6 0 00-11-2 5 5 0 000 10z'/></g>
+<text x='245.0' y='406' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>08</tspan> co2</text>
+</g>
+<g id='09-capital'>
+<rect x='359.0' y='308' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(359.0 308) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 12l2 2 4-4'/><path d='M5 7c0-1.1.9-2 2-2h10a2 2 0 012 2v12H5V7z'/><path d='M22 19H2'/></g>
+<text x='395.0' y='406' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>09</tspan> capital</text>
+</g>
+<g id='10-caisse'>
+<rect x='509.0' y='308' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(509.0 308) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/></g>
+<text x='545.0' y='406' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>10</tspan> caisse</text>
+</g>
+<g id='11-dangers'>
+<rect x='659.0' y='308' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(659.0 308) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/></g>
+<text x='695.0' y='406' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>11</tspan> dangers</text>
+</g>
+<g id='12-chantiers'>
+<rect x='809.0' y='308' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(809.0 308) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='6' width='20' height='8' rx='1'/><path d='M17 14v7M7 14v7M17 3v3M7 3v3M10 14L2.3 6.3M14 6l7.7 7.7M8 6l8 8'/></g>
+<text x='845.0' y='406' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>12</tspan> chantiers</text>
+</g>
+<g id='13-energie'>
+<rect x='59.0' y='458' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(59.0 458) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M13 2L5 14h6l-1 8 9-13h-6V2z'/></g>
+<text x='95.0' y='556' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>13</tspan> energie</text>
+</g>
+<g id='14-nourriture'>
+<rect x='209.0' y='458' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(209.0 458) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 22L16 8'/><path d='M3.47 12.53L5 11l1.53 1.53a3.5 3.5 0 010 4.94L5 19l-1.53-1.53a3.5 3.5 0 010-4.94z'/><path d='M7.47 8.53L9 7l1.53 1.53a3.5 3.5 0 010 4.94L9 15l-1.53-1.53a3.5 3.5 0 010-4.94z'/><path d='M11.47 4.53L13 3l1.53 1.53a3.5 3.5 0 010 4.94L13 11l-1.53-1.53a3.5 3.5 0 010-4.94z'/><path d='M20 2h2v2a4 4 0 01-4 4h-2V6a4 4 0 014-4z'/><path d='M11.47 17.47L13 19l-1.53 1.53a3.5 3.5 0 01-4.94 0L5 19l1.53-1.53a3.5 3.5 0 014.94 0z'/><path d='M15.47 13.47L17 15l-1.53 1.53a3.5 3.5 0 01-4.94 0L9 15l1.53-1.53a3.5 3.5 0 014.94 0z'/><path d='M19.47 9.47L21 11l-1.53 1.53a3.5 3.5 0 01-4.94 0L13 11l1.53-1.53a3.5 3.5 0 014.94 0z'/></g>
+<text x='245.0' y='556' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>14</tspan> nourriture</text>
+</g>
+<g id='15-pont_casse'>
+<rect x='359.0' y='458' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(359.0 458) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path fill='#1C2023' stroke-width='1' d='M0 6h10l-1.8 2.2 1.8 2.3H0zM24 6H14l1.8 2.2-1.8 2.3H24zM10.6 13.2l2.6.6-.6 2.6-2.6-.6z'/><path d='M4 10.5v5.5M20 10.5v5.5M1 20c1.8-1.3 3.7-1.3 5.5 0s3.7 1.3 5.5 0 3.7-1.3 5.5 0 3.7 1.3 5.5 0'/></g>
+<text x='395.0' y='556' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>15</tspan> pont_casse</text>
+</g>
+<g id='16-pont'>
+<rect x='509.0' y='458' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(509.0 458) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 9h20M5 9v10M19 9v10M5 16c3-5 11-5 14 0'/></g>
+<text x='545.0' y='556' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>16</tspan> pont</text>
+</g>
+<g id='17-duree'>
+<rect x='659.0' y='458' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(659.0 458) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/></g>
+<text x='695.0' y='556' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>17</tspan> duree</text>
+</g>
+<g id='18-annuler'>
+<rect x='809.0' y='458' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(809.0 458) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/></g>
+<text x='845.0' y='556' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>18</tspan> annuler</text>
+</g>
+<g id='19-trafic'>
+<rect x='59.0' y='608' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(59.0 608) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/></g>
+<text x='95.0' y='706' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>19</tspan> trafic</text>
+</g>
+<g id='20-tissu'>
+<rect x='209.0' y='608' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(209.0 608) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/></g>
+<text x='245.0' y='706' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>20</tspan> tissu</text>
+</g>
+<g id='21-sols'>
+<rect x='359.0' y='608' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(359.0 608) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z'/><path d='M12.56 6.6A10.97 10.97 0 0014 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 01-11.91 4.97'/></g>
+<text x='395.0' y='706' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>21</tspan> sols</text>
+</g>
+<g id='22-debut'>
+<rect x='509.0' y='608' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(509.0 608) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 7v14M3 18a1 1 0 01-1-1V4a1 1 0 011-1h5a4 4 0 014 4 4 4 0 014-4h5a1 1 0 011 1v13a1 1 0 01-1 1h-6a3 3 0 00-3 3 3 3 0 00-3-3z'/></g>
+<text x='545.0' y='706' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>22</tspan> debut</text>
+</g>
+<g id='23-mairie'>
+<rect x='659.0' y='608' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(659.0 608) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 22h18M6 18v-7m4 7v-7m4 7v-7m4 7v-7M12 2l8 5H4z'/></g>
+<text x='695.0' y='706' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>23</tspan> mairie</text>
+</g>
+<g id='24-universite'>
+<rect x='809.0' y='608' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(809.0 608) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21.42 10.922a1 1 0 00-.019-1.838L12.83 5.18a2 2 0 00-1.66 0L2.6 9.08a1 1 0 000 1.832l8.57 3.908a2 2 0 001.66 0zM22 10v6M6 12.5V16a6 3 0 0012 0v-3.5'/></g>
+<text x='845.0' y='706' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>24</tspan> universite</text>
+</g>
+<g id='25-logement'>
+<rect x='59.0' y='758' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(59.0 758) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='4' y='2' width='16' height='20' rx='2'/><path d='M9 22v-3a1 1 0 011-1h4a1 1 0 011 1v3'/><path d='M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01'/></g>
+<text x='95.0' y='856' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>25</tspan> logement</text>
+</g>
+<g id='26-feuille'>
+<rect x='209.0' y='758' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(209.0 758) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20'/><path d='M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13'/></g>
+<text x='245.0' y='856' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>26</tspan> feuille</text>
+</g>
+<g id='27-eau'>
+<rect x='359.0' y='758' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(359.0 758) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/></g>
+<text x='395.0' y='856' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>27</tspan> eau</text>
+</g>
+<g id='28-pause'>
+<rect x='509.0' y='758' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(509.0 758) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='14' y='4' width='4' height='16' rx='1'/><rect x='6' y='4' width='4' height='16' rx='1'/></g>
+<text x='545.0' y='856' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>28</tspan> pause</text>
+</g>
+<g id='29-lecture'>
+<rect x='659.0' y='758' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(659.0 758) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path fill='#1C2023' d='M6 3l14 9-14 9z'/></g>
+<text x='695.0' y='856' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>29</tspan> lecture</text>
+</g>
+<g id='30-mois_zero'>
+<rect x='809.0' y='758' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(809.0 758) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 20L9 12l10-8zM5 19V5'/></g>
+<text x='845.0' y='856' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>30</tspan> mois_zero</text>
+</g>
+<g id='31-sauver'>
+<rect x='59.0' y='908' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(59.0 908) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M15.2 3a2 2 0 011.4.6l3.8 3.8a2 2 0 01.6 1.4V19a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z'/><path d='M17 21v-7a1 1 0 00-1-1H8a1 1 0 00-1 1v7M7 3v4a1 1 0 001 1h7'/></g>
+<text x='95.0' y='1006' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>31</tspan> sauver</text>
+</g>
+<g id='32-ouvrir'>
+<rect x='209.0' y='908' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(209.0 908) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 14l1.5-2.9A2 2 0 019.24 10H20a2 2 0 011.94 2.5l-1.54 6a2 2 0 01-1.95 1.5H4a2 2 0 01-2-2V5a2 2 0 012-2h3.9a2 2 0 011.69.9l.81 1.2a2 2 0 001.67.9H18a2 2 0 012 2v2'/></g>
+<text x='245.0' y='1006' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>32</tspan> ouvrir</text>
+</g>
+<g id='33-boussole'>
+<rect x='359.0' y='908' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(359.0 908) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path fill='#1C2023' d='M12 2l4.5 10h-9z'/><path d='M7.5 12L12 22l4.5-10'/></g>
+<text x='395.0' y='1006' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>33</tspan> boussole</text>
+</g>
+<g id='34-plan'>
+<rect x='509.0' y='908' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(509.0 908) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14.1 5.55a2 2 0 001.8 0l3.65-1.83A1 1 0 0121 4.62v12.76a1 1 0 01-.55.9l-4.55 2.27a2 2 0 01-1.8 0L9.9 18.45a2 2 0 00-1.8 0l-3.65 1.83A1 1 0 013 19.38V6.62a1 1 0 01.55-.9l4.55-2.27a2 2 0 011.8 0zM15 5.76v15M9 3.24v15'/></g>
+<text x='545.0' y='1006' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>34</tspan> plan</text>
+</g>
+<g id='35-cube'>
+<rect x='659.0' y='908' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(659.0 908) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/><path d='M3.3 7L12 12l8.7-5M12 22V12'/></g>
+<text x='695.0' y='1006' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>35</tspan> cube</text>
+</g>
+<g id='36-croix'>
+<rect x='809.0' y='908' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(809.0 908) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M18 6L6 18M6 6l12 12'/></g>
+<text x='845.0' y='1006' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>36</tspan> croix</text>
+</g>
+<g id='37-camp'>
+<rect x='59.0' y='1058' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(59.0 1058) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3.5 21L14 3M20.5 21L10 3M15.5 21L12 15l-3.5 6M2 21h20'/></g>
+<text x='95.0' y='1156' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>37</tspan> camp</text>
+</g>
+<g id='38-journal'>
+<rect x='209.0' y='1058' width='72' height='72' fill='none' stroke='#D0D3D0' stroke-width='1'/>
+<g transform='translate(209.0 1058) scale(3)' fill='none' stroke='#1C2023' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l4 2'/></g>
+<text x='245.0' y='1156' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' font-size='14' fill='#1C2023'><tspan font-weight='bold'>38</tspan> journal</text>
+</g>
+</svg>
