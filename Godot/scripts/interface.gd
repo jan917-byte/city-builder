@@ -88,10 +88,10 @@ var ACCENT := Color8(40, 84, 48)
 var ACCENT_VIF := Color8(62, 124, 70)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
-const ALERTE := Color8(198, 76, 66)
+var ALERTE := Color8(198, 76, 66)
 ## 🟡 L'anneau de la tuile que le guide demande. Plus franc que le trait de
 ## sélection 3D (`maquette.CONTOUR_COULEUR`), qui se perdrait sur le verre clair.
-const APPEL := Color8(240, 190, 40)
+var APPEL := Color8(240, 190, 40)
 ## ✓ Un chantier fini se DIT en vert, il ne se grise pas en bouton mort. Plus
 ## sombre que `FAIT`, qui est une couleur de jauge et ne se lit pas en texte.
 var FAIT_TEXTE := Color8(39, 96, 22)
@@ -530,12 +530,12 @@ func batir() -> void:
 	# 🔴 TOUT EST PLUS GRAS DEPUIS LE 2026-09-20 (auteur, sur captures) : sur du
 	# verre, un texte maigre disparaît dès qu'un toit rouge passe dessous. Le
 	# corps du texte est déjà en demi-gras, et les trois graisses se suivent.
-	_fonte_texte = _peser(600, 0.16)
-	_fonte_titre = _peser(750, 0.38)
+	_fonte_texte = _peser(_fiche.graisse_texte if VITRE else 600, 0.16)
+	_fonte_titre = _peser(_fiche.graisse_titres if VITRE else 750, 0.38)
 	_fonte_titre.spacing_glyph = 1
 	# Les nombres du bilan sont gras : dans un panneau sans mots, c'est le seul
 	# poids typographique qui dit lequel des trois éléments d'une ligne compte.
-	_fonte_grasse = _peser(700, 0.34)
+	_fonte_grasse = _peser(_fiche.graisse_boutons if VITRE else 700, 0.34)
 	_theme_ui = _creer_theme()
 	bulles.ui = self
 	add_child(bulles)
@@ -567,29 +567,41 @@ func _habiller() -> void:
 		_habiller_bois()
 
 
-## Un angle arrondi des deux anciens habillages, droit en vitre.
+## Un angle arrondi des deux anciens habillages ; en vitre, la fiche le dose (0 = droit).
 func _r(rayon: int) -> int:
-	return 0 if VITRE else rayon
+	return roundi(rayon * _fiche.arrondi) if VITRE else rayon
+
+
+## 🎨 LA FICHE DE L'AUTEUR : il règle l'habillage vitre dans l'inspecteur, sans code.
+## Ses valeurs d'origine sont dans `habillage.gd` ; une fiche absente les rend.
+const FICHE := "res://habillage.tres"
+const Habillage := preload("res://scripts/habillage.gd")
+var _fiche: Habillage = Habillage.new()
 
 
 ## 🔲 Les mêmes rôles de couleur, sur un verre neutre : une encre presque noire, le
 ## vert réservé au bouton qui engage, le choix posé en encre pleine.
 func _habiller_vitre() -> void:
+	if ResourceLoader.exists(FICHE):
+		_fiche = load(FICHE) as Habillage
+	var f := _fiche
 	# 🔴 LEVEL DESIGN : sous 0,70 le texte se perd sur les toits rouges (2026-09-20).
-	VERRE_TEINTE = Color(0.965, 0.968, 0.962, 0.74)
-	Jauge.ARRONDI = 0
+	VERRE_TEINTE = f.verre
+	Jauge.ARRONDI = _r(99)
 	# 🔄 205,208,204 se perdait sur le verre (auteur, 2026-10-02) : la barre n'était qu'un bout orange.
-	Jauge.RESTE = Color8(168, 173, 170)
-	Pictos.PALE = Color8(205, 208, 204)
-	FOND = Color8(244, 245, 243)
-	FOND_FORT = Color8(226, 229, 226)
-	TEXTE = Color8(28, 32, 35)
-	GRIS = Color8(92, 98, 102)
-	GRIS_FORT = Color8(70, 76, 80)
-	ACCENT = Color8(28, 32, 35)
-	ACCENT_VIF = Color8(54, 122, 76)
-	FAIT_TEXTE = Color8(44, 112, 56)
-	RAIL_SURVOL = Color8(255, 255, 255, 140)
+	Jauge.RESTE = f.jauge_vide
+	Pictos.PALE = f.pictos_pales
+	FOND = f.fond_bulles
+	FOND_FORT = f.fond_cartes
+	TEXTE = f.encre
+	GRIS = f.gris
+	GRIS_FORT = f.gris_etiquettes
+	ACCENT = f.accent
+	ACCENT_VIF = f.vert
+	FAIT_TEXTE = f.fini
+	ALERTE = f.alerte
+	APPEL = f.appel
+	RAIL_SURVOL = f.rail_survol
 
 
 ## 🪵 L'habillage du 2026-09-28 : les mêmes rôles de couleur, en brun sur crème.
@@ -631,7 +643,7 @@ func _ornement() -> Control:
 ## La police demandée, ou celle de Godot si le fichier manque — une police
 ## absente ne doit pas empêcher la maquette de s'ouvrir.
 func _charger_police() -> Font:
-	var nom := POLICE
+	var nom: String = _fiche.police if VITRE else POLICE
 	var args := OS.get_cmdline_user_args()
 	var i := args.find("--police")
 	if i >= 0 and i + 1 < args.size():
@@ -703,9 +715,9 @@ func _boite() -> StyleBoxFlat:
 	if VITRE:
 		# Le bord du verre : un pixel clair, aucune ombre.
 		sb.shadow_size = 0
-		sb.border_color = Color(1, 1, 1, 0.75)
-		sb.set_border_width_all(1)
-		sb.set_content_margin_all(14)
+		sb.border_color = _fiche.lisere
+		sb.set_border_width_all(_fiche.lisere_epaisseur)
+		sb.set_content_margin_all(_fiche.marge_interieure)
 	return sb
 
 
@@ -814,15 +826,15 @@ func _creer_theme() -> Theme:
 		encre_choisie = BOIS_CREME
 	if VITRE:
 		# Le choix posé est en encre pleine ; le vert reste au bouton qui engage.
-		normal.bg_color = Color(1, 1, 1, 0.55)
-		normal.border_color = Color(TEXTE, 0.16)
-		survol.bg_color = Color(1, 1, 1, 0.85)
-		survol.border_color = Color(TEXTE, 0.45)
-		presse.bg_color = TEXTE
-		presse.border_color = TEXTE
-		inactif.bg_color = Color(1, 1, 1, 0.25)
-		inactif.border_color = Color(TEXTE, 0.08)
-		encre_choisie = Color.WHITE
+		normal.bg_color = _fiche.fond
+		normal.border_color = _fiche.bord
+		survol.bg_color = _fiche.fond_survol
+		survol.border_color = _fiche.bord_survol
+		presse.bg_color = _fiche.fond_choisi
+		presse.border_color = _fiche.fond_choisi
+		inactif.bg_color = _fiche.fond_grise
+		inactif.border_color = _fiche.bord_grise
+		encre_choisie = _fiche.encre_choisi
 	_sb_choisi = presse
 	t.set_stylebox("normal", "Button", normal)
 	t.set_stylebox("hover", "Button", survol)
@@ -839,14 +851,14 @@ func _creer_theme() -> Theme:
 	# ⚠️ Un bouton grisé doit rester lisible : il dit ce qui manque (« Mettre en place »).
 	t.set_color("font_disabled_color", "Button", GRIS)
 	t.set_font("font", "Button", _fonte_grasse)
-	t.set_font_size("font_size", "Button", 14)
+	t.set_font_size("font_size", "Button", _fiche.taille if VITRE else 14)
 	t.set_constant("h_separation", "Button", 8)
 	t.set_constant("icon_max_width", "Button", 30)
 	var ligne := StyleBoxFlat.new()
 	ligne.bg_color = Color(0, 0, 0, 0)
 	ligne.border_color = BOIS_LISERE if BOIS else Color8(180, 170, 146, 120)
 	if VITRE:
-		ligne.border_color = Color(TEXTE, 0.12)
+		ligne.border_color = _fiche.separateur
 	ligne.border_width_top = 1
 	ligne.content_margin_top = 5
 	ligne.content_margin_bottom = 5
@@ -2746,13 +2758,23 @@ func _habiller_principal(b: Button) -> void:
 	# Grisé, il reste LE bouton vert, éteint : le crème du thème l'effaçait (2026-09-29).
 	var eteint := plein.duplicate()
 	eteint.bg_color = Color8(204, 212, 188)
+	var encre_eteinte := Color8(96, 114, 80)
+	var taille := 15
+	if VITRE:
+		for sb: StyleBoxFlat in [plein, survol, presse, eteint]:
+			sb.border_color = _fiche.bord_engage
+		survol.bg_color = _fiche.survol_engage
+		presse.bg_color = _fiche.appuye_engage
+		eteint.bg_color = _fiche.eteint_engage
+		encre_eteinte = _fiche.encre_eteint_engage
+		taille = _fiche.taille_engage
 	b.add_theme_stylebox_override("normal", plein)
 	b.add_theme_stylebox_override("hover", survol)
 	b.add_theme_stylebox_override("pressed", presse)
 	b.add_theme_stylebox_override("disabled", eteint)
-	b.add_theme_color_override("font_disabled_color", Color8(96, 114, 80))
-	b.add_theme_color_override("icon_disabled_color", Color8(96, 114, 80))
-	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_color_override("font_disabled_color", encre_eteinte)
+	b.add_theme_color_override("icon_disabled_color", encre_eteinte)
+	b.add_theme_font_size_override("font_size", taille)
 	b.add_theme_color_override("font_color", Color.WHITE)
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
 	b.add_theme_color_override("font_pressed_color", Color.WHITE)

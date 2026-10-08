@@ -689,3 +689,6 @@ Demande de l'auteur (« plus de variété, cohérents entre eux »). Lobes satel
 **2026-10-07 — L'Ilse s'arrête avec la pause ; pictogrammes de pont et pastilles gardent leurs pixels en plein écran.**
 Demande de l'auteur. Le courant lit l'horloge du trafic (`temps_trafic`, déclarée dans `project.godot`) au lieu de `TIME` ; il est donc figé aussi pendant le récit d'ouverture.
 Les pictogrammes grandissaient avec la fenêtre (×1,6 à 2560×1440) quand l'interface ne grandit pas ; réglés sur 900 px (`Pastilles.largeur`). `QGIS/rendus/wehrau_icones_ponts_avant_apres.png`.
+**2026-10-08 — L'habillage vitre se règle sans code : `Godot/habillage.tres`, ouvert dans l'inspecteur.**
+Demande de l'auteur (« changer l'UI moi-même »). 38 réglages en 6 rubriques (texte, couleurs du jeu, panneaux, boutons, bouton qui engage, jauges) ; l'origine reste dans `scripts/habillage.gd`, `bois` et `verre` n'en dépendent pas. Vérifié : 39 valeurs identiques à avant, 0 écart.
+🔴 Sur ce Mac, `essai_sauvegarde` donne 92 échecs **avec ou sans** la modification : `Godot/data/wehrau.json` est périmé (151 îlots au lieu de 71) — relancer `07`. La mise en page reste dans le code : elle se dessine (Illustrator) et je la reproduis.
