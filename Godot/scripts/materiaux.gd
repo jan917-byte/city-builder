@@ -159,6 +159,13 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "const float FEN_LARGE = 1.15;\n" \
 		+ "const float ENTRAXE_MIN = 2.75;\n" \
 		+ "const float ENTRAXE_MAX = 3.70;\n" \
+		+ "// 🪟 LE RELIEF SANS TRIANGLE (2026-10-08) : tableau de 22 cm, balcon\n" \
+		+ "// de 1,20 m, dalle de 25 cm, garde-corps plein de 1 m, ombre sur 90 cm.\n" \
+		+ "const float PROF_FEN = 0.22;\n" \
+		+ "const float BALCON_P = 1.20;\n" \
+		+ "const float OMBRE_BALCON = 0.90;\n" \
+		+ "const float BALCON_E = 0.25;\n" \
+		+ "const float BALCON_H = 1.00;\n" \
 		+ "// ⚠ LINÉAIRE. #3A424B en sRGB : du verre qui reflète un ciel\n" \
 		+ "// couvert. Une vitre noire donne à la ville l'air bombardée.\n" \
 		+ "const vec3 VITRE = vec3(0.042, 0.055, 0.070);\n" \
@@ -171,6 +178,10 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "const vec3 RIVE_SABLE = vec3(0.620, 0.548, 0.398);\n" \
 		+ "float alea_pt(vec2 p) {\n" \
 		+ "\treturn fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.545);\n" \
+		+ "}\n" \
+		+ "// Le tirage d'une travée à un étage : balcon, porte de quai.\n" \
+		+ "float tirage_travee(float travee, float etage, float alea) {\n" \
+		+ "\treturn fract(sin(travee * 12.9898 + etage * 78.233 + alea * 37.719) * 43758.545);\n" \
 		+ "}\n" \
 		+ "// Bruit de valeur bilinéaire, en MÈTRES : deux octaves suffisent à\n" \
 		+ "// casser un aplat, et rien ici n'a besoin d'un vrai Perlin.\n" \
@@ -431,6 +442,9 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tbase *= mix(1.0, 0.45,\n" \
 		+ "\t\t\tsmoothstep(0.11, 0.02, abs(pos_monde.y - plafond)));\n" \
 		+ "\t}\n" \
+		+ "\t// Ce que le relief peint réoriente pour la lumière, en monde.\n" \
+		+ "\tvec3 n_relief = normale_monde;\n" \
+		+ "\tfloat w_relief = 0.0;\n" \
 		+ "\t// 🪟 LES FENÊTRES — une recette de surface, pas un triangle de\n" \
 		+ "\t// plus. Tout ce qui arrive ici :\n" \
 		+ "\t//   UV  = (u, L)         mètres le long de la façade, longueur\n" \
@@ -529,14 +543,37 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t* smoothstep(marge - aa, marge + aa, bord);\n" \
 		+ "\t\t// L'EMBRASURE : sans épaisseur, une fenêtre est un autocollant.\n" \
 		+ "\t\t// Ombre au tableau, liseré au dormant, appui débordant de 13 cm.\n" \
-		+ "\t\tfloat ombre = smoothstep(haut - 0.22, haut - 0.03, hy);\n" \
 		+ "\t\tfloat cerne = smoothstep(demi + 0.08 + aa, demi + 0.08 - aa, du)\n" \
 		+ "\t\t\t* smoothstep(bas - 0.13 - aa, bas - 0.13 + aa, hy)\n" \
 		+ "\t\t\t* smoothstep(haut + 0.08 + aa, haut + 0.08 - aa, hy)\n" \
 		+ "\t\t\t* smoothstep(marge - 0.10 - aa, marge - 0.10 + aa, bord);\n" \
+		+ "\t\t// 🪟 LE TABLEAU, PAR PARALLAXE (2026-10-08). Le rayon de vue\n" \
+		+ "\t\t// entre dans le trou : il touche la vitre au fond, ou d'abord un\n" \
+		+ "\t\t// tableau, l'appui ou le linteau. pu, pv = glissement le long\n" \
+		+ "\t\t// de la façade et en hauteur par mètre de profondeur.\n" \
+		+ "\t\t// La tangente est orientée sur `u` par ses dérivées : 07 ne\n" \
+		+ "\t\t// garantit pas le sens de parcours d'un mur.\n" \
+		+ "\t\tvec3 vue_m = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);\n" \
+		+ "\t\tfloat vn = max(dot(vue_m, normale_monde), 0.05);\n" \
+		+ "\t\tvec3 tg = normalize(vec3(-normale_monde.z, 0.0, normale_monde.x));\n" \
+		+ "\t\ttg *= (dFdx(u) * dot(dFdx(pos_monde), tg) + dFdy(u) * dot(dFdy(pos_monde), tg)) >= 0.0 ? 1.0 : -1.0;\n" \
+		+ "\t\tfloat pu = clamp(-dot(vue_m, tg) / vn, -2.0, 2.0);\n" \
+		+ "\t\tfloat pv = clamp(-vue_m.y / vn, -1.5, 1.5);\n" \
+		+ "\t\t// Loin, la profondeur s'éteint avec le dessin : plus rien à creuser.\n" \
+		+ "\t\tfloat prof = PROF_FEN * clamp(1.15 - 1.8 * aa, 0.0, 1.0);\n" \
+		+ "\t\tif (etage < 0.5 && genre == 3) prof *= 0.55;\n" \
+		+ "\t\tfloat ox = x - (travee + 0.5) * pas;\n" \
+		+ "\t\tfloat kx = abs(pu) > 0.001 ? (sign(pu) * demi - ox) / pu : 1.0e3;\n" \
+		+ "\t\tfloat ky = abs(pv) > 0.001 ? ((pv < 0.0 ? bas : haut) - hy) / pv : 1.0e3;\n" \
+		+ "\t\tfloat kmin = min(kx, ky);\n" \
+		+ "\t\tfloat ak = max(fwidth(kmin), 0.0005);\n" \
+		+ "\t\tfloat revele = dedans * smoothstep(-ak, ak, prof - kmin) * tient;\n" \
+		+ "\t\tfloat hyb = hy + pv * prof;\n" \
+		+ "\t\tfloat dub = abs(ox + pu * prof);\n" \
+		+ "\t\tfloat ombre = smoothstep(haut - 0.22, haut - 0.03, hyb);\n" \
 		+ "\t\t// Le meneau, sur les ouvertures assez larges pour en avoir un.\n" \
-		+ "\t\tfloat meneau = (demi > 0.45) ? smoothstep(0.030, 0.055, du) : 1.0;\n" \
-		+ "\t\tfloat ouverture = clamp(dedans * meneau, 0.0, 1.0) * tient;\n" \
+		+ "\t\tfloat meneau = (demi > 0.45) ? smoothstep(0.030, 0.055, dub) : 1.0;\n" \
+		+ "\t\tfloat ouverture = clamp(dedans * (1.0 - revele) * meneau, 0.0, 1.0) * tient;\n" \
 		+ "\t\tfloat dormant = clamp(cerne * tient - ouverture, 0.0, 1.0);\n" \
 		+ "\t\t// 🔴 LOIN, ON N'ÉCRIT PLUS — ON ASSOMBRIT. Une fenêtre tient sur\n" \
 		+ "\t\t// deux pixels à la vue par défaut : on rend la main à la PART\n" \
@@ -557,16 +594,24 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat vitre = mix(mix(part * tient, bande, net_h), ouverture, net);\n" \
 		+ "\t\t// COLOR.a garde le volume sous le percement.\n" \
 		+ "\t\tbase = mix(base, min(base * 1.28 + 0.012, vec3(1.0)), dormant * net);\n" \
+		+ "\t\tvec3 mur = base;\n" \
 		+ "\t\tfloat interieur = alea_pt(vec2(floor(u / pas), etage) + vec2(alea * 53.0));\n" \
-		+ "\t\tvec3 reflet = mix(VITRE, vec3(0.12, 0.18, 0.20), 0.25 + 0.45 * (hy / ETAGE));\n" \
+		+ "\t\tvec3 reflet = mix(VITRE, vec3(0.12, 0.18, 0.20), 0.25 + 0.45 * (hyb / ETAGE));\n" \
 		+ "\t\treflet = mix(reflet, vec3(0.32, 0.25, 0.16), step(0.86, interieur) * 0.55);\n" \
 		+ "\t\tbase = mix(base, reflet * mix(1.0, 0.60, ombre) * COLOR.a, vitre);\n" \
+		+ "\t\t// Le tableau est du mur, plus sombre au fond ; c'est sa normale\n" \
+		+ "\t\t// qui fait qu'un côté prend le soleil et l'autre non.\n" \
+		+ "\t\tfloat cote = smoothstep(-ak, ak, ky - kx);\n" \
+		+ "\t\tvec3 n_tab = normalize(mix(vec3(0.0, pv < 0.0 ? 1.0 : -1.0, 0.0), -sign(pu) * tg, cote));\n" \
+		+ "\t\tbase = mix(base, mur * mix(1.0, 0.72, clamp(kmin / max(prof, 0.001), 0.0, 1.0)), revele);\n" \
+		+ "\t\tn_relief = n_tab;\n" \
+		+ "\t\tw_relief = revele;\n" \
 		+ "\t\trugosite = mix(rugosite, 0.18, vitre * net);\n" \
 		+ "\t\t// 🎨 LA FAMILLE DE FAÇADE (2026-09-26). `net_g` rend la main plus\n" \
 		+ "\t\t// tard que `net` : un volet ou un store fait un mètre, il se lit\n" \
 		+ "\t\t// encore quand la fenêtre n'est plus qu'un assombrissement.\n" \
 		+ "\t\tfloat net_g = clamp(1.3 - 0.8 * aa, 0.0, 1.0);\n" \
-		+ "\t\tfloat hb = fract(sin(travee * 12.9898 + etage * 78.233 + alea * 37.719) * 43758.545);\n" \
+		+ "\t\tfloat hb = tirage_travee(travee, etage, alea);\n" \
 		+ "\t\tif (!neuf && !moderne && (famille == 1.0 || famille == 2.0)) {\n" \
 		+ "\t\t\t// Le soubassement, et le bandeau entre le rez et les étages.\n" \
 		+ "\t\t\tbase *= mix(1.0, 0.80, smoothstep(0.60, 0.52, h) * net_g);\n" \
@@ -619,8 +664,78 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t\tbase = mix(base, QUAIS[int(fract(alea * 2.93) * 3.0)] * plis * COLOR.a, quai * net_g);\n" \
 		+ "\t\t\t}\n" \
 		+ "\t\t}\n" \
-		+ "\t\tif (!neuf && (famille == 6.0 || moderne) && genre <= 2 && etage > 0.5 && hb < 0.55) {\n" \
-		+ "\t\t\t// Le balcon : nez de dalle clair, garde-corps vitré.\n" \
+		+ "\t\tif (!neuf && (famille == 6.0 || moderne) && genre <= 2 && plafond > 0.5) {\n" \
+		+ "\t\t\t// 🏢 LE BALCON EN SAILLIE (2026-10-08), même parallaxe à\n" \
+		+ "\t\t\t// l'envers : vu d'en haut, il se projette PLUS BAS sur le mur.\n" \
+		+ "\t\t\t// Ce pixel regarde le balcon de son étage (j = 0) et celui du\n" \
+		+ "\t\t\t// dessus (j = 1). `plafond` dit si cet étage-là existe : sans\n" \
+		+ "\t\t\t// lui, le dernier étage portait un balcon sur le vide.\n" \
+		+ "\t\t\tfloat demi_b = moderne ? 0.5 * min(1.90, pas * 0.66) : 0.5 * min(FEN_LARGE, pas * 0.45);\n" \
+		+ "\t\t\tfloat q = max(-pv, 0.0);\n" \
+		+ "\t\t\tvec3 dalle_c = min(mur * 1.25 + 0.03, vec3(1.0));\n" \
+		+ "\t\t\tvec3 parapet = min(mur * 1.35 + 0.05, vec3(0.85));\n" \
+		+ "\t\t\tvec3 tranche = mur * 0.86;\n" \
+		+ "\t\t\tfor (int j = 1; j >= 0; j--) {\n" \
+		+ "\t\t\t\tfloat eb = etage + float(j);\n" \
+		+ "\t\t\t\tif (eb < 0.5 || sol + (eb + 1.0) * ETAGE > plafond + 0.1) continue;\n" \
+		+ "\t\t\t\tfloat hs = float(j) * ETAGE + 0.17;\n" \
+		+ "\t\t\t\t// L'ombre de la dalle sur le mur, sous son épaisseur.\n" \
+		+ "\t\t\t\tfloat tb0 = floor(x / pas);\n" \
+		+ "\t\t\t\tfloat w0 = smoothstep(demi_b + 0.55 + aa, demi_b + 0.55 - aa, abs(x - (tb0 + 0.5) * pas))\n" \
+		+ "\t\t\t\t\t* smoothstep(marge - aa, marge + aa, bord) * step(tirage_travee(tb0, eb, alea), 0.55);\n" \
+		+ "\t\t\t\tfloat dessous = hs - BALCON_E;\n" \
+		+ "\t\t\t\t// ⚠ Les fondus se mesurent sur `h` et `u`, continus : `hy` saute à\n" \
+		+ "\t\t\t\t// chaque plancher, et fwidth(hy) traçait un pointillé sur la façade.\n" \
+		+ "\t\t\t\tbase *= 1.0 - 0.38 * w0 * smoothstep(dessous - OMBRE_BALCON, dessous - OMBRE_BALCON + 0.25, hy) * smoothstep(dessous + 0.02, dessous - 0.02, hy) * net_g;\n" \
+		+ "\t\t\t\t// Du fond vers l'avant : le sol (en plongée seulement, par-dessus le\n" \
+		+ "\t\t\t\t// garde-corps), les deux joues, le chaperon, la face. Garde-corps PLEIN\n" \
+		+ "\t\t\t\t// (auteur, 2026-10-08) : la tranche de la dalle, sur la face et les\n" \
+		+ "\t\t\t\t// joues, est ce qui donne l'épaisseur.\n" \
+		+ "\t\t\t\tfloat hp = hy + q * BALCON_P;\n" \
+		+ "\t\t\t\tfloat xp = x - pu * BALCON_P;\n" \
+		+ "\t\t\t\tfloat tbp = floor(xp / pas);\n" \
+		+ "\t\t\t\tfloat cb = (tbp + 0.5) * pas;\n" \
+		+ "\t\t\t\tfloat bp = min(xp + marge, L - xp - marge);\n" \
+		+ "\t\t\t\tfloat existe = smoothstep(marge - aa, marge + aa, bp) * step(tirage_travee(tbp, eb, alea), 0.55) * net_g;\n" \
+		+ "\t\t\t\tfloat ah = aa_h;\n" \
+		+ "\t\t\t\tif (q > 0.02) {\n" \
+		+ "\t\t\t\t\tfloat ts = (hs - hy) / q;\n" \
+		+ "\t\t\t\t\tfloat at = aa_h / q;\n" \
+		+ "\t\t\t\t\tfloat sol_b = smoothstep(-at, at, ts) * smoothstep(BALCON_P - 0.12 + at, BALCON_P - 0.12 - at, ts)\n" \
+		+ "\t\t\t\t\t\t* smoothstep(demi_b + 0.45 + aa, demi_b + 0.45 - aa, abs(x - pu * ts - cb)) * existe;\n" \
+		+ "\t\t\t\t\tbase = mix(base, dalle_c * 0.78, sol_b);\n" \
+		+ "\t\t\t\t\tn_relief = normalize(mix(n_relief, vec3(0.0, 1.0, 0.0), sol_b));\n" \
+		+ "\t\t\t\t\tw_relief = max(w_relief, sol_b);\n" \
+		+ "\t\t\t\t}\n" \
+		+ "\t\t\t\tif (abs(pu) > 0.01) {\n" \
+		+ "\t\t\t\t\tfor (float s = -1.0; s < 2.0; s += 2.0) {\n" \
+		+ "\t\t\t\t\t\tfloat tj = (x - cb - s * (demi_b + 0.55)) / pu;\n" \
+		+ "\t\t\t\t\t\tfloat aj = aa / abs(pu);\n" \
+		+ "\t\t\t\t\t\tfloat hj = hy + q * tj;\n" \
+		+ "\t\t\t\t\t\tfloat joue = smoothstep(-aj, aj, tj) * smoothstep(BALCON_P + aj, BALCON_P - aj, tj)\n" \
+		+ "\t\t\t\t\t\t\t* smoothstep(dessous - ah, dessous + ah, hj) * smoothstep(hs + BALCON_H + ah, hs + BALCON_H - ah, hj) * existe;\n" \
+		+ "\t\t\t\t\t\tfloat tranche_j = smoothstep(hs + ah, hs - ah, hj);\n" \
+		+ "\t\t\t\t\t\tbase = mix(base, mix(parapet, tranche, tranche_j), joue);\n" \
+		+ "\t\t\t\t\t\t// La face d'une joue que le rayon voit regarde toujours vers lui.\n" \
+		+ "\t\t\t\t\t\tn_relief = normalize(mix(n_relief, -sign(pu) * tg, joue));\n" \
+		+ "\t\t\t\t\t\tw_relief = max(w_relief, joue);\n" \
+		+ "\t\t\t\t\t}\n" \
+		+ "\t\t\t\t}\n" \
+		+ "\t\t\t\tfloat ttop = q > 0.02 ? (hs + BALCON_H - hy) / q : -1.0;\n" \
+		+ "\t\t\t\tfloat att = aa_h / max(q, 0.02);\n" \
+		+ "\t\t\t\tfloat chaperon = smoothstep(BALCON_P - 0.12 - att, BALCON_P - 0.12 + att, ttop) * smoothstep(BALCON_P + att, BALCON_P - att, ttop)\n" \
+		+ "\t\t\t\t\t* smoothstep(demi_b + 0.55 + aa, demi_b + 0.55 - aa, abs(x - pu * ttop - cb)) * existe;\n" \
+		+ "\t\t\t\tfloat face = smoothstep(demi_b + 0.55 + aa, demi_b + 0.55 - aa, abs(xp - cb)) * existe\n" \
+		+ "\t\t\t\t\t* smoothstep(dessous - ah, dessous + ah, hp) * smoothstep(hs + BALCON_H + ah, hs + BALCON_H - ah, hp);\n" \
+		+ "\t\t\t\tfloat tranche_f = smoothstep(hs + ah, hs - ah, hp);\n" \
+		+ "\t\t\t\tbase = mix(base, min(parapet * 1.12, vec3(1.0)), chaperon);\n" \
+		+ "\t\t\t\tbase = mix(base, mix(parapet, tranche, tranche_f), face);\n" \
+		+ "\t\t\t\tn_relief = normalize(mix(n_relief, vec3(0.0, 1.0, 0.0), chaperon));\n" \
+		+ "\t\t\t\tn_relief = normalize(mix(n_relief, normale_monde, face));\n" \
+		+ "\t\t\t\tw_relief = max(w_relief, max(face, chaperon));\n" \
+		+ "\t\t\t}\n" \
+		+ "\t\t} else if (!neuf && (famille == 6.0 || moderne) && genre <= 2 && etage > 0.5 && hb < 0.55) {\n" \
+		+ "\t\t\t// Sans `plafond`, le balcon reste peint à plat, dans son étage.\n" \
 		+ "\t\t\tfloat large = smoothstep(demi + 0.55 + aa, demi + 0.55 - aa, du) * smoothstep(marge - aa, marge + aa, bord);\n" \
 		+ "\t\t\tfloat dalle = large * smoothstep(0.02, 0.05, hy) * smoothstep(0.17, 0.13, hy);\n" \
 		+ "\t\t\tfloat garde = large * smoothstep(0.17, 0.20, hy) * smoothstep(1.02, 0.98, hy);\n" \
@@ -706,6 +821,10 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t\t: vec3(0.716, 0.042, 0.030));\n" \
 		+ "\t\t\tbase = mix(base, signal * COLOR.a, 0.88);\n" \
 		+ "\t\t}\n" \
+		+ "\t}\n" \
+		+ "\t// La maquette blanche ne garde que le volume : pas de relief peint.\n" \
+		+ "\tif (w_relief > 0.0 && maquette_blanche < 0.5) {\n" \
+		+ "\t\tNORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(n_relief, 0.0)).xyz, w_relief));\n" \
 		+ "\t}\n" \
 		+ "\tALBEDO = base * teinte.rgb;\n" \
 		+ "\tROUGHNESS = rugosite;\n" \
