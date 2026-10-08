@@ -100,8 +100,8 @@ func executer() -> void:
 	ui._fermer_lieu()
 	# 🔄 L'eau se lit dans la fiche de l'îlot ouvert, plus dans le guide (auteur, 2026-10-06).
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(o.etape == "choix" and "Choisissez un îlot" in o._texte.text and "reprendrait" in ui._repare_texte.text,
-		"Après la carte, l'îlot ouvert dit ce que la crue en reprendrait : %s" % ui._repare_texte.text)
+	verifier(o.etape == "choix" and "Choisissez un îlot" in o._texte.text and "%" in ui._fiche_valeurs["reprise"].text,
+		"Après la carte, l'îlot ouvert dit ce que la crue en reprendrait : %s" % ui._fiche_valeurs["reprise"].text)
 	ui._fermer_fiche()
 	var avant := float(p["logements_perdus"])
 

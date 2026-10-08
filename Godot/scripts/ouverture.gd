@@ -919,7 +919,7 @@ func actualiser(force := false) -> void:
 			_poser_reperes([])
 		"choix":
 			# 🔄 LE JOUEUR CHOISIT SON ÎLOT (auteur, 2026-10-06) : ni bouton ni lieu
-			# désigné ; chaque fiche d'îlot sinistré dit combien quittent le camp.
+			# désigné ; la fiche d'îlot sinistré le compare par ses tuiles.
 			# Remplace la paire rue / logements des Forgerons. 🔴 Flaggable (90).
 			_titre.text = "Le pont est rouvert"
 			_texte.text = "%d personnes vivent encore dans les containers. Choisissez un îlot à reconstruire." % \

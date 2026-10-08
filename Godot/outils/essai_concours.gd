@@ -146,7 +146,7 @@ func executer() -> void:
 	jeu.examiner("i", LAVOIR)
 	jeu._rafraichir(true)
 	verifier(ui._rebatir_boutons["tradition"].visible and not ui._concours_bouton.visible
-		and not ui._projets_bouton.visible and "debout" in ui._repare_texte.text,
+		and not ui._projets_bouton.visible and ui._repare_texte.text == "",
 		"Au Lavoir, concours rendu, la fiche n'offre que comme avant")
 	await capture("concours_06_lavoir")
 

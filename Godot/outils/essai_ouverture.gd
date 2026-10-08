@@ -387,8 +387,8 @@ func executer() -> void:
 	# Huit mois de dotation : ce que le camp a coûté aux logements.
 	actualiser(8.0)
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(jeu.interface._onglet_actif == "crue" and "personnes quittent le camp" in jeu.interface._repare_texte.text,
-		"La fiche de l'îlot ouvert dit combien quittent le camp : %s" % jeu.interface._repare_texte.text)
+	verifier(jeu.interface._onglet_actif == "crue" and jeu.interface._repare_texte.text == "",
+		"La fiche de l'îlot ouvert s'en tient aux tuiles : %s" % jeu.interface._repare_texte.text)
 	await cliquer(jeu.interface._rebatir_boutons["tradition"])
 	await cliquer(jeu.interface._recap_bouton)
 	actualiser(20.0)

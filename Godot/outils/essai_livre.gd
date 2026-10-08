@@ -85,13 +85,12 @@ func executer() -> void:
 	actualiser(t)
 	await capture("livre_02_sols_parking")
 
-	# --- Une fiche dont l'onglet attend une page : le solaire, grisé avec ce qui l'ouvre.
+	# --- Une fiche dont l'onglet attend une page : le solaire n'y est pas encore.
 	jeu._sur_theme("")
 	jeu._sur_choix("i", o.SOLAIRE)
 	ui.ouvrir_onglet("energie")
 	ui._maj_fiche()
-	verifier(not ui._solaire_bloc.visible and ui._ferme_bloc.visible and "réparée" in ui._ferme_texte.text,
-		"Le solaire est grisé, et la fiche dit ce qui l'ouvrira : %s" % ui._ferme_texte.text)
+	verifier(not ui._solaire_bloc.visible, "Le solaire n'est pas encore dans la fiche")
 	await capture("livre_03_solaire_ferme")
 
 	# --- La jauge : Dangers › Prochaine crue, le levier du parking, le trait blanc.
@@ -171,7 +170,7 @@ func executer() -> void:
 	jeu._sur_choix("i", o.SOLAIRE)
 	ui.ouvrir_onglet("energie")
 	ui._maj_fiche()
-	verifier(ui._solaire_bloc.visible and not ui._ferme_bloc.visible, "La fiche du toit montre le solaire")
+	verifier(ui._solaire_bloc.visible, "La fiche du toit montre le solaire")
 	verifier(o.levier_ferme("arbres") != "", "Les arbres attendent la canicule")
 
 	jeu._sur_sauvegarde()

@@ -47,8 +47,6 @@ extends Resource
 @export var fond_bulles := Color8(244, 245, 243)
 ## Le fond d'un onglet survolé et des cartes du concours.
 @export var fond_cartes := Color8(226, 229, 226)
-## Le trait entre deux sections d'une fiche.
-@export var separateur := Color(0.109804, 0.12549, 0.137255, 0.12)
 
 @export_group("Boutons")
 ## Taille du texte des boutons.

@@ -350,11 +350,6 @@ var _dense_bloc: VBoxContainer
 var _permeable_bloc: VBoxContainer
 var _permeable_texte: Label
 var _permeable_bouton: Button
-## 📖 Le levier de l'onglet ouvert que le livre garde fermé, et ce qui l'ouvrira.
-var _ferme_bloc: VBoxContainer
-var _ferme_texte: Label
-var _ferme_cle := ""
-var _ferme_page := ""
 var _dense_valeur: Label
 var _dense_boutons: Array[Button] = []
 var _dense_curseur: HSlider
@@ -855,12 +850,8 @@ func _creer_theme() -> Theme:
 	t.set_font_size("font_size", "Button", _fiche.taille if VITRE else 14)
 	t.set_constant("h_separation", "Button", 8)
 	t.set_constant("icon_max_width", "Button", 30)
-	var ligne := StyleBoxFlat.new()
-	ligne.bg_color = Color(0, 0, 0, 0)
-	ligne.border_color = BOIS_LISERE if BOIS else Color8(180, 170, 146, 120)
-	if VITRE:
-		ligne.border_color = _fiche.separateur
-	ligne.border_width_top = 1
+	# 🔄 Plus de trait entre les blocs (auteur, 2026-10-08) : l'espace suffit.
+	var ligne := StyleBoxEmpty.new()
 	ligne.content_margin_top = 5
 	ligne.content_margin_bottom = 5
 	t.set_stylebox("separator", "HSeparator", ligne)
@@ -2572,21 +2563,7 @@ func _panneau_ilot() -> void:
 	_decision(_permeable_bouton, "permeable", true)
 	_permeable_bloc.add_child(_permeable_bouton)
 
-	# 📖 Verrouillé mais visible, avec ce qui l'ouvre (Boucle de jeu · 101).
-	_ferme_bloc = VBoxContainer.new()
-	_ferme_bloc.add_theme_constant_override("separation", 6)
-	_ferme_bloc.visible = false
-	v.add_child(_ferme_bloc)
-	_ferme_bloc.add_child(HSeparator.new())
-	_ferme_texte = _label("", 12, GRIS)
-	_ferme_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_ferme_bloc.add_child(_ferme_texte)
-	var biblio := Button.new()
-	biblio.text = "Ouvrir la bibliothèque"
-	biblio.focus_mode = Control.FOCUS_NONE
-	_habiller_secondaire(biblio)
-	biblio.pressed.connect(func() -> void: ouvrir_lieu("universite", _ferme_page))
-	_ferme_bloc.add_child(biblio)
+	# 🔄 Un levier fermé ne s'annonce plus dans la fiche (auteur, 2026-10-08).
 
 	# 🗂️ CHAQUE BLOC DE RÉGLAGE SOUS SON THÈME. C'est ce qui fait qu'un onglet
 	# porte les chiffres ET la décision : `vert` en tient deux, parce qu'un toit
@@ -4105,47 +4082,6 @@ func _levier_ferme(levier: String) -> String:
 	return ouverture.levier_ferme(levier) if ouverture != null else ""
 
 
-## 📖 Les leviers que l'onglet ouvert porterait sur cet objet.
-func _leviers_onglet() -> Array:
-	var fid := _fiche_fid
-	match [_fiche_couche, _onglet_actif]:
-		["i", "energie"]:
-			return ["solaire"]
-		["i", "vert"]:
-			var l := []
-			if ville.valeur("i", fid, "_part_plate", _mois) > 0.001:
-				l.append("vert")
-			if ville.permeable_possible(fid):
-				l.append("permeable")
-			return l
-		["i", "campagne"]:
-			return ["pre"] if ville.est_champ(fid) and not ville.camp_pose(fid) else []
-		["r", "trafic"]:
-			return ["rue"]
-		["r", "vert"]:
-			return ["arbres"]
-		["b", "berge"]:
-			return ["berge"]
-	return []
-
-
-func _maj_ferme() -> void:
-	var lignes := []
-	_ferme_page = ""
-	if _verrou() == "":
-		for l in _leviers_onglet():
-			var pourquoi := _levier_ferme(l)
-			if pourquoi != "":
-				lignes.append("%s · %s" % [Livre.LEVIERS[l], pourquoi])
-				_ferme_page = Livre.concept_du_levier(l)
-	var cle := "\n".join(lignes)
-	if cle == _ferme_cle:
-		return
-	_ferme_cle = cle
-	_ferme_texte.text = cle
-	_ferme_bloc.visible = cle != ""
-
-
 func _maj_permeable() -> void:
 	var fid := _fiche_fid
 	if _fiche_couche != "i" or not ville.permeable_possible(fid):
@@ -4171,6 +4107,7 @@ func _maj_fiche() -> void:
 	_maj_fiche_contenu()
 	_maj_projets()
 	_repare_texte.visible = _repare_texte.text != ""
+	_camp_texte.visible = _camp_texte.text != ""
 	var verrou := _verrou()
 	if verrou != "":
 		_lieu_bouton.visible = false
@@ -4203,7 +4140,6 @@ func _maj_fiche_contenu() -> void:
 	_maj_camp()
 	_maj_culture()
 	_maj_permeable()
-	_maj_ferme()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()
 		return
@@ -5291,19 +5227,16 @@ func _maj_reparation(o: Dictionary) -> void:
 		# 🔴 Textes flaggables (90).
 		_posee(_rebatir_boutons["tradition"], "reparer", "Comme avant", "tradition")
 		var choisi := str(_pose.get("reparer", ""))
-		_repare_texte.text += "\nComment le relever ?" if concours \
-			else ("\nOn le relève comme avant." if ville.concours_utile(_fiche_fid)
-			else "\nLes maisons tiennent debout : on les remet en état.")
 		if concours and rendu:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \
 				else "Projet : %s · revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
 		elif concours and ville.concours_lance():
-			_repare_texte.text += "\nLe concours rend ses projets dans %s." % _duree(ville.concours_reste_mois(_mois))
+			_repare_texte.text = "Le concours rend ses projets dans %s." % _duree(ville.concours_reste_mois(_mois))
 			_concours_bouton.text = "Concours en cours"
 			_concours_bouton.disabled = true
 			_marquer(_concours_bouton, false)
 		elif concours:
-			_repare_texte.text += "\nAutrement qu'avant : un concours, pour tous les îlots sinistrés."
+			_repare_texte.text = "Autrement qu'avant : un concours, pour tous les îlots sinistrés."
 			_posee(_concours_bouton, "concours", "Lancer un concours")
 			_concours_bouton.disabled = false
 	if pont:
@@ -5372,7 +5305,7 @@ func _maj_camp() -> void:
 	# camps en route suffisent.
 	var besoin: float = ville.besoin_non_couvert(_mois)
 	if besoin <= 0.0:
-		_camp_texte.text = "Tout le monde a une place."
+		_camp_texte.text = ""
 		_camp_bouton.text = "Rien à reloger"
 		_camp_bouton.disabled = true
 		_marquer(_camp_bouton, false)
@@ -5444,17 +5377,8 @@ func _verbe_reparation(couche: String, o: Dictionary) -> String:
 ## pas de contrepartie et le joueur choisit à l'aveugle.
 func _degat_en_clair(couche: String, o: Dictionary) -> String:
 	if couche == "i":
-		# 🌊 Par le noyau, pas par la fiche : une berge livrée en aval a pu
-		# faire baisser ce pourcentage depuis l'export.
-		var apres := int(roundf(100.0 * ville.valeur(
-			"i", _fiche_fid, "part_ruinee_apres", _mois)))
-		var texte := "%d bâtiments détruits, %d logements perdus." % [
-			int(o.get("batiments_ruines", 0)), int(o.get("logements_sinistres", 0))]
-		# 🏕️ De quoi comparer les îlots à relever (auteur, 2026-10-06). 🔴 Flaggable (90).
-		var rentrent := int(minf(float(o.get("logements_sinistres", 0)), ville.reloges(_mois)))
-		if rentrent > 0 and not ville.est_repare("i", _fiche_fid):
-			texte += " Relevé, %d personnes quittent le camp." % rentrent
-		return texte + " La crue annoncée en reprendrait %d %%." % apres
+		# 🔄 Rien sous les tuiles de l'îlot (auteur, 2026-10-08) : elles disent tout.
+		return ""
 	if str(o.get("etat_crue", "")) == "coupe":
 		return "Le tablier est parti ; la rive droite n'a plus d'accès routier."
 	return "La rue a gardé %s m de limon." % _nb(
