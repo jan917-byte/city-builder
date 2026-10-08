@@ -1,6 +1,7 @@
 ---
 tags: [production, marketing]
-statut: à planifier
+statut: en préparation
+maj: 2026-10-08
 ---
 
 # Marketing et Steam
@@ -35,15 +36,38 @@ Devlog · Reddit · Discord · **presse spécialisée urbanisme et climat** (c'e
 
 Publicité payante : **0 €**.
 
-## Nom — non décidé
+## Nom — *Desire Path*
 
-Candidats les plus forts :
-- **Unpave** — clarté commerciale
-- **Desire Lines** — profondeur conceptuelle
+✅ Tranché le 2026-10-08 → [[Décisions arrêtées]] 106. Un *desire path*, c'est le chemin que les gens tracent à force de passer là où rien n'était prévu. 🔴 Le titre est-il le même en DE, ou traduit (*Trampelpfad*) ? À trancher.
+
+Il devient irréversible **au moment où la page Steam devient publique**. Avant : vérifier la marque (EUIPO, DPMA) et réserver le nom de domaine.
 
 ⚠️ Le cadrage « ville du quart d'heure » est à **éviter en communication** — associations avec les théories du complot.
 
-Le nom ne devient irréversible qu'**au moment où la page Steam devient publique**.
+## La page Steam — ce qu'il faut fournir
+
+Formats en vigueur depuis août 2024 ; les anciens sont refusés. À revérifier dans Steamworks au moment de déposer.
+
+| Image | Taille (px) | Où on la voit |
+|---|---|---|
+| Capsule d'en-tête | 920 × 430 | haut de la page, recommandations |
+| Petite capsule | 462 × 174 | résultats de recherche — le titre doit se lire à 120 × 45 |
+| Capsule principale | 1 232 × 706 | page d'accueil, mises en avant |
+| Capsule verticale | 748 × 896 | soldes, carrousels |
+| Capsule de bibliothèque | 600 × 900 | bibliothèque du joueur |
+| Héros de bibliothèque | 3 840 × 1 240, sans texte | bibliothèque, derrière le logo |
+| Logo de bibliothèque | 1 280 de large ou 720 de haut, PNG transparent | posé sur le héros |
+| Captures | 5 au minimum, 1 920 × 1 080, 16:9 | la galerie |
+
+Sur les capsules : **l'illustration et le titre, rien d'autre** — ni note, ni prix, ni citation de presse. Il faut aussi un **texte court et un texte long, en EN et en DE**, et de préférence une **bande-annonce** ou un GIF. Ouvrir la page coûte **100 $** (Steam Direct), plus les données fiscales et bancaires.
+
+## La capsule — une seule illustration, déclinée sept fois
+
+🔴 **Flaggable** (décision 90) si elle sort d'une IA. Les voies sans IA :
+- **A. Un illustrateur** — 300 à 1 500 € ([[Calendrier et budget]]) ; c'est elle qui décide si l'on clique. ⚠️ Contredit **48** (rien avant le vertical slice) : à trancher.
+- **B. Provisoire, depuis la maquette** — une vue de Wehrau rendue dans Godot, le titre posé par l'auteur. Gratuit, remplaçable le jour où A arrive.
+
+Pistes d'image proposées, **à trancher** : ① un chemin de terre qui coupe en diagonale une pelouse ou un parking, vu d'en haut — le titre en image ; ② Wehrau après l'Ilse, la boue d'un côté, le vert qui revient de l'autre ; ③ une rue de la ville, avant et après, coupée en deux.
 
 ## Salons
 

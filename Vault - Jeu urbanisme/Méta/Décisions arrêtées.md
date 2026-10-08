@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-06
+maj: 2026-10-08
 ---
 
 # Décisions arrêtées
@@ -105,6 +105,7 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 | 46 | Cible **~10 000 mots** de texte | 🔓 | |
 | 47 | Page Steam en ligne tôt comme test de marché | 🔓 | |
 | 48 | Pas de dépense avant le vertical slice | 🔓 | |
+| 106 | 🏷️ **Le jeu s'appelle *Desire Path*** — [[Wehrau]] reste le nom de la ville du prototype | 🔒 |  ✅ 2026-10-08, tranché par l'auteur (*« c'est Desire Path »*). Irréversible dès que la page Steam est publique. **Écartés** : *Unpave*, *Desire Lines*. Aucun jeu de ce nom trouvé sur Steam le 2026-10-08 ; marque et nom de domaine restent à vérifier → [[Marketing et Steam]] |
 | 49 | **La ville de t0 passe devant le système de décisions** — [[Wehrau]] doit exister, être crédible et se regarder en 3D avant qu'on décide quoi que ce soit | 🔓 | ✅ 2026-08-11. Constat qui l'a produite : une crue est la **perturbation d'un état**, et l'état n'existait pas — les effets chiffrés du classeur s'appliquaient à du vide. Le classeur reste écrit dans `Classeur/`, il attend son socle. Conséquence immédiate : les **emplois** entrent dans les données (50), la DA cesse d'être reportable (42b), et Godot entre au mois 1 (39b) → [[Plan 3 mois]] · [[Génération procédurale]] |
 | 50 | **Les emplois se dérivent du `sous_type`**, sur `industrie` et `mixte` uniquement | 🟡 | ✅ 2026-08-11. 7ᵉ colonne de la table de correspondance, comme le reste — rien de saisi à la main. **878 emplois pour 5 353 habitants, soit 0,16 par habitant.** Ce n'est pas un coefficient trop bas : Wehrau n'a que 10,4 ha d'activité sur 38 ha bâtis. **C'est un dortoir**, et ça explique l'axe de transit saturé et les 0,86 place de parking par habitant. En sortir demanderait de **dessiner du sol d'activité**, pas de régler un chiffre. Le tissu résidentiel porte zéro emploi : c'est une décision, pas un oubli → n°17 |
 | 50b | **Wehrau reste un dortoir — 0,16 emploi par habitant, assumé.** On ne dessine pas de sol d'activité | 🔓 | ✅ 2026-08-12, ferme la question n°17. Ce que ça achète : la ville devient **cohérente avec elle-même** — l'axe de transit saturé et les 0,86 place de parking par habitant ne sont plus des anomalies à expliquer, ce sont les symptômes d'un fait de départ. Et ça donne un levier **unique et fort** : reconvertir les deux friches — le moulin et la brasserie, en aval — devient **le seul** levier d'emploi de la ville, donc une décision qui compte au lieu d'un réglage parmi d'autres. **Ce que ça coûte, écrit noir sur blanc** : *une ville sans travail est une ville sans matin.* Si le jeu montre un jour des gens qui vont quelque part, leur destination est hors cadre — assumé, et cohérent avec 62 : le flux du matin **sort** de la ville, il n'y tourne pas. **Alternative écartée** : monter à 0,35 (le ratio d'une petite ville allemande comparable) demanderait une densité de quartier d'affaires sur un cœur ancien et deux friches — invraisemblable, et ça se paierait sur le tissu qui fait le charme de la ville → [[Wehrau]] |

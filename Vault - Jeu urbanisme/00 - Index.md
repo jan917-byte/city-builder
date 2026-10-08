@@ -1,14 +1,14 @@
 ---
 tags: [moc, projet]
 statut: vivant
-maj: 2026-09-28
+maj: 2026-10-08
 ---
 
 # 🏙️ Projet jeu — city-builder de transformation urbaine
 
 > Un city-builder PC où le joueur ne construit pas : il **décide**. Une ville moyenne ordinaire, voiture-dépendante, qu'on transforme sur 20 ans. Objectif : **inspirer**, pas simuler la bureaucratie.
 
-**Titre de travail** : aucun · candidats dans [[Marketing et Steam]]
+**Titre** : ***Desire Path*** ([[Décisions arrêtées]] 106) · la page Steam → [[Marketing et Steam]]
 **Où j'en suis** : mois 1 bouclé — la carte est **simulable**, la ville a des **stocks**, et **elle se joue** : on clique, on décide, vingt ans passent
 **Phase actuelle** 🎯 : **le prototype énergie est la colonne vertébrale** — un thème de bout en bout, et les autres s'y branchent ensuite. La 3D et l'UI avancent **en parallèle, tirées par lui** → [[Décisions arrêtées]] **64**
 **Périmètre du prototype** : [[Wehrau]], une petite ville entière — **pas** un quartier de [[Vallmar]]

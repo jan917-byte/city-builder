@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
 statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°23, n°44 et n°45 closes le 2026-10-06 — n°11 et n°25 closes le 2026-09-02
-maj: 2026-10-06
+maj: 2026-10-08
 ---
 
 # Questions ouvertes
@@ -437,6 +437,6 @@ Proposé : une petite montée des eaux vers l'an 2, puis un orage qui inonde un 
 
 ## 🟢 Peut attendre (réversible)
 
-Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · titre du jeu · modèle économique et prix · nombre de langues · traduction humaine ou par IA — par IA, la case Steam se coche (décision 90)
+Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · ~~titre du jeu~~ ✅ (*Desire Path* — 106) · modèle économique et prix · nombre de langues · traduction humaine ou par IA — par IA, la case Steam se coche (décision 90)
 
 **Voir aussi** : [[Décisions arrêtées]] · [[Plan 3 mois]]

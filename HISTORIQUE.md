@@ -704,3 +704,6 @@ Essais headless (l'auteur jouait) : étude, ouverture, livre, rebâtir, concours
 **2026-10-08 — Le campus est dessiné à la main : une allée sur chaque limite commune, une placette à la croisée, 8 bâtiments au lieu de 5.**
 Demande de l'auteur sur capture (« pas satisfait du look ») ; plan en table (`export_godot/campus.py`), 04c laisse les trois îlots entiers, 04d pose le plan, 07 dessine allées et parvis et écarte les arbres ; emprise 1 730 → 2 590 m², institut à 3 bâtiments ; vue numérotée `apercu_campus.py`.
 Essais étude, rebâtir, livre, concours : 0 échec ; l'avertissement « 153 îlots au lieu de 71 » était déjà là.
+**2026-10-08 — Le jeu s'appelle *Desire Path* (décision 106) ; la maquette porte le nom, le vault prépare la page Steam.**
+Tranché par l'auteur (écartés : Unpave, Desire Lines) ; aucun jeu de ce nom trouvé sur Steam. Formats des sept images, règles de capsule et deux voies sans IA (illustrateur, provisoire) dans `Marketing et Steam` ; trois pistes d'image à trancher.
+Godot : la fenêtre s'appelle « Desire Path », le dossier des sauvegardes reste « Wehrau t0 » (custom_user_dir), la partie en cours n'est pas perdue. Maquette non relancée ici.
