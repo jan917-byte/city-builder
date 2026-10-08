@@ -46,7 +46,7 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête
 | `06_etat_zero.py` | 👁 la ville entière en HTML |
 | `07_exporter_godot.py` | → `Godot/data/wehrau.json`, toute la géométrie 3D |
 | `08_jouer.py` | rejoue les parties du classeur |
-| `apercu_carte.py` · `apercu_parcelles.py` | 👁 PNG légendés, lecture seule |
+| `apercu_carte.py` · `apercu_parcelles.py` · `apercu_campus.py` | 👁 PNG légendés, lecture seule |
 | `palette.py` | les matériaux du bâti |
 | `01_champs_et_valuemaps.py` · `classification.json` · `00b_mettre_a_echelle.py` | vestiges, hors chaîne — le dernier vise encore `Vallmar2.gpkg`, qui n'existe plus |
 

@@ -15,6 +15,7 @@ from apercu_carte import gpkg_vers_wkb
 from apercu_carte import lire_wkb
 from importlib import import_module
 from export_godot.equipements import CAMPUS, PENTES, ROLES, equipement
+from export_godot import campus as CP
 from export_godot.batiments import (
     _acces_pavillonnaire,
     _bandes_de_fauche,
@@ -801,7 +802,8 @@ def main():
                         n_ruine += 1
                     else:
                         n_sali += b["crue"] != "intact"
-                    volumes.append((emp, p["niveaux"], faite, p,
+                    niv_b = CP.du_plan(fid, emp)[1] if fid in CAMPUS else p["niveaux"]
+                    volumes.append((emp, niv_b, faite, p,
                                     b["crue"], b["eau"]))
                     batiments_par_parcelle.setdefault(p["fid"], []).append(emp)
                 n_parc += len(d["parcelles"]) - len(chemins_ilot)
@@ -824,9 +826,6 @@ def main():
             # et le curseur vert de cet îlot n'a plus que deux ou trois crans.
             n_ilot_grossier += 1 if 0 < len(rangs_verts) <= 2 else 0
             adresse = ilots[20 if fid == 16 else 16]["anneau"] if fid in (16, 20) else an
-            if fid in CAMPUS:
-                # Les façades des trois îlots regardent la cour commune.
-                adresse = [p for f in CAMPUS for p in ilots[f]["anneau"]]
             cible_edifice = tuple(sum(p[j] for p in adresse) / len(adresse) for j in (0, 1))
             principal = max(range(len(volumes)), key=lambda k: abs(aire_signee(volumes[k][0]))) if volumes else -1
             for k_vol, (emp, niv, faite, parcelle, crue, eau_m) in \
@@ -897,8 +896,10 @@ def main():
                 alea = random.Random(gr ^ 0xFE4E).random()
                 if role:
                     destination = repare if crue == "ruine" else masses
+                    # 🎓 Sur le campus, chaque façade regarde où le plan la tourne.
+                    cible = CP.du_plan(fid, emp)[2] if fid in CAMPUS else cible_edifice
                     compte, aire_edifice = equipement(
-                        destination, emp, G, role, niv, cible_edifice,
+                        destination, emp, G, role, niv, cible,
                         k_vol == principal, 0.0 if crue == "ruine" else eau_m)
                     toit_neuf_ilot += aire_edifice - aire_toit
                     if crue != "ruine":
@@ -983,6 +984,11 @@ def main():
                 if len(c) >= 3:
                     aire_chemin += abs(D4C.aire_signee(c))
                     _sol(masses, c, coul_chemin, G)
+            # 🎓 Les allées du campus sur les limites communes, la placette, les parvis.
+            allees_campus = CP.sols(fid, {f: ilots[f]["anneau"] for f in CAMPUS})                 if fid in CAMPUS else []
+            for c in allees_campus:
+                aire_chemin += abs(D4C.aire_signee(c))
+                _sol(masses, c, coul_chemin, G, y=Y_SOL + 0.015)
 
             part_verte = VERDURE.get(st, VERDURE_DEFAUT)
             limites_haie = set()
@@ -1056,7 +1062,7 @@ def main():
                     _sol(masses, j, coul_jardin_i, G)
                 if eau_ilot >= CRUE_ARBRE_NOYE_M:
                     continue                  # jardin noyé : plus un arbre
-                arbres_jardin = _semer_jardin(j, aire_j, emps)
+                arbres_jardin = _semer_jardin(j, aire_j, emps + allees_campus)
                 arbres.extend(arbres_jardin)
                 n_arbre_jardin += len(arbres_jardin)
 

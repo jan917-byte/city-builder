@@ -3,12 +3,12 @@
 
 import math
 import palette as PAL
+from .campus import CAMPUS  # noqa: F401 (relu par 07)
 from .geometrie import normale
 
 
 # 🎓 Le campus en trois îlots (auteur, 2026-10-08) : on y lit qui publie, qui cherche, qui range.
 ROLES = {16: "eglise", 20: "mairie", 36: "universite", 77: "bibliotheque", 78: "institut"}
-CAMPUS = (36, 77, 78)
 PENTES = {"eglise": .95, "mairie": .95, "universite": .60, "bibliotheque": .60, "institut": 0.0}
 
 

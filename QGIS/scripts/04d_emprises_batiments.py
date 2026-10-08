@@ -48,6 +48,7 @@ RACINE = os.path.dirname(os.path.dirname(ICI))
 sys.path.insert(0, ICI)
 
 from apercu_carte import gpkg_vers_wkb, lire_wkb, dedans  # noqa: E402
+from export_godot import campus as CAMPUS  # noqa: E402
 
 D4B = import_module("04b_emprises_baties")   # `retracter`, le décalage d'arêtes
 D4C = import_module("04c_parcelles")         # `couper`, la coupe par une droite
@@ -2094,6 +2095,11 @@ def main():
             motif = p["origine"] if p["origine"] in ORIGINES_NUES \
                 else "sol non bâti"
             refus[motif] = refus.get(motif, 0) + 1
+            continue
+        if p["ilot"] in CAMPUS.CAMPUS:
+            # 🎓 Le plan dessiné remplace la recette : une parcelle, tous ses bâtiments.
+            resultats.append({"parcelle": p, "rues": [], "retraits": [], "note": {},
+                              "emps": [b[0] for b in CAMPUS.batiments(p["ilot"])]})
             continue
         emps, motif, rues, retraits, note = empreinte(
             p["anneau"], st, idx_bord.get(p["ilot"], {}),

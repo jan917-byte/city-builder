@@ -61,6 +61,7 @@ import struct
 import sqlite3
 import sys
 import zlib
+from export_godot.campus import CAMPUS
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 RACINE = os.path.dirname(os.path.dirname(ICI))
@@ -2240,6 +2241,9 @@ def main():
         # sur un tracé candidat.
         parcelles_ilot, cr = decouper_ilot(ext, st, chemins.get(fid, ()),
                                            bords_morts.get(fid, ()))
+        if fid in CAMPUS:
+            # 🎓 Le campus se dessine à la main (`export_godot/campus.py`) : l'îlot reste entier.
+            parcelles_ilot = [(ouvrir(ext), "boite", indexer_bord(ext))]
         if cr["morts"]:
             lisieres.append((fid, st, cr["morts"], cr["m_morts"],
                              len(parcelles_ilot)))
