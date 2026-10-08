@@ -111,6 +111,7 @@ const CHANTIER_MOTS := {
 	"berge": "Rive transformée", "stationnement": "Retrait des places",
 	"densification": "Étages ajoutés",
 	"relogement": "Installation des abris",
+	"labour": "Labour",
 	"culture": "Mise en culture",
 	"amelioration": "Amélioration du campement",
 	"concours": "Concours",
@@ -421,6 +422,7 @@ var _repare_bloc: VBoxContainer
 var _camp_bloc: VBoxContainer
 var _camp_texte: Label
 var _camp_bouton: Button
+var _labour_bouton: Button   # 🚜 rend le campement vidé au champ
 var _demandes_bloc: VBoxContainer
 var _demande_boutons := {}
 ## 🌾 Ce que porte le champ : un bouton par culture (auteur, 2026-09-29).
@@ -1034,6 +1036,10 @@ func _calculer_dispo() -> Dictionary:
 	return d
 
 
+func _campement() -> bool:
+	return _fiche_couche == "i" and _fiche_fid >= 0 and ville.est_campement(_fiche_fid, _mois)
+
+
 ## Ce qui s'affiche, une fois `_dispo` connu. Trois choses : les boutons, la
 ## grille de l'onglet ouvert, et les blocs de réglage rangés sous leur thème.
 func _appliquer_onglets() -> void:
@@ -1050,10 +1056,13 @@ func _appliquer_onglets() -> void:
 		var b: Button = _onglet_boutons[id]
 		b.visible = bool(_dispo.get(id, false))
 		if b.visible:
-			_habiller_onglet(b, id == _onglet_actif, ligne[1])
+			_habiller_onglet(b, id == _onglet_actif,
+				"camp" if id == "campagne" and _campement() else ligne[1])
 	# Un onglet seul n'est pas un choix : la rangée disparaît (la berge).
 	_onglets.visible = _dispo.size() > 1
 	var ouverte := "%s_%s" % [_onglet_actif, _fiche_couche]
+	if ouverte == "campagne_i" and _campement():
+		ouverte = "campement_i"
 	for cle in _onglet_grilles:
 		(_onglet_grilles[cle] as Control).visible = cle == ouverte
 	for bloc in _bloc_onglet:
@@ -2247,6 +2256,9 @@ func _panneau_ilot() -> void:
 		["surface", "Surface"], ["niveaux", "Niveaux"], ["emplois", "Emplois"]])
 	_grille_onglet(v, "campagne_i", 3, _fiche_valeurs, [
 		["culture", "Culture"], ["surface_champ", "Surface"], ["rive", "Rive"]])
+	# 🏕️ Le champ devenu campement (auteur, 2026-10-08) : plus de culture, des containers.
+	_grille_onglet(v, "campement_i", 3, _fiche_valeurs, [
+		["containers", "Containers"], ["surface_camp", "Surface"], ["rive_camp", "Rive"]])
 	_grille_onglet(v, "energie_i", 3, _fiche_valeurs, [
 		["conso", "Conso./an"], ["production", "Solaire/an"], ["retour", "Retour"]])
 	# 🌿 La part PLATE se lit ici et nulle part ailleurs : c'est elle qui décide
@@ -2356,6 +2368,10 @@ func _panneau_ilot() -> void:
 		_decision(b, "demande_" + d, true)
 		_demandes_bloc.add_child(b)
 		_demande_boutons[d] = b
+	_labour_bouton = Button.new()
+	_decision(_labour_bouton, "labour", true)
+	_labour_bouton.visible = false
+	_camp_bloc.add_child(_labour_bouton)
 
 	# 🔄 Les blocs de la fiche n'ont plus de titre : l'onglet porte l'icône (auteur, 2026-10-08).
 	# 🌾 CE QUE PORTE LE CHAMP. Exclusifs, comme la berge : un seul usage visé
@@ -3441,6 +3457,7 @@ const GENRES_DEPENSE := {
 	"rue": "Rues déblayées", "ilot": "Îlots relevés", "solaire": "Panneaux solaires",
 	"vert": "Toits verts", "dense": "Étages ajoutés", "berge": "Berges",
 	"plantation": "Arbres plantés", "culture": "Cultures", "concours": "Concours",
+	"labour": "Labours",
 	"autres": "Autres chantiers",
 }
 
@@ -3824,7 +3841,11 @@ func _titre_lieu(couche: String) -> void:
 	# 🌾 Un champ s'appelle « Champ », pas « Îlot » : les 88 champs n'ont pas de
 	# nom écrit, donc c'est ce mot de secours qu'on lit à l'écran.
 	var genre := "Champ" if couche == "i" and ville.est_champ(_fiche_fid) else ""
-	_fiche_titre.text = lieux.nom(couche, _fiche_fid, genre)
+	var nom := lieux.nom(couche, _fiche_fid, genre)
+	# 🏕️ « Champ des Luzernes » devient « Campement des Luzernes » jusqu'au labour.
+	if _campement() and nom.begins_with("Champ"):
+		nom = "Campement" + nom.substr(5)
+	_fiche_titre.text = nom
 	_fiche_titre.tooltip_text = lieux.repere(couche, _fiche_fid, genre)
 	_fiche_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
@@ -4127,7 +4148,15 @@ func _maj_fiche_contenu() -> void:
 	var loges := ville.valeur("i", _fiche_fid, "logements", _mois)
 	var nourris := ville.champ_rendement(_fiche_fid, _mois)
 	var hectares := float(o.get("surface_m2", 0.0)) / 10000.0
-	if champ:
+	if _campement():
+		var loges_camp := int(ville.camp_occupants(_fiche_fid, _mois))
+		_maj_resume("camp", "personne n'y vit" if loges_camp == 0
+			else ("1 personne logée" if loges_camp == 1 else "%d personnes logées" % loges_camp))
+		(_fiche_valeurs["containers"] as Label).text = str(ville.camp_abris(_fiche_fid, _mois)
+			if ville.camp_livre(_fiche_fid, _mois) else ville.camp_taille(_fiche_fid, _mois))
+		(_fiche_valeurs["surface_camp"] as Label).text = "%s ha" % _nb(hectares, 2)
+		(_fiche_valeurs["rive_camp"] as Label).text = str(o.get("rive", "?"))
+	elif champ:
 		# 🌾 CE QUE CE CHAMP-LÀ NOURRIT, en clair et avant toute décision.
 		var recolte := ville.recolte_dans_mois(_fiche_fid, _mois)
 		var resume := "ne produit plus de nourriture"
@@ -4137,7 +4166,7 @@ func _maj_fiche_contenu() -> void:
 			resume = "première récolte dans %s" % _duree(recolte)
 		_maj_resume("nourriture", resume)
 		var nom: String = Ville.CULTURES[ville.champ_culture(_fiche_fid, _mois)]["nom"]
-		(_fiche_valeurs["culture"] as Label).text = "camp" if ville.camp_pose(_fiche_fid) \
+		(_fiche_valeurs["culture"] as Label).text = "labour" if ville.labour_en_cours(_fiche_fid, _mois) \
 			else nom.substr(0, 1).to_upper() + nom.substr(1)
 		(_fiche_valeurs["surface_champ"] as Label).text = "%s ha" % _nb(hectares, 2)
 		(_fiche_valeurs["rive"] as Label).text = str(o.get("rive", "?"))
@@ -4744,10 +4773,11 @@ func apercu_demande() -> Dictionary:
 			visee = ville.champ_culture(_fiche_fid, _mois)
 		if visee >= 0:
 			culture = ville.parcelle_code(_fiche_fid, _mois, visee)
-		if ville.camp_possible(_fiche_fid) and (ville.camp_pose(_fiche_fid)
+		if ville.camp_possible(_fiche_fid) and (ville.est_campement(_fiche_fid, _mois)
 				or r.has("camp")
-				or _survole(_camp_bouton)):
-			camp = ville.camp_taille(_fiche_fid, _mois)
+				or _survole(_camp_bouton)) and not r.has("labour") and not _survole(_labour_bouton):
+			camp = ville.camp_abris(_fiche_fid, _mois) if ville.camp_livre(_fiche_fid, _mois) \
+				else ville.camp_taille(_fiche_fid, _mois)
 	if _fiche_couche != "b":
 		futur = ville.reparation_finie(_fiche_couche, _fiche_fid, _mois) \
 			or r.has("reparer") or _survole(_repare_bouton) \
@@ -5228,24 +5258,22 @@ func _maj_camp() -> void:
 	if _demandes_bloc.visible:
 		_maj_demandes()
 	if ville.camp_pose(fid):
-		var occupants: float = ville.camp_occupants(fid, _mois)
-		if not ville.camp_livre(fid, _mois):
-			_camp_texte.text = "Les containers arrivent · %s" % _duree(
-				ville.camp_reste_mois(fid, _mois))
-			_camp_bouton.text = "Chantier en cours"
-		elif ville.camp_accessible(fid, _mois):
-			_camp_texte.text = "%d containers · %d abrités" % [
-				ville.camp_abris(fid, _mois), int(occupants)]
-			_camp_bouton.text = "Camp en place"
-		else:
-			# 🌉 Le camp promis, et personne dedans. Ce n'est pas une panne :
-			# c'est la carte, et elle peut encore changer.
-			_camp_texte.text = "Camp vide : aucun pont n'y mène."
-			_camp_bouton.text = "Personne ne peut y venir"
+		# 🚜 Labouré : redevenu champ, le bloc du camp n'a plus rien à dire.
+		if not ville.est_campement(fid, _mois):
+			_bloc_dispo[_camp_bloc] = false
+			return
+		# 🌉 Le camp promis, et personne dedans : c'est la carte, elle peut changer.
+		# Le reste (logés, containers) est dans le résumé et les tuiles.
+		_camp_texte.text = "" if ville.camp_accessible(fid, _mois) or not ville.camp_livre(fid, _mois) \
+			else "Camp vide : aucun pont n'y mène."
 		_camp_bouton.disabled = true
 		_camp_bouton.visible = false
 		_marquer(_camp_bouton, false)
+		_labour_bouton.visible = ville.labour_possible(fid, _mois)
+		if _labour_bouton.visible:
+			_posee(_labour_bouton, "labour", "Labourer")
 		return
+	_labour_bouton.visible = false
 	# Sur les places COMMANDÉES : un second champ ne se propose plus quand les
 	# camps en route suffisent.
 	var besoin: float = ville.besoin_non_couvert(_mois)
@@ -5286,7 +5314,8 @@ func _maj_demandes() -> void:
 ## un camp ; un chantier en cours grise les quatre boutons.
 func _maj_culture() -> void:
 	var fid := _fiche_fid
-	if _fiche_couche != "i" or not ville.est_champ(fid) or ville.camp_pose(fid) \
+	if _fiche_couche != "i" or not ville.est_champ(fid) \
+			or (ville.camp_pose(fid) and not ville.labour_fini(fid, _mois)) \
 			or _levier_ferme("pre") != "":
 		_bloc_dispo[_culture_bloc] = false
 		return

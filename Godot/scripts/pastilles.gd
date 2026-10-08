@@ -56,7 +56,7 @@ func _probleme(couche: String, fid: int, t: float) -> Array:
 	# se VOIENT déjà au sol. Les avoir badgées mettait vingt-sept pastilles sur
 	# le faubourg, et on ne lisait plus ni la ville ni les pastilles.
 	if couche == "i":
-		if v.camp_pose(fid):
+		if v.est_campement(fid, t):
 			if not v.camp_accessible(fid, t):
 				return ["camp", "vide"]
 			return ["camp", "%d" % int(v.camp_occupants(fid, t))]

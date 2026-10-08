@@ -695,3 +695,6 @@ Demande de l'auteur (« changer l'UI moi-même »). 38 réglages en 6 rubriques 
 **2026-10-08 — Le détail de l'argent et de la confiance sépare ce qui rentre chaque mois de ce qui part ; l'historique se replie.**
 Demande de l'auteur. Deux blocs totalisés, « Rentre chaque mois » et « Part chaque mois », puis le solde ; la confiance n'a aucune entrée fixe (`_blocs_mensuels`). « Depuis le mois 0 » est replié derrière « Voir l'historique ».
 `essai_vie_camp` : 0 échec, en headless — l'auteur jouait, pas de capture prise.
+**2026-10-08 — L'interface s'allège (le joueur apprend seul), et un champ qui reçoit un camp devient un campement qu'on laboure pour le rendre au champ.**
+Demandes de l'auteur sur captures numérotées : plus de « où cliquer », de leçon, de sous-titre, de bouton grisé ou déjà fait ; la tuile appelée clignote ; principe dans le vault (`Ton et règles d'écriture`). Campement : nom, tente, personnes logées ; vidé, « Labourer » (10 k€/ha, 1 mois) rend des céréales (`essai_labour`).
+Essais : 0 échec partout ; `essai_capital` (2) et `essai_sauvegarde` (92) échouaient déjà, ville et noms non concernés.

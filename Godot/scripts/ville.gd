@@ -72,9 +72,11 @@ var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbr
 var _seuils := {}          # fid tronçon -> [seuil]
 var _adaptation_total_ke := 0.0
 var _co2_depart_kt := 0.0
-## 🏕️ Champ -> {debut, places, cout_ke}. Un camp posé ne se démonte pas : ce
-## qu'on en fait au bout de vingt ans reste une question ouverte.
+## 🏕️ Champ -> {debut, places, cout_ke}. Le camp reste inscrit après le labour :
+## l'histoire de l'aide et de la confiance en dépend.
 var _camps := {}
+## 🚜 Camp vidé -> mois du labour qui le rend au champ (auteur, 2026-10-08).
+var _labours := {}
 ## 🚿 Demande du camp -> mois de la commande. Elles valent pour tous les camps.
 var _demandes := {}
 ## Le morceau de réseau du faubourg sinistré, mesuré au chargement.
@@ -312,11 +314,11 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
-	"_permeable", "_concours"]
+	"_permeable", "_concours", "_labours"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati", "_file_deblaiement", "_permeable", "_concours"]
+	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -359,6 +361,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
 		"_file_deblaiement": [routes, 0.0],
+		"_labours": [ilots, 0.0],
 		"_rebati": [ilots, ""],
 		"_demandes": [DEMANDES, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0]}
@@ -803,6 +806,7 @@ func reinitialiser() -> void:
 	_plantation.clear()
 	_berge.clear()
 	_camps.clear()
+	_labours.clear()
 	_demandes.clear()
 	_cultures.clear()
 	_permeable.clear()
@@ -1330,6 +1334,55 @@ func camp_pose(fid: int) -> bool:
 	return _camps.has(fid)
 
 
+## 🏕️ LE CHAMP DEVENU CAMPEMENT (auteur, 2026-10-08) : dès la pose, jusqu'au
+## labour. La fiche le montre en campement, plus en champ.
+func est_campement(fid: int, t: float) -> bool:
+	return _camps.has(fid) and not (_labours.has(fid) and t >= float(_labours[fid]))
+
+
+# 🚜 LE LABOUR rend le campement vidé au champ, en céréales.
+# 🎚️ LEVEL DESIGN, les deux nombres : le prix à l'hectare et la durée.
+const LABOUR_KE_HA := 10.0
+const LABOUR_MOIS := 1.0
+
+
+## Seulement un camp livré, atteignable et vide : ses containers sont tous
+## repartis (`camp_abris`), donc le labourer ne déloge personne, hier comme demain.
+func labour_possible(fid: int, t: float) -> bool:
+	return _camps.has(fid) and not _labours.has(fid) and camp_livre(fid, t) \
+		and camp_accessible(fid, t) and camp_abris(fid, t) == 0
+
+
+func cout_labour_ke(fid: int) -> float:
+	return 0.0 if _labours.has(fid) else _hectares(fid) * LABOUR_KE_HA
+
+
+func labour_reste_mois(fid: int, t: float) -> float:
+	if not _labours.has(fid):
+		return 0.0
+	return clampf(float(_labours[fid]) + _delai(LABOUR_MOIS) - t, 0.0, _delai(LABOUR_MOIS))
+
+
+func labour_en_cours(fid: int, t: float) -> bool:
+	return _labours.has(fid) and t >= float(_labours[fid]) and labour_reste_mois(fid, t) > 0.0
+
+
+func labour_fini(fid: int, t: float) -> bool:
+	return _labours.has(fid) and t >= float(_labours[fid]) + _delai(LABOUR_MOIS)
+
+
+func labourer(fid: int, t: float) -> bool:
+	if not labour_possible(fid, t):
+		return false
+	var cout := cout_labour_ke(fid)
+	if cout > caisse_ke(t) + 0.001:
+		return false
+	_labours[fid] = t
+	_depenser("labour", cout)
+	_crue_champs_mois = INF
+	return true
+
+
 func camp_livre(fid: int, t: float) -> bool:
 	return _camps.has(fid) and t >= float(_camps[fid]["debut"]) + _delai(CAMP_MOIS)
 
@@ -1701,9 +1754,11 @@ func _hectares(fid: int) -> float:
 
 func _derniere_culture(fid: int, t: float) -> Dictionary:
 	var h: Array = _cultures.get(fid, [])
+	var labour: float = float(_labours[fid]) if _labours.has(fid) and t >= float(_labours[fid]) else -INF
 	for i in range(h.size() - 1, -1, -1):
 		if float(h[i]["debut"]) <= t:
-			return h[i]
+			# 🚜 Labouré : on repart des céréales.
+			return h[i] if float(h[i]["debut"]) >= labour else {}
 	return {}
 
 
@@ -1748,11 +1803,11 @@ func champ_rendement(fid: int, t: float) -> float:
 	return champ_nourriture(fid, t)
 
 
-## 🔴 UN CAMP PREND LE CHAMP ENTIER, ET POUR DE BON : les containers coupent la
-## parcelle en deux, et rien dans le jeu ne les enlève. La perte suit la
-## mise en chantier : le champ n'est plus cultivable dès l'engagement.
+## 🔴 UN CAMP PREND LE CHAMP ENTIER, jusqu'au labour : la perte suit la mise
+## en chantier, le retour la fin du labour.
 func champ_cultive(fid: int, t: float) -> bool:
-	return est_champ(fid) and (not _camps.has(fid) or t < float(_camps[fid]["debut"]))
+	return est_champ(fid) and (not _camps.has(fid) or t < float(_camps[fid]["debut"])
+		or labour_fini(fid, t))
 
 
 func cout_culture_ke(fid: int, culture: int) -> float:
@@ -1762,7 +1817,8 @@ func cout_culture_ke(fid: int, culture: int) -> float:
 ## `false` si ce n'est pas un champ libre, si le chantier d'avant court encore,
 ## si la culture est déjà celle-là, ou si la caisse ne suit pas.
 func cultiver(fid: int, culture: int, t: float) -> bool:
-	if not est_champ(fid) or _camps.has(fid) or culture < 0 or culture >= CULTURES.size():
+	if not est_champ(fid) or (_camps.has(fid) and not labour_fini(fid, t)) \
+			or culture < 0 or culture >= CULTURES.size():
 		return false
 	if culture == champ_culture(fid, t) or culture_en_cours(fid, t):
 		return false
@@ -1806,12 +1862,14 @@ func achat_nourriture_ke_mois(t: float) -> float:
 ## ∫ (départ − nourris) de 0 à `t`, exacte : le nombre ne change qu'aux dates
 ## des camps, des chantiers et des premières récoltes. Négatif = économisé.
 func achat_nourriture_cumule_ke(t: float) -> float:
-	var cle := "%d/%d/%s" % [_cultures.hash(), _camps.hash(), livraison_immediate]
+	var cle := "%d/%d/%d/%s" % [_cultures.hash(), _camps.hash(), _labours.hash(), livraison_immediate]
 	if cle != _agri_cle:
 		_agri_cle = cle
 		var dates := [0.0]
 		for fid in _camps:
 			dates.append(float(_camps[fid]["debut"]))
+		for fid in _labours:
+			dates.append(float(_labours[fid]) + _delai(LABOUR_MOIS))
 		for fid in _cultures:
 			for d in _cultures[fid]:
 				var c: Dictionary = CULTURES[int(d["culture"])]
@@ -1842,7 +1900,8 @@ func parcelle_code(fid: int, t: float, visee := -1) -> float:
 	if visee >= 0:
 		return 1.0 + visee + (0.0 if visee == CEREALES else 0.9)
 	var c := champ_culture(fid, t)
-	if culture_en_cours(fid, t):
+	# 🚜 La terre retournée se peint comme une mise en culture.
+	if culture_en_cours(fid, t) or labour_en_cours(fid, t):
 		return 11.0 + c
 	if c == CEREALES:
 		return 1.0
@@ -2553,6 +2612,8 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 			float(r["dense"]["part"]), int(r["dense"]["etages"]))
 	if r.has("camp"):
 		ke += cout_camp_ke(fid, t)
+	if r.has("labour"):
+		ke += cout_labour_ke(fid)
 	if r.has("permeable"):
 		ke += cout_permeable_ke(fid)
 	for d in DEMANDES_ORDRE:
@@ -2592,6 +2653,8 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			- BERGE_MOIS[berge_etat(fid, t)]))
 	if r.has("camp"):
 		m = maxf(m, _delai(CAMP_MOIS))
+	if r.has("labour") and not _labours.has(fid):
+		m = maxf(m, _delai(LABOUR_MOIS))
 	if r.has("permeable") and not _permeable.has(fid):
 		m = maxf(m, _delai(PERMEABLE_MOIS))
 	for d in DEMANDES_ORDRE:
@@ -2646,6 +2709,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("berge")
 	if r.has("camp") and abriter(fid, t):
 		faits.append("relogement")
+	if r.has("labour") and labourer(fid, t):
+		faits.append("labour")
 	if r.has("permeable") and rendre_permeable(fid, t):
 		faits.append("sol perméable")
 	for d in DEMANDES_ORDRE:
@@ -2676,7 +2741,9 @@ const CHANTIER_FAIT := 3
 
 
 func etat_chantier(couche: String, fid: int, t: float) -> int:
-	if couche == "i" and camp_pose(fid):
+	if couche == "i" and labour_en_cours(fid, t):
+		return CHANTIER_EN_COURS
+	if couche == "i" and est_campement(fid, t):
 		return CHANTIER_FAIT if camp_livre(fid, t) else CHANTIER_EN_COURS
 	# La pose passe devant : sur un îlot déjà relevé, c'est elle le chantier.
 	if couche == "i" and culture_en_cours(fid, t):
@@ -2703,6 +2770,8 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	var lot := []   # [quoi, durée totale, ce qui reste]
 	if couche == "i" and camp_pose(fid) and not camp_livre(fid, t):
 		lot.append(["relogement", _delai(CAMP_MOIS), camp_reste_mois(fid, t)])
+	if couche == "i" and labour_en_cours(fid, t):
+		lot.append(["labour", _delai(LABOUR_MOIS), labour_reste_mois(fid, t)])
 	if couche == "i" and camp_livre(fid, t) and camp_accessible(fid, t):
 		var d := demande_en_cours(t)
 		if not d.is_empty():
@@ -2826,6 +2895,11 @@ func chantiers(t: float) -> Dictionary:
 			en_cours.append({"couche": "i", "fid": fid, "genre": "relogement",
 				"cout_ke": float(_camps[fid]["cout_ke"]), "reste_mois": camp_reste_mois(fid, t),
 				"duree": _delai(CAMP_MOIS)})
+	for fid in _labours:
+		if labour_en_cours(fid, t):
+			en_cours.append({"couche": "i", "fid": fid, "genre": "labour",
+				"cout_ke": _hectares(fid) * LABOUR_KE_HA, "reste_mois": labour_reste_mois(fid, t),
+				"duree": _delai(LABOUR_MOIS)})
 	if concours_lance() and not concours_rendu(t):
 		en_cours.append({"couche": "i", "fid": int(_concours["fid"]), "genre": "concours",
 			"cout_ke": CONCOURS_KE, "reste_mois": concours_reste_mois(t),

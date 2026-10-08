@@ -399,6 +399,8 @@ func livraison(c: Dictionary, mois: float) -> void:
 	var resultat := "Travaux terminés : %s." % str(c["genre"])
 	if c["genre"] == "deblaiement_groupe":
 		resultat = "Toutes les rues sont déblayées."
+	elif c["genre"] == "labour":
+		resultat = "Rendu au champ."
 	elif c["genre"] == "relogement":
 		var accueillis := int(ui.ville.camp_occupants(fid, mois))
 		resultat = "%d containers livrés · %d personnes accueillies." % [
