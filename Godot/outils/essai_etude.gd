@@ -70,9 +70,9 @@ func executer() -> void:
 	jeu._sur_choix("i", fid_univ)
 	jeu._rafraichir(true)
 	verifier(o.etude_lue and univ.visible, "Trouvée, l'université ouvre l'étude et sa tuile apparaît")
-	verifier(ui._etude_bloc.visible and "6 à 8 ans" in ui._etude_texte.text, "L'université montre l'étude")
-	verifier("19 îlots" in ui._etude_texte.text and "9 cette fois" in ui._etude_texte.text,
-		"L'étude compare les deux crues : %s" % ui._etude_texte.text)
+	verifier(ui._etude_bloc.visible and ui._etude_valeurs["dans"].text == "6 à 8 ans", "L'université montre l'étude")
+	verifier(ui._etude_valeurs["ilots"].text == "19 (9 cette fois)",
+		"L'étude compare les deux crues : %s" % ui._etude_valeurs["ilots"].text)
 	verifier(o.etape == "prochaine" and o._actions.get_child_count() == 0,
 		"Le guide montre le chemin sans bouton")
 	verifier(not ui._lieu_intro.visible and not ui._lieu_lignes[jeu.Recherche.ORDRE[0]]["bloc"].visible,
@@ -122,7 +122,7 @@ func executer() -> void:
 	verifier(float(apres["eau_pire_m"]) < eau - 0.05, "Berge et toits : %.2f → %.2f m" % [eau, float(apres["eau_pire_m"])])
 	ui._sur_rail("dangers")
 	await cliquer(ui._onglets_crue["prochaine"])
-	verifier("Depuis" in ui._prochaine_valeurs["ecart"].text, "Le panneau dit l'écart depuis la parution")
+	verifier(ui._prochaine_valeurs["baisse"].text != "0 cm", "Le panneau dit l'eau en moins depuis l'étude : %s" % ui._prochaine_valeurs["baisse"].text)
 	await capture("etude_05_apres_leviers")
 	await cliquer(ui._prochaine_valeurs["levier_culture"])
 	verifier(jeu.selection.sel_fid == o.PRE and jeu.theme == "dangers",

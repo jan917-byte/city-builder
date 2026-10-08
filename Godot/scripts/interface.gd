@@ -473,7 +473,7 @@ var _onglets_crue := {}
 var _vues_crue := {}
 var _prochaine_valeurs := {}
 var _etude_bloc: VBoxContainer
-var _etude_texte: Label
+var _etude_valeurs := {}
 ## 📖 LA BIBLIOTHÈQUE (101) : la liste des pages, ou une page ouverte.
 var _biblio_bloc: VBoxContainer
 var _biblio_liste: VBoxContainer
@@ -1857,16 +1857,9 @@ func _panneau_prochaine(p: VBoxContainer) -> void:
 	_jauge_crue.custom_minimum_size = Vector2(0, 16)
 	_jauge_crue.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(_jauge_crue)
-	var jl := _label("", 11, GRIS)
-	jl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	p.add_child(jl)
-	_prochaine_valeurs["jauge"] = jl
-	var ecart := _label("", 11, GRIS)
-	ecart.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	p.add_child(ecart)
-	_prochaine_valeurs["ecart"] = ecart
+	# 🔄 Ni légende de la jauge, ni écart depuis l'étude, ni titre au-dessus des
+	# leviers (auteur, 2026-10-08) : le joueur les lit seul.
 	p.add_child(HSeparator.new())
-	_titre_section(p, "CE QUI LA FAIT BAISSER")
 	var berge_cm := 0.0
 	for b in ville.berges:
 		berge_cm = maxf(berge_cm, (ville.berge_largeur_rendue_m(b, Ville.BERGE_RENATUREE)
@@ -1992,21 +1985,6 @@ func _maj_prochaine() -> void:
 		and _fiche_panneau.visible and not _reglages_vus().is_empty() else -1.0
 	_jauge_crue.regler(livre, engage, apercu, _seuil_crue)
 	(_prochaine_valeurs["baisse"] as Label).text = "%d cm" % int(roundf(livre * 100.0))
-	var jl := "Trait sombre : à %d cm, les premières maisons tiennent." % int(roundf(_seuil_crue * 100.0))
-	if engage > livre + 0.005:
-		jl = "Hachures, les chantiers en cours : %d cm une fois livrés. " % int(roundf(engage * 100.0)) + jl
-	if apercu >= 0.0:
-		jl = "Trait blanc, avec le réglage de la fiche : %d cm. " % int(roundf(apercu * 100.0)) + jl
-	(_prochaine_valeurs["jauge"] as Label).text = jl
-
-	var cm := (float(a["eau_pire_m"]) - float(p["eau_pire_m"])) * 100.0
-	var lg := float(p["logements_perdus"]) - float(a["logements_perdus"])
-	var texte := "À la parution de l'étude : %s m au pire, %s logements perdus." % [
-		_nb(float(a["eau_pire_m"]), 2), _nb(float(a["logements_perdus"]), 0)]
-	if absf(cm) >= 0.5 or absf(lg) >= 0.5:
-		texte += " Depuis : %+d cm d'eau, %+d logements." % [int(roundf(-cm)), int(roundf(lg))]
-	texte += " Relever un îlot du faubourg remet ses logements sous l'eau."
-	(_prochaine_valeurs["ecart"] as Label).text = texte
 
 
 ## La plus petite baisse, sur les paliers de `04e`, qui sauve une maison quelque
@@ -2384,6 +2362,7 @@ func _panneau_ilot() -> void:
 		_demandes_bloc.add_child(b)
 		_demande_boutons[d] = b
 
+	# 🔄 Les blocs de la fiche n'ont plus de titre : l'onglet porte l'icône (auteur, 2026-10-08).
 	# 🌾 CE QUE PORTE LE CHAMP. Exclusifs, comme la berge : un seul usage visé
 	# (77c). Reposer le même l'enlève.
 	_culture_bloc = VBoxContainer.new()
@@ -2391,7 +2370,6 @@ func _panneau_ilot() -> void:
 	_culture_bloc.visible = false
 	v.add_child(_culture_bloc)
 	_culture_bloc.add_child(HSeparator.new())
-	_titre_section(_culture_bloc, "Culture")
 	_culture_texte = _label("", 12, TEXTE)
 	_culture_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_culture_bloc.add_child(_culture_texte)
@@ -2406,7 +2384,6 @@ func _panneau_ilot() -> void:
 	_trafic_bloc.visible = false
 	v.add_child(_trafic_bloc)
 	_trafic_bloc.add_child(HSeparator.new())
-	_titre_section(_trafic_bloc, "Voitures")
 	_trafic_stationnement = Button.new()
 	_trafic_stationnement.text = "Retirer les places"
 	_trafic_stationnement.icon = _icone("trafic", 22)
@@ -2427,7 +2404,6 @@ func _panneau_ilot() -> void:
 	_arbres_bloc.visible = false
 	v.add_child(_arbres_bloc)
 	_arbres_bloc.add_child(HSeparator.new())
-	_titre_section(_arbres_bloc, "Arbres")
 	_arbres_valeur = _label("", 13, TEXTE)
 	_arbres_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_arbres_bloc.add_child(_arbres_valeur)
@@ -2452,7 +2428,6 @@ func _panneau_ilot() -> void:
 	_solaire_bloc.visible = false
 	v.add_child(_solaire_bloc)
 	_solaire_bloc.add_child(HSeparator.new())
-	_titre_section(_solaire_bloc, "Solaire")
 	_solaire_valeur = _label("", 13, TEXTE)
 	_solaire_bloc.add_child(_solaire_valeur)
 
@@ -2485,7 +2460,6 @@ func _panneau_ilot() -> void:
 	_vert_bloc.visible = false
 	v.add_child(_vert_bloc)
 	_vert_bloc.add_child(HSeparator.new())
-	_titre_section(_vert_bloc, "Toits verts")
 	_vert_valeur = _label("", 13, TEXTE)
 	_vert_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_vert_bloc.add_child(_vert_valeur)
@@ -2519,7 +2493,6 @@ func _panneau_ilot() -> void:
 	_dense_bloc.visible = false
 	v.add_child(_dense_bloc)
 	_dense_bloc.add_child(HSeparator.new())
-	_titre_section(_dense_bloc, "Densifier")
 	_dense_valeur = _label("", 13, TEXTE)
 	_dense_valeur.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_dense_bloc.add_child(_dense_valeur)
@@ -2554,7 +2527,6 @@ func _panneau_ilot() -> void:
 	_permeable_bloc.visible = false
 	v.add_child(_permeable_bloc)
 	_permeable_bloc.add_child(HSeparator.new())
-	_titre_section(_permeable_bloc, "Sol")
 	_permeable_texte = _label("", 12, TEXTE)
 	_permeable_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_permeable_bloc.add_child(_permeable_texte)
@@ -2816,9 +2788,15 @@ func _panneau_lieu() -> void:
 	v.add_child(_etude_bloc)
 	_etude_bloc.add_child(HSeparator.new())
 	_etude_bloc.add_child(_label("Nouvelle étude · la prochaine crue", 14, TEXTE))
-	_etude_texte = _label("", 12, TEXTE)
-	_etude_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_etude_bloc.add_child(_etude_texte)
+	# 🔄 Quatre tuiles au lieu du paragraphe (auteur, 2026-10-08).
+	var g := GridContainer.new()
+	g.columns = 2
+	g.add_theme_constant_override("h_separation", 6)
+	g.add_theme_constant_override("v_separation", 6)
+	_etude_bloc.add_child(g)
+	for l in [["dans", "Attendue dans"], ["ilots", "Îlots sous l'eau"],
+			["forgerons", "Aux Forgerons"], ["ruines", "Logements ruinés"]]:
+		_tuile(g, l[1], _etude_valeurs, l[0])
 	var ou := _label("La carte de l'étude est dans Dangers.", 11, GRIS)
 	ou.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_etude_bloc.add_child(ou)
@@ -3175,13 +3153,12 @@ func _maj_lieu() -> void:
 	if _etude_bloc.visible:
 		var p := ville.prochaine_crue(_mois)
 		var forgerons := ville.base("i", Ouverture.MAISONS, "hauteur_eau_max")
-		_etude_texte.text = ("Une crue plus forte que celle de cette année est attendue dans 6 à 8 ans. "
-			+ "L'eau irait sur %d îlots, contre %d cette fois ; aux Forgerons, %s m au lieu de %s m. "
-			+ "Si rien ne change, elle ruinerait %s logements.\n"
-			+ "La ville peut la faire baisser, à commencer par rendre ses berges à l'Ilse. "
-			+ "La bibliothèque explique comment.") % [int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"]),
-			_nb(ville.valeur("i", Ouverture.MAISONS, "hauteur_eau_annonce", _mois), 1),
-			_nb(forgerons, 1), _nb(float(p["logements_perdus"]), 0)]
+		(_etude_valeurs["dans"] as Label).text = "6 à 8 ans"
+		(_etude_valeurs["ilots"] as Label).text = "%d (%d cette fois)" % [
+			int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"])]
+		(_etude_valeurs["forgerons"] as Label).text = "%s m (%s m)" % [
+			_nb(ville.valeur("i", Ouverture.MAISONS, "hauteur_eau_annonce", _mois), 1), _nb(forgerons, 1)]
+		(_etude_valeurs["ruines"] as Label).text = _nb(float(p["logements_perdus"]), 0)
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
@@ -4086,9 +4063,8 @@ func _maj_permeable() -> void:
 	var fid := _fiche_fid
 	if _fiche_couche != "i" or not ville.permeable_possible(fid):
 		return
-	var places := int(ville.base("i", fid, "stationnement"))
 	var dur := int(roundf(ville.valeur("i", fid, "impermeabilise", _mois) * 100.0))
-	_permeable_texte.text = "%d %% du sol en dur : la pluie file à l'Ilse. Dalles drainantes, noues et arbres ; les %d places restent." % [dur, places]
+	_permeable_texte.text = "%d %% du sol en dur" % dur
 	if ville.permeable_en_cours(fid, _mois):
 		_permeable_bouton.text = "Chantier en cours"
 		_permeable_bouton.disabled = true
@@ -5132,12 +5108,8 @@ func _maj_fiche_berge() -> void:
 	# chantier en cours et ce qu'il reste à attendre.
 	(_berge_valeurs["etat"] as Label).text = Ville.BERGE_NOMS[etat]
 
-	if etat == Ville.BERGE_RENATUREE:
-		_berge_texte.text = "Rive rendue au fleuve. Rien à démolir ici." 			if float(o.get("mur_m", 0.0)) <= 1.0 			else "Berge renaturée. Aucun retour en arrière."
-	elif reste > 0.0:
-		_berge_texte.text = ""   # la barre du haut de fiche le dit déjà
-	else:
-		_berge_texte.text = ""   # la rive minérale est déjà dans la grille
+	# 🔄 Plus de phrase sous la berge (auteur, 2026-10-08) : la tuile État la dit.
+	_berge_texte.text = ""
 	_berge_texte.visible = _berge_texte.text != ""
 	for k in _berge_boutons.size():
 		var cible: int = Ville.BERGE_APAISEE + k
@@ -5347,7 +5319,7 @@ func _maj_culture() -> void:
 	var actuelle := ville.champ_culture(fid, _mois)
 	var en_cours := ville.culture_en_cours(fid, _mois)
 	var recolte := ville.recolte_dans_mois(fid, _mois)
-	_culture_texte.text = "Les arbres poussent : première récolte dans %s." % _duree(recolte) \
+	_culture_texte.text = "Première récolte dans %s." % _duree(recolte) \
 		if not en_cours and recolte > 0.0 else ""
 	_culture_texte.visible = _culture_texte.text != ""
 	for k in _culture_boutons.size():

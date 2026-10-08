@@ -108,7 +108,7 @@ func executer() -> void:
 	verifier(ui._permeable_bloc.visible and ui._reglages().has("permeable"),
 		"Le sol perméable est posé dans la fiche : %s" % ui._permeable_bouton.text)
 	verifier(j.apercu > j.engage + 0.05 and j.seuil > 0.0,
-		"La jauge montre le réglage avant de payer : %s" % ui._prochaine_valeurs["jauge"].text)
+		"La jauge montre le réglage avant de payer : %.2f m" % j.apercu)
 	await capture("livre_04_jauge_apercu")
 
 	# --- On paie : le sol boit, la crue baisse partout.
@@ -121,7 +121,7 @@ func executer() -> void:
 	actualiser(t + 0.1)
 	ui._maj_prochaine()
 	verifier(j.engage > j.livre + 0.05 and j.apercu < 0.0,
-		"Pendant le chantier, la jauge hachure ce qui va baisser : %s" % ui._prochaine_valeurs["jauge"].text)
+		"Pendant le chantier, la jauge hachure ce qui va baisser : %.2f m" % j.engage)
 	var t2: float = t + v.PERMEABLE_MOIS + 0.2
 	actualiser(t2)
 	var eau1: float = float(v.prochaine_crue(t2)["eau_pire_m"])

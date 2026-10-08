@@ -167,7 +167,7 @@ func _remplir_carte() -> void:
 	match carte:
 		"pont":
 			_annonce_titre.text = "Les deux rives sont reliées"
-			_annonce_texte.text = "%s est rouvert. Les voitures repassent, et le faubourg peut se relever." \
+			_annonce_texte.text = "%s est rouvert." \
 				% _nom("r", premier["fid"])
 			annonce_principal.text = "Continuer"
 			annonce_second.text = "Voir le pont"
@@ -178,7 +178,7 @@ func _remplir_carte() -> void:
 			annonce_second.text = "Voir d'abord l'îlot"
 		"camp":
 			_annonce_titre.text = "Les habitants du camp sont mécontents"
-			_annonce_texte.text = "Ils ont un toit, pas de quoi vivre. Tant qu'ils restent au camp, la confiance baisse chaque mois.\nPlus tard, c'est elle qui ouvrira les règles de la mairie."
+			_annonce_texte.text = "Ils ont un toit, pas de quoi vivre."
 			annonce_principal.text = "Voir le campement"
 			annonce_second.text = "Plus tard"
 
@@ -863,16 +863,16 @@ func actualiser(force := false) -> void:
 		"camp_attente":
 			_poser_reperes([])
 			_titre.text = "Les premiers abris arrivent"
-			_texte.text = "Les containers sont en route."
+			_texte.text = ""
 			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
 		"trafic":
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
 			# 🧭 Sans bouton (auteur, 2026-10-02) : la tuile entourée de la colonne y mène.
-			_texte.text = "Tout le monde est à l'abri. Ouvrez le trafic, dans la colonne de gauche, pour choisir un pont."
+			_texte.text = "Ouvrez le trafic, dans la colonne de gauche, pour choisir un pont."
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = "Trois ponts emportés. Ouvrez-en un pour comparer ses deux chantiers."
+			_texte.text = "Ouvrez-en un pour comparer ses deux chantiers."
 			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
 			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
 			for fid in jeu.ville.ponts_coupes():
@@ -915,7 +915,7 @@ func actualiser(force := false) -> void:
 					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
-					_texte.text += "\n%s est sur l'autre rive. Elle n'est pas accessible tant qu'un pont n'a pas été rebâti." % _nom_champ(int(fid))
+					_texte.text += "\n%s est sur l'autre rive." % _nom_champ(int(fid))
 			_poser_reperes([])
 		"choix":
 			# 🔄 LE JOUEUR CHOISIT SON ÎLOT (auteur, 2026-10-06) : ni bouton ni lieu
@@ -924,10 +924,6 @@ func actualiser(force := false) -> void:
 			_titre.text = "Le pont est rouvert"
 			_texte.text = "%d personnes vivent encore dans les containers. Choisissez un îlot à reconstruire." % \
 				int(jeu.ville.reloges(jeu.mois))
-			# 💶 Dit une fois, ici : la caisse ne relève pas tout (auteur, 2026-10-02).
-			var restants := _sinistres_restants()
-			if restants > 1:
-				_texte.text += "\n%d îlots attendent. La caisse ne les relèvera pas tous." % restants
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
@@ -936,7 +932,7 @@ func actualiser(force := false) -> void:
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
 			if premier["couche"] == "r":
-				_texte.text = "%s est praticable. Réparer ne protège pas de la prochaine crue." % _nom("r", premier["fid"])
+				_texte.text = "%s est praticable." % _nom("r", premier["fid"])
 			else:
 				_texte.text = _livraison_ilot(int(premier["fid"]))
 			_bouton("Voir le résultat", examiner.bind(premier["couche"], premier["fid"]))
@@ -948,7 +944,7 @@ func actualiser(force := false) -> void:
 				actualiser(true))
 		"suite":
 			_titre.text = "Réparer, protéger ou investir ?"
-			_texte.text = "Tout se paie sur la même caisse."
+			_texte.text = ""
 			_reparation("i", MAISONS, "Poursuivre les réparations")
 			if not jeu.ville.est_repare("r", RUE):
 				_reparation("r", RUE, "Rendre aussi la rue praticable")
@@ -967,20 +963,13 @@ func actualiser(force := false) -> void:
 			_maj_protection()
 		"libre":
 			_titre.text = "À vous de choisir la suite"
-			_texte.text = "Votre premier lieu est relevé. La suite est à vous."
+			_texte.text = ""
 			_bouton("Revoir les pistes", func() -> void:
 				termine = false
 				suite = true
 				actualiser(true))
+	_texte.visible = _texte.text != ""
 	reset_size()
-
-
-func _sinistres_restants() -> int:
-	var n := 0
-	for fid in jeu.ville.ilots:
-		if jeu.ville.base("i", fid, "logements_sinistres") > 0.0 and not jeu.ville.est_repare("i", fid):
-			n += 1
-	return n
 
 
 ## 🏗️ Ce que la livraison dit, selon la façon de relever.
@@ -988,13 +977,13 @@ func _livraison_ilot(fid: int) -> String:
 	var n: float = jeu.ville.base("i", fid, "logements_sinistres")
 	match jeu.ville.facon_reparation(fid):
 		"moderne":
-			return "%s : rebâti en moderne, %.0f logements. La prochaine crue les atteindra aussi." % [
+			return "%s : rebâti en moderne, %.0f logements." % [
 				_nom("i", fid), n * float(Ville.RECONSTRUCTIONS["moderne"]["logements"])]
 		"pilotis":
-			return "%s : %.0f logements sur pilotis. L'eau passera dessous, sauf la plus haute." % [_nom("i", fid), n]
+			return "%s : %.0f logements sur pilotis." % [_nom("i", fid), n]
 		"parc":
-			return "%s : rendu à l'eau. Ses habitants restent au camp tant qu'on ne les loge pas ailleurs." % _nom("i", fid)
-	return "%s : %.0f logements remis en état. Réparer ne les protège pas de la prochaine crue." % [_nom("i", fid), n]
+			return "%s : rendu à l'eau." % _nom("i", fid)
+	return "%s : %.0f logements remis en état." % [_nom("i", fid), n]
 
 
 func _maj_protection() -> void:
@@ -1009,7 +998,8 @@ func _maj_protection() -> void:
 	if jeu.ville.berge_etat(BERGE, jeu.mois) == Ville.BERGE_RENATUREE:
 		prix = "Livrée · voir la rive"
 		_titre.text = "La protection commence à agir"
-		_texte.text = "L'eau attendue aux Forgerons a baissé ; le secteur reste exposé."
+		_texte.text = "L'eau attendue aux Forgerons a baissé."
+		_texte.visible = true
 	elif jeu.ville.berge_en_cours(BERGE, jeu.mois):
 		prix = "En travaux"
 	_proteger.text = "Protéger · renaturer la berge\n" + prix
