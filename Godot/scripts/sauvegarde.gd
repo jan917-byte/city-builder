@@ -1,7 +1,7 @@
 extends RefCounted
 ## Données seules, sans objets exécutables. L'ancienne partie survit à une écriture interrompue.
 
-const CHEMIN := "user://partie.wehrau"
+const CHEMIN := "user://partie.wehrau"  # user:// reste « Wehrau t0 » (custom_user_dir, project.godot) : renommer le jeu ne perd pas les parties.
 const VERSION := 1
 const TAILLE_MAX := 16 * 1024 * 1024
 
