@@ -695,3 +695,6 @@ Demande de l'auteur (« changer l'UI moi-même »). 38 réglages en 6 rubriques 
 **2026-10-08 — Le détail de l'argent et de la confiance sépare ce qui rentre chaque mois de ce qui part ; l'historique se replie.**
 Demande de l'auteur. Deux blocs totalisés, « Rentre chaque mois » et « Part chaque mois », puis le solde ; la confiance n'a aucune entrée fixe (`_blocs_mensuels`). « Depuis le mois 0 » est replié derrière « Voir l'historique ».
 `essai_vie_camp` : 0 échec, en headless — l'auteur jouait, pas de capture prise.
+**2026-10-08 — Titre pressenti *Desire Path* ; les venelles naissent en trace dans l'herbe et le joueur les aménage (106).**
+Demande de l'auteur (« fais un et note le reste »). `07` pose une trace (herbe, herbe foulée, terre ondulée) au-dessus du pavé, cachée à la livraison ; 6 traces, 139 m de terre ; 120 €/m², 3 mois, aucun effet sur les jauges. Questions 46 (le titre) et 47 (trois autres références) ouvertes.
+`essai_venelle` : 0 échec, planche numérotée trace | aménagée. `essai_capital` (2 échecs) et `essai_travaux` (1 en headless) échouent pareil sans la modification.

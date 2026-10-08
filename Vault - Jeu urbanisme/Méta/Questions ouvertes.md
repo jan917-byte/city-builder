@@ -1,7 +1,7 @@
 ---
 tags: [méta, questions, actif]
-statut: 🟢 la phase A n'est plus bloquée — restent n°19, 20, 21 (l'écran), n°4 (les fins), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°23, n°44 et n°45 closes le 2026-10-06 — n°11 et n°25 closes le 2026-09-02
-maj: 2026-10-06
+statut: 🟢 la phase A n'est plus bloquée — restent n°46 et n°47 (le titre, et ses références dans le jeu), n°19, 20, 21 (l'écran), n°4 (les fins), n°24 (ce que la berge change, hors crue), n°26 (le logement en campagne), n°32 (l'université qui propose), n°34 (le prix des panneaux posés toit par toit) et n°35 (ce qui rend l'Ilse limpide) et n°36 (ce que le CO₂ fait à la température) — n°37 à n°43 closes le 2026-09-30 — n°23, n°44 et n°45 closes le 2026-10-06 — n°11 et n°25 closes le 2026-09-02
+maj: 2026-10-08
 ---
 
 # Questions ouvertes
@@ -435,8 +435,17 @@ Constat : le pont livré, toute la ville s'ouvre, mais la caisse est vide. L'aut
 ### 45. Une répétition avant la crue annoncée, et quel deuxième aléa ? — ✅ fermée le 2026-10-06
 Proposé : une petite montée des eaux vers l'an 2, puis un orage qui inonde un parking. L'auteur refuse les deux : **six ans pour se préparer**, et **la canicule comme deuxième urgence, plus tard**. → [[Décisions arrêtées]] 102 · [[2026-09-30_brainstorm_prochaine-crue-ville-eponge]]
 
+### 46. Le titre du jeu : *Desire Path* ? — ouverte le 2026-10-08
+L'auteur penche pour **Desire Path**, à trancher avant la page Steam : le nom ne devient irréversible qu'à sa publication. Deux lectures, toutes deux justes : le *chemin vers ce qu'on désire* (le « test du désir », [[2026-09-30_brainstorm_solarpunk-utopie]]) et la trace qu'on laisse dans l'herbe en coupant au plus court. Plus parlant que *Desire Lines*, qui reste un mot d'urbaniste. Deux risques : « Desire » voisine avec des jeux adultes dans la recherche Steam, et le terme est peu connu en français (« ligne de désir ») — la capsule montre une trace dans l'herbe, le slogan l'explique. Aucun jeu Steam de ce nom le 2026-10-08 (un mod RimWorld, un jeu mobile de 2019). Autres candidats : *Unpave* (auteur) ; *Vallmar* et *Slow Streets*, proposés par Claude, donc flaggables (90). **Avant de trancher** : chercher le titre exact dans la boutique Steam, sur le registre européen des marques (EUIPO), le domaine et les comptes. → [[Marketing et Steam]]
+
+### 47. Comment faire référence au *desire path* dans le jeu ? — ouverte le 2026-10-08
+Un clin d'œil au titre, pas un système. **Retenu** : les venelles naissent en trace dans l'herbe, et le joueur les aménage → [[Décisions arrêtées]] 106. **Notées, non tranchées** :
+- **La ville répond** : après une rue piétonne ou un parc, des traces apparaissent dans l'herbe, saison après saison, là où les gens coupent. Un effet visuel, pas une règle.
+- **Un calque « où l'on marche vraiment »**, dans le diagnostic Mobilité : les raccourcis à travers les parkings et les bas-côtés. → [[Diagnostic et calques]]
+- **La première image du jeu** : une trace de terre à côté d'une route vide, la même que sur la capsule Steam.
+
 ## 🟢 Peut attendre (réversible)
 
-Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · titre du jeu · modèle économique et prix · nombre de langues · traduction humaine ou par IA — par IA, la case Steam se coche (décision 90)
+Style graphique définitif · moteur verrouillé · ~~le nom de la ville~~ ✅ (Wehrau, l'Ilse — 13f) · titre du jeu (n°46) · modèle économique et prix · nombre de langues · traduction humaine ou par IA — par IA, la case Steam se coche (décision 90)
 
 **Voir aussi** : [[Décisions arrêtées]] · [[Plan 3 mois]]

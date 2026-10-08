@@ -1,6 +1,7 @@
 ---
 tags: [production, marketing]
 statut: à planifier
+maj: 2026-10-08
 ---
 
 # Marketing et Steam
@@ -37,9 +38,7 @@ Publicité payante : **0 €**.
 
 ## Nom — non décidé
 
-Candidats les plus forts :
-- **Unpave** — clarté commerciale
-- **Desire Lines** — profondeur conceptuelle
+L'auteur penche pour **Desire Path** (2026-10-08), devant **Unpave** (clarté commerciale) et **Desire Lines** (profondeur conceptuelle, mais un mot d'urbaniste). Arguments, risques et vérifications → [[Questions ouvertes]] n°46.
 
 ⚠️ Le cadrage « ville du quart d'heure » est à **éviter en communication** — associations avec les théories du complot.
 
