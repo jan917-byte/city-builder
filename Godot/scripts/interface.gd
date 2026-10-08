@@ -1532,7 +1532,8 @@ func _maj_rail() -> void:
 	var appel: String = ouverture.rail_appel() if ouverture != null else ""
 	# La tuile Ville est rangée sous "" : « ville » la désigne.
 	var cle := "" if appel == "ville" else appel
-	var pouls := 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.006)
+	# 🔄 Clignote franchement (auteur, 2026-10-08) : il remplace « Ouvrez le trafic… ».
+	var pouls := 0.15 + 0.85 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008))
 	for id in tuiles:
 		var b: Button = tuiles[id]
 		b.disabled = ouverture != null and not ouverture.rail_ouvert(id)
@@ -1685,21 +1686,19 @@ func _maj_boue() -> void:
 	var cout := 0.0
 	for f in rues:
 		cout += ville.cout_reparation_ke("r", int(f))
-	_boue_texte.text = "%d rues encore sous la boue · %s k€ · %s, l'une après l'autre." % [
-		rues.size(), _milliers(cout), _duree(Ville.DEBLAIEMENT_MOIS * rues.size())]
+	_boue_texte.text = "%d rues sous la boue" % rues.size()
+	_boue_bouton.text = "Tout déblayer · %s k€ · %s" % [
+		_milliers(cout), _duree(Ville.DEBLAIEMENT_MOIS * rues.size())]
 	_boue_bouton.disabled = cout > ville.caisse_ke(_mois) + 0.001
 
 
+# 🔄 Le titre seul, sans la phrase dessous (auteur, 2026-10-08) ; l'infobulle du rail la garde.
 func _entete(parent: VBoxContainer) -> Array:
-	var titre := _bandeau(parent, "")
-	var resume := _label("", 18, TEXTE)
-	parent.add_child(resume)
-	return [titre, resume]
+	return [_bandeau(parent, "")]
 
 
 func _ecrire_entete(e: Array, t: Dictionary) -> void:
 	(e[0] as Label).text = str(t["nom"])
-	(e[1] as Label).text = str(t.get("resume", ""))
 
 
 ## La rampe des thèmes continus, dessinée une fois. ⚠ En sRGB : `maquette`
@@ -1945,10 +1944,6 @@ func _habiller_onglets_crue() -> void:
 			b.add_theme_color_override(etat, coul)
 		b.add_theme_font_size_override("font_size", 13)
 		(_vues_crue[id] as Control).visible = ouvert
-	if _entetes.has("dangers") and _vue_crue == "prochaine":
-		(_entetes["dangers"][1] as Label).text = "Ce que la prochaine crue reprendrait"
-	elif _entetes.has("dangers"):
-		(_entetes["dangers"][1] as Label).text = "Ce que la crue a laissé dans la ville"
 	var nouveau: bool = ouverture != null and not ouverture.prochaine_vue
 	(_onglets_crue["prochaine"] as Button).text = "Prochaine crue" + (" · nouveau" if nouveau else "")
 	(_onglets_crue["prochaine"] as Button).visible = etude_publiee()
@@ -3039,7 +3034,7 @@ func _projet(f: String) -> Array:
 	var r := {"reparer": f}
 	var cout := ville.cout_commande_ke("i", _fiche_fid, r, _mois)
 	var duree := ville.duree_commande_mois("i", _fiche_fid, r, _mois)
-	var out := [["caisse", "%s k€%s" % [_milliers(cout), _en_dotation(cout)], 0],
+	var out := [["caisse", "%s k€" % _milliers(cout), 0],
 		["duree", _duree(duree), 0]]
 	if ville_essai == null:
 		return out
@@ -3198,8 +3193,6 @@ func _maj_bibliotheque() -> void:
 			ouverture != null and ouverture.page_nouvelle(id)])
 	for l in Livre.LEVIERS:
 		etats.append(_levier_ferme(l))
-	if ouverture != null and not _page_ok("attenuer"):
-		etats.append(str(ouverture.conditions_reparee()))
 	var cle := "%s|%s" % [_page_ouverte, "/".join(etats)]
 	if cle == _biblio_cle:
 		return
@@ -3224,20 +3217,8 @@ func _maj_bibliotheque() -> void:
 			b.disabled = not ouverte
 			var k: String = id
 			b.pressed.connect(func() -> void: ouvrir_page(k))
+			# 🔄 Une page fermée garde son nom, grisé, sans ce qui l'ouvrira (auteur, 2026-10-08).
 			_biblio_liste.add_child(b)
-			# Verrouillée mais visible, avec ce qui l'ouvrira.
-			if not ouverte:
-				var quand := "Plus tard."
-				if id == "attenuer" and ouverture != null:
-					var lignes := ["S'ouvre quand la ville est réparée :"]
-					for cond in ouverture.conditions_reparee():
-						lignes.append(("✓ " if cond[1] else "○ ") + str(cond[0]))
-					quand = "\n".join(lignes)
-				elif id == "chaleur":
-					quand = "Plus tard, avec les étés plus chauds."
-				var q := _label(quand, 11, GRIS)
-				q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				_biblio_liste.add_child(q)
 		return
 	var p: Dictionary = Livre.CONCEPTS[_page_ouverte]
 	_page_chapitre.text = str(p["chapitre"]).to_upper()
@@ -4065,6 +4046,7 @@ func _maj_permeable() -> void:
 		return
 	var dur := int(roundf(ville.valeur("i", fid, "impermeabilise", _mois) * 100.0))
 	_permeable_texte.text = "%d %% du sol en dur" % dur
+	_permeable_bouton.visible = not ville._permeable.has(fid) or ville.permeable_en_cours(fid, _mois)
 	if ville.permeable_en_cours(fid, _mois):
 		_permeable_bouton.text = "Chantier en cours"
 		_permeable_bouton.disabled = true
@@ -4137,7 +4119,7 @@ func _maj_fiche_contenu() -> void:
 	# 🌾 Un champ porte déjà « Champ » dans son nom : le répéter dessous ne dit
 	# rien. Les autres tissus, si — « îlot compact » n'est pas dans le nom.
 	var tissu := str(o.get("sous_type", "?"))
-	_fiche_soustitre.text = "" if tissu == "champ" 		else str(TISSUS.get(tissu, tissu.replace("_", " ")))
+	_fiche_soustitre.text = "" if tissu in ["champ", "equipement"]		else str(TISSUS.get(tissu, tissu.replace("_", " ")))
 	var champ := ville.est_champ(_fiche_fid)
 	# 🔄 Par `ville.valeur` depuis le 2026-08-21, plus par la fiche brute :
 	# `logements` BOUGE maintenant — la crue en a retiré 417, une
@@ -4528,8 +4510,8 @@ func _maj_recap() -> void:
 	# Les boutons suivent ce qui est POSÉ ; les conséquences, ce qui est vu.
 	var pose := _reglages()
 	var r := _reglages_vus()
-	# Toujours là, grisé tant que rien n'est réglé (auteur, 2026-09-26).
-	_recap_bloc.visible = _fiche_fid >= 0
+	# 🔄 Caché tant que rien n'est réglé (auteur, 2026-10-08) ; il était là, grisé.
+	_recap_bloc.visible = _fiche_fid >= 0 and not (pose.is_empty() and r.is_empty())
 	(_recap_effets.get_parent() as Control).visible = not r.is_empty()
 	_recap_annuler.disabled = pose.is_empty()
 	_recap_bouton.text = "Mettre en place"
@@ -4556,21 +4538,12 @@ func _maj_recap() -> void:
 		_recap_effets.remove_child(c)
 		c.queue_free()
 	_effet("caisse", ("manque %s k€" % _milliers(manque)) if manque > 0.001
-		else "%s k€%s" % [_milliers(cout), _en_dotation(cout)], -1 if manque > 0.001 else 0)
+		else "%s k€" % _milliers(cout), -1 if manque > 0.001 else 0)
 	if manque_capital > 0.001:
 		_effet("capital", "manque %s de confiance" % _nb(manque_capital, 0), -1)
 	_effet("duree", _duree(duree), 0)
 	for e in consequences(r, duree):
 		_effet(e[0], e[1], e[2])
-
-
-## 💶 Au-delà d'un an, le prix se dit aussi en années de dotation : « 734 k€ »
-## ne parle pas, « 2 ans » se sent (auteur, 2026-10-02).
-static func _en_dotation(ke: float) -> String:
-	var ans := int(roundf(ke / (Ville.DOTATION_KE_MOIS * 12.0)))
-	if ans < 1:
-		return ""
-	return " · %d an%s de dotation" % [ans, "" if ans == 1 else "s"]
 
 
 func _manque(r: Dictionary) -> float:
@@ -4597,10 +4570,9 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	# retirées. 🔄 L'usure du camp n'y passe plus : sa carte la dit (auteur, 2026-10-02).
 	var k0 := ville_essai.capital(_mois) - ville.capital(_mois)
 	var k1 := ville_essai.capital(t) - ville.capital(t) - k0
-	if absf(k0) >= 0.5:
-		out.append(["capital", "%+d confiance" % int(roundf(k0)), _sens(k0)])
-	if absf(k1) >= 0.5:
-		out.append(["capital", "%+d confiance à la livraison" % int(roundf(k1)), _sens(k1)])
+	# 🔄 Une ligne, sans « à la livraison » (auteur, 2026-10-08).
+	if absf(k0 + k1) >= 0.5:
+		out.append(["capital", "%+d confiance" % int(roundf(k0 + k1)), _sens(k0 + k1)])
 	# 🚶 Le retour des places se juge sur la rue (99) : la fiche ne peut pas le
 	# connaître, elle annonce la fourchette.
 	if absf(k0) >= 0.5 and (r.has("places") or r.has("axe")):
@@ -5016,7 +4988,7 @@ func _maj_fiche_rue() -> void:
 	var etat := str(o.get("etat_crue", "intact"))
 	if ville.est_repare("r", _fiche_fid):
 		etat = "repare"
-	_fiche_soustitre.text = ("pont · provisoire" if ville.pont_provisoire(_fiche_fid) else "pont") \
+	_fiche_soustitre.text = ("provisoire" if ville.pont_provisoire(_fiche_fid) else "") \
 		if _fiche_fid in ville.ponts_coupes() \
 		else str(o.get("hierarchie", "?"))
 	# 🚗 CE QU'UNE RUE REND, c'est le trafic qu'elle porte : c'est lui qui decide
@@ -5119,6 +5091,7 @@ func _maj_fiche_berge() -> void:
 		# ⚠️ Pas de `capitalize()` : il met une majuscule à CHAQUE mot, et le
 		# bouton sortait « Quai Apaisé ».
 		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
+		bouton.visible = cible > etat
 		if cible <= etat:
 			bouton.text = "%s · fait" % titre
 			_marquer(bouton, false)
@@ -5204,12 +5177,10 @@ func _maj_reparation(o: Dictionary) -> void:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \
 				else "Projet : %s · revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
 		elif concours and ville.concours_lance():
-			_repare_texte.text = "Le concours rend ses projets dans %s." % _duree(ville.concours_reste_mois(_mois))
 			_concours_bouton.text = "Concours en cours"
 			_concours_bouton.disabled = true
 			_marquer(_concours_bouton, false)
 		elif concours:
-			_repare_texte.text = "Autrement qu'avant : un concours, pour tous les îlots sinistrés."
 			_posee(_concours_bouton, "concours", "Lancer un concours")
 			_concours_bouton.disabled = false
 	if pont:
@@ -5272,6 +5243,7 @@ func _maj_camp() -> void:
 			_camp_texte.text = "Camp vide : aucun pont n'y mène."
 			_camp_bouton.text = "Personne ne peut y venir"
 		_camp_bouton.disabled = true
+		_camp_bouton.visible = false
 		_marquer(_camp_bouton, false)
 		return
 	# Sur les places COMMANDÉES : un second champ ne se propose plus quand les
@@ -5281,6 +5253,7 @@ func _maj_camp() -> void:
 		_camp_texte.text = ""
 		_camp_bouton.text = "Rien à reloger"
 		_camp_bouton.disabled = true
+		_camp_bouton.visible = false
 		_marquer(_camp_bouton, false)
 		return
 	var places: int = ville.camp_taille(fid, _mois)
@@ -5288,12 +5261,14 @@ func _maj_camp() -> void:
 	_camp_texte.text = "" if ville.camp_accessible(fid, _mois) else "⚠ Autre rive : inaccessible"
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
+	_camp_bouton.visible = true
 
 
 func _maj_demandes() -> void:
 	for d in Ville.DEMANDES_ORDRE:
 		var b: Button = _demande_boutons[d]
 		var info: Dictionary = Ville.DEMANDES[d]
+		b.visible = not ville.demande_livree(d, _mois)
 		if ville.demande_livree(d, _mois):
 			b.text = str(info["fait"])
 			b.disabled = true
@@ -5328,6 +5303,7 @@ func _maj_culture() -> void:
 		var nom: String = c["nom"]
 		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
 		b.disabled = k == actuelle or en_cours
+		b.visible = k != actuelle or en_cours
 		if k == actuelle:
 			b.text = "%s · %s" % [titre, "en chantier" if en_cours else "en place"]
 			_marquer(b, false)

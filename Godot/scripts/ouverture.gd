@@ -39,7 +39,6 @@ var premier := {}
 var _signature := ""
 var _titre: Label
 var _texte: Label
-var _caisse: Label
 var _actions: VBoxContainer
 var _progression: ProgressBar
 var _detail: Label
@@ -100,8 +99,6 @@ func batir(maquette) -> void:
 	entete.add_child(fermer)
 	_texte = _paragraphe("", 14)
 	_legende_trafic(ui)
-	_caisse = _paragraphe("", 13)
-	_caisse.add_theme_color_override("font_color", ui.ACCENT)
 	_progression = ProgressBar.new()
 	_progression.custom_minimum_size.y = 8
 	_progression.show_percentage = false
@@ -240,7 +237,7 @@ func _legende_trafic(ui) -> void:
 	haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(haut)
 	_legende.add_child(h)
-	ui._legende(_legende, jeu.COUPEE, "Coupée par la crue · pont emporté ou boue")
+	ui._legende(_legende, jeu.COUPEE, "Coupée")
 
 
 # Les repères du guide restent dans l'interface (décision 85).
@@ -575,10 +572,10 @@ var _portes_dites := {}
 func _annoncer_portes() -> void:
 	if not "leviers" in _portes_dites and etude_parue and berge_rendue():
 		_portes_dites["leviers"] = true
-		jeu.interface.retours.annoncer("Berge rendue. La ville-éponge s'étend : toits verts, prés, parkings perméables.", jeu.mois)
+		jeu.interface.retours.annoncer("Berge rendue.", jeu.mois)
 	if not "concours" in _portes_dites and concours_ouvert() and not jeu.ville.concours_lance():
 		_portes_dites["concours"] = true
-		jeu.interface.retours.annoncer("Le faubourg peut se relever autrement : un concours s'ouvre dans la fiche des îlots sinistrés.", jeu.mois)
+		jeu.interface.retours.annoncer("Un concours est ouvert.", jeu.mois)
 
 
 ## 📖 Une page qui s'ouvre se dit une fois, au bandeau et au journal.
@@ -592,7 +589,7 @@ func _annoncer_pages() -> void:
 		_pages_dites[id] = true
 		if pages_lues.has(id):
 			continue
-		jeu.interface.retours.annoncer("Bibliothèque de l'université : une nouvelle page, « %s »." % Livre.CONCEPTS[id]["titre"], jeu.mois)
+		jeu.interface.retours.annoncer("Nouvelle page : « %s »." % Livre.CONCEPTS[id]["titre"], jeu.mois)
 
 
 func page_nouvelle(id: String) -> bool:
@@ -790,7 +787,7 @@ func actualiser(force := false) -> void:
 		etape = "livraison"
 	var degage := etape == "pont_travaux" and acces_degage()
 	if degage and _degage_annonce == 0:
-		jeu.interface.retours.annoncer("Chemin du pont dégagé : on passera dès la fin du chantier.", jeu.mois)
+		jeu.interface.retours.annoncer("Chemin du pont dégagé.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	# Le guide remplaçait le panneau du calque Trafic : muet, il le rend.
@@ -827,7 +824,6 @@ func actualiser(force := false) -> void:
 	# Recalculé : la carte a pu se fermer pendant cet appel.
 	visible = paraitre()
 	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
-	_caisse.text = "Caisse : " + jeu.interface._millions(jeu.ville.caisse_ke(jeu.mois))
 	_progression.visible = etape == "travaux"
 	_detail.visible = _progression.visible or etape == "suite"
 	if _progression.visible:
@@ -869,10 +865,10 @@ func actualiser(force := false) -> void:
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
 			# 🧭 Sans bouton (auteur, 2026-10-02) : la tuile entourée de la colonne y mène.
-			_texte.text = "Ouvrez le trafic, dans la colonne de gauche, pour choisir un pont."
+			_texte.text = ""
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = "Ouvrez-en un pour comparer ses deux chantiers."
+			_texte.text = ""
 			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
 			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
 			for fid in jeu.ville.ponts_coupes():
@@ -894,13 +890,13 @@ func actualiser(force := false) -> void:
 			# 🎓 La menace après la première victoire, jamais pendant l'urgence.
 			_poser_reperes([])
 			_titre.text = "Une nouvelle étude"
-			_texte.text = "L'université vient de publier une étude sur l'Ilse. Trouvez-la dans la ville et cliquez dessus."
+			_texte.text = "L'université vient de publier une étude sur l'Ilse."
 			_bouton("Montrer l'université", chercher_universite)
 		"prochaine":
 			# 🔴 Aucun bouton (auteur, 2026-09-30) : le joueur apprend où vit la prévision.
 			_poser_reperes([])
 			_titre.text = "Où irait l'eau ?"
-			_texte.text = "La carte de l'étude est dans Dangers, dans la colonne de gauche."
+			_texte.text = ""
 		"reloger":
 			# 🧭 Ni chiffre sur la carte ni bouton qui mène aux champs (auteur, 2026-09-17) ;
 			# le guide dit « un champ » et les ponts coupés (tableau de l'auteur, 2026-10-07).
@@ -909,7 +905,7 @@ func actualiser(force := false) -> void:
 			_titre.text = "%d personnes sont dehors" % int(sans_toit)
 			var coupes: int = int(jeu.ville.degats(jeu.mois)["franchissements_coupes"])
 			# 🔴 Texte du tableau de l'auteur (2026-10-07), flaggable (90).
-			_texte.text = "%d ponts coupés : elles restent sur leur rive. Cliquez sur un champ pour les abriter." % coupes
+			_texte.text = "%d ponts coupés : elles restent sur leur rive." % coupes
 			if commandees > 0:
 				_texte.text = "Abris commandés : %d places. Il manque encore %d places." % [
 					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
@@ -922,7 +918,7 @@ func actualiser(force := false) -> void:
 			# désigné ; la fiche d'îlot sinistré le compare par ses tuiles.
 			# Remplace la paire rue / logements des Forgerons. 🔴 Flaggable (90).
 			_titre.text = "Le pont est rouvert"
-			_texte.text = "%d personnes vivent encore dans les containers. Choisissez un îlot à reconstruire." % \
+			_texte.text = "%d personnes vivent encore dans les containers." % \
 				int(jeu.ville.reloges(jeu.mois))
 		"travaux":
 			_titre.text = "Le premier chantier avance"
@@ -998,8 +994,6 @@ func _maj_protection() -> void:
 	if jeu.ville.berge_etat(BERGE, jeu.mois) == Ville.BERGE_RENATUREE:
 		prix = "Livrée · voir la rive"
 		_titre.text = "La protection commence à agir"
-		_texte.text = "L'eau attendue aux Forgerons a baissé."
-		_texte.visible = true
 	elif jeu.ville.berge_en_cours(BERGE, jeu.mois):
 		prix = "En travaux"
 	_proteger.text = "Protéger · renaturer la berge\n" + prix

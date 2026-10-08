@@ -94,7 +94,7 @@ func executer() -> void:
 	verifier(v.concours_lance() and absf(caisse0 - v.caisse_ke(t0) - v.CONCOURS_KE) < 0.5,
 		"Mettre en place lance le concours et le paie")
 	verifier(ui._concours_bouton.visible and ui._concours_bouton.disabled
-		and "rend ses projets" in ui._repare_texte.text, "Pendant le mois, la fiche dit qu'on attend")
+		and ui._concours_bouton.text == "Concours en cours", "Pendant le mois, la fiche dit qu'on attend")
 	await capture("concours_02_en_cours")
 
 	# --- Un mois plus tard : rendu pour toute la zone.

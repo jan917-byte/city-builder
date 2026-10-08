@@ -37,7 +37,7 @@ func executer() -> void:
 		jeu._sur_commande("r", main[i], {"reparer": true})
 		verifier(ui.deblaiement_propose() == (i == main.size() - 1),
 			"Après %d rue(s) à la main, proposé : %s" % [i + 1, ui.deblaiement_propose()])
-	verifier("ouvrez Trafic" in ui.retours.journal.back(), "La troisième rue annonce la proposition : %s" % ui.retours.journal.back())
+	verifier("sous la boue" in ui.retours.journal.back(), "La troisième rue annonce la proposition : %s" % ui.retours.journal.back())
 	ui._maj_rail()
 	verifier(entouree("trafic"), "La tuile Trafic s'entoure")
 	var reste: Array = ui.rues_a_deblayer()
@@ -85,7 +85,7 @@ func executer() -> void:
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
 	await cliquer(o.annonce_second)
-	verifier(o.etape == "choix" and o._actions.get_child_count() == 0 and "Choisissez un îlot" in o._texte.text,
+	verifier(o.etape == "choix" and o._actions.get_child_count() == 0 and "containers" in o._texte.text,
 		"Le pont livré : %s" % o._texte.text)
 	await capture("deblaiement_04_choisir_ilot")
 	print("DÉBLAIEMENT : %d échec(s)" % echecs)

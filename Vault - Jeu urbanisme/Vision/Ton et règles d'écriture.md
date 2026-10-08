@@ -1,7 +1,7 @@
 ---
 tags: [vision, ton, DA]
 statut: arrêté
-maj: 2026-09-24
+maj: 2026-10-08
 ---
 
 # Ton et règles d'écriture
@@ -64,6 +64,25 @@ Deux règles de format qui découlent du reste :
 
 - **Un libellé de bouton = un à trois mots**, verbe à l'infinitif quand c'est une action.
 - **Aucun texte ne dit ce que l'écran montre déjà.** C'est la même règle que « cible ~10 000 mots » vue depuis l'UI. → [[Direction artistique]]
+
+## Le joueur apprend seul : l'écran attire, il n'explique pas
+
+*(auteur, 2026-10-08, après une revue des captures : « le joueur est trop dirigé, il doit apprendre tout seul »)*
+
+**Le moins de texte possible.** L'attention se dirige par ce qui bouge et ce qui se dessine, pas par une phrase :
+
+| Pour… | On utilise | Pas |
+|---|---|---|
+| Montrer où agir | un **clignotement** (la tuile du rail qui pulse en jaune), un contour sur la ville, une pastille | « Ouvrez le trafic, dans la colonne de gauche » |
+| Dire ce qu'une décision change | une **icône + un chiffre** dans les conséquences (`⛺ 238 personnes`) | « Jusqu'à 238 personnes · 119 containers » au-dessus du bouton |
+| Dire qu'une chose a bougé | une **bulle qui monte** de la ville (`+15 ☑`, `−8 🌾`), des **particules**, la ville qui change | une phrase dans le bandeau |
+| Dire un état | une **tuile** (`État : berge renaturée`) | un bouton grisé « … · fait », une phrase dessous |
+
+Ce que le texte garde : **les noms, les chiffres, les faits** (« Berge rendue. », « La boue bloque le chemin jusqu'au pont. »). Ce qu'il perd : **le conseil, la leçon, le commentaire, le « où cliquer »** (« Réparer ne protège pas de la prochaine crue », « La caisse ne les relèvera pas tous »), les **sous-titres** de panneau et de fiche, les **légendes** qui expliquent un dessin, les **boutons** qui ne font rien (déjà fait, ou grisés tant que rien n'est choisi), et **ce qui se lit déjà ailleurs** (la caisse dans le guide quand elle est au compteur).
+
+Le livre des concepts est l'exception : on l'ouvre pour lire. Le reste de l'écran se regarde.
+
+⚠️ La règle coûte : un levier ou une page fermée ne dit plus ce qui l'ouvrira (contre « verrouillé mais visible », décision 101), et la jauge de la prochaine crue n'a plus de légende. Si le joueur bloque, la réponse est un signal de plus à l'écran, pas une phrase de plus.
 
 ## Ce que le jeu doit dire explicitement
 

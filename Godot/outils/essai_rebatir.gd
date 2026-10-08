@@ -88,8 +88,6 @@ func executer() -> void:
 		var texte := _effets(ui)
 		verifier(str(ui._pose.get("reparer")) == f and "logements perdus à la prochaine crue" in texte
 			or f == "parc", "%s : la fiche annonce la prochaine crue — %s" % [f, texte])
-		if f == "tradition":
-			verifier("2 ans de dotation" in texte, "Le prix se dit en années de dotation")
 		await capture("rebatir_%02d_%s" % [n, f])
 		n += 1
 

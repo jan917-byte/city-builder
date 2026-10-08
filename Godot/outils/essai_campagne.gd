@@ -61,7 +61,7 @@ func executer() -> void:
 	ui.ouvrir_onglet("campagne")
 	await process_frame
 	var b0: Button = ui._culture_boutons[Ville.CEREALES]
-	verifier(ui._culture_bloc.visible and b0.disabled and "en place" in b0.text, "La fiche montre les céréales en place, grisées")
+	verifier(ui._culture_bloc.visible and not b0.visible, "La culture en place n'a plus de bouton : la tuile Culture la dit")
 	var bm: Button = ui._culture_boutons[1]
 	verifier(bm.text == "Maraîchage", "Le bouton Maraîchage ne porte que son nom : " + bm.text)
 	await cliquer(bm)

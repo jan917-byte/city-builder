@@ -191,8 +191,8 @@ func executer() -> void:
 		and not jeu.interface._trafic_bloc.visible, "Une rue non plus")
 	jeu._sur_choix("b", o.BERGE)
 	verifier(not jeu.interface._berge_bloc.visible, "Une berge non plus")
-	verifier("champ" in o._texte.text and not ("terrain nu" in o._texte.text),
-		"Trois lieux muets : le guide dit « un champ », sans autre indice")
+	verifier("ponts coupés" in o._texte.text and not ("terrain nu" in o._texte.text),
+		"Trois lieux muets : le guide ne dit plus où cliquer, le récit a dit « un champ »")
 	# 🌉 Le champ de l'autre rive prévient et laisse faire.
 	jeu._sur_choix("i", lointain)
 	verifier(jeu.interface._camp_bloc.visible
@@ -289,7 +289,7 @@ func executer() -> void:
 
 	verifier(o.etape == "choix", "Le relogement fait, le budget prend la main")
 	# 🔄 Le joueur choisit son îlot (auteur, 2026-10-06) : aucun bouton, aucun lieu désigné.
-	verifier(o._actions.get_child_count() == 0 and "Choisissez un îlot" in o._texte.text,
+	verifier(o._actions.get_child_count() == 0 and "containers" in o._texte.text,
 		"Le guide demande de choisir un îlot, sans en désigner : %s" % o._texte.text)
 	# Ce contrôle isole les choix locaux sans avoir payé de pont.
 	verifier(jeu.ville.cout_reparation_ke("r", o.RUE) < jeu.ville.caisse_ke(0.0),
@@ -524,8 +524,7 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(effets.size() >= 3 and "+1 pont" in effets,
 		"Les conséquences du provisoire se lisent en pictogrammes : prix, durée, un pont de plus")
 	await cliquer(jeu.interface._recap_annuler)
-	verifier(jeu.interface._pose.is_empty() and jeu.interface._recap_bloc.visible
-		and jeu.interface._recap_bouton.disabled,
+	verifier(jeu.interface._pose.is_empty() and not jeu.interface._recap_bloc.visible,
 		"Le bouton d'annulation remet la fiche comme avant")
 	await cliquer(jeu.interface._repare_bouton)
 	var cadrage: Vector3 = jeu.pivot.position
@@ -569,8 +568,8 @@ func essayer_ponts(lointain: int) -> void:
 	o.boue_vue = false
 	jeu._sur_theme("trafic")
 	jeu.interface._maj_rail()
-	verifier("ville" in boue and o.rail_appel() == "ville" and tuile("").get_meta("anneau").visible,
-		"Le pont engagé, le bandeau renvoie sur la ville et sa tuile s'entoure")
+	verifier("boue" in boue and o.rail_appel() == "ville" and tuile("").get_meta("anneau").visible,
+		"Le pont engagé, le bandeau dit la boue et la tuile Ville clignote")
 	jeu._sur_theme("")
 	jeu._sur_theme("trafic")
 	verifier(o.rail_appel() == "" and o.boue_vue, "Revenu une fois sur la ville, plus d'appel")
@@ -612,12 +611,11 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(boueuse >= 0 and o.autorise("r", boueuse),
 		"Une rue boueuse hors du chemin se déblaie pendant le chantier du pont")
 	jeu._sur_choix("r", boueuse)
-	verifier(jeu.interface._repare_bloc.visible and jeu.interface._recap_bloc.visible
-		and jeu.interface._recap_bouton.disabled,
-		"Sa fiche propose le déblaiement, « Mettre en place » grisé tant que rien n'est choisi")
+	verifier(jeu.interface._repare_bloc.visible and not jeu.interface._recap_bloc.visible,
+		"Sa fiche propose le déblaiement, « Mettre en place » caché tant que rien n'est choisi")
 	await capture("12c_rue_hors_chemin")
 	await cliquer(jeu.interface._repare_bouton)
-	verifier(not jeu.interface._recap_bouton.disabled, "Le déblaiement choisi, « Mettre en place » s'allume")
+	verifier(jeu.interface._recap_bloc.visible and not jeu.interface._recap_bouton.disabled, "Le déblaiement choisi, « Mettre en place » paraît")
 	jeu.interface._vider_pose()
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(not jeu.interface._repare_bloc.visible and "pont rouvert" in jeu.interface._message.text,
@@ -696,7 +694,7 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.pont_termine and o.etape == "choix" and not o.etude_parue and not o.annonce.visible,
 		"Le pont rouvert propose de relever, l'étude attend")
 	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
-	verifier(o._actions.get_child_count() == 0 and "Choisissez un îlot" in o._texte.text,
+	verifier(o._actions.get_child_count() == 0 and "containers" in o._texte.text,
 		"Le pont rouvert, le guide laisse choisir l'îlot : %s" % o._texte.text)
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()

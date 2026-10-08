@@ -48,7 +48,7 @@ func executer() -> void:
 	verifier("étude" in ui.retours.journal[-1], "La parution est dans le journal")
 	await capture("etude_00_avant_de_relever")
 	await cliquer(o.annonce_principal)
-	verifier(o.etape == "etude" and o._actions.get_child_count() == 1 and "ville" in o._texte.text
+	verifier(o.etape == "etude" and o._actions.get_child_count() == 1 and "étude" in o._texte.text
 		and not o.annonce.visible,
 		"La carte quittée, le guide demande de trouver l'université, un bouton pour la montrer")
 	jeu._rafraichir(true)
@@ -100,7 +100,7 @@ func executer() -> void:
 	ui._fermer_lieu()
 	# 🔄 L'eau se lit dans la fiche de l'îlot ouvert, plus dans le guide (auteur, 2026-10-06).
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(o.etape == "choix" and "Choisissez un îlot" in o._texte.text and "%" in ui._fiche_valeurs["reprise"].text,
+	verifier(o.etape == "choix" and "containers" in o._texte.text and "%" in ui._fiche_valeurs["reprise"].text,
 		"Après la carte, l'îlot ouvert dit ce que la crue en reprendrait : %s" % ui._fiche_valeurs["reprise"].text)
 	ui._fermer_fiche()
 	var avant := float(p["logements_perdus"])
