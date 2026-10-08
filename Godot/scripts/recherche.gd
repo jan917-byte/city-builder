@@ -24,6 +24,12 @@ const SUJETS := {
 		"ke_mois": 20.0, "mois": 18.0,
 		"effet": "cout_panneau_x", "valeur": 0.85,
 	},
+	"pilotis": {
+		"nom": "Construction sur pilotis",
+		"quoi": "Rebâtir un îlot sinistré le rez sur poteaux : l'eau passe dessous.",
+		"ke_mois": 20.0, "mois": 6.0,
+		"effet": "facon_pilotis", "valeur": 1.0,
+	},
 	"sedum": {
 		"nom": "Substrat léger",
 		"quoi": "−20 % sur le prix d'un toit vert",
@@ -31,7 +37,12 @@ const SUJETS := {
 		"effet": "cout_vert_x", "valeur": 0.80,
 	},
 }
-const ORDRE := ["rendement", "pose", "sedum"]
+# 🏗️ L'institut (auteur, 2026-10-08) : la seule recherche ouverte dès l'ouverture. Elle ne
+# change aucun prix, elle permet de rebâtir sur pilotis (`Ville.facon_permise`).
+# 🔴 120 k€ en 6 mois, le prix du concours qu'elle remplace : à juger.
+const PILOTIS := "pilotis"
+const SUJETS_OUVERTURE := [PILOTIS]
+const ORDRE := ["pilotis", "rendement", "pose", "sedum"]
 
 
 ## Le mois où le palier tombe. INF tant que le sujet n'est pas financé.

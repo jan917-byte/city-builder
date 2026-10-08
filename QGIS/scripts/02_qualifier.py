@@ -58,7 +58,7 @@ FRICHES = [31, 65]          # le moulin et la brasserie, en aval
 BERGE_VOIE_RAPIDE = [15, 55, 58]
 
 # --- les points fixes de la ville -----------------------------------------
-EQUIPEMENTS = [16, 20, 36]  # église protégée · mairie · université (75 · 76)
+EQUIPEMENTS = [16, 20, 36, 77, 78]  # église protégée · mairie · université, bibliothèque, institut (75 · 76)
 # 🔄 L'îlot 17 était le Rathaus, repassé en `coeur_ancien` le 2026-08-18 ;
 # la mairie revient le 2026-09-02 sur l'îlot 20, en face de l'église (76).
 PATRIMOINE_PROTEGE = [16]   # l'église : aucun panneau solaire en toiture

@@ -14,7 +14,7 @@ from apercu_carte import dedans
 from apercu_carte import gpkg_vers_wkb
 from apercu_carte import lire_wkb
 from importlib import import_module
-from export_godot.equipements import PENTES, ROLES, equipement
+from export_godot.equipements import CAMPUS, PENTES, ROLES, equipement
 from export_godot.batiments import (
     _acces_pavillonnaire,
     _bandes_de_fauche,
@@ -824,6 +824,9 @@ def main():
             # et le curseur vert de cet îlot n'a plus que deux ou trois crans.
             n_ilot_grossier += 1 if 0 < len(rangs_verts) <= 2 else 0
             adresse = ilots[20 if fid == 16 else 16]["anneau"] if fid in (16, 20) else an
+            if fid in CAMPUS:
+                # Les façades des trois îlots regardent la cour commune.
+                adresse = [p for f in CAMPUS for p in ilots[f]["anneau"]]
             cible_edifice = tuple(sum(p[j] for p in adresse) / len(adresse) for j in (0, 1))
             principal = max(range(len(volumes)), key=lambda k: abs(aire_signee(volumes[k][0]))) if volumes else -1
             for k_vol, (emp, niv, faite, parcelle, crue, eau_m) in \
@@ -1031,6 +1034,8 @@ def main():
                 # valait 0,92 : le tirage laissait donc 8 % des maisons sur une
                 # parcelle grise, sans que la simulation ne l'explique.
                 vert_force = st == "pavillonnaire" and bool(emps)
+                # 🎓 Le campus en pelouse : le tirage cour/jardin le rendait gris une fois coupé en trois.
+                vert_force = vert_force or fid in CAMPUS
                 if vert_force:
                     _sol(masses, j, coul_jardin_i, G)
                     n_pav_vert += 1

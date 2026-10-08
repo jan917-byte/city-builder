@@ -6,8 +6,10 @@ import palette as PAL
 from .geometrie import normale
 
 
-ROLES = {16: "eglise", 20: "mairie", 36: "universite"}
-PENTES = {"eglise": .95, "mairie": .95, "universite": .60}
+# 🎓 Le campus en trois îlots (auteur, 2026-10-08) : on y lit qui publie, qui cherche, qui range.
+ROLES = {16: "eglise", 20: "mairie", 36: "universite", 77: "bibliotheque", 78: "institut"}
+CAMPUS = (36, 77, 78)
+PENTES = {"eglise": .95, "mairie": .95, "universite": .60, "bibliotheque": .60, "institut": 0.0}
 
 
 class Edifice:
@@ -152,12 +154,33 @@ def equipement(m, emp, G, role, niveaux, cible, principal=False, eau=0.0):
             for k in range(4):
                 y = t+(l-t)*k/3
                 e.boite(signe*w/2-.32,signe*w/2+.32,y-.25,y+.25,-.2,6.0,pierre)
+    elif role == "institut":
+        # Le style « moderne » de la reconstruction : enduit clair, bandeaux vitrés, toit plat.
+        h = niveaux*2.7
+        mur, dalle = couleur("E6E2D8"), couleur("9A9C98")
+        e.boite(-w/2,w/2,0,l,-.3,h,mur,cap=False)
+        e.face([(-w/2,0,h),(w/2,0,h),(w/2,l,h),(-w/2,l,h)],dalle,(0,0,1),toit=True)
+        for x0,x1,y0,y1 in [(-w/2,w/2,-.1,.25),(-w/2,w/2,l-.25,l+.1),(-w/2-.1,-w/2+.25,0,l),(w/2-.25,w/2+.1,0,l)]:
+            e.boite(x0,x1,y0,y1,h,h+.7,mur)
+        pied = e.point((0,0,0))[1]
+        for k in range(int(niveaux)):
+            z0 = .9 + k*2.7 - min(pied, 0.0)
+            if z0+1.5 > h:
+                break
+            e.boite(-w/2+.8,w/2-.8,-.08,l+.08,z0,z0+1.5,vitrage,cap=False)
+            e.boite(-w/2-.08,w/2+.08,.8,l-.8,z0,z0+1.5,vitrage,cap=False)
+        if principal:
+            e.boite(-3.2,3.2,-2.6,0,3.0,3.3,dalle)
+            for x in [-3.0,3.0]:
+                e.boite(x-.12,x+.12,-2.5,-2.26,0,3.0,dalle)
     else:
         mairie = role == "mairie"
+        biblio = role == "bibliotheque"
         h = niveaux*2.7
-        mur = couleur("D3BC9A" if mairie else "C9BEA8")
+        mur = couleur("D3BC9A" if mairie else ("D8CCB0" if biblio else "C9BEA8"))
         pente = PENTES[role]
-        couverture = tuile if mairie else ardoise
+        # Le cuivre vert signale la bibliothèque vue d'en haut.
+        couverture = tuile if mairie else (couleur("6F9C88") if biblio else ardoise)
         e.boite(-w/2,w/2,0,l,-.3,h,mur,fenetres=True,cap=False)
         t = 3.2
         trou = (-t/2,t/2,t) if mairie else None
@@ -208,5 +231,11 @@ def equipement(m, emp, G, role, niveaux, cible, principal=False, eau=0.0):
             # Deux bannières de faculté encadrent l'entrée, dans la palette du jeu.
             for x in [-largeur/2-.75,largeur/2+.75]:
                 e.boite(x-.38,x+.38,-.28,-.20,1.7,min(h-.3,4.6),couleur("456E68"))
+            if biblio and principal:
+                # La lanterne de la salle de lecture, sur le faîtage.
+                y, faite = l/2, h+pente*w/2
+                e.boite(-1.6,1.6,y-1.6,y+1.6,faite-.6,faite+1.6,pierre)
+                e.boite(-1.3,1.3,y-1.65,y+1.65,faite+.1,faite+1.3,vitrage,cap=False)
+                e.fleche(0,y,3.6,faite+1.6,faite+3.4,couverture)
     m.sol = None
     return (e.faces,e.faces,0,0), e.toit

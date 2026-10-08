@@ -36,6 +36,8 @@ func executer() -> void:
 	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
+	o.institut_vu = true
+	o.biblio_vue = true
 	var t := 4.0
 	actualiser(t)
 	# 🚪 Une livraison, une porte : l'étude n'ouvre que la berge.
@@ -131,8 +133,9 @@ func executer() -> void:
 		int(part0 * 100.0), int(v.part_sol_permeable(t2) * 100.0)])
 	verifier(eau1 < eau0 - 0.05 and v.part_sol_permeable(t2) > part0,
 		"Livré : la crue baisse et la ville boit plus")
-	verifier(o.concours_ouvert() and "concours" in str(ui.retours.journal[-1]),
-		"Après la berge, un sol livré ouvre le concours : %s" % ui.retours.journal[-1])
+	# ⏸️ Le concours est éteint (auteur, 2026-10-08) : l'institut et ses pilotis le remplacent.
+	verifier(not o.concours_ouvert() and not "concours" in str(ui.retours.journal[-1]),
+		"Après la berge, un sol livré n'ouvre plus de concours : %s" % ui.retours.journal[-1])
 	verifier(v.valeur("i", o.PARKING, "stationnement", t2) >= v.base("i", o.PARKING, "stationnement"),
 		"Les places restent")
 	ui._fermer_fiche()
@@ -143,10 +146,10 @@ func executer() -> void:
 
 	# --- La bibliothèque.
 	jeu._sur_theme("")
-	ui.ouvrir_lieu("universite")
+	ui.ouvrir_lieu("bibliotheque")
 	actualiser(t2)
-	verifier(ui._biblio_bloc.visible and o.page_nouvelle("eponge"),
-		"L'université a sa bibliothèque, la ville-éponge y est nouvelle")
+	verifier(ui._biblio_bloc.visible and not ui._etude_bloc.visible and o.page_nouvelle("eponge"),
+		"La bibliothèque a son îlot, la ville-éponge y est nouvelle")
 	await capture("livre_06_bibliotheque")
 	ui.ouvrir_page("eponge")
 	actualiser(t2)
@@ -178,8 +181,8 @@ func executer() -> void:
 	verifier(o.pages_lues.is_empty() and not o.concept_ouvert("eponge"), "Recommencer referme le livre")
 	jeu._sur_reprise()
 	actualiser(jeu.mois)
-	verifier(o.pages_lues.has("eponge") and v._permeable.has(o.PARKING) and o.concours_ouvert(),
-		"La reprise garde la page lue, le parking et le concours ouvert")
+	verifier(o.pages_lues.has("eponge") and v._permeable.has(o.PARKING),
+		"La reprise garde la page lue et le parking")
 	verifier(ui.retours.journal.filter(func(l) -> bool: return "Berge rendue" in str(l)).size() == 1,
 		"La reprise ne réannonce pas la berge")
 	print("LIVRE : %d échec(s)" % echecs)

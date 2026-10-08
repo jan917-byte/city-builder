@@ -2485,8 +2485,11 @@ func concours_utile(fid: int) -> bool:
 	return base("i", fid, "batiments_ruines") > 0.0
 
 
-## Sans concours rendu, un îlot ne se relève que comme avant (une façon inconnue en est une).
+## Comme avant toujours ; sur pilotis quand l'institut l'a mis au point (auteur, 2026-10-08) ;
+## le reste après un concours rendu (une façon inconnue en est une).
 func facon_permise(fid: int, facon: String, t: float) -> bool:
+	if facon == "pilotis" and Recherche.acquis(self, Recherche.PILOTIS, t):
+		return true
 	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" \
 		or (concours_rendu(t) and concours_utile(fid))
 

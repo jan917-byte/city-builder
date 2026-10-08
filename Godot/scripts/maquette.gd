@@ -2835,6 +2835,10 @@ func _maj_contour() -> void:
 			Vector2(1.0 / maxf(float(taille.x), 1.0),
 			1.0 / maxf(float(taille.y), 1.0)))
 		rect_contour.material.set_shader_parameter("rayon", CONTOUR_PX)
+	# 🎓 Le lieu du campus que le guide appelle clignote, au rythme de la tuile entourée.
+	var appel: bool = ouverture != null and couche == "i" and fid == ouverture.appel_carte()
+	rect_contour.modulate.a = 0.15 + 0.85 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)) \
+		if appel else 1.0
 
 	# 🏢 LA MÊME MONTÉE QUE LA VILLE, sinon le trait de sélection reste sur le
 	# volume d'avant — vu à l'écran le 2026-09-03. Le masque a le maillage de

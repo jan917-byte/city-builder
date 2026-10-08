@@ -391,7 +391,7 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 func livraison(c: Dictionary, mois: float) -> void:
 	if c["genre"] == "recherche":
 		var sujet: Dictionary = ui.Recherche.SUJETS[c["cle"]]
-		annoncer("%s : recherche achevée · %s." % [sujet["nom"], sujet["quoi"]], mois)
+		annoncer("%s : recherche achevée." % sujet["nom"], mois)
 		return
 	var fid := int(c["fid"])
 	var couche := str(c["couche"])

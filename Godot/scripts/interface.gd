@@ -1114,6 +1114,9 @@ const DESSINS := {
 	# Lucide « book-open » : DÉBUT rouvre le récit des premiers pas.
 	"debut": "<path d='M12 7v14M3 18a1 1 0 01-1-1V4a1 1 0 011-1h5a4 4 0 014 4 4 4 0 014-4h5a1 1 0 011 1v13a1 1 0 01-1 1h-6a3 3 0 00-3 3 3 3 0 00-3-3z'/>",
 	"mairie": "<path d='M3 22h18M6 18v-7m4 7v-7m4 7v-7m4 7v-7M12 2l8 5H4z'/>",
+	# Lucide « flask-conical » et « library » : l'institut et la bibliothèque du campus.
+	"institut": "<path d='M14 2v6a2 2 0 00.245.96l5.51 10.08A2 2 0 0118 22H6a2 2 0 01-1.755-2.96l5.51-10.08A2 2 0 0010 8V2M6.453 15h11.094M8.5 2h7'/>",
+	"bibliotheque": "<path d='M16 6l4 14M12 6v14M8 8v12M4 4v16'/>",
 	"universite": "<path d='M21.42 10.922a1 1 0 00-.019-1.838L12.83 5.18a2 2 0 00-1.66 0L2.6 9.08a1 1 0 000 1.832l8.57 3.908a2 2 0 001.66 0zM22 10v6M6 12.5V16a6 3 0 0012 0v-3.5'/>",
 	# 🗂️ LES TROIS DESSINS DES ONGLETS DE FICHE (auteur, 2026-09-18), repris de
 	# Lucide (licence ISC) comme le reste de la table : même grille 24, même
@@ -2748,15 +2751,22 @@ func _habiller_principal(b: Button) -> void:
 # leur part dans les totaux ne changent pas. Seul un bouton s'ajoute à leur
 # fiche, et le menu qu'il ouvre est une AUTRE fiche.
 
+# 🎓 Le campus en trois îlots (auteur, 2026-10-08) : l'université publie, l'institut
+# met au point, la bibliothèque range. Un nom et un verbe, rien d'autre. 🔴 Flaggable (90).
 const LIEUX := {
-	"mairie": {"fid": 20, "nom": "Mairie", "court": "Mairie",
+	"mairie": {"fid": 20, "nom": "Mairie", "court": "Mairie", "article": "la mairie",
 		"quoi": "Une politique n'est pas un chantier : elle dure, et elle se paie tous les mois tant qu'elle tient."},
-	"universite": {"fid": 36, "nom": "Université", "court": "Univ.",
-		"quoi": "On finance un sujet, on attend, le palier tombe — et il vaut pour toute la ville, panneaux déjà posés compris."},
+	"universite": {"fid": 36, "nom": "Université", "court": "Univ.", "article": "l'université",
+		"quoi": "Publie les études."},
+	"institut": {"fid": 78, "nom": "Institut de recherche", "court": "Institut", "article": "l'institut",
+		"quoi": "Met au point de nouvelles façons de bâtir."},
+	"bibliotheque": {"fid": 77, "nom": "Bibliothèque", "court": "Biblio.", "article": "la bibliothèque",
+		"quoi": "Range les concepts."},
 }
-const LIEUX_ORDRE := ["mairie", "universite"]
+const LIEUX_ORDRE := ["mairie", "universite", "institut", "bibliotheque"]
+const CAMPUS := ["universite", "institut", "bibliotheque"]
 ## 🎓🏛️ Sujets de recherche et subventions arriveront plus tard (auteur, 2026-10-02) :
-## l'université ne montre que l'étude. Les essais le rouvrent.
+## l'institut ne montre que les pilotis (`Recherche.SUJETS_OUVERTURE`). Les essais le rouvrent.
 var financements_ouverts := false
 
 
@@ -2906,6 +2916,8 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	_maj_lieu()
 	if cle == "universite" and etude_publiee() and ouverture != null:
 		ouverture.etude_ouverte()
+	if ouverture != null:
+		ouverture.lieu_ouvert(cle)
 
 
 # ==========================================================================
@@ -3152,13 +3164,10 @@ func _brancher_lieu() -> void:
 func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
-	var universite := _lieu_ouvert == "universite"
-	# 🎓 L'étude seule tant que sa carte n'a pas été ouverte (auteur, 2026-10-02).
-	var etude_seule: bool = universite and ouverture != null and ouverture.etude_parue \
-		and not ouverture.prochaine_vue
-	_lieu_intro.visible = not etude_seule and financements_ouverts and _page_ouverte == ""
-	_etude_bloc.visible = universite and etude_publiee() and _page_ouverte == ""
-	_biblio_bloc.visible = universite and etude_publiee()
+	var campus := _lieu_ouvert in CAMPUS
+	_lieu_intro.visible = _page_ouverte == "" and (campus or financements_ouverts)
+	_etude_bloc.visible = _lieu_ouvert == "universite" and etude_publiee()
+	_biblio_bloc.visible = _lieu_ouvert == "bibliotheque"
 	if _biblio_bloc.visible:
 		_maj_bibliotheque()
 	if _etude_bloc.visible:
@@ -3173,16 +3182,19 @@ func _maj_lieu() -> void:
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
-		bloc.visible = (String(l["genre"]) == "recherche") == universite and not etude_seule 			and financements_ouverts
+		var recherche: bool = String(l["genre"]) == "recherche"
+		# 🏗️ L'institut montre les pilotis dès l'ouverture ; le reste attend les financements.
+		bloc.visible = (_lieu_ouvert == "institut" and (cle in Recherche.SUJETS_OUVERTURE or financements_ouverts)) \
+			if recherche else (_lieu_ouvert == "mairie" and financements_ouverts)
 		if not bloc.visible:
 			continue
-		if universite:
+		if recherche:
 			_maj_ligne_recherche(String(cle), l)
 		else:
 			_maj_ligne_politique(String(cle), l)
 	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
 	# capital, elle en demande un seuil (auteur, 2026-09-30) ; aucune n'est écrite.
-	_lieu_message.text = "" if universite else \
+	_lieu_message.text = "" if _lieu_ouvert != "mairie" else \
 		"Les règles — stationnement payant, toit vert obligatoire au neuf — " \
 		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
 
@@ -3972,8 +3984,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	var lieu := _lieu_du_fid(fid) if couche == "i" else ""
 	_lieu_bouton.visible = lieu != ""
 	if lieu != "":
-		_lieu_bouton.text = "Ouvrir %s" % ("la mairie" if lieu == "mairie" \
-			else "l'université")
+		_lieu_bouton.text = "Ouvrir %s" % String(LIEUX[lieu]["article"])
 	if fid != _fiche_fid or couche != _fiche_couche:
 		_vider_pose()   # changer d'objet abandonne tout ce qui était posé
 		fermer_projets()
@@ -5155,9 +5166,11 @@ func _maj_reparation(o: Dictionary) -> void:
 	var rendu := ville.concours_rendu(_mois)
 	var concours: bool = rebatir and ville.concours_utile(_fiche_fid) \
 		and (ouverture == null or ouverture.concours_ouvert())
+	# 🏗️ Sur pilotis dès que l'institut l'a mis au point (auteur, 2026-10-08), sans concours.
+	var pilotis: bool = rebatir and not (concours and rendu) and ville.facon_permise(_fiche_fid, "pilotis", _mois)
 	for facon in _rebatir_boutons:
 		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition" \
-			and not (concours and rendu)
+			and not (concours and rendu) or facon == "pilotis" and pilotis
 	_concours_bouton.visible = concours and not rendu
 	_projets_bouton.visible = concours and rendu
 	_repare_etat.visible = false
@@ -5206,6 +5219,8 @@ func _maj_reparation(o: Dictionary) -> void:
 		# ⚖️ Aucune n'est conseillée (95) : le prix et les effets se lisent dans les conséquences.
 		# 🔴 Textes flaggables (90).
 		_posee(_rebatir_boutons["tradition"], "reparer", "Comme avant", "tradition")
+		if pilotis:
+			_posee(_rebatir_boutons["pilotis"], "reparer", "Sur pilotis", "pilotis")
 		var choisi := str(_pose.get("reparer", ""))
 		if concours and rendu:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \

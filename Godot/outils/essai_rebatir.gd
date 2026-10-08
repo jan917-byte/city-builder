@@ -126,6 +126,8 @@ func _apres_etude(t: float, concours := true) -> void:
 	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
+	o.institut_vu = true
+	o.biblio_vue = true
 	if concours:
 		jeu.ville.crediter_essai_ke(jeu.ville.CONCOURS_KE)
 		jeu.ville.lancer_concours(o.MAISONS, 0.0)

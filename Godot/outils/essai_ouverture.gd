@@ -285,6 +285,8 @@ func executer() -> void:
 	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
+	o.institut_vu = true
+	o.biblio_vue = true
 	actualiser(0.0)
 
 	verifier(o.etape == "choix", "Le relogement fait, le budget prend la main")
@@ -385,6 +387,8 @@ func executer() -> void:
 	o.carte_etude = 2
 	o.etude_lue = true
 	o.prochaine_vue = true
+	o.institut_vu = true
+	o.biblio_vue = true
 	jeu._sur_choix("i", champs2[0])
 	jeu.interface.poser("camp")
 	jeu._sur_commande("i", champs2[0], jeu.interface._reglages())
