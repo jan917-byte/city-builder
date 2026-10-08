@@ -166,6 +166,7 @@ var ponts_provisoires := {}
 # 🅿️ Les files de stationnement peintes, un nœud par tronçon : elles se cachent
 # quand la rue n'a plus de places (fid de tronçon -> MeshInstance3D).
 var places_rue := {}
+var venelles := {}         # 🚶 fid d'îlot -> la trace, cachée une fois la venelle aménagée
 # 🌳 LES ARBRES SE REBÂTISSENT quand la canopée bouge. Le semis des îlots est
 # figé ; les emplacements d'alignement portent leur tronçon et leur seuil, et
 # `_montrer_arbres` refait les deux MultiMesh quand le compte visible change.
@@ -1623,6 +1624,7 @@ func _construire() -> void:
 	_par_ruines_ponts(donnees["ponts_ruine"])
 	_par_provisoires(donnees["ponts_provisoires"])
 	_par_places(donnees["places"])
+	_par_venelles(donnees["venelles"])
 
 	# 🌳 Le semis des îlots de sol ne bouge pas : aucune décision ne plante DANS
 	# un îlot — un îlot bâti n'a pas de sol visible sous lui.
@@ -1745,6 +1747,28 @@ func _par_places(source: Dictionary) -> void:
 		parent.add_child(mi)
 		places_rue[fid] = mi
 	print("  %-8s %3d rues marquées" % ["Places", parent.get_child_count()])
+
+
+## 🚶 LA TRACE DES VENELLES, un nœud par îlot, posée sur le pavé. Sans corps de
+## collision : le clic tombe sur l'îlot dessous.
+func _par_venelles(source: Dictionary) -> void:
+	if _ignore("Ilots"):
+		return
+	var parent := Node3D.new()
+	parent.name = "Venelles"
+	monde.add_child(parent)
+	for g in (source["g"] as Array):
+		var gr: Array = g
+		var fid := int(gr[0])
+		var mi := MeshInstance3D.new()
+		mi.name = "V%d" % fid
+		mi.mesh = Constructeur.maillage_groupe(source, int(gr[1]), int(gr[2]))
+		mi.material_override = mat_objet
+		mi.set_meta("fid", fid)
+		mi.set_meta("couche", "i")
+		parent.add_child(mi)
+		venelles[fid] = mi
+	print("  %-8s %3d traces" % ["Venelles", parent.get_child_count()])
 
 
 ## 🌊 LES DEUX CORPS ÉCHANGEABLES D'UNE BERGE — le mur de quai et le talus qui
@@ -2535,10 +2559,13 @@ func _peindre() -> void:
 			if couche == "r" and places_rue.has(fid):
 				(places_rue[fid] as MeshInstance3D).visible = \
 					ville.valeur("r", fid, "stationnement", mois) > 0.5
+			if couche == "i" and venelles.has(fid):
+				(venelles[fid] as MeshInstance3D).visible = not ville.venelle_amenagee(fid, mois)
 			for mj in [mi, reparations[couche].get(fid),
 					ruines_ponts.get(fid) if couche == "r" else null,
 					ponts_provisoires.get(fid) if couche == "r" else null,
 					places_rue.get(fid) if couche == "r" else null,
+					venelles.get(fid) if couche == "i" else null,
 					_berges_mur.get(fid) if couche == "b" else null,
 					_berges_pente.get(fid) if couche == "b" else null]:
 				if mj == null:

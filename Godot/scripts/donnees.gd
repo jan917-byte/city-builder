@@ -31,7 +31,7 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 
 	var d: Dictionary = brut
 	for cle in ["meta", "palette", "terrain", "masses", "sols", "eau", "berges",
-			"berges_mur", "berges_pente",
+			"berges_mur", "berges_pente", "venelles",
 			"voirie", "repare", "repare_voirie", "ponts_ruine", "ponts_provisoires", "boue",
 			"arbres", "alignements", "berges_semis", "berges_couloir",
 			"couloirs", "emprises", "objets", "riverains", "camps",
@@ -89,7 +89,7 @@ static func charger(chemin: String = CHEMIN) -> Dictionary:
 	# la carte étant plate, c'est un maillage comme les autres.
 	for nom in ["terrain", "masses", "sols", "eau", "berges", "berges_mur",
 			"berges_pente", "voirie", "repare", "repare_voirie", "ponts_ruine",
-			"ponts_provisoires"]:
+			"ponts_provisoires", "venelles"]:
 		var e: String = _valider_maillage(d[nom] as Dictionary, nom)
 		if e != "":
 			_fatal(e)

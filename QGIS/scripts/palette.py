@@ -263,6 +263,7 @@ CHAMPS = [
 # repeint en gris uni effacerait le tissu qu'on vient de passer une étape à
 # rendre lisible.
 LIMON = "#8E7F63"          # le dépôt qui reste quand l'eau se retire
+SENTIER = "#94785A"        # 🚶 la terre battue d'une venelle pas encore aménagée
 RUINE_MUR = "#8C8578"       # un mur sans toit, lessivé — ni noir ni brûlé
 RUINE_TOIT = "#B4AEA1"      # ⏸️ plus employé depuis le 2026-08-21, voir GRAVATS
 # 🔴 LE SOL D'UNE RUINE EST SOMBRE, ET C'EST UN RETOUR EN ARRIÈRE ASSUMÉ.

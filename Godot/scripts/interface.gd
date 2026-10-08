@@ -116,6 +116,7 @@ const CHANTIER_MOTS := {
 	"concours": "Concours",
 	"toit vert": "Toit végétalisé", "plantation": "Plantation",
 	"sol perméable": "Sol rendu perméable",
+	"venelle": "Venelle aménagée",
 }
 
 
@@ -350,6 +351,9 @@ var _dense_bloc: VBoxContainer
 var _permeable_bloc: VBoxContainer
 var _permeable_texte: Label
 var _permeable_bouton: Button
+var _venelle_bloc: VBoxContainer
+var _venelle_texte: Label
+var _venelle_bouton: Button
 ## 📖 Le levier de l'onglet ouvert que le livre garde fermé, et ce qui l'ouvrira.
 var _ferme_bloc: VBoxContainer
 var _ferme_texte: Label
@@ -2572,6 +2576,21 @@ func _panneau_ilot() -> void:
 	_decision(_permeable_bouton, "permeable", true)
 	_permeable_bloc.add_child(_permeable_bouton)
 
+	# 🚶 LA VENELLE (desire path) : un bouton, la trace devient pavé.
+	_venelle_bloc = VBoxContainer.new()
+	_venelle_bloc.add_theme_constant_override("separation", 6)
+	_venelle_bloc.visible = false
+	v.add_child(_venelle_bloc)
+	_venelle_bloc.add_child(HSeparator.new())
+	_titre_section(_venelle_bloc, "Venelle")
+	_venelle_texte = _label("", 12, TEXTE)
+	_venelle_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_venelle_bloc.add_child(_venelle_texte)
+	_venelle_bouton = Button.new()
+	_venelle_bouton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_decision(_venelle_bouton, "venelle", true)
+	_venelle_bloc.add_child(_venelle_bouton)
+
 	# 📖 Verrouillé mais visible, avec ce qui l'ouvre (Boucle de jeu · 101).
 	_ferme_bloc = VBoxContainer.new()
 	_ferme_bloc.add_theme_constant_override("separation", 6)
@@ -2595,7 +2614,7 @@ func _panneau_ilot() -> void:
 		_repare_bloc: "crue", _camp_bloc: "campagne", _culture_bloc: "campagne",
 		_dense_bloc: "bati",
 		_solaire_bloc: "energie", _vert_bloc: "vert", _arbres_bloc: "vert",
-		_permeable_bloc: "vert",
+		_permeable_bloc: "vert", _venelle_bloc: "bati",
 		_trafic_bloc: "trafic", _berge_bloc: "berge",
 	}
 
@@ -3506,6 +3525,7 @@ const GENRES_DEPENSE := {
 	"rue": "Rues déblayées", "ilot": "Îlots relevés", "solaire": "Panneaux solaires",
 	"vert": "Toits verts", "dense": "Étages ajoutés", "berge": "Berges",
 	"plantation": "Arbres plantés", "culture": "Cultures", "concours": "Concours",
+	"venelle": "Venelles",
 	"autres": "Autres chantiers",
 }
 
@@ -4037,6 +4057,7 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# 🏢 Un îlot dont rien ne peut monter n'a pas de bloc : le cœur ancien,
 	# le front commerçant, et tout ce qui n'est pas bâti.
 	_bloc_dispo[_dense_bloc] = couche == "i" and ville.dense_logements_etage(fid) > 0
+	_bloc_dispo[_venelle_bloc] = couche == "i" and ville.venelle_possible(fid)
 	_leviers_sig = ""
 	_maj_fiche()
 
@@ -4166,6 +4187,27 @@ func _maj_permeable() -> void:
 		_permeable_bouton.disabled = false
 
 
+## 🔴 Textes provisoires, flaggables (90) : l'auteur les réécrit.
+func _maj_venelle() -> void:
+	var fid := _fiche_fid
+	if _fiche_couche != "i" or not ville.venelle_possible(fid):
+		return
+	if ville.venelle_amenagee(fid, _mois):
+		_venelle_texte.text = "Le raccourci que les habitants avaient tracé est devenu un passage."
+		_venelle_bouton.text = "Venelle aménagée"
+		_venelle_bouton.disabled = true
+		_marquer(_venelle_bouton, false)
+		return
+	_venelle_texte.text = "Un chemin de terre traverse l'îlot : les habitants l'ont tracé à force d'y passer."
+	if ville.venelle_en_cours(fid, _mois):
+		_venelle_bouton.text = "Chantier en cours"
+		_venelle_bouton.disabled = true
+		_marquer(_venelle_bouton, false)
+	else:
+		_posee(_venelle_bouton, "venelle", "Aménager la venelle · %s k€" % _milliers(ville.cout_venelle_ke(fid)))
+		_venelle_bouton.disabled = false
+
+
 func _maj_fiche() -> void:
 	_dispo_leviers()
 	_maj_fiche_contenu()
@@ -4203,6 +4245,7 @@ func _maj_fiche_contenu() -> void:
 	_maj_camp()
 	_maj_culture()
 	_maj_permeable()
+	_maj_venelle()
 	_maj_ferme()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()

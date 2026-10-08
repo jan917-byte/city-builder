@@ -337,6 +337,8 @@ Le peigne ne sait pas découper un **îlot en L** : un L n'a pas de fond. Chaque
 
 **Où vivent les chemins.** Dans **`QGIS/data/source/chemins.geojson`** — la source, seul endroit où un tracé corrigé à la main survit à `02`, qui rebâtit la carte de travail. La couche est **facultative** : sans elle, tout sort exactement comme avant. 🔄 Depuis le 2026-08-17 c'est du **texte, une venelle par ligne**, avec son numéro d'îlot et sa largeur en clair : supprimer une venelle qui tombe mal, c'est supprimer une ligne. La correction se faisait dans QGIS, qui n'existe plus.
 
+🚶 **La venelle naît en trace dans l'herbe, et le joueur l'aménage** (2026-10-08, décision 106). `07` pose au-dessus du pavé une trace — herbe, herbe foulée, terre battue ondulée — dans son propre maillage ; « Aménager la venelle » (onglet Bâti de l'îlot) la cache à la livraison. Mesuré : **6 traces, 139 m de terre battue** ; îlot 22, **38 m² pour 4,6 k€**. Planche : `Godot --path Godot --script res://outils/essai_venelle.gd -- --captures` → `QGIS/rendus/wehrau_venelles.png`, trace | aménagée, numérotée 1 à 6. 🔴 **À juger** : 120 €/m² et 3 mois (haut de `ville.gd`), la teinte `SENTIER` (`palette.py`), les quatre nombres de la trace (`reglages.py`), les textes de la fiche (flaggables, 90). Dans le cœur ancien (2 · îlot 24, 4 · îlot 38), les maisons cachent la trace à l'angle de la planche.
+
 **Ce que l'auteur a corrigé, deux fois, et qu'il ne faut pas reperdre :**
 
 1. ❌ **Tracer par le point le plus loin de toute rue** — c'est-à-dire par le **cœur d'îlot**, que la venelle coupait alors systématiquement en deux. *« Les cœurs d'îlots sont à préserver quand c'est possible. »*

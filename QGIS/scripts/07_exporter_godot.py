@@ -51,6 +51,7 @@ from export_godot.decor import (
 )
 from export_godot.paysage import paysage, repartir
 from export_godot.sorties import sorties, hors_routes, Surface
+from export_godot.venelles import trace as trace_venelle
 from export_godot.ponts import _acces_pont, _pont_provisoire
 from export_godot.berges import (
     _arrondir_rives,
@@ -88,6 +89,7 @@ from export_godot.geometrie import (
     aire_signee,
 )
 from export_godot.reglages import (
+    VENELLE_ILOTS,
     FAMILLE_FACADE,
     ACCES_LARGEUR,
     ACCES_OUVERTURE,
@@ -308,6 +310,19 @@ def lire(con):
         d = dict(zip(COLS_ROUTES, r[:-1]))
         d["parts"] = lire_wkb(gpkg_vers_wkb(r[-1]))[0]
         routes.append(d)
+
+    # 🚶 L'axe des venelles, pour leur trace : le couloir seul ne le dit pas.
+    for d in ilots.values():
+        d["venelles_axes"] = []
+    try:
+        for fid_i, larg, geom in con.execute(
+                "SELECT fid_ilot, largeur_m, geom FROM chemins ORDER BY fid"):
+            if fid_i in ilots and geom is not None:
+                ilots[fid_i]["venelles_axes"] += [
+                    (ligne, larg or 3.0)
+                    for ligne in lire_wkb(gpkg_vers_wkb(geom))[0]]
+    except sqlite3.OperationalError:
+        pass
 
     # ✏️ LE DESSIN D'ILLUSTRATOR. Les deux couches sont facultatives : tant
     # qu'elles manquent, la plaque reste grise et les fermes n'ont pas de bord.
@@ -682,6 +697,12 @@ def main():
     # à un passage. Assombri d'un cheveu : une venelle de 3 m entre deux murs
     # ne voit pas beaucoup de ciel.
     coul_chemin = tuple(c * 0.94 for c in PAL.vers_lineaire(PAL.MINERAL_CLAIR))
+    coul_sentier = PAL.vers_lineaire(PAL.SENTIER)
+    coul_foulee = PAL.vers_lineaire(PAL.melanger(
+        PAL.couleur_sol("jardins_familiaux", 0.10), PAL.SENTIER, 0.45))
+    venelles_m = Maillage()
+    long_trace = 0.0
+    n_venelles = 0
     # 🅿️ La même peinture usée que la voirie, et c'est le point : une place de
     # parc et une ligne d'axe sont le MÊME objet du monde. Deux blancs
     # différents diraient qu'il s'agit de deux choses.
@@ -976,10 +997,20 @@ def main():
             # ici — le chemin n'a pas fabriqué une deuxième décision.
             # Elle est PAVÉE et jamais plantée : un tirage cour/jardin lui
             # mettrait des arbres au milieu d'un passage.
+            # 🚶 Le pavé reste dessous : c'est la venelle aménagée. La trace
+            # part dans son propre maillage, que Godot cache à l'aménagement.
+            if chemins_ilot:
+                venelles_m.marque(fid)
+                n_venelles += 1
             for c in chemins_ilot:
                 if len(c) >= 3:
                     aire_chemin += abs(D4C.aire_signee(c))
+                    d["venelle_m2"] = round(d.get("venelle_m2", 0.0)
+                                            + abs(D4C.aire_signee(c)), 1)
                     _sol(masses, c, coul_chemin, G)
+                    long_trace += trace_venelle(
+                        venelles_m, c, d["venelles_axes"], coul_jardin,
+                        coul_foulee, coul_sentier, G, fid)
 
             part_verte = VERDURE.get(st, VERDURE_DEFAUT)
             limites_haie = set()
@@ -1198,6 +1229,10 @@ def main():
         if n_chemin:
             print("  chemins %d → %.0f m² de venelle pavée, dans le groupe de"
                   " leur îlot" % (n_chemin, aire_chemin))
+            print("  venelles : %d traces, %.0f m de terre battue — cachées"
+                  " quand le joueur aménage  %s"
+                  % (n_venelles, long_trace,
+                     "✅" if long_trace > 0.0 else "❌"))
         # 🔗 Ce que l'énergie viendra lire. À imprimer maintenant, parce que
         # c'est le seul moment où on peut encore dire « ce chiffre est faux »
         # avant qu'une décision de jeu s'appuie dessus.
@@ -1980,7 +2015,7 @@ def main():
           % (canopee_perdue / 1e4))
 
     # -------------------------------------------------------------- écrire
-    for m in (masses, sols, eau, voirie, places_m):
+    for m in (masses, sols, eau, voirie, places_m, venelles_m):
         m.fermer()
     n_groupes = sum(len(m.groupes) for m in (masses, sols, eau, voirie))
     n_gi = len(masses.groupes) + len(sols.groupes) + len(eau.groupes)
@@ -2059,6 +2094,8 @@ def main():
         # 🅿️ Les places peintes, un groupe par tronçon : Godot les cache quand
         # la rue n'en a plus.
         "places": places_m.json(),
+        # 🚶 La trace des venelles, un groupe par îlot : cachée à l'aménagement.
+        "venelles": venelles_m.json(),
         "sols": sols.json(),
         "eau": eau.json(),
         # 🌊 Le corps des berges, un groupe par berge, en trois maillages :
@@ -2100,7 +2137,7 @@ def main():
             "ilots": {str(f): dict({c: d[c] for c in FICHE_ILOTS},
                                    **{c: d[c]
                                       for c in (TOIT_ILOTS + DENSE_ILOTS
-                                                + ACCES_ILOTS)
+                                                + ACCES_ILOTS + VENELLE_ILOTS)
                                       if c in d})
                       for f, d in ilots.items()},
             "routes": {str(d["fid"]): dict({c: d[c] for c in FICHE_ROUTES},

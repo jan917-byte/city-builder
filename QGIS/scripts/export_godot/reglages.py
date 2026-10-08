@@ -433,6 +433,10 @@ DENSE_ILOTS = ["dense_n", "dense_logements_etage", "dense_cumul"]
 # rejoignent pas à pied —, et le nombre de places de camp mesuré sur le champ.
 ACCES_ILOTS = ["morceau", "camp_places"]
 
+# 🚶 La venelle naît en trace dans l'herbe (desire path) ; `ville.gd` en tire
+# le prix de l'aménager.
+VENELLE_ILOTS = ["venelle_m2"]
+
 # 🔴 Un champ n'est riverain d'aucune rue : la berge l'en sépare. Sous ce
 # seuil, il hérite du morceau de la route la plus proche. Mesuré : 10 m pour
 # les champs 1082 et 1083 du faubourg, 115 m pour le premier qui n'a
@@ -577,6 +581,14 @@ HAIE_SEGMENT_MIN = 1.5
 ACCES_LARGEUR = 1.40
 
 ACCES_OUVERTURE = ACCES_LARGEUR + HAIE_LARGEUR
+
+# 🚶 LA TRACE D'UNE VENELLE PAS ENCORE AMÉNAGÉE : la terre battue au milieu,
+# l'herbe foulée autour, et une ondulation — un raccourci n'est jamais tiré au
+# cordeau. 🎚️ Level design, à juger sur `apercu_venelles.gd`.
+VENELLE_TERRE_M = 1.5
+VENELLE_FOULEE_M = 2.6
+VENELLE_ONDULATION_M = 0.5
+VENELLE_PERIODE_M = 16.0
 
 # Un faîtage ne monte jamais plus haut que ça, quelle que soit la pente. Sans
 # ce plafond, une empreinte profonde se coiffe d'un chapeau de dix mètres qui
