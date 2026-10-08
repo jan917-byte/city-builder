@@ -80,11 +80,15 @@ func executer() -> void:
 	verifier(jeu.mois < v._repare["r:%d" % pont] + v.duree_reparation_mois("r", pont),
 		"Tout est déblayé avant la fin du pont provisoire")
 	await capture("deblaiement_03_fini")
-	# 🔄 Le pont livré, le guide laisse choisir l'îlot (auteur, 2026-10-06).
+	# 🔄 Le pont livré puis le campus trouvé, le guide laisse choisir l'îlot (auteur, 2026-10-06).
 	actualiser(v._repare["r:%d" % pont] + v.duree_reparation_mois("r", pont) + 0.01)
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
-	await cliquer(o.annonce_second)
+	# 🎓 Une seule carte, l'étude ; le campus trouvé, le guide passe aux logements.
+	verifier(o.carte == "etude" and o.annonce.visible, "Le pont livré, la carte de l'étude paraît")
+	o.carte_etude = 2
+	o.etude_lue = true
+	o.actualiser(true)
 	verifier(o.etape == "choix" and o._actions.get_child_count() == 0 and "containers" in o._texte.text,
 		"Le pont livré : %s" % o._texte.text)
 	await capture("deblaiement_04_choisir_ilot")

@@ -115,13 +115,13 @@ func executer() -> void:
 			verifier(jeu.interface._fiche_panneau.get_global_rect().end.y < retours.pile.get_global_rect().position.y,
 				"La fiche ne recouvre jamais le compteur ni les chantiers")
 	# Les dépenses récurrentes disent leur rythme, sans simuler un débit immédiat.
-	# 🎓 La carte du pont rouvert mène à l'étude, et les sujets attendent sa carte.
+	# 🎓 Le pont rouvert, la seule carte est l'étude ; les sujets attendent qu'on la quitte.
 	if jeu.ouverture.etape == "pont_livre":
 		jeu.ouverture.pont_livre_ms -= jeu.ouverture.ATTENTE_PONT_MS
 		jeu.ouverture.actualiser(true)
-	if jeu.ouverture.carte == "pont":
+	if jeu.ouverture.carte == "etude":
 		await cliquer(jeu.ouverture.annonce_principal)
-	verifier(jeu.ouverture.pont_termine and not jeu.ouverture.annonce.visible, "La carte du pont rouvert se ferme au clic")
+	verifier(jeu.ouverture.pont_termine and not jeu.ouverture.annonce.visible, "La carte de l'étude se ferme au clic")
 	jeu.interface.choisir_vue_crue("prochaine")
 	jeu.interface.financements_ouverts = true
 	# 🔬 Les sujets sont à l'institut depuis le 2026-10-08.

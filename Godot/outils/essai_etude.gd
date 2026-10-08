@@ -1,7 +1,7 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/essai_etude.gd -- --ouverture [--captures]
-## 🎓 Après le pont : l'étude, puis le campus dans l'ordre (auteur, 2026-10-08) —
-## université, Dangers › Prochaine crue, institut, bibliothèque — puis les pilotis.
+## 🎓 Après le pont : l'étude, le campus trouvé sur la carte, sa fiche, puis les
+## îlots à rebâtir et les pilotis (auteur, 2026-10-08).
 
 
 func executer() -> void:
@@ -30,117 +30,90 @@ func executer() -> void:
 	var univ: Button = tuile("universite")
 	verifier(not univ.visible and not tuile("institut").visible and not tuile("bibliotheque").visible,
 		"Avant le pont, la colonne n'a aucune tuile du campus")
-	# 🎓 Le pont fêté, quelques secondes de ville, puis l'étude (auteur, 2026-10-08).
-	o.carte = "pont"
+	# 🎓 Le pont livré, une seule carte : l'étude (auteur, 2026-10-08).
 	o.premier = {"couche": "r", "fid": jeu.ville.ponts_coupes()[0], "fin": 0.0}
-	o._sur_carte(true)
-	verifier(o.pont_termine and not ui.etude_publiee() and not o.annonce.visible,
-		"La carte du pont quittée, l'étude attend encore")
-	jeu._sur_vitesse(0.0)
-	await create_timer(o.ATTENTE_ETUDE_S + 0.3).timeout
-	verifier(o.etude_parue and o.carte == "etude" and o.annonce.visible and jeu.vitesse == 0.0
-		and not o.annonce_second.visible,
-		"Quelques secondes plus tard, l'étude paraît : carte au centre, un seul bouton, jeu en pause")
-	verifier("étude" in ui.retours.journal[-1], "La parution est dans le journal")
+	o._pont_rouvert()
+	verifier(o.pont_termine and o.etude_parue and o.carte == "etude" and o.annonce.visible
+		and jeu.vitesse == 0.0 and not o.annonce_second.visible
+		and o.annonce_principal.text == "Trouver le campus",
+		"Le pont rouvert, l'étude paraît : une carte au centre, un seul bouton, jeu en pause")
+	verifier("rouvert" in str(ui.retours.journal) and "étude" in ui.retours.journal[-1],
+		"Le bandeau dit le pont rouvert, le journal la parution")
 	await capture("campus_00_etude")
 	await cliquer(o.annonce_principal)
 	jeu._rafraichir(true)
-	var fid_univ := int(ui.LIEUX["universite"]["fid"])
-	verifier(jeu.selection.sel_fid == fid_univ and o.appel_carte() == fid_univ
-		and not ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
-		"L'université est entourée et clignote, aucune fiche ouverte")
+	var campus: Array = o.campus()
+	verifier(jeu.selection.sel_fid == -1 and o.groupe_carte() == campus and campus.size() == 3
+		and jeu._contour_fids == campus and not ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
+		"Les trois îlots du campus sont entourés d'un seul trait, aucune fiche ouverte")
 	verifier(is_equal_approx(jeu.pivot.taille, o.CADRAGE_UNIVERSITE), "La caméra montre la ville bâtie")
 	verifier(not univ.visible and ui._menu_boutons["dangers"].disabled,
-		"Pas de raccourci : la tuile université reste cachée, Dangers reste grise")
+		"Pas de raccourci : les tuiles du campus restent cachées, Dangers reste grise")
 	await capture("campus_01_trouver")
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(not o.etude_lue and ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
-		"Un autre îlot ouvre sa fiche, pas l'étude")
+		"Un autre îlot ouvre sa fiche, pas le campus")
 	ui._fermer_fiche()
-	jeu._sur_choix("i", fid_univ)
-	jeu._rafraichir(true)
-	verifier(o.etude_lue and univ.visible and ui._lieu_titre.text == "Université",
-		"Trouvée, l'université ouvre l'étude et sa tuile apparaît")
-	verifier(ui._etude_bloc.visible and ui._etude_valeurs["dans"].text == "6 à 8 ans", "L'université montre l'étude")
-	verifier(not ui._biblio_bloc.visible and not ui._lieu_lignes[jeu.Recherche.PILOTIS]["bloc"].visible,
-		"L'université ne montre que l'étude : ni recherche ni livre")
-	verifier(ui._lieu_intro.visible and ui._lieu_intro.text == "Publie les études.", "Un nom, un verbe")
-	await capture("campus_02_universite")
-	ui._fermer_lieu()
-	jeu._rafraichir(true)
-	verifier(entouree("dangers") and not ui._menu_boutons["dangers"].disabled and not entouree("universite"),
-		"L'étude lue, Dangers s'ouvre et s'entoure")
-	ui._sur_rail("dangers")
-	verifier(ui._vue_crue == "prochaine" and jeu.vue_crue == "prochaine" and o.prochaine_vue,
-		"L'étude parue, Dangers s'ouvre sur la prochaine crue et repeint la carte")
-	var p: Dictionary = jeu.ville.prochaine_crue(jeu.mois)
-	verifier(int(p["ilots_sous_eau"]) > int(p["ilots_cette_annee"]), "La prochaine crue est plus étendue")
-	var bleu: Color = jeu.noeuds["i"][o.MAISONS].get_instance_shader_parameter("calque")
-	verifier(bleu.a > 0.5 and bleu.b > bleu.r, "Les Forgerons sont peints en bleu")
-	await capture("campus_03_prochaine")
-
-	# 🔬 L'INSTITUT : appelé quand on revient à la ville.
-	jeu._rafraichir(true)
 	var fid_inst := int(ui.LIEUX["institut"]["fid"])
-	verifier(o.etape == "institut" and tuile("institut").visible and entouree("institut")
-		and jeu.selection.sel_fid != fid_inst,
-		"La carte vue, l'institut apparaît dans la colonne, entouré ; la carte attend qu'on quitte Dangers")
-	jeu._sur_theme("")
-	o.actualiser()   # l'image suivante : `_process` le rappelle
-	verifier(jeu.selection.sel_fid == fid_inst and o.appel_carte() == fid_inst
-		and is_equal_approx(jeu.pivot.taille, o.CADRAGE_CAMPUS),
-		"Revenu à la ville, l'institut est entouré et la caméra montre le campus")
-	verifier(o._titre.text == "Institut de recherche" and o._texte.text == "", "Le guide ne dit que son nom")
-	await capture("campus_04_institut_appele")
+	jeu.selection.sel_couche = "i"
+	jeu.selection.sel_fid = fid_inst
 	jeu._sur_choix("i", fid_inst)
 	jeu._rafraichir(true)
+	verifier(o.etude_lue and ui._lieu_ouvert == "campus" and ui._campus_bloc.visible
+		and ui._etude_bloc.visible and ui._etude_valeurs["dans"].text == "6 à 8 ans",
+		"N'importe quel îlot du campus ouvre sa fiche : ses trois lieux, puis l'étude")
+	verifier(jeu._contour_fids == campus, "La fiche ouverte, le trait garde le campus entier")
+	verifier(univ.visible and tuile("institut").visible and tuile("bibliotheque").visible
+		and not ui._menu_boutons["dangers"].disabled and not entouree("dangers"),
+		"Le campus trouvé, ses trois tuiles apparaissent, Dangers s'ouvre sans être appelée")
+	verifier(not ui._biblio_bloc.visible and not ui._lieu_lignes[jeu.Recherche.PILOTIS]["bloc"].visible,
+		"La fiche du campus ne montre ni recherche ni livre")
+	await capture("campus_02_fiche")
+	await cliquer(ui._campus_bloc.get_child(1))
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
-	verifier(o.institut_vu and ui._lieu_titre.text == "Institut de recherche" and ligne["bloc"].visible
-		and not ui._lieu_lignes["rendement"]["bloc"].visible and not ui._etude_bloc.visible,
-		"L'institut ouvre une seule recherche, les pilotis")
-	await capture("campus_05_institut")
-	await cliquer(ligne["bouton"])
-	verifier(jeu.ville.recherche_engagee(jeu.Recherche.PILOTIS), "La recherche sur pilotis est lancée")
-	verifier("En cours" in ligne["etat"].text, "L'institut montre la recherche en cours : %s" % ligne["etat"].text)
-	await capture("campus_06_recherche_lancee")
-	verifier(not entouree("bibliotheque"), "La bibliothèque attend que l'institut soit refermé")
+	verifier(ui._lieu_ouvert == "institut" and ligne["bloc"].visible and not ui._etude_bloc.visible,
+		"Une ligne de la fiche du campus ouvre son lieu : l'institut et ses pilotis")
 	ui._fermer_lieu()
-	o.actualiser()
-
-	# 📖 LA BIBLIOTHÈQUE.
-	var fid_bib := int(ui.LIEUX["bibliotheque"]["fid"])
-	verifier(o.etape == "bibliotheque" and entouree("bibliotheque") and jeu.selection.sel_fid == fid_bib,
-		"L'institut refermé, la bibliothèque est entourée, sur la carte et dans la colonne")
-	await capture("campus_07_bibliotheque_appelee")
-	jeu._sur_choix("i", fid_bib)
+	ui._fermer_fiche()
 	jeu._rafraichir(true)
-	verifier(o.biblio_vue and ui._biblio_bloc.visible and not ui._etude_bloc.visible
-		and not ligne["bloc"].visible,
-		"La bibliothèque ouvre le livre, et seulement le livre")
-	await capture("campus_08_bibliotheque")
-	ui._fermer_lieu()
-	jeu._rafraichir(true)
-	verifier(o.etape == "choix" and o.appel_carte() == -1 and not entouree("institut") and not entouree("bibliotheque"),
-		"Le campus visité, le guide rend la main")
 
-	# 🏗️ LES PILOTIS : rien avant la recherche, le bouton après.
+	# 🏠 REBÂTIR D'ABORD : les îlots sinistrés clignotent, aucune berge proposée.
+	verifier(o.etape == "choix" and o._titre.text == "Rebâtir les logements" and o.visible
+		and o._actions.get_child_count() == 0,
+		"Le campus vu, le guide demande de rebâtir les logements, sans bouton")
+	var sinistres: Array = o.ilots_a_rebatir()
+	verifier(sinistres.size() > 1 and o.groupe_carte() == sinistres and jeu._contour_fids == sinistres
+		and o.MAISONS in sinistres,
+		"Les %d îlots sinistrés sont entourés et clignotent" % sinistres.size())
+	await capture("campus_03_rebatir")
 	jeu._sur_choix("i", o.MAISONS)
 	jeu._rafraichir(true)
-	verifier(ui._rebatir_boutons["tradition"].visible and not ui._rebatir_boutons["pilotis"].visible
-		and not ui._concours_bouton.visible,
-		"Pendant la recherche, les Forgerons ne se relèvent que comme avant, sans concours")
+	var pil: Button = ui._rebatir_boutons["pilotis"]
+	verifier(ui._rebatir_boutons["tradition"].visible and pil.visible and pil.disabled
+		and "institut" in pil.text and not ui._concours_bouton.visible,
+		"Avant la recherche, « Sur pilotis » est grisé et dit où il se met au point")
+	await capture("campus_04_pilotis_grise")
+	ui._fermer_fiche()
+	ui.ouvrir_lieu("institut")
+	await cliquer(ligne["bouton"])
+	verifier(jeu.ville.recherche_engagee(jeu.Recherche.PILOTIS), "La recherche sur pilotis est lancée")
+	ui._fermer_lieu()
+	jeu._sur_choix("i", o.MAISONS)
+	jeu._rafraichir(true)
+	verifier(pil.disabled and "en recherche" in pil.text, "Pendant la recherche, « Sur pilotis » le dit")
 	ui._fermer_fiche()
 	actualiser(jeu.mois + float(jeu.Recherche.SUJETS[jeu.Recherche.PILOTIS]["mois"]) + 0.1)
 	verifier(jeu.Recherche.acquis(jeu.ville, jeu.Recherche.PILOTIS, jeu.mois)
 		and "pilotis" in str(ui.retours.journal), "Six mois plus tard, la recherche est achevée et le journal le dit")
 	jeu._sur_choix("i", o.MAISONS)
 	jeu._rafraichir(true)
-	verifier(ui._rebatir_boutons["tradition"].visible and ui._rebatir_boutons["pilotis"].visible
+	verifier(ui._rebatir_boutons["tradition"].visible and pil.visible and not pil.disabled
+		and pil.text == "Sur pilotis"
 		and not ui._rebatir_boutons["moderne"].visible and not ui._rebatir_boutons["parc"].visible,
 		"La recherche achevée, les Forgerons se relèvent comme avant ou sur pilotis")
-	await capture("campus_09_pilotis")
+	await capture("campus_05_pilotis")
 	ui._fermer_fiche()
-	p = jeu.ville.prochaine_crue(jeu.mois)
+	var p: Dictionary = jeu.ville.prochaine_crue(jeu.mois)
 	var avant := float(p["logements_perdus"])
 
 	# Relever les Forgerons remet leurs logements sous l'eau (95).
@@ -171,7 +144,7 @@ func executer() -> void:
 	jeu._sur_reset()
 	verifier(o.etape == "reloger" and not o.etude_lue, "Recommencer oublie l'étude")
 	jeu._sur_reprise()
-	verifier(o.etude_lue and o.prochaine_vue, "La reprise garde l'étude lue")
+	verifier(o.etude_lue and o.prochaine_vue, "La reprise garde l'étude lue et la prochaine crue vue")
 	print("ÉTUDE : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame

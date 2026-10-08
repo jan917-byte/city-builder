@@ -475,6 +475,7 @@ var _onglets_crue := {}
 var _vues_crue := {}
 var _prochaine_valeurs := {}
 var _etude_bloc: VBoxContainer
+var _campus_bloc: VBoxContainer
 var _etude_valeurs := {}
 ## 📖 LA BIBLIOTHÈQUE (101) : la liste des pages, ou une page ouverte.
 var _biblio_bloc: VBoxContainer
@@ -542,6 +543,7 @@ func batir() -> void:
 	_panneau_lieu()
 	_panneau_projets()
 	_panneau_rail()
+	_batir_fleche()
 	_panneau_diagnostic()
 	_panneau_chantiers()
 	_panneau_calque()
@@ -1523,7 +1525,8 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	# 🟡 Jaune, comme tout ce que le jeu entoure (auteur, 2026-10-06) ; il était vert.
 	var anneau := Panel.new()
 	var cadre := StyleBoxFlat.new()
-	cadre.bg_color = Color(APPEL, 0.22)
+	# 🔄 La tuile s'allume en plein (auteur, 2026-10-08 : l'anneau seul ne se voyait pas).
+	cadre.bg_color = Color(APPEL, 0.5)
 	cadre.set_corner_radius_all(_r(12))
 	cadre.set_border_width_all(3)
 	cadre.border_color = APPEL
@@ -1553,6 +1556,35 @@ func _maj_rail() -> void:
 		var anneau: Control = b.get_meta("anneau")
 		anneau.visible = appel != "" and id == cle
 		anneau.modulate.a = pouls
+	var cible: Button = tuiles.get(cle) if appel != "" else null
+	_fleche.visible = cible != null and cible.is_visible_in_tree()
+	if _fleche.visible:
+		var r := cible.get_global_rect()
+		_fleche.global_position = Vector2(r.end.x + 6.0, r.get_center().y)
+
+
+## 🔄 La flèche qui rebondit vers la tuile appelée (auteur, 2026-10-08), sans texte.
+var _fleche: Control
+
+func _batir_fleche() -> void:
+	_fleche = Control.new()
+	_fleche.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fleche.z_index = 2
+	_fleche.visible = false
+	add_child(_fleche)
+	var pointe := Node2D.new()
+	_fleche.add_child(pointe)
+	var ombre := Polygon2D.new()
+	ombre.polygon = PackedVector2Array([Vector2(-2, 0), Vector2(26, -17), Vector2(26, 17)])
+	ombre.color = Color(0, 0, 0, 0.45)
+	pointe.add_child(ombre)
+	var p := Polygon2D.new()
+	p.polygon = PackedVector2Array([Vector2(1, 0), Vector2(23, -13), Vector2(23, 13)])
+	p.color = APPEL
+	pointe.add_child(p)
+	var tw := _fleche.create_tween().set_loops()
+	tw.tween_property(pointe, "position:x", 14.0, 0.35).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(pointe, "position:x", 0.0, 0.35).set_trans(Tween.TRANS_SINE)
 
 
 ## Le trait qui sépare les vues des lieux : sans lui, sept tuiles identiques
@@ -1629,6 +1661,11 @@ func _panneau_calque() -> void:
 	_calque_note = _label("", 11, GRIS)
 	_calque_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_calque_note)
+	# 🟫 Le pont engagé, la boue se déblaie depuis la ville (auteur, 2026-10-08). 🔴 Flaggable (90).
+	_boue_ville = _label("Les rues boueuses se déblaient depuis la ville.", 13, TEXTE)
+	_boue_ville.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_boue_ville.visible = false
+	v.add_child(_boue_ville)
 	# 💧 LA CARTE DES SOLS (101) : trois teintes et le chiffre qui les résume.
 	# ⚠ Les teintes sont aussi dans `maquette.SOLS_*`, en sRGB.
 	_sols_bloc = VBoxContainer.new()
@@ -1658,6 +1695,7 @@ func _panneau_calque() -> void:
 
 var _boue_bloc: VBoxContainer
 var _boue_texte: Label
+var _boue_ville: Label
 var _sols_bloc: VBoxContainer
 var _sols_chiffre: Label
 var _sols_depart := -1.0
@@ -1691,6 +1729,8 @@ func deblaiement_propose() -> bool:
 func _maj_boue() -> void:
 	if _boue_bloc == null:
 		return
+	_boue_ville.visible = _calque_panneau.visible and _theme_courant == "trafic" and ouverture != null \
+		and ouverture.etape == "pont_travaux" and not ouverture.acces_degage()
 	_boue_bloc.visible = _calque_panneau.visible and _theme_courant == "trafic" and deblaiement_propose()
 	if not _boue_bloc.visible:
 		return
@@ -2802,6 +2842,21 @@ func _panneau_lieu() -> void:
 	_lieu_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_lieu_intro)
 
+	# 🎓 LA FICHE DU CAMPUS (auteur, 2026-10-08) : ses trois lieux, un nom et un verbe,
+	# chacun ouvre le sien ; l'étude dessous. 🔴 Flaggable (90).
+	_campus_bloc = VBoxContainer.new()
+	_campus_bloc.add_theme_constant_override("separation", 6)
+	v.add_child(_campus_bloc)
+	for cle in CAMPUS:
+		var b := Button.new()
+		b.text = "%s\n%s" % [LIEUX[cle]["nom"], LIEUX[cle]["quoi"]]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.focus_mode = Control.FOCUS_NONE
+		_habiller_secondaire(b)
+		b.pressed.connect(ouvrir_lieu.bind(cle))
+		_campus_bloc.add_child(b)
+
 	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE (auteur, 2026-09-30) : l'université annonce,
 	# le diagnostic tient la prévision (n°32). 🔴 Texte de prototype, flaggable (90).
 	_etude_bloc = VBoxContainer.new()
@@ -2914,10 +2969,21 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	_lieu_intro.text = String(LIEUX[cle]["quoi"])
 	_brancher_lieu()
 	_maj_lieu()
-	if cle == "universite" and etude_publiee() and ouverture != null:
-		ouverture.etude_ouverte()
+
+
+## 🎓 Le campus trouvé sur la carte : ses trois lieux et l'étude.
+func ouvrir_campus() -> void:
+	_page_ouverte = ""
+	_biblio_cle = ""
+	_lieu_ouvert = "campus"
+	_lieu_panneau.visible = true
+	_fiche_panneau.visible = false
+	_lieu_titre.text = "Campus"
+	_lieu_intro.text = ""
+	_brancher_lieu()
+	_maj_lieu()
 	if ouverture != null:
-		ouverture.lieu_ouvert(cle)
+		ouverture.campus_ouvert()
 
 
 # ==========================================================================
@@ -3132,9 +3198,13 @@ func _fermer_fiche() -> void:
 
 
 func _fermer_lieu() -> void:
+	var campus := _lieu_ouvert == "campus"
 	_lieu_ouvert = ""
 	_lieu_panneau.visible = false
 	_fiche_panneau.visible = true
+	# 🎓 Le campus refermé rend la ville nue : les îlots à rebâtir peuvent clignoter.
+	if campus:
+		_fermer_fiche()
 
 
 ## Les boutons ne se rebranchent qu'au changement de menu : une connexion posée
@@ -3166,7 +3236,8 @@ func _maj_lieu() -> void:
 		return
 	var campus := _lieu_ouvert in CAMPUS
 	_lieu_intro.visible = _page_ouverte == "" and (campus or financements_ouverts)
-	_etude_bloc.visible = _lieu_ouvert == "universite" and etude_publiee()
+	_campus_bloc.visible = _lieu_ouvert == "campus"
+	_etude_bloc.visible = _lieu_ouvert in ["universite", "campus"] and etude_publiee()
 	_biblio_bloc.visible = _lieu_ouvert == "bibliotheque"
 	if _biblio_bloc.visible:
 		_maj_bibliotheque()
@@ -5166,11 +5237,14 @@ func _maj_reparation(o: Dictionary) -> void:
 	var rendu := ville.concours_rendu(_mois)
 	var concours: bool = rebatir and ville.concours_utile(_fiche_fid) \
 		and (ouverture == null or ouverture.concours_ouvert())
-	# 🏗️ Sur pilotis dès que l'institut l'a mis au point (auteur, 2026-10-08), sans concours.
-	var pilotis: bool = rebatir and not (concours and rendu) and ville.facon_permise(_fiche_fid, "pilotis", _mois)
+	# 🏗️ Sur pilotis dès que l'institut l'a mis au point (auteur, 2026-10-08), sans concours ;
+	# avant, grisé : il dit où il se met au point.
+	var pilotis_vu: bool = rebatir and not (concours and rendu)
+	var pilotis: bool = pilotis_vu and ville.facon_permise(_fiche_fid, "pilotis", _mois)
 	for facon in _rebatir_boutons:
 		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition" \
-			and not (concours and rendu) or facon == "pilotis" and pilotis
+			and not (concours and rendu) or facon == "pilotis" and pilotis_vu
+	(_rebatir_boutons["pilotis"] as Button).disabled = not pilotis
 	_concours_bouton.visible = concours and not rendu
 	_projets_bouton.visible = concours and rendu
 	_repare_etat.visible = false
@@ -5221,6 +5295,10 @@ func _maj_reparation(o: Dictionary) -> void:
 		_posee(_rebatir_boutons["tradition"], "reparer", "Comme avant", "tradition")
 		if pilotis:
 			_posee(_rebatir_boutons["pilotis"], "reparer", "Sur pilotis", "pilotis")
+		else:
+			# 🔴 Flaggable (90).
+			_rebatir_boutons["pilotis"].text = "Sur pilotis · en recherche à l'institut" \
+				if ville.recherche_engagee(Recherche.PILOTIS) else "Sur pilotis · à mettre au point à l'institut"
 		var choisi := str(_pose.get("reparer", ""))
 		if concours and rendu:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \

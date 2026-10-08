@@ -704,3 +704,6 @@ Essais headless (l'auteur jouait) : étude, ouverture, livre, rebâtir, concours
 **2026-10-08 — Le campus est dessiné à la main : une allée sur chaque limite commune, une placette à la croisée, 8 bâtiments au lieu de 5.**
 Demande de l'auteur sur capture (« pas satisfait du look ») ; plan en table (`export_godot/campus.py`), 04c laisse les trois îlots entiers, 04d pose le plan, 07 dessine allées et parvis et écarte les arbres ; emprise 1 730 → 2 590 m², institut à 3 bâtiments ; vue numérotée `apercu_campus.py`.
 Essais étude, rebâtir, livre, concours : 0 échec ; l'avertissement « 153 îlots au lieu de 71 » était déjà là.
+**2026-10-08 — Après le pont, une seule carte (l'étude) ; le campus se trouve d'un seul trait et ouvre une fiche à trois lieux ; le guide passe aux logements sans berge ; flèche vers la tuile appelée.**
+Retour de jeu de l'auteur ; plus de carte du pont (bandeau « rouvert ») ni de visite imposée de l'institut et de la bibliothèque ; îlots sinistrés entourés ; « Sur pilotis » grisé avant la recherche ; une ligne au calque Trafic pour la boue.
+Essais étude, ouverture, progression, déblaiement, livre, rebâtir, concours, vie_camp, labour, relogement : 0 échec ; sauvegarde (lieux sans nom), capital (2), travaux (repère) échouaient déjà ; planche `wehrau_premieres_minutes_planche.png`.

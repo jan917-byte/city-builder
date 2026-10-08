@@ -134,6 +134,11 @@ var maille_emprise: MeshInstance3D
 var rect_contour: ColorRect
 var _contour_fid := -1
 var _contour_couche := ""
+## 🎓 Les îlots sous le trait : un seul, ou le groupe que le guide entoure (campus,
+## îlots à rebâtir). Au-delà du premier, une paire silhouette + emprise de plus.
+var _contour_fids := []
+var _contour_cle := ""
+var _mailles_groupe := []
 var apercu: Apercu
 var _apercu_fid := -1
 var _apercu_couche := ""
@@ -2807,22 +2812,34 @@ func _maj_contour() -> void:
 		return
 	var couche: String = selection.sel_couche
 	var fid: int = selection.sel_fid
+	# 🎓 Rien de choisi : le groupe que le guide appelle ; la fiche du campus : le campus entier.
+	var groupe: Array = []
+	var appel := false
+	if ouverture != null:
+		if fid < 0:
+			groupe = ouverture.groupe_carte()
+			appel = not groupe.is_empty()
+		elif couche == "i" and interface._lieu_ouvert == "campus" and fid in ouverture.campus():
+			groupe = ouverture.campus()
+	if not groupe.is_empty():
+		couche = "i"
+		fid = int(groupe[0])
 	if fid < 0 or not noeuds.has(couche) or not noeuds[couche].has(fid):
 		if _contour_fid != -1:
 			_contour_fid = -1
 			_contour_couche = ""
-			maille_masque.mesh = null
-			maille_emprise.mesh = null
+			_contour_cle = ""
+			_poser_contour("", [])
 			rect_contour.visible = false
 			masque.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return
 
-	if fid != _contour_fid or couche != _contour_couche:
+	var cle := "%s%s" % [couche, groupe if not groupe.is_empty() else [fid]]
+	if cle != _contour_cle:
+		_contour_cle = cle
 		_contour_fid = fid
 		_contour_couche = couche
-		maille_masque.mesh = _silhouette(couche, fid)
-		# Une rue n'a pas d'emprise : son couloir EST déjà d'un seul tenant.
-		maille_emprise.mesh = _emprise(fid) if couche == "i" else null
+		_poser_contour(couche, groupe if not groupe.is_empty() else [fid])
 		rect_contour.visible = true
 		masque.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 
@@ -2835,8 +2852,7 @@ func _maj_contour() -> void:
 			Vector2(1.0 / maxf(float(taille.x), 1.0),
 			1.0 / maxf(float(taille.y), 1.0)))
 		rect_contour.material.set_shader_parameter("rayon", CONTOUR_PX)
-	# 🎓 Le lieu du campus que le guide appelle clignote, au rythme de la tuile entourée.
-	var appel: bool = ouverture != null and couche == "i" and fid == ouverture.appel_carte()
+	# 🎓 Le groupe que le guide appelle clignote, au rythme de la tuile entourée.
 	rect_contour.modulate.a = 0.15 + 0.85 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)) \
 		if appel else 1.0
 
@@ -2844,12 +2860,14 @@ func _maj_contour() -> void:
 	# volume d'avant — vu à l'écran le 2026-09-03. Le masque a le maillage de
 	# l'îlot, donc son canal ; il ne lui manquait que le curseur.
 	if couche == "i":
-		var dn := ville.etat_dense(fid, mois)
-		var rb := Ville.rendu_rebati(ville.facon_reparation(fid)) \
-			if ville.reparation_finie("i", fid, mois) else Vector2.ZERO
-		maille_masque.set_instance_shader_parameter("densification", Vector4(
-			float(dn["avancement"]), float(dn["pas"]),
-			float(dn["metres"]), rb.x))
+		for i in _contour_fids.size():
+			var f: int = _contour_fids[i]
+			var dn := ville.etat_dense(f, mois)
+			var rb := Ville.rendu_rebati(ville.facon_reparation(f)) \
+				if ville.reparation_finie("i", f, mois) else Vector2.ZERO
+			(maille_masque if i == 0 else _mailles_groupe[i - 1][0]).set_instance_shader_parameter(
+				"densification", Vector4(float(dn["avancement"]), float(dn["pas"]),
+				float(dn["metres"]), rb.x))
 
 	# LA caméra recopiée : c'est ça, et rien d'autre, qui fait que le trait
 	# épouse la vue.
@@ -2859,6 +2877,26 @@ func _maj_contour() -> void:
 	cam_masque.size = pivot.camera.size
 	cam_masque.near = pivot.camera.near
 	cam_masque.far = pivot.camera.far
+
+
+## Une silhouette et une emprise par îlot du trait ; les paires de trop se vident.
+func _poser_contour(couche: String, fids: Array) -> void:
+	_contour_fids = fids.duplicate()
+	while _mailles_groupe.size() < fids.size() - 1:
+		var paire := []
+		for n in 2:
+			var m := MeshInstance3D.new()
+			m.material_override = maille_masque.material_override
+			masque.add_child(m)
+			paire.append(m)
+		_mailles_groupe.append(paire)
+	for i in maxi(fids.size(), _mailles_groupe.size() + 1):
+		var silh: MeshInstance3D = maille_masque if i == 0 else _mailles_groupe[i - 1][0]
+		var empr: MeshInstance3D = maille_emprise if i == 0 else _mailles_groupe[i - 1][1]
+		var f: int = int(fids[i]) if i < fids.size() else -1
+		silh.mesh = _silhouette(couche, f) if f >= 0 else null
+		# Une rue n'a pas d'emprise : son couloir EST déjà d'un seul tenant.
+		empr.mesh = _emprise(f) if f >= 0 and couche == "i" else null
 
 
 ## 🔎 LA MINIATURE SUIT LA FICHE, PAS LA SÉLECTION : c'est la fiche qui porte le

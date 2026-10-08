@@ -331,9 +331,12 @@ func executer() -> void:
 	await capture("05_livraison")
 	await cliquer(bouton("Et maintenant"))
 	verifier(o.etape == "suite", "La réussite conduit au choix de transformation")
-	await cliquer(bouton("Protéger"))
+	# 🏠 Rebâtir d'abord (auteur, 2026-10-08) : le guide ne pousse plus la berge, sa fiche la garde.
+	verifier(bouton("Protéger") == null and bouton("Poursuivre") != null,
+		"La suite propose de poursuivre les réparations, pas de renaturer la berge")
+	o.examiner("b", o.BERGE, "berge", jeu.ville.BERGE_RENATUREE)
 	verifier(jeu.interface._fiche_couche == "b" and jeu.interface._fiche_fid == o.BERGE,
-		"La protection ouvre la berge qui agit sur ce secteur")
+		"La berge qui agit sur ce secteur s'ouvre depuis sa fiche")
 	verifier(not jeu.interface._recap_bouton.disabled, "Sans pont payé, la caisse couvre aussi la protection")
 	var avant: float = jeu.ville.valeur("i", o.MAISONS, "hauteur_eau_annonce", jeu.mois)
 	actualiser(20.0)
@@ -574,6 +577,11 @@ func essayer_ponts(lointain: int) -> void:
 	jeu.interface._maj_rail()
 	verifier("boue" in boue and o.rail_appel() == "ville" and tuile("").get_meta("anneau").visible,
 		"Le pont engagé, le bandeau dit la boue et la tuile Ville clignote")
+	# 🔄 Une flèche rebondit vers la tuile, et le calque dit où se déblaie la boue (auteur, 2026-10-08).
+	jeu.interface._maj_boue()
+	verifier(jeu.interface._fleche.visible and jeu.interface._boue_ville.is_visible_in_tree(),
+		"Une flèche montre la tuile Ville, et le calque Trafic dit que la boue se déblaie depuis la ville")
+	await capture("12d_trafic_vers_la_ville")
 	jeu._sur_theme("")
 	jeu._sur_theme("trafic")
 	verifier(o.rail_appel() == "" and o.boue_vue, "Revenu une fois sur la ville, plus d'appel")
@@ -654,9 +662,12 @@ func essayer_ponts(lointain: int) -> void:
 		"Le pont livré, le temps court encore et rien ne couvre la ville")
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
-	verifier(o.etape == "pont_livre" and jeu.vitesse == 0.0, "5 s plus tard, la carte du pont met le jeu en pause")
-	verifier(o.annonce.visible and not o.visible and not "étude" in o._annonce_texte.text,
-		"Le pont rouvert s'annonce au centre, sans étude, le guide s'efface")
+	# 🎓 Une seule carte, l'étude (auteur, 2026-10-08) : le pont rouvert passe au bandeau.
+	verifier(o.pont_termine and o.carte == "etude" and jeu.vitesse == 0.0 and "rouvert" in str(jeu.interface.retours.journal),
+		"5 s plus tard, la carte de l'étude met le jeu en pause ; le bandeau dit le pont rouvert")
+	verifier(o.annonce.visible and not o.visible and o.annonce_principal.text == "Trouver le campus"
+		and not o.annonce_second.visible,
+		"Une seule carte au centre, un seul bouton, le guide s'efface")
 	verifier(o.verrou() == "", "Le pont rouvert avec ses accès lève le verrou")
 	verifier(jeu.ville.route_praticable(pont, fin) and jeu.ponts_provisoires[pont].visible
 		and not jeu.reparations["r"][pont].visible and not jeu.ruines_ponts[pont].visible,
@@ -692,11 +703,14 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._rafraichir(true)
 	jeu.selection.sel_couche = "r"
 	jeu.selection.sel_fid = pont
-	await capture("14_annonce_pont")
-	await cliquer(o.annonce_second)
+	await capture("14_annonce_etude")
+	# Le campus trouvé (essai_etude) : le guide passe aux logements.
+	o.carte_etude = 2
+	o.etude_lue = true
+	o.actualiser(true)
 	await capture("14_pont_rouvert")
-	verifier(o.pont_termine and o.etape == "choix" and not o.etude_parue and not o.annonce.visible,
-		"Le pont rouvert propose de relever, l'étude attend")
+	verifier(o.pont_termine and o.etape == "choix" and not o.annonce.visible,
+		"Le campus trouvé, le guide propose de rebâtir")
 	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
 	verifier(o._actions.get_child_count() == 0 and "containers" in o._texte.text,
 		"Le pont rouvert, le guide laisse choisir l'îlot : %s" % o._texte.text)
