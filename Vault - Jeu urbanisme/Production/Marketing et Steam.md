@@ -14,11 +14,13 @@ Précédent : **kebabprice.de**, qui a généré de la couverture presse. Capaci
 
 Le marché confirme le créneau : aucun city-builder existant ne simule le *processus* de planification. Le segment premium PC solo est validé (*Pocket City*, développé par une seule personne).
 
-## La page Steam comme test de marché
+## La page Steam, tôt
 
-**Mettre la page en ligne tôt.** C'est un test de validation, pas une action de lancement.
+**Mettre la page en ligne tôt**, pour que chaque post ait un lien où ajouter le jeu à sa liste de souhaits. Un premier jet propre suffit : tout s'y change ensuite, sauf le nom.
 
-> **Signal clair : moins de 5 000 wishlists après six mois de page publique.**
+**Le nombre de wishlists se regarde, il ne décide rien** — aucun seuil n'arrête ni ne relance le projet (auteur, 2026-10-08).
+
+**Ouvrir la page** : **100 $ par jeu** (Steam Direct), remboursés une fois que le jeu a rapporté 1 000 $. Le compte Steamworks demande l'identité, le compte bancaire et un questionnaire fiscal ; Valve relit la page en 1 à 5 jours. La sortie, elle, attend 30 jours après le paiement et deux semaines de page publique. 🔴 **S'enregistrer comme indépendant** dépend du pays et du contrat de travail de l'auteur, pas de Steam : à vérifier avant le premier euro gagné.
 
 ## Localisation
 

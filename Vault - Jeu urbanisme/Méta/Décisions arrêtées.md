@@ -103,7 +103,7 @@ Légende : 🔒 difficile à inverser · 🔓 réversible · 🟡 arrêté mais 
 | 44 | Lancement **EN + DE** uniquement | 🔓 | |
 | 45 | i18n + glossaire **dès le jour 1** | 🔒 | |
 | 46 | Cible **~10 000 mots** de texte | 🔓 | |
-| 47 | Page Steam en ligne tôt comme test de marché | 🔓 | |
+| 47 | Page Steam en ligne tôt, pour récolter des wishlists | 🔓 | ✅ 2026-10-08, l'auteur : **aucun seuil de wishlists ne décide de la suite** |
 | 48 | Pas de dépense avant le vertical slice | 🔓 | |
 | 106 | 🏷️ **Le jeu s'appelle *Desire Path*** — [[Wehrau]] reste le nom de la ville du prototype | 🔒 |  ✅ 2026-10-08, tranché par l'auteur (*« c'est Desire Path »*). Irréversible dès que la page Steam est publique. **Écartés** : *Unpave*, *Desire Lines*. Aucun jeu de ce nom trouvé sur Steam le 2026-10-08 ; marque et nom de domaine restent à vérifier → [[Marketing et Steam]] |
 | 49 | **La ville de t0 passe devant le système de décisions** — [[Wehrau]] doit exister, être crédible et se regarder en 3D avant qu'on décide quoi que ce soit | 🔓 | ✅ 2026-08-11. Constat qui l'a produite : une crue est la **perturbation d'un état**, et l'état n'existait pas — les effets chiffrés du classeur s'appliquaient à du vide. Le classeur reste écrit dans `Classeur/`, il attend son socle. Conséquence immédiate : les **emplois** entrent dans les données (50), la DA cesse d'être reportable (42b), et Godot entre au mois 1 (39b) → [[Plan 3 mois]] · [[Génération procédurale]] |

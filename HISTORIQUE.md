@@ -706,4 +706,4 @@ Demande de l'auteur sur capture (« pas satisfait du look ») ; plan en table (`
 Essais étude, rebâtir, livre, concours : 0 échec ; l'avertissement « 153 îlots au lieu de 71 » était déjà là.
 **2026-10-08 — Le jeu s'appelle *Desire Path* (décision 106) ; la maquette porte le nom, le vault prépare la page Steam.**
 Tranché par l'auteur (écartés : Unpave, Desire Lines) ; aucun jeu de ce nom trouvé sur Steam. Formats des sept images, règles de capsule et deux voies sans IA (illustrateur, provisoire) dans `Marketing et Steam` ; trois pistes d'image à trancher.
-Godot : la fenêtre s'appelle « Desire Path », le dossier des sauvegardes reste « Wehrau t0 » (custom_user_dir), la partie en cours n'est pas perdue. Maquette non relancée ici.
+Godot : la fenêtre s'appelle « Desire Path », les sauvegardes restent dans « Wehrau t0 » (custom_user_dir). Puis l'auteur retire le seuil « moins de 5 000 wishlists en six mois » (47 : la page n'est plus un test de marché) ; coût et démarches de la page notés.
