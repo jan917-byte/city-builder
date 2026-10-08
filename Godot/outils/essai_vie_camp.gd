@@ -121,6 +121,25 @@ func executer() -> void:
 		and absf(somme - v._depense_ke) < 0.01 and not genres.has("autres"),
 		"Le détail de l'argent range chaque chantier : %s" % [mots])
 	await capture("camp_06_detail_argent")
+	var textes := func(): return ui._detail_liste.get_children().filter(func(c): return c is Label) 		.map(func(c): return c.text) + ui._detail_liste.get_children().filter(func(c): return c is HBoxContainer) 		.map(func(c): return c.get_child(0).text)
+	var replie: Array = textes.call()
+	verifier("Voir l'historique" in replie and not "Caisse de départ" in replie and "Solde du mois" in replie,
+		"L'historique est replié à l'ouverture : %s" % [replie])
+	var titre: Label = ui._detail_liste.get_children().filter(func(c): return c is Label and c.text == "Voir l'historique")[0]
+	var pos: Vector2 = titre.get_global_rect().get_center()
+	for appui in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = appui
+		e.position = pos
+		e.global_position = pos
+		root.push_input(e, true)
+	await process_frame
+	await process_frame
+	var deplie: Array = textes.call()
+	verifier("Masquer l'historique" in deplie and "Caisse de départ" in deplie and "Argent aujourd'hui" in deplie,
+		"Un clic sur « Voir l'historique » le déplie : %s" % [deplie])
+	await capture("camp_06b_historique_deplie")
 	await cliquer_compteur(ui, "caisse")
 	verifier(not ui._detail_panneau.visible, "Un second clic referme le détail")
 

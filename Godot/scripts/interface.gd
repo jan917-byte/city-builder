@@ -299,6 +299,7 @@ var _detail_panneau: PanelContainer
 var _detail_liste: VBoxContainer
 var _detail_sujet := ""         # "caisse", "capital" ou "" : le compteur dont on lit le détail
 var _detail_lignes := []        # la dernière liste posée : on ne rebâtit que si elle change
+var _historique_ouvert := false # « Depuis le mois 0 » replié par défaut (auteur, 2026-10-08)
 var _ville_jauges := {}
 ## Le repère du mois 0 pour les deux seuls chiffres qui n'ont pas de part
 ## naturelle — la conso et le CO₂ —, mémorisé au premier `maj()`.
@@ -3475,6 +3476,14 @@ func _barre_compteurs() -> void:
 	_detail_panneau.add_child(_detail_liste)
 
 
+func _clic_historique(e: InputEvent) -> void:
+	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT):
+		return
+	_historique_ouvert = not _historique_ouvert
+	_detail_lignes = []
+	_maj_detail.call_deferred(ville.indicateurs(_mois), _mois)
+
+
 func _clic_compteur(e: InputEvent, sujet: String) -> void:
 	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT):
 		return
@@ -3485,11 +3494,13 @@ func _clic_compteur(e: InputEvent, sujet: String) -> void:
 func ouvrir_detail(sujet: String) -> void:
 	_detail_sujet = sujet
 	_detail_lignes = []
+	_historique_ouvert = false
 	_detail_panneau.offset_top = _barre.position.y + _barre.size.y + 6.0
 	_maj_detail(ville.indicateurs(_mois), _mois)
 	retours.actualiser_affichage()
 
 
+const HISTORIQUE := "Depuis le mois 0"
 const GENRES_DEPENSE := {
 	"camp": "Camps", "demande": "Campement amélioré", "pont": "Ponts",
 	"rue": "Rues déblayées", "ilot": "Îlots relevés", "solaire": "Panneaux solaires",
@@ -3519,13 +3530,27 @@ func _maj_detail(indic: Dictionary, mois: float) -> void:
 	for c in _detail_liste.get_children():
 		_detail_liste.remove_child(c)
 		c.queue_free()
+	var replie := false
 	for l in lignes:
 		if l[1] == null:
 			if _detail_liste.get_child_count() > 0:
 				var marge := Control.new()
 				marge.custom_minimum_size.y = 6
 				_detail_liste.add_child(marge)
-			_titre_section(_detail_liste, l[0])
+			replie = l[0] == HISTORIQUE and not _historique_ouvert
+			if l[0] == HISTORIQUE:
+				# Des mots plutôt qu'un chevron : aucune police du jeu n'est sûre d'avoir ▸.
+				var t := _titre_section(_detail_liste,
+					"Voir l'historique" if replie else "Masquer l'historique")
+				t.add_theme_color_override("font_color", ACCENT)
+				t.mouse_filter = Control.MOUSE_FILTER_STOP
+				t.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+				t.tooltip_text = "Tout ce qui a fait bouger le compteur depuis le mois 0"
+				t.gui_input.connect(_clic_historique)
+			else:
+				_titre_section(_detail_liste, l[0])
+			continue
+		if replie:
 			continue
 		if l[3]:
 			_detail_liste.add_child(HSeparator.new())
@@ -3582,7 +3607,7 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		["Université et mairie", -ville.charge_mensuelle_ke(mois)],
 	]
 	out.append_array(_blocs_mensuels(flux, func(v): return _nb(v, 1) + " k€/mois", 0.05))
-	out.append(["Depuis le mois 0", null, 0, false])
+	out.append([HISTORIQUE, null, 0, false])
 	var cumul := [
 		["Caisse de départ", Ville.CAISSE_DEPART_KE],
 		["Dotation, %s mois" % _nb(mois, 0), Ville.DOTATION_KE_MOIS * mois],
@@ -3616,7 +3641,7 @@ func _lignes_capital(mois: float) -> Array:
 	if usure >= 0.05:
 		out.append_array(_blocs_mensuels([["Le camp use la confiance ; l'améliorer l'arrête", -usure]],
 			func(v): return _nb(v, 1) + "/mois", 0.05))
-	out.append(["Depuis le mois 0", null, 0, false])
+	out.append([HISTORIQUE, null, 0, false])
 	var passes := [["Confiance de départ", Ville.CAPITAL_DEPART]]
 	var a_venir := []
 	for m in ville.capital_mouvements():
