@@ -157,6 +157,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "const float ALLEGE = 0.95;\n" \
 		+ "const float LINTEAU = 2.25;\n" \
 		+ "const float FEN_LARGE = 1.15;\n" \
+		+ "// ⚠ `export_godot/entrees.py` recopie entraxes, marge 0,32 et travée\n" \
+		+ "// de porte pour y mener l'allée : changer l'un, changer l'autre.\n" \
 		+ "const float ENTRAXE_MIN = 2.75;\n" \
 		+ "const float ENTRAXE_MAX = 3.70;\n" \
 		+ "// 🪟 LE RELIEF SANS TRIANGLE (2026-10-08) : tableau de 22 cm, balcon\n" \

@@ -199,6 +199,14 @@ Sur le gris qui n'est ni bâti ni jardin, les barres de 1970 et les collectifs d
 - Les tissus concernés sont une proposition (`COURS_PARKING`, haut de `export_godot/cours.py`).
 - Serait un défaut : une place ou un box sur un jardin, contre un mur, ou une voiture hors de sa case.
 
+## 12. Le bâtiment en retrait a une entrée et une allée (2026-10-09, demande de l'auteur)
+
+Tout bâtiment à plus d'un mètre de la rue (maisons de ville, pavillons, collectifs, barres, îlot compact) reçoit une allée de sa porte au trottoir, couleur trottoir, et une entrée : seuil, auvent dans la teinte du toit, et porte vitrée peinte sur la barre, dont la bande filante n'en avait pas. La porte reste celle du shader, sur la façade sur rue ; elle change de mur quand aucune allée n'y passe. Chez le pavillon, la haie s'ouvre où arrive l'allée (avant, l'allée tombait au milieu de la façade, pas à la porte). Ni allée sur un mur, ni place de parking ni arbre sur une allée. Planche `QGIS/rendus/wehrau_entrees_1_pavillons.png` → `..._4_barre.png` (`Godot/outils/apercu_entrees.gd`) ; 07 imprime « entrées en retrait ».
+
+- Restent sans entrée : cœur ancien et front commerçant (sur le trottoir), équipements (parvis du campus) et friches (quais). Une ruine garde son allée ; seuil et auvent ne reviennent pas avec le bâtiment rebâti, qui peut monter sur pilotis (95).
+- Sur le gris des cours de collectifs, l'allée se lit mal, surtout à l'ombre.
+- Serait un défaut : une allée qui traverse un bâtiment, une haie, un parking ou un arbre, une porte sans allée ou une allée sans porte, un auvent au-dessus d'une fenêtre.
+
 ---
 
 **Voir aussi** : [00 - Prototype.md](00%20-%20Prototype.md) · [Parcelles.md](Parcelles.md) · [ETAT.md](../ETAT.md) · `Godot/README.md`

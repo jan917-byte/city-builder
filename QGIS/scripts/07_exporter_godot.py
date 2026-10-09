@@ -17,7 +17,6 @@ from importlib import import_module
 from export_godot.equipements import CAMPUS, PENTES, ROLES, equipement
 from export_godot import campus as CP
 from export_godot.batiments import (
-    _acces_pavillonnaire,
     _bandes_de_fauche,
     _debordement,
     _direction_faitage,
@@ -35,6 +34,7 @@ from export_godot.batiments import (
 )
 from export_godot.boue import carte_boue
 from export_godot import debris as DEB
+from export_godot import entrees as ENT
 from export_godot.cours import COURS_PARKING, OCCUPATION as OCCUPATION_COUR
 from export_godot.cours import amenager as _amenager_cour
 from export_godot.camps import emplacements as _places_camp
@@ -93,7 +93,6 @@ from export_godot.geometrie import (
 )
 from export_godot.reglages import (
     FAMILLE_FACADE,
-    ACCES_LARGEUR,
     ACCES_OUVERTURE,
     ACROTERE,
     AIRE_JARDIN_MIN,
@@ -670,10 +669,10 @@ def main():
     coul_quai = tuple(c * 0.86 for c in PAL.vers_lineaire(PAL.MINERAL_CLAIR))
     n_jardin = n_vert = n_arbre_jardin = 0
     aire_jardin = aire_verte = 0.0
-    n_parcelle_haie = n_haie = n_acces = n_pav_vert = 0
+    n_parcelle_haie = n_haie = n_pav_vert = 0
     longueur_haie = 0.0
-    longueur_acces = 0.0
-    ecart_perpendiculaire = 0.0
+    st_entrees = {"allees": 0, "m": 0.0, "deplacees": 0, "peintes": 0,
+                  "coudes": 0, "sans": 0, "tri": 0}
     # Un vert de jardin, légèrement assombri : un cœur d'îlot est en partie à
     # l'ombre des volumes qui l'entourent, et rien ici ne calcule d'ombre
     # portée sur le sol.
@@ -682,9 +681,11 @@ def main():
     # Plus sombre que la pelouse : à la distance de jeu, c'est le contraste
     # vertical qui doit dessiner la limite, pas une nouvelle teinte de palette.
     coul_haie = tuple(c * 0.68 for c in coul_jardin)
-    # Le chemin privé reste clair sur le jardin, sans prendre le noir de la
-    # chaussée : gravier ou dalles, pas une route miniature.
-    coul_acces = tuple(c * 1.03 for c in PAL.vers_lineaire(PAL.MINERAL_CLAIR))
+    # 🚪 L'allée d'entrée prolonge le trottoir : sur le sol nu d'une cour, le
+    # minéral clair d'avant ne s'en distinguait pas.
+    coul_allee = PAL.vers_lineaire(PAL.TROTTOIR)
+    coul_seuil = PAL.vers_lineaire(PAL.SEUIL)
+    coul_hall = PAL.vers_lineaire(PAL.PORTE_HALL)
     # 🚶 Le pavé de la venelle : le minéral CLAIR, celui du sol nu, et non le
     # minéral de la chaussée. Vue d'en haut, la différence dit tout ce qu'il y
     # a à dire — on passe du noir de l'asphalte au gris du pavé, donc d'une rue
@@ -825,6 +826,12 @@ def main():
             # 🪟 L'index des murs de TOUT l'îlot, bâti une fois : c'est lui
             # qui dira, mur par mur, lesquels sont mitoyens — donc aveugles.
             idx_murs = _index_murs([v[0] for v in volumes])
+            # 🚪 Ce qu'une allée d'entrée ne traverse pas, et où elle arrive.
+            obs_entree = ENT.Obstacles([v[0] for v in volumes], an)
+            bords_ilot = [(r[i], r[(i + 1) % len(r)])
+                          for r in [an] + chemins_ilot for i in range(len(r))]
+            entree_parcelle = {}
+            allees_ilot = []
             rangs_verts = _rangs_verts(volumes, pente)
             n_range += len(rangs_verts)
             rangs_denses, emprise_dense, cumul_dense = _rangs_denses(
@@ -915,6 +922,14 @@ def main():
                 genres = _facades(k_vol, emp, parcelle["anneau"], idx,
                                   idx_murs, st)
                 alea = random.Random(gr ^ 0xFE4E).random()
+                # 🚪 Avant `_masse` : l'entrée peut déplacer la porte de mur.
+                ent = None if role else ENT.placer(
+                    emp, genres, alea, FAMILLE_FACADE.get(st, 0),
+                    parcelle["anneau"],
+                    [(k, (parcelle["anneau"][k],
+                          parcelle["anneau"][(k + 1) % len(parcelle["anneau"])]))
+                     for k, r in enumerate(_sur_rue(parcelle["anneau"], idx)) if r],
+                    bords_ilot, obs_entree, st)
                 if role:
                     destination = repare if crue == "ruine" else masses
                     # 🎓 Sur le campus, chaque façade regarde où le plan la tourne.
@@ -993,6 +1008,24 @@ def main():
                 murs_tot += b
                 toits_ok += c
                 toits_tot += e
+                if ent is not None and ent["route"] is None:
+                    st_entrees["sans"] += 1
+                elif ent is not None:
+                    # L'allée reste devant la ruine ; seuil et auvent attendent
+                    # le bâtiment rebâti, qui peut monter sur pilotis (95).
+                    ENT.allee(masses, ent, coul_allee, G)
+                    if crue != "ruine":
+                        st_entrees["tri"] += ENT.entree(
+                            masses, ent, coul_seuil,
+                            tuple(c * 0.85 for c in c_toit), coul_hall, G)
+                    allees_ilot.extend(ENT.emprise_allee(ent))
+                    if ent["arete"] is not None:
+                        entree_parcelle[parcelle["fid"]] = ent
+                    st_entrees["allees"] += 1
+                    st_entrees["m"] += ent["longueur"]
+                    st_entrees["deplacees"] += ent["deplacee"]
+                    st_entrees["peintes"] += ent["peinte"]
+                    st_entrees["coudes"] += len(ent["route"]) > 2
 
             # 🌳 LES CŒURS D'ÎLOT. Les fonds de parcelle étaient calculés puis
             # jetés : le cœur d'un pâté ressortait en terrain nu, donc gris.
@@ -1033,21 +1066,14 @@ def main():
                 if st == "pavillonnaire" and emps:
                     haie_posee = False
                     rues = _sur_rue(j, idx)
-                    acces = _acces_pavillonnaire(j, emps, rues)
-                    if acces is not None:
-                        _ruban(masses, [acces["maison"], acces["route"]],
-                               ACCES_LARGEUR, coul_acces, G,
-                               y=Y_SOL + 0.015, bouts=False)
-                        n_acces += 1
-                        longueur_acces += acces["longueur"]
-                        ecart_perpendiculaire = max(
-                            ecart_perpendiculaire, acces["ecart_angle"])
+                    # 🚪 Le portail s'ouvre où arrive l'allée de la porte.
+                    acces = entree_parcelle.get(p["fid"])
                     for k, sur_rue in enumerate(rues):
                         a, b = j[k], j[(k + 1) % len(j)]
                         morceaux = [(a, b)]
                         if acces is not None and k == acces["arete"]:
                             morceaux = _ouvrir_segment(
-                                a, b, acces["route"], ACCES_OUVERTURE)
+                                a, b, acces["route"][-1], ACCES_OUVERTURE)
                         cle = tuple(sorted((_cle(a), _cle(b))))
                         if not sur_rue and cle in limites_haie:
                             # La voisine l'a déjà dessinée : cette parcelle
@@ -1111,7 +1137,8 @@ def main():
                     # Jardin noyé : plus un arbre debout — ils sont couchés.
                     arbres_noyes.extend(_semer_jardin(j, aire_j, emps + allees_campus))
                     continue
-                arbres_jardin = _semer_jardin(j, aire_j, emps + allees_campus)
+                arbres_jardin = [t for t in _semer_jardin(j, aire_j, emps + allees_campus)
+                                 if not any(dedans(r + r[:1], t[:2]) for r in allees_ilot)]
                 arbres.extend(arbres_jardin)
                 n_arbre_jardin += len(arbres_jardin)
 
@@ -1127,7 +1154,7 @@ def main():
             if st in COURS_PARKING:
                 n_pl, n_box, fentes_cour = _amenager_cour(
                     masses, an, [v[0] for v in volumes] + verts_ilot
-                    + chemins_ilot + allees_campus,
+                    + chemins_ilot + allees_campus + allees_ilot,
                     int(d["stationnement"] or 0), _graine_lieu(an), G)
                 if fentes_cour:
                     places_ilot[str(fid)] = fentes_cour
@@ -1295,9 +1322,15 @@ def main():
         print("  haies : %d parcelles bâties, %d tronçons, %.2f km en"
               " pavillonnaire" %
               (n_parcelle_haie, n_haie, longueur_haie / 1000.0))
-        print("  accès pavillonnaires : %d chemins, %.1f m en tout, écart"
-              " maximal à la perpendiculaire %.4f°"
-              % (n_acces, longueur_acces, ecart_perpendiculaire))
+        print("  entrées en retrait : %d allées, %.0f m en tout, %d coudées ;"
+              " %d portes changées de mur, %d portes de hall peintes ;"
+              " %d triangles de seuils et d'auvents"
+              % (st_entrees["allees"], st_entrees["m"], st_entrees["coudes"],
+                 st_entrees["deplacees"], st_entrees["peintes"],
+                 st_entrees["tri"]))
+        if st_entrees["sans"]:
+            print("        ⚠️  %d bâtiments en retrait sans allée possible"
+                  " (enclavés)" % st_entrees["sans"])
         print("        %d parcelles pavillonnaires bâties vertes sur %d"
               % (n_pav_vert, n_parcelle_haie))
         print("        %d à deux pentes · %d plats par dessin (le tissu les"

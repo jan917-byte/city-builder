@@ -591,10 +591,8 @@ M2_PAR_ARBRE_JARDIN = 120.0
 PART_JARDINS_ARBORES = 0.55   # parmi les jardins verts, ceux qui ont un arbre
 
 # 🌿 LES HAIES ET L'ACCÈS DU PAVILLONNAIRE. La haie fait maintenant tout
-# le tour de chaque parcelle bâtie, rue comprise, et ne s'ouvre qu'au droit du
-# chemin de la maison. Le chemin est le plus court parmi ceux qui arrivent
-# PERPENDICULAIREMENT à une limite sur rue : ce n'est donc ni une diagonale
-# choisie à l'œil, ni un objet posé à la main. Une limite partagée n'est
+# le tour de chaque parcelle bâtie, rue comprise, et ne s'ouvre qu'au droit de
+# l'allée qui mène à la porte (`entrees.py`). Une limite partagée n'est
 # émise qu'une fois, sinon deux prismes superposés clignoteraient à l'écran.
 HAIE_LARGEUR = 0.55
 

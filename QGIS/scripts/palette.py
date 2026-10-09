@@ -249,6 +249,11 @@ MARQUAGE = "#C6C3B9"
 GARAGE_MUR = "#B3AEA3"
 PORTES_GARAGE = ["#B9B2A0", "#7D6A55", "#6E7F73", "#D2CEC4", "#8B5E4E", "#5F6F82"]
 
+# 🚪 L'entrée en retrait (`entrees.py`) : l'allée prolonge le trottoir, le
+# seuil est une pierre plus claire, la porte du hall de la barre est vitrée.
+SEUIL = "#C4BFB3"
+PORTE_HALL = "#3F4B4F"
+
 # Pas un aplat : un blé n'a pas la couleur d'une prairie. Une base par îlot,
 # tirée de sa position.
 CHAMPS = [

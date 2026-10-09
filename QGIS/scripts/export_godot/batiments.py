@@ -18,7 +18,6 @@ from .geometrie import (
     trianguler,
 )
 from .reglages import (
-    ACCES_OUVERTURE,
     ACROTERE,
     AIRE_JARDIN_MIN,
     ANGLE_MIN_DEG,
@@ -80,76 +79,6 @@ from .reglages import (
 
 D4B = import_module("04b_emprises_baties")
 D4C = import_module("04c_parcelles")
-
-
-def _acces_pavillonnaire(parcelle, emprises, rues):
-    """Le plus court trajet maison→rue contraint à l'angle droit.
-
-    Pour chaque limite sur rue, on exprime chaque arête du bâtiment dans le
-    repère de cette limite : `t` le long de la rue, `n` en profondeur. Les
-    deux bouts qui partagent le même `t` forment donc, par construction, un
-    chemin perpendiculaire. Parmi tous ces chemins possibles, on garde le plus
-    court ; une égalité se départage vers le milieu de la façade pour éviter
-    qu'un long mur parallèle reçoive systématiquement son accès dans un coin.
-    """
-    meilleur = None
-    marge = ACCES_OUVERTURE / 2.0 + HAIE_LARGEUR
-    for k, sur_rue in enumerate(rues):
-        if not sur_rue:
-            continue
-        a, b = parcelle[k], parcelle[(k + 1) % len(parcelle)]
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        longueur = math.hypot(dx, dy)
-        if longueur < ACCES_OUVERTURE + 2.0 * HAIE_LARGEUR:
-            continue
-        ux, uy = dx / longueur, dy / longueur
-        nx, ny = -uy, ux
-        tmin, tmax = marge, longueur - marge
-        for emp in emprises:
-            for i in range(len(emp)):
-                p, q = emp[i], emp[(i + 1) % len(emp)]
-                px, py = p[0] - a[0], p[1] - a[1]
-                qx, qy = q[0] - a[0], q[1] - a[1]
-                t0, t1 = px * ux + py * uy, qx * ux + qy * uy
-                n0, n1 = px * nx + py * ny, qx * nx + qy * ny
-                dt = t1 - t0
-                if abs(dt) < 1e-9:
-                    if t0 < tmin or t0 > tmax:
-                        continue
-                    lo, hi = 0.0, 1.0
-                else:
-                    z0, z1 = (tmin - t0) / dt, (tmax - t0) / dt
-                    lo, hi = max(0.0, min(z0, z1)), min(1.0, max(z0, z1))
-                    if lo > hi:
-                        continue
-                essais = [lo, hi, (lo + hi) / 2.0]
-                dn = n1 - n0
-                if abs(dn) > 1e-9:
-                    racine = -n0 / dn
-                    if lo <= racine <= hi:
-                        essais.append(racine)
-                for lam in essais:
-                    t = t0 + dt * lam
-                    n = n0 + dn * lam
-                    maison = (p[0] + (q[0] - p[0]) * lam,
-                               p[1] + (q[1] - p[1]) * lam)
-                    route = (a[0] + ux * t, a[1] + uy * t)
-                    distance = abs(n)
-                    if distance < 0.25:
-                        continue
-                    cle = (round(distance, 9), abs(t - longueur / 2.0))
-                    if meilleur is None or cle < meilleur[0]:
-                        vx, vy = route[0] - maison[0], route[1] - maison[1]
-                        lv = math.hypot(vx, vy)
-                        # `asin(dot)` mesure l'écart à 90°, pas l'angle
-                        # lui-même. Il doit rester nul à l'arrondi près.
-                        ecart = math.degrees(math.asin(min(
-                            1.0, abs((vx * ux + vy * uy) / lv))))
-                        meilleur = (cle, {"arete": k, "maison": maison,
-                                          "route": route,
-                                          "longueur": distance,
-                                          "ecart_angle": ecart})
-    return None if meilleur is None else meilleur[1]
 
 
 def _ouvrir_segment(a, b, centre, largeur):
