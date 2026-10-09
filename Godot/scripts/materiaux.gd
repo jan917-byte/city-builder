@@ -794,7 +794,11 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// seul le thème est en couleur, donc tout thème est lisible.\n" \
 		+ "\t// Les quatre signaux s'excluent — un thème remplit un seul.\n" \
 		+ "\tif (maquette_blanche > 0.5) {\n" \
-		+ "\t\tbase = PAPIER * COLOR.a;\n" \
+		+ "\t\tbase = (crue_vue > 0 ? CRUE_PAPIER : PAPIER) * COLOR.a;\n" \
+		+ "\t\t// Dangers : la maquette sans cheminées (boîtes sans UV au-dessus\n" \
+		+ "\t\t// de 3,2 m ; les boxes de garage font 2,4 m, l'auvent moins) ni débris.\n" \
+		+ "\t\tif (crue_vue > 0 && (debris || (diagnostic_bati > 0.5 && ruine < 0.5\n" \
+		+ "\t\t\t\t&& dot(UV, UV) < 0.01 && pos_monde.y > 3.2))) discard;\n" \
 		+ "\t\trugosite = 1.0;\n" \
 		+ "\t\t// Le calque continu : énergie, trafic, tissu. Opacité pleine,\n" \
 		+ "\t\t// il n'y a plus de matière sous lui à ménager.\n" \
@@ -821,9 +825,11 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat fw_eau = fwidth(h_eau);\n" \
 		+ "\t\tif (crue_vue > 0 && diagnostic_sol > 0.5 && diagnostic_sol < 2.5) {\n" \
 		+ "\t\t\t// 2,60 = SEUIL_RUINE de `04e`, le plafond du rez.\n" \
-		+ "\t\t\t// Bâti = mur ou toit (UV, cf. plus haut), pas l'altitude : la terrasse\n" \
-		+ "\t\t\t// de rive gauche passe 0,35 m et se peignait en bâtiment touché.\n" \
-		+ "\t\t\tif (diagnostic_bati < 0.5 || (ruine < 0.5 && dot(UV, UV) < 0.25)) {\n" \
+		+ "\t\t\t// Bâti = mur (UV.y = longueur de façade) ou toit (UV unitaire) au-dessus\n" \
+		+ "\t\t\t// d'1 m : la place-parking porte aussi un axe dans UV, à plat.\n" \
+		+ "\t\t\tbool mur = abs(normale_monde.y) < 0.30 && UV.y > 1.05;\n" \
+		+ "\t\t\tbool toit = dot(UV, UV) > 0.25 && pos_monde.y > 1.0;\n" \
+		+ "\t\t\tif (diagnostic_bati < 0.5 || (ruine < 0.5 && !mur && !toit)) {\n" \
 		+ "\t\t\t\tvec4 eau = crue_sol(h_eau, fw_eau);\n" \
 		+ "\t\t\t\tbase = mix(base, eau.rgb * COLOR.a, eau.a);\n" \
 		+ "\t\t\t} else if (ruine > 0.5 || (crue_vue == 2 && h_pied >= 2.60)) {\n" \

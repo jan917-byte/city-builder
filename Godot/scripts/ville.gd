@@ -128,7 +128,7 @@ const SOLAIRE_MOIS_POUR_100 := 1.0
 # 🎚️ LEVEL DESIGN, et c'est LE nombre du jeu : verdir les 1,58 ha plats et
 # équipables de Wehrau rachète 0,40 m de crue pour ~1 800 k€. Les deux repères
 # qui le tiennent — renaturer les huit berges coûte 8 166 k€ pour ~0,84 m par
-# bief, et sous 0,75 m PAS UN bâtiment du faubourg ne sort de la ruine. Le toit
+# bief, et dès 0,25 m 4 des 102 bâtiments condamnés sortent de la ruine. Le toit
 # vert est donc le mètre le moins cher, et le seul qui ne se voie pas d'en bas.
 const TOIT_VERT_MOIS_POUR_100 := 2.0        # étanchéité reprise, puis substrat
 const TOIT_VERT_BAISSE_M_PAR_HA := 0.25     # de crue en moins, par hectare verdi
@@ -205,8 +205,8 @@ const PARC_BAISSE_M_PAR_HA := 0.10   # de crue en moins dans toute la ville, par
 # prochaine reprendrait. Le trafic de la voie de berge, la canopée et
 # l'imperméabilisation restent à trancher.
 # 🎚️ LE SIXIÈME NOMBRE, et c'est le plus lourd : combien de crue un mètre de
-# rive rendue rachète. Repère mesuré par `04e` — sous 0,75 m de baisse, PAS UN
-# bâtiment du faubourg ne sort de la ruine ; à 2,00 m, 56 des 135 en sortent.
+# rive rendue rachète. Repère mesuré par `04e` (2026-10-09, crue bornée) — à
+# 0,25 m de baisse, 4 des 102 bâtiments condamnés en sortent ; à 2,00 m, 38.
 const BERGE_ASPHALTE := 0
 const BERGE_APAISEE := 1
 const BERGE_RENATUREE := 2

@@ -75,6 +75,14 @@ BERGE_GAUCHE_M = 4.50
 NIVEAU_OUVERTURE_M = 3.80       # la crue qui a eu lieu — l'état de départ
 NIVEAU_ANNONCE_M = 6.00         # celle qu'on annonce — c'est elle qui fait `alea`
 
+# 🎚️ OÙ S'ARRÊTE LA CRUE ANNONCÉE EN RIVE DROITE (auteur, 2026-10-09 : « un
+# juste milieu entre dégâts actuels et dégâts annoncés »). 0 = la limite de la
+# boue, 1 = tout le profil à 6 m (~430 m de l'eau au sud). Près de la borne
+# l'eau s'amincit d'1 m tous les FONDU m : c'est la bande des bâtiments
+# touchés sans être détruits, au pied des coteaux.
+PORTEE_ANNONCE = 0.25
+FONDU_ANNONCE_M = 15.0
+
 # Les paliers de dégât, en mètres d'eau AU PIED du bâtiment.
 # 🔴 2,60 m n'est pas un réglage libre : c'est la hauteur sous plafond d'un
 # rez-de-chaussée. Au-dessus, l'eau a chargé le plancher de l'étage et la
@@ -165,10 +173,28 @@ class ChampCrue:
         ys = [p[1] for an in anneaux for p in an]
         self.sud, self.nord = min(ys), max(ys)
 
-    def hauteur(self, p, niveau):
+    def _mesure(self, p):
         d = min(D4.dist_pt_seg(p, a, b) for a, b in self.segs)
         fil = D4.borne((p[1] - self.sud) / max(1e-6, self.nord - self.sud))
-        return hauteur_eau(d, fil, self.rives.rive(p), niveau)
+        return d, fil, self.rives.rive(p)
+
+    def hauteur(self, p, niveau):
+        return hauteur_eau(*self._mesure(p), niveau)
+
+    def annonce(self, p, niveau=None):
+        """La crue annoncée : celle du profil, bornée en rive droite à
+        `PORTEE_ANNONCE` et amincie à l'approche de la borne."""
+        niveau = NIVEAU_ANNONCE_M if niveau is None else niveau
+        d, fil, rive = self._mesure(p)
+        h = hauteur_eau(d, fil, rive, niveau)
+        if rive != "droite":
+            return h
+        bord = limite_est(p[1], self.contour)
+        coupe = self.rives.coupe(p[1])
+        boue = max(0.0, bord - coupe[1]) if bord is not None and coupe else 0.0
+        plein = NIVEAU_ANNONCE_M * pente_droite(fil)
+        portee = boue + PORTEE_ANNONCE * (plein - boue)
+        return min(h, max(0.0, (portee - d) / FONDU_ANNONCE_M))
 
     # 🌳 LE VERGER (2026-09-17, auteur) : le quartier de rive droite que le
     # limon a couvert. L'Ilse le borne à l'ouest, le contour annoté à l'est.
@@ -306,7 +332,7 @@ def main():
         h = champ_crue.ouverture(c)
         b = {"fid": fid, "ilot": fid_i, "surf": surf or 0.0, "h": h,
              "etat": etat(h),
-             "h_annonce": champ_crue.hauteur(c, NIVEAU_ANNONCE_M)}
+             "h_annonce": champ_crue.annonce(c)}
         bats.append(b)
         ilots[fid_i]["bats"].append(b)
 
@@ -325,7 +351,7 @@ def main():
         stot = sum(b["surf"] for b in d["bats"])
         d["surface_bati"] = stot
         if not stot:
-            h_a = hauteur_eau(d["d"], d["fil"], d["rive"], NIVEAU_ANNONCE_M)
+            h_a = champ_crue.annonce(d["c"])
             d.update({"alea": round(D4.borne(h_a / NIVEAU_ANNONCE_M), 3),
                       "h_annonce": h_a,
                       "h_max": champ_crue.ouverture(d["c"]),

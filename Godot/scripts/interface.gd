@@ -1856,7 +1856,7 @@ func _panneau_diagnostic() -> void:
 
 	# 🌊 Le bleu fonce avec la profondeur (crue.gdshaderinc). Flaggable (90).
 	var d: VBoxContainer = _vues_crue["degats"]
-	_legende(d, Color8(38, 157, 196), "Passage de la crue · plus foncé, plus profond")
+	_legende(d, Color8(38, 157, 196), "Passage de la crue, plus foncé où elle est profonde")
 	_legende(d, Color8(232, 126, 48), "Bâtiments touchés par l'eau")
 	_legende(d, Color8(140, 28, 40), "Bâtiments détruits")
 	_legende(d, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")

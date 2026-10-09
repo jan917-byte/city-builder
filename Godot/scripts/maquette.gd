@@ -128,6 +128,9 @@ var pastilles: Pastilles
 var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
 var mat_terrain: ShaderMaterial
+var _environnement: Environment
+## Le ciel de la carte des dangers, assorti à `CRUE_PAPIER` (crue.gdshaderinc).
+const FOND_DANGERS := Color8(255, 255, 252)
 var masque: SubViewport
 var cam_masque: Camera3D
 var maille_masque: MeshInstance3D
@@ -2142,6 +2145,7 @@ func _decor() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = Materiaux.environnement(
 		Donnees.teinte(donnees, "_ciel"), Donnees.teinte(donnees, "_ambiant"))
+	_environnement = we.environment
 	add_child(we)
 
 	# 🔎 La même recette que la miniature de la fiche : voir `Materiaux.soleil`.
@@ -2512,6 +2516,9 @@ func _habiller_monde(diagnostic: bool) -> void:
 	var eau := monde.get_node_or_null("Eau") as MeshInstance3D
 	if eau != null:
 		(eau.material_override as ShaderMaterial).set_shader_parameter("diagnostic", diagnostic)
+	if _environnement != null:
+		_environnement.background_color = FOND_DANGERS if theme == "dangers" \
+			else Donnees.teinte(donnees, "_ciel")
 
 
 func _val(couche: String, fid: int, t: float) -> float:

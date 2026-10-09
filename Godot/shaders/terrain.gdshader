@@ -28,6 +28,11 @@ void fragment() {
 	// La carte des dangers ne s'arrête pas au dernier îlot : le champ, si.
 	float h_eau = crue_vue > 0 ? crue_hauteur(monde.xz, 1.0) : 0.0;
 	float fw_eau = fwidth(h_eau);
+	if (diagnostic && crue_vue > 0) {
+		// Un fond de carte, pas un relief : les collines ne s'ombrent plus.
+		ALBEDO = CRUE_PAPIER;
+		NORMAL = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
+	}
 	if (diagnostic && crue_vue > 0 && monde.y < 1.5) {
 		vec4 eau = crue_sol(h_eau, fw_eau);
 		ALBEDO = mix(ALBEDO, eau.rgb * COLOR.a, eau.a);

@@ -36,8 +36,8 @@ def carte_boue(ilots, routes, chenal, cx, cy, pas=3.0, champ=None):
 MARGE_ANNONCE_M = 120.0
 
 
-# 🌊 LA PROCHAINE CRUE, pour la carte des dangers : la hauteur que `04e` lit au
-# centre de chaque bâtiment, sur toute la ville. 12 m et non 3 : le champ est
+# 🌊 LA PROCHAINE CRUE, pour la carte des dangers : `ChampCrue.annonce`, que
+# `04e` lit au centre de chaque bâtiment, sur toute la ville. 12 m et non 3 : le champ est
 # linéaire en distance à l'eau, et 47 µs le point (mesuré) font 20 s à 3 m.
 def _carte_annonce(champ, niveau, chenal, x0, y0, largeur, hauteur, cx, cy,
                    pas=12.0):
@@ -47,7 +47,7 @@ def _carte_annonce(champ, niveau, chenal, x0, y0, largeur, hauteur, cx, cy,
     for j in range(ny - 1, -1, -1):
         y = y0 + j * pas
         for i in range(nx):
-            h = champ.hauteur((x0 + i * pas, y), niveau) / niveau
+            h = champ.annonce((x0 + i * pas, y), niveau) / niveau
             pixels.append(round(max(0.0, min(1.0, h)) * 255))
     ysud, ynord = chenal._y_rive
     # `fil` en Z de Godot : 0 à l'amont (sud), 1 à l'aval, comme `position_fil_eau`.

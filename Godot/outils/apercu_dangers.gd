@@ -42,4 +42,5 @@ func capturer() -> void:
 	jeu._sur_vue_crue("prochaine")
 	await photo("dangers_02_prochaine", Vector2(250, -150), 700.0, 0.0, 70.0)
 	await photo("dangers_04_prochaine_pres", Vector2(290, -200), 200.0, 25.0, 45.0)
+	await photo("dangers_05_prochaine_maisons", Vector2(330, -170), 90.0, 30.0, 40.0)
 	quit()

@@ -15,6 +15,9 @@ uniform vec3 crue_fonce = vec3(0.008, 0.089, 0.305);
 uniform float crue_baisse_ville = 0.0;
 uniform vec4 crue_biefs[12];
 uniform vec2 crue_fil = vec2(0.0, 1.0);
+// Le fond de la carte des dangers, blanc (auteur, 2026-10-09). ⚠ LINÉAIRE ;
+// le ciel assorti est `maquette.FOND_DANGERS`.
+const vec3 CRUE_PAPIER = vec3(0.880, 0.870, 0.840);
 
 float crue_baisse(float z) {
 	float fil = clamp((crue_fil.x - z) / (crue_fil.x - crue_fil.y), 0.0, 1.0);

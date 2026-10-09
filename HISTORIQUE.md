@@ -722,3 +722,6 @@ Essais headless étude, livre, ouverture : 0 échec ; captures `apercu_dangers.g
 **2026-10-09 — Les haies du pavillonnaire sont taillées : sommet arrondi qui ondule, une essence par parcelle (claire, moyenne, sombre), plus hautes entre deux jardins (1,55 m) que côté rue (1,15 m).**
 Demande de l'auteur ; `_haie` (`export_godot/batiments.py`) en modules de 2,5 m, réglages `HAIE_*` dans `reglages.py` ; 9,09 km, 727 tronçons ; masses 71 275 → 104 253 triangles (ville 148 627 → 181 605).
 Essais headless 14/19 ; camp, capital, énergie, sauvegarde, travaux échouaient sans la modification aussi ; ⚠ les essais `-- --ouverture` tournent sans fin si on oublie l'option ; planche `wehrau_haies_avant_apres`.
+**2026-10-09 — La prochaine crue s'arrête à mi-chemin entre la boue et le profil à 6 m ; au pied des coteaux les maisons passent en orange ; la carte Dangers a un fond blanc, sans cheminées ni débris.**
+Demande de l'auteur sur capture (« trop grand », « juste milieu », chiffres compris) ; `ChampCrue.annonce` dans `04e` (`PORTEE_ANNONCE` 0,25, `FONDU_ANNONCE_M` 15) sert `04e` et la carte ; 134 → 102 bâtiments détruits, 53 → 81 touchés.
+25 cm de baisse sauvent désormais 4 bâtiments (avant : rien sous 0,75 m) ; `essai_livre` échoue sur le seuil de la jauge, tombé à 0 ; étude et ouverture 0 échec.
