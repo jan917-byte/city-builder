@@ -1187,8 +1187,8 @@ ESSAI — la ville, sans décision")
 		# voit pas sur une capture qu'on ne compare à rien. « dangers » a déjà
 		# ses trois comptes ci-dessus, d'où le −1 qui le laisse passer.
 		var peints := -1    # −1 = compté autrement, jamais « rien de peint »
-		if _genre() == "tissu":
-			peints = _teintes_tissu.size()
+		if _genre() == "agriculture":
+			peints = ville.ilots.keys().filter(func(f) -> bool: return ville.est_champ(int(f))).size()
 		elif _genre() == "calque":
 			peints = 0
 			for fid in noeuds[calque_couche]:
@@ -2290,7 +2290,7 @@ const DISPO := {
 # `interface.gd`. Un thème `calque` n'a rien d'autre à écrire qu'une ligne.
 #
 #   genre "calque"    un champ + la rampe. La voie normale d'un thème neuf.
-#   genre "tissu"     une teinte par sous_type, pas une échelle continue.
+#   genre "agriculture" une teinte par culture, sur les champs seuls.
 #   genre "crue"      trois signaux de l'eau + les croix des routes coupées.
 #   genre "chantiers" l'état d'avancement de l'objet entier.
 #   genre "sols"      le sol de l'îlot par sa part en dur, les toits nus en dur,
@@ -2312,8 +2312,9 @@ const THEMES := [
 		"resume": "La charge des rues, après la crue",
 		"bas": "Rue calme", "haut": "Saturée",
 		"note": "Violet : endommagée par la crue."},
-	{"id": "tissu", "court": "Tissu", "nom": "Tissu urbain", "genre": "tissu",
-		"resume": "Une teinte par type de tissu"},
+	# 🔄 Remplace « Tissu urbain » (auteur, 2026-10-09 : « elle dit rien »).
+	{"id": "agriculture", "court": "Agriculture", "nom": "Agriculture", "genre": "agriculture",
+		"icone": "nourriture", "resume": "Ce que portent les champs, ce qu'ils nourrissent"},
 	# 💧 La carte des sols (101) : ce qui boit la pluie, ce qui la renvoie à l'Ilse.
 	{"id": "sols", "court": "Sols", "nom": "Sols", "genre": "sols",
 		"resume": "Ce qui boit la pluie, ce qui la renvoie à l'Ilse"},
@@ -2389,6 +2390,19 @@ func _teinte_sol(couche: String, fid: int) -> Color:
 	return l
 
 
+## 🌾 Un champ par sa culture ; pâli tant qu'il ne récolte pas (chantier, verger
+## trop jeune). ⚠ Teintes en sRGB dans `interface.CULTURE_TEINTES`, la légende.
+func _teinte_champ(fid: int) -> Color:
+	var c: Color = interface.CULTURE_TEINTES[ville.champ_culture(fid, mois)]
+	if ville.est_campement(fid, mois):
+		c = interface.CAMP_TEINTE
+	elif ville.champ_rendement(fid, mois) <= 0.0 and ville.champ_nourriture(fid, mois) > 0.0:
+		c = c.lerp(Color.WHITE, 0.55)
+	var l := c.srgb_to_linear()
+	l.a = 1.0
+	return l
+
+
 ## Une proposition ouvre la vraie fiche, réglée d'avance ; seul son bouton paie.
 ## Le guide et le panneau de la prochaine crue passent tous deux par ici.
 func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -> void:
@@ -2436,14 +2450,6 @@ func _genre() -> String:
 	return str(_theme_actif().get("genre", ""))
 
 
-# 🎨 LE THÈME « TISSU » — 2026-08-18. Depuis que les bâtiments sont rendus par
-# MATÉRIAU, la couleur ne dit plus la typologie : ce thème repeint la ville
-# avec la palette d'avant, le temps d'un coup d'œil. Il passe par le MÊME
-# uniforme `calque` que les thèmes continus, donc l'AO bakée survit et deux
-# repeints ne peuvent pas se superposer.
-var _teintes_tissu := {}
-
-
 ## Le seul aiguillage des deux vues. `id` vide ramène à la ville vivante ;
 ## sinon c'est un `id` de THEMES, et il chasse le précédent parce qu'il n'y a
 ## qu'une case — l'exclusion mutuelle n'est plus écrite nulle part.
@@ -2458,14 +2464,6 @@ func _sur_theme(id: String) -> void:
 		theme = ""
 		t = {}
 	var genre := str(t.get("genre", ""))
-
-	if genre == "tissu" and _teintes_tissu.is_empty():
-		for f in (donnees["objets"]["ilots"] as Dictionary):
-			var st: String = donnees["objets"]["ilots"][f]["sous_type"]
-			# ⚠ Palette en sRGB, uniforme en LINÉAIRE : sans conversion le
-			# repeint ressort délavé (cf. `vers_lineaire` côté Python).
-			_teintes_tissu[int(f)] = Donnees.teinte(
-				donnees, st, Color.MAGENTA).srgb_to_linear()
 
 	calque_couche = str(t.get("couche", ""))
 	calque_champ = str(t.get("champ", ""))
@@ -2566,11 +2564,8 @@ func _peindre() -> void:
 				diagnostic_sol = 3.0
 			elif couche == "b" and genre != "crue":
 				c = BERGE_TEINTES[ville.berge_etat(fid, mois)]
-			elif genre == "tissu" and couche == "i":
-				c = _teintes_tissu.get(fid, Color.MAGENTA)
-				# 1,0 et pas 0,88 : ce thème REMPLACE le carton. Une opacité
-				# partielle laisserait le gris teinter chaque sous_type.
-				c.a = 1.0
+			elif genre == "agriculture" and couche == "i" and ville.est_champ(fid):
+				c = _teinte_champ(fid)
 			elif genre == "calque" and calque_couche == couche \
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))

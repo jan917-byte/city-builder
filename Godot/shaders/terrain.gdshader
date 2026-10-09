@@ -4,6 +4,8 @@ render_mode cull_back, specular_disabled;
 #include "res://shaders/crue.gdshaderinc"
 
 uniform bool diagnostic = false;
+// ⚠ `PAPIER` de `materiaux.gd`, un cran plus sombre : la ville se détache de la campagne.
+const vec3 DIAGNOSTIC_FOND = vec3(0.624, 0.605, 0.560) * 0.8;
 varying vec3 monde;
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -24,13 +26,14 @@ void fragment() {
 	float net = 1.0 - smoothstep(0.3, 1.2, length(fwidth(monde.xz)));
 	float fin = bruit(monde.xz * 1.6);
 	float grain = (large - 0.5) * mix(0.05, 0.20, vert) + (fin - 0.5) * 0.055 * net;
-	ALBEDO = COLOR.rgb * (diagnostic ? vec3(0.394) : vec3(1.0 + grain));
+	ALBEDO = COLOR.rgb * (1.0 + grain);
 	// La carte des dangers ne s'arrête pas au dernier îlot : le champ, si.
 	float h_eau = crue_vue > 0 ? crue_hauteur(monde.xz, 1.0) : 0.0;
 	float fw_eau = fwidth(h_eau);
-	if (diagnostic && crue_vue > 0) {
+	if (diagnostic) {
 		// Un fond de carte, pas un relief : les collines ne s'ombrent plus.
-		ALBEDO = CRUE_PAPIER;
+		// 🔄 Tous les diagnostics, plus Dangers seul : le vert sombre des massifs ne disait rien (auteur, 2026-10-09).
+		ALBEDO = crue_vue > 0 ? CRUE_PAPIER : DIAGNOSTIC_FOND;
 		NORMAL = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 	}
 	if (diagnostic && crue_vue > 0 && monde.y < 1.5) {

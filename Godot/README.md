@@ -48,7 +48,7 @@ Les noms affichés viennent de `Godot/data/lieux.json`, table éditoriale à mod
 
 ## Les deux vues
 
-**La ville vivante** et **le diagnostic**, à la souris : le bouton « Diagnostic » du tableau de bord, puis le menu des thèmes qui prend sa place — pas de raccourci clavier, c'est voulu. Le diagnostic passe la ville en **maquette blanche** — plus de matière, plus d'arbres, plus de voitures, rien que le volume — et **seul le thème choisi est en couleur** : tant qu'il ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le thème. Le temps continue, la caméra ne bouge pas, la fiche répond toujours au clic — **le diagnostic change ce qu'on voit, jamais ce qu'on peut faire**. Un thème neuf, c'est **trois pièces** : une ligne dans `THEMES` (haut de `maquette.gd`), son genre de peinture, et un panneau seulement s'il en faut un.
+**La ville vivante** et **le diagnostic**, à la souris : le bouton « Diagnostic » du tableau de bord, puis le menu des thèmes qui prend sa place — pas de raccourci clavier, c'est voulu. Le diagnostic passe la ville en **maquette blanche** — plus de matière, plus d'arbres, plus de voitures, rien que le volume, et un relief sans couleur hors de la ville — et **seul le thème choisi est en couleur** : tant qu'il ressemble à la ville vivante, on ne sait plus si on juge le rendu ou le thème. Le temps continue, la caméra ne bouge pas, la fiche répond toujours au clic — **le diagnostic change ce qu'on voit, jamais ce qu'on peut faire**. Un thème neuf, c'est **trois pièces** : une ligne dans `THEMES` (haut de `maquette.gd`), son genre de peinture, et un panneau seulement s'il en faut un.
 
 En bas à gauche, la boussole **N** remet le nord en haut ; **Dessus / 3D** alterne plan et inclinaison précédente. Les panneaux gardent leurs clics et leur molette. `V` `B` `R` restent les repères de contrôle. `Godot --headless --path Godot --script res://outils/essai_camera.gd` vérifie les gestes ; retirer `--headless` et ajouter `-- --ville` vérifie les clics et boutons dans la maquette et produit un aperçu.
 
@@ -75,7 +75,7 @@ En bas à gauche, la boussole **N** remet le nord en haut ; **Dessus / 3D** alte
 - 🔴 En orthographie, la profondeur de sol visible vaut `cadrage / sin(hauteur)`. Le cadrage est donc **multiplié par le sinus de la hauteur**, sinon la vue rasante ne montre plus qu'une bande au milieu d'un écran vide.
 - **On montre l'écart au mois 0 à côté de la valeur**, partout. Une valeur qui bouge de 2 % ne se voit pas, et sans l'écart on croit que rien ne bouge.
 - **L'échelle de couleur d'un thème est fixée sur l'état de DÉPART**, jamais recalculée à chaque pas de temps — sinon l'extrémum suit le changement et l'image reste identique.
-- **Le toit et le mur sont deux matériaux**, le matériau découle de l'**époque** du bâtiment, et chaque bâtiment tire sa teinte de sa **position** (35). Le thème « tissu » est la contrepartie : la couleur ne disant plus la typologie, il faut pouvoir la retrouver d'un geste.
+- **Le toit et le mur sont deux matériaux**, le matériau découle de l'**époque** du bâtiment, et chaque bâtiment tire sa teinte de sa **position** (35). La typologie se lit donc dans la fiche de l'îlot, pas dans la couleur.
 - **Aucune fenêtre n'est un triangle** : le percement est dessiné par le matériau. `07` décide le genre de percement et la longueur du mur, Godot dessine.
 
 ## Ce qui se sélectionne, et comment

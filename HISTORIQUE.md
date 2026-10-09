@@ -731,3 +731,6 @@ Juin de l'an 1, caisse 2 674 k€, personne dehors, aucune rue boueuse ; `essai_
 **2026-10-09 — Dangers ne fait plus que le diagnostic : les leviers de la prochaine crue passent à l'université, la carte se met à jour au clic, une barre de danger vit sous la date, la caisse a sa croix.**
 Retour de jeu de l'auteur ; `mois_carte_crue` (`interface.gd`) fige la carte et ses chiffres, `maquette._regler_crue` le lit, un tween fait reculer l'eau ; `JaugeDanger` sous la date ; l'étude de l'université perd ses quatre tuiles.
 Essais : étude 0 échec (5,58 → 5,06 m au clic), ouverture 0, camp 0, livre 1 échec, celui de la jauge, déjà là ; aucune crue ne tombe encore au bout des 8 ans.
+**2026-10-09 — Diagnostic : la page Tissu devient Agriculture (une teinte par culture, tableau ha · pers./ha · nourris), et le relief hors ville perd son vert sur toutes les pages.**
+Demande de l'auteur (« Tissu ne dit rien », « le fond vert des montagnes ne sert pas ») ; `maquette._teinte_champ`, `interface._panneau_agriculture`, `terrain.gdshader` peint `DIAGNOSTIC_FOND` à plat comme Dangers.
+`apercu_diagnostics.gd` sort une capture par page + une vue large ; planche avant/après `wehrau_diagnostic_planche.png` ; essais non relancés.
