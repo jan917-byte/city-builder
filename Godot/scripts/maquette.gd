@@ -127,6 +127,7 @@ var camp: Camp
 var pastilles: Pastilles
 var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
+var mat_terrain: ShaderMaterial
 var masque: SubViewport
 var cam_masque: Camera3D
 var maille_masque: MeshInstance3D
@@ -217,6 +218,7 @@ func _ready() -> void:
 	# rangées de fenêtres sur les planchers que 07 a empilés.
 	mat_objet = Materiaux.objet(float(donnees["meta"]["etage_m"]))
 	_appliquer_boue(mat_objet)
+	_appliquer_crue_annoncee(mat_objet)
 	monde = Node3D.new()
 	monde.name = "Monde"
 	add_child(monde)
@@ -1603,8 +1605,9 @@ func _construire() -> void:
 	# 🔄 Le terrain était un CHAMP D'ALTITUDE déplié en grille ; la carte est
 	# plate depuis le 2026-08-12. Murs de quai et fond du chenal sont dedans,
 	# pas dans l'eau, dont les rides restent dans le matériau.
-	var mat_terrain := Materiaux.terrain()
+	mat_terrain = Materiaux.terrain()
 	_appliquer_boue(mat_terrain)
+	_appliquer_crue_annoncee(mat_terrain)
 	_fusionne("Terrain", Constructeur.maillage(donnees["terrain"]), mat_terrain)
 	if donnees.has("paysage") and not _ignore("Paysage"):
 		paysage = Paysage.new()
@@ -1687,6 +1690,25 @@ func _appliquer_boue(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("boue_carte", ImageTexture.create_from_image(img))
 	mat.set_shader_parameter("boue_repere", Vector4(r[0], r[1], r[2], r[3]))
 	mat.set_shader_parameter("boue_active", true)
+
+
+## 🌊 La prochaine crue au mètre, pour la carte des dangers (crue.gdshaderinc).
+func _appliquer_crue_annoncee(mat: ShaderMaterial) -> void:
+	var a: Dictionary = donnees.get("boue", {}).get("annonce", {})
+	if a.is_empty():
+		push_warning("carte de la prochaine crue absente : relancer la chaîne")
+		return
+	var img := Image.create_from_data(int(a["taille"][0]), int(a["taille"][1]),
+		false, Image.FORMAT_R8, PackedByteArray(a["pixels"]))
+	var r: Array = a["repere"]
+	mat.set_shader_parameter("crue_annonce", ImageTexture.create_from_image(img))
+	mat.set_shader_parameter("crue_annonce_repere", Vector4(r[0], r[1], r[2], r[3]))
+	mat.set_shader_parameter("crue_annonce_niveau", float(a["niveau_m"]))
+	mat.set_shader_parameter("crue_fil", Vector2(a["fil_z"][0], a["fil_z"][1]))
+	var c0: Color = RAMPE_EAU[0].srgb_to_linear()
+	mat.set_shader_parameter("crue_clair", Vector3(c0.r, c0.g, c0.b))
+	var c1: Color = RAMPE_EAU[1].srgb_to_linear()
+	mat.set_shader_parameter("crue_fonce", Vector3(c1.r, c1.g, c1.b))
 
 
 func _fusionne(nom: String, m: ArrayMesh, mat: Material) -> void:
@@ -2294,28 +2316,46 @@ var theme := ""
 ## 🎓 Les deux onglets de Dangers : ce que l'eau a pris, ce qu'elle reprendrait.
 ## Un sous-état du thème et non un thème : il n'a pas de tuile dans le rail.
 var vue_crue := "degats"
-var _eau_max := 0.0
 
 
 func _sur_vue_crue(id: String) -> void:
 	vue_crue = id
-	if _eau_max <= 0.0:
-		for fid in ville.ilots:
-			if str(ville.ilots[fid].get("sous_type", "")) != "riviere":
-				_eau_max = maxf(_eau_max, ville.base("i", fid, "hauteur_eau_annonce"))
 	_dernier_peint = -1.0
 	_rafraichir(true)
 
 
-## La teinte d'un îlot dans la prochaine crue, en linéaire ; transparente au sec.
-func _teinte_eau(fid: int) -> Color:
-	if str(ville.ilots[fid].get("sous_type", "")) == "riviere":
-		return Color(1.0, 1.0, 1.0, 0.0)
-	var h := ville.valeur("i", fid, "hauteur_eau_annonce", mois)
-	if h <= Ville.SEUIL_EAU_M:
-		return Color(1.0, 1.0, 1.0, 0.0)
-	var c: Color = RAMPE_EAU[0].lerp(RAMPE_EAU[1], clampf(h / maxf(_eau_max, 0.01), 0.0, 1.0))
-	return c.srgb_to_linear()
+## Ce que le shader de la carte des dangers lit à chaque peinture : quelle crue,
+## sa profondeur au pire (le haut de la rampe), et ce que la ville a racheté —
+## la somme de `ville.baisse_crue_m`, décomposée pour être refaite au mètre.
+func _regler_crue(active: bool) -> void:
+	var vue := 0 if not active else (2 if vue_crue == "prochaine" else 1)
+	_crue_param("crue_vue", vue)
+	if vue == 0:
+		return
+	var pire := 0.0
+	for fid in ville.ilots:
+		if str(ville.ilots[fid].get("sous_type", "")) != "riviere":
+			pire = maxf(pire, ville.base("i", fid,
+				"hauteur_eau_annonce" if vue == 2 else "hauteur_eau_max"))
+	_crue_param("crue_max", maxf(pire, 0.5))
+	_crue_param("crue_baisse_ville", ville.baisse_crue_toits_m(mois)
+		+ ville.baisse_crue_champs_m(mois) + ville.baisse_crue_parcs_m(mois)
+		+ ville.baisse_crue_sols_m(mois))
+	var biefs := []
+	for b in ville.berges:
+		biefs.append(Vector4(ville.base("b", b, "fil_amont"), ville.base("b", b, "fil_aval"),
+			ville.berge_baisse_m(b, mois), 0.0))
+	if biefs.size() > 12:
+		push_error("crue.gdshaderinc ne lit que 12 berges, il y en a %d" % biefs.size())
+	while biefs.size() < 12:
+		biefs.append(Vector4.ZERO)
+	_crue_param("crue_biefs", biefs.slice(0, 12))
+
+
+func _crue_param(nom: String, valeur: Variant) -> void:
+	for m in [mat_objet, mat_terrain]:
+		if m != null:
+			m.set_shader_parameter(nom, valeur)
 
 
 ## 💧 Le sol d'un îlot, de vert (il boit) à gris (en dur) ; la place-parking en
@@ -2483,26 +2523,22 @@ func _val(couche: String, fid: int, t: float) -> float:
 func _peindre() -> void:
 	var genre := _genre()
 	var blanche := theme != ""
+	_regler_crue(genre == "crue")
 	for couche in ["i", "r", "b"]:
 		for fid in noeuds[couche]:
 			var mi: MeshInstance3D = noeuds[couche][fid]
 			var diagnostic_sol := 0.0
 			var diagnostic_bati := 0.0
-			if genre == "crue" and vue_crue == "prochaine":
-				# 🎓 Le sol dit la profondeur (`_teinte_eau`), le volume orange
-				# ce que l'eau ruinerait : la légende des Dégâts, au futur.
-				if couche == "i" and ville.valeur("i", fid, "part_ruinee_apres", mois) > 0.001:
-					diagnostic_bati = 1.0
-			elif genre == "crue":
-				var o: Dictionary = ville.objets(couche).get(fid, {})
-				if couche == "i":
-					if float(o.get("hauteur_eau_max", 0.0)) > 0.10:
-						diagnostic_sol = 1.0
-					if float(o.get("part_sinistree", 0.0)) > 0.0:
-						diagnostic_bati = 1.0
-				else:
-					diagnostic_sol = 2.0 if str(o.get("etat_crue", "")) == "coupe" \
-						else (1.0 if float(o.get("hauteur_eau", 0.0)) > 0.10 else 0.0)
+			if genre == "crue" and not (couche == "i"
+					and str(ville.ilots[fid].get("sous_type", "")) == "riviere"):
+				# 🌊 L'eau se lit au mètre dans le shader (crue.gdshaderinc) ; ici,
+				# seulement qui la prend : le sol partout, le bâti sur les îlots,
+				# et le rouge des routes coupées dans les Dégâts.
+				diagnostic_sol = 1.0
+				diagnostic_bati = 1.0 if couche == "i" else 0.0
+				if couche == "r" and vue_crue == "degats" \
+						and str(ville.routes[fid].get("etat_crue", "")) == "coupe":
+					diagnostic_sol = 2.0
 			var c := Color(1.0, 1.0, 1.0, 0.0)
 			# 🌊 L'ÉTAT D'UNE BERGE SE VOIT SANS OUVRIR SA FICHE, et c'est tout
 			# l'intérêt d'en avoir fait un objet. Le calque est libre sur cette
@@ -2511,10 +2547,8 @@ func _peindre() -> void:
 				c = _teinte_sol(couche, fid)
 				# 3 : le calque ne prend que le sol ; toits et murs sont lus par le shader.
 				diagnostic_sol = 3.0
-			elif couche == "b":
+			elif couche == "b" and genre != "crue":
 				c = BERGE_TEINTES[ville.berge_etat(fid, mois)]
-			elif genre == "crue" and vue_crue == "prochaine" and couche == "i":
-				c = _teinte_eau(fid)
 			elif genre == "tissu" and couche == "i":
 				c = _teintes_tissu.get(fid, Color.MAGENTA)
 				# 1,0 et pas 0,88 : ce thème REMPLACE le carton. Une opacité

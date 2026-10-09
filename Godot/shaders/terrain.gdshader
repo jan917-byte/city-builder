@@ -1,6 +1,7 @@
 shader_type spatial;
 render_mode cull_back, specular_disabled;
 #include "res://shaders/boue.gdshaderinc"
+#include "res://shaders/crue.gdshaderinc"
 
 uniform bool diagnostic = false;
 varying vec3 monde;
@@ -24,6 +25,13 @@ void fragment() {
 	float fin = bruit(monde.xz * 1.6);
 	float grain = (large - 0.5) * mix(0.05, 0.20, vert) + (fin - 0.5) * 0.055 * net;
 	ALBEDO = COLOR.rgb * (diagnostic ? vec3(0.394) : vec3(1.0 + grain));
+	// La carte des dangers ne s'arrête pas au dernier îlot : le champ, si.
+	float h_eau = crue_vue > 0 ? crue_hauteur(monde.xz, 1.0) : 0.0;
+	float fw_eau = fwidth(h_eau);
+	if (diagnostic && crue_vue > 0 && monde.y < 1.5) {
+		vec4 eau = crue_sol(h_eau, fw_eau);
+		ALBEDO = mix(ALBEDO, eau.rgb * COLOR.a, eau.a);
+	}
 	if (!diagnostic) {
 		vec4 depot = depot_boue(monde);
 		ALBEDO = mix(ALBEDO, depot.rgb * COLOR.a, depot.a);

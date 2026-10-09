@@ -80,6 +80,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 	sh.code = "shader_type spatial;\n" \
 		+ "render_mode cull_back, specular_disabled;\n" \
 		+ "#include \"res://shaders/boue.gdshaderinc\"\n" \
+		+ "#include \"res://shaders/crue.gdshaderinc\"\n" \
 		+ "#include \"res://shaders/champs.gdshaderinc\"\n" \
 		+ "instance uniform float parcelle_agricole = 0.0;\n" \
 		+ "instance uniform float boue_propre = 0.0;\n" \
@@ -811,14 +812,28 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t\tbase = calque.rgb * COLOR.a;\n" \
 		+ "\t\t\t}\n" \
 		+ "\t\t}\n" \
-		+ "\t\t// Dangers : le sol raconte le passage de l'eau, le volume les\n" \
-		+ "\t\t// bâtiments touchés, les routes coupées ont leur rouge.\n" \
-		+ "\t\tif (diagnostic_sol > 0.5 && diagnostic_sol < 2.5) {\n" \
-		+ "\t\t\tvec3 signal_sol = diagnostic_sol > 1.5 ? vec3(0.72, 0.035, 0.025) : vec3(0.020, 0.310, 0.550);\n" \
-		+ "\t\t\tbase = mix(base, signal_sol * COLOR.a, 0.88);\n" \
+		+ "\t\t// Dangers (crue.gdshaderinc) : le sol prend l'eau au mètre près, le\n" \
+		+ "\t\t// bâti se lit à l'eau à son pied, les routes coupées en rouge.\n" \
+		+ "\t\t// ⚠ LINÉAIRE. Touché #E87E30, détruit #8C1C28, coupé #DC3A30 (`interface.gd`).\n" \
+		+ "\t\t// Hors des branches : texture et fwidth veulent un flot uniforme.\n" \
+		+ "\t\tfloat h_eau = crue_vue > 0 ? crue_hauteur(pos_monde.xz, 1.0) : 0.0;\n" \
+		+ "\t\tfloat h_pied = crue_vue > 0 ? crue_hauteur(pos_monde.xz, 0.0) : 0.0;\n" \
+		+ "\t\tfloat fw_eau = fwidth(h_eau);\n" \
+		+ "\t\tif (crue_vue > 0 && diagnostic_sol > 0.5 && diagnostic_sol < 2.5) {\n" \
+		+ "\t\t\t// 2,60 = SEUIL_RUINE de `04e`, le plafond du rez.\n" \
+		+ "\t\t\t// Bâti = mur ou toit (UV, cf. plus haut), pas l'altitude : la terrasse\n" \
+		+ "\t\t\t// de rive gauche passe 0,35 m et se peignait en bâtiment touché.\n" \
+		+ "\t\t\tif (diagnostic_bati < 0.5 || (ruine < 0.5 && dot(UV, UV) < 0.25)) {\n" \
+		+ "\t\t\t\tvec4 eau = crue_sol(h_eau, fw_eau);\n" \
+		+ "\t\t\t\tbase = mix(base, eau.rgb * COLOR.a, eau.a);\n" \
+		+ "\t\t\t} else if (ruine > 0.5 || (crue_vue == 2 && h_pied >= 2.60)) {\n" \
+		+ "\t\t\t\tbase = mix(base, vec3(0.262, 0.012, 0.021) * COLOR.a, 0.94);\n" \
+		+ "\t\t\t} else if (h_pied > 0.10) {\n" \
+		+ "\t\t\t\tbase = mix(base, vec3(0.807, 0.209, 0.030) * COLOR.a, 0.92);\n" \
+		+ "\t\t\t}\n" \
 		+ "\t\t}\n" \
-		+ "\t\tif (diagnostic_bati > 0.5 && pos_monde.y > 0.35) {\n" \
-		+ "\t\t\tbase = mix(base, vec3(0.81, 0.210, 0.030) * COLOR.a, 0.92);\n" \
+		+ "\t\tif (diagnostic_sol > 1.5 && diagnostic_sol < 2.5) {\n" \
+		+ "\t\t\tbase = mix(base, vec3(0.716, 0.042, 0.030) * COLOR.a, 0.88);\n" \
 		+ "\t\t}\n" \
 		+ "\t\t// Chantiers : l'objet ENTIER prend la couleur de son état, sol\n" \
 		+ "\t\t// et volume ensemble — c'est l'avancement qu'on lit, pas l'eau.\n" \

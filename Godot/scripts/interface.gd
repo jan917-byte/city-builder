@@ -1854,9 +1854,11 @@ func _panneau_diagnostic() -> void:
 		v.add_child(boite)
 		_vues_crue[id] = boite
 
+	# 🌊 Le bleu fonce avec la profondeur (crue.gdshaderinc). Flaggable (90).
 	var d: VBoxContainer = _vues_crue["degats"]
-	_legende(d, Color8(38, 157, 196), "Passage de la crue · sols et rues noyés")
-	_legende(d, Color8(232, 126, 48), "Bâtiments touchés · sinistrés ou ruinés")
+	_legende(d, Color8(38, 157, 196), "Passage de la crue · plus foncé, plus profond")
+	_legende(d, Color8(232, 126, 48), "Bâtiments touchés par l'eau")
+	_legende(d, Color8(140, 28, 40), "Bâtiments détruits")
 	_legende(d, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")
 	d.add_child(HSeparator.new())
 	# 🔧 CE QUE LA CRUE COÛTE ENCORE. Ces trois nombres BAISSENT quand on
@@ -1905,7 +1907,8 @@ func _panneau_prochaine(p: VBoxContainer) -> void:
 	haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(haut)
 	p.add_child(h)
-	_legende(p, Color8(232, 126, 48), "Bâtiments que l'eau ruinerait")
+	_legende(p, Color8(232, 126, 48), "Bâtiments qu'elle toucherait")
+	_legende(p, Color8(140, 28, 40), "Bâtiments qu'elle détruirait")
 	p.add_child(HSeparator.new())
 	for ligne in [
 		["quand", "Attendue"],
