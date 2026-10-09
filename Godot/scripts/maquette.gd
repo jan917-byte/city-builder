@@ -2281,7 +2281,7 @@ const THEMES := [
 		"couche": "r", "champ": "charge",
 		"resume": "La charge des rues, après la crue",
 		"bas": "Rue calme", "haut": "Saturée",
-		"note": "Violet : coupée."},
+		"note": "Violet : endommagée par la crue."},
 	{"id": "tissu", "court": "Tissu", "nom": "Tissu urbain", "genre": "tissu",
 		"resume": "Une teinte par type de tissu"},
 	# 💧 La carte des sols (101) : ce qui boit la pluie, ce qui la renvoie à l'Ilse.

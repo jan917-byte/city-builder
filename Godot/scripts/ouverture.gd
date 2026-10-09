@@ -225,7 +225,7 @@ func _legende_trafic(ui) -> void:
 	haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(haut)
 	_legende.add_child(h)
-	ui._legende(_legende, jeu.COUPEE, "Coupée")
+	ui._legende(_legende, jeu.COUPEE, "Endommagée par la crue")
 
 
 # Les repères du guide restent dans l'interface (décision 85).
