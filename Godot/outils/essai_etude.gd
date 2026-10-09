@@ -59,22 +59,33 @@ func executer() -> void:
 	jeu.selection.sel_fid = fid_inst
 	jeu._sur_choix("i", fid_inst)
 	jeu._rafraichir(true)
-	verifier(o.etude_lue and ui._lieu_ouvert == "campus" and ui._campus_bloc.visible
-		and ui._etude_bloc.visible and ui._etude_valeurs["dans"].text == "6 à 8 ans",
-		"N'importe quel îlot du campus ouvre sa fiche : ses trois lieux, puis l'étude")
+	verifier(o.etude_lue and ui._lieu_ouvert == "universite" and ui._campus_panneau.visible
+		and ui._fiche_panneau.visible and ui._etude_bloc.visible and ui._etude_valeurs["dans"].text == "6 à 8 ans",
+		"N'importe quel îlot du campus ouvre la fenêtre au centre sur l'université et l'étude, sa fiche à côté")
 	verifier(jeu._contour_fids == campus, "La fiche ouverte, le trait garde le campus entier")
 	verifier(univ.visible and tuile("institut").visible and tuile("bibliotheque").visible
 		and not ui._menu_boutons["dangers"].disabled and not entouree("dangers"),
 		"Le campus trouvé, ses trois tuiles apparaissent, Dangers s'ouvre sans être appelée")
 	verifier(not ui._biblio_bloc.visible and not ui._lieu_lignes[jeu.Recherche.PILOTIS]["bloc"].visible,
-		"La fiche du campus ne montre ni recherche ni livre")
+		"L'onglet de l'université ne montre ni recherche ni livre")
 	await capture("campus_02_fiche")
 	await cliquer(ui._campus_bloc.get_child(1))
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
-	verifier(ui._lieu_ouvert == "institut" and ligne["bloc"].visible and not ui._etude_bloc.visible,
-		"Une ligne de la fiche du campus ouvre son lieu : l'institut et ses pilotis")
-	ui._fermer_lieu()
-	ui._fermer_fiche()
+	verifier(ui._lieu_ouvert == "institut" and ligne["bloc"].visible and ligne["bouton"].visible
+		and not ui._etude_bloc.visible and ui._lieu_lignes["sedum"]["bloc"].visible
+		and not ui._lieu_lignes["sedum"]["bouton"].visible,
+		"L'onglet de l'institut : les pilotis à financer, les autres sujets grisés")
+	await capture("campus_02b_institut")
+	ui._fermer_campus()
+	verifier(not ui._campus_panneau.visible and not ui._fiche_panneau.visible,
+		"La croix referme la fenêtre et la fiche du campus")
+	jeu._sur_vitesse(4.0)
+	ui.maj({}, jeu.mois, jeu.vitesse)
+	ui.ouvrir_lieu("bibliotheque")
+	verifier(jeu.vitesse == 0.0 and ui._biblio_bloc.visible, "La fenêtre ouverte, le temps s'arrête")
+	ui._fermer_campus()
+	verifier(jeu.vitesse == 4.0, "Fermée, il repart à ×4")
+	jeu._sur_vitesse(0.0)
 	jeu._rafraichir(true)
 
 	# 🏠 REBÂTIR D'ABORD : les îlots sinistrés clignotent, aucune berge proposée.

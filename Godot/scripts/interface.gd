@@ -475,7 +475,16 @@ var _onglets_crue := {}
 var _vues_crue := {}
 var _prochaine_valeurs := {}
 var _etude_bloc: VBoxContainer
-var _campus_bloc: VBoxContainer
+## 🎓 La fenêtre du campus (auteur, 2026-10-09) : au centre, la fiche d'îlot reste à côté.
+var _campus_panneau: PanelContainer
+## Les trois onglets, dans l'ordre de `CAMPUS`.
+var _campus_bloc: HBoxContainer
+var _campus_intro: Label
+var _recherche_bloc: HBoxContainer
+var _univ_vide: Label
+## ⏸️ La vitesse d'avant la fenêtre, rendue à sa fermeture ; -1 fenêtre fermée.
+var _vitesse_avant_campus := -1.0
+var _vitesse_courante := 0.0
 var _etude_valeurs := {}
 ## 📖 LA BIBLIOTHÈQUE (101) : la liste des pages, ou une page ouverte.
 var _biblio_bloc: VBoxContainer
@@ -2667,7 +2676,7 @@ func montrer_jeu(oui: bool) -> void:
 	retours.actualiser_affichage()
 	if not oui:
 		for panneau in [_fiche_panneau, _diagnostic_panneau,
-				_chantiers_panneau, _calque_panneau, _lieu_panneau, _detail_panneau]:
+				_chantiers_panneau, _calque_panneau, _lieu_panneau, _campus_panneau, _detail_panneau]:
 			if panneau != null:
 				(panneau as Control).visible = false
 		_detail_sujet = ""
@@ -2805,6 +2814,7 @@ const LIEUX := {
 }
 const LIEUX_ORDRE := ["mairie", "universite", "institut", "bibliotheque"]
 const CAMPUS := ["universite", "institut", "bibliotheque"]
+const CAMPUS_TAILLE := Vector2(880, 560)
 ## 🎓🏛️ Sujets de recherche et subventions arriveront plus tard (auteur, 2026-10-02) :
 ## l'institut ne montre que les pilotis (`Recherche.SUJETS_OUVERTURE`). Les essais le rouvrent.
 var financements_ouverts := false
@@ -2842,26 +2852,76 @@ func _panneau_lieu() -> void:
 	_lieu_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_lieu_intro)
 
-	# 🎓 LA FICHE DU CAMPUS (auteur, 2026-10-08) : ses trois lieux, un nom et un verbe,
-	# chacun ouvre le sien ; l'étude dessous. 🔴 Flaggable (90).
-	_campus_bloc = VBoxContainer.new()
+	# 🎓 LA FENÊTRE DU CAMPUS (auteur, 2026-10-09) : grande, au milieu de la place que
+	# laissent la colonne et la fiche, comme le concours ; un onglet par lieu.
+	var c := PanelContainer.new()
+	_campus_panneau = c
+	_poser_boite(c)
+	c.anchor_left = 0.5
+	c.anchor_right = 0.5
+	c.anchor_top = 0.5
+	c.anchor_bottom = 0.5
+	c.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	c.grow_vertical = Control.GROW_DIRECTION_BOTH
+	c.offset_left = -FICHE_LARGEUR / 2.0
+	c.offset_right = -FICHE_LARGEUR / 2.0
+	c.custom_minimum_size = CAMPUS_TAILLE
+	# ⚠️ Le verre est à z −1 : sans ce cran, le texte des autres panneaux passe par-dessus.
+	c.z_index = 1
+	c.visible = false
+	add_child(c)
+	_croix(c, _fermer_campus)
+	var cv := VBoxContainer.new()
+	cv.add_theme_constant_override("separation", 10)
+	c.add_child(cv)
+	_bandeau(cv, "Campus")
+	_campus_bloc = HBoxContainer.new()
 	_campus_bloc.add_theme_constant_override("separation", 6)
-	v.add_child(_campus_bloc)
+	cv.add_child(_campus_bloc)
+	var groupe := ButtonGroup.new()
 	for cle in CAMPUS:
 		var b := Button.new()
-		b.text = "%s\n%s" % [LIEUX[cle]["nom"], LIEUX[cle]["quoi"]]
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.text = String(LIEUX[cle]["nom"])
+		# Icône blanche teintée par l'état : sur l'onglet actif, foncé, elle reste lisible.
+		b.icon = _icone(cle, 18, Color.WHITE)
+		b.toggle_mode = true
+		b.button_group = groupe
 		b.focus_mode = Control.FOCUS_NONE
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_habiller_secondaire(b)
+		var actif := StyleBoxFlat.new()
+		actif.bg_color = TEXTE
+		actif.set_corner_radius_all(_r(9))
+		actif.set_content_margin_all(9)
+		for etat in ["pressed", "hover_pressed"]:
+			b.add_theme_stylebox_override(etat, actif)
+			b.add_theme_color_override("font_%s_color" % etat, Color.WHITE)
+			b.add_theme_color_override("icon_%s_color" % etat, Color.WHITE)
+		for etat in ["normal", "hover"]:
+			b.add_theme_color_override("font_%s_color" % etat, TEXTE)
+			b.add_theme_color_override("icon_%s_color" % etat, TEXTE)
 		b.pressed.connect(ouvrir_lieu.bind(cle))
 		_campus_bloc.add_child(b)
+	_campus_intro = _label("", 12, GRIS)
+	_campus_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cv.add_child(_campus_intro)
+	var defile := ScrollContainer.new()
+	defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	defile.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cv.add_child(defile)
+	var contenu := VBoxContainer.new()
+	contenu.add_theme_constant_override("separation", 8)
+	contenu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	defile.add_child(contenu)
+	# 🔴 Flaggable (90).
+	_univ_vide = _label("Aucune étude publiée.", 12, GRIS)
+	contenu.add_child(_univ_vide)
 
 	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE (auteur, 2026-09-30) : l'université annonce,
 	# le diagnostic tient la prévision (n°32). 🔴 Texte de prototype, flaggable (90).
 	_etude_bloc = VBoxContainer.new()
 	_etude_bloc.add_theme_constant_override("separation", 3)
-	v.add_child(_etude_bloc)
+	contenu.add_child(_etude_bloc)
 	_etude_bloc.add_child(HSeparator.new())
 	_etude_bloc.add_child(_label("Nouvelle étude · la prochaine crue", 14, TEXTE))
 	# 🔄 Quatre tuiles au lieu du paragraphe (auteur, 2026-10-08).
@@ -2882,17 +2942,29 @@ func _panneau_lieu() -> void:
 		_lieu_lignes[cle] = _ligne_lieu(v, "politique",
 			String(Politiques.POLITIQUES[cle]["nom"]),
 			String(Politiques.POLITIQUES[cle]["quoi"]))
-	for cle in Recherche.ORDRE:
-		_lieu_lignes[cle] = _ligne_lieu(v, "recherche",
-			String(Recherche.SUJETS[cle]["nom"]),
-			String(Recherche.SUJETS[cle]["quoi"]))
+	# 🎓 L'institut range ses sujets par domaine, une colonne chacun ; un domaine
+	# sans sujet garde son nom, grisé.
+	_recherche_bloc = HBoxContainer.new()
+	_recherche_bloc.add_theme_constant_override("separation", 14)
+	contenu.add_child(_recherche_bloc)
+	for d in Recherche.DOMAINES:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 4)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_recherche_bloc.add_child(col)
+		var titre := _titre_section(col, String(d[1]))
+		for cle in Recherche.ORDRE:
+			if String(Recherche.SUJETS[cle]["domaine"]) == d[0]:
+				_lieu_lignes[cle] = _ligne_lieu(col, "recherche",
+					String(Recherche.SUJETS[cle]["nom"]),
+					String(Recherche.SUJETS[cle]["quoi"]))
+		if col.get_child_count() == 1:
+			titre.modulate.a = 0.45
 
 	# 📖 LA BIBLIOTHÈQUE (101, A : celle de l'université), sous les sujets. 🔴 Textes flaggables (90).
 	_biblio_bloc = VBoxContainer.new()
 	_biblio_bloc.add_theme_constant_override("separation", 6)
-	v.add_child(_biblio_bloc)
-	_biblio_bloc.add_child(HSeparator.new())
-	_titre_section(_biblio_bloc, "Bibliothèque")
+	contenu.add_child(_biblio_bloc)
 	_biblio_liste = VBoxContainer.new()
 	_biblio_liste.add_theme_constant_override("separation", 4)
 	_biblio_bloc.add_child(_biblio_liste)
@@ -2962,28 +3034,55 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	if _page_ouverte != "" and ouverture != null:
 		ouverture.page_lue(_page_ouverte)
 	_biblio_cle = ""
+	var campus: bool = cle in CAMPUS
+	if campus:
+		_pause_campus()
+	elif _campus_panneau.visible:
+		_campus_panneau.visible = false
+		_reprendre_campus()
 	_lieu_ouvert = cle
-	_lieu_panneau.visible = true
-	_fiche_panneau.visible = false
-	_lieu_titre.text = String(LIEUX[cle]["nom"])
-	_lieu_intro.text = String(LIEUX[cle]["quoi"])
+	_lieu_panneau.visible = not campus
+	_campus_panneau.visible = campus
+	if campus:
+		_campus_intro.text = String(LIEUX[cle]["quoi"])
+	else:
+		_fiche_panneau.visible = false
+		_lieu_titre.text = String(LIEUX[cle]["nom"])
+		_lieu_intro.text = String(LIEUX[cle]["quoi"])
 	_brancher_lieu()
 	_maj_lieu()
 
 
-## 🎓 Le campus trouvé sur la carte : ses trois lieux et l'étude.
+## 🎓 Le campus trouvé sur la carte : la fenêtre s'ouvre sur l'université et l'étude.
 func ouvrir_campus() -> void:
-	_page_ouverte = ""
-	_biblio_cle = ""
-	_lieu_ouvert = "campus"
-	_lieu_panneau.visible = true
-	_fiche_panneau.visible = false
-	_lieu_titre.text = "Campus"
-	_lieu_intro.text = ""
-	_brancher_lieu()
-	_maj_lieu()
+	ouvrir_lieu("universite")
 	if ouverture != null:
 		ouverture.campus_ouvert()
+
+
+## 🎓 Un îlot du campus cliqué ouvre aussi sa fenêtre, une fois le campus trouvé.
+func ouvrir_lieu_clique(couche: String, fid: int) -> void:
+	var cle := _lieu_du_fid(fid) if couche == "i" else ""
+	if cle in CAMPUS and _verrou() == "" and (ouverture == null or ouverture.rail_visible(cle)):
+		ouvrir_lieu(cle)
+
+
+## ⏸️ La fenêtre ouverte, le temps s'arrête (auteur, 2026-10-09).
+func _pause_campus() -> void:
+	if _vitesse_avant_campus >= 0.0:
+		return
+	_vitesse_avant_campus = _vitesse_courante
+	if _vitesse_courante > 0.0:
+		vitesse_demandee.emit(0.0)
+		_vitesse_courante = 0.0
+
+
+## ▶️ Fermée, il repart à sa vitesse d'avant, sauf si le joueur l'a relancé entre-temps.
+func _reprendre_campus() -> void:
+	if _vitesse_avant_campus > 0.0 and _vitesse_courante == 0.0:
+		vitesse_demandee.emit(_vitesse_avant_campus)
+		_vitesse_courante = _vitesse_avant_campus
+	_vitesse_avant_campus = -1.0
 
 
 # ==========================================================================
@@ -3198,12 +3297,21 @@ func _fermer_fiche() -> void:
 
 
 func _fermer_lieu() -> void:
-	var campus := _lieu_ouvert == "campus"
+	var campus: bool = _lieu_ouvert in CAMPUS
 	_lieu_ouvert = ""
 	_lieu_panneau.visible = false
-	_fiche_panneau.visible = true
-	# 🎓 Le campus refermé rend la ville nue : les îlots à rebâtir peuvent clignoter.
 	if campus:
+		_campus_panneau.visible = false
+		_reprendre_campus()
+	else:
+		_fiche_panneau.visible = true
+
+
+## ✕ de la fenêtre : un îlot du campus en fiche se referme avec elle, la ville
+## nue laisse clignoter les îlots à rebâtir.
+func _fermer_campus() -> void:
+	_fermer_lieu()
+	if _fiche_couche == "i" and _lieu_du_fid(_fiche_fid) in CAMPUS:
 		_fermer_fiche()
 
 
@@ -3234,10 +3342,13 @@ func _brancher_lieu() -> void:
 func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
-	var campus := _lieu_ouvert in CAMPUS
-	_lieu_intro.visible = _page_ouverte == "" and (campus or financements_ouverts)
-	_campus_bloc.visible = _lieu_ouvert == "campus"
-	_etude_bloc.visible = _lieu_ouvert in ["universite", "campus"] and etude_publiee()
+	_lieu_intro.visible = financements_ouverts
+	_campus_intro.visible = _page_ouverte == ""
+	for i in CAMPUS.size():
+		(_campus_bloc.get_child(i) as Button).set_pressed_no_signal(CAMPUS[i] == _lieu_ouvert)
+	_etude_bloc.visible = _lieu_ouvert == "universite" and etude_publiee()
+	_univ_vide.visible = _lieu_ouvert == "universite" and not etude_publiee()
+	_recherche_bloc.visible = _lieu_ouvert == "institut"
 	_biblio_bloc.visible = _lieu_ouvert == "bibliotheque"
 	if _biblio_bloc.visible:
 		_maj_bibliotheque()
@@ -3254,13 +3365,19 @@ func _maj_lieu() -> void:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
 		var recherche: bool = String(l["genre"]) == "recherche"
-		# 🏗️ L'institut montre les pilotis dès l'ouverture ; le reste attend les financements.
-		bloc.visible = (_lieu_ouvert == "institut" and (cle in Recherche.SUJETS_OUVERTURE or financements_ouverts)) \
-			if recherche else (_lieu_ouvert == "mairie" and financements_ouverts)
+		bloc.visible = _lieu_ouvert == "institut" if recherche \
+			else (_lieu_ouvert == "mairie" and financements_ouverts)
 		if not bloc.visible:
 			continue
 		if recherche:
-			_maj_ligne_recherche(String(cle), l)
+			# 🏗️ Les pilotis dès l'ouverture ; le reste garde son nom, grisé, jusqu'aux financements.
+			var ouvert: bool = cle in Recherche.SUJETS_OUVERTURE or financements_ouverts
+			bloc.modulate.a = 1.0 if ouvert else 0.45
+			(l["jauge"] as Control).visible = ouvert
+			(l["etat"] as Control).visible = ouvert
+			(l["bouton"] as Control).visible = ouvert
+			if ouvert:
+				_maj_ligne_recherche(String(cle), l)
 		else:
 			_maj_ligne_politique(String(cle), l)
 	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
@@ -3938,6 +4055,7 @@ func _demander_vitesse(v: float) -> void:
 
 
 func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
+	_vitesse_courante = vitesse
 	retours.actualiser_affichage()
 	if indic.is_empty():
 		return
@@ -4170,8 +4288,8 @@ func _maj_fiche() -> void:
 	_repare_texte.visible = _repare_texte.text != ""
 	_camp_texte.visible = _camp_texte.text != ""
 	var verrou := _verrou()
-	if verrou != "":
-		_lieu_bouton.visible = false
+	# 🎓 La fenêtre du campus ouverte, « Ouvrir … » se tait ; refermée, il revient.
+	_lieu_bouton.visible = verrou == "" and not _campus_panneau.visible 		and _fiche_couche == "i" and _lieu_du_fid(_fiche_fid) != ""
 	# 🗂️ `_maj_fiche_contenu` vient de dire ce qui existe ; on en déduit les
 	# onglets. On ne les repeint QUE s'ils ont changé : on passe ici à chaque
 	# image, et refaire sept boîtes de style par image pour rien se verrait.

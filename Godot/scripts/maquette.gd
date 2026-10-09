@@ -2819,7 +2819,7 @@ func _maj_contour() -> void:
 		if fid < 0:
 			groupe = ouverture.groupe_carte()
 			appel = not groupe.is_empty()
-		elif couche == "i" and interface._lieu_ouvert == "campus" and fid in ouverture.campus():
+		elif couche == "i" and interface._lieu_ouvert in interface.CAMPUS and fid in ouverture.campus():
 			groupe = ouverture.campus()
 	if not groupe.is_empty():
 		couche = "i"
@@ -3036,6 +3036,7 @@ func _sur_survol(_couche: String, _fid: int) -> void:
 func _sur_choix(couche: String, fid: int) -> void:
 	if fid >= 0:
 		interface.montrer(couche, fid, false)
+		interface.ouvrir_lieu_clique(couche, fid)
 		if ouverture != null:
 			ouverture.trouve(couche, fid)
 	_dernier_peint = -1.0

@@ -16,25 +16,25 @@ const SUJETS := {
 		"nom": "Rendement des panneaux",
 		"quoi": "+8 % de production sur TOUS les toits, posés compris",
 		"ke_mois": 25.0, "mois": 24.0,
-		"effet": "rendement_x", "valeur": 1.08,
+		"effet": "rendement_x", "valeur": 1.08, "domaine": "solaire",
 	},
 	"pose": {
 		"nom": "Pose industrialisée",
 		"quoi": "−15 % sur le prix de pose des panneaux",
 		"ke_mois": 20.0, "mois": 18.0,
-		"effet": "cout_panneau_x", "valeur": 0.85,
+		"effet": "cout_panneau_x", "valeur": 0.85, "domaine": "solaire",
 	},
 	"pilotis": {
 		"nom": "Construction sur pilotis",
 		"quoi": "Rebâtir un îlot sinistré le rez sur poteaux : l'eau passe dessous.",
 		"ke_mois": 20.0, "mois": 6.0,
-		"effet": "facon_pilotis", "valeur": 1.0,
+		"effet": "facon_pilotis", "valeur": 1.0, "domaine": "logement",
 	},
 	"sedum": {
 		"nom": "Substrat léger",
 		"quoi": "−20 % sur le prix d'un toit vert",
 		"ke_mois": 12.0, "mois": 12.0,
-		"effet": "cout_vert_x", "valeur": 0.80,
+		"effet": "cout_vert_x", "valeur": 0.80, "domaine": "toits",
 	},
 }
 # 🏗️ L'institut (auteur, 2026-10-08) : la seule recherche ouverte dès l'ouverture. Elle ne
@@ -43,6 +43,8 @@ const SUJETS := {
 const PILOTIS := "pilotis"
 const SUJETS_OUVERTURE := [PILOTIS]
 const ORDRE := ["pilotis", "rendement", "pose", "sedum"]
+## 🎓 Les colonnes de l'institut (auteur, 2026-10-09) ; « eau » n'a encore aucun sujet. 🔴 Flaggable (90).
+const DOMAINES := [["logement", "Logement"], ["solaire", "Solaire"], ["toits", "Toits verts"], ["eau", "Eau"]]
 
 
 ## Le mois où le palier tombe. INF tant que le sujet n'est pas financé.
