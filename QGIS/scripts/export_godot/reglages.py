@@ -358,15 +358,43 @@ PENTE_OND = 0.14           # ce que le talus s'autorise en plus ou en moins
 # reste sous 2,70 m (le rez le plus bas de la ville) et son emprise rentre de
 # 5 cm. Montrer le maillage « réparé » suffit donc à faire disparaître la
 # ruine — aucun nœud à retirer, aucune géométrie à reconstruire à l'exécution.
-# ⚠️ Monter RUINE_PANS au-delà de 0,95 fait ressortir des bouts de mur cassé
-# À TRAVERS les maisons reconstruites.
-RUINE_PANS = (0.10, 0.36, 0.64, 0.88)   # hauteurs de pan de mur, en rez
+# 🔄 2026-10-09, auteur : « plus rasé près de l'eau, moins près des
+# bâtiments ». La crête se tire entre deux fourchettes selon l'eau au pied,
+# de SEUIL_RUINE (04e) à RUINE_FORCE_PLEINE_M — les 52 ruines vont de 2,67 à
+# 3,51 m (mesuré ce jour). Le mur a une tranche, et des brèches.
+# ⚠️ Une crête au-delà de 0,95 rez ressort À TRAVERS les maisons reconstruites.
+RUINE_FORCE_PLEINE_M = 3.40             # eau au pied d'une ruine rasée
 
-RUINE_PAN_ARETES = (1, 3)               # arêtes consécutives à la même hauteur
+RUINE_CRETE_LOIN = (0.42, 0.92)         # crête en rez, au bord du sinistré
+
+RUINE_CRETE_EAU = (0.02, 0.20)          # crête en rez, au bord de l'eau
+
+RUINE_BRECHE = (0.04, 0.55)             # part du tour emportée, loin → eau
+
+RUINE_TRONCON_M = (0.9, 2.4)            # un morceau de mur d'un seul tenant
+
+RUINE_EPAISSEUR = 0.28                  # la tranche du mur cassé
 
 RUINE_RETRAIT = 0.05                    # de combien la ruine rentre sous le neuf
 
 RUINE_DALLE_Y = 0.08                    # le plancher éventré, au ras du sol
+
+# 🪵 CE QUE L'EAU A CHARRIÉ (2026-10-09, auteur) : troncs, bouts de mur,
+# poutres, pans de toit, gravats, haies arrachées. Décor pur, qui s'efface à
+# la remise en état de son îlot ou de sa rue (`export_godot/debris.py`).
+DEBRIS_EAU_M = (1.00, 3.60)       # eau au point : pas de débris → densité pleine
+
+DEBRIS_M2 = 45.0                  # un tirage par 45 m² d'îlot
+
+DEBRIS_PART = 0.50                # part des tirages qui portent un débris, eau pleine
+
+DEBRIS_RUE_PAS_M = 14.0           # un obstacle possible tous les 14 m de rue envasée
+
+DEBRIS_RUE_PART = 0.75            # part de ces places occupées, eau pleine
+
+DEBRIS_RUINE_M = 30.0             # une portion de débris par 30 m de tour de ruine
+
+DEBRIS_HAIE_PERTE = (0.15, 0.80)  # part de haie arrachée, eau faible → forte
 
 # 🌳 Au-dessus de cette hauteur d'eau, on ne plante plus rien : ni jardin, ni
 # alignement. Ce n'est pas de la botanique — c'est ce qui fait que le faubourg

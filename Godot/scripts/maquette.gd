@@ -887,8 +887,8 @@ ESSAI — la ville, sans décision")
 	# 🔧 LES TROIS RÉPARATIONS, ÉPROUVÉES PLUTÔT QUE PROMISES. On paie, on
 	# avance le temps jusqu'à la fin du chantier, et on REGARDE : un tablier
 	# doit avoir repoussé au-dessus de l'eau, un îlot doit avoir retrouvé ses
-	# toits. Si la ruine ressort À TRAVERS le bâtiment neuf, c'est RUINE_PANS
-	# qui est monté trop haut (voir 07).
+	# toits. Si la ruine ressort À TRAVERS le bâtiment neuf, c'est RUINE_CRETE_LOIN
+	# qui est monté trop haut (`export_godot/reglages.py`).
 	await _essai_reparation()
 	pivot.caler(30.0, 32.0)
 

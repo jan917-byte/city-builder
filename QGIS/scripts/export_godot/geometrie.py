@@ -711,8 +711,9 @@ class Maillage(object):
         # laisse alors UV2 à zéro, ce qui est exactement « pas une façade ».
         if any(g[0] or g[1] for g in self.uv2):
             d["uv2"] = [[round(c, 3) for c in s] for s in self.uv2]
-        # Même règle : seul un maillage de bâtiments porte la colonne.
-        if any(g[1] or g[3] for g in self.d):
+        # Même règle : seul un maillage de bâtiments — ou de débris (−2) —
+        # porte la colonne.
+        if any(g[1] or g[2] or g[3] for g in self.d):
             d["dense"] = [[round(c, 4) for c in s] for s in self.d]
         return d
 

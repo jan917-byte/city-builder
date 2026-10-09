@@ -662,7 +662,10 @@ static func semis_parc(mesh: Mesh) -> Array:
 	var j := 0
 	for t in range(0, idx.size(), 3):
 		var i0 := idx[t]
-		if c0[i0 * 4 + 2] > -0.5 or nm[i0].y < 0.9:
+		# La dalle seule : ni débris (−2), ni crête de mur cassé, qui regarde aussi le ciel.
+		var marque := c0[i0 * 4 + 2]
+		if marque > -0.5 or marque < -1.5 or nm[i0].y < 0.9 \
+				or v[i0].y > c0[i0 * 4 + 3] + 0.2:
 			continue
 		var p0 := v[i0]
 		var p1 := v[idx[t + 1]]

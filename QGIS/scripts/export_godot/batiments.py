@@ -60,10 +60,13 @@ from .reglages import (
     RETRAIT_MAX,
     RUE_DERRIERE,
     RUE_SINUS,
+    RUINE_BRECHE,
+    RUINE_CRETE_EAU,
+    RUINE_CRETE_LOIN,
     RUINE_DALLE_Y,
-    RUINE_PANS,
-    RUINE_PAN_ARETES,
+    RUINE_EPAISSEUR,
     RUINE_RETRAIT,
+    RUINE_TRONCON_M,
     TOL_RUE,
     Y_SOL,
     cheminees,
@@ -683,49 +686,97 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
     return ok, n, haut_ok, len(tris)
 
 
-def _ruine(m, anneau, coul_mur, coul_gravats, G, rng):
-    """Un bâtiment que la crue a emporté : des pans de mur cassés à des
-    hauteurs différentes, et le plancher du rez à nu entre eux.
+def _ruine(m, anneau, coul_mur, coul_gravats, G, rng, force=0.0):
+    """Un bâtiment que la crue a emporté : des morceaux de mur cassés à des
+    hauteurs différentes, des brèches, et le plancher du rez à nu entre eux.
 
     🔴 LA CRÊTE FAIT LA RUINE, PAS LA COULEUR. Arasés au même plan, cent
-    bâtiments sortent en lotissement de toits plats. Chaque arête porte donc sa
-    hauteur, tirée par PAQUETS de une à trois arêtes : arête par arête on
-    obtient une dentelure régulière, qui se lit comme un motif et non comme une
-    casse.
+    bâtiments sortent en lotissement de toits plats. Chaque arête est donc
+    coupée en morceaux de RUINE_TRONCON_M, chacun avec sa pente de crête ; les
+    coins, qui tiennent mieux, partagent leur hauteur entre leurs deux murs.
+    `force` (0 → 1, `debris.force_ruine`) va du bord du sinistré, encore haut,
+    au bord de l'eau, rasé et troué.
 
-    Aucune couverture, aucun acrotère, aucun percement : le dessus est OUVERT.
-    Les murs étant à face unique, ceux du fond sont cullés et on voit le sol
-    sombre entre ceux de devant — c'est le seul trou noir de la ville.
+    Aucune couverture, aucun percement : le dessus est OUVERT. Le mur a une
+    tranche de RUINE_EPAISSEUR, sinon une crête vue d'en haut n'est qu'un fil.
     """
     anneau = _decaler(anneau, -RUINE_RETRAIT)
+    dedans_ = _decaler(anneau, -RUINE_EPAISSEUR)
     n = len(anneau)
     y_bas = -ENFOUISSEMENT
-    hauteurs = []
-    while len(hauteurs) < n:
-        h = rng.choice(RUINE_PANS) * ETAGE_M
-        hauteurs += [h] * rng.randint(*RUINE_PAN_ARETES)
+    lo = RUINE_CRETE_LOIN[0] + (RUINE_CRETE_EAU[0] - RUINE_CRETE_LOIN[0]) * force
+    hi = RUINE_CRETE_LOIN[1] + (RUINE_CRETE_EAU[1] - RUINE_CRETE_LOIN[1]) * force
+    breche = RUINE_BRECHE[0] + (RUINE_BRECHE[1] - RUINE_BRECHE[0]) * force
+
+    def crete(bonus=1.0):
+        # ⚠️ 0,94 rez au plus : au-delà, la ruine perce le bâtiment neuf.
+        return min(0.94, rng.uniform(lo, hi) * bonus) * ETAGE_M
 
     def ao(y):
         return AO_MIN + (1.0 - AO_MIN) * min(1.0, max(0.0, (y - y_bas) / AO_HAUTEUR))
 
-    ok = 0
+    def quad(pts, coul, fs, vers):
+        """Deux triangles tournés vers `vers` (Godot) : on mesure le sens
+        après l'inversion de Z, on ne le parie pas."""
+        nn = normale(pts[0], pts[1], pts[2])
+        if sum(nn[k] * vers[k] for k in range(3)) < 0.0:
+            pts, fs = pts[::-1], fs[::-1]
+        m.triangle(pts[0], pts[1], pts[2], coul, (fs[0], fs[1], fs[2]))
+        m.triangle(pts[0], pts[2], pts[3], coul, (fs[0], fs[2], fs[3]))
+        return 1
+
+    coins = [crete(1.25) for _ in range(n)]
+    # Un morceau = (arête, t0, t1, h0, h1), ou None pour une brèche.
+    morceaux = []
     for i in range(n):
         a, b = anneau[i], anneau[(i + 1) % n]
-        y_haut = hauteurs[i]
-        pa_b = G(a[0], a[1], y_bas)
-        pb_b = G(b[0], b[1], y_bas)
-        pa_h = G(a[0], a[1], y_haut)
-        pb_h = G(b[0], b[1], y_haut)
-        fb, fh = ao(y_bas), ao(y_haut)
-        m.triangle(pa_b, pb_b, pb_h, coul_mur, (fb, fb, fh))
-        m.triangle(pa_b, pb_h, pa_h, coul_mur, (fb, fh, fh))
-        # Le même contrôle de chiralité que `_masse` : on ne parie pas sur le
-        # sens des faces après l'inversion de Z, on le mesure.
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        L = math.hypot(dx, dy)
-        nn = normale(pa_b, pb_b, pb_h)
-        if L > 1e-9 and (nn[0] * dy + nn[2] * dx) / L > 0.9:
-            ok += 1
+        L = math.dist(a, b)
+        k = max(1, int(round(L / rng.uniform(*RUINE_TRONCON_M))))
+        for j in range(k):
+            if rng.random() < breche:
+                morceaux.append(None)
+                continue
+            h0 = coins[i] if j == 0 else crete()
+            h1 = coins[(i + 1) % n] if j == k - 1 else h0 * rng.uniform(0.55, 1.25)
+            morceaux.append((i, j / k, (j + 1) / k, h0, min(h1, 0.94 * ETAGE_M)))
+
+    def point(r, i, t, y):
+        a, b = r[i], r[(i + 1) % n]
+        return G(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, y)
+
+    faces = 0
+    inner = tuple(c * 0.82 for c in coul_mur)
+    for q, mc in enumerate(morceaux):
+        if mc is None:
+            continue
+        i, t0, t1, h0, h1 = mc
+        o0b, o1b = point(anneau, i, t0, y_bas), point(anneau, i, t1, y_bas)
+        o0h, o1h = point(anneau, i, t0, h0), point(anneau, i, t1, h1)
+        i0b, i1b = point(dedans_, i, t0, y_bas), point(dedans_, i, t1, y_bas)
+        i0h, i1h = point(dedans_, i, t0, h0), point(dedans_, i, t1, h1)
+        om, im = point(anneau, i, 0.5 * (t0 + t1), 0.0), point(dedans_, i, 0.5 * (t0 + t1), 0.0)
+        sortie = tuple(om[k] - im[k] for k in range(3))
+        fb = ao(y_bas)
+        faces += quad([o0b, o1b, o1h, o0h], coul_mur, (fb, fb, ao(h1), ao(h0)), sortie)
+        quad([i0b, i1b, i1h, i0h], inner, (fb, fb, ao(h1), ao(h0)),
+             tuple(-c for c in sortie))
+        quad([o0h, o1h, i1h, i0h], coul_mur, (ao(h0), ao(h1), ao(h1), ao(h0)),
+             (0.0, 1.0, 0.0))
+        # La tranche, là où le voisin est plus bas ou absent. Aux coins les
+        # deux murs partagent leur hauteur : il n'y a rien à fermer.
+        for bout, h, voisin, oh, ob, ih, ib in (
+                (t0, h0, morceaux[q - 1], o0h, o0b, i0h, i0b),
+                (t1, h1, morceaux[(q + 1) % len(morceaux)], o1h, o1b, i1h, i1b)):
+            hv = y_bas
+            if voisin is not None:
+                hv = voisin[4] if bout == t0 else voisin[3]
+            if hv >= h - 0.02:
+                continue
+            ov = point(anneau, i, bout, hv)
+            iv = point(dedans_, i, bout, hv)
+            vers = tuple(oh[k] - om[k] for k in range(3))
+            quad([ov, iv, ih, oh], tuple(c * 0.9 for c in coul_mur),
+                 (ao(hv), ao(hv), ao(h), ao(h)), vers)
 
     tris = trianguler(anneau)
     f = ao(RUINE_DALLE_Y)
@@ -734,7 +785,7 @@ def _ruine(m, anneau, coul_mur, coul_gravats, G, rng):
         pb = G(anneau[ib][0], anneau[ib][1], RUINE_DALLE_Y)
         pc = G(anneau[ic][0], anneau[ic][1], RUINE_DALLE_Y)
         m.triangle(pa, pb, pc, coul_gravats, (f, f, f))
-    return ok, n, len(tris), len(tris)
+    return faces, faces, len(tris), len(tris)
 
 
 def _pans(anneau, faitage):

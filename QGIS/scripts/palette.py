@@ -278,6 +278,15 @@ RUINE_TOIT = "#B4AEA1"      # ⏸️ plus employé depuis le 2026-08-21, voir GR
 # entouré de murs clairs ne ressemble à aucun toit de la ville, et c'est la
 # seule chose qui se lise à 1 200 m d'étendue.
 GRAVATS = "#4B463E"
+# 🪵 LES DÉBRIS (2026-10-09). Le bois flotté est GRIS CLAIR : un brun se perd
+# sur le limon, et la cassure claire dit « arraché ».
+BOIS_FLOTTE = "#A39A8C"
+ECORCE = "#5E544A"
+BOIS_CASSE = "#D2B98E"
+MOTTE = "#4A3B2C"
+POUTRE = "#9A7B57"
+SOUS_TOIT = "#4A3D30"
+HAIE_MORTE = "#6D5F42"
 
 # ----------------------------------------------------------------- minéral
 # Un seul gris pour tout le réseau : la hiérarchie s'exprime par la LARGEUR,

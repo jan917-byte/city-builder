@@ -34,6 +34,7 @@ from export_godot.batiments import (
     _toit_plat,
 )
 from export_godot.boue import carte_boue
+from export_godot import debris as DEB
 from export_godot.cours import COURS_PARKING, OCCUPATION as OCCUPATION_COUR
 from export_godot.cours import amenager as _amenager_cour
 from export_godot.camps import emplacements as _places_camp
@@ -138,7 +139,6 @@ from export_godot.reglages import (
     QUAI_PORTEE,
     RIVE_DROITE_Y,
     RIVE_GAUCHE_Y,
-    RUINE_PANS,
     SEMIS_BUISSON,
     SEMIS_ROSEAU,
     TALUS_DESSOUS,
@@ -487,6 +487,12 @@ def main():
                      if d["sous_type"] == "riviere"])
     print("  chenal : %d arêtes de berge (%d arêtes internes à l'eau écartées)"
           % (len(chenal.berges), chenal.internes))
+    # 🪵 La même eau que la boue et les dégâts : c'est elle qui dose les débris.
+    champ = import_module("04e_crue").ChampCrue(chenal.rivieres)
+
+    def aval(p):
+        d, tx, ty = chenal.courant(p[0], p[1], 150.0)
+        return (0.0, 1.0) if d >= 150.0 else (tx, ty)
 
     def G(x, y, alt):
         return G_eau(x, y, alt + chenal.niveau_rive(x, y))
@@ -698,6 +704,8 @@ def main():
     n_champ = n_bande = n_maille_talus = 0
     camps = {}                 # 🏕️ champ -> places de containers semées
     n_neuf = 0                 # bâtiments préparés pour la reconstruction
+    st_debris = {"force": [], "ruine": 0, "troncs": 0, "pieces": 0, "rue": 0,
+                 "rues": 0, "haie_m": 0.0, "haie_reste": 0.0}
     n_dense = 0                # bâtiments qui ont le droit de prendre un étage
     aire_sol_ilot = 0.0        # le sol nu rendu aux îlots bâtis
 
@@ -832,6 +840,15 @@ def main():
             adresse = ilots[20 if fid == 16 else 16]["anneau"] if fid in (16, 20) else an
             cible_edifice = tuple(sum(p[j] for p in adresse) / len(adresse) for j in (0, 1))
             principal = max(range(len(volumes)), key=lambda k: abs(aire_signee(volumes[k][0]))) if volumes else -1
+            # 🪵 Les débris ne vont que là où la remise en état les effacera.
+            noye = (eau_ilot >= CRUE_ARBRE_NOYE_M
+                    and (d["cout_reparation_ke"] or 0.0) > 0.0)
+            debout = [list(v[0]) + [v[0][0]] for v in volumes if v[4] != "ruine"]
+            ferme_ilot = list(an) + [an[0]]
+
+            def libre(p, debout=debout, ferme_ilot=ferme_ilot):
+                return (dedans(ferme_ilot, p) and not chenal.dans_eau(p)
+                        and not any(dedans(e, p) for e in debout))
             for k_vol, (emp, niv, faite, parcelle, crue, eau_m) in \
                     enumerate(volumes):
                 # ⚠️ TOIT PENTU si l'empreinte se découpe en morceaux convexes
@@ -914,10 +931,15 @@ def main():
                     else:
                         n_neuf += 1
                         _marquer_ruine(masses, emp, G)
+                        force = DEB.force_ruine(eau_m)
                         a, b, c, e = _ruine(masses, emp, c_mur,
                             PAL.vers_lineaire(PAL.GRAVATS), G,
-                            random.Random(gr ^ 0x9C21))
+                            random.Random(gr ^ 0x9C21), force)
                         masses.dense = None
+                        st_debris["force"].append(force)
+                        st_debris["ruine"] += DEB.autour_ruine(
+                            masses, emp, force, c_mur, c_toit, G,
+                            random.Random(gr ^ 0xDEB1), libre, aval)
                     murs_ok += a
                     murs_tot += b
                     toits_ok += c
@@ -927,10 +949,15 @@ def main():
                     continue
                 if crue == "ruine":
                     _marquer_ruine(masses, emp, G)
+                    force = DEB.force_ruine(eau_m)
                     a, b, c, e = _ruine(masses, emp, c_mur,
                                         PAL.vers_lineaire(PAL.GRAVATS), G,
-                                        random.Random(gr ^ 0x9C21))
+                                        random.Random(gr ^ 0x9C21), force)
                     masses.dense = None
+                    st_debris["force"].append(force)
+                    st_debris["ruine"] += DEB.autour_ruine(
+                        masses, emp, force, c_mur, c_toit, G,
+                        random.Random(gr ^ 0xDEB1), libre, aval)
                     # 🔧 ET LE MÊME BÂTIMENT NEUF, dans un maillage à part que
                     # Godot garde CACHÉ jusqu'à ce que la décision tombe. C'est
                     # tout ce que « reconstruire » demande à la 3D : la maquette
@@ -996,6 +1023,7 @@ def main():
 
             part_verte = VERDURE.get(st, VERDURE_DEFAUT)
             limites_haie = set()
+            arbres_noyes = []
             verts_ilot = []
             for p in d["parcelles"]:
                 if p.get("origine") == "chemin":
@@ -1028,8 +1056,20 @@ def main():
                             continue
                         dessine = 0.0
                         for debut, fin in morceaux:
+                            # 🪵 Noyée, la haie sort arrachée ; l'entière
+                            # attend dans le maillage réparé.
+                            f_haie = DEB.densite(champ.ouverture(
+                                ((debut[0] + fin[0]) / 2.0,
+                                 (debut[1] + fin[1]) / 2.0))) if noye else 0.0
                             longueur = _haie(
-                                masses, debut, fin, coul_haie_i, G)
+                                repare if f_haie > 0.0 else masses,
+                                debut, fin, coul_haie_i, G)
+                            if f_haie > 0.0:
+                                st_debris["haie_m"] += longueur
+                                st_debris["haie_reste"] += DEB.haie_arrachee(
+                                    masses, debut, fin, coul_haie_i, G,
+                                    random.Random(_graine_lieu([debut, fin])),
+                                    f_haie)
                             if longueur > 0.0:
                                 n_haie += 1
                                 longueur_haie += longueur
@@ -1068,10 +1108,19 @@ def main():
                     _sol(masses, j, coul_jardin_i, G)
                     verts_ilot.append(j)
                 if eau_ilot >= CRUE_ARBRE_NOYE_M:
-                    continue                  # jardin noyé : plus un arbre
+                    # Jardin noyé : plus un arbre debout — ils sont couchés.
+                    arbres_noyes.extend(_semer_jardin(j, aire_j, emps + allees_campus))
+                    continue
                 arbres_jardin = _semer_jardin(j, aire_j, emps + allees_campus)
                 arbres.extend(arbres_jardin)
                 n_arbre_jardin += len(arbres_jardin)
+
+            if noye:
+                t_, p_ = DEB.dans_ilot(masses, an, arbres_noyes, libre,
+                                       champ.ouverture, aval, G,
+                                       random.Random(_graine_lieu(an) ^ 0xDEB2))
+                st_debris["troncs"] += t_
+                st_debris["pieces"] += p_
 
             # 🅿️ La cour grise des barres et des collectifs : ses places, sur
             # ce qui n'est ni bâti ni jardin.
@@ -1295,9 +1344,17 @@ def main():
         print("  crue : %d ruines à ciel ouvert, %d bâtiments salis,"
               " %d franchissement(s) emporté(s) %s"
               % (n_ruine, n_sali, len(coupes), sorted(coupes)))
-        print("        crêtes tirées dans %s × 2,70 m — si elles sortent"
-              " toutes pareilles, la ruine se lit comme un toit plat"
-              % (RUINE_PANS,))
+        # 🪵 Rasé au bord de l'eau, debout au bord du sinistré (2026-10-09) :
+        # si les deux forces sortent égales, le dégradé ne se voit pas.
+        fs = st_debris["force"] or [0.0]
+        print("        rasage : force %.2f à %.2f (0 au bord du sinistré, 1 au"
+              " bord de l'eau)" % (min(fs), max(fs)))
+        print("        débris : %d autour des ruines, %d troncs et %d pièces"
+              " dans les îlots" % (st_debris["ruine"], st_debris["troncs"],
+                                   st_debris["pieces"]))
+        print("        haies noyées : %.0f m sur %.0f restent debout, rendues"
+              " entières à la remise en état"
+              % (st_debris["haie_reste"], st_debris["haie_m"]))
         print("  réparation : %d bâtiments neufs en attente sur %d îlots"
               % (n_neuf, len(repare.groupes)))
         if not n_ruine:
@@ -1595,6 +1652,13 @@ def main():
             repare_voirie.marque(d["fid"])
         coul_ch_d, coul_tr_d, coul_marq_d = coul_ch, coul_tr, coul_marq
         decoupe_chaussee.emettre_noeuds(voirie, d["fid"], coul_ch_d, Gv, Y_CHAUSSEE)
+        # 🪵 Ce que « déblayer » enlève : troncs en travers, gravats.
+        if lavage:
+            st_debris["rues"] += 1
+            st_debris["rue"] += DEB.sur_rue(
+                voirie, axes_voirie.get(d["fid"], ()), ch, champ.ouverture,
+                lambda p: not chenal.dans_eau(p), Gv, Y_CHAUSSEE,
+                random.Random(d["fid"] ^ 0xDEB3))
         if lavage:
             decoupe_chaussee.emettre_noeuds(repare_voirie, d["fid"], coul_ch, Gv,
                                            Y_CHAUSSEE + RELEVE)
@@ -1764,6 +1828,8 @@ def main():
     print("  ponts emportés : %d moignons de tablier visibles"
           " · rives droite %.0f m / gauche +%.0f m"
           % (n_pont_ruine, RIVE_DROITE_Y, RIVE_GAUCHE_Y))
+    print("  rues envasées : %d obstacles (troncs, gravats) sur %d rues,"
+          " enlevés au déblaiement" % (st_debris["rue"], st_debris["rues"]))
     print("  réparation : %d tronçons lavés, %d tablier(s) neuf(s) prêt(s)"
           % (sum(1 for g in repare_voirie.groupes
                  if (par_fid.get(g[0], {}).get("etat_crue") or "") != "coupe"),
@@ -2091,7 +2157,7 @@ def main():
         # 🔄 C'ÉTAIT UN CHAMP D'ALTITUDE (`x0, z0, pas, nx, nz, alt`) que Godot
         # dépliait en grille. La carte étant plate, c'est un maillage comme les
         # autres : Godot n'a plus qu'UNE façon de lire de la géométrie.
-        "boue": carte_boue(ilots, routes, chenal, cx, cy),
+        "boue": carte_boue(ilots, routes, chenal, cx, cy, champ=champ),
         "terrain": terre.json(),
         "paysage": decor_vallee,
         "masses": masses.json(),

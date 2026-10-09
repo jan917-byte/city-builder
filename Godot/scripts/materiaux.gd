@@ -212,12 +212,16 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tvec3 normale_monde = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);\n" \
 		+ "\tfloat vers_le_ciel = normale_monde.y;\n" \
 		+ "\tfloat rugosite = 0.95;\n" \
+		+ "\t// 🪵 Le débris (plafond −2, 07) part avec la boue de son îlot ou de sa rue.\n" \
+		+ "\tbool debris = plafond < -1.5;\n" \
+		+ "\tif (debris && boue_propre > 0.5) discard;\n" \
 		+ "\t// 🏗️ La ruine s'efface sous ce qui la remplace ; sa dalle reste, sombre\n" \
 		+ "\t// sous les pilotis (claire, le vide ne s'y lisait pas), prairie dans le parc.\n" \
+		+ "\t// Ses crêtes regardent aussi le ciel : seule la dalle, au ras du sol, reste.\n" \
 		+ "\tbool parc = densification.w > 2.5;\n" \
 		+ "\tbool moderne = rebati > 0.5 && rebati < 2.5;\n" \
 		+ "\tif (ruine > 0.5 && densification.w > 0.5) {\n" \
-		+ "\t\tif (vers_le_ciel < 0.9) discard;\n" \
+		+ "\t\tif (vers_le_ciel < 0.9 || pos_monde.y > sol + 0.2) discard;\n" \
 		+ "\t\tbase = BETON * 0.30 * COLOR.a;\n" \
 		+ "\t}\n" \
 		+ "\t// 🏗️ SOUS LE PLANCHER LEVÉ, des poteaux et du vide, et le nez de\n" \
@@ -750,6 +754,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\tif (parcelle_agricole > 1.5 && vers_le_ciel > 0.5) base = culture_champ(base, pos_monde.xz, parcelle_agricole, COLOR.a);\n" \
 		+ "\tvec4 depot = boue_hauteur >= 0.0 ? depot_boue_local(pos_monde, boue_hauteur, 0.0) : depot_boue(pos_monde);\n" \
 		+ "\tfloat propre = boue_propre * boue_nettoyage_acces(pos_monde.xz, boue_acces, boue_largeur);\n" \
+		+ "\t// Sous la boue pleine, un tronc ou une tuile se confondrait avec le sol.\n" \
+		+ "\tif (debris) depot.a *= 0.5;\n" \
 		+ "\t// 🌿 LE PARC INONDABLE : là où l'eau est passée, prairie et noues.\n" \
 		+ "\tif (parc && vers_le_ciel > 0.9 && pos_monde.y < 0.6) {\n" \
 		+ "\t\tfloat pre = max(ruine, smoothstep(0.02, 0.25, depot.a));\n" \
@@ -885,7 +891,7 @@ static func masque() -> ShaderMaterial:
 		+ DENSE_VERTEX \
 		+ "}\n" \
 		+ "void fragment() {\n" \
-		+ "\tif (ruine > 0.5 && densification.w > 0.5) discard;\n" \
+		+ "\tif ((ruine > 0.5 && densification.w > 0.5) || plafond < -1.5) discard;\n" \
 		+ "\tALBEDO = vec3(1.0);\n" \
 		+ "}\n"
 	var m := ShaderMaterial.new()
