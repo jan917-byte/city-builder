@@ -1163,13 +1163,74 @@ def _suites(js):
     return [(a, b) for a, b in out]
 
 
+def _obstacles_uv(obstacles, ox, oy, u, v):
+    """Les obstacles dans le repère de la trame, avec leur boîte."""
+    out = []
+    for an in obstacles:
+        pts = [((p[0] - ox) * u[0] + (p[1] - oy) * u[1],
+                (p[0] - ox) * v[0] + (p[1] - oy) * v[1]) for p in an]
+        if len(pts) >= 3:
+            us = [p[0] for p in pts]
+            vs = [p[1] for p in pts]
+            out.append((min(us), max(us), min(vs), max(vs), pts + [pts[0]]))
+    return out
+
+
+def _touche_uv(obs, u0, u1, v0, v1):
+    """Un rectangle aligné touche-t-il l'un des obstacles ?"""
+    for a0, a1, b0, b1, pts in obs:
+        if a1 < u0 or a0 > u1 or b1 < v0 or b0 > v1:
+            continue
+        if dedans(pts, ((u0 + u1) / 2.0, (v0 + v1) / 2.0)):
+            return True
+        for (pu, pv), (qu, qv) in zip(pts, pts[1:]):
+            # Liang-Barsky : le segment entre-t-il dans le rectangle ?
+            t0, t1 = 0.0, 1.0
+            du_, dv_ = qu - pu, qv - pv
+            ok = True
+            for p_, q_ in ((-du_, pu - u0), (du_, u1 - pu),
+                           (-dv_, pv - v0), (dv_, v1 - pv)):
+                if abs(p_) < 1e-12:
+                    if q_ < 0.0:
+                        ok = False
+                        break
+                    continue
+                r_ = q_ / p_
+                if p_ < 0.0:
+                    t0 = max(t0, r_)
+                else:
+                    t1 = min(t1, r_)
+                if t0 > t1:
+                    ok = False
+                    break
+            if ok:
+                return True
+    return False
+
+
 def _places_de_parc(anneau):
     """La trame de stationnement d'une place-parking : combien de places elle
     range, le marquage qui les dessine, et l'aire qu'elle occupe.
 
-    Sortie : (places, traits, trame) — le compte, les segments à peindre
-    ((x0,y0), (x1,y1)), et l'anneau retiré du bord, qui sert deux fois : à
-    ranger les places, et à en tenir les arbres dehors.
+    Sortie : (places, traits, trame, centres) — le compte, les segments à
+    peindre ((x0,y0), (x1,y1)), l'anneau retiré du bord, qui sert deux fois : à
+    ranger les places, et à en tenir les arbres dehors —, et le milieu et l'axe
+    de chaque place, où `trafic.gd` gare ses voitures."""
+    t = _trame_parc(anneau)
+    if t is None:
+        return 0, [], None, []
+    if not t["cases"]:
+        return 0, [], t["inner"], []
+    return (len(t["cases"]), _traits_parc(t, t["cases"]), t["inner"],
+            [_case_parc(t, c)[:2] for c in t["cases"]])
+
+
+def _trame_parc(anneau, obstacles=(), marge=0.0):
+    """Les cases (module k, rangée r, rang j) de la meilleure trame, et de quoi
+    les replacer : None si l'emprise est trop petite pour une seule place.
+
+    🅿️ `obstacles` : les anneaux qu'aucune place ni son allée ne touche, à
+    `marge` près — les bâtiments et les jardins d'une cour (`cours.py`).
 
     Les sept règles sont commentées au § PLACE_LARGEUR. Ce qui n'y est pas et
     qui compte ici : le DOS des deux rangées est le même trait pour les deux.
@@ -1178,10 +1239,10 @@ def _places_de_parc(anneau):
     toute la longueur de la place."""
     n = len(anneau)
     if n < 3:
-        return 0, [], None
+        return None
     inner = D4B.retracter(anneau, [BORD_PARKING] * n)
     if len(inner) < 3 or abs(aire_signee(inner)) < MODULE_PARKING * PLACE_LARGEUR:
-        return 0, [], None
+        return None
     ferme = list(inner) + [inner[0]]
 
     # ① la direction : la plus longue arête de l'emprise, donc la façade
@@ -1203,12 +1264,16 @@ def _places_de_parc(anneau):
     def P(u, v):
         return (ox + ux * u + vx * v, oy + uy * u + vy * v)
 
+    obs = _obstacles_uv(obstacles, ox, oy, (ux, uy), (vx, vy))
+
     def cadre(u0, u1, va, vb):
         """Les QUATRE coins dedans, pas le centre. Un rectangle dont seul le
         centre est testé déborde de moitié sur un bord oblique — et tous les
         bords de cette place-ci sont obliques."""
         return all(dedans(ferme, P(u, v)) for u, v in
-                   ((u0, va), (u1, va), (u1, vb), (u0, vb)))
+                   ((u0, va), (u1, va), (u1, vb), (u0, vb))) and \
+            not _touche_uv(obs, min(u0, u1) - marge, max(u0, u1) + marge,
+                           min(va, vb) - marge, max(va, vb) + marge)
 
     def trame(dv, du):
         cases = []
@@ -1245,9 +1310,41 @@ def _places_de_parc(anneau):
             if len(cases) > len(meilleur[0]):
                 meilleur = (cases, dv, du)
     cases, dv, du = meilleur
-    if not cases:
-        return 0, [], inner
+    return {"cases": cases, "dv": dv, "du": du, "P": P, "inner": inner,
+            "v": (vx, vy)}
 
+
+def _case_parc(t, case):
+    """Le milieu, l'axe long (vers l'allée) et les quatre coins d'une case."""
+    k, r, j = case
+    P, dv, du = t["P"], t["dv"], t["du"]
+    base = dv + k * MODULE_PARKING
+    va = base + ALLEE_PARKING if r == 0 else base + ALLEE_PARKING + PLACE_LONGUEUR
+    vb = va + PLACE_LONGUEUR
+    ua, ub = du + j * PLACE_LARGEUR, du + (j + 1) * PLACE_LARGEUR
+    sens = -1.0 if r == 0 else 1.0
+    vx, vy = t["v"]
+    return (P((ua + ub) / 2.0, (va + vb) / 2.0), (vx * sens, vy * sens),
+            [P(ua, va), P(ub, va), P(ub, vb), P(ua, vb)])
+
+
+def _allee_parc(t, case):
+    """Les quatre coins de l'allée exigée devant une case (ACCES_PARKING)."""
+    k, r, j = case
+    P, dv, du = t["P"], t["dv"], t["du"]
+    base = dv + k * MODULE_PARKING
+    if r == 0:
+        wa, wb = base + ALLEE_PARKING - ACCES_PARKING, base + ALLEE_PARKING
+    else:
+        wa = base + MODULE_PARKING
+        wb = wa + ACCES_PARKING
+    ua, ub = du + j * PLACE_LARGEUR, du + (j + 1) * PLACE_LARGEUR
+    return [P(ua, wa), P(ub, wa), P(ub, wb), P(ua, wb)]
+
+
+def _traits_parc(t, cases):
+    """Le marquage des cases retenues."""
+    P, dv, du = t["P"], t["dv"], t["du"]
     par_module = {}
     for k, r, j in cases:
         par_module.setdefault(k, (set(), set()))[r].add(j)
@@ -1277,7 +1374,7 @@ def _places_de_parc(anneau):
         for j0, j1 in _suites(sorted(ra | rb)):
             traits.append((P(du + j0 * PLACE_LARGEUR, dos),
                            P(du + (j1 + 1) * PLACE_LARGEUR, dos)))
-    return len(cases), traits, inner
+    return traits
 
 
 def _decouper(iv, retires):

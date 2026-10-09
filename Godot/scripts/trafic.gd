@@ -124,6 +124,7 @@ class Famille extends RefCounted:
 var ville
 var _roulantes := []
 var _garees := []
+var _garees_ilot := {}   # îlot -> voitures garées hors de la rue
 var _mm_roule: MultiMesh
 var _mm_gare: MultiMesh
 var _node_roule: MultiMeshInstance3D
@@ -359,6 +360,18 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 			_garees.append({"fid": fid, "t": Transform3D(b3, Vector3(
 				place.x, Y_GARE + niveau(place), place.y))})
 			i += pas
+
+	# 🅿️ HORS DE LA RUE : la place-parking et les cours des barres. `07` a déjà
+	# tiré les places occupées ; x, y, z puis l'axe, le sol pris tel quel.
+	var hors_rue: Dictionary = donnees.get("places_ilot", {})
+	for cle in hors_rue:
+		var f: Array = hors_rue[cle]
+		for i in range(0, f.size() - 4, 5):
+			var b3 := Basis(Vector3.UP, atan2(float(f[i + 3]), float(f[i + 4])))
+			_garees.append({"fid": int(cle), "ilot": true, "t": Transform3D(b3,
+				Vector3(float(f[i]), float(f[i + 1]) + Y_GARE, float(f[i + 2])))})
+		@warning_ignore("integer_division")
+		_garees_ilot[int(cle)] = f.size() / 5
 
 	_mm_roule = Constructeur.voitures(_roulantes.size(), true, true)
 	var courbes := ShaderMaterial.new()
@@ -903,7 +916,7 @@ func voitures_visibles_sur(fid: int) -> Array:
 			roulantes += int(_visibles_roule[k])
 	var garees := 0
 	for k in _garees.size():
-		if int(_garees[k]["fid"]) == fid:
+		if int(_garees[k]["fid"]) == fid and not _garees[k].has("ilot"):
 			garees += int(_visibles_gare[k])
 	return [roulantes, garees]
 
@@ -1756,6 +1769,16 @@ static func _p95(compte: Dictionary) -> float:
 		if not valeurs.is_empty() else 1.0
 
 
+## 🅿️ La part d'un parking d'îlot encore occupée : il se vide à mesure que son
+## sol redevient perméable (`Ville.rendre_permeable`), et reste plein sinon.
+func _part_ilot(fid: int, mois: float) -> float:
+	var depart: float = ville.base("i", fid, "impermeabilise")
+	if depart <= Ville.PERMEABLE_RESTE:
+		return 1.0
+	return clampf((ville.valeur("i", fid, "impermeabilise", mois) - Ville.PERMEABLE_RESTE)
+		/ (depart - Ville.PERMEABLE_RESTE), 0.0, 1.0)
+
+
 func _maj_garees(mois: float, force: bool) -> void:
 	if not force and is_equal_approx(mois, _dernier_etat):
 		return
@@ -1768,14 +1791,19 @@ func _maj_garees(mois: float, force: bool) -> void:
 	for k in _garees.size():
 		var a: Dictionary = _garees[k]
 		var fid: int = a["fid"]
-		var visibles := int(combien.get(fid, -1))
+		# 🅿️ Une voiture d'îlot se compte à part : les fid d'îlot et de rue se recouvrent.
+		var cle: int = -1 - fid if a.has("ilot") else fid
+		var visibles := int(combien.get(cle, -1))
 		if visibles < 0:
-			visibles = 0 if not ville.route_praticable(fid, mois) else \
-				int(roundf(ville.valeur("r", fid, "stationnement", mois)
-				* ECHANTILLON_STATIONNEMENT))
-			combien[fid] = visibles
-		var rang := int(vus.get(fid, 0))
-		vus[fid] = rang + 1
+			if a.has("ilot"):
+				visibles = int(ceilf(_part_ilot(fid, mois) * float(_garees_ilot.get(fid, 0))))
+			else:
+				visibles = 0 if not ville.route_praticable(fid, mois) else \
+					int(roundf(ville.valeur("r", fid, "stationnement", mois)
+					* ECHANTILLON_STATIONNEMENT))
+			combien[cle] = visibles
+		var rang := int(vus.get(cle, 0))
+		vus[cle] = rang + 1
 		var montre := rang < visibles
 		# 🔄 LE CONTRÔLE NE RELIT PLUS LA MATRICE — corrigé le 2026-08-26. Une
 		# base mise à zéro ressortait de `get_instance_transform` en IDENTITÉ,

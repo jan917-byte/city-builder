@@ -190,6 +190,15 @@ La corniche ne barre plus la rive droite à 0,8 m du sol. Essais `--essai` : tou
 - 🔴 **Le demi-étage de `TISSU`** (4,5 à l'îlot compact) se tire maintenant en haut ou en bas, bâtiment par bâtiment (`04c`). Mettre 4 ou 5 dans la table est l'autre option : c'est du level design.
 - Serait un défaut : une rangée coupée par un toit, une porte qui ne touche pas le trottoir, des rayures qui scintillent en zoomant.
 
+## 11. La cour des barres se remplit de voitures (2026-10-09, demande de l'auteur : « ces espaces sont super vides »)
+
+Sur le gris qui n'est ni bâti ni jardin, les barres de 1970 et les collectifs de 1995 reçoivent un parking peint sur asphalte, des voitures garées (3 places sur 4) et une rangée de boxes de garage, **dans la limite des places que l'îlot compte déjà** (`stationnement`). La place-parking 19 a enfin ses voitures, et elles partent quand on la rend perméable. Planche `QGIS/rendus/wehrau_cours_1_barre.png` → `..._6_place_permeable.png` (`Godot/outils/apercu_cours.gd`) ; 07 imprime le compte par cour.
+
+- 🔴 **Le reste de la cour reste vide** quand l'îlot n'a pas assez de places : îlot 32 en dessine ses 91, l'îlot 30 n'en loge que 50 sur 91 dans son gris, l'îlot 60 aucune. Monter `stationnement` ou meubler le reste (allées, pelouse pelée, aire de jeux), c'est à trancher.
+- 🔴 **Aucune décision ne vide encore ces cours** : « rendre perméable » ne vaut que pour la place-parking (`PERMEABLE_SOUS_TYPES`, `ville.gd`). Et une place rendue perméable perd ses voitures mais garde son asphalte et ses lignes.
+- Les tissus concernés sont une proposition (`COURS_PARKING`, haut de `export_godot/cours.py`).
+- Serait un défaut : une place ou un box sur un jardin, contre un mur, ou une voiture hors de sa case.
+
 ---
 
 **Voir aussi** : [00 - Prototype.md](00%20-%20Prototype.md) · [Parcelles.md](Parcelles.md) · [ETAT.md](../ETAT.md) · `Godot/README.md`

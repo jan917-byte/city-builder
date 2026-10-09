@@ -34,6 +34,8 @@ from export_godot.batiments import (
     _toit_plat,
 )
 from export_godot.boue import carte_boue
+from export_godot.cours import COURS_PARKING, OCCUPATION as OCCUPATION_COUR
+from export_godot.cours import amenager as _amenager_cour
 from export_godot.camps import emplacements as _places_camp
 from export_godot.faubourg import DESSERTE, axe_en_lisiere, separer_champ
 from export_godot.fermes import (
@@ -688,6 +690,8 @@ def main():
     # différents diraient qu'il s'agit de deux choses.
     coul_marq_sol = PAL.vers_lineaire(PAL.MARQUAGE)
     parkings = []
+    cours = []                 # 🅿️ (îlot, places peintes, boxes, voitures, places de l'îlot)
+    places_ilot = {}           # 🅿️ îlot -> voitures garées hors de la rue
     n_tri_parc = 0
     n_chemin = 0
     aire_chemin = 0.0
@@ -992,6 +996,7 @@ def main():
 
             part_verte = VERDURE.get(st, VERDURE_DEFAUT)
             limites_haie = set()
+            verts_ilot = []
             for p in d["parcelles"]:
                 if p.get("origine") == "chemin":
                     continue
@@ -1044,6 +1049,7 @@ def main():
                 vert_force = vert_force or fid in CAMPUS
                 if vert_force:
                     _sol(masses, j, coul_jardin_i, G)
+                    verts_ilot.append(j)
                     n_pav_vert += 1
                 if aire_j < AIRE_JARDIN_MIN or len(j) < 3:
                     continue
@@ -1060,11 +1066,24 @@ def main():
                 # sans introduire un second moteur de géométrie dans 07.
                 if not vert_force:
                     _sol(masses, j, coul_jardin_i, G)
+                    verts_ilot.append(j)
                 if eau_ilot >= CRUE_ARBRE_NOYE_M:
                     continue                  # jardin noyé : plus un arbre
                 arbres_jardin = _semer_jardin(j, aire_j, emps + allees_campus)
                 arbres.extend(arbres_jardin)
                 n_arbre_jardin += len(arbres_jardin)
+
+            # 🅿️ La cour grise des barres et des collectifs : ses places, sur
+            # ce qui n'est ni bâti ni jardin.
+            if st in COURS_PARKING:
+                n_pl, n_box, fentes_cour = _amenager_cour(
+                    masses, an, [v[0] for v in volumes] + verts_ilot
+                    + chemins_ilot + allees_campus,
+                    int(d["stationnement"] or 0), _graine_lieu(an), G)
+                if fentes_cour:
+                    places_ilot[str(fid)] = fentes_cour
+                cours.append((fid, n_pl, n_box, len(fentes_cour) // 5,
+                              int(d["stationnement"] or 0)))
 
             # 🔗 L'INTERFACE DU TOIT — décisions 41 et 64.
             # Un objet bâti expose quatre nombres : surface de toit, pente,
@@ -1169,7 +1188,17 @@ def main():
             # dessinera sans qu'on revienne ici.
             interdit = None
             if (d["stationnement"] or 0) > 0:
-                n_pl, traits, trame_pl = _places_de_parc(an)
+                n_pl, traits, trame_pl, centres_pl = _places_de_parc(an)
+                rng_pl = random.Random(fid)
+                occupees = [c for c in centres_pl if rng_pl.random() < OCCUPATION_COUR]
+                rng_pl.shuffle(occupees)
+                fentes_pl = []
+                for (x_, y_), (dx_, dy_) in occupees:
+                    g0, g1 = G(x_, y_, Y_SOL), G(x_ + dx_, y_ + dy_, Y_SOL)
+                    fentes_pl.extend([round(g0[0], 2), round(g0[1], 3), round(g0[2], 2),
+                                      round(g1[0] - g0[0], 3), round(g1[2] - g0[2], 3)])
+                if fentes_pl:
+                    places_ilot[str(fid)] = fentes_pl
                 # Les places entrent dans le maillage des SOLS, donc dans le
                 # groupe de leur îlot : cliquer une place ouvre la fiche de la
                 # place. Elles ne sont pas de la voirie — le jeu ne les
@@ -1957,6 +1986,11 @@ def main():
               % (n_tr_, n_tri_parc, BORD_PARKING))
         print("        %d arbres plantés sur la place, dont %d sur la trame %s"
               % (n_arb, n_dedans, "✅" if n_dedans == 0 else "❌ à regarder"))
+    for f_, n_pl_, n_box_, n_voit_, annonce in cours:
+        print("  cour (îlot %d) : %d places peintes + %d boxes sur %d places"
+              " de l'îlot, %d voitures garées %s"
+              % (f_, n_pl_, n_box_, annonce, n_voit_,
+                 "✅" if n_pl_ + n_box_ == annonce else "⚠️ la cour n'en tient pas plus"))
     print("  arbres : %d semés dans les îlots" % len(arbres))
     print("  alignements : %d emplacements sur %d tronçons plantables, "
           "%d occupés à t0"
@@ -2142,6 +2176,7 @@ def main():
         # route — il en fait la SILHOUETTE qu'il détoure quand on la choisit.
         "couloirs": couloirs,
         "places_rue": {f: v for f, v in fentes_places.items() if v},
+        "places_ilot": places_ilot,
         "pietons": pietons,
         # L'emprise au sol de chaque îlot, déjà en repère Godot : [[x, y, z], …],
         # anneau OUVERT. Jamais affichée — c'est la moitié basse du masque de

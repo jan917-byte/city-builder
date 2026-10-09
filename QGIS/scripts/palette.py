@@ -244,6 +244,11 @@ TROTTOIR = "#A8A399"
 # ~78 % de valeur, assez pour trancher sur MINERAL (~42 %).
 MARQUAGE = "#C6C3B9"
 
+# 🅿️ Les boxes de garage des cours (`cours.py`) : du béton brut, et des portes
+# basculantes aux teintes passées des années 1970.
+GARAGE_MUR = "#B3AEA3"
+PORTES_GARAGE = ["#B9B2A0", "#7D6A55", "#6E7F73", "#D2CEC4", "#8B5E4E", "#5F6F82"]
+
 # Pas un aplat : un blé n'a pas la couleur d'une prairie. Une base par îlot,
 # tirée de sa position.
 CHAMPS = [
