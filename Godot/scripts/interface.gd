@@ -3794,10 +3794,10 @@ func _controles_temps() -> void:
 		_temps_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_temps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(_temps_label)
-	# 🔄 Pause et lecture en icônes (auteur, 2026-09-28) ; ×4 et ×12 restent
-	# écrits, une icône ne dirait pas le chiffre.
+	# 🔄 Pause et lecture en icônes (auteur, 2026-09-28) ; ×2 et ×4 restent
+	# écrits, une icône ne dirait pas le chiffre. Plus de ×12 (auteur, 2026-10-09).
 	for choix in [["pause", 0.0, "Pause"], ["lecture", 1.0, "Lecture"],
-			["×4", 4.0, "Accélérer ×4"], ["×12", 12.0, "Accélérer ×12"]]:
+			["×2", 2.0, "Accélérer ×2"], ["×4", 4.0, "Accélérer ×4"]]:
 		var b := Button.new()
 		if DESSINS.has(choix[0]):
 			b.icon = _icone(choix[0], dessin, encre)

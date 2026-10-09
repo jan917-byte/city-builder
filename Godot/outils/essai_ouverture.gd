@@ -320,7 +320,7 @@ func executer() -> void:
 	verifier(o.etape == "travaux" and is_equal_approx(jeu.mois, fin_rue - 0.01) and not jeu.ville.route_praticable(o.RUE, jeu.mois),
 		"Une reprise pendant le chantier conserve l'attente et la rue fermée")
 	await cliquer(bouton("Laisser avancer"))
-	verifier(jeu.vitesse == 12.0, "Le joueur lance le temps")
+	verifier(jeu.vitesse == 4.0, "Le joueur lance le temps")
 	actualiser(fin_rue)
 	verifier(o.etape == "livraison" and jeu.vitesse == 0.0,
 		"La première livraison met le jeu en pause")
@@ -636,7 +636,7 @@ func essayer_ponts(lointain: int) -> void:
 	actualiser(fin - 0.01)
 	verifier(o.etape == "pont_travaux" and not o.acces_degage(), "La reprise rend la boue")
 	# Livré, le pont reste barré par la boue : le jeu s'arrête et le dit, sans plus.
-	jeu._sur_vitesse(12.0)
+	jeu._sur_vitesse(4.0)
 	actualiser(fin)
 	verifier(o.etape == "pont_acces" and jeu.vitesse == 0.0 and "boue" in o._texte.text
 		and o._actions.get_child_count() == 0,
@@ -656,9 +656,9 @@ func essayer_ponts(lointain: int) -> void:
 	fin += delai
 	actualiser(fin - 0.01)
 	verifier(o.etape == "pont_acces", "Le guide attend tant que la boue n'est pas déblayée")
-	jeu._sur_vitesse(12.0)
+	jeu._sur_vitesse(4.0)
 	actualiser(fin)
-	verifier(o.etape == "pont_livre" and jeu.vitesse == 12.0 and not o.annonce.visible and not o.visible,
+	verifier(o.etape == "pont_livre" and jeu.vitesse == 4.0 and not o.annonce.visible and not o.visible,
 		"Le pont livré, le temps court encore et rien ne couvre la ville")
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)

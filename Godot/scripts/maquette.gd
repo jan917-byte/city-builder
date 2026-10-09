@@ -58,7 +58,7 @@ const RENDUS := "res://../QGIS/rendus/"
 
 # 🔄 2026-08-17 : le temps allait 60× trop vite (une seconde = un mois à ×1),
 # et une pose passait avant qu'on ait relâché la souris. UNE MINUTE POUR UN
-# MOIS, donc ×12 fait un an par minute et l'horizon vingt minutes.
+# MOIS, donc ×4 fait un mois en quinze secondes.
 const MOIS_PAR_SECONDE := 1.0 / 60.0
 
 # La même rampe que `06_etat_zero.py` et `parties.html` : un calque se lit
@@ -620,7 +620,7 @@ func _banc() -> void:
 	# ⏩ Le banc tourne EN PAUSE ; c'est en jouant, temps qui court, qu'on juge.
 	_repere("ville")
 	print("\n  le temps qui court, ville entière :")
-	for v in [0.0, 1.0, 4.0, 12.0]:
+	for v in [0.0, 1.0, 2.0, 4.0]:
 		_sur_vitesse(v)
 		for i in 10:
 			await get_tree().process_frame
@@ -3116,7 +3116,7 @@ static func _nom_couche(couche: String) -> String:
 	return {"i": "îlot", "r": "rue", "b": "berge"}.get(couche, couche)
 
 
-## La pause est volontaire : sans elle, un retour demandé en ×12 recommence à
+## La pause est volontaire : sans elle, un retour demandé en ×4 recommence à
 ## défiler avant qu'on ait regardé.
 func _sur_reset() -> void:
 	ville.reinitialiser()

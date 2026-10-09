@@ -796,7 +796,9 @@ func actualiser(force := false) -> void:
 		etape = "livraison"
 	var degage := etape == "pont_travaux" and acces_degage()
 	if degage and _degage_annonce == 0:
-		jeu.interface.retours.annoncer("Chemin du pont dégagé.", jeu.mois)
+		# ⏩ L'invitation au ×4 (auteur, 2026-10-09). 🔴 Flaggable (90).
+		jeu.interface.retours.annoncer("Chemin du pont dégagé.
+Passez en ×4 pour avancer plus vite.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	# Le guide remplaçait le panneau du calque Trafic : muet, il le rend.
@@ -839,7 +841,7 @@ func actualiser(force := false) -> void:
 		var duree: float = jeu.ville.duree_reparation_mois(premier["couche"], premier["fid"])
 		var reste: float = float(premier["fin"]) - jeu.mois
 		_progression.value = (1.0 - reste / duree) * 100.0
-		_detail.text = "Encore %s · ×12 ≈ %d s" % [jeu.interface._duree(reste), int(ceil(reste * 5.0))]
+		_detail.text = "Encore %s · ×4 ≈ %d s" % [jeu.interface._duree(reste), int(ceil(reste * 15.0))]
 	# Les boutons restent en place sous le doigt ; seuls les changements de décision les refont.
 	var signature := "%s/%s/%s/%s/%s/%s/%s/%s/%d" % [etape, premier,
 		jeu.ville.est_repare("r", RUE), jeu.ville.est_repare("i", MAISONS),
@@ -863,7 +865,7 @@ func actualiser(force := false) -> void:
 			_poser_reperes([])
 			_titre.text = "Les premiers abris arrivent"
 			_texte.text = ""
-			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
+			_bouton("Laisser avancer · ×4", func() -> void: jeu._sur_vitesse(4.0))
 		"trafic":
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
@@ -920,7 +922,7 @@ func actualiser(force := false) -> void:
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
-			_bouton("Laisser avancer · ×12", func() -> void: jeu._sur_vitesse(12.0))
+			_bouton("Laisser avancer · ×4", func() -> void: jeu._sur_vitesse(4.0))
 			_bouton("Voir mon chantier", examiner.bind(premier["couche"], premier["fid"]))
 		"livraison":
 			_titre.text = "Un lieu reprend vie"

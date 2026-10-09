@@ -42,7 +42,7 @@ var _capital_dits := {}
 var _recent: Array[String] = []
 var _expiration := 0
 var _historique_ouvert := false
-## 🎚️ LEVEL DESIGN : dès quelle durée l'engagement rappelle ×12 — à ×1, un pont
+## 🎚️ LEVEL DESIGN : dès quelle durée l'engagement rappelle ×4 — à ×1, un pont
 ## de 18 mois dure 18 minutes.
 const ACCELERER_MOIS := 3.0
 
@@ -373,15 +373,17 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 		# 🌾 La récolte perdue monte sur le champ (auteur, 2026-10-02).
 		ui.bulles.sur_lieu(couche, fid, "−%s" % nourris, "nourriture", ui.ALERTE)
 	elif duree >= ACCELERER_MOIS:
-		message += " · ×12 ≈ %d s" % int(ceil(duree * 5.0))
+		message += " · ×4 ≈ %d s" % int(ceil(duree * 15.0))
 	consigner(message, mois)
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
 		# 🔴 Textes de prototype, flaggables (90) : la Ville s'entoure en même temps (auteur, 2026-10-06).
-		annoncer("La boue bloque le chemin jusqu'au pont.", mois)
+		# 🧹 La consigne de clic est voulue (auteur, 2026-10-09), malgré « montrer, pas expliquer ».
+		annoncer("La boue bloque le chemin jusqu'au pont.\nCliquez sur les rues boueuses pour les déblayer.", mois)
 	# 🧹 À la troisième rue faite à la main, Trafic propose le reste (auteur, 2026-10-05).
 	if couche == "r" and "reparation" in r["faits"] and not fid in ui.ville.ponts_coupes() \
 			and ui.ville.rues_deblayees_main() == ui.Ville.DEBLAIEMENT_SEUIL and ui.deblaiement_propose():
-		annoncer("Encore %d rues sous la boue." % ui.rues_a_deblayer().size(), mois)
+		annoncer("Encore %d rues sous la boue.
+Cliquez sur Trafic pour tout déblayer." % ui.rues_a_deblayer().size(), mois)
 	if duree <= 0.0:
 		for genre in r["faits"]:
 			livraison({"couche": couche, "fid": fid, "genre": genre}, mois)
