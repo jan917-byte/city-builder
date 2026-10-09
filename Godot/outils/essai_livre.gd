@@ -48,9 +48,15 @@ func executer() -> void:
 	jeu._repere("ville")
 	ui.ouvrir_lieu("universite")
 	actualiser(t)
-	verifier(ui._etude_bloc.visible and ui._leviers_crue["berge"].visible and not ui._leviers_crue["vert"].visible
-		and not ui._leviers_crue["permeable"].visible and not ui._leviers_crue["pre"].visible,
-		"L'étude de l'université ne propose que la berge")
+	verifier(ui._etude_bloc.visible and not ui._leviers_crue["berge"].is_visible_in_tree()
+		and ui._etude_biblio.get_meta("anneau").visible and o.page_nouvelle("eponge"),
+		"L'université renvoie à la bibliothèque, qui clignote ; aucun levier chez elle")
+	await cliquer(ui._etude_biblio)
+	actualiser(t)
+	verifier(ui._page_bloc.visible and ui._leviers_crue["berge"].is_visible_in_tree()
+		and not ui._leviers_crue["vert"].is_visible_in_tree()
+		and not ui._leviers_crue["permeable"].is_visible_in_tree() and not ui._leviers_crue["pre"].is_visible_in_tree(),
+		"La page de la ville-éponge ne propose que la berge")
 	await capture("livre_00_berge_seule")
 	ui._fermer_campus()
 	ui._sur_rail("dangers")
@@ -97,9 +103,9 @@ func executer() -> void:
 	verifier(not ui._solaire_bloc.visible, "Le solaire n'est pas encore dans la fiche")
 	await capture("livre_03_solaire_ferme")
 
-	# --- La jauge : le levier du parking, pris à l'université, ouvre Dangers › Prochaine crue.
+	# --- La jauge : le levier du parking, pris à la bibliothèque, ouvre Dangers › Prochaine crue.
 	jeu._repere("ville")
-	ui.ouvrir_lieu("universite")
+	ui.ouvrir_lieu("bibliotheque", "eponge")
 	actualiser(t)
 	await cliquer(ui._prochaine_valeurs["levier_permeable"])
 	ui._maj_fiche()
@@ -150,8 +156,8 @@ func executer() -> void:
 	jeu._sur_theme("")
 	ui.ouvrir_lieu("bibliotheque")
 	actualiser(t2)
-	verifier(ui._biblio_bloc.visible and not ui._etude_bloc.visible and o.page_nouvelle("eponge"),
-		"La bibliothèque a son îlot, la ville-éponge y est nouvelle")
+	verifier(ui._biblio_bloc.visible and not ui._etude_bloc.visible and not o.page_nouvelle("eponge"),
+		"La bibliothèque a son îlot, la ville-éponge y est déjà lue")
 	await capture("livre_06_bibliotheque")
 	ui.ouvrir_page("eponge")
 	actualiser(t2)

@@ -127,7 +127,7 @@ func executer() -> void:
 	# 🔬 Les sujets sont à l'institut depuis le 2026-10-08.
 	jeu.interface.ouvrir_lieu("institut")
 	await cliquer(jeu.interface._lieu_lignes["sedum"]["bouton"])
-	verifier(jeu.ville.recherche_engagee("sedum") and "k€/mois" in retours.journal[-1], "Le financement de recherche annonce son coût mensuel")
+	verifier(jeu.ville.recherche_engagee("sedum") and "k€ en" in retours.journal[-1], "Le financement de recherche annonce son coût et sa durée")
 	actualiser(jeu.mois + 12.0)
 	verifier("recherche achevée" in retours.journal[-1], "Le résultat de recherche est annoncé à son échéance")
 	jeu.interface.ouvrir_lieu("mairie")

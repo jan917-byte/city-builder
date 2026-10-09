@@ -11,35 +11,36 @@ extends RefCounted
 # sans géométrie, et un chantier ne se révise pas (`lancer_solaire`).
 # 🔴 Des paliers PETITS, exprès : un gros palier tardif rattraperait une partie
 # ratée. Les grands gains doivent venir des objets neufs, qui restent à écrire.
+# ⏱️ Un mois chacune, même prix total (auteur, 2026-10-09 : attendre plus est trop long au début).
 const SUJETS := {
 	"rendement": {
 		"nom": "Rendement des panneaux",
 		"quoi": "+8 % de production sur TOUS les toits, posés compris",
-		"ke_mois": 25.0, "mois": 24.0,
+		"ke_mois": 600.0, "mois": 1.0,
 		"effet": "rendement_x", "valeur": 1.08, "domaine": "solaire",
 	},
 	"pose": {
 		"nom": "Pose industrialisée",
 		"quoi": "−15 % sur le prix de pose des panneaux",
-		"ke_mois": 20.0, "mois": 18.0,
+		"ke_mois": 360.0, "mois": 1.0,
 		"effet": "cout_panneau_x", "valeur": 0.85, "domaine": "solaire",
 	},
 	"pilotis": {
 		"nom": "Construction sur pilotis",
 		"quoi": "Rebâtir un îlot sinistré le rez sur poteaux : l'eau passe dessous.",
-		"ke_mois": 20.0, "mois": 6.0,
+		"ke_mois": 120.0, "mois": 1.0,
 		"effet": "facon_pilotis", "valeur": 1.0, "domaine": "logement",
 	},
 	"sedum": {
 		"nom": "Substrat léger",
 		"quoi": "−20 % sur le prix d'un toit vert",
-		"ke_mois": 12.0, "mois": 12.0,
+		"ke_mois": 144.0, "mois": 1.0,
 		"effet": "cout_vert_x", "valeur": 0.80, "domaine": "toits",
 	},
 }
 # 🏗️ L'institut (auteur, 2026-10-08) : la seule recherche ouverte dès l'ouverture. Elle ne
 # change aucun prix, elle permet de rebâtir sur pilotis (`Ville.facon_permise`).
-# 🔴 120 k€ en 6 mois, le prix du concours qu'elle remplace : à juger.
+# 🔴 120 k€ en un mois, le prix du concours qu'elle remplace : à juger.
 const PILOTIS := "pilotis"
 const SUJETS_OUVERTURE := [PILOTIS]
 const ORDRE := ["pilotis", "rendement", "pose", "sedum"]

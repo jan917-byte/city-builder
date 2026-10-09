@@ -35,7 +35,7 @@ func executer() -> void:
 	o._pont_rouvert()
 	verifier(o.pont_termine and o.etude_parue and o.carte == "etude" and o.annonce.visible
 		and jeu.vitesse == 0.0 and not o.annonce_second.visible
-		and o.annonce_principal.text == "Trouver le campus",
+		and o.annonce_principal.text == "Trouver l'université",
 		"Le pont rouvert, l'étude paraît : une carte au centre, un seul bouton, jeu en pause")
 	verifier("rouvert" in str(ui.retours.journal) and "étude" in ui.retours.journal[-1],
 		"Le bandeau dit le pont rouvert, le journal la parution")
@@ -66,10 +66,30 @@ func executer() -> void:
 	verifier(univ.visible and tuile("institut").visible and tuile("bibliotheque").visible
 		and not ui._menu_boutons["dangers"].disabled and not entouree("dangers"),
 		"Le campus trouvé, ses trois tuiles apparaissent, Dangers s'ouvre sans être appelée")
-	verifier(not ui._biblio_bloc.visible and not ui._lieu_lignes[jeu.Recherche.PILOTIS]["bloc"].visible,
-		"L'onglet de l'université ne montre ni recherche ni livre")
+	verifier(not ui._biblio_bloc.visible and not ui._lieu_lignes[jeu.Recherche.PILOTIS]["bloc"].visible
+		and not ui._leviers_crue["berge"].is_visible_in_tree(),
+		"L'onglet de l'université ne montre ni recherche, ni livre, ni levier")
+	var noms := []
+	for b in ui._campus_bloc.get_children():
+		noms.append((b as Button).text)
+	verifier(noms == ["Université", "Bibliothèque", "Institut de recherche"],
+		"Les onglets dans l'ordre de l'auteur : %s" % ", ".join(noms))
+	# 🌊 Trois parties (auteur, 2026-10-09) : Dangers, la bibliothèque qui clignote, l'institut.
+	verifier(ui._etude_voir.is_visible_in_tree() and ui._etude_institut.is_visible_in_tree()
+		and ui._etude_biblio.get_meta("anneau").visible,
+		"L'étude en trois parties, la bibliothèque appelée tant que sa page n'est pas lue")
 	await capture("campus_02_fiche")
-	await cliquer(ui._campus_bloc.get_child(1))
+	await cliquer(ui._etude_biblio)
+	actualiser(jeu.mois)
+	verifier(ui._lieu_ouvert == "bibliotheque" and ui._page_ouverte == "eponge"
+		and ui._leviers_crue["berge"].is_visible_in_tree() and not ui._leviers_crue["vert"].is_visible_in_tree()
+		and not o.page_nouvelle("eponge"),
+		"« Lire à la bibliothèque » ouvre la ville-éponge et son levier, la berge")
+	await capture("campus_02a_bibliotheque")
+	ui.ouvrir_lieu("universite")
+	actualiser(jeu.mois)
+	verifier(not ui._etude_biblio.get_meta("anneau").visible, "La page lue, la bibliothèque ne clignote plus")
+	await cliquer(ui._etude_institut)
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
 	verifier(ui._lieu_ouvert == "institut" and ligne["bloc"].visible and ligne["bouton"].visible
 		and not ui._etude_bloc.visible and ui._lieu_lignes["sedum"]["bloc"].visible
@@ -87,6 +107,8 @@ func executer() -> void:
 	verifier(jeu.vitesse == 4.0, "Fermée, il repart à ×4")
 	jeu._sur_vitesse(0.0)
 	jeu._rafraichir(true)
+	# Le guide se cache sous la fenêtre ; en jeu, `_process` le rend à l'image suivante.
+	o.actualiser()
 
 	# 🏠 REBÂTIR D'ABORD : les îlots sinistrés clignotent, aucune berge proposée.
 	verifier(o.etape == "choix" and o._titre.text == "Rebâtir les logements" and o.visible
@@ -166,9 +188,14 @@ func executer() -> void:
 	ui.ouvrir_lieu("universite")
 	actualiser(jeu.mois)
 	await capture("etude_05d_universite")
+	ui.ouvrir_lieu("bibliotheque", "eponge")
+	actualiser(jeu.mois)
+	verifier(ui._leviers_crue["pre"].is_visible_in_tree() and ui._leviers_crue["vert"].is_visible_in_tree(),
+		"La berge rendue, la page de la bibliothèque ouvre les autres leviers")
+	await capture("etude_05e_bibliotheque_leviers")
 	await cliquer(ui._prochaine_valeurs["levier_culture"])
 	verifier(jeu.selection.sel_fid == o.PRE and jeu.theme == "dangers",
-		"Le levier de l'université ouvre la fiche du champ sur la prochaine crue")
+		"Le levier de la bibliothèque ouvre la fiche du champ sur la prochaine crue")
 	await capture("etude_06_levier_pre")
 
 	jeu._sur_sauvegarde()

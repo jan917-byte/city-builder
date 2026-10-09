@@ -731,3 +731,6 @@ Juin de l'an 1, caisse 2 674 k€, personne dehors, aucune rue boueuse ; `essai_
 **2026-10-09 — Dangers ne fait plus que le diagnostic : les leviers de la prochaine crue passent à l'université, la carte se met à jour au clic, une barre de danger vit sous la date, la caisse a sa croix.**
 Retour de jeu de l'auteur ; `mois_carte_crue` (`interface.gd`) fige la carte et ses chiffres, `maquette._regler_crue` le lit, un tween fait reculer l'eau ; `JaugeDanger` sous la date ; l'étude de l'université perd ses quatre tuiles.
 Essais : étude 0 échec (5,58 → 5,06 m au clic), ouverture 0, camp 0, livre 1 échec, celui de la jauge, déjà là ; aucune crue ne tombe encore au bout des 8 ans.
+**2026-10-09 — L'étude de l'université se lit en trois parties, les leviers de la prochaine crue passent à la bibliothèque, toute recherche dure un mois, « Après le pont » relance le temps.**
+Retour de l'auteur ; `_partie_etude` et `_anneau_appel` (`interface.gd`), les boîtes de leviers prises par la page de la ville-éponge ; onglets université, bibliothèque, institut ; `retours.annoncer` accepte une condition, et le bandeau qui demande un geste part une fois le geste fait.
+Recherches : même prix total (pilotis 120 k€ en un mois) ; essais étude, ouverture, rebâtir, déblaiement, camp, progression 0 échec ; livre 1 et sauvegarde 92, déjà là.

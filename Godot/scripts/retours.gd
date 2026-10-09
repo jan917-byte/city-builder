@@ -40,6 +40,9 @@ var _sans_toit := -1
 ## auteur un gain tombe au mois même de la décision.
 var _capital_dits := {}
 var _recent: Array[String] = []
+## 🧹 Une annonce qui demande un geste part dès qu'il est fait (auteur, 2026-10-09 : « déblayez »
+## restait à l'écran, tout déblayé). message → Callable, vrai tant qu'il reste à faire.
+var _tient := {}
 var _expiration := 0
 var _historique_ouvert := false
 ## 🎚️ LEVEL DESIGN : dès quelle durée l'engagement rappelle ×4 — à ×1, un pont
@@ -203,9 +206,11 @@ func _remplir_survol() -> void:
 
 ## Le bandeau du haut ne porte que les annonces (université, boue sur le chemin) :
 ## un chiffre qui monte dit déjà le reste (auteur, 2026-10-02).
-func annoncer(message: String, mois: float) -> void:
+func annoncer(message: String, mois: float, tient := Callable()) -> void:
 	consigner(message, mois)
 	signaler(message)
+	if tient.is_valid():
+		_tient[message] = tient
 
 
 ## Au journal sans bandeau.
@@ -224,8 +229,21 @@ func signaler(message: String) -> void:
 	_recent.append(message)
 	while _recent.size() > 2:
 		_recent.pop_front()
+	for m in _tient.keys():
+		if not m in _recent:
+			_tient.erase(m)
 	_expiration = Time.get_ticks_msec() + 8000
 	actualiser_affichage()
+
+
+## Relu au rafraîchissement, pas à chaque image : une condition peut chercher un chemin.
+func _retirer_faits() -> void:
+	for m in _tient.keys():
+		if not bool((_tient[m] as Callable).call()):
+			_recent.erase(m)
+			_tient.erase(m)
+			if _recent.is_empty():
+				_expiration = 0
 
 
 func actualiser_affichage() -> void:
@@ -337,6 +355,7 @@ func reprendre(mois: float, messages: Array = []) -> void:
 		if message is String:
 			journal.append(message)
 	_recent.clear()
+	_tient.clear()
 	_expiration = 0
 	_historique_ouvert = false
 	_en_cours = _chantiers(mois)
@@ -378,12 +397,13 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
 		# 🔴 Textes de prototype, flaggables (90) : la Ville s'entoure en même temps (auteur, 2026-10-06).
 		# 🧹 La consigne de clic est voulue (auteur, 2026-10-09), malgré « montrer, pas expliquer ».
-		annoncer("La boue bloque le chemin jusqu'au pont.\nCliquez sur les rues boueuses pour les déblayer.", mois)
+		annoncer("La boue bloque le chemin jusqu'au pont.\nCliquez sur les rues boueuses pour les déblayer.", mois,
+			func() -> bool: return ui.ouverture != null and ui.ouverture.boue_a_engager())
 	# 🧹 À la troisième rue faite à la main, Trafic propose le reste (auteur, 2026-10-05).
 	if couche == "r" and "reparation" in r["faits"] and not fid in ui.ville.ponts_coupes() \
 			and ui.ville.rues_deblayees_main() == ui.Ville.DEBLAIEMENT_SEUIL and ui.deblaiement_propose():
 		annoncer("Encore %d rues sous la boue.
-Cliquez sur Trafic pour tout déblayer." % ui.rues_a_deblayer().size(), mois)
+Cliquez sur Trafic pour tout déblayer." % ui.rues_a_deblayer().size(), mois, ui.deblaiement_propose)
 	if duree <= 0.0:
 		for genre in r["faits"]:
 			livraison({"couche": couche, "fid": fid, "genre": genre}, mois)
@@ -491,6 +511,7 @@ func actualiser(mois: float) -> void:
 			else "%d personnes abritées, plus personne dehors." % (_sans_toit - n), mois)
 	_sans_toit = n
 	_dire_capital(mois)
+	_retirer_faits()
 	for pont in ui.ville.ponts_coupes():
 		var ouvert: bool = ui.trafic.pont_fonctionnel(pont, mois)
 		if ouvert and _ponts.has(pont) and not _ponts[pont]:

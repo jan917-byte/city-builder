@@ -453,10 +453,13 @@ func executer() -> void:
 	verifier(jeu.ville.duree_reparation_mois("i", o.MAISONS) > 0.0,
 		"Revenir en mode histoire rend leur durée aux chantiers")
 	jeu._sur_reset()
-	# ⏩ Le bouton « Après le pont » rend la main au jour de la livraison.
+	# ⏩ Le bouton « Après le pont » rend la main au jour de la livraison, le temps à ×1.
 	jeu._sauter_au_pont()
-	verifier(o.etape == "pont_livre" and jeu.ville.sans_toit(jeu.mois) == 0.0 and jeu.vitesse == 0.0,
-		"« Après le pont » : tout le monde abrité, le pont livré, le jeu en pause")
+	verifier(o.etape == "pont_livre" and jeu.ville.sans_toit(jeu.mois) == 0.0 and jeu.vitesse == 1.0,
+		"« Après le pont » : tout le monde abrité, le pont livré, le temps repart à ×1")
+	jeu.interface.retours.actualiser(jeu.mois)
+	verifier(not "boue" in jeu.interface.retours.texte.text,
+		"« Après le pont » : aucun bandeau ne demande de déblayer : %s" % jeu.interface.retours.texte.text)
 	var en_cours: Array = jeu.ville.routes.keys().filter(func(f) -> bool:
 		return jeu.ville.reste_reparation_mois("r", int(f), jeu.mois) > 0.0)
 	verifier(jeu.ville.demande_livree("amelioration", jeu.mois) and jeu.ville.rues_boueuses().is_empty()
@@ -675,7 +678,7 @@ func essayer_ponts(lointain: int) -> void:
 	# 🎓 Une seule carte, l'étude (auteur, 2026-10-08) : le pont rouvert passe au bandeau.
 	verifier(o.pont_termine and o.carte == "etude" and jeu.vitesse == 0.0 and "rouvert" in str(jeu.interface.retours.journal),
 		"5 s plus tard, la carte de l'étude met le jeu en pause ; le bandeau dit le pont rouvert")
-	verifier(o.annonce.visible and not o.visible and o.annonce_principal.text == "Trouver le campus"
+	verifier(o.annonce.visible and not o.visible and o.annonce_principal.text == "Trouver l'université"
 		and not o.annonce_second.visible,
 		"Une seule carte au centre, un seul bouton, le guide s'efface")
 	verifier(o.verrou() == "", "Le pont rouvert avec ses accès lève le verrou")

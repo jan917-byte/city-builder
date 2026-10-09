@@ -164,9 +164,10 @@ func _batir_annonce(ui) -> void:
 func _remplir_carte() -> void:
 	match carte:
 		"etude":
-			_annonce_titre.text = "L'université publie son étude"
+			# Les mots de l'auteur (2026-10-09).
+			_annonce_titre.text = "Une nouvelle étude a été publiée"
 			_annonce_texte.text = "Sur la prochaine crue de l'Ilse."
-			annonce_principal.text = "Trouver le campus"
+			annonce_principal.text = "Trouver l'université"
 			annonce_second.text = ""
 		"camp":
 			_annonce_titre.text = "Les habitants du camp sont mécontents"
@@ -329,6 +330,17 @@ func _rues_du_pont() -> Array:
 func acces_degage() -> bool:
 	_rues_du_pont()
 	return _degage
+
+
+## 🧹 Une rue boueuse barre le chemin d'un pont engagé, et personne ne la déblaie encore.
+func boue_a_engager() -> bool:
+	for p in jeu.ville.ponts_coupes():
+		if not jeu.ville.est_repare("r", p):
+			continue
+		for rue in jeu.trafic.acces_pont(p, jeu.mois)["obstacles"]:
+			if not jeu.ville.est_repare("r", rue):
+				return true
+	return false
 
 
 ## 🧭 La colonne de gauche s'ouvre au fil du guide (auteur, 2026-10-02) : une
@@ -740,10 +752,11 @@ func _choisir_pont(fid: int) -> void:
 	examiner("r", fid)
 
 
-## Ouvert, sans panneau de détail ni carte au centre, et muet pendant le
-## chantier du pont (auteur, 2026-10-05) comme pendant l'attente de sa carte.
+## Ouvert, sans panneau de détail, carte au centre ni fenêtre du campus, et muet pendant
+## le chantier du pont (auteur, 2026-10-05) comme pendant l'attente de sa carte.
 func paraitre() -> bool:
 	return ouvert and not jeu.interface._detail_ouvert and not annonce.visible \
+		and not jeu.interface._campus_panneau.visible \
 		and etape not in ["pont_travaux", "pont_livre"]
 
 
@@ -796,9 +809,13 @@ func actualiser(force := false) -> void:
 		etape = "livraison"
 	var degage := etape == "pont_travaux" and acces_degage()
 	if degage and _degage_annonce == 0:
-		# ⏩ L'invitation au ×4 (auteur, 2026-10-09). 🔴 Flaggable (90).
-		jeu.interface.retours.annoncer("Chemin du pont dégagé.
-Passez en ×4 pour avancer plus vite.", jeu.mois)
+		# ⏩ L'invitation au ×4 (auteur, 2026-10-09), tue dès qu'on y est. 🔴 Flaggable (90).
+		if jeu.vitesse >= 4.0:
+			jeu.interface.retours.annoncer("Chemin du pont dégagé.", jeu.mois)
+		else:
+			jeu.interface.retours.annoncer("Chemin du pont dégagé.
+Passez en ×4 pour avancer plus vite.", jeu.mois,
+				func() -> bool: return jeu.vitesse < 4.0 and etape == "pont_travaux")
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	# Le guide remplaçait le panneau du calque Trafic : muet, il le rend.
@@ -894,7 +911,7 @@ Passez en ×4 pour avancer plus vite.", jeu.mois)
 		"etude":
 			# 🎓 Le nom seul : le contour qui clignote y mène (auteur, 2026-10-08).
 			_poser_reperes([])
-			_titre.text = "Le campus"
+			_titre.text = "L'université"
 			_texte.text = ""
 		"reloger":
 			# 🧭 Ni chiffre sur la carte ni bouton qui mène aux champs (auteur, 2026-09-17) ;

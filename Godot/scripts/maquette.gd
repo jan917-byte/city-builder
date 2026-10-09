@@ -530,9 +530,10 @@ func _essai_interface() -> void:
 	# 🎓 LE PALIER EST RÉTROACTIF, et c'est LE contrôle de 79 : le toit est posé
 	# au mois 0, le palier tombe au 24, et c'est CE toit-là qui produit plus au
 	# 25 — sans qu'on y retouche. (La caisse est remplie par l'outil d'essai.)
+	# Financé au 23 : une recherche dure un mois (auteur, 2026-10-09).
 	ville.crediter_essai_ke(5000.0)
 	var pose := ville.lancer_solaire(49, 1.0, 0.0)
-	ville.financer_recherche("rendement", 0.0)
+	ville.financer_recherche("rendement", 23.0)
 	var prod_23: float = ville.indicateurs(23.0)["production_mwh"]
 	var prod_25: float = ville.indicateurs(25.0)["production_mwh"]
 	print("  palier de rendement au mois %.0f · la ville passe de %.0f à %.0f MWh/an "
@@ -3153,7 +3154,8 @@ func _sur_mode_choisi(auteur: bool) -> void:
 
 ## ⏩ L'ouverture jouée comme au clic, en mode histoire et sans récit : les camps du plus
 ## grand champ au plus petit, le pont provisoire le moins cher, le camp amélioré et toute
-## la boue (auteur, 2026-10-09), puis la main rendue en pause quand le dernier est livré.
+## la boue (auteur, 2026-10-09), puis le temps repart à ×1 quand le dernier est livré, comme
+## en jeu : la carte de l'étude tombe 5 s plus tard (auteur, 2026-10-09).
 ## Suit `essai_ouverture` si l'ouverture change.
 func _sauter_au_pont() -> void:
 	_sur_mode(false)
@@ -3178,7 +3180,7 @@ func _sauter_au_pont() -> void:
 	if not rues.is_empty():
 		fin = maxf(fin, mois + ville.duree_reparation_mois("r", int(rues[-1])))
 	_sauter_a(fin)
-	_sur_vitesse(0.0)
+	_sur_vitesse(1.0)
 	print("après le pont · %s, caisse %.0f k€, %d dehors, %d rues boueuses, camp amélioré %s, étape %s"
 		% [interface.Calendrier.en(mois), ville.caisse_ke(mois), int(ville.sans_toit(mois)),
 		ville.rues_boueuses().size(), ville.demande_livree("amelioration", mois), ouverture.etape])

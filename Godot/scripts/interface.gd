@@ -529,8 +529,14 @@ var _recherche_bloc: HBoxContainer
 var _univ_vide: Label
 ## ⏸️ La vitesse d'avant la fenêtre, rendue à sa fermeture ; -1 fenêtre fermée.
 var _vitesse_avant_campus := -1.0
+## Le panneau du calque, caché sous la fenêtre et rendu à sa fermeture.
+var _detail_avant_campus := false
 var _vitesse_courante := 0.0
 var _etude_voir: Button
+var _etude_biblio: Button
+var _etude_institut: Button
+## Les boîtes des leviers de la ville-éponge, hors de vue tant que leur page est fermée.
+var _leviers_reserve: VBoxContainer
 ## 📖 LA BIBLIOTHÈQUE (101) : la liste des pages, ou une page ouverte.
 var _biblio_bloc: VBoxContainer
 var _biblio_liste: VBoxContainer
@@ -1596,12 +1602,18 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	b.tooltip_text = bulle
 	_habiller_tuile_rail(b)
 	# 🧭 L'anneau de la tuile que le guide demande (`_maj_rail`).
-	# 🟡 Jaune, comme tout ce que le jeu entoure (auteur, 2026-10-06) ; il était vert.
+	_anneau_appel(b, 12)
+	return b
+
+
+## 🟡 Jaune, comme tout ce que le jeu entoure (auteur, 2026-10-06) ; il était vert.
+## Caché ; qui l'allume règle son `modulate.a` au rythme de `_pouls()`.
+func _anneau_appel(b: Button, rayon: int) -> Panel:
 	var anneau := Panel.new()
 	var cadre := StyleBoxFlat.new()
 	# 🔄 La tuile s'allume en plein (auteur, 2026-10-08 : l'anneau seul ne se voyait pas).
 	cadre.bg_color = Color(APPEL, 0.5)
-	cadre.set_corner_radius_all(_r(12))
+	cadre.set_corner_radius_all(_r(rayon))
 	cadre.set_border_width_all(3)
 	cadre.border_color = APPEL
 	anneau.add_theme_stylebox_override("panel", cadre)
@@ -1610,7 +1622,11 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	anneau.visible = false
 	b.add_child(anneau)
 	b.set_meta("anneau", anneau)
-	return b
+	return anneau
+
+
+func _pouls() -> float:
+	return 0.15 + 0.85 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008))
 
 
 ## 🧭 Grise tant que le guide ne l'a pas demandée, entourée quand il la demande.
@@ -1622,7 +1638,7 @@ func _maj_rail() -> void:
 	# La tuile Ville est rangée sous "" : « ville » la désigne.
 	var cle := "" if appel == "ville" else appel
 	# 🔄 Clignote franchement (auteur, 2026-10-08) : il remplace « Ouvrez le trafic… ».
-	var pouls := 0.15 + 0.85 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008))
+	var pouls := _pouls()
 	for id in tuiles:
 		var b: Button = tuiles[id]
 		b.disabled = ouverture != null and not ouverture.rail_ouvert(id)
@@ -1679,6 +1695,11 @@ func _sur_rail(id: String) -> void:
 	# 🎓 Une vue choisie au rail referme la fenêtre du campus (auteur, 2026-10-09).
 	if _campus_panneau != null and _campus_panneau.visible:
 		_fermer_campus()
+		# Sa propre vue, choisie sous la fenêtre : on y revient, on ne la referme pas.
+		if id == _theme_courant:
+			_detail_ouvert = true
+			_placer_detail()
+			return
 	if id == _theme_courant:
 		_detail_ouvert = not _detail_ouvert
 		_placer_detail()
@@ -1807,7 +1828,7 @@ func _maj_boue() -> void:
 	if _boue_bloc == null:
 		return
 	_boue_ville.visible = _calque_panneau.visible and _theme_courant == "trafic" and ouverture != null \
-		and ouverture.etape == "pont_travaux" and not ouverture.acces_degage()
+		and ouverture.etape == "pont_travaux" and ouverture.boue_a_engager()
 	_boue_bloc.visible = _calque_panneau.visible and _theme_courant == "trafic" and deblaiement_propose()
 	if not _boue_bloc.visible:
 		return
@@ -1994,11 +2015,11 @@ func _panneau_prochaine(p: VBoxContainer) -> void:
 	_jauge_crue.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(_jauge_crue)
 	# 🔄 Ni légende de la jauge ni écart depuis l'étude (auteur, 2026-10-08) : le
-	# joueur les lit seul. Les leviers sont à l'université (auteur, 2026-10-09) :
+	# joueur les lit seul. Les leviers sont à la bibliothèque (auteur, 2026-10-09) :
 	# Dangers diagnostique, la solution se cherche ailleurs.
 
 
-## 🎓 Les quatre gestes de la ville-éponge (101), sous l'étude de l'université.
+## 🎓 Les quatre gestes de la ville-éponge (101), rangés dans sa page à la bibliothèque.
 func _leviers_etude(p: VBoxContainer) -> void:
 	var berge_cm := 0.0
 	for b in ville.berges:
@@ -2026,7 +2047,7 @@ func _leviers_etude(p: VBoxContainer) -> void:
 
 func _levier(p: VBoxContainer, titre: String, effet: String, voir: String,
 		couche: String, fid: int, reglage: String, valeur: Variant) -> void:
-	# 🚪 Un levier fermé ne s'affiche pas ici (une livraison, une porte).
+	# 🚪 Fermé, la page montre son nom grisé au lieu de cette boîte (une livraison, une porte).
 	var boite := VBoxContainer.new()
 	p.add_child(boite)
 	boite.add_child(_label(titre, 13, TEXTE))
@@ -2046,7 +2067,7 @@ func _levier(p: VBoxContainer, titre: String, effet: String, voir: String,
 var _leviers_crue := {}
 
 
-## 🌊 Depuis l'université, un levier ouvre sa fiche sur la carte de la prochaine
+## 🌊 Depuis la bibliothèque, un levier ouvre sa fiche sur la carte de la prochaine
 ## crue : la jauge de Dangers montre l'effet du réglage (auteur, 2026-10-06).
 func _examiner_levier(couche: String, fid: int, reglage: String, valeur: Variant) -> void:
 	voir_prochaine_crue()
@@ -2980,8 +3001,9 @@ const LIEUX := {
 	"bibliotheque": {"fid": 77, "nom": "Bibliothèque", "court": "Biblio.", "article": "la bibliothèque",
 		"quoi": "Range les concepts."},
 }
-const LIEUX_ORDRE := ["mairie", "universite", "institut", "bibliotheque"]
-const CAMPUS := ["universite", "institut", "bibliotheque"]
+# L'ordre des onglets et du rail (auteur, 2026-10-09) : on lit, puis on cherche.
+const LIEUX_ORDRE := ["mairie", "universite", "bibliotheque", "institut"]
+const CAMPUS := ["universite", "bibliotheque", "institut"]
 const CAMPUS_TAILLE := Vector2(880, 560)
 ## 🎓🏛️ Sujets de recherche et subventions arriveront plus tard (auteur, 2026-10-02) :
 ## l'institut ne montre que les pilotis (`Recherche.SUJETS_OUVERTURE`). Les essais le rouvrent.
@@ -3085,21 +3107,32 @@ func _panneau_lieu() -> void:
 	_univ_vide = _label("Aucune étude publiée.", 12, GRIS)
 	contenu.add_child(_univ_vide)
 
-	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE (auteur, 2026-09-30) : l'université annonce
-	# et propose, Dangers tient la carte et les chiffres, sans doublon (auteur,
-	# 2026-10-09). 🔴 Texte de prototype, flaggable (90).
+	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE, en trois parties (auteur, 2026-10-09) : Dangers
+	# tient la carte et les chiffres, la bibliothèque les leviers, l'institut les pilotis.
+	# 🔴 Textes de prototype, flaggables (90).
 	_etude_bloc = VBoxContainer.new()
-	_etude_bloc.add_theme_constant_override("separation", 6)
+	_etude_bloc.add_theme_constant_override("separation", 10)
 	contenu.add_child(_etude_bloc)
 	_etude_bloc.add_child(HSeparator.new())
 	_etude_bloc.add_child(_label("Nouvelle étude : la prochaine crue", 14, TEXTE))
-	_etude_voir = Button.new()
-	_etude_voir.text = "Voir l'étude dans Dangers"
-	_etude_voir.focus_mode = Control.FOCUS_NONE
-	_etude_voir.pressed.connect(voir_prochaine_crue)
-	_etude_bloc.add_child(_etude_voir)
-	_etude_bloc.add_child(HSeparator.new())
-	_leviers_etude(_etude_bloc)
+	var parties := HBoxContainer.new()
+	parties.add_theme_constant_override("separation", 16)
+	_etude_bloc.add_child(parties)
+	_etude_voir = _partie_etude(parties, "dangers", "Où l'eau montera",
+		"La carte de la prochaine crue.", "Voir l'étude dans Dangers", voir_prochaine_crue)
+	_etude_biblio = _partie_etude(parties, "bibliotheque", "Retenir l'eau",
+		"La ville-éponge : berges, sols, toits, prés.", "Lire à la bibliothèque",
+		ouvrir_lieu.bind("bibliotheque", "eponge"))
+	# 🟡 Elle clignote tant que la page n'est pas lue (`_maj_lieu`).
+	_anneau_appel(_etude_biblio, 9)
+	# Les pilotis, une recherche parmi d'autres (auteur, 2026-10-09).
+	_etude_institut = _partie_etude(parties, "institut", "S'adapter à la montée des eaux",
+		"Les recherches de l'institut, dont les pilotis.", "Voir à l'institut", ouvrir_lieu.bind("institut", ""))
+	# Les leviers attendent ici, hors de vue, que la page de la bibliothèque les prenne.
+	_leviers_reserve = VBoxContainer.new()
+	_leviers_reserve.visible = false
+	contenu.add_child(_leviers_reserve)
+	_leviers_etude(_leviers_reserve)
 
 
 	for cle in Politiques.ORDRE:
@@ -3144,7 +3177,7 @@ func _panneau_lieu() -> void:
 	_page_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_page_bloc.add_child(_page_texte)
 	_page_leviers = VBoxContainer.new()
-	_page_leviers.add_theme_constant_override("separation", 3)
+	_page_leviers.add_theme_constant_override("separation", 6)
 	_page_bloc.add_child(_page_leviers)
 	_page_voir = Button.new()
 	_page_voir.text = "Voir à Wehrau"
@@ -3191,6 +3224,34 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	return {"bloc": bloc, "genre": genre, "etat": etat, "jauge": jauge, "bouton": b}
 
 
+## Une des trois parties de l'étude : l'icône du lieu où l'on va, un titre, un fait, le bouton.
+func _partie_etude(parent: HBoxContainer, icone: String, titre: String, fait: String,
+		voir: String, action: Callable) -> Button:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(col)
+	var pic := TextureRect.new()
+	pic.texture = _icone(icone, 28, TEXTE)
+	pic.stretch_mode = TextureRect.STRETCH_KEEP
+	col.add_child(pic)
+	col.add_child(_label(titre, 14, TEXTE))
+	var l := _label(fait, 12, GRIS)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(l)
+	# Les trois boutons sur la même ligne, quelle que soit la longueur du fait.
+	var vide := Control.new()
+	vide.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(vide)
+	var b := Button.new()
+	b.text = voir
+	b.focus_mode = Control.FOCUS_NONE
+	_habiller_secondaire(b)
+	b.pressed.connect(action)
+	col.add_child(b)
+	return b
+
+
 func ouvrir_lieu(cle: String, page := "") -> void:
 	if not LIEUX.has(cle):
 		return
@@ -3201,6 +3262,11 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	var campus: bool = cle in CAMPUS
 	if campus:
 		_pause_campus()
+		# Le panneau du calque passait sous le verre et se lisait à travers (sur Dangers, fond blanc).
+		if _detail_ouvert and not _campus_panneau.visible:
+			_detail_avant_campus = true
+			_detail_ouvert = false
+			_placer_detail()
 	elif _campus_panneau.visible:
 		_campus_panneau.visible = false
 		_reprendre_campus()
@@ -3467,6 +3533,10 @@ func _fermer_lieu() -> void:
 	if campus:
 		_campus_panneau.visible = false
 		_reprendre_campus()
+		if _detail_avant_campus:
+			_detail_avant_campus = false
+			_detail_ouvert = true
+			_placer_detail()
 	else:
 		_fiche_panneau.visible = true
 
@@ -3492,7 +3562,7 @@ func _brancher_lieu() -> void:
 			b.pressed.connect(func() -> void:
 				if ville.financer_recherche(k, _mois):
 					var sujet: Dictionary = Recherche.SUJETS[k]
-					retours.consigner("%s : financement engagé, %s k€/mois pendant %s." % [sujet["nom"], _milliers(sujet["ke_mois"]), _duree(sujet["mois"])], _mois)
+					retours.consigner("%s : financement engagé, %s k€ en %s." % [sujet["nom"], _milliers(Recherche.cout_total_ke(k)), _duree(sujet["mois"])], _mois)
 					retours.actualiser(_mois)
 				_maj_lieu())
 		else:
@@ -3517,8 +3587,9 @@ func _maj_lieu() -> void:
 	if _biblio_bloc.visible:
 		_maj_bibliotheque()
 	if _etude_bloc.visible:
-		for l in _leviers_crue:
-			(_leviers_crue[l] as Control).visible = _levier_ferme(l) == ""
+		var anneau: Control = _etude_biblio.get_meta("anneau")
+		anneau.visible = ouverture != null and ouverture.page_nouvelle("eponge")
+		anneau.modulate.a = _pouls()
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
@@ -3598,15 +3669,32 @@ func _maj_bibliotheque() -> void:
 	_page_chapitre.text = str(p["chapitre"]).to_upper()
 	_page_titre.text = str(p["titre"])
 	_page_texte.text = str(p["texte"])
-	for c in _page_leviers.get_children():
-		_page_leviers.remove_child(c)
-		c.queue_free()
+	_ranger_leviers()
 	_titre_section(_page_leviers, "Ses leviers")
+	# 🌊 Les leviers de la ville-éponge sont ICI, pas à l'université (auteur, 2026-10-09) :
+	# ouverts, avec leur effet et leur bouton ; fermés, leur nom grisé, après.
+	var fermes := []
 	for l in p["leviers"]:
+		if _levier_ferme(l) == "" and _leviers_crue.has(l):
+			_leviers_reserve.remove_child(_leviers_crue[l])
+			_page_leviers.add_child(_leviers_crue[l])
+		else:
+			fermes.append(l)
+	for l in fermes:
 		var ferme := _levier_ferme(l)
 		_page_leviers.add_child(_label(("✓ " if ferme == "" else "○ ") + str(Livre.LEVIERS[l]),
 			12, TEXTE if ferme == "" else GRIS))
 	_page_voir.visible = str(p["voir"]) != ""
+
+
+## Les boîtes des leviers retournent à la réserve, le reste de la page part.
+func _ranger_leviers() -> void:
+	for c in _page_leviers.get_children():
+		_page_leviers.remove_child(c)
+		if c in _leviers_crue.values():
+			_leviers_reserve.add_child(c)
+		else:
+			c.queue_free()
 
 
 func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
@@ -3622,14 +3710,12 @@ func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
 	elif ville.recherche_engagee(cle):
 		var reste: float = Recherche.reste_mois(ville, cle, _mois)
 		jauge.regler(1.0 - reste / float(s["mois"]), 1.0)
-		etat.text = "En cours, encore %s, %s k€/mois" % [
-			_duree(reste), _milliers(float(s["ke_mois"]))]
+		etat.text = "En cours, encore %s" % _duree(reste)
 		b.visible = false
 	else:
 		jauge.regler(0.0, 0.0)
-		etat.text = "%s k€/mois pendant %d mois, %s k€ en tout" % [
-			_milliers(float(s["ke_mois"])), int(float(s["mois"])),
-			_milliers(Recherche.cout_total_ke(cle))]
+		# Un mois chacune (auteur, 2026-10-09) : le prix et la durée, sans « par mois ».
+		etat.text = "%s k€ en %s" % [_milliers(Recherche.cout_total_ke(cle)), _duree(float(s["mois"]))]
 		b.visible = true
 		b.disabled = _caisse_ke < float(s["ke_mois"])
 		b.text = "Financer" if not b.disabled else "Caisse insuffisante"
