@@ -24,8 +24,10 @@ const LARGEUR_PLACE := 2.5
 const DECAL_FILE := 1.35
 const ECHANTILLON_STATIONNEMENT := 0.30
 const TAILLE_VISIBLE_MAX := 700.0
-## 🚗 Cinq teintes sombres sur onze qui roulent, trois sur sept garées
-## (auteur, 2026-10-07 : « plus de couleurs sombres dans le mix »).
+## 🚗 Cinq teintes sombres sur onze qui roulent (auteur, 2026-10-07 : « plus de
+## couleurs sombres dans le mix »). Les garées : sept neutres et sept couleurs
+## de la palette ternies (auteur, 2026-10-09 : un parking tout gris sonnait faux).
+## ⚠️ 14 teintes : `allure` avance de 5 en 5, une taille multiple de 5 en sauterait.
 const PALETTE := [
 	Color8(194, 92, 73), Color8(70, 91, 112), Color8(216, 198, 157),
 	Color8(116, 130, 119), Color8(151, 116, 92), Color8(205, 207, 198),
@@ -36,6 +38,9 @@ const GAREES := [
 	Color(0.78, 0.79, 0.76), Color(0.70, 0.71, 0.69), Color(0.62, 0.63, 0.61),
 	Color(0.42, 0.43, 0.42), Color(0.22, 0.23, 0.24), Color(0.12, 0.12, 0.13),
 	Color(0.16, 0.19, 0.25),
+	Color8(176, 98, 82), Color8(78, 96, 114), Color8(204, 191, 158),
+	Color8(118, 128, 118), Color8(44, 52, 70), Color8(92, 44, 46),
+	Color8(48, 62, 54),
 ]
 ## 📏 L'alpha de la teinte = la longueur (Constructeur.ALLONGE) : la moitié des
 ## voitures à 3,33 m, un tiers à 3,83, un sixième à 4,23 — toujours sous la place.

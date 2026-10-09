@@ -709,4 +709,4 @@ Retour de jeu de l'auteur ; plus de carte du pont (bandeau « rouvert ») ni de 
 Essais étude, ouverture, progression, déblaiement, livre, rebâtir, concours, vie_camp, labour, relogement : 0 échec ; sauvegarde (lieux sans nom), capital (2), travaux (repère) échouaient déjà ; planche `wehrau_premieres_minutes_planche.png`.
 **2026-10-09 — Les cours grises des barres de 1970 et des collectifs de 1995 reçoivent un parking peint, des voitures garées et une rangée de boxes ; la place-parking a ses voitures.**
 Demande de l'auteur sur capture (« ces espaces sont super vides »), options 1 et 2 retenues ; trame de `_places_de_parc` réutilisée avec bâtiments et jardins en obstacles (`export_godot/cours.py`), plafonnée au `stationnement` de l'îlot : 32 → 82 places + 9 boxes, 30 → 50, 61 → 25 + 8, 60 → 0.
-Voitures d'îlot dans `trafic.gd`, elles partent quand le sol devient perméable ; essai trafic 0 échec ; export +0,7 s ; planche `wehrau_cours_*`.
+Voitures d'îlot dans `trafic.gd`, elles partent quand le sol devient perméable ; essai trafic 0 échec ; export +0,7 s ; planche `wehrau_cours_*`. Les garées passent à 7 neutres + 7 couleurs ternies (option A de l'auteur).
