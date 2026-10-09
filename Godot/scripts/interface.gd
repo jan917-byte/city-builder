@@ -28,6 +28,8 @@ signal examen_demande(couche: String, fid: int, reglage: String, valeur: Variant
 signal projets_ouverts(fid: int)
 ## 🛠️ Le mode choisi au lancement : histoire, ou auteur (chantiers livrés au clic).
 signal mode_choisi(auteur: bool)
+## ⏩ Le raccourci d'essai : la partie reprend à la livraison du pont (auteur, 2026-10-09).
+signal apres_pont_choisi()
 
 const Ville := preload("res://scripts/ville.gd")
 ## 🪜 Pour le seul remboursement de la tranche : la fiche annonce ce que la
@@ -37,6 +39,7 @@ const Apercu := preload("res://scripts/apercu.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
 const Politiques := preload("res://scripts/politiques.gd")
+const Calendrier := preload("res://scripts/calendrier.gd")
 const Lieux := preload("res://scripts/lieux.gd")
 const Livre := preload("res://scripts/livre.gd")
 var lieux := Lieux.new()
@@ -231,6 +234,46 @@ class JaugeCrue extends Control:
 			draw_line(Vector2(xp, -4.0), Vector2(xp, size.y + 4.0), Color8(30, 30, 30), 1.0)
 
 
+## 🌊 LE DANGER DE CRUE SOUS LA DATE (auteur, 2026-10-09) : bas et calme jusqu'à
+## la fenêtre de l'étude, il monte à l'approche, puis bat pendant les 6 à 8 ans.
+## 🔴 Aucune crue ne tombe encore au bout (question ouverte, autre session).
+class JaugeDanger extends Control:
+	const CALME := Color8(132, 156, 172)
+	const PROCHE := Color8(232, 126, 48)
+	const IMMINENT := Color8(196, 48, 40)
+	var part := 0.0
+	var couleur := CALME
+
+	## `ans` : années depuis l'étude.
+	func regler(ans: float) -> void:
+		var p := 0.12 + 0.08 * clampf(ans / 5.0, 0.0, 1.0)
+		var c := CALME
+		if ans >= 5.0:
+			var k := clampf(ans - 5.0, 0.0, 1.0)
+			p = lerpf(0.2, 0.5, k)
+			c = CALME.lerp(PROCHE, k)
+		if ans >= 6.0:
+			var k := clampf((ans - 6.0) / 2.0, 0.0, 1.0)
+			p = lerpf(0.5, 1.0, k)
+			c = PROCHE.lerp(IMMINENT, k)
+			c.a = 0.45 + 0.55 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.006))
+		if is_equal_approx(p, part) and c.is_equal_approx(couleur):
+			return  # ⚠️ appelé à chaque image
+		part = p
+		couleur = c
+		queue_redraw()
+
+	func _draw() -> void:
+		var r := size.y * 0.5
+		var fond := StyleBoxFlat.new()
+		fond.bg_color = Color(0, 0, 0, 0.12)
+		fond.set_corner_radius_all(int(r))
+		draw_style_box(fond, Rect2(Vector2.ZERO, size))
+		var plein := fond.duplicate() as StyleBoxFlat
+		plein.bg_color = couleur
+		draw_style_box(plein, Rect2(0.0, 0.0, maxf(size.y, size.x * part), size.y))
+
+
 ## 🧭 LA COLONNE D'ICÔNES, ET LE PANNEAU QUI S'OUVRE À CÔTÉ (2026-09-03, demande
 ## de l'auteur). Elle remplace le bandeau de neuf tuiles ET la barre du bas : le
 ## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
@@ -377,6 +420,8 @@ var _message: Label
 var _camera_nord: Button
 var _camera_dessus: Button
 var _temps_label: Label
+var _danger: HBoxContainer
+var _jauge_danger: JaugeDanger
 var _vitesses := {}
 ## 📖 Les deux panneaux du bas, rangés pendant le récit avec tout le reste.
 var _temps_panneau: PanelContainer
@@ -485,7 +530,7 @@ var _univ_vide: Label
 ## ⏸️ La vitesse d'avant la fenêtre, rendue à sa fermeture ; -1 fenêtre fermée.
 var _vitesse_avant_campus := -1.0
 var _vitesse_courante := 0.0
-var _etude_valeurs := {}
+var _etude_voir: Button
 ## 📖 LA BIBLIOTHÈQUE (101) : la liste des pages, ou une page ouverte.
 var _biblio_bloc: VBoxContainer
 var _biblio_liste: VBoxContainer
@@ -500,6 +545,7 @@ var _biblio_cle := ""
 ## « Voir à Wehrau » : `maquette.voir_concept`.
 signal concept_demande(id: String)
 var _mois := 0.0
+var _thermo_pic: TextureRect
 var _caisse_ke := Ville.CAISSE_DEPART_KE
 var _capital := Ville.CAPITAL_DEPART
 var _cout_en_alerte := false
@@ -1102,6 +1148,8 @@ const DESSINS := {
 	"production": "<circle cx='12' cy='12' r='4'/><path d='M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10l2 2M19 5l-2 2M7 17l-2 2'/>",
 	"achat": "<path d='M9 3v7m6-7v7m-8 0h10v2a5 5 0 01-5 5v4m-3 0h6'/>",
 	"co2": "<path d='M7 18h11a4 4 0 000-8 6 6 0 00-11-2 5 5 0 000 10z'/>",
+	# 🌡️ Lucide « thermometer » : la saison et sa température (décision 92).
+	"temperature": "<path d='M14 4v10.54a4 4 0 11-4 0V4a2 2 0 014 0z'/>",
 	# 🗳️ Lucide « vote » : le capital politique.
 	"capital": "<path d='M9 12l2 2 4-4'/><path d='M5 7c0-1.1.9-2 2-2h10a2 2 0 012 2v12H5V7z'/><path d='M22 19H2'/>",
 	"caisse": "<circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/>",
@@ -1162,6 +1210,23 @@ func _icone(nom: String, taille := 25, coul := TEXTE, angle := 0) -> Texture2D:
 	var corps: String = str(DESSINS.get(nom, DESSINS["diagnostic"])) 		.replace("@", "#" + coul.to_html(false))
 	if angle != 0:
 		corps = "<g transform='rotate(%d 12 12)'>%s</g>" % [angle, corps]
+	return _rendre_icone(cle, corps, taille, coul)
+
+
+## 🌡️ Le thermomètre se remplit avec la température : vide à 0 °C, plein à 22 °C,
+## l'écart des normales de `calendrier.gd` : plus large, on ne voyait plus la différence ;
+## le tube pâli, sinon son trait se confond avec la colonne à 22 px.
+func _thermometre(celsius: float, taille: int, coul: Color) -> Texture2D:
+	var degre := int(roundf(celsius))
+	var cle := "thermometre_%d_%d_%s" % [degre, taille, coul.to_html(false)]
+	if _icones.has(cle):
+		return _icones[cle]
+	var haut := lerpf(15.5, 5.0, clampf(degre / 22.0, 0.0, 1.0))
+	var corps := "<g stroke-opacity='0.35'>%s</g>" % DESSINS["temperature"] + 		"<path stroke-width='2.4' d='M12 18V%.1f'/><circle cx='12' cy='18' r='1.8' fill='@'/>" % haut
+	return _rendre_icone(cle, corps.replace("@", "#" + coul.to_html(false)), taille, coul)
+
+
+func _rendre_icone(cle: String, corps: String, taille: int, coul: Color) -> Texture2D:
 	var svg := "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#%s' stroke-width='2.0' stroke-linecap='round' stroke-linejoin='round'>%s</svg>" % [coul.to_html(false), corps]
 	var img := Image.new()
 	var erreur := img.load_svg_from_string(svg, float(taille) / 24.0)
@@ -1323,13 +1388,13 @@ func _panneau_bilan() -> void:
 	_titre_section(v, "Énergie")
 	for ligne in [
 		["conso", "conso", Color8(198, 126, 32),
-			"Ce que la ville consomme. La jauge se lit contre le mois 0."],
+			"Ce que la ville consomme. La jauge se lit contre le début de la partie."],
 		["production", "production", Color8(214, 158, 44),
 			"Ce que les panneaux produisent, sur la consommation de la ville."],
 		["achat", "achat", Color8(122, 112, 96),
 			"Ce qu'il faut encore acheter au réseau."],
 		["co2", "co2", Color8(104, 116, 108),
-			"Les émissions de l'électricité achetée. La jauge se lit contre le mois 0."],
+			"Les émissions de l'électricité achetée. La jauge se lit contre le début de la partie."],
 	]:
 		var l := _ligne_bilan(v, ligne[1], ligne[2], ligne[3], true)
 		_ville_valeurs[ligne[0]] = l["valeur"]
@@ -1343,7 +1408,7 @@ func _panneau_bilan() -> void:
 	_ville_valeurs["nourriture"] = nourriture["valeur"]
 	_ville_jauges["nourriture"] = nourriture["jauge"]
 	var achats := _ligne_bilan(v, "achat", Color8(122, 112, 96),
-		"Ce que la ville paie chaque mois pour nourrir ceux que ses champs ne nourrissent pas. La dotation couvre déjà celui du mois 0 : la caisse ne voit que l'écart.", false)
+		"Ce que la ville paie chaque mois pour nourrir ceux que ses champs ne nourrissent pas. La dotation couvre déjà celui du début de la partie : la caisse ne voit que l'écart.", false)
 	_ville_valeurs["achat_nourriture"] = achats["valeur"]
 
 	var titre_caisse := _titre_section(v, "Caisse")
@@ -1373,7 +1438,7 @@ func _panneau_bilan() -> void:
 	# une ville équipée, pas à juger l'économie.
 	# À retirer en même temps que `ville.crediter_essai_ke`.
 	var triche := Button.new()
-	triche.text = "Essai · +1 000 k€"
+	triche.text = "Essai : +1 000 k€"
 	triche.theme = _theme_ui
 	triche.focus_mode = Control.FOCUS_NONE
 	triche.add_theme_font_size_override("font_size", 11)
@@ -1684,9 +1749,9 @@ func _panneau_calque() -> void:
 	_sols_bloc.add_theme_constant_override("separation", 6)
 	_sols_bloc.visible = false
 	v.add_child(_sols_bloc)
-	_legende(_sols_bloc, SOL_BOIT, "Boit la pluie · jardins, prés, toits verts")
-	_legende(_sols_bloc, SOL_DUR, "La renvoie à l'Ilse · rues, toits, cours en dur")
-	_legende(_sols_bloc, SOL_PARKING, "Parking · places de rue et place-parking")
+	_legende(_sols_bloc, SOL_BOIT, "Boit la pluie : jardins, prés, toits verts")
+	_legende(_sols_bloc, SOL_DUR, "La renvoie à l'Ilse : rues, toits, cours en dur")
+	_legende(_sols_bloc, SOL_PARKING, "Parking : places de rue et place-parking")
 	_sols_bloc.add_child(HSeparator.new())
 	_sols_chiffre = _ligne_chiffre(_sols_bloc, "Sol de la ville qui boit")
 	# 🧹 Tout déblayer d'un coup (auteur, 2026-10-05). 🔴 Texte de prototype, flaggable (90).
@@ -1751,7 +1816,7 @@ func _maj_boue() -> void:
 	for f in rues:
 		cout += ville.cout_reparation_ke("r", int(f))
 	_boue_texte.text = "%d rues sous la boue" % rues.size()
-	_boue_bouton.text = "Tout déblayer · %s k€ · %s" % [
+	_boue_bouton.text = "Tout déblayer, %s k€ en %s" % [
 		_milliers(cout), _duree(Ville.DEBLAIEMENT_MOIS * rues.size())]
 	_boue_bouton.disabled = cout > ville.caisse_ke(_mois) + 0.001
 
@@ -1859,7 +1924,7 @@ func _panneau_diagnostic() -> void:
 	_legende(d, Color8(38, 157, 196), "Passage de la crue, plus foncé où elle est profonde")
 	_legende(d, Color8(232, 126, 48), "Bâtiments touchés par l'eau")
 	_legende(d, Color8(140, 28, 40), "Bâtiments détruits")
-	_legende(d, Color8(220, 58, 48), "Routes bloquées · franchissements coupés")
+	_legende(d, Color8(220, 58, 48), "Routes bloquées et franchissements coupés")
 	d.add_child(HSeparator.new())
 	# 🔧 CE QUE LA CRUE COÛTE ENCORE. Ces trois nombres BAISSENT quand on
 	# répare : sans eux, reconstruire un îlot ne changerait rien de visible
@@ -1917,15 +1982,24 @@ func _panneau_prochaine(p: VBoxContainer) -> void:
 	]:
 		_prochaine_valeurs[ligne[0]] = _ligne_chiffre(p, ligne[1])
 	_prochaine_valeurs["logements"] = _ligne_chiffre(p, "Logements qu'elle détruirait")
+	_carte_bouton = Button.new()
+	_carte_bouton.focus_mode = Control.FOCUS_NONE
+	_habiller_principal(_carte_bouton)
+	_carte_bouton.pressed.connect(mettre_a_jour_carte)
+	p.add_child(_carte_bouton)
 	p.add_child(HSeparator.new())
 	_prochaine_valeurs["baisse"] = _ligne_chiffre(p, "Eau en moins depuis l'étude")
 	_jauge_crue = JaugeCrue.new()
 	_jauge_crue.custom_minimum_size = Vector2(0, 16)
 	_jauge_crue.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(_jauge_crue)
-	# 🔄 Ni légende de la jauge, ni écart depuis l'étude, ni titre au-dessus des
-	# leviers (auteur, 2026-10-08) : le joueur les lit seul.
-	p.add_child(HSeparator.new())
+	# 🔄 Ni légende de la jauge ni écart depuis l'étude (auteur, 2026-10-08) : le
+	# joueur les lit seul. Les leviers sont à l'université (auteur, 2026-10-09) :
+	# Dangers diagnostique, la solution se cherche ailleurs.
+
+
+## 🎓 Les quatre gestes de la ville-éponge (101), sous l'étude de l'université.
+func _leviers_etude(p: VBoxContainer) -> void:
 	var berge_cm := 0.0
 	for b in ville.berges:
 		berge_cm = maxf(berge_cm, (ville.berge_largeur_rendue_m(b, Ville.BERGE_RENATUREE)
@@ -1963,13 +2037,32 @@ func _levier(p: VBoxContainer, titre: String, effet: String, voir: String,
 	b.text = voir
 	b.focus_mode = Control.FOCUS_NONE
 	_habiller_secondaire(b)
-	b.pressed.connect(func() -> void: examen_demande.emit(couche, fid, reglage, valeur))
+	b.pressed.connect(_examiner_levier.bind(couche, fid, reglage, valeur))
 	boite.add_child(b)
 	_prochaine_valeurs["levier_" + reglage] = b
 	_leviers_crue[{"culture": "pre"}.get(reglage, reglage)] = boite
 
 
 var _leviers_crue := {}
+
+
+## 🌊 Depuis l'université, un levier ouvre sa fiche sur la carte de la prochaine
+## crue : la jauge de Dangers montre l'effet du réglage (auteur, 2026-10-06).
+func _examiner_levier(couche: String, fid: int, reglage: String, valeur: Variant) -> void:
+	voir_prochaine_crue()
+	examen_demande.emit(couche, fid, reglage, valeur)
+
+
+## Dangers ouvert sur la prochaine crue, la fenêtre du campus refermée.
+func voir_prochaine_crue() -> void:
+	if _theme_courant != "dangers":
+		_sur_rail("dangers")
+	else:
+		if _campus_panneau.visible:
+			_fermer_campus()
+		_detail_ouvert = true
+		_placer_detail()
+	choisir_vue_crue("prochaine")
 
 
 ## L'étude est parue : sans guide (essais, mode auteur), elle l'est toujours.
@@ -2012,32 +2105,41 @@ func _habiller_onglets_crue() -> void:
 		b.add_theme_font_size_override("font_size", 13)
 		(_vues_crue[id] as Control).visible = ouvert
 	var nouveau: bool = ouverture != null and not ouverture.prochaine_vue
-	(_onglets_crue["prochaine"] as Button).text = "Prochaine crue" + (" · nouveau" if nouveau else "")
+	(_onglets_crue["prochaine"] as Button).text = "Prochaine crue" + (" (nouveau)" if nouveau else "")
 	(_onglets_crue["prochaine"] as Button).visible = etude_publiee()
+
+
+## 6 à 8 ans depuis la parution ; aucune crue ne tombe au bout (question ouverte).
+func _quand_crue(t: float) -> String:
+	var ecoule := (t - _mois_etude()) / 12.0
+	var tot := int(ceil(maxf(6.0 - ecoule, 0.0)))
+	var tard := int(ceil(maxf(8.0 - ecoule, 0.0)))
+	if tot == 0:
+		return "d'ici %d ans" % tard if tard > 0 else "d'un mois à l'autre"
+	return "dans %d à %d ans" % [tot, tard]
 
 
 func _maj_prochaine() -> void:
 	var p := ville.prochaine_crue(_mois)
 	var a := ville.prochaine_crue(_mois_etude())
-	# 6 à 8 ans depuis la parution ; aucune crue ne tombe au bout (question ouverte).
-	var ecoule := (_mois - _mois_etude()) / 12.0
-	var tot := int(ceil(maxf(6.0 - ecoule, 0.0)))
-	var tard := int(ceil(maxf(8.0 - ecoule, 0.0)))
-	var quand := "dans %d à %d ans" % [tot, tard]
-	if tot == 0:
-		quand = "d'ici %d ans" % tard if tard > 0 else "d'un mois à l'autre"
-	(_prochaine_valeurs["quand"] as Label).text = quand
-	(_prochaine_valeurs["ilots"] as Label).text = "%d · %d cette année" % [
-		int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"])]
-	(_prochaine_valeurs["eau"] as Label).text = "%s m" % _nb(float(p["eau_pire_m"]), 2)
-	(_prochaine_valeurs["logements"] as Label).text = _nb(float(p["logements_perdus"]), 0)
-	for l in _leviers_crue:
-		(_leviers_crue[l] as Control).visible = _levier_ferme(l) == ""
-	var cle := "%d/%d/%d/%d" % [int(_mois * 30.0), ville._rampes_version,
-		ville._repare.size(), ville._berge.size()]
+	var carte := p if is_equal_approx(mois_carte_crue, _mois) else ville.prochaine_crue(mois_carte_crue)
+	(_prochaine_valeurs["quand"] as Label).text = _quand_crue(_mois)
+	# 🔄 Les chiffres suivent la carte, pas le mois : ils bougent au clic.
+	(_prochaine_valeurs["ilots"] as Label).text = "%d, contre %d cette année" % [
+		int(carte["ilots_sous_eau"]), int(carte["ilots_cette_annee"])]
+	(_prochaine_valeurs["eau"] as Label).text = "%s m" % _nb(float(carte["eau_pire_m"]), 2) 		+ _ecart_carte(carte, "eau_pire_m", 2)
+	(_prochaine_valeurs["logements"] as Label).text = _nb(float(carte["logements_perdus"]), 0) 		+ _ecart_carte(carte, "logements_perdus", 0)
+	var cle := "%d/%d/%d/%d/%f" % [int(_mois * 30.0), ville._rampes_version,
+		ville._repare.size(), ville._berge.size(), mois_carte_crue]
 	if cle != _a_venir_cle:
 		_a_venir_cle = cle
 		_a_venir = float(ville.prochaine_crue(_mois + Ville.HORIZON_MOIS)["eau_pire_m"])
+		_carte_perimee = absf(_empreinte_carte(_mois) - _empreinte_carte(mois_carte_crue)) > 0.005 			or absf(float(p["logements_perdus"]) - float(carte["logements_perdus"])) >= 0.5
+	var pret := _carte_perimee and (_carte_tween == null or not _carte_tween.is_running())
+	_carte_bouton.disabled = not pret
+	_carte_bouton.text = "Mettre à jour la carte" if pret else "Carte à jour"
+	# 🔄 Il bat tant que la carte retarde (auteur, 2026-10-08 : montrer, pas expliquer).
+	_carte_bouton.modulate.a = 0.55 + 0.45 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.006)) 		if pret else 1.0
 	if _seuil_crue < 0.0:
 		_seuil_crue = _premieres_maisons_m()
 	var depart := float(a["eau_pire_m"])
@@ -2047,6 +2149,58 @@ func _maj_prochaine() -> void:
 		and _fiche_panneau.visible and not _reglages_vus().is_empty() else -1.0
 	_jauge_crue.regler(livre, engage, apercu, _seuil_crue)
 	(_prochaine_valeurs["baisse"] as Label).text = "%d cm" % int(roundf(livre * 100.0))
+
+
+## 🔄 LA CARTE DE LA PROCHAINE CRUE SE MET À JOUR AU CLIC (auteur, 2026-10-09) :
+## elle garde le mois de sa dernière mise à jour ; au clic, l'eau recule jusqu'à
+## aujourd'hui et les chiffres disent l'écart. Lu par `maquette._regler_crue`.
+var mois_carte_crue := 0.0
+signal carte_crue_avancee()
+var _carte_bouton: Button
+var _carte_tween: Tween
+var _carte_perimee := false
+## La crue au mois d'avant le clic ; vide = aucun écart à dire.
+var _carte_avant := {}
+const CARTE_RECUL_S := 2.5
+
+
+func mettre_a_jour_carte() -> void:
+	_carte_avant = ville.prochaine_crue(mois_carte_crue)
+	if _carte_tween != null:
+		_carte_tween.kill()
+	_carte_tween = create_tween()
+	_carte_tween.tween_method(_avancer_carte, mois_carte_crue, _mois, CARTE_RECUL_S) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _avancer_carte(t: float) -> void:
+	mois_carte_crue = t
+	carte_crue_avancee.emit()
+
+
+## Une partie reprise ou remise à zéro : carte à jour, rien à dire.
+func caler_carte_crue(t: float) -> void:
+	if _carte_tween != null:
+		_carte_tween.kill()
+	mois_carte_crue = t
+	_carte_avant = {}
+	_a_venir_cle = ""
+
+
+## Ce qui fait bouger la carte : la même somme que `maquette._regler_crue`.
+func _empreinte_carte(t: float) -> float:
+	var v := ville.baisse_crue_toits_m(t) + ville.baisse_crue_champs_m(t) 		+ ville.baisse_crue_parcs_m(t) + ville.baisse_crue_sols_m(t)
+	for b in ville.berges:
+		v += ville.berge_baisse_m(b, t)
+	return v
+
+
+func _ecart_carte(carte: Dictionary, champ: String, decimales: int) -> String:
+	if _carte_avant.is_empty():
+		return ""
+	var d := float(carte[champ]) - float(_carte_avant[champ])
+	if absf(d) < 0.5 * pow(10.0, -decimales):
+		return ""
+	return " (%s%s)" % ["+" if d > 0.0 else "−", _nb(absf(d), decimales)]
 
 
 ## La plus petite baisse, sur les paliers de `04e`, qui sauve une maison quelque
@@ -2101,9 +2255,9 @@ func _panneau_chantiers() -> void:
 	_chantiers_panneau.add_child(v)
 	_entetes["chantiers"] = _entete(v)
 	v.add_child(HSeparator.new())
-	_legende(v, CASSE, "Cassé · rien d'engagé")
+	_legende(v, CASSE, "Cassé, rien d'engagé")
 	_legende(v, EN_TRAVAUX, "Chantier en cours")
-	_legende(v, FAIT, "Fait · la ville est réparée là")
+	_legende(v, FAIT, "Fait, la ville est réparée là")
 	v.add_child(HSeparator.new())
 	for ligne in [
 		["casses", "Encore cassé"],
@@ -2134,7 +2288,7 @@ func _panneau_chantiers() -> void:
 ## image pour un panneau que personne ne regarde.
 func maj_chantiers(d: Dictionary) -> void:
 	var g: Dictionary = d["casses_par_genre"]
-	(_chantiers_valeurs["casses"] as Label).text = "%d îlots · %d ponts · %d rues" % [
+	(_chantiers_valeurs["casses"] as Label).text = "%d îlots, %d ponts, %d rues" % [
 		int(g["reconstruction"]), int(g["pont"]), int(g["deblaiement"])]
 	(_chantiers_valeurs["reste"] as Label).text = _milliers(
 		float(d["reste_ke"])) + " k€"
@@ -2160,7 +2314,7 @@ func _ligne_chantier(c: Dictionary) -> String:
 	var genre: String = {"pont": "tablier", "deblaiement": "déblaiement",
 		"solaire": "panneaux", "berge": "transformation"}.get(c["genre"], c["genre"])
 	var nom: String = "%d rues" % int(c["rues"]) if c.has("rues") else lieux.nom(c["couche"], int(c["fid"]))
-	return "%s · %s · encore %s" % [nom, genre, _duree(float(c["reste_mois"]))]
+	return "%s, %s, encore %s" % [nom, genre, _duree(float(c["reste_mois"]))]
 
 
 ## 🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-08-25 : la fiche se retirait dès qu'un
@@ -2733,6 +2887,14 @@ func montrer_depart() -> void:
 			centre.visible = false
 			mode_choisi.emit(auteur))
 		v.add_child(b)
+	# 🔴 Bouton d'essai, pas de jeu : à retirer avant toute version publique.
+	var raccourci := Button.new()
+	raccourci.text = "Après le pont"
+	raccourci.focus_mode = Control.FOCUS_NONE
+	raccourci.pressed.connect(func() -> void:
+		centre.visible = false
+		apres_pont_choisi.emit())
+	v.add_child(raccourci)
 	_sans_focus(centre)
 
 
@@ -2923,25 +3085,21 @@ func _panneau_lieu() -> void:
 	_univ_vide = _label("Aucune étude publiée.", 12, GRIS)
 	contenu.add_child(_univ_vide)
 
-	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE (auteur, 2026-09-30) : l'université annonce,
-	# le diagnostic tient la prévision (n°32). 🔴 Texte de prototype, flaggable (90).
+	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE (auteur, 2026-09-30) : l'université annonce
+	# et propose, Dangers tient la carte et les chiffres, sans doublon (auteur,
+	# 2026-10-09). 🔴 Texte de prototype, flaggable (90).
 	_etude_bloc = VBoxContainer.new()
-	_etude_bloc.add_theme_constant_override("separation", 3)
+	_etude_bloc.add_theme_constant_override("separation", 6)
 	contenu.add_child(_etude_bloc)
 	_etude_bloc.add_child(HSeparator.new())
-	_etude_bloc.add_child(_label("Nouvelle étude · la prochaine crue", 14, TEXTE))
-	# 🔄 Quatre tuiles au lieu du paragraphe (auteur, 2026-10-08).
-	var g := GridContainer.new()
-	g.columns = 2
-	g.add_theme_constant_override("h_separation", 6)
-	g.add_theme_constant_override("v_separation", 6)
-	_etude_bloc.add_child(g)
-	for l in [["dans", "Attendue dans"], ["ilots", "Îlots sous l'eau"],
-			["forgerons", "Aux Forgerons"], ["ruines", "Logements ruinés"]]:
-		_tuile(g, l[1], _etude_valeurs, l[0])
-	var ou := _label("La carte de l'étude est dans Dangers.", 11, GRIS)
-	ou.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_etude_bloc.add_child(ou)
+	_etude_bloc.add_child(_label("Nouvelle étude : la prochaine crue", 14, TEXTE))
+	_etude_voir = Button.new()
+	_etude_voir.text = "Voir l'étude dans Dangers"
+	_etude_voir.focus_mode = Control.FOCUS_NONE
+	_etude_voir.pressed.connect(voir_prochaine_crue)
+	_etude_bloc.add_child(_etude_voir)
+	_etude_bloc.add_child(HSeparator.new())
+	_leviers_etude(_etude_bloc)
 
 
 	for cle in Politiques.ORDRE:
@@ -3212,7 +3370,7 @@ func _maj_projets() -> void:
 	if cle == _projets_cle:
 		return
 	_projets_cle = cle
-	_projets_titre.text = "Concours · %s" % lieux.nom("i", _fiche_fid)
+	_projets_titre.text = "Concours : %s" % lieux.nom("i", _fiche_fid)
 	_projets_intro.text = "%.0f logements perdus. La prochaine crue y mettrait %s m d'eau." % [
 		ville.base("i", _fiche_fid, "logements_sinistres"),
 		_nb(ville.valeur("i", _fiche_fid, "hauteur_eau_annonce", _mois), 1)]
@@ -3341,7 +3499,7 @@ func _brancher_lieu() -> void:
 			b.pressed.connect(func() -> void:
 				if ville.basculer_politique(k, _mois):
 					var politique: Dictionary = Politiques.POLITIQUES[k]
-					retours.consigner("%s : %s" % [politique["nom"], "%s k€/mois · %s" % [_milliers(politique["ke_mois"]), politique["quoi"]] if Politiques.active(ville, k) else "subvention arrêtée, prélèvements terminés."], _mois)
+					retours.consigner("%s : %s" % [politique["nom"], "%s k€/mois, %s" % [_milliers(politique["ke_mois"]), politique["quoi"]] if Politiques.active(ville, k) else "subvention arrêtée, prélèvements terminés."], _mois)
 				_maj_lieu())
 
 
@@ -3359,14 +3517,8 @@ func _maj_lieu() -> void:
 	if _biblio_bloc.visible:
 		_maj_bibliotheque()
 	if _etude_bloc.visible:
-		var p := ville.prochaine_crue(_mois)
-		var forgerons := ville.base("i", Ouverture.MAISONS, "hauteur_eau_max")
-		(_etude_valeurs["dans"] as Label).text = "6 à 8 ans"
-		(_etude_valeurs["ilots"] as Label).text = "%d (%d cette fois)" % [
-			int(p["ilots_sous_eau"]), int(p["ilots_cette_annee"])]
-		(_etude_valeurs["forgerons"] as Label).text = "%s m (%s m)" % [
-			_nb(ville.valeur("i", Ouverture.MAISONS, "hauteur_eau_annonce", _mois), 1), _nb(forgerons, 1)]
-		(_etude_valeurs["ruines"] as Label).text = _nb(float(p["logements_perdus"]), 0)
+		for l in _leviers_crue:
+			(_leviers_crue[l] as Control).visible = _levier_ferme(l) == ""
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: VBoxContainer = l["bloc"]
@@ -3433,8 +3585,8 @@ func _maj_bibliotheque() -> void:
 			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			b.focus_mode = Control.FOCUS_NONE
 			var nouveau: bool = ouverte and ouverture != null and ouverture.page_nouvelle(id)
-			b.text = ("%s · %s" % [c["chapitre"], c["titre"]] if c["chapitre"] != c["titre"]
-				else str(c["titre"])) + (" · nouveau" if nouveau else "")
+			b.text = ("%s : %s" % [c["chapitre"], c["titre"]] if c["chapitre"] != c["titre"]
+				else str(c["titre"])) + (" (nouveau)" if nouveau else "")
 			_habiller_secondaire(b)
 			b.disabled = not ouverte
 			var k: String = id
@@ -3464,18 +3616,18 @@ func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
 	var jauge: Jauge = l["jauge"]
 	if Recherche.acquis(ville, cle, _mois):
 		jauge.regler(1.0, 1.0)
-		etat.text = "Acquis au mois %d · vaut pour toute la ville." % \
-			int(roundf(Recherche.mois_palier(ville, cle)))
+		etat.text = "Acquis %s, vaut pour toute la ville." % \
+			Calendrier.en(Recherche.mois_palier(ville, cle))
 		b.visible = false
 	elif ville.recherche_engagee(cle):
 		var reste: float = Recherche.reste_mois(ville, cle, _mois)
 		jauge.regler(1.0 - reste / float(s["mois"]), 1.0)
-		etat.text = "En cours · %s · %s k€/mois" % [
+		etat.text = "En cours, encore %s, %s k€/mois" % [
 			_duree(reste), _milliers(float(s["ke_mois"]))]
 		b.visible = false
 	else:
 		jauge.regler(0.0, 0.0)
-		etat.text = "%s k€/mois pendant %d mois · %s k€ en tout" % [
+		etat.text = "%s k€/mois pendant %d mois, %s k€ en tout" % [
 			_milliers(float(s["ke_mois"])), int(float(s["mois"])),
 			_milliers(Recherche.cout_total_ke(cle))]
 		b.visible = true
@@ -3491,14 +3643,14 @@ func _maj_ligne_politique(cle: String, l: Dictionary) -> void:
 	var verse := Politiques.mois_actifs(ville, cle, _mois) * ke_mois
 	b.visible = true
 	if Politiques.active(ville, cle):
-		etat.text = "En vigueur · %s k€/mois · %s k€ déjà versés" % [
+		etat.text = "En vigueur, %s k€/mois, %s k€ déjà versés" % [
 			_milliers(ke_mois), _milliers(verse)]
 		b.disabled = false
 		b.text = "Retirer"
 	else:
 		etat.text = "%s k€/mois dès la signature" % _milliers(ke_mois)
 		if verse > 0.0:
-			etat.text += " · %s k€ versés avant retrait" % _milliers(verse)
+			etat.text += ", %s k€ versés avant retrait" % _milliers(verse)
 		b.disabled = _caisse_ke < ke_mois
 		b.text = "Signer" if not b.disabled else "Caisse insuffisante"
 
@@ -3539,7 +3691,7 @@ func _panneau_camera() -> void:
 	_camera_dessus.focus_mode = Control.FOCUS_NONE
 	_camera_dessus.pressed.connect(func(): dessus_demande.emit())
 	boutons.add_child(_camera_dessus)
-	var aide := ["Glisser : déplacer · Ctrl : tourner", "Molette : zoom · V : toute la ville"]
+	var aide := ["Glisser : déplacer, Ctrl : tourner", "Molette : zoom, V : toute la ville"]
 	# 🔲 En vitre, l'aide passe en infobulle du panneau (auteur, 2026-10-02 : « du bruit »).
 	if VITRE:
 		p.tooltip_text = "\n".join(aide)
@@ -3595,6 +3747,8 @@ func _barre_compteurs() -> void:
 	# 🔲 En vitre, l'argent et la confiance seuls (auteur, 2026-10-02) : l'énergie est à gauche.
 	if VITRE:
 		lignes.resize(2)
+	# 🌡️ La température de l'autre côté (décision 92), sans le mot de la saison : le mois le dit.
+	lignes.append(["temperature", "temperature", Color8(176, 92, 64), "Température moyenne du mois"])
 	for ligne in lignes:
 		if h.get_child_count() > 0:
 			var filet := ColorRect.new()
@@ -3613,6 +3767,8 @@ func _barre_compteurs() -> void:
 			bloc.gui_input.connect(_clic_compteur.bind(ligne[0]))
 		var pic := TextureRect.new()
 		pic.texture = _icone(ligne[1], 22, ligne[2])
+		if ligne[0] == "temperature":
+			_thermo_pic = pic
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bloc.add_child(pic)
@@ -3631,6 +3787,8 @@ func _barre_compteurs() -> void:
 	_detail_liste = VBoxContainer.new()
 	_detail_liste.add_theme_constant_override("separation", 3)
 	_detail_panneau.add_child(_detail_liste)
+	# ✕ Rendre la ville en grand (auteur, 2026-10-09) ; recliquer le compteur ferme aussi.
+	_croix(_detail_panneau, ouvrir_detail.bind(""))
 
 
 func _clic_historique(e: InputEvent) -> void:
@@ -3657,7 +3815,7 @@ func ouvrir_detail(sujet: String) -> void:
 	retours.actualiser_affichage()
 
 
-const HISTORIQUE := "Depuis le mois 0"
+const HISTORIQUE := "Depuis le début de la partie"
 const GENRES_DEPENSE := {
 	"camp": "Camps", "demande": "Campement amélioré", "pont": "Ponts",
 	"rue": "Rues déblayées", "ilot": "Îlots relevés", "solaire": "Panneaux solaires",
@@ -3703,7 +3861,7 @@ func _maj_detail(indic: Dictionary, mois: float) -> void:
 				t.add_theme_color_override("font_color", ACCENT)
 				t.mouse_filter = Control.MOUSE_FILTER_STOP
 				t.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-				t.tooltip_text = "Tout ce qui a fait bouger le compteur depuis le mois 0"
+				t.tooltip_text = "Tout ce qui a fait bouger le compteur depuis le début de la partie"
 				t.gui_input.connect(_clic_historique)
 			else:
 				_titre_section(_detail_liste, l[0])
@@ -3825,13 +3983,13 @@ func _lignes_capital(mois: float) -> Array:
 	var venir := []
 	var debut := ville.usure_debut()
 	if debut > mois and debut < INF:
-		venir.append(["Le camp commence à user la confiance, mois %s" % _nb(debut, 0),
+		venir.append(["Le camp commence à user la confiance %s" % Calendrier.en(debut),
 			"−%s/mois" % _nb(ville.usure_camp_mois(debut), 1), -1, false])
 	for m in a_venir:
 		var v := ("%+d" % int(roundf(float(m["montant"])))).replace("-", "−")
 		if str(m["quoi"]) == "places_retour":
 			v = "selon la rue"
-		venir.append(["%s, mois %s" % [_phrase_mouvement(m), _nb(float(m["mois"]), 0)],
+		venir.append(["%s, %s" % [_phrase_mouvement(m), Calendrier.en(float(m["mois"]))],
 			v, signf(float(m["montant"])), false])
 	if not venir.is_empty():
 		out.append(["À venir", null, 0, false])
@@ -3905,18 +4063,44 @@ func _controles_temps() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	_temps_label = _etiquette("Mois 0", 12, encre)
+	_temps_label = _etiquette(Calendrier.date(0.0, true), 12, encre)
 	# ⚠️ En vitre, les icônes sont dessinées en blanc et teintées par l'état : une
 	# icône foncée restait foncée sur la vitesse enfoncée, donc invisible.
 	if VITRE:
 		encre = Color.WHITE
-	_temps_label.custom_minimum_size.x = 76
+	_temps_label.custom_minimum_size.x = 112
 	if VITRE:
 		h.add_theme_constant_override("separation", 2)
-		_temps_label.custom_minimum_size.x = 64
+		_temps_label.custom_minimum_size.x = 100
 		_temps_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_temps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	h.add_child(_temps_label)
+	var date := VBoxContainer.new()
+	date.add_theme_constant_override("separation", 1)
+	date.alignment = BoxContainer.ALIGNMENT_CENTER
+	date.size_flags_horizontal = _temps_label.size_flags_horizontal
+	h.add_child(date)
+	date.add_child(_temps_label)
+	# 🌊 Au clic, la carte de la prochaine crue.
+	_danger = HBoxContainer.new()
+	_danger.add_theme_constant_override("separation", 4)
+	_danger.mouse_filter = Control.MOUSE_FILTER_STOP
+	_danger.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_danger.visible = false
+	_danger.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			voir_prochaine_crue())
+	date.add_child(_danger)
+	var vague := TextureRect.new()
+	vague.texture = _icone("eau", 11, _temps_label.get_theme_color("font_color"))
+	vague.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	vague.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_danger.add_child(vague)
+	_jauge_danger = JaugeDanger.new()
+	_jauge_danger.custom_minimum_size = Vector2(0, 5)
+	_jauge_danger.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_jauge_danger.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_jauge_danger.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_danger.add_child(_jauge_danger)
 	# 🔄 Pause et lecture en icônes (auteur, 2026-09-28) ; ×2 et ×4 restent
 	# écrits, une icône ne dirait pas le chiffre. Plus de ×12 (auteur, 2026-10-09).
 	for choix in [["pause", 0.0, "Pause"], ["lecture", 1.0, "Lecture"],
@@ -3945,7 +4129,7 @@ func _controles_temps() -> void:
 	raz.icon = _icone("mois_zero", dessin, encre)
 	raz.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	raz.custom_minimum_size = Vector2(cote, cote)
-	raz.tooltip_text = "Remet le temps au mois 0 et annule les poses décidées."
+	raz.tooltip_text = "Remet le temps au début de la partie et annule les poses décidées."
 	raz.pressed.connect(func() -> void: temps_remis.emit())
 	h.add_child(raz)
 
@@ -4103,24 +4287,31 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	var usure := ville.usure_camp_mois(mois)
 	var baisse := usure >= 0.05
 	_ville_valeurs["capital"].text = _nb(_capital, 0) \
-		+ (" · −%s/mois" % _nb(usure, 1) if baisse else "")
+		+ (" (−%s/mois)" % _nb(usure, 1) if baisse else "")
 	if _barre_valeurs.has("capital"):
 		var l: Label = _barre_valeurs["capital"]
 		# ⚠️ Remplacer, jamais retirer : sans sa couleur, le nombre passe au blanc du thème.
 		var teinte: Color = ALERTE if baisse else TEXTE
 		if l.get_theme_color("font_color") != teinte:
 			l.add_theme_color_override("font_color", teinte)
-		l.get_parent().tooltip_text = ("Confiance · le camp en use %s par mois ; l'améliorer l'arrête."
+		l.get_parent().tooltip_text = ("Confiance : le camp en use %s par mois ; l'améliorer l'arrête."
 			% _nb(usure, 1)) if baisse else "Confiance"
 	_maj_durabilite(indic)
-	_temps_label.text = "Mois %s" % _nb(mois, 1)
+	_temps_label.text = Calendrier.date(mois, true)
+	_danger.visible = etude_publiee()
+	if _danger.visible:
+		_jauge_danger.regler((mois - _mois_etude()) / 12.0)
+		_danger.tooltip_text = "Prochaine crue " + _quand_crue(mois)
 	# 🚿 Dès le premier camp, la confiance se lit en haut (auteur, 2026-10-02).
 	_barre.visible = _menu_panneau.visible and (not _bilan_differe() or not ville._camps.is_empty())
 	if _barre.visible:
 		for cle in _barre_valeurs:
-			(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
+			if cle != "temperature":
+				(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
+		(_barre_valeurs["temperature"] as Label).text = "%s °C" % _nb(Calendrier.temperature(mois), 0)
+		_thermo_pic.texture = _thermometre(Calendrier.temperature(mois), 22, Color8(176, 92, 64))
 		if VITRE:
-			(_barre_valeurs["caisse"] as Label).get_parent().tooltip_text = "Caisse · %s" \
+			(_barre_valeurs["caisse"] as Label).get_parent().tooltip_text = "Caisse : %s" \
 				% _ville_valeurs["recette"].text
 	_maj_detail(indic, mois)
 	# Calculés par la maquette au rythme du bandeau : 2,5 ms par appel.
@@ -4137,7 +4328,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 			_sols_depart = ville.part_sol_permeable(0.0)
 		var ecart := (part - _sols_depart) * 100.0
 		_sols_chiffre.text = "%d %%%s" % [int(roundf(part * 100.0)),
-			" · %+d depuis le début" % int(roundf(ecart)) if absf(ecart) >= 0.5 else ""]
+			", %+d depuis le début" % int(roundf(ecart)) if absf(ecart) >= 0.5 else ""]
 	_maj_rail()
 	for v in _vitesses:
 		(_vitesses[v] as Button).set_pressed_no_signal(is_equal_approx(float(v), vitesse))
@@ -4283,7 +4474,7 @@ func _maj_permeable() -> void:
 		_permeable_bouton.disabled = true
 		_marquer(_permeable_bouton, false)
 	else:
-		_posee(_permeable_bouton, "permeable", "Rendre le sol perméable · %s k€" % _milliers(ville.cout_permeable_ke(fid)))
+		_posee(_permeable_bouton, "permeable", "Rendre le sol perméable, %s k€" % _milliers(ville.cout_permeable_ke(fid)))
 		_permeable_bouton.disabled = false
 
 
@@ -4381,7 +4572,7 @@ func _maj_fiche_contenu() -> void:
 		var perdus := 0.0 if ville.reparation_finie("i", _fiche_fid, _mois) 			else float(o.get("logements_sinistres", 0))
 		_maj_resume("logement", ("aucun logement" if loges < 0.5
 			else ("1 logement" if loges < 1.5 else "%s logements" % _nb(loges, 0)))
-			+ (" · %s perdus" % _nb(perdus, 0) if perdus >= 0.5 else ""))
+			+ (", %s perdus" % _nb(perdus, 0) if perdus >= 0.5 else ""))
 		(_fiche_valeurs["surface"] as Label).text = "%s ha" % _nb(hectares, 2)
 		(_fiche_valeurs["niveaux"] as Label).text = _nb(
 			float(o.get("hauteur", 0.0)), 0)
@@ -4449,11 +4640,11 @@ func _maj_fiche_contenu() -> void:
 	elif _solaire_choix >= 0.0:
 		_afficher_choix(pct, _solaire_choix)
 	elif etat["en_cours"]:
-		_solaire_valeur.text = "%d %% → %d %% · %s · %s k€ engagés" % [
+		_solaire_valeur.text = "%d %% → %d %%, encore %s, %s k€ engagés" % [
 			int(roundf(pct)), int(roundf(cible_pct)),
 			_duree(float(etat["reste_mois"])), _milliers(float(etat["cout_ke"]))]
 	else:
-		_solaire_valeur.text = "%d %% équipé · +%s k€/an" % [int(roundf(pct)),
+		_solaire_valeur.text = "%d %% équipé, +%s k€/an" % [int(roundf(pct)),
 			_milliers(recette)] if pct > 0.0 else "Aucun panneau."
 		if etat["a_commence"]:
 			_message.text = "Pose terminée."
@@ -4533,19 +4724,19 @@ func _maj_dense() -> void:
 	if _dense_choix >= 0.0 and _dense_choix > float(montes) + 0.01:
 		var de := float(montes) / float(n)
 		var vers := _dense_choix / float(n)
-		_dense_valeur.text = "%d → %d bâtiments · +%d logements · %s" % [
+		_dense_valeur.text = "%d → %d bâtiments, +%d logements en %s" % [
 			montes, int(_dense_choix),
 			int(roundf(ville.dense_logements_tranche(_fiche_fid, de, vers, etages))),
 			_duree(ville.duree_dense_mois(etages, de, vers))]
 	elif etat["en_cours"]:
-		_dense_valeur.text = "%d → %d bâtiments · +%d étage%s · encore %s" % [
+		_dense_valeur.text = "%d → %d bâtiments, +%d étage%s, encore %s" % [
 			montes, int(etat["vises"]), etages, "s" if etages > 1 else "",
 			_duree(float(etat["reste_mois"]))]
 	elif montes > 0:
-		_dense_valeur.text = "%d bâtiments sur %d montés · +%d logements" % [
+		_dense_valeur.text = "%d bâtiments sur %d montés, +%d logements" % [
 			montes, n, int(roundf(float(etat["logements"])))]
 	else:
-		_dense_valeur.text = "%d bâtiments peuvent monter · %d logements par étage" % [
+		_dense_valeur.text = "%d bâtiments peuvent monter, %d logements par étage" % [
 				n, ville.dense_logements_etage(_fiche_fid)]
 
 
@@ -4588,11 +4779,11 @@ func _maj_vert() -> void:
 		ville.valeur("i", _fiche_fid, "_toit_plat_equipable_m2", _mois)
 		- ville.valeur("i", _fiche_fid, "_toit_vert_m2", _mois))
 	if _vert_choix >= 0.0 and _vert_choix > pct + 0.01:
-		_vert_valeur.text = "%d %% → %d %% · %s" % [int(roundf(pct)),
+		_vert_valeur.text = "%d %% → %d %% en %s" % [int(roundf(pct)),
 			int(roundf(_vert_choix)),
 			_duree(ville.duree_vert_mois(pct / 100.0, _vert_choix / 100.0))]
 	elif etat["en_cours"]:
-		_vert_valeur.text = "%d %% → %d %% · %s · %s k€ engagés" % [
+		_vert_valeur.text = "%d %% → %d %%, encore %s, %s k€ engagés" % [
 			int(roundf(pct)), int(roundf(cible_pct)),
 			_duree(float(etat["reste_mois"])), _milliers(float(etat["cout_ke"]))]
 	elif pct > 0.0:
@@ -4632,16 +4823,16 @@ func _maj_arbres() -> void:
 	(_rue_valeurs["arbres"] as Label).text = "%d sur %d" % [en_terre, tous]
 	(_rue_valeurs["canopee"] as Label).text = "%d %%" % int(roundf(cano * 100.0))
 	if en_cours:
-		_arbres_valeur.text = "%d arbres · reprise dans %s" % [
+		_arbres_valeur.text = "%d arbres, reprise dans %s" % [
 			ville.arbres_a(_fiche_fid, _arbres_choix / 100.0 * plafond) if
 			_arbres_choix >= 0.0 else en_terre,
 			_duree(ville.plantation_reste_mois(_fiche_fid, _mois))]
 	elif _arbres_choix >= 0.0 and _arbres_choix > pct + 0.01:
 		var cible := _arbres_choix / 100.0 * plafond
-		_arbres_valeur.text = "%d arbres → %d · %s" % [en_terre,
+		_arbres_valeur.text = "%d arbres → %d en %s" % [en_terre,
 			ville.arbres_a(_fiche_fid, cible), _duree(Ville.PLANTATION_MOIS)]
 	elif en_terre >= tous:
-		_arbres_valeur.text = "%d arbres · la rue est plantée de bout en bout" % en_terre
+		_arbres_valeur.text = "%d arbres, la rue est plantée de bout en bout" % en_terre
 	else:
 		_arbres_valeur.text = "%d arbres sur %d emplacements" % [en_terre, tous]
 
@@ -4911,10 +5102,10 @@ func _afficher_choix(actuel: float, cible: float) -> void:
 	# remboursent deux fois plus vite que les derniers.
 	var ans := Energie.rentabilite_tranche_annees(ville, _fiche_fid,
 		actuel / 100.0, cible / 100.0, _mois)
-	_solaire_valeur.text = "%d %% → %d %% · %s%s" % [
+	_solaire_valeur.text = "%d %% → %d %% en %s%s" % [
 		int(roundf(actuel)), int(roundf(cible)),
 		_duree(ville.duree_solaire_mois(actuel / 100.0, cible / 100.0)),
-		"" if is_inf(ans) else " · remboursé en %d ans" % int(roundf(ans))]
+		"" if is_inf(ans) else ", remboursé en %d ans" % int(roundf(ans))]
 
 
 ## 🔎 CE QUE LA MINIATURE DOIT MONTRER (décision 12) : l'ÉTAT QUI SERA LIVRÉ —
@@ -5156,7 +5347,7 @@ func _sur_curseur_arbres(v: float) -> void:
 func remis_a_zero() -> void:
 	_vider_pose()
 	_fermer_lieu()
-	_message.text = "Retour au mois 0, caisse à %s." \
+	_message.text = "Retour au début de la partie, caisse à %s." \
 		% _millions(Ville.CAISSE_DEPART_KE)
 	if _fiche_fid >= 0:
 		_maj_fiche()
@@ -5248,7 +5439,7 @@ func _maj_fiche_rue() -> void:
 	# 🅿️ Le bouton s'efface derriere la fermeture, qui emporte deja les places.
 	var emportees: bool = _pose.has("axe") and a_des_places
 	if stationnement_engage:
-		_trafic_stationnement.text = "Places retirées" if stationnement_fini else "Places · 2 mois"
+		_trafic_stationnement.text = "Places retirées" if stationnement_fini else "Places, 2 mois"
 		_marquer(_trafic_stationnement, false)
 	elif emportees:
 		_trafic_stationnement.text = "Places emportées par la fermeture"
@@ -5257,7 +5448,7 @@ func _maj_fiche_rue() -> void:
 		_posee(_trafic_stationnement, "places", "Retirer les places")
 	_trafic_stationnement.disabled = stationnement_engage or emportees 		or not a_des_places
 	if axe_ferme:
-		_trafic_axe.text = "Fermée · report" if trafic.report_en_cours(_fiche_fid, _mois) 			else "Fermée"
+		_trafic_axe.text = "Fermée, report" if trafic.report_en_cours(_fiche_fid, _mois) 			else "Fermée"
 		_marquer(_trafic_axe, false)
 	else:
 		_posee(_trafic_axe, "axe", "Fermer aux voitures")
@@ -5271,17 +5462,17 @@ func _maj_fiche_rue() -> void:
 		"coupe": "franchissement emporté",
 		"fragile": "pile déchaussée",
 		"repare": "verger déblayé" if boue > 0.0 else "remise en service",
-	}.get(etat, "le verger · %d %% sous la boue" % int(roundf(boue * 100.0))
+	}.get(etat, "le verger, %d %% sous la boue" % int(roundf(boue * 100.0))
 		if sous_boue else ("%s m d'eau" % _nb(float(o.get("hauteur_eau", 0.0)), 1)
 		if float(o.get("hauteur_eau", 0.0)) > 0.1 else "intacte"))
 	if etat == "repare" and _fiche_fid in ville.ponts_coupes():
 		(_rue_valeurs["etat"] as Label).text = ("liaison provisoire" if ville.pont_provisoire(_fiche_fid)
 			else "liaison ouverte") if trafic.pont_fonctionnel(_fiche_fid, _mois) \
-			else "pont livré · accès coupé"
+			else "pont livré, accès coupé"
 		# Engagé n'est pas livré : la fiche disait « pont livré » pendant le chantier.
 		if not ville.reparation_finie("r", _fiche_fid, _mois):
-			(_rue_valeurs["etat"] as Label).text = "en chantier · chemin dégagé" \
-				if trafic.acces_pont(_fiche_fid, _mois)["obstacles"].is_empty() else "en chantier · boue sur le chemin"
+			(_rue_valeurs["etat"] as Label).text = "en chantier, chemin dégagé" \
+				if trafic.acces_pont(_fiche_fid, _mois)["obstacles"].is_empty() else "en chantier, boue sur le chemin"
 	var l_etat := _rue_valeurs["etat"] as Label
 	l_etat.text = l_etat.text.substr(0, 1).to_upper() + l_etat.text.substr(1)
 	_maj_reparation(o)
@@ -5333,7 +5524,7 @@ func _maj_fiche_berge() -> void:
 		var titre := nom.substr(0, 1).to_upper() + nom.substr(1)
 		bouton.visible = cible > etat
 		if cible <= etat:
-			bouton.text = "%s · fait" % titre
+			bouton.text = "%s, fait" % titre
 			_marquer(bouton, false)
 		else:
 			# 🔄 Un bouton de choix ne porte que son nom (auteur, 2026-09-29) :
@@ -5401,7 +5592,7 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_etat.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid) \
 			else "Chantier en cours"
 		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
-			_repare_etat.text += " · " + String(Ville.RECONSTRUCTIONS[
+			_repare_etat.text += ", " + String(Ville.RECONSTRUCTIONS[
 				ville.facon_reparation(_fiche_fid)]["nom"]).to_lower()
 		return
 	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
@@ -5421,12 +5612,12 @@ func _maj_reparation(o: Dictionary) -> void:
 			_posee(_rebatir_boutons["pilotis"], "reparer", "Sur pilotis", "pilotis")
 		else:
 			# 🔴 Flaggable (90).
-			_rebatir_boutons["pilotis"].text = "Sur pilotis · en recherche à l'institut" \
-				if ville.recherche_engagee(Recherche.PILOTIS) else "Sur pilotis · à mettre au point à l'institut"
+			_rebatir_boutons["pilotis"].text = "Sur pilotis, en recherche à l'institut" \
+				if ville.recherche_engagee(Recherche.PILOTIS) else "Sur pilotis, à mettre au point à l'institut"
 		var choisi := str(_pose.get("reparer", ""))
 		if concours and rendu:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \
-				else "Projet : %s · revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
+				else "Projet : %s, revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
 		elif concours and ville.concours_lance():
 			_concours_bouton.text = "Concours en cours"
 			_concours_bouton.disabled = true
@@ -5523,11 +5714,11 @@ func _maj_demandes() -> void:
 			b.disabled = true
 			_marquer(b, false)
 		elif ville.demande_engagee(d):
-			b.text = "%s · en cours" % info["nom"]
+			b.text = "%s, en cours" % info["nom"]
 			b.disabled = true
 			_marquer(b, false)
 		else:
-			_posee(b, "demande_" + d, "%s · %s k€" % [info["nom"], _milliers(float(info["ke"]))])
+			_posee(b, "demande_" + d, "%s, %s k€" % [info["nom"], _milliers(float(info["ke"]))])
 			b.disabled = false
 
 
@@ -5555,7 +5746,7 @@ func _maj_culture() -> void:
 		b.disabled = k == actuelle or en_cours
 		b.visible = k != actuelle or en_cours
 		if k == actuelle:
-			b.text = "%s · %s" % [titre, "en chantier" if en_cours else "en place"]
+			b.text = "%s, %s" % [titre, "en chantier" if en_cours else "en place"]
 			_marquer(b, false)
 		else:
 			_posee(b, "culture", titre, k)

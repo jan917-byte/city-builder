@@ -46,14 +46,16 @@ func executer() -> void:
 	for l in ["permeable", "vert", "pre"]:
 		verifier("berge" in o.levier_ferme(l), "Fermé jusqu'à une berge rendue : %s" % l)
 	jeu._repere("ville")
+	ui.ouvrir_lieu("universite")
+	actualiser(t)
+	verifier(ui._etude_bloc.visible and ui._leviers_crue["berge"].visible and not ui._leviers_crue["vert"].visible
+		and not ui._leviers_crue["permeable"].visible and not ui._leviers_crue["pre"].visible,
+		"L'étude de l'université ne propose que la berge")
+	await capture("livre_00_berge_seule")
+	ui._fermer_campus()
 	ui._sur_rail("dangers")
 	await cliquer(ui._onglets_crue["prochaine"])
-	actualiser(t)
-	ui._maj_prochaine()
-	verifier(ui._leviers_crue["berge"].visible and not ui._leviers_crue["vert"].visible
-		and not ui._leviers_crue["permeable"].visible and not ui._leviers_crue["pre"].visible,
-		"La prochaine crue ne propose que la berge")
-	await capture("livre_00_berge_seule")
+	verifier(not ui._leviers_crue["berge"].is_visible_in_tree(), "Dangers ne propose aucun levier")
 	jeu._sur_theme("")
 	jeu.voir_concept("eponge")
 	verifier(jeu.theme == "", "« Voir à Wehrau » montre la berge, sans la carte des sols")
@@ -95,10 +97,10 @@ func executer() -> void:
 	verifier(not ui._solaire_bloc.visible, "Le solaire n'est pas encore dans la fiche")
 	await capture("livre_03_solaire_ferme")
 
-	# --- La jauge : Dangers › Prochaine crue, le levier du parking, le trait blanc.
+	# --- La jauge : le levier du parking, pris à l'université, ouvre Dangers › Prochaine crue.
 	jeu._repere("ville")
-	ui._sur_rail("dangers")
-	await cliquer(ui._onglets_crue["prochaine"])
+	ui.ouvrir_lieu("universite")
+	actualiser(t)
 	await cliquer(ui._prochaine_valeurs["levier_permeable"])
 	ui._maj_fiche()
 	actualiser(t)

@@ -60,7 +60,7 @@ func executer() -> void:
 	jeu._sur_choix("i", fid_inst)
 	jeu._rafraichir(true)
 	verifier(o.etude_lue and ui._lieu_ouvert == "universite" and ui._campus_panneau.visible
-		and ui._fiche_panneau.visible and ui._etude_bloc.visible and ui._etude_valeurs["dans"].text == "6 à 8 ans",
+		and ui._fiche_panneau.visible and ui._etude_bloc.visible and ui._etude_voir.visible,
 		"N'importe quel îlot du campus ouvre la fenêtre au centre sur l'université et l'étude, sa fiche à côté")
 	verifier(jeu._contour_fids == campus, "La fiche ouverte, le trait garde le campus entier")
 	verifier(univ.visible and tuile("institut").visible and tuile("bibliotheque").visible
@@ -148,10 +148,27 @@ func executer() -> void:
 		"Dangers choisi au rail referme la fenêtre du campus")
 	await cliquer(ui._onglets_crue["prochaine"])
 	verifier(ui._prochaine_valeurs["baisse"].text != "0 cm", "Le panneau dit l'eau en moins depuis l'étude : %s" % ui._prochaine_valeurs["baisse"].text)
-	await capture("etude_05_apres_leviers")
+	# 🔄 La carte attend le clic : ses chiffres sont ceux d'avant les leviers.
+	var fige: Dictionary = jeu.ville.prochaine_crue(ui.mois_carte_crue)
+	verifier(not ui._carte_bouton.disabled and ui._prochaine_valeurs["eau"].text.begins_with(ui._nb(float(fige["eau_pire_m"]), 2)),
+		"La carte retarde et le bouton le dit : %s, %s" % [ui._carte_bouton.text, ui._prochaine_valeurs["eau"].text])
+	await capture("etude_05_avant_mise_a_jour")
+	await cliquer(ui._carte_bouton)
+	await create_timer(ui.CARTE_RECUL_S * 0.5).timeout
+	actualiser(jeu.mois)
+	await capture("etude_05b_recul")
+	await create_timer(ui.CARTE_RECUL_S * 0.5 + 0.3).timeout
+	actualiser(jeu.mois)
+	verifier(is_equal_approx(ui.mois_carte_crue, jeu.mois) and ui._carte_bouton.disabled
+		and "(−" in ui._prochaine_valeurs["eau"].text,
+		"Au clic l'eau recule jusqu'à aujourd'hui et dit l'écart : %s" % ui._prochaine_valeurs["eau"].text)
+	await capture("etude_05c_apres_mise_a_jour")
+	ui.ouvrir_lieu("universite")
+	actualiser(jeu.mois)
+	await capture("etude_05d_universite")
 	await cliquer(ui._prochaine_valeurs["levier_culture"])
 	verifier(jeu.selection.sel_fid == o.PRE and jeu.theme == "dangers",
-		"Le levier ouvre la fiche du champ, la prochaine crue reste à côté")
+		"Le levier de l'université ouvre la fiche du champ sur la prochaine crue")
 	await capture("etude_06_levier_pre")
 
 	jeu._sur_sauvegarde()

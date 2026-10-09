@@ -20,4 +20,4 @@ func nom(couche: String, fid: int, genre := "") -> String:
 
 func repere(couche: String, fid: int, genre := "") -> String:
 	var mot: String = genre if genre != "" else str(GENRES.get(couche, "Lieu"))
-	return "%s · %s %d" % [nom(couche, fid, genre), mot, fid]
+	return "%s (%s %d)" % [nom(couche, fid, genre), mot, fid]

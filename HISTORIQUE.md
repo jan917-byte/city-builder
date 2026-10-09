@@ -725,3 +725,9 @@ Essais headless 14/19 ; camp, capital, énergie, sauvegarde, travaux échouaient
 **2026-10-09 — La prochaine crue s'arrête à mi-chemin entre la boue et le profil à 6 m ; au pied des coteaux les maisons passent en orange ; la carte Dangers a un fond blanc, sans cheminées ni débris.**
 Demande de l'auteur sur capture (« trop grand », « juste milieu », chiffres compris) ; `ChampCrue.annonce` dans `04e` (`PORTEE_ANNONCE` 0,25, `FONDU_ANNONCE_M` 15) sert `04e` et la carte ; 134 → 102 bâtiments détruits, 53 → 81 touchés.
 25 cm de baisse sauvent désormais 4 bâtiments (avant : rien sous 0,75 m) ; `essai_livre` échoue sur le seuil de la jauge, tombé à 0 ; étude et ouverture 0 échec.
+**2026-10-09 — L'écran de départ a un troisième bouton, « Après le pont » : la partie reprend en pause au jour où le pont provisoire est livré.**
+Demande de l'auteur (« marre de tout refaire jusqu'au pont ») ; `_sauter_au_pont` (`maquette.gd`) commande les camps, le provisoire le moins cher, l'amélioration du camp (la plainte ne paraît plus) et toute la boue comme au clic, en mode histoire et sans récit ; drapeau `-- --apres-pont`.
+Juin de l'an 1, caisse 2 674 k€, personne dehors, aucune rue boueuse ; `essai_ouverture` le vérifie, 0 échec ; préféré à une sauvegarde tolérante, que chaque relance de la chaîne refuse (« la carte a changé »).
+**2026-10-09 — Dangers ne fait plus que le diagnostic : les leviers de la prochaine crue passent à l'université, la carte se met à jour au clic, une barre de danger vit sous la date, la caisse a sa croix.**
+Retour de jeu de l'auteur ; `mois_carte_crue` (`interface.gd`) fige la carte et ses chiffres, `maquette._regler_crue` le lit, un tween fait reculer l'eau ; `JaugeDanger` sous la date ; l'étude de l'université perd ses quatre tuiles.
+Essais : étude 0 échec (5,58 → 5,06 m au clic), ouverture 0, camp 0, livre 1 échec, celui de la jauge, déjà là ; aucune crue ne tombe encore au bout des 8 ans.

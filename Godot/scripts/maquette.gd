@@ -299,6 +299,7 @@ func _ready() -> void:
 	interface.informer_partie("", _sauvegarde_disponible())
 	interface.theme_demande.connect(_sur_theme)
 	interface.vue_crue_demandee.connect(_sur_vue_crue)
+	interface.carte_crue_avancee.connect(func() -> void: _regler_crue(_genre() == "crue"))
 	interface.examen_demande.connect(examiner)
 	interface.projets_ouverts.connect(_cadrer_projets)
 	interface.concept_demande.connect(voir_concept)
@@ -346,7 +347,10 @@ func _ready() -> void:
 		# 📖 Le récit ne part QUE du bouton : un drapeau sert un contrôle, et un
 		# contrôle n'a pas de story à lire.
 		interface.mode_choisi.connect(_sur_mode_choisi)
-		if "--auteur" in arguments:
+		interface.apres_pont_choisi.connect(_sauter_au_pont)
+		if "--apres-pont" in arguments:
+			_sauter_au_pont()
+		elif "--auteur" in arguments:
 			_sur_mode(true)
 		elif "--histoire" in arguments:
 			_sur_mode(false)
@@ -2342,13 +2346,16 @@ func _regler_crue(active: bool) -> void:
 			pire = maxf(pire, ville.base("i", fid,
 				"hauteur_eau_annonce" if vue == 2 else "hauteur_eau_max"))
 	_crue_param("crue_max", maxf(pire, 0.5))
-	_crue_param("crue_baisse_ville", ville.baisse_crue_toits_m(mois)
-		+ ville.baisse_crue_champs_m(mois) + ville.baisse_crue_parcs_m(mois)
-		+ ville.baisse_crue_sols_m(mois))
+	# 🔄 La prochaine crue au mois de sa dernière mise à jour, pas au mois courant
+	# (auteur, 2026-10-09) ; même somme que `interface._empreinte_carte`.
+	var t := interface.mois_carte_crue if vue == 2 else mois
+	_crue_param("crue_baisse_ville", ville.baisse_crue_toits_m(t)
+		+ ville.baisse_crue_champs_m(t) + ville.baisse_crue_parcs_m(t)
+		+ ville.baisse_crue_sols_m(t))
 	var biefs := []
 	for b in ville.berges:
 		biefs.append(Vector4(ville.base("b", b, "fil_amont"), ville.base("b", b, "fil_aval"),
-			ville.berge_baisse_m(b, mois), 0.0))
+			ville.berge_baisse_m(b, t), 0.0))
 	if biefs.size() > 12:
 		push_error("crue.gdshaderinc ne lit que 12 berges, il y en a %d" % biefs.size())
 	while biefs.size() < 12:
@@ -3144,6 +3151,47 @@ func _sur_mode_choisi(auteur: bool) -> void:
 		recit.commencer()
 
 
+## ⏩ L'ouverture jouée comme au clic, en mode histoire et sans récit : les camps du plus
+## grand champ au plus petit, le pont provisoire le moins cher, le camp amélioré et toute
+## la boue (auteur, 2026-10-09), puis la main rendue en pause quand le dernier est livré.
+## Suit `essai_ouverture` si l'ouverture change.
+func _sauter_au_pont() -> void:
+	_sur_mode(false)
+	interface._debut.visible = true
+	ouverture.ouvert = true
+	for fid in ouverture._champs_accessibles():
+		if ville.besoin_non_couvert(mois) <= 0.0:
+			break
+		_sur_commande("i", fid, {"camp": true})
+	_sauter_a(mois + ville._delai(Ville.CAMP_MOIS))
+	var pont := -1
+	for fid in ville.ponts_coupes():
+		if pont < 0 or ville.cout_reparation_ke("r", fid, true) < ville.cout_reparation_ke("r", pont, true):
+			pont = fid
+	_sur_commande("r", pont, {"reparer": "provisoire"})
+	var fin := mois + ville.duree_reparation_mois("r", pont, true)
+	# Amélioré avant que l'usure parte : la plainte du camp ne paraît jamais.
+	_sur_commande("i", ouverture.camp_le_plus_plein(), {"demande_amelioration": true})
+	ouverture.plainte = 2
+	var rues: Array = interface.rues_a_deblayer()
+	_sur_deblayer_tout()
+	if not rues.is_empty():
+		fin = maxf(fin, mois + ville.duree_reparation_mois("r", int(rues[-1])))
+	_sauter_a(fin)
+	_sur_vitesse(0.0)
+	print("après le pont · %s, caisse %.0f k€, %d dehors, %d rues boueuses, camp amélioré %s, étape %s"
+		% [interface.Calendrier.en(mois), ville.caisse_ke(mois), int(ville.sans_toit(mois)),
+		ville.rues_boueuses().size(), ville.demande_livree("amelioration", mois), ouverture.etape])
+
+
+func _sauter_a(t: float) -> void:
+	mois = t
+	trafic.avancer(mois)
+	_dernier_peint = -1.0
+	_rafraichir(true)
+	ouverture.actualiser(true)
+
+
 ## 🛠️ Le mode auteur ne touche qu'aux DURÉES : la caisse, les prix et la
 ## dotation restent ceux du jeu.
 func _sur_mode(auteur: bool) -> void:
@@ -3167,6 +3215,7 @@ func _sur_reset() -> void:
 	ville.reinitialiser()
 	trafic.reinitialiser()
 	mois = 0.0
+	interface.caler_carte_crue(mois)
 	_sur_vitesse(0.0)
 	interface.remis_a_zero()
 	interface.retours.reprendre(mois)
@@ -3201,7 +3250,7 @@ func _partie() -> Dictionary:
 
 func _sur_sauvegarde() -> void:
 	var erreur := Sauvegarde.ecrire(_partie(), _empreinte_carte, chemin_sauvegarde)
-	var message := "Partie sauvegardée · mois %s" % interface._nb(mois, 1) if erreur == "" else erreur
+	var message := "Partie sauvegardée %s" % interface.Calendrier.en(mois) if erreur == "" else erreur
 	interface.informer_partie(message, _sauvegarde_disponible())
 	print(message)
 
@@ -3254,6 +3303,7 @@ func _sur_reprise() -> void:
 		return
 	ville.importer_partie(p["ville"])
 	mois = p["mois"]
+	interface.caler_carte_crue(mois)
 	trafic.importer_fermetures(p["fermetures"], mois)
 	interface.retours.reprendre(mois, p.get("journal", []) if p.get("journal", []) is Array else [])
 	_sur_vitesse(0.0)
@@ -3276,9 +3326,9 @@ func _sur_reprise() -> void:
 		interface._detail_ouvert = not ouverture.ouvert
 		interface._placer_detail()
 	_rafraichir(true)
-	var message := "Partie reprise en pause · mois %s" % interface._nb(mois, 1)
+	var message := "Partie reprise %s, en pause" % interface.Calendrier.en(mois)
 	if r["secours"]:
-		message += " · copie de secours"
+		message += ", depuis la copie de secours"
 	interface.informer_partie(message, true)
 	print(message)
 

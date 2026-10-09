@@ -210,7 +210,7 @@ func annoncer(message: String, mois: float) -> void:
 
 ## Au journal sans bandeau.
 func consigner(message: String, mois: float) -> void:
-	journal.append("Mois %s · %s" % [ui._nb(mois, 1), message])
+	journal.append("%s : %s" % [ui.Calendrier.date(mois, true), message])
 	if journal.size() > 100:
 		journal.pop_front()
 
@@ -242,7 +242,7 @@ func actualiser_affichage() -> void:
 		avis.visible = false
 	historique.visible = _historique_ouvert
 	# Une ligne par message : la ligne blanche entre deux creusait le bandeau.
-	var nouveau := "Dernières décisions · cette partie" if _historique_ouvert else "\n".join(_recent)
+	var nouveau := "Dernières décisions de cette partie" if _historique_ouvert else "\n".join(_recent)
 	if nouveau != texte.text:
 		texte.text = nouveau
 		_ajuster_largeur()
@@ -299,7 +299,7 @@ func _batir_chantiers(boite: PanelContainer) -> void:
 func _maj_chantiers(en_cours: Array) -> void:
 	_nb_chantiers = en_cours.size()
 	chantiers.visible = compteur.visible and _nb_chantiers > 0
-	chantiers_titre.text = "Chantiers en cours · %d" % en_cours.size()
+	chantiers_titre.text = "Chantiers en cours : %d" % en_cours.size()
 	for i in chantiers_lignes.size():
 		var l: Dictionary = chantiers_lignes[i]
 		(l["bloc"] as Control).visible = i < en_cours.size()
@@ -352,7 +352,7 @@ func reprendre(mois: float, messages: Array = []) -> void:
 
 
 func deblaiement(rues: int, r: Dictionary, mois: float) -> void:
-	consigner("Déblaiement de %d rues : −%s k€ · %s" % [rues, ui._milliers(r["cout_ke"]), ui._duree(r["duree"])], mois)
+	consigner("Déblaiement de %d rues : −%s k€, %s" % [rues, ui._milliers(r["cout_ke"]), ui._duree(r["duree"])], mois)
 	ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "", ui.ALERTE)
 	actualiser(mois)
 
@@ -360,20 +360,20 @@ func deblaiement(rues: int, r: Dictionary, mois: float) -> void:
 func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: float) -> void:
 	var lieu: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
 	var prix: String = "−%s k€" % ui._milliers(r["cout_ke"]) if r["cout_ke"] > 0.0 else "décision engagée"
-	var message := "%s : %s · %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
+	var message := "%s : %s, %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
 	if float(r.get("capital", 0.0)) >= 0.5:
-		message += " · −%s confiance" % ui._nb(r["capital"], 0)
+		message += ", −%s confiance" % ui._nb(r["capital"], 0)
 		ui.bulles.sous(ui._barre_valeurs.get("capital"), "−%s" % ui._nb(r["capital"], 0), "capital", ui.ALERTE)
 	# 🎈 La dépense descend sous la caisse (auteur, 2026-10-02).
 	if r["cout_ke"] > 0.0:
 		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "", ui.ALERTE)
 	if "relogement" in r["faits"]:
 		var nourris: String = ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
-		message += " · −%s nourris" % nourris
+		message += ", −%s nourris" % nourris
 		# 🌾 La récolte perdue monte sur le champ (auteur, 2026-10-02).
 		ui.bulles.sur_lieu(couche, fid, "−%s" % nourris, "nourriture", ui.ALERTE)
 	elif duree >= ACCELERER_MOIS:
-		message += " · ×4 ≈ %d s" % int(ceil(duree * 15.0))
+		message += ", environ %d s en ×4" % int(ceil(duree * 15.0))
 	consigner(message, mois)
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
 		# 🔴 Textes de prototype, flaggables (90) : la Ville s'entoure en même temps (auteur, 2026-10-06).
@@ -405,7 +405,7 @@ func livraison(c: Dictionary, mois: float) -> void:
 		resultat = "Rendu au champ."
 	elif c["genre"] == "relogement":
 		var accueillis := int(ui.ville.camp_occupants(fid, mois))
-		resultat = "%d containers livrés · %d personnes accueillies." % [
+		resultat = "%d containers livrés, %d personnes accueillies." % [
 			ui.ville.camp_taille(fid, mois), accueillis]
 		ui.bulles.sur_lieu(couche, fid, "+%d" % accueillis, "logement", ui.FAIT_TEXTE)
 	elif couche == "r" and fid in ui.ville.ponts_coupes():
@@ -414,27 +414,27 @@ func livraison(c: Dictionary, mois: float) -> void:
 			resultat += " Ses accès restent coupés."
 	elif c["genre"] == "concours":
 		# 🏛️ Rendu pour toute la zone (104) : le dire en haut, pas seulement au journal.
-		resultat = "Concours rendu · quatre projets pour chaque îlot sinistré."
+		resultat = "Concours rendu : quatre projets pour chaque îlot sinistré."
 		annoncer("Le concours est rendu : chaque îlot sinistré a ses quatre projets.", mois)
 	elif c["genre"] in ["deblaiement", "reparation"] and couche == "r":
 		resultat = "Rue déblayée."
 	elif c["genre"] in ["reconstruction", "reparation"] and couche == "i":
 		resultat = "%.0f logements réhabilités." % ui.ville.base("i", fid, "logements_sinistres")
 	elif c["genre"] == "densification":
-		resultat = "Surélévation livrée · %.0f logements ajoutés au total ici." % ui.ville.etat_dense(fid, mois)["logements"]
+		resultat = "Surélévation livrée : %.0f logements ajoutés au total ici." % ui.ville.etat_dense(fid, mois)["logements"]
 	elif c["genre"] == "solaire":
-		resultat = "Panneaux en service · %.0f %% du toit équipé." % (100.0 * ui.ville.valeur("i", fid, "part_toit_equipe", mois))
+		resultat = "Panneaux en service : %.0f %% du toit équipé." % (100.0 * ui.ville.valeur("i", fid, "part_toit_equipe", mois))
 	elif c["genre"] == "culture":
 		var k: int = ui.ville.champ_culture(fid, mois)
 		var attente: float = ui.ville.recolte_dans_mois(fid, mois)
 		var culture: String = ui.Ville.CULTURES[k]["nom"]
-		resultat = "%s en place · %s." % [culture.substr(0, 1).to_upper() + culture.substr(1),
+		resultat = "%s en place : %s." % [culture.substr(0, 1).to_upper() + culture.substr(1),
 			("première récolte dans %s" % ui._duree(attente)) if attente > 0.0
 			else "%s nourris" % ui._nb(ui.ville.champ_rendement(fid, mois), 0)]
 	elif ui.Ville.DEMANDES.has(c["genre"]):
-		resultat = "%s · le camp n'use plus la confiance." % ui.Ville.DEMANDES[c["genre"]]["fait"]
+		resultat = "%s : le camp n'use plus la confiance." % ui.Ville.DEMANDES[c["genre"]]["fait"]
 	elif c["genre"] == "toit vert":
-		resultat = "Toiture végétalisée · %.0f %% du toit retient la pluie." % (100.0 * ui.ville.valeur("i", fid, "part_toit_vert", mois))
+		resultat = "Toiture végétalisée : %.0f %% du toit retient la pluie." % (100.0 * ui.ville.valeur("i", fid, "part_toit_vert", mois))
 	consigner("%s : %s" % [nom, resultat], mois)
 
 
@@ -448,7 +448,7 @@ func actualiser(mois: float) -> void:
 	# 🔴 Textes affichés, flaggables (90).
 	var couts := {}
 	if aide > 0.0:
-		couts["caisse"] = "−%s k€ par mois · aide d'urgence" % ui._milliers(aide)
+		couts["caisse"] = "−%s k€ par mois d'aide d'urgence" % ui._milliers(aide)
 	sans_logement.set_meta("detail", {"titre": "%d personnes sans logement" % n, "couts": couts,
 		"lignes": ["%d places en construction" % places] if places > 0 else []})
 	sans_logement.visible = n > 0
@@ -461,9 +461,9 @@ func actualiser(mois: float) -> void:
 		var etat := ""
 		for c in en_cours:
 			if str(c["couche"]) == "r" and int(c["fid"]) == pont:
-				etat = " · chantier, encore %s" % ui._duree(float(c["reste_mois"]))
+				etat = " : chantier, encore %s" % ui._duree(float(c["reste_mois"]))
 		if etat == "" and ui.ville.route_praticable(pont, mois):
-			etat = " · ses accès restent coupés"
+			etat = " : ses accès restent coupés"
 		coupes.append(ui.lieux.nom("r", pont) + etat)
 	ponts_casses.set_meta("detail", {"titre": "Les deux rives ne sont pas reliées" if coupes.size() == ui.ville.ponts_coupes().size()
 		else "%d ponts encore coupés" % coupes.size() if coupes.size() > 1 else "Un pont encore coupé",
@@ -487,8 +487,8 @@ func actualiser(mois: float) -> void:
 			livraison(_en_cours[cle], mois)
 	_en_cours = courants
 	if _sans_toit >= 0 and n < _sans_toit:
-		consigner("%d personnes abritées · %d encore dehors." % [_sans_toit - n, n] if n > 0
-			else "%d personnes abritées · plus personne dehors." % (_sans_toit - n), mois)
+		consigner("%d personnes abritées, %d encore dehors." % [_sans_toit - n, n] if n > 0
+			else "%d personnes abritées, plus personne dehors." % (_sans_toit - n), mois)
 	_sans_toit = n
 	_dire_capital(mois)
 	for pont in ui.ville.ponts_coupes():
@@ -542,7 +542,7 @@ func _dire_capital(mois: float) -> void:
 		_capital_dits[cle] = true
 		var pourquoi := phrase_capital(m)
 		if pourquoi != "":
-			consigner("%s · %+d confiance." % [pourquoi, int(roundf(float(m["montant"])))], mois)
+			consigner("%s : %+d confiance." % [pourquoi, int(roundf(float(m["montant"])))], mois)
 			var lieu := _lieu_bulle(m, mois)
 			bulles[lieu] = float(bulles.get(lieu, 0.0)) + float(m["montant"])
 	# 🎈 Un chiffre qui monte par lieu, la somme de ce qui y tombe à cet instant

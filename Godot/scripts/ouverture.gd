@@ -619,13 +619,13 @@ func _reparation(couche: String, fid: int, titre: String) -> void:
 	# ⚖️ Un îlot sinistré s'ouvre sans façon posée : le joueur choisit (95).
 	var reglage := "" if couche == "i" and v.base("i", fid, "logements_sinistres") > 0.0 else "reparer"
 	if v.reparation_finie(couche, fid, jeu.mois):
-		texte += "\nLivré · voir le lieu"
+		texte += "\nLivré, voir le lieu"
 		reglage = ""
 	elif v.est_repare(couche, fid):
-		texte += "\nEn travaux · voir l'avancement"
+		texte += "\nEn travaux, voir l'avancement"
 		reglage = ""
 	elif reglage != "":
-		texte += "\n%.0f k€ · %s" % [v.cout_reparation_ke(couche, fid),
+		texte += "\n%.0f k€ en %s" % [v.cout_reparation_ke(couche, fid),
 			jeu.interface._duree(v.duree_reparation_mois(couche, fid))]
 	if couche == "i" and reglage == "" and not v.est_repare(couche, fid):
 		_bouton(texte, func() -> void:
@@ -841,7 +841,7 @@ Passez en ×4 pour avancer plus vite.", jeu.mois)
 		var duree: float = jeu.ville.duree_reparation_mois(premier["couche"], premier["fid"])
 		var reste: float = float(premier["fin"]) - jeu.mois
 		_progression.value = (1.0 - reste / duree) * 100.0
-		_detail.text = "Encore %s · ×4 ≈ %d s" % [jeu.interface._duree(reste), int(ceil(reste * 15.0))]
+		_detail.text = "Encore %s, environ %d s en ×4" % [jeu.interface._duree(reste), int(ceil(reste * 15.0))]
 	# Les boutons restent en place sous le doigt ; seuls les changements de décision les refont.
 	var signature := "%s/%s/%s/%s/%s/%s/%s/%s/%d" % [etape, premier,
 		jeu.ville.est_repare("r", RUE), jeu.ville.est_repare("i", MAISONS),
@@ -865,7 +865,7 @@ Passez en ×4 pour avancer plus vite.", jeu.mois)
 			_poser_reperes([])
 			_titre.text = "Les premiers abris arrivent"
 			_texte.text = ""
-			_bouton("Laisser avancer · ×4", func() -> void: jeu._sur_vitesse(4.0))
+			_bouton("Laisser avancer en ×4", func() -> void: jeu._sur_vitesse(4.0))
 		"trafic":
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
@@ -922,7 +922,7 @@ Passez en ×4 pour avancer plus vite.", jeu.mois)
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
-			_bouton("Laisser avancer · ×4", func() -> void: jeu._sur_vitesse(4.0))
+			_bouton("Laisser avancer en ×4", func() -> void: jeu._sur_vitesse(4.0))
 			_bouton("Voir mon chantier", examiner.bind(premier["couche"], premier["fid"]))
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
@@ -946,10 +946,10 @@ Passez en ×4 pour avancer plus vite.", jeu.mois)
 			if not jeu.ville.est_repare("r", RUE):
 				_reparation("r", RUE, "Rendre aussi la rue praticable")
 			# 📖 Investir est l'autre chapitre : il attend la ville réparée (101).
-			var investir := _bouton("Investir · comparer les toits solaires",
+			var investir := _bouton("Investir : comparer les toits solaires",
 				examiner.bind("i", SOLAIRE, "solaire", 0.3))
 			if levier_ferme("solaire") != "":
-				investir.text = "Investir · quand la ville sera réparée"
+				investir.text = "Investir quand la ville sera réparée"
 				investir.disabled = true
 			_bouton("Continuer à mon rythme", func() -> void:
 				termine = true

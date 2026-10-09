@@ -453,6 +453,16 @@ func executer() -> void:
 	verifier(jeu.ville.duree_reparation_mois("i", o.MAISONS) > 0.0,
 		"Revenir en mode histoire rend leur durée aux chantiers")
 	jeu._sur_reset()
+	# ⏩ Le bouton « Après le pont » rend la main au jour de la livraison.
+	jeu._sauter_au_pont()
+	verifier(o.etape == "pont_livre" and jeu.ville.sans_toit(jeu.mois) == 0.0 and jeu.vitesse == 0.0,
+		"« Après le pont » : tout le monde abrité, le pont livré, le jeu en pause")
+	var en_cours: Array = jeu.ville.routes.keys().filter(func(f) -> bool:
+		return jeu.ville.reste_reparation_mois("r", int(f), jeu.mois) > 0.0)
+	verifier(jeu.ville.demande_livree("amelioration", jeu.mois) and jeu.ville.rues_boueuses().is_empty()
+		and en_cours.is_empty() and o.plainte == 2,
+		"« Après le pont » : le camp amélioré, toute la boue déblayée, pas de plainte")
+	jeu._sur_reset()
 
 	var ancienne: Dictionary = jeu._partie()
 	ancienne.erase("ouverture")
