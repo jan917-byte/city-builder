@@ -719,3 +719,6 @@ Demande de l'auteur ; `export_godot/entrees.py` remplace `_acces_pavillonnaire` 
 **2026-10-09 — La carte des dangers peint l'eau au mètre près, comme une carte d'aléa : bleu qui fonce avec la profondeur, un trait par mètre, bâtiments touchés en orange et détruits en bordeaux.**
 Demande de l'auteur sur une carte d'inondation réelle ; `shaders/crue.gdshaderinc` lit la boue (Dégâts) et une grille de 12 m de la crue annoncée (`export_godot/boue.py`, 147 × 230 points, 120 m de marge), moins les baisses de la ville et des berges ; le terrain hors îlots se peint aussi.
 Essais headless étude, livre, ouverture : 0 échec ; captures `apercu_dangers.gd`, `wehrau_dangers_01` à `_04` ; reste un bâtiment à cheval sur la limite peint en deux.
+**2026-10-09 — Les haies du pavillonnaire sont taillées : sommet arrondi qui ondule, une essence par parcelle (claire, moyenne, sombre), plus hautes entre deux jardins (1,55 m) que côté rue (1,15 m).**
+Demande de l'auteur ; `_haie` (`export_godot/batiments.py`) en modules de 2,5 m, réglages `HAIE_*` dans `reglages.py` ; 9,09 km, 727 tronçons ; masses 71 275 → 104 253 triangles (ville 148 627 → 181 605).
+Essais headless 14/19 ; camp, capital, énergie, sauvegarde, travaux échouaient sans la modification aussi ; ⚠ les essais `-- --ouverture` tournent sans fin si on oublie l'option ; planche `wehrau_haies_avant_apres`.

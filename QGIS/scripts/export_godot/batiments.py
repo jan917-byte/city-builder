@@ -45,8 +45,13 @@ from .reglages import (
     FACADE_TISSU,
     FACADE_TISSU_DEFAUT,
     FAITAGE_MAX,
+    HAIE_CRETE,
+    HAIE_EPAULE,
+    HAIE_GRAIN,
     HAIE_HAUTEUR,
+    HAIE_HOULE,
     HAIE_LARGEUR,
+    HAIE_MODULE,
     HAIE_SEGMENT_MIN,
     LARGEUR_MIN_BATI,
     MITOYEN_JEU,
@@ -98,8 +103,8 @@ def _ouvrir_segment(a, b, centre, largeur):
     return [(a, avant), (apres, b)]
 
 
-def _haie(m, a, b, coul, G):
-    """Un petit prisme le long d'une limite de parcelle.
+def _haie(m, a, b, coul, G, hauteur=HAIE_HAUTEUR):
+    """Une haie taillée le long d'une limite de parcelle.
 
     Le segment est raccourci d'une demi-largeur à chaque bout : deux limites
     qui se rencontrent au coin peuvent se toucher, jamais se dépasser. Renvoie
@@ -113,25 +118,54 @@ def _haie(m, a, b, coul, G):
     vx, vy = -uy, ux
     demi = HAIE_LARGEUR / 2.0
     a = (a[0] + ux * demi, a[1] + uy * demi)
-    b = (b[0] - ux * demi, b[1] - uy * demi)
-    anneau = [
-        (a[0] + vx * demi, a[1] + vy * demi),
-        (a[0] - vx * demi, a[1] - vy * demi),
-        (b[0] - vx * demi, b[1] - vy * demi),
-        (b[0] + vx * demi, b[1] + vy * demi),
-    ]
-    y0, y1 = Y_SOL, Y_SOL + HAIE_HAUTEUR
-    for k in range(4):
-        p, q = anneau[k], anneau[(k + 1) % 4]
-        m.triangle(G(p[0], p[1], y0), G(q[0], q[1], y0),
-                   G(q[0], q[1], y1), coul, (0.76, 0.76, 1.0))
-        m.triangle(G(p[0], p[1], y0), G(q[0], q[1], y1),
-                   G(p[0], p[1], y1), coul, (0.76, 1.0, 1.0))
-    for ia, ib, ic in trianguler(anneau):
-        p, q, r = anneau[ia], anneau[ib], anneau[ic]
-        m.triangle(G(p[0], p[1], y1), G(q[0], q[1], y1),
-                   G(r[0], r[1], y1), tuple(c * 1.06 for c in coul))
-    return longueur - HAIE_LARGEUR
+    L = longueur - HAIE_LARGEUR
+    rng = random.Random(_graine_lieu([a, b]))
+    n = max(1, int(L / HAIE_MODULE + 0.5))
+    # Une section par station : (décalage latéral, hauteur), du flanc +v au
+    # flanc −v en passant par le sommet.
+    stations = []
+    for i in range(n + 1):
+        h = hauteur * (1.0 + rng.uniform(-HAIE_HOULE, HAIE_HOULE))
+        w = demi * rng.uniform(0.88, 1.12)
+        c = w * HAIE_CRETE
+        e = h * HAIE_EPAULE
+        t = L * i / n
+        o = (a[0] + ux * t, a[1] + uy * t)
+        stations.append((o, h, [(w, 0.0), (w, e), (c, h), (-c, h),
+                                (-w, e), (-w, 0.0)]))
+
+    def pt(o, s, y):
+        return (o[0] + vx * s, o[1] + vy * s, Y_SOL + y)
+
+    def face(p, q, r, dehors, teinte):
+        # Normale main droite en plan (z en haut) : G la conserve.
+        e1 = (q[0] - p[0], q[1] - p[1], q[2] - p[2])
+        e2 = (r[0] - p[0], r[1] - p[1], r[2] - p[2])
+        nn = (e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
+              e1[0] * e2[1] - e1[1] * e2[0])
+        if sum(x * y for x, y in zip(nn, dehors)) < 0.0:
+            q, r = r, q
+        ao = tuple(0.76 if s[2] <= Y_SOL + 1e-6 else 1.0 for s in (p, q, r))
+        m.triangle(G(*p), G(*q), G(*r), teinte, ao)
+
+    for i in range(n):
+        (o0, h0, s0), (o1, h1, s1) = stations[i], stations[i + 1]
+        g = 1.0 + rng.uniform(-HAIE_GRAIN, HAIE_GRAIN)
+        teintes = [tuple(c * g * f for c in coul)
+                   for f in (1.0, 1.06, 1.12, 1.06, 1.0)]
+        for k in range(5):
+            A, D = pt(o0, *s0[k]), pt(o0, *s0[k + 1])
+            B, C = pt(o1, *s1[k]), pt(o1, *s1[k + 1])
+            ms = (s0[k][0] + s0[k + 1][0]) / 2.0
+            my = (s0[k][1] + s0[k + 1][1]) / 2.0 - h0 * 0.45
+            dehors = (vx * ms, vy * ms, my)
+            face(A, B, C, dehors, teintes[k])
+            face(A, C, D, dehors, teintes[k])
+    for (o, h, s), sens in ((stations[0], -1.0), (stations[-1], 1.0)):
+        dehors = (ux * sens, uy * sens, 0.0)
+        for k in range(1, 5):
+            face(pt(o, *s[0]), pt(o, *s[k]), pt(o, *s[k + 1]), dehors, coul)
+    return L
 
 
 def _index_bord(anneaux, grille=1.0):

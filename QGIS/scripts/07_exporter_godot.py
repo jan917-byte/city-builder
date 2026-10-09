@@ -94,6 +94,9 @@ from export_godot.geometrie import (
 from export_godot.reglages import (
     FAMILLE_FACADE,
     ACCES_OUVERTURE,
+    HAIE_ESSENCES,
+    HAIE_HAUTEUR,
+    HAIE_HAUTEUR_FOND,
     ACROTERE,
     AIRE_JARDIN_MIN,
     ALLEE_PARKING,
@@ -1066,6 +1069,11 @@ def main():
                 if st == "pavillonnaire" and emps:
                     haie_posee = False
                     rues = _sur_rue(j, idx)
+                    essence = random.Random(_graine_lieu(j)).choices(
+                        [f for f, _ in HAIE_ESSENCES],
+                        [w for _, w in HAIE_ESSENCES])[0]
+                    coul_essence = tuple(
+                        c * f for c, f in zip(coul_haie_i, essence))
                     # 🚪 Le portail s'ouvre où arrive l'allée de la porte.
                     acces = entree_parcelle.get(p["fid"])
                     for k, sur_rue in enumerate(rues):
@@ -1089,11 +1097,12 @@ def main():
                                  (debut[1] + fin[1]) / 2.0))) if noye else 0.0
                             longueur = _haie(
                                 repare if f_haie > 0.0 else masses,
-                                debut, fin, coul_haie_i, G)
+                                debut, fin, coul_essence, G,
+                                HAIE_HAUTEUR if sur_rue else HAIE_HAUTEUR_FOND)
                             if f_haie > 0.0:
                                 st_debris["haie_m"] += longueur
                                 st_debris["haie_reste"] += DEB.haie_arrachee(
-                                    masses, debut, fin, coul_haie_i, G,
+                                    masses, debut, fin, coul_essence, G,
                                     random.Random(_graine_lieu([debut, fin])),
                                     f_haie)
                             if longueur > 0.0:

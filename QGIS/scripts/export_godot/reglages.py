@@ -596,9 +596,27 @@ PART_JARDINS_ARBORES = 0.55   # parmi les jardins verts, ceux qui ont un arbre
 # émise qu'une fois, sinon deux prismes superposés clignoteraient à l'écran.
 HAIE_LARGEUR = 0.55
 
-HAIE_HAUTEUR = 1.15
+HAIE_HAUTEUR = 1.15        # côté rue : on voit la maison par-dessus
+
+HAIE_HAUTEUR_FOND = 1.55   # entre deux jardins : on se cache du voisin
 
 HAIE_SEGMENT_MIN = 1.5
+
+# Taillée, pas maçonnée : flancs droits jusqu'à l'épaule, sommet rétréci, et
+# une houle tous les HAIE_MODULE mètres. ⚠ Le module fixe le coût : 10
+# triangles par module, 9 km de haies.
+HAIE_MODULE = 2.5
+HAIE_HOULE = 0.13          # ± part de la hauteur
+HAIE_EPAULE = 0.72         # part de la hauteur où le flanc s'arrondit
+HAIE_CRETE = 0.55          # largeur du sommet / largeur au pied
+HAIE_GRAIN = 0.08          # ± teinte d'un module à l'autre : le feuillage
+
+# Une essence par parcelle, en facteur sur le vert de haie : (facteur, poids).
+HAIE_ESSENCES = (
+    ((1.15, 1.15, 0.76), 3),   # charmille, troène : vert clair, jaune
+    ((1.00, 1.00, 1.00), 4),
+    ((0.58, 0.76, 0.80), 3),   # thuya, laurier : sombre, bleuté
+)
 
 ACCES_LARGEUR = 1.40
 
