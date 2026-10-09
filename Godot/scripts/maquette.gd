@@ -2519,6 +2519,9 @@ func _habiller_monde(diagnostic: bool) -> void:
 	if _environnement != null:
 		_environnement.background_color = FOND_DANGERS if theme == "dangers" \
 			else Donnees.teinte(donnees, "_ciel")
+	# ⚠ Les deux papiers : PAPIER (`materiaux.gd`) et CRUE_PAPIER (crue.gdshaderinc).
+	camp.en_maquette(Color(0, 0, 0, 0) if not diagnostic else (Color(0.880, 0.870, 0.840)
+		if theme == "dangers" else Color(0.624, 0.605, 0.560)))
 
 
 func _val(couche: String, fid: int, t: float) -> float:

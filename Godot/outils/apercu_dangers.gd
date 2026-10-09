@@ -43,4 +43,9 @@ func capturer() -> void:
 	await photo("dangers_02_prochaine", Vector2(250, -150), 700.0, 0.0, 70.0)
 	await photo("dangers_04_prochaine_pres", Vector2(290, -200), 200.0, 25.0, 45.0)
 	await photo("dangers_05_prochaine_maisons", Vector2(330, -170), 90.0, 30.0, 40.0)
+	# Un camp posé d'office, sans passer par la partie : le premier champ semé.
+	var fid: int = jeu.camp._places.keys()[0]
+	jeu.camp._mmi.multimesh = jeu.camp._maillage([[fid, jeu.camp.places(fid)]])
+	var q: Array = jeu.camp._places[fid][0]
+	await photo("dangers_06_campement", Vector2(float(q[0]), float(q[2])), 70.0, 30.0, 45.0)
 	quit()

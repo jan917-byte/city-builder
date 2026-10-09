@@ -795,10 +795,11 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// Les quatre signaux s'excluent — un thème remplit un seul.\n" \
 		+ "\tif (maquette_blanche > 0.5) {\n" \
 		+ "\t\tbase = (crue_vue > 0 ? CRUE_PAPIER : PAPIER) * COLOR.a;\n" \
-		+ "\t\t// Dangers : la maquette sans cheminées (boîtes sans UV au-dessus\n" \
-		+ "\t\t// de 3,2 m ; les boxes de garage font 2,4 m, l'auvent moins) ni débris.\n" \
-		+ "\t\tif (crue_vue > 0 && (debris || (diagnostic_bati > 0.5 && ruine < 0.5\n" \
-		+ "\t\t\t\t&& dot(UV, UV) < 0.01 && pos_monde.y > 3.2))) discard;\n" \
+		+ "\t\t// Dangers : la maquette sans cheminées ni débris. La souche se\n" \
+		+ "\t\t// reconnaît à sa teinte, PAL.CHEMINEE #7B6659 en linéaire : « sans UV\n" \
+		+ "\t\t// au-dessus de 3,2 m » effaçait aussi les granges des fermes.\n" \
+		+ "\t\tbool souche = dot(UV, UV) < 0.01 && distance(COLOR.rgb, vec3(0.198, 0.133, 0.100)) < 0.01;\n" \
+		+ "\t\tif (crue_vue > 0 && (debris || souche)) discard;\n" \
 		+ "\t\trugosite = 1.0;\n" \
 		+ "\t\t// Le calque continu : énergie, trafic, tissu. Opacité pleine,\n" \
 		+ "\t\t// il n'y a plus de matière sous lui à ménager.\n" \

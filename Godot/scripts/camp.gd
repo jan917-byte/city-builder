@@ -45,6 +45,12 @@ func batir(donnees: Dictionary) -> void:
 	add_child(_mmi)
 
 
+## 🩶 La maquette blanche gagne les camps (auteur, 2026-10-09) : `papier` en
+## linéaire, alpha 0 pour rendre la matière. Les miniatures n'en héritent pas.
+func en_maquette(papier: Color) -> void:
+	_mmi.set_instance_shader_parameter("maquette", papier)
+
+
 ## Combien d'abris ce champ porterait au maximum — le contrôle de l'export.
 func places(fid: int) -> int:
 	return (_places.get(fid, []) as Array).size()
