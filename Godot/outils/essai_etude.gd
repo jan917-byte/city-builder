@@ -142,7 +142,10 @@ func executer() -> void:
 	actualiser(fin + 24.0)
 	var apres: Dictionary = jeu.ville.prochaine_crue(jeu.mois)
 	verifier(float(apres["eau_pire_m"]) < eau - 0.05, "Berge et toits : %.2f → %.2f m" % [eau, float(apres["eau_pire_m"])])
+	ui.ouvrir_lieu("universite")
 	ui._sur_rail("dangers")
+	verifier(not ui._campus_panneau.visible and ui._diagnostic_panneau.visible,
+		"Dangers choisi au rail referme la fenêtre du campus")
 	await cliquer(ui._onglets_crue["prochaine"])
 	verifier(ui._prochaine_valeurs["baisse"].text != "0 cm", "Le panneau dit l'eau en moins depuis l'étude : %s" % ui._prochaine_valeurs["baisse"].text)
 	await capture("etude_05_apres_leviers")

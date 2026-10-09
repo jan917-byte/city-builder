@@ -1611,6 +1611,9 @@ func _filet_rail() -> Control:
 ## suite quand le thème ne change pas, donc recliquer l'icône active ne
 ## rappellerait jamais `montrer_theme` : c'est ici, et pas là-bas.
 func _sur_rail(id: String) -> void:
+	# 🎓 Une vue choisie au rail referme la fenêtre du campus (auteur, 2026-10-09).
+	if _campus_panneau != null and _campus_panneau.visible:
+		_fermer_campus()
 	if id == _theme_courant:
 		_detail_ouvert = not _detail_ouvert
 		_placer_detail()
