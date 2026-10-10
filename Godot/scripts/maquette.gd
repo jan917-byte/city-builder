@@ -366,6 +366,8 @@ func _ready() -> void:
 	interface._debut.visible = ouverture != null
 	interface.retours.reprendre(mois)
 
+	if "--x4" in OS.get_cmdline_user_args():
+		_quadrupler()
 	var c: Dictionary = donnees["controles"]
 	print("Wehrau — %d îlots, %d tronçons, %d cliquables, %d triangles"
 		% [int(c["ilots"]), int(c["routes"]),
@@ -379,6 +381,46 @@ func _ready() -> void:
 		await _banc()
 	elif "--essai" in OS.get_cmdline_user_args():
 		await _essai()
+
+
+## 🧪 `--x4` : trois Wehrau de plus à côté, pour savoir si Vallmar (~4,7× Wehrau)
+## tiendra. Copies figées à l'image, mais chacune a sa ville et son trafic
+## simulés, et la peinture tourne quatre fois : le coût du script est réel.
+## Sol, eau et paysage restent à un exemplaire. Banc seulement.
+const X4_PAS := Vector2(1350.0, 1500.0)   # l'étendue des sols de Wehrau, marge comprise
+var _copies_ville: Array = []
+var _copies_trafic: Array = []
+
+
+func _quadrupler() -> void:
+	var t0 := Time.get_ticks_msec()
+	for k in [Vector2(X4_PAS.x, 0.0), Vector2(0.0, X4_PAS.y), X4_PAS]:
+		var copie := Node3D.new()
+		copie.name = "Copie"
+		copie.position = Vector3(k.x, 0.0, k.y)
+		add_child(copie)
+		for n in monde.get_children():
+			if n == trafic or n == paysage or n.name in ["Terrain", "Eau"]:
+				continue
+			# Sans DUPLICATE_SCRIPTS : une image, pas une deuxième orchestration.
+			copie.add_child(n.duplicate(Node.DUPLICATE_GROUPS))
+		var d := Donnees.charger()
+		var v := Ville.new()
+		v.charger(d)
+		_copies_ville.append(v)
+		var t := Trafic.new()
+		copie.add_child(t)
+		t.batir(d, v)
+		t.regler_detail(pivot.taille)
+		_copies_trafic.append(t)
+	print("×4 : trois copies lues et bâties en %.1f s" % [(Time.get_ticks_msec() - t0) / 1000.0])
+
+
+func _repere_banc() -> void:
+	if _copies_ville.is_empty():
+		_repere("ville")
+	else:
+		pivot.viser(X4_PAS / 2.0, 2400.0)
 
 
 ## Des images rapides pour juger l'interface sans rejouer toute la partie : la
@@ -595,6 +637,8 @@ func _banc() -> void:
 	print("\n--- BANC · %s · %s ---" % [
 		RenderingServer.get_video_adapter_name(),
 		str(DisplayServer.window_get_size())])
+	print("  prête après %.1f s, mémoire %d Mio" % [Time.get_ticks_msec() / 1000.0,
+		int(Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0)])
 
 	var vues := [
 		["ville entière (trafic éteint)", 0], ["l'axe 55, de près", 55],
@@ -603,7 +647,7 @@ func _banc() -> void:
 	for v in vues:
 		var quoi: int = v[1]
 		if quoi == 0:
-			_repere("ville")
+			_repere_banc()
 		elif quoi == -1:
 			_repere("compact")
 		elif quoi == -2:
@@ -635,7 +679,13 @@ func _banc() -> void:
 				Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
 
 	# ⏩ Le banc tourne EN PAUSE ; c'est en jouant, temps qui court, qu'on juge.
-	_repere("ville")
+	_repere_banc()
+	if not _copies_ville.is_empty():
+		# Les collines du paysage recouvrent les copies : l'image seule s'en passe.
+		paysage.visible = false
+		await get_tree().process_frame
+		await _capturer("x4")
+		paysage.visible = true
 	print("\n  le temps qui court, ville entière :")
 	for v in [0.0, 1.0, 2.0, 4.0]:
 		_sur_vitesse(v)
@@ -2183,6 +2233,8 @@ func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
 	for icone in icones_ponts.values():
 		(icone as Sprite3D).pixel_size = _taille_icone_pont()
 	trafic.regler_detail(pivot.taille)
+	for t in _copies_trafic:
+		t.regler_detail(pivot.taille)
 	travaux.regler_detail(pivot.taille, pivot.camera)
 	if pastilles != null:
 		pastilles.regler_portee(pivot.taille)
@@ -2191,6 +2243,8 @@ func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
 func _sur_pulsation_trafic() -> void:
 	var reseau: String = trafic._indisponibles_connues
 	trafic.avancer(mois)
+	for t in _copies_trafic:
+		t.avancer(mois)
 	if reseau != trafic._indisponibles_connues:
 		_dernier_peint = -1.0
 
@@ -2223,6 +2277,9 @@ func _indicateurs(force: bool, attendre := false) -> Dictionary:
 			and mois != _indic_mois and ms - _indic_ms >= RAFRAICHIR_MS):
 		_indic = ville.indicateurs(mois)
 		_indic["degats"] = ville.degats(mois)
+		for v in _copies_ville:
+			(v as Ville).indicateurs(mois)
+			(v as Ville).degats(mois)
 		_indic_mois = mois
 		_indic_ms = ms
 	return _indic
@@ -2248,14 +2305,15 @@ func _rafraichir(force: bool) -> void:
 	var f := saison.flocons(mois)
 	flocons.visible = f > 0.0
 	(flocons.material as ShaderMaterial).set_shader_parameter("intensite", f)
-	_montrer_reparations()
-	_montrer_arbres()
-	_montrer_rives()
-	camp.montrer(ville, mois)
-	if pastilles != null:
-		pastilles.actualiser(mois)
-	travaux.actualiser(ville, mois)
-	_peindre()
+	for k in _copies_ville.size() + 1:   # 🧪 --x4 : quatre fois le prix
+		_montrer_reparations()
+		_montrer_arbres()
+		_montrer_rives()
+		camp.montrer(ville, mois)
+		if pastilles != null:
+			pastilles.actualiser(mois)
+		travaux.actualiser(ville, mois)
+		_peindre()
 	# Sans décision, les sommes attendent l'image suivante : deux calculs
 	# lourds sur la même image faisaient un à-coup de 24 ms.
 	interface.maj(_indicateurs(force, true), mois, vitesse)
@@ -3246,6 +3304,8 @@ func _sur_reset() -> void:
 func _sur_vitesse(nouvelle: float) -> void:
 	vitesse = nouvelle
 	trafic.regler_vitesse(nouvelle)
+	for t in _copies_trafic:
+		t.regler_vitesse(nouvelle)
 	if nouvelle > 0.0:
 		_derniere_vitesse = nouvelle
 

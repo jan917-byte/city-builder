@@ -746,3 +746,6 @@ Demande de l'auteur après essai (« presque trop réaliste », trois neiges dan
 **2026-10-10 — Le temps accéléré se voit : à ×2 voitures, piétons, vélos et courant de l'Ilse vont 1,5 fois plus vite, à ×4 deux fois.**
 Demande de l'auteur (« un feedback visuel du temps qui passe ») ; proportionnel refusé par lui, ×4 aurait mis les voitures à 120 km/h ; feuillage, nuages et flocons restent au temps réel. Ralentir aux virages et aux passages (B1) attend son feu vert, l'arrêt réel (B2) toucherait la décision 62.
 Banc ×2 7,04 → 7,19 ms/image, ×4 7,08 → 7,18 : dans le bruit.
+**2026-10-10 — Test de taille pour Vallmar : `--banc --x4` pose trois Wehrau de plus, chacune avec sa ville et son trafic simulés.**
+Question de l'auteur : les systèmes tiendront-ils une ville ~4,7× plus grande ? Sol, eau et paysage restent à un exemplaire ; l'affectation du trafic n'est mesurée que sur un réseau (sur un réseau d'un seul tenant, estimée à ×16-18).
+Prête 6,2 → 12,6 s ; GPU 5,6 → 8,9 ms : la carte suit ; temps qui court 148 → 46-59 ips, à-coups de 50 ms : le rafraîchissement 10×/s (repeinte + sommes) passe de 17 à 65 ms. C'est lui à étaler avant Vallmar.
