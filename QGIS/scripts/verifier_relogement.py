@@ -7,21 +7,20 @@ accueillir les sinistrés » reste un FAIT MESURÉ. Le jour où un pont, une
 desserte ou un contour de champ bouge, c'est ici que ça se voit — pas à
 l'écran, trois semaines plus tard.
 """
-import json
 import math
 import sys
 import unittest
 from pathlib import Path
 from apercu_carte import dedans
 from export_godot.geometrie import Chenal, Relief, aire_signee
+from export_godot.octets import lire as lire_export
 from export_godot.voirie import DecoupeChaussees, D4C
 
 SORTIE = Path(__file__).resolve().parents[2] / "Godot/data/wehrau.json"
 
 
 def _charger():
-    with SORTIE.open(encoding="utf-8") as f:
-        return json.load(f)
+    return lire_export(SORTIE)
 
 
 class Relogement(unittest.TestCase):

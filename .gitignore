@@ -18,10 +18,11 @@ QGIS/data/archive/
 Godot/.godot/
 # Raccourci de lancement, fabriqué sur place par chaque machine (équivalent Mac du .lnk)
 Godot/Ouvrir Wehrau.app/
-# L'export vers Godot est un DÉRIVÉ : 1,4 Mo régénérés en 3 s par 07. Le
-# versionner ferait grossir l'historique à chaque relance de la chaîne, pour
-# un fichier illisible en diff. On le régénère, on ne le transporte pas.
+# L'export vers Godot est un DÉRIVÉ que 07 régénère : le JSON et le binaire des
+# sommets qui l'accompagne. Les versionner ferait grossir l'historique à chaque
+# relance de la chaîne. On les régénère, on ne les transporte pas.
 Godot/data/wehrau.json
+Godot/data/wehrau.bin
 
 # Claude (config locale)
 .claude/settings.local.json

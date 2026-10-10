@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """Contrôles des raccords de rive : python QGIS/scripts/verifier_berges.py."""
 
-import json
 import unittest
 from pathlib import Path
 
 from export_godot.berges import _arrondir_rives, _bande_berge, _larges_berge, _pente_berge
 from export_godot.geometrie import Chenal, Maillage, Relief
+from export_godot.octets import lire as lire_export
 from export_godot.reglages import BERGE_BANDE_M, NAPPE_ILSE, TALUS_BAS, Y_SOL
 
 
@@ -76,7 +76,7 @@ class RaccordsRive(unittest.TestCase):
 
     def test_export_talus_et_eau_sans_palier_parasite(self):
         chemin = Path(__file__).resolve().parents[2] / "Godot/data/wehrau.json"
-        d = json.loads(chemin.read_text(encoding="utf-8"))
+        d = lire_export(chemin)
         self.assertEqual(len(d["objets"]["berges"]), 8)
         mesh = d["berges_pente"]
         for fid, debut, nombre in mesh["g"]:

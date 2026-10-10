@@ -749,3 +749,6 @@ Banc ×2 7,04 → 7,19 ms/image, ×4 7,08 → 7,18 : dans le bruit.
 **2026-10-10 — Test de taille pour Vallmar : `--banc --x4` pose trois Wehrau de plus, chacune avec sa ville et son trafic simulés.**
 Question de l'auteur : les systèmes tiendront-ils une ville ~4,7× plus grande ? Sol, eau et paysage restent à un exemplaire ; l'affectation du trafic n'est mesurée que sur un réseau (sur un réseau d'un seul tenant, estimée à ×16-18).
 Prête 6,2 → 12,6 s ; GPU 5,6 → 8,9 ms : la carte suit ; temps qui court 148 → 46-59 ips, à-coups de 50 ms : le rafraîchissement 10×/s (repeinte + sommes) passe de 17 à 65 ms. C'est lui à étaler avant Vallmar.
+**2026-10-10 — L'export vers Godot passe en deux fichiers : `wehrau.json` (données) et `wehrau.bin` (sommets, compressés, au format de Godot).**
+Revue d'architecture demandée par l'auteur : la carte de 77 Mo, lue d'un bloc, ne passerait pas à Vallmar. Mêmes nombres envoyés à la carte graphique (21 maillages et 487 tranches comparés valeur par valeur), 21 essais Godot inchangés, dont 5 qui échouaient déjà (capital, énergie, livre, sauvegarde, travaux).
+Carte 77 → 9,3 Mo ; prête 6,3-7,5 → 3,8 s ; mémoire 1 032 → 298 Mio. Les sauvegardes d'avant sont refusées une fois (empreinte de carte changée).

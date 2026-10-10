@@ -44,7 +44,7 @@ Elle enchaîne **02 → 03 → 04 → 04b → 04c → 04d → 04e** et s'arrête
 | `04e_crue.py` | la crue : hauteur d'eau, dégâts, ponts coupés |
 | `05_exporter_classeur.py` | → `Classeur/*.csv` |
 | `06_etat_zero.py` | 👁 la ville entière en HTML |
-| `07_exporter_godot.py` | → `Godot/data/wehrau.json`, toute la géométrie 3D |
+| `07_exporter_godot.py` | → `Godot/data/wehrau.json` et `wehrau.bin` (les sommets), toute la géométrie 3D |
 | `08_jouer.py` | rejoue les parties du classeur |
 | `apercu_carte.py` · `apercu_parcelles.py` · `apercu_campus.py` | 👁 PNG légendés, lecture seule |
 | `palette.py` | les matériaux du bâti |

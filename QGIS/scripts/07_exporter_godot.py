@@ -34,6 +34,7 @@ from export_godot.batiments import (
 )
 from export_godot.boue import carte_boue
 from export_godot import debris as DEB
+from export_godot import octets as OCT
 from export_godot import entrees as ENT
 from export_godot.cours import COURS_PARKING, OCCUPATION as OCCUPATION_COUR
 from export_godot.cours import amenager as _amenager_cour
@@ -200,6 +201,8 @@ _ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 GPKG = _ARGS[0] if _ARGS else os.path.join(RACINE, "QGIS", "data",
                                            "travail", "wehrau.gpkg")
 SORTIE = os.path.join(RACINE, "Godot", "data", "wehrau.json")
+# Les tableaux de sommets, compressés à côté : voir export_godot/octets.py.
+SORTIE_BIN = os.path.splitext(SORTIE)[0] + ".bin"
 
 
 # 🏗️ LE CANAL DE LA RECONSTRUCTION (95) : une ruine porte un égout à −1, que le
@@ -2308,10 +2311,12 @@ def main():
     }
 
     os.makedirs(os.path.dirname(SORTIE), exist_ok=True)
+    ko_bin = OCT.separer(doc, SORTIE_BIN) / 1024.0
     with open(SORTIE, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, ensure_ascii=False, separators=(",", ":"))
     ko = os.path.getsize(SORTIE) / 1024.0
     print("\n→ %s  (%.0f Ko)" % (os.path.relpath(SORTIE, RACINE), ko))
+    print("→ %s  (%.0f Ko)" % (os.path.relpath(SORTIE_BIN, RACINE), ko_bin))
 
 
 def _reperes(ilots, routes, cx, cy, relief=None, ponts=()):

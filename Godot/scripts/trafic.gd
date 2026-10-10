@@ -219,18 +219,18 @@ func _batir_sol(sources: Array) -> void:
 	for d in sources:
 		if (d as Dictionary).is_empty():
 			continue
-		var vs: Array = d["v"]
-		var ns: Array = d["n"]
-		var idx: Array = d["i"]
+		var vs: PackedVector3Array = d["v"]
+		var ns: PackedVector3Array = d["n"]
+		var idx: PackedInt32Array = d["i"]
 		for t in range(0, idx.size() - 2, 3):
 			var ok := true
 			var tri := []
 			for k in 3:
-				var src := int(idx[t + k])
-				if float(ns[src][1]) < 0.9:
+				var src := idx[t + k]
+				if ns[src].y < 0.9:
 					ok = false
 					break
-				tri.append(Vector3(vs[src][0], vs[src][1], vs[src][2]))
+				tri.append(vs[src])
 			if not ok:
 				continue
 			var rang := _sol_tri.size() / 3

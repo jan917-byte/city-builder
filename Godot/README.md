@@ -2,7 +2,7 @@
 
 Relever la ville après la crue et équiper ses toits se disputent la même caisse dès le premier mois. Deux jauges suivent les deux fronts, **adaptation** et **réduction**. Godot **4.7.1**, aucun plugin, aucune dépendance.
 🔴 **Aucun chiffre mesuré dans ce fichier.** Ils sont dans `Prototype/`, à l'étape qui les porte, et l'export les réimprime à chaque passage. Le design est dans le vault, ce qui reste à faire dans `ETAT.md`.
-**Toute la géométrie est calculée en Python**, par `07_exporter_godot.py` et les modules de `QGIS/scripts/export_godot/`. Godot ne prend aucune décision géométrique : il lit des tableaux et les passe à `ArrayMesh`. L'« interface propre » de `Moteur et architecture:18` n'est pas une hiérarchie de classes, **c'est le contrat JSON**.
+**Toute la géométrie est calculée en Python**, par `07_exporter_godot.py` et les modules de `QGIS/scripts/export_godot/`. Godot ne prend aucune décision géométrique : il lit des tableaux et les passe à `ArrayMesh`. L'« interface propre » de `Moteur et architecture:18` n'est pas une hiérarchie de classes, **c'est le contrat JSON**. Les tableaux de sommets n'y sont pas : ils sont dans `wehrau.bin` à côté, compressés et déjà au format de Godot (`QGIS/scripts/export_godot/octets.py`) ; le JSON n'en garde que la position.
 
 ## Le lancer
 
@@ -11,7 +11,7 @@ python QGIS/scripts/chaine.py --godot
 ```
 
 Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5). Le mode choisi, un récit de quatre pages passe à la flèche, puis les premiers pas s'ouvrent en pause ; DÉBUT retrouve l'accompagnement. Le contrôle dédié se lance avec `--script res://outils/essai_ouverture.gd -- --ouverture --captures` ; ses clics simulés se perdent si la vraie souris survole la fenêtre, d'où `--position 6000,6000`. `-- --outils` affiche l'argent d'essai. Le bouton **Après le pont** de l'écran de départ (ou `-- --apres-pont`) joue le relogement, le pont provisoire le moins cher, l'amélioration du camp et le déblaiement de toutes les rues, et rend la main en pause quand tout est livré ; c'est un bouton d'essai, à retirer avant une version publique.
-`Godot/data/wehrau.json` est **gitignoré** : c'est un dérivé que `07` régénère. Sur la deuxième machine on relance `07` — on ne transporte pas le fichier.
+`Godot/data/wehrau.json` et `wehrau.bin` sont **gitignorés** : ce sont des dérivés que `07` régénère ensemble. Sur la deuxième machine on relance `07`, on ne transporte pas les fichiers. 🔴 **Les deux vont par paire** : le JSON porte l'empreinte du binaire, et la maquette refuse de démarrer sur un binaire d'un autre export. Un `.bin` n'est pas une ressource Godot : un futur export du jeu devra l'inclure à la main (filtre « fichiers non-ressources »).
 🎨 **`Godot/habillage.tres` est la fiche de l'auteur** : police, graisses, couleurs, arrondis et marges de l'habillage vitre, réglés dans l'inspecteur sans code (↺ rend la valeur d'origine, écrite dans `scripts/habillage.gd`). `-- --police <clé>` passe outre pour un essai ; polices et licences OFL dans `Godot/polices/`.
 L'interface est en habillage « vitre » (verre neutre, angles droits, le temps en haut à droite) ; `-- --habillage bois` ou `verre` rend un ancien habillage pour comparer, et se combine avec `--police` et `--interface`.
 `Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, les deux menus de lieu, plus chaque miniature seule à sa taille de rendu.

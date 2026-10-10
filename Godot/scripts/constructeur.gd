@@ -16,61 +16,36 @@ const Materiaux := preload("res://scripts/materiaux.gd")
 
 ## {v, n, c, uv, i} → ArrayMesh, en UN seul add_surface_from_arrays : un
 ## SurfaceTool coûterait ~95 000 appels de fonction sur le terrain.
+## Les tableaux arrivent déjà typés de `donnees.gd` : rien à convertir.
+## Couleur : RGB = teinte déjà occluse, ALPHA = l'occlusion seule, dont le
+## shader se sert pour repeindre en calque sans perdre l'AO.
 static func maillage(d: Dictionary) -> ArrayMesh:
-	var vs: Array = d["v"]
-	var ns: Array = d["n"]
-	var cs: Array = d["c"]
-	var uvs: Array = d.get("uv", [])
-	# 🪟 UV2 ne descend que sur les maillages à mur percé. Absent, Godot le
-	# laisse à zéro, ce qui est « pas une façade » pour le shader.
-	var uv2s: Array = d.get("uv2", [])
-	var idx: Array = d["i"]
-
-	var n: int = vs.size()
-	var v := PackedVector3Array()
-	var nm := PackedVector3Array()
-	var co := PackedColorArray()
-	var uv := PackedVector2Array()
-	var uv2 := PackedVector2Array()
-	v.resize(n)
-	nm.resize(n)
-	co.resize(n)
-	uv.resize(n)
-	uv2.resize(n)
-	for k in n:
-		var a: Array = vs[k]
-		var b: Array = ns[k]
-		var c: Array = cs[k]
-		v[k] = Vector3(a[0], a[1], a[2])
-		nm[k] = Vector3(b[0], b[1], b[2])
-		co[k] = _couleur(c)
-		uv[k] = Vector2.ZERO if uvs.is_empty() else Vector2(uvs[k][0], uvs[k][1])
-		uv2[k] = Vector2.ZERO if uv2s.is_empty() \
-			else Vector2(uv2s[k][0], uv2s[k][1])
-
-	var i := PackedInt32Array()
-	i.resize(idx.size())
-	for k in idx.size():
-		i[k] = int(idx[k])
-
-	return _surface(v, nm, co, i, uv, uv2)
+	var v: PackedVector3Array = d["v"]
+	# 🪟 UV2 ne descend que sur les maillages à mur percé. Absents, UV et UV2
+	# sont des zéros, « pas une façade » pour le shader, mais toujours déclarés.
+	var uv: PackedVector2Array = d.get("uv", PackedVector2Array())
+	var uv2: PackedVector2Array = d.get("uv2", PackedVector2Array())
+	if uv.is_empty():
+		uv.resize(v.size())
+	if uv2.is_empty():
+		uv2.resize(v.size())
+	return _surface(v, d["n"], d["c"], d["i"], uv, uv2)
 
 
 ## Une TRANCHE du maillage : `nb` indices depuis `debut`, et les seuls sommets
 ## qu'ils citent. C'est ce qui donne un nœud par îlot et par tronçon, donc un
 ## objet cliquable. Les plages viennent de la clé `g`, posée par 07.
 static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
-	var vs: Array = d["v"]
-	var ns: Array = d["n"]
-	var cs: Array = d["c"]
-	var uvs: Array = d.get("uv", [])
-	var uv2s: Array = d.get("uv2", [])
+	var vs: PackedVector3Array = d["v"]
+	var ns: PackedVector3Array = d["n"]
+	var cs: PackedColorArray = d["c"]
+	var uvs: PackedVector2Array = d.get("uv", PackedVector2Array())
+	var uv2s: PackedVector2Array = d.get("uv2", PackedVector2Array())
 	# 🏢 (rang de montée, ce sommet suit-il le toit, égout d'origine, pied du
-	# bâtiment). Seuls les maillages de bâtiments le portent ; absent, CUSTOM0
-	# reste à zéro et rien ne se lève. ⚠️ Un export ancien a moins de colonnes :
-	# plafond et pied retombent à 0.
-	var denses: Array = d.get("dense", [])
-	var idx: Array = d["i"]
+	# bâtiment), quatre flottants à plat par sommet. Seuls les maillages de
+	# bâtiments le portent ; absent, CUSTOM0 reste à zéro et rien ne se lève.
+	var denses: PackedFloat32Array = d.get("dense", PackedFloat32Array())
+	var idx: PackedInt32Array = d["i"]
 
 	# Les indices citent des sommets répartis dans TOUT le tableau : sans
 	# renumérotation la tranche traîne les 40 000 sommets des autres.
@@ -84,33 +59,19 @@ static func maillage_groupe(d: Dictionary, debut: int, nb: int) -> ArrayMesh:
 	var i := PackedInt32Array()
 	i.resize(nb)
 	for k in nb:
-		var src: int = int(idx[debut + k])
+		var src: int = idx[debut + k]
 		if not renumerote.has(src):
 			renumerote[src] = v.size()
-			var a: Array = vs[src]
-			var b: Array = ns[src]
-			v.append(Vector3(a[0], a[1], a[2]))
-			nm.append(Vector3(b[0], b[1], b[2]))
-			co.append(_couleur(cs[src]))
-			uv.append(Vector2.ZERO if uvs.is_empty() else Vector2(uvs[src][0], uvs[src][1]))
-			uv2.append(Vector2.ZERO if uv2s.is_empty() \
-				else Vector2(uv2s[src][0], uv2s[src][1]))
+			v.append(vs[src])
+			nm.append(ns[src])
+			co.append(cs[src])
+			uv.append(Vector2.ZERO if uvs.is_empty() else uvs[src])
+			uv2.append(Vector2.ZERO if uv2s.is_empty() else uv2s[src])
 			if not denses.is_empty():
-				var dd: Array = denses[src]
-				dn.append(float(dd[0]))
-				dn.append(float(dd[1]))
-				dn.append(0.0 if dd.size() < 3 else float(dd[2]))
-				dn.append(0.0 if dd.size() < 4 else float(dd[3]))
+				dn.append_array(denses.slice(src * 4, src * 4 + 4))
 		i[k] = renumerote[src]
 
 	return _surface(v, nm, co, i, uv, uv2, dn)
-
-
-## RGB = teinte déjà occluse, ALPHA = l'occlusion seule, dont le shader se sert
-## pour repeindre en calque sans perdre l'AO. Les exports d'avant n'ont que
-## trois canaux : on retombe sur 1,0, donc l'ancien rendu.
-static func _couleur(c: Array) -> Color:
-	return Color(c[0], c[1], c[2], 1.0 if c.size() < 4 else float(c[3]))
 
 
 ## 🔄 `terrain()` dépliait ici un champ d'altitude en grille. La carte est plate
