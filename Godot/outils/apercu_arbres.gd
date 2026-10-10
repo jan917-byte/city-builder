@@ -40,6 +40,12 @@ func capturer() -> void:
 	titre = _etiquette(26)
 	titre.position = Vector2(24, 24)
 	var suffixe := "avant" if "--avant" in OS.get_cmdline_user_args() else "apres"
+	# ❄️ `-- --mois=10.3` : les mêmes vues à ce mois, météo à graine fixe.
+	jeu.changer_saison(jeu.Saison.new(7))
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--mois="):
+			jeu.mois = float(a.split("=")[1])
+			suffixe += "_mois%s" % a.split("=")[1]
 	await process_frame
 
 	# Les alignements tous en terre : sinon une rue sans plantation n'en montre aucun.

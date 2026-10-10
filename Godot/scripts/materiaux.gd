@@ -82,6 +82,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "#include \"res://shaders/boue.gdshaderinc\"\n" \
 		+ "#include \"res://shaders/crue.gdshaderinc\"\n" \
 		+ "#include \"res://shaders/champs.gdshaderinc\"\n" \
+		+ "#include \"res://shaders/saison.gdshaderinc\"\n" \
 		+ "instance uniform float parcelle_agricole = 0.0;\n" \
 		+ "instance uniform float boue_propre = 0.0;\n" \
 		+ "instance uniform vec4 boue_acces = vec4(0.0);\n" \
@@ -789,6 +790,18 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tbase = mix(base, rive * COLOR.a, couche);\n" \
 		+ "\t\trugosite = 1.0;\n" \
 		+ "\t}\n" \
+		+ "\t// ❄️ LA SAISON (auteur, 2026-10-10) : l'herbe suit l'année, la neige couvre\n" \
+		+ "\t// ce qui regarde le ciel, sauf la chaussée (MINERAL, seul gris bleuté de la\n" \
+		+ "\t// palette) : déneigée, elle garde la ville lisible.\n" \
+		+ "\tif (maquette_blanche < 0.5) {\n" \
+		+ "\t\tvec3 brut = COLOR.rgb / max(COLOR.a, 0.05);\n" \
+		+ "\t\tif (vers_le_ciel > 0.9 && pos_monde.y < 1.5) {\n" \
+		+ "\t\t\tbase = herbe_saison(base, smoothstep(0.02, 0.08, brut.g - max(brut.r, brut.b)));\n" \
+		+ "\t\t}\n" \
+		+ "\t\tfloat neige = neige_manteau(pos_monde) * smoothstep(0.42, 0.78, vers_le_ciel);\n" \
+		+ "\t\tif (brut.b > brut.r * 1.04 && brut.r < 0.30) base *= 1.0 - 0.18 * neige;\n" \
+		+ "\t\telse base = mix(base, S_NEIGE * COLOR.a, neige);\n" \
+		+ "\t}\n" \
 		+ "\t// 🩶 LA MAQUETTE BLANCHE — la vue diagnostic. La ville perd sa\n" \
 		+ "\t// matière et ne garde que son VOLUME (COLOR.a = l'AO bakée) :\n" \
 		+ "\t// seul le thème est en couleur, donc tout thème est lisible.\n" \
@@ -885,19 +898,23 @@ static func eau(palette: Dictionary) -> ShaderMaterial:
 
 ## `foret` = la demi-emprise du décor, où l'arbre se perd dans la brume ; zéro
 ## en ville.
-static func feuillage(foret := Vector2.ZERO) -> ShaderMaterial:
+## `essence` règle le cycle de l'année (`Constructeur.FEUILLU`…) ; `brume` : nu,
+## la part de couronne gardée en rameaux, 0 = les branches seules.
+static func feuillage(foret := Vector2.ZERO, essence := 0, brume := 0.0) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/feuillage.gdshader")
 	if foret != Vector2.ZERO:
 		m.set_shader_parameter("demi_emprise", foret)
+	m.set_shader_parameter("essence", essence)
+	m.set_shader_parameter("brume_ramure", brume)
 	return m
 
 
 ## Le tronc, en seconde surface pour que sa teinte soit FIXE : sinon un tronc
 ## sous un feuillage vert ressortirait vert. Même shader que la couronne, pour
 ## qu'il plie au même vent et entre dans la même brume.
-static func ecorce(teinte: Color, foret := Vector2.ZERO) -> ShaderMaterial:
-	var m := feuillage(foret)
+static func ecorce(teinte: Color, foret := Vector2.ZERO, essence := 0) -> ShaderMaterial:
+	var m := feuillage(foret, essence)
 	m.set_shader_parameter("tronc", true)
 	m.set_shader_parameter("ecorce", teinte)
 	return m

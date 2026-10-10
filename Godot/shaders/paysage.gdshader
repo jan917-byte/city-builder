@@ -1,6 +1,7 @@
 shader_type spatial;
 render_mode cull_back, specular_disabled;
 #include "res://shaders/brume.gdshaderinc"
+#include "res://shaders/saison.gdshaderinc"
 uniform vec2 demi_emprise;
 varying vec3 monde;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
@@ -13,6 +14,10 @@ void fragment() {
 	// La couleur exportée prolonge le bois ou le versant dessiné au bord.
 	vec3 couleur = COLOR.rgb;
 	couleur *= 0.94 + bruit(monde.xz * 0.085) * 0.12;
+	couleur = herbe_saison(couleur, smoothstep(0.01, 0.10, COLOR.g - COLOR.b));
+	// ❄️ Les montagnes blanchissent par le haut ; le rocher des pentes raides reste nu.
+	float haut = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz).y;
+	couleur = mix(couleur, S_NEIGE * COLOR.a, neige_manteau(monde) * smoothstep(0.55, 0.85, haut));
 	float brume = brume_bord(monde.xz, demi_emprise);
 	ALBEDO = couleur*(1.0-brume);
 	EMISSION = BRUME_CIEL*brume;

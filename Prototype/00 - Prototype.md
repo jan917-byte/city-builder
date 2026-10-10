@@ -14,8 +14,9 @@
 | 5 | **[Le trafic visible](Trafic.md)** | ⏸️ **en pause** | une rue à `charge = 1,00` est désagréable à regarder |
 | 6 | **[Les premiers pas](Premiers%20pas.md)** | 🎯 **rouverte** | après la première réparation livrée, le joueur veut choisir la suite |
 | 7 | **[La campagne](Campagne.md)** — ce que porte un champ | ⏸️ **en pause** | on reconnaît à l'œil un champ de maraîchage, un verger, une prairie et des céréales, et la barre Campagne monte quand on cultive |
+| 8 | **[Les saisons](Saisons.md)** — voir le temps passer | ⏸️ **à juger** | sans interface, on devine le mois à deux mois près, et un hiver de l'an 18 n'est pas un hiver de l'an 1 |
 
-⏸️ **Les étapes 2, 4, 5 et 7 sont en pause, pas finies** : leurs critères restent à juger. L'auteur rouvre les premiers pas le 2026-09-30 pour l'étude de la prochaine crue ; une seule étape est ouverte.
+⏸️ **Les étapes 2, 4, 5, 7 et 8 sont en pause, pas finies** : leurs critères restent à juger. L'auteur rouvre les premiers pas le 2026-09-30 pour l'étude de la prochaine crue ; une seule étape est ouverte. La 8 a été faite à sa demande le 2026-10-10, sans fermer la 6.
 
 ## Ce qui commande le prototype
 

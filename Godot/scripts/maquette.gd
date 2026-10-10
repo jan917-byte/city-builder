@@ -45,6 +45,7 @@ const Recherche := preload("res://scripts/recherche.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
 const Sauvegarde := preload("res://scripts/sauvegarde.gd")
 const Paysage := preload("res://scripts/paysage.gd")
+const Saison := preload("res://scripts/saison.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
 const Livre := preload("res://scripts/livre.gd")
 const Recit := preload("res://scripts/recit.gd")
@@ -117,6 +118,8 @@ var donnees: Dictionary
 var monde: Node3D
 var pivot: CameraAxo
 var ville: Ville
+## ❄️ La météo de la partie, tirée au hasard à chaque partie (auteur, 2026-10-10).
+var saison: Saison
 var selection: Selection
 var interface: Interface
 var moniteur_performances: MoniteurPerformances
@@ -216,6 +219,7 @@ func _ready() -> void:
 
 	ville = Ville.new()
 	ville.charger(donnees)
+	saison = Saison.new(randi())
 	_empreinte_carte = FileAccess.get_sha256(Donnees.CHEMIN)
 	# 🪟 Des DONNÉES, pas d'une constante recopiée : c'est ce qui aligne les
 	# rangées de fenêtres sur les planchers que 07 a empilés.
@@ -272,6 +276,7 @@ func _ready() -> void:
 	interface = Interface.new()
 	interface.name = "Interface"
 	interface.ville = ville
+	interface.saison = saison
 	# 🧪 SA copie des objets : `reparer` écrit `toit_m2` en base, et deux villes
 	# sur les mêmes dictionnaires se répareraient l'une l'autre.
 	interface.ville_essai = Ville.new()
@@ -2236,6 +2241,7 @@ func _rafraichir(force: bool) -> void:
 	_dernier_peint = mois
 	_peint_ms = ms
 	RenderingServer.global_shader_parameter_set("eau_limon", Ville.limon_eau(mois))
+	saison.poser(mois)
 	_montrer_reparations()
 	_montrer_arbres()
 	_montrer_rives()
@@ -3215,6 +3221,7 @@ static func _nom_couche(couche: String) -> String:
 func _sur_reset() -> void:
 	ville.reinitialiser()
 	trafic.reinitialiser()
+	changer_saison(Saison.new(randi()))
 	mois = 0.0
 	interface.caler_carte_crue(mois)
 	_sur_vitesse(0.0)
@@ -3236,12 +3243,19 @@ func _sur_vitesse(nouvelle: float) -> void:
 		_derniere_vitesse = nouvelle
 
 
+## Les outils de capture en posent une à graine fixe, pour deux images égales.
+func changer_saison(s: Saison) -> void:
+	saison = s
+	interface.saison = s
+	_dernier_peint = -1.0
+
+
 func _sauvegarde_disponible() -> bool:
 	return FileAccess.file_exists(chemin_sauvegarde) \
 		or FileAccess.file_exists(chemin_sauvegarde + ".bak")
 
 func _partie() -> Dictionary:
-	return {"mois": mois, "ville": ville.exporter_partie(),
+	return {"mois": mois, "ville": ville.exporter_partie(), "saison": saison.graine,
 		"journal": interface.retours.journal.duplicate(),
 		"ouverture": ouverture.exporter() if ouverture != null else {},
 		"fermetures": trafic.exporter_fermetures(),
@@ -3303,6 +3317,9 @@ func _sur_reprise() -> void:
 		interface.informer_partie("Sauvegarde incomplète ; la partie en cours est conservée.", true)
 		return
 	ville.importer_partie(p["ville"])
+	# Une partie sauvée avant les saisons garde la météo en cours.
+	if p.get("saison") is int:
+		changer_saison(Saison.new(p["saison"]))
 	mois = p["mois"]
 	interface.caler_carte_crue(mois)
 	trafic.importer_fermetures(p["fermetures"], mois)

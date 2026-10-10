@@ -739,6 +739,11 @@ static func pose(a: Array, essence: int) -> Transform3D:
 ## l'absence de `material_override` sur les arbres.
 ## `foret` = la demi-emprise du décor : l'arbre de la forêt est la même
 ## recette en plus léger, et se perd dans la brume du bord.
+## ❄️ Nu, la part de couronne gardée en brume de rameaux. La forêt et le buisson
+## n'ont pas de branches : sans brume, ils disparaîtraient.
+const BRUME_FORET := 0.6
+const BRUME_BUISSON := 0.7
+const BRUME_VILLE := 0.3
 const FIXE := 0.0       # ni grossi ni déplacé : brins, tronc
 const COURONNE := 1.0   # le corps de l'arbre : ±10 %, jamais effacé
 const SATELLITE := 2.0  # 2, 3, 4… : grossi, déplacé, parfois absent
@@ -804,7 +809,8 @@ static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMes
 		f.lobe(Vector3(-0.80, 3.75, -1.25), 1.45, 0.58, 0.94, SATELLITE + 3)
 
 	m.add_surface_from_arrays(PRIM, f.surface(), [], {}, _Volume.FORMAT)
-	m.surface_set_material(0, Materiaux.feuillage(foret))
+	m.surface_set_material(0, Materiaux.feuillage(foret, essence, BRUME_FORET
+		if foret != Vector2.ZERO else (BRUME_BUISSON if essence == BUISSON else BRUME_VILLE)))
 
 	# 🔴 Ni roseau ni buisson n'a de tronc : une deuxième surface pour un fût
 	# de 3 cm coûterait un matériau et ne se verrait jamais.
@@ -815,10 +821,51 @@ static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMes
 	t.cotes = 4 if foret != Vector2.ZERO else 5
 	var haut: float = {CONIFERE: 1.6, BOULEAU: 4.4, PEUPLIER: 2.0,
 		FRUITIER: 1.4, SAULE: 2.4}.get(essence, 3.4)
-	t.cone(0.20 if essence == BOULEAU else 0.30, 0.0, haut, 1.0, 1.0, FIXE, 0.72)
+	var rayon := 0.20 if essence == BOULEAU else 0.30
+	t.cone(rayon, 0.0, haut, 1.0, 1.0, FIXE, 0.72)
+	if foret == Vector2.ZERO and essence != CONIFERE:
+		_ramure(t, f.lobes, essence, haut, rayon)
 	m.add_surface_from_arrays(PRIM, t.surface(), [], {}, _Volume.FORMAT)
-	m.surface_set_material(1, Materiaux.ecorce(tronc, foret))
+	m.surface_set_material(1, Materiaux.ecorce(tronc, foret, essence))
 	return m
+
+
+## 🌳 LES BRANCHES DE L'ARBRE NU (auteur, 2026-10-10) : une par lobe, deux rameaux
+## chacune, cachées sous la couronne l'été (`feuillage.gdshader`). La forêt n'en a
+## pas : 22 000 arbres vus de loin, une brume de rameaux suffit.
+## ⚠️ Flaggable (90) : géométrie dessinée par le code et vue du joueur.
+static func _ramure(t: _Volume, lobes: Array, essence: int, haut: float, rayon: float) -> void:
+	var pied := Vector3(0.0, haut * 0.92, 0.0)
+	if essence == PEUPLIER:
+		# Le fuseau nu : une flèche jusqu'en haut, des branches dressées.
+		t.branche(pied, Vector3(0.0, 10.8, 0.0), rayon * 0.6, 0.04, -COURONNE, pied)
+		for k in 6:
+			var a := float(k) * 2.4
+			var d := Vector3(cos(a) * 0.4, 1.0, sin(a) * 0.4).normalized()
+			var p := Vector3(0.0, 3.0 + 1.25 * k, 0.0)
+			t.branche(p, p + d * (2.6 - 0.25 * k), 0.07, 0.015, -COURONNE, pied, 3)
+	for lobe in lobes:
+		var centre: Vector3 = lobe[0]
+		var r: float = lobe[1]
+		var role: float = lobe[2]
+		var axe := centre - pied
+		# La couronne sur l'axe donne la flèche ; un satellite, une branche vers le dehors.
+		var bout := centre + Vector3.UP * r * 0.5
+		if Vector2(axe.x, axe.z).length() > 0.3:
+			bout = centre + axe.normalized() * r * 0.3
+		var dir := (bout - pied).normalized()
+		t.branche(pied, bout, rayon * 0.55, 0.03, -role, pied)
+		var cote := dir.cross(Vector3.UP)
+		cote = cote.normalized() if cote.length() > 0.1 else Vector3.RIGHT
+		var milieu := pied.lerp(bout, 0.6)
+		for sens in [-1.0, 1.0]:
+			var d: Vector3 = (dir + cote * sens * 0.75 + Vector3.UP * 0.35).normalized()
+			var l := r * 0.6
+			if essence == SAULE and role > COURONNE:
+				# Le saule retombe.
+				d = (dir * 0.5 + cote * sens * 0.4 + Vector3.DOWN).normalized()
+				l = r * 1.3
+			t.branche(milieu, milieu + d * l, 0.065, 0.015, -role, pied, 3, 0.6, 1.0)
 
 
 ## Les tableaux d'une surface d'arbre. CUSTOM0 = centre du lobe et son rôle,
@@ -832,6 +879,7 @@ class _Volume:
 	var i := PackedInt32Array()
 	var cotes := 8
 	var satellites := 9
+	var lobes := []    # [centre, rayon, rôle] : d'où partent les branches
 
 	## Huit méridiens, deux anneaux : silhouette ronde à petit budget. Le
 	## dégradé bas → haut fait le volume : sans lui, une sphère sous une
@@ -840,6 +888,7 @@ class _Volume:
 			role: float, etire := 1.0) -> void:
 		if role >= SATELLITE + float(satellites):
 			return
+		lobes.append([centre, rayon, role])
 		var s := SphereMesh.new()
 		s.radius = rayon
 		s.height = rayon * 1.85
@@ -880,6 +929,39 @@ class _Volume:
 		var b := Basis(Vector3.UP, cap) * Basis(Vector3(0.0, 0.0, 1.0), inclinaison)
 		fondre(cy, Transform3D(b, pied + b * Vector3(0.0, hauteur * 0.5, 0.0)),
 			pied.y, pied.y + hauteur, 0.58, 1.16, pied, FIXE)
+
+	## 🌳 Une branche de `pied` à `bout`, sans chapeau. CUSTOM0 = (`ancre`, −rôle) :
+	## repliée, elle rentre dans le tronc. COLOR.a va de `le_long.x` à `.y`, la
+	## part du déplacement du satellite qu'elle suit.
+	func branche(pied: Vector3, bout: Vector3, r0: float, r1: float, role: float,
+			ancre: Vector3, cotes_b := 4, de := 0.0, a := 1.0) -> void:
+		var axe := bout - pied
+		var l := axe.length()
+		var cy := CylinderMesh.new()
+		cy.bottom_radius = r0
+		cy.top_radius = r1
+		cy.height = l
+		cy.radial_segments = cotes_b
+		cy.rings = 0
+		cy.cap_bottom = false
+		cy.cap_top = false
+		var tr := Transform3D(Basis(Quaternion(Vector3.UP, axe / l)), pied + axe * 0.5)
+		var arr := cy.surface_get_arrays(0)
+		var pv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var pn: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		var pi: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+		var base := v.size()
+		for k in pv.size():
+			var p: Vector3 = tr * pv[k]
+			v.append(p)
+			n.append((tr.basis * pn[k]).normalized())
+			c.append(Color(1.0, 1.0, 1.0, lerpf(de, a, clampf((p - pied).dot(axe) / (l * l), 0.0, 1.0))))
+			x.append(ancre.x)
+			x.append(ancre.y)
+			x.append(ancre.z)
+			x.append(role)
+		for k in pi.size():
+			i.append(base + pi[k])
 
 	## Verse une primitive transformée, avec son dégradé vertical en couleur
 	## de sommet.

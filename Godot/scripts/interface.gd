@@ -321,6 +321,7 @@ class Pictos extends Control:
 
 
 var ville: Ville
+var saison      # `saison.gd` : la température du mois tirée pour la partie
 var trafic
 var ouverture
 var retours := preload("res://scripts/retours.gd").new()
@@ -4394,8 +4395,9 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		for cle in _barre_valeurs:
 			if cle != "temperature":
 				(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
-		(_barre_valeurs["temperature"] as Label).text = "%s °C" % _nb(Calendrier.temperature(mois), 0)
-		_thermo_pic.texture = _thermometre(Calendrier.temperature(mois), 22, Color8(176, 92, 64))
+		var degres: float = saison.temperature(mois) if saison != null else Calendrier.temperature(mois)
+		(_barre_valeurs["temperature"] as Label).text = "%s °C" % _nb(degres, 0)
+		_thermo_pic.texture = _thermometre(degres, 22, Color8(176, 92, 64))
 		if VITRE:
 			(_barre_valeurs["caisse"] as Label).get_parent().tooltip_text = "Caisse : %s" \
 				% _ville_valeurs["recette"].text

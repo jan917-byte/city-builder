@@ -40,3 +40,23 @@ eau_limon={
 "type": "float",
 "value": 1.0
 }
+saison_mois={
+"type": "float",
+"value": 6.5
+}
+saison_decalage={
+"type": "vec2",
+"value": Vector2(0, 0)
+}
+saison_neige={
+"type": "float",
+"value": 0.0
+}
+saison_neige_altitude={
+"type": "float",
+"value": 100000.0
+}
+saison_secheresse={
+"type": "float",
+"value": 0.0
+}
