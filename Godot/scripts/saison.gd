@@ -9,26 +9,28 @@ const Calendrier := preload("res://scripts/calendrier.gd")
 const RECHAUFFEMENT_C_AN := 0.06      # ≈ +1,2 °C en vingt ans : l'hiver d'Europe centrale se réchauffe vite
 const ECART_SAISON_C := 1.3           # une saison douce ou rude, ses trois mois ensemble
 const ECART_MOIS_C := 0.9
-## Un mois à 3 °C de moyenne a une chance sur deux de neiger, une sur quatre de
-## neiger deux fois. `essai_saison` sur 400 parties : 3,3 semaines blanches par
-## hiver des ans 1 à 5, 1,9 des ans 16 à 20 ; un hiver sur quatre sans neige, puis presque un sur deux.
-const NEIGE_MI_C := 3.0
-const NEIGE_PENTE_C := 0.6
-const TOMBE_MOIS := 0.03              # un jour
-const FONTE_MOIS := 0.13              # quatre jours
+## Une neige par hiver, pas une météo (auteur, 2026-10-10) : elle arrive sur une
+## douzaine de jours, collines d'abord, et fond par le bas. Sa tenue suit la
+## douceur de l'hiver ; `essai_saison` sur 400 parties en donne les semaines.
+const NEIGE_MI_C := 3.0               # la moyenne normale de décembre à février
+const TENUE_MOIS := 0.35              # dix jours toute blanche dans un hiver normal
+const TENUE_PAR_C := 0.8              # trois semaines de plus par degré plus froid
+const ARRIVEE_MOIS := 0.4             # douze jours des sommets aux jardins
+const FONTE_MOIS := 0.33              # dix jours
+const BAS_M := 40.0                   # la ligne des collines y descend ; la vallée plate suit `neige`
 ## Les montagnes blanchissent là où le mois passe sous +1 °C, à 6,5 °C par km ;
 ## le manteau suit avec dix jours de retard. Les reliefs visibles plafonnent vers
 ## 250 m (plus haut, c'est la brume du bord) : à 0 °C, ils ne blanchissaient jamais.
 const MANTEAU_C := 1.0
 const GRADIENT_C_M := 0.0065
 const RETARD_MANTEAU_MOIS := 0.3
-const FOND_M := 120.0                 # plus bas, la vallée ne blanchit que par ses épisodes
+const FOND_M := 120.0                 # plus bas, la vallée ne blanchit que par la neige de l'hiver
 const PHENO_MOIS_C := 5.0 / 30.0      # le printemps avance de cinq jours par degré
 const MOIS_TABLE := 300               # 25 ans : l'horizon et sa marge
 
 var graine: int
 var _ecart := PackedFloat32Array()    # écart du mois m à sa normale, à l'indice m + 2
-var _episodes: Array = []             # [début, fin, force], triés par début
+var _neiges: Array = []               # [début, fin de la tenue], une par hiver, de l'an 1
 
 
 func _init(g: int) -> void:
@@ -43,21 +45,14 @@ func _init(g: int) -> void:
 			var hiver := posmod(bloc, 4) == 0
 			saisons[bloc] = rng.randfn(0.0, ECART_SAISON_C * (1.2 if hiver else 1.0))
 		_ecart.append(float(saisons[bloc]) + rng.randfn(0.0, ECART_MOIS_C))
-	# 🔴 La partie s'ouvre sur la crue, sans neige : rien avant le deuxième mois.
-	for m in range(1, MOIS_TABLE):
-		var moy := posmod(Calendrier.MOIS_DEPART + m, 12)
-		if not moy in [10, 11, 0, 1, 2]:
-			continue
-		var t := temperature_mois(m)
-		var p := 1.0 / (1.0 + exp((t - NEIGE_MI_C) / NEIGE_PENTE_C))
-		for seuil in [p, p * p]:
-			if rng.randf() >= seuil:
-				continue
-			var debut := float(m) + rng.randf() * 0.9
-			var duree := lerpf(0.07, 0.30, rng.randf()) \
-				* clampf(1.0 + 0.3 * (NEIGE_MI_C - t), 0.4, 1.6)
-			_episodes.append([debut, debut + duree, lerpf(0.45, 1.0, rng.randf())])
-	_episodes.sort_custom(func(a, b): return a[0] < b[0])
+	# 🔴 La partie s'ouvre sur la crue, sans neige : la première tombe en décembre.
+	for an in range(1, int(MOIS_TABLE / 12.0)):
+		var decembre := 12 * an - 3
+		var t := (temperature_mois(decembre) + temperature_mois(decembre + 1)
+			+ temperature_mois(decembre + 2)) / 3.0
+		var debut := decembre + 0.3 + rng.randf() * 1.5     # du 10 décembre au 25 janvier
+		var tenue := clampf(TENUE_MOIS + TENUE_PAR_C * (NEIGE_MI_C - t), 0.05, 1.5)
+		_neiges.append([debut, debut + ARRIVEE_MOIS + tenue])
 
 
 ## Le mois entier `m` (0 = mars de l'an 1) : normale, tendance, écart tiré.
@@ -74,24 +69,42 @@ func temperature(t: float) -> float:
 	return lerpf(temperature_mois(m), temperature_mois(m + 1), x - m)
 
 
-## Le manteau de la vallée, 0 à 1 : il tombe en un jour et fond en quatre.
+## Où en est la neige de l'hiver : 0 avant, 1 toute posée, retour à 0 en fondant.
+func avancee(t: float) -> float:
+	for e in _neiges:
+		if t < e[0]:
+			return 0.0
+		if t < e[1] + FONTE_MOIS:
+			return minf(clampf((t - e[0]) / ARRIVEE_MOIS, 0.0, 1.0),
+				1.0 - clampf((t - e[1]) / FONTE_MOIS, 0.0, 1.0))
+	return 0.0
+
+
+## Le manteau de la vallée, 0 à 1 : il suit les collines et part avant elles.
 func neige(t: float) -> float:
-	var n := 0.0
-	for e in _episodes:
-		if e[0] > t:
-			break
-		if t > e[1] + FONTE_MOIS:
-			continue
-		var monte := clampf((t - e[0]) / TOMBE_MOIS, 0.0, 1.0)
-		var reste := 1.0 - clampf((t - e[1]) / FONTE_MOIS, 0.0, 1.0)
-		n = maxf(n, float(e[2]) * monte * reste)
-	return n
+	return smoothstep(0.35, 1.0, avancee(t))
 
 
-## Au-dessus de cette hauteur (m sur le fond de vallée), les montagnes sont blanches.
-func ligne_de_neige(t: float) -> float:
+## La ligne des collines que le froid du mois tient blanches, hors de la neige de l'hiver.
+func ligne_collines(t: float) -> float:
 	var c := temperature(t - RETARD_MANTEAU_MOIS)
 	return maxf((c - MANTEAU_C) / GRADIENT_C_M, FOND_M)
+
+
+## Au-dessus de cette hauteur (m sur le fond de vallée), les collines sont blanches.
+func ligne_de_neige(t: float) -> float:
+	return lerpf(ligne_collines(t), BAS_M, smoothstep(0.0, 0.5, avancee(t)))
+
+
+## Les flocons, 0 à 1 : ils tombent pendant que la neige arrive, pas après.
+func flocons(t: float) -> float:
+	for e in _neiges:
+		var x := t - float(e[0])
+		if x < -0.03:
+			return 0.0
+		if x < ARRIVEE_MOIS + 0.05:
+			return smoothstep(-0.03, 0.03, x) * (1.0 - smoothstep(ARRIVEE_MOIS - 0.05, ARRIVEE_MOIS + 0.05, x))
+	return 0.0
 
 
 ## Le décalage de l'année de `t`, en mois : printemps (< 0 = en avance), automne (> 0 = en retard).
@@ -127,15 +140,6 @@ func poser(t: float) -> void:
 	RenderingServer.global_shader_parameter_set("saison_secheresse", secheresse(t))
 
 
-## Les épisodes de neige de l'hiver qui commence en novembre de l'an `an`.
-func episodes_hiver(an: int) -> Array:
-	var debut := 12 * (an - 1) - Calendrier.MOIS_DEPART + 10
-	return _episodes.filter(func(e): return e[0] >= debut and e[0] < debut + 5)
-
-
-## Le mois `t` d'un épisode bien blanc de l'hiver de l'an `an`, ou −1 : pour les captures.
-func milieu_d_un_episode(an: int, force_min := 0.75) -> float:
-	for e in episodes_hiver(an):
-		if float(e[2]) >= force_min:
-			return (float(e[0]) + float(e[1])) * 0.5
-	return -1.0
+## La neige de l'hiver qui commence en décembre de l'an `an` : [début, fin de la tenue].
+func neige_hiver(an: int) -> Array:
+	return _neiges[clampi(an - 1, 0, _neiges.size() - 1)]

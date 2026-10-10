@@ -28,6 +28,7 @@ func capturer() -> void:
 		jeu.ouverture._reperes.hide()
 	jeu.set_process(false)
 	jeu.paysage.mat_nuages.set_shader_parameter("horloge", 0.0)
+	(jeu.flocons.material as ShaderMaterial).set_shader_parameter("horloge", 3.0)
 	var s := Saison.new(graine)
 	jeu.changer_saison(s)
 	await process_frame
@@ -36,7 +37,11 @@ func capturer() -> void:
 		a[6] = -1.0
 	jeu._arbres_compte = -1
 
-	var neige := s.milieu_d_un_episode(1)
+	# La neige de l'an 1, en trois temps : collines, toits, toute posée.
+	var e: Array = s.neige_hiver(1)
+	var arrivee := float(e[0]) + Saison.ARRIVEE_MOIS * 0.35
+	var toits := float(e[0]) + Saison.ARRIVEE_MOIS * 0.6
+	var neige := (float(e[0]) + Saison.ARRIVEE_MOIS + float(e[1])) * 0.5
 	var janvier_1 := _janvier_sans_neige(s, 1)
 	var janvier_18 := _janvier_sans_neige(s, 18)
 	# [nom, mois, légende]
@@ -46,7 +51,9 @@ func capturer() -> void:
 		["3_juillet", 4.5, "juillet"],
 		["4_octobre", 7.75, "fin octobre"],
 		["5_novembre", 8.85, "fin novembre"],
-		["6_neige", neige, "un épisode de neige, an 1"],
+		["6_arrivee", arrivee, "la neige arrive"],
+		["7_toits", toits, "les toits d'abord"],
+		["8_neige", neige, "la neige de l'an 1"],
 	]
 	var vues := [
 		["rue", ["i", 22], 170.0, 30.0, 38.0],
@@ -56,16 +63,17 @@ func capturer() -> void:
 		for d in dates:
 			await _vue(v, d[1])
 			await jeu._capturer("saisons_%s_%s" % [v[0], d[0]])
-	for d in [["a_juillet", 4.5], ["b_janvier_an1", janvier_1], ["c_janvier_an18", janvier_18]]:
+	for d in [["a_juillet", 4.5], ["b_janvier_an1", janvier_1], ["c_janvier_an18", janvier_18],
+			["d_arrivee", arrivee], ["e_toits", toits]]:
 		await _vue(["vallee", Vector2.ZERO, 1100.0, 30.0, 32.0], d[1])
 		await jeu._capturer("saisons_vallee_%s" % d[0])
 		# Les collines de l'ouest, les plus hautes qu'on voie avant la brume du bord.
 		await _vue(["collines", Vector2(-1050.0, -450.0), 800.0, 30.0, 28.0], d[1])
 		await jeu._capturer("saisons_collines_%s" % d[0])
-	print("Saisons : graine %d, neige au mois %.2f, janviers sans neige aux mois %.2f et %.2f"
-		% [graine, neige, janvier_1, janvier_18])
-	print("  ligne de neige des montagnes : %.0f m en janvier de l'an 1, %.0f m en janvier de l'an 18"
-		% [s.ligne_de_neige(janvier_1), s.ligne_de_neige(janvier_18)])
+	print("Saisons : graine %d, neige de l'an 1 du mois %.2f au mois %.2f, janviers sans neige aux mois %.2f et %.2f"
+		% [graine, e[0], e[1], janvier_1, janvier_18])
+	print("  ligne de neige des collines : %.0f m en janvier de l'an 1, %.0f m en janvier de l'an 18"
+		% [s.ligne_collines(janvier_1), s.ligne_collines(janvier_18)])
 	quit()
 
 
@@ -84,11 +92,11 @@ func _vue(v: Array, mois: float) -> void:
 		await RenderingServer.frame_post_draw
 
 
-## Un jour de janvier de l'an `an` où la vallée est sans neige : on y lit les montagnes seules.
+## Le jour sans neige de l'hiver de l'an `an` le plus proche de la mi-janvier : on y lit les collines seules.
 func _janvier_sans_neige(s, an: int) -> float:
-	var debut := 12.0 * an - 2.0
-	for k in 30:
-		var t := debut + 0.15 + k * 0.025
-		if s.neige(t) == 0.0:
-			return t
-	return debut + 0.5
+	var janvier := 12.0 * an - 1.5
+	for k in 60:
+		for t in [janvier - k * 0.025, janvier + k * 0.025]:
+			if s.avancee(t) == 0.0:
+				return t
+	return janvier

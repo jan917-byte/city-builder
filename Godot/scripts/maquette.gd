@@ -120,6 +120,8 @@ var pivot: CameraAxo
 var ville: Ville
 ## ❄️ La météo de la partie, tirée au hasard à chaque partie (auteur, 2026-10-10).
 var saison: Saison
+## Les flocons de la chute, sous l'interface ; cachés en vue diagnostic.
+var flocons: ColorRect
 var selection: Selection
 var interface: Interface
 var moniteur_performances: MoniteurPerformances
@@ -220,6 +222,7 @@ func _ready() -> void:
 	ville = Ville.new()
 	ville.charger(donnees)
 	saison = Saison.new(randi())
+	_creer_flocons()
 	_empreinte_carte = FileAccess.get_sha256(Donnees.CHEMIN)
 	# 🪟 Des DONNÉES, pas d'une constante recopiée : c'est ce qui aligne les
 	# rangées de fenêtres sur les planchers que 07 a empilés.
@@ -2242,6 +2245,9 @@ func _rafraichir(force: bool) -> void:
 	_peint_ms = ms
 	RenderingServer.global_shader_parameter_set("eau_limon", Ville.limon_eau(mois))
 	saison.poser(mois)
+	var f := saison.flocons(mois)
+	flocons.visible = f > 0.0
+	(flocons.material as ShaderMaterial).set_shader_parameter("intensite", f)
 	_montrer_reparations()
 	_montrer_arbres()
 	_montrer_rives()
@@ -2514,6 +2520,7 @@ func _calibrer_echelle() -> void:
 ## les deux rives disparaissent et le thème « dangers » n'a plus de sujet —
 ## mais ils passent au gris, comme le carton du reste.
 func _habiller_monde(diagnostic: bool) -> void:
+	(flocons.get_parent() as CanvasLayer).visible = not diagnostic
 	if paysage != null:
 		paysage.visible = not diagnostic
 	trafic.visible = not diagnostic
@@ -3241,6 +3248,21 @@ func _sur_vitesse(nouvelle: float) -> void:
 	trafic.en_pause = nouvelle == 0.0
 	if nouvelle > 0.0:
 		_derniere_vitesse = nouvelle
+
+
+func _creer_flocons() -> void:
+	var calque := CanvasLayer.new()
+	calque.name = "Flocons"
+	calque.layer = 0
+	add_child(calque)
+	flocons = ColorRect.new()
+	flocons.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flocons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flocons.visible = false
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/flocons.gdshader")
+	flocons.material = m
+	calque.add_child(flocons)
 
 
 ## Les outils de capture en posent une à graine fixe, pour deux images égales.

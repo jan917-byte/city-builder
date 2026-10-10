@@ -2,8 +2,8 @@
 // matériaux, aucun objet de plus.
 global uniform float saison_mois;            // 0 = 1er janvier, continu
 global uniform vec2 saison_decalage;         // printemps, automne, en mois (< 0 = en avance)
-global uniform float saison_neige;           // manteau de la vallée, 0 à 1
-global uniform float saison_neige_altitude;  // m : au-dessus, les montagnes sont blanches
+global uniform float saison_neige;           // la vallée plate, 0 à 1 : toits d'abord, sol ensuite
+global uniform float saison_neige_altitude;  // m : au-dessus, les collines sont blanches
 global uniform float saison_secheresse;      // herbe jaunie de fin d'été, 0 à 1
 
 // 🔴 Flaggable (90) : couleurs provisoires choisies par Claude, que l'auteur
@@ -30,7 +30,12 @@ float saison_bruit(vec2 p) {
 // La pente se règle chez l'appelant.
 float neige_manteau(vec3 p) {
 	float ligne = saison_neige_altitude + (saison_bruit(p.xz * 0.02) - 0.5) * 70.0;
-	float n = max(saison_neige, smoothstep(ligne - 30.0, ligne + 30.0, p.y));
+	float n = smoothstep(ligne - 30.0, ligne + 30.0, p.y);
+	// La vallée est plate : la neige y descend des toits et des couronnes au
+	// sol, par pans de quelques centaines de mètres, jamais partout d'un coup.
+	float v = saison_neige * 1.7 - 0.5 * (1.0 - clamp(p.y / 15.0, 0.0, 1.0))
+		- 0.3 * saison_bruit(p.xz * 0.004);
+	n = max(n, clamp(v, 0.0, 1.0));
 	if (n <= 0.001) return 0.0;
 	float b = saison_bruit(p.xz * 0.13) * 0.65 + saison_bruit(p.xz * 0.8) * 0.35;
 	return clamp((n * 1.35 - b * 0.95) * 6.0, 0.0, 1.0);

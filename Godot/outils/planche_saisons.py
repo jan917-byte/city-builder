@@ -9,16 +9,20 @@ tuiles = [
     ("saisons_rue_3_juillet", "juillet"),
     ("saisons_rue_4_octobre", "fin octobre : l'automne"),
     ("saisons_rue_5_novembre", "fin novembre : arbres nus"),
-    ("saisons_rue_6_neige", "décembre : un épisode de neige"),
     ("saisons_pavillons_2_avril", "mi-avril : fruitiers en fleurs"),
     ("saisons_pavillons_4_octobre", "fin octobre, de plus près"),
-    ("saisons_pavillons_6_neige", "la neige, de plus près"),
     ("saisons_collines_a_juillet", "les collines en juillet"),
-    ("saisons_collines_b_janvier_an1", "janvier de l'an 1 : sommets blancs"),
-    ("saisons_collines_c_janvier_an18", "janvier de l'an 18 : plus de neige"),
+    ("saisons_vallee_d_arrivee", "la neige arrive : les collines"),
+    ("saisons_vallee_e_toits", "puis les toits et les arbres"),
+    ("saisons_rue_7_toits", "les toits, de plus près"),
+    ("saisons_rue_8_neige", "toute posée : une fois par hiver"),
+    ("saisons_pavillons_6_arrivee", "les flocons, pendant la chute"),
+    ("saisons_pavillons_8_neige", "la neige, de plus près"),
+    ("saisons_collines_b_janvier_an1", "début décembre de l'an 1, avant la neige"),
+    ("saisons_collines_c_janvier_an18", "hiver de l'an 18, hors neige : collines vertes"),
 ]
 W, H = 640, 400
-COL = 3
+COL = 4
 MARGE = 12
 TITRE = 40
 lignes = (len(tuiles) + COL - 1) // COL
