@@ -3245,7 +3245,7 @@ func _sur_reset() -> void:
 
 func _sur_vitesse(nouvelle: float) -> void:
 	vitesse = nouvelle
-	trafic.en_pause = nouvelle == 0.0
+	trafic.regler_vitesse(nouvelle)
 	if nouvelle > 0.0:
 		_derniere_vitesse = nouvelle
 

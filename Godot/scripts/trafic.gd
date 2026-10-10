@@ -185,9 +185,13 @@ var _arc_vu := PackedInt32Array()       # l'arc écrit dans le MultiMesh
 ## L'horloge partagée avec le GPU (`Constructeur.HORLOGE`) : sans elle, le CPU
 ## ne sait pas où le shader a posé la voiture.
 var _temps_trafic := 0.0
-## Posé par la maquette avec la vitesse : l'horloge s'arrête, et avec elle
+## Posés par la maquette avec la vitesse (`regler_vitesse`) : l'horloge s'arrête, et avec elle
 ## voitures, piétons et vélos. `--essai` ne passe pas par là et roule toujours.
 var en_pause := false
+## 🏃 ×2 anime à ×1,5 et ×4 à ×2 (auteur, 2026-10-10) : on doit sentir le temps
+## filer, pas voir des voitures à 120 km/h. Le courant de l'Ilse suit.
+const ALLURE_ANIMEE := {2.0: 1.5, 4.0: 2.0}
+var cadence := 1.0
 var _indispo_courant := {}
 var _long_fid := {}
 const PAS_COURBE := 96
@@ -1588,11 +1592,16 @@ func _ecrire(k: int, a: Dictionary) -> void:
 	_arc_vu[k] = e
 
 
+func regler_vitesse(vitesse: float) -> void:
+	en_pause = vitesse == 0.0
+	cadence = float(ALLURE_ANIMEE.get(vitesse, sqrt(maxf(vitesse, 1.0))))
+
+
 ## Le retard d'une image traverse autant d'arcs que nécessaire, sans perdre de temps.
 func _process(delta: float) -> void:
 	if en_pause:
 		return
-	_temps_trafic += delta
+	_temps_trafic += delta * cadence
 	RenderingServer.global_shader_parameter_set(Constructeur.HORLOGE,
 		_temps_trafic)
 	for k in _arrivee.size():

@@ -743,3 +743,6 @@ Arbitrages de l'auteur : réchauffement mondial, météo tirée par partie et sa
 **2026-10-10 — La neige devient une saison : une seule par hiver, qui arrive en douze jours des collines aux toits puis aux jardins, fond par le bas, avec de légers flocons pendant la chute.**
 Demande de l'auteur après essai (« presque trop réaliste », trois neiges dans un hiver, tout blanchit d'un coup) ; la ville étant plate, « du haut vers le bas » = collines, puis toits et couronnes, puis le sol par grands pans ; flocons en couche d'écran, flaggables (90).
 400 parties : 3,3 → 2,3 semaines par hiver (ans 1-5 → 16-20), chaque hiver neigeux, 1,2 à 7 semaines ; essai saison 0 échec, partie de contrôle sans erreur ; on perd l'hiver sans neige comme signe du réchauffement.
+**2026-10-10 — Le temps accéléré se voit : à ×2 voitures, piétons, vélos et courant de l'Ilse vont 1,5 fois plus vite, à ×4 deux fois.**
+Demande de l'auteur (« un feedback visuel du temps qui passe ») ; proportionnel refusé par lui, ×4 aurait mis les voitures à 120 km/h ; feuillage, nuages et flocons restent au temps réel. Ralentir aux virages et aux passages (B1) attend son feu vert, l'arrêt réel (B2) toucherait la décision 62.
+Banc ×2 7,04 → 7,19 ms/image, ×4 7,08 → 7,18 : dans le bruit.
