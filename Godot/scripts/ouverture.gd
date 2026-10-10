@@ -732,6 +732,9 @@ func voir_trafic() -> void:
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
 		if premiere_fois:
+			# La fiche du dernier camp restait à côté de la liste des ponts (partie jouée, 2026-10-10).
+			jeu.interface._fermer_fiche()
+			jeu.selection.sel_fid = -1
 			jeu._repere("ville")
 	actualiser(true)
 

@@ -323,9 +323,8 @@ func _ready() -> void:
 	moniteur_performances = MoniteurPerformances.new()
 	moniteur_performances.name = "MoniteurPerformances"
 	add_child(moniteur_performances)
-	# Les captures jugent la ville, pas l'ordinateur qui les prend.
-	moniteur_performances.batir(not ("--essai" in OS.get_cmdline_user_args()
-		or "--interface" in OS.get_cmdline_user_args()))
+	# Fermé au départ : ouvert, il cachait les annonces du haut (partie jouée, 2026-10-10). F3 l'ouvre.
+	moniteur_performances.batir(false)
 
 	_batir_contour()
 	var arguments := OS.get_cmdline_user_args()
