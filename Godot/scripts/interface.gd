@@ -332,6 +332,8 @@ var _debut: Button
 var apercu: Texture2D
 ## 🏛️ Façon → la miniature de sa carte au concours, rendue par la maquette.
 var apercus_projets := {}
+## 🎓 Vignette du campus → sa figurine rendue (`maquette.VIGNETTES_CAMPUS`).
+var apercus_campus := {}
 var themes := []     # `maquette.THEMES`, passée : pas d'import croisé
 var rampe := []      # `maquette.RAMPE`, en sRGB
 var rampe_eau := []  # `maquette.RAMPE_EAU`, en sRGB
@@ -3006,6 +3008,11 @@ const LIEUX := {
 const LIEUX_ORDRE := ["mairie", "universite", "bibliotheque", "institut"]
 const CAMPUS := ["universite", "bibliotheque", "institut"]
 const CAMPUS_TAILLE := Vector2(880, 560)
+## 🎓 Ce que chaque recherche montre, et chaque partie de l'étude (auteur, 2026-10-11 :
+## « un aperçu du rendu, genre maison sur pilotis »).
+const VIGNETTE_RECHERCHE := {"pilotis": "pilotis", "rendement": "solaire", "pose": "solaire",
+	"sedum": "vert"}
+const VIGNETTES_ETUDE := ["ruine", "eponge", "pilotis"]
 ## 🎓🏛️ Sujets de recherche et subventions arriveront plus tard (auteur, 2026-10-02) :
 ## l'institut ne montre que les pilotis (`Recherche.SUJETS_OUVERTURE`). Les essais le rouvrent.
 var financements_ouverts := false
@@ -3120,15 +3127,15 @@ func _panneau_lieu() -> void:
 	parties.add_theme_constant_override("separation", 16)
 	_etude_bloc.add_child(parties)
 	_etude_voir = _partie_etude(parties, "dangers", "Où l'eau montera",
-		"La carte de la prochaine crue.", "Voir l'étude dans Dangers", voir_prochaine_crue)
+		"La carte de la prochaine crue.", "Voir l'étude dans Dangers", voir_prochaine_crue, "ruine")
 	_etude_biblio = _partie_etude(parties, "bibliotheque", "Retenir l'eau",
 		"La ville-éponge : berges, sols, toits, prés.", "Lire à la bibliothèque",
-		ouvrir_lieu.bind("bibliotheque", "eponge"))
+		ouvrir_lieu.bind("bibliotheque", "eponge"), "eponge")
 	# 🟡 Elle clignote tant que la page n'est pas lue (`_maj_lieu`).
 	_anneau_appel(_etude_biblio, 9)
 	# Les pilotis, une recherche parmi d'autres (auteur, 2026-10-09).
 	_etude_institut = _partie_etude(parties, "institut", "S'adapter à la montée des eaux",
-		"Les recherches de l'institut, dont les pilotis.", "Voir à l'institut", ouvrir_lieu.bind("institut", ""))
+		"Les recherches de l'institut, dont les pilotis.", "Voir à l'institut", ouvrir_lieu.bind("institut", ""), "pilotis")
 	# Les leviers attendent ici, hors de vue, que la page de la bibliothèque les prenne.
 	_leviers_reserve = VBoxContainer.new()
 	_leviers_reserve.visible = false
@@ -3155,7 +3162,7 @@ func _panneau_lieu() -> void:
 			if String(Recherche.SUJETS[cle]["domaine"]) == d[0]:
 				_lieu_lignes[cle] = _ligne_lieu(col, "recherche",
 					String(Recherche.SUJETS[cle]["nom"]),
-					String(Recherche.SUJETS[cle]["quoi"]))
+					String(Recherche.SUJETS[cle]["quoi"]), VIGNETTE_RECHERCHE[cle])
 		if col.get_child_count() == 1:
 			titre.modulate.a = 0.45
 
@@ -3199,12 +3206,25 @@ func _panneau_lieu() -> void:
 
 
 ## Une ligne de menu : ce que c'est, ce que ça fait, où ça en est, et LE bouton.
+## 🎓 Une recherche est une carte, sa vignette en tête, comme au concours.
 func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
-		quoi: String) -> Dictionary:
+		quoi: String, vignette := "") -> Dictionary:
 	var bloc := VBoxContainer.new()
 	bloc.add_theme_constant_override("separation", 3)
-	parent.add_child(bloc)
-	bloc.add_child(HSeparator.new())
+	var tenue: Control = bloc
+	if vignette != "":
+		var carte := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = FOND_FORT
+		sb.set_corner_radius_all(_r(9))
+		sb.set_content_margin_all(8)
+		carte.add_theme_stylebox_override("panel", sb)
+		carte.add_child(bloc)
+		tenue = carte
+		bloc.add_child(_vignette(vignette))
+	else:
+		bloc.add_child(HSeparator.new())
+	parent.add_child(tenue)
 	bloc.add_child(_label(nom, 14, TEXTE))
 	var l_quoi := _label(quoi, 11, GRIS)
 	l_quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -3222,21 +3242,37 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	_habiller_principal(b)
 	b.focus_mode = Control.FOCUS_NONE
 	bloc.add_child(b)
-	return {"bloc": bloc, "genre": genre, "etat": etat, "jauge": jauge, "bouton": b}
+	return {"bloc": tenue, "genre": genre, "etat": etat, "jauge": jauge, "bouton": b}
 
 
-## Une des trois parties de l'étude : l'icône du lieu où l'on va, un titre, un fait, le bouton.
+## 🎓 La miniature d'une vignette du campus, rendue par la maquette.
+func _vignette(cle: String) -> TextureRect:
+	var vue := TextureRect.new()
+	vue.texture = apercus_campus.get(cle)
+	vue.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vue.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	vue.custom_minimum_size = Vector2(0, Apercu.TAILLE_CAMPUS.y * 0.9)
+	vue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return vue
+
+
+## Une des trois parties de l'étude : ce qu'elle montre, l'icône du lieu où l'on va, un titre, un fait, le bouton.
 func _partie_etude(parent: HBoxContainer, icone: String, titre: String, fait: String,
-		voir: String, action: Callable) -> Button:
+		voir: String, action: Callable, vignette: String) -> Button:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(col)
+	col.add_child(_vignette(vignette))
+	# L'icône dit le lieu où le bouton mène, à côté du titre.
+	var tete := HBoxContainer.new()
+	tete.add_theme_constant_override("separation", 6)
+	col.add_child(tete)
 	var pic := TextureRect.new()
-	pic.texture = _icone(icone, 28, TEXTE)
-	pic.stretch_mode = TextureRect.STRETCH_KEEP
-	col.add_child(pic)
-	col.add_child(_label(titre, 14, TEXTE))
+	pic.texture = _icone(icone, 18, TEXTE)
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	tete.add_child(pic)
+	tete.add_child(_label(titre, 14, TEXTE))
 	var l := _label(fait, 12, GRIS)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(l)
@@ -3593,7 +3629,7 @@ func _maj_lieu() -> void:
 		anneau.modulate.a = _pouls()
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
-		var bloc: VBoxContainer = l["bloc"]
+		var bloc: Control = l["bloc"]
 		var recherche: bool = String(l["genre"]) == "recherche"
 		bloc.visible = _lieu_ouvert == "institut" if recherche \
 			else (_lieu_ouvert == "mairie" and financements_ouverts)

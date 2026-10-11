@@ -41,6 +41,7 @@ const TravauxVisuels := preload("res://scripts/travaux_visuels.gd")
 const Camp := preload("res://scripts/camp.gd")
 const Pastilles := preload("res://scripts/pastilles.gd")
 const Apercu := preload("res://scripts/apercu.gd")
+const Figurines := preload("res://scripts/figurines.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Echantillon := preload("res://scripts/echantillon.gd")
 const Sauvegarde := preload("res://scripts/sauvegarde.gd")
@@ -157,6 +158,8 @@ var _apercu_provisoire := false
 ## 🏛️ Une miniature par carte du concours (104), éteintes tant que l'écran est fermé.
 var apercus_projets := {}
 var _projets_fid := -1
+## 🎓 Les vignettes du campus, un objet seul chacune, rendues une fois (auteur, 2026-10-11).
+const VIGNETTES_CAMPUS := ["ruine", "eponge", "pilotis", "solaire", "vert"]
 var _couloirs := {}
 var _plaques := {}
 var _berges_contour := {}
@@ -275,6 +278,14 @@ func _ready() -> void:
 		add_child(a)
 		a.batir(mat_objet, donnees["palette"], Apercu.TAILLE_PROJET)
 		apercus_projets[f] = a
+	var vignettes := {}
+	for k in VIGNETTES_CAMPUS:
+		var a := Apercu.new()
+		a.name = "Campus_" + k
+		add_child(a)
+		a.batir(mat_objet, donnees["palette"], Apercu.TAILLE_CAMPUS)
+		a.figurine(Figurines.fabriquer(k))
+		vignettes[k] = a.get_texture()
 
 	interface = Interface.new()
 	interface.name = "Interface"
@@ -290,6 +301,7 @@ func _ready() -> void:
 	interface.apercu = apercu.get_texture()
 	for f in apercus_projets:
 		interface.apercus_projets[f] = (apercus_projets[f] as Apercu).get_texture()
+	interface.apercus_campus = vignettes
 	# Passées plutôt que preloadées : `interface.gd` importerait `maquette.gd`,
 	# qui l'importe déjà.
 	interface.themes = THEMES

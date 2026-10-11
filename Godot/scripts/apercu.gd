@@ -23,6 +23,8 @@ const Echantillon := preload("res://scripts/echantillon.gd")
 const TAILLE := Vector2i(296, 168)
 ## 🏛️ Une carte du concours (104) : 218 px moins ses deux marges de 10 px.
 const TAILLE_PROJET := Vector2i(198, 104)
+## 🎓 Une vignette du campus : la colonne d'une partie de l'étude, ~270 px.
+const TAILLE_CAMPUS := Vector2i(264, 150)
 var _taille := TAILLE
 ## 🔴 RENDUE TROIS FOIS PLUS GRANDE, puis réduite par la fiche. Les fenêtres et
 ## les rangs de tuiles sont des motifs qui s'effacent sous ~1,5 px : à 296 px de
@@ -232,6 +234,32 @@ func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ruine: Mesh = null, agricole :
 	render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_semer_points()
 	_cadrer()
+
+
+## 🎓 UNE FIGURINE DU CAMPUS (`figurines.gd`) : un objet seul, rendu une fois,
+## vu toujours du même côté. La vignette ne change pas avec la ville.
+func figurine(n: Node3D) -> void:
+	add_child(n)
+	_points = PackedVector3Array()
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		var b := _aabb_local(n, mi as MeshInstance3D)
+		for k in 8:
+			_points.append(b.get_endpoint(k))
+	# Lacet 45° : la caméra du côté +X +Z, celui que `figurines.gd` habille.
+	_cap = 0.0
+	_lacet = 45.0
+	_vise = true
+	_cadrer()
+	render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+static func _aabb_local(racine: Node3D, mi: MeshInstance3D) -> AABB:
+	var t := mi.transform
+	var p := mi.get_parent()
+	while p != null and p != racine:
+		t = (p as Node3D).transform * t
+		p = p.get_parent()
+	return t * mi.mesh.get_aabb()
 
 
 ## 🧩 UNE RUE, UNE BERGE : le morceau droit. `voie_m` n'est lu que pour une
