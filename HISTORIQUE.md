@@ -752,3 +752,6 @@ Prête 6,2 → 12,6 s ; GPU 5,6 → 8,9 ms : la carte suit ; temps qui court 148
 **2026-10-10 — L'export vers Godot passe en deux fichiers : `wehrau.json` (données) et `wehrau.bin` (sommets, compressés, au format de Godot).**
 Revue d'architecture demandée par l'auteur : la carte de 77 Mo, lue d'un bloc, ne passerait pas à Vallmar. Mêmes nombres envoyés à la carte graphique (21 maillages et 487 tranches comparés valeur par valeur), 21 essais Godot inchangés, dont 5 qui échouaient déjà (capital, énergie, livre, sauvegarde, travaux).
 Carte 77 → 9,3 Mo ; prête 6,3-7,5 → 3,8 s ; mémoire 1 032 → 298 Mio. Les sauvegardes d'avant sont refusées une fois (empreinte de carte changée).
+**2026-10-11 — `ETAT.md` redevient un signet : 43 lignes et 29,6 Ko → 37 lignes et ~6 Ko, une idée par ligne, chacune pointe vers sa note.**
+Demande de l'auteur : le fichier dépassait son plafond et racontait les sessions 81 à 99 au lieu de pointer.
+Le récit des sessions est déjà ici et dans les notes d'étape ; ce qui n'existait que dans `ETAT.md` (barre à 5 niveaux, arbitrages à consigner, polices, toit partagé, dessin à compléter) y reste en une ligne.
