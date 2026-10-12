@@ -758,3 +758,6 @@ Godot avait disparu du Bureau : 4.7.1 retéléchargé depuis GitHub (somme SHA-5
 **2026-10-12 — Le dézoom maximal passe de 2 400 à 1 600 m : au plus loin, on voit tous les champs, pas au-delà.**
 Demande de l'auteur. Les champs font 1 268 × 1 473 m ; à 32° ils tiennent entiers à l'écran (1600×900) dès 1 574 m quel que soit le lacet (de 957 m dans le meilleur sens).
 `essai_camera` lit désormais les limites dans la caméra : 0 échec.
+**2026-10-12 — Son : conversation seule, aucun fichier du jeu touché. Banc d'écoute en ligne : https://claude.ai/artifact/UZj1ZpBFWaoHus9KFfPPhu**
+Sept moments (clic, ouvrir, fermer, cran, engager, livré, refus) + curseur dont la hauteur monte, packs Kenney CC0 provisoires ; les choix de l'auteur s'y enregistrent. Remplaçables par des objets réels traités dans Ableton (pas d'IA générative, décision 90).
+Reste : note « Son » au vault (indicateur an 1 bruyant → an 20 apaisé, ou ambiance ? qui fait la musique ?) ; branchement Godot seulement après la fermeture de l'étape 6. Pack « Stylized Nature MegaKit » sorti du dépôt, sur le Bureau du Mac.
