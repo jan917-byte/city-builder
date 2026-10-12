@@ -755,3 +755,6 @@ Carte 77 → 9,3 Mo ; prête 6,3-7,5 → 3,8 s ; mémoire 1 032 → 298 Mio. Les
 **2026-10-11 — Les fiches du campus portent une figurine : une par recherche de l'institut, une par partie de l'étude.**
 Demande de l'auteur (« un aperçu du rendu, genre maison sur pilotis »). Essayé d'abord l'îlot réel de la ville en gros plan : refusé, « une seule maison où on voit bien les pilotis, juste un panneau, sans spoiler ». D'où `figurines.gd`, des objets seuls en primitives, rendus une fois au lancement.
 Godot avait disparu du Bureau : 4.7.1 retéléchargé depuis GitHub (somme SHA-512 vérifiée), même build. `essai_sauvegarde` échoue (92) avant comme après le changement.
+**2026-10-12 — Le dézoom maximal passe de 2 400 à 1 600 m : au plus loin, on voit tous les champs, pas au-delà.**
+Demande de l'auteur. Les champs font 1 268 × 1 473 m ; à 32° ils tiennent entiers à l'écran (1600×900) dès 1 574 m quel que soit le lacet (de 957 m dans le meilleur sens).
+`essai_camera` lit désormais les limites dans la caméra : 0 échec.

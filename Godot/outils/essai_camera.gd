@@ -141,7 +141,7 @@ func executer() -> void:
 	pivot._notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_OUT)
 	mouvement(centre + Vector2(80, 0), Vector2(80, 0), false)
 	verifier(not pivot._appui and pivot.position.is_equal_approx(arret), "La perte de focus laisse la carte accrochée")
-	for limite in [40.0, 2400.0]:
+	for limite in [pivot.TAILLE_MIN, pivot.TAILLE_MAX]:
 		pivot.viser(Vector2.ZERO, limite)
 		bouton(centre, true, false, MOUSE_BUTTON_WHEEL_UP if limite == 40 else MOUSE_BUTTON_WHEEL_DOWN)
 		stabiliser()

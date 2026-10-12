@@ -27,7 +27,8 @@ const HAUTEUR_MAX := 90.0      # à pic
 ## L'angle vertical. Au-delà (55° essayé), le premier plan se déforme.
 const FOV := 35.0
 const TAILLE_MIN := 40.0
-const TAILLE_MAX := 2400.0
+## Tous les champs (1 268 × 1 473 m) tiennent à 32°, quel que soit le lacet, dès 1 574 m (auteur, 2026-10-12).
+const TAILLE_MAX := 1600.0
 
 const CRAN_LACET := 15.0
 const CRAN_HAUTEUR := 8.0
