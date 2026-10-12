@@ -758,3 +758,6 @@ Godot avait disparu du Bureau : 4.7.1 retéléchargé depuis GitHub (somme SHA-5
 **2026-10-12 — Le dézoom maximal passe de 2 400 à 1 600 m : au plus loin, on voit tous les champs, pas au-delà.**
 Demande de l'auteur. Les champs font 1 268 × 1 473 m ; à 32° ils tiennent entiers à l'écran (1600×900) dès 1 574 m quel que soit le lacet (de 957 m dans le meilleur sens).
 `essai_camera` lit désormais les limites dans la caméra : 0 échec.
+**2026-10-12 — Le pack d'arbres Stylized Nature MegaKit (Quaternius) est essayé contre nos arbres, et écarté (106).**
+Demande de l'auteur, qui aimait ses arbres et y voyait une façon d'éviter le flaggable (90). Captures côte à côte rendues par un script jetable, hors dépôt (pack chargé à l'exécution).
+De près le pack gagne ; à l'échelle de la ville, points sombres et forêt clairsemée : « nos arbres donnent mieux ».
