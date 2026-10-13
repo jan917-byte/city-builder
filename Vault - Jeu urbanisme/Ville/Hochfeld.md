@@ -1,12 +1,14 @@
 ---
 tags: [quartier, vallmar]
 ville: Vallmar
-habitants: 20000
+habitants: à fixer au tracé de Vallmar (77)
 ---
 
 # Hochfeld
 
-**Pavillonnaire sur le coteau. 20 000 habitants. Deux voitures par ménage.**
+**Pavillonnaire sur le coteau. Deux voitures par ménage.**
+
+> Les 20 000 habitants d'origine dataient de la Vallmar à 112 000 ; elle en fait ~25 000 depuis la décision 77. Le chiffre se refixe au tracé.
 
 À l'abri de l'inondation et au frais.
 

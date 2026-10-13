@@ -1,7 +1,7 @@
 ---
 tags: [vision, risques]
 statut: vivant
-maj: 2026-08-12 (le piège « vibe-coder le noyau » avait été retiré le 2026-08-11 — 40b)
+maj: 2026-10-12
 ---
 
 # Pièges connus
@@ -34,9 +34,11 @@ Liste des façons identifiées de rater ce projet. À relire avant chaque décis
 
 ## Production
 
-**🪤 Sauter le mois 1.** L'erreur la plus commune et la plus chère. Un mauvais système de décisions codé en Godot coûte trois semaines à corriger ; dans un classeur, une soirée.
+**🪤 Garder une idée parce qu'elle est codée.** Écrire du code est devenu bon marché ; le jeter doit l'être aussi. Une mécanique qui ne fait hésiter personne se retire, avec une trace — pas un réglage de plus pour la sauver.
 
-**🪤 Attaquer Godot pour le système de décisions.** Tant que la question ouverte est *quelles décisions et quels effets*, la traiter dans un outil où changer d'avis est gratuit. Sinon on garde de mauvaises idées juste parce qu'on les a codées.
+**🪤 La 3D qui mange le calendrier** (risque 52). Chaque amélioration se voit, donc elle avance toujours. Deux garde-fous : *« si je devais en faire 200, est-ce que je tiendrais ? »*, et **une seule étape ouverte à la fois**, qui se ferme quand son critère est vu à l'écran.
+
+**🪤 Le vault qui fait la loi.** Une décision écrite en août n'a pas plus de poids qu'une observation faite hier devant la maquette. Quand le jeu contredit une note, c'est la note qui se corrige (109) — sinon on défend un plan au lieu de faire un jeu.
 
 **🪤 Équilibrer trop tôt.** Les nombres du prototype sont provisoires et faux, c'est normal. On cherche la **forme** des décisions, pas leur valeur.
 

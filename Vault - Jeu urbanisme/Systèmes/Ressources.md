@@ -22,7 +22,7 @@ Finance les décisions.
 
 Ce que ça récupère : **les charges d'entretien du réseau**, soit la raison structurelle de préférer la ville compacte à l'étalement — un enseignement du métier intégré à la boucle, pour deux lignes.
 
-⚠️ **Ce que ça rouvre** : le piège de l'exponentielle. Densifier rapporte. La contrepartie est dans la même formule — plus de logements, plus de réseau à entretenir — mais elle demande d'être **calibrée**, pas seulement écrite. **Contrôle nommé** : *une stratégie de densification pure ne doit pas s'autofinancer.* À vérifier dans le classeur, une soirée. → [[Pièges connus]]
+⚠️ **Ce que ça rouvre** : le piège de l'exponentielle. Densifier rapporte. La contrepartie est dans la même formule — plus de logements, plus de réseau à entretenir — mais elle demande d'être **calibrée**, pas seulement écrite. **Contrôle nommé** : *une stratégie de densification pure ne doit pas s'autofinancer.* Le contrôle tourne dans la maquette depuis le 2026-09-03, mais sur les seuls logements neufs → dette de `Prototype/00 - Prototype.md`. → [[Pièges connus]]
 
 #### ✅ Et un multiplicateur qu'on ne maîtrise pas : l'état de l'économie
 

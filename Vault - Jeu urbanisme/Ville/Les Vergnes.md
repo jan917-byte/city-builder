@@ -1,12 +1,14 @@
 ---
 tags: [quartier, vallmar]
 ville: Vallmar
-habitants: 14000
+habitants: à fixer au tracé de Vallmar (77)
 ---
 
 # Les Vergnes
 
-**Grand ensemble des années 60. 14 000 habitants. En aval de la rivière.**
+**Grand ensemble des années 60. En aval de la rivière.**
+
+> Les 14 000 habitants d'origine dataient de la Vallmar à 112 000 ; elle en fait ~25 000 depuis la décision 77. Le chiffre se refixe au tracé.
 
 C'est lui qui prend l'eau.
 

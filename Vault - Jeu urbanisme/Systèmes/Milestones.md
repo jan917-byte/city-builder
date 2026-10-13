@@ -54,7 +54,7 @@ Proposition, **non arrêtée** : un milestone devrait se reconnaître sur **une 
 
 **Zéro carbone est le but affiché du jeu** (décision 9) et le moins photogénique de tous. ~~Piste : le garder comme **compteur permanent** plutôt que comme jalon à débloquer. À trancher.~~
 
-✅ **Tranché le 2026-08-12 : le CO2 est un des sept [[Indicateurs globaux]] permanents.** Il reste donc lisible tout du long sans avoir à être photogénique — ce que le tableau ci-dessus lui reprochait. → [[Décisions arrêtées]] 54 · 56
+✅ **Tranché le 2026-08-12 : le CO2 est un des sept [[Indicateurs globaux]] permanents** (depuis 91, il coiffe les six thèmes)**.** Il reste donc lisible tout du long sans avoir à être photogénique — ce que le tableau ci-dessus lui reprochait. → [[Décisions arrêtées]] 54 · 56
 
 ## 🎯 Le milestone est le bout d'une barre
 

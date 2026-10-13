@@ -5,7 +5,7 @@ extends RefCounted
 # l'argent, l'isolation de la légitimité. N'en jouer qu'une ne marche pas.
 #
 # La machinerie ne parle d'aucun thème : elle lit des clés et des noms de
-# champs (décision 64, « le prototype énergie est le gabarit »).
+# champs : un levier neuf est une table, pas du code ici.
 #
 # 🔴 L'ASYMÉTRIE, à ne pas perdre en route (`Classeur/README.md`) : le
 # BUDGET se paie étalé sur délai + travaux, le CAPITAL en entier au mois de la

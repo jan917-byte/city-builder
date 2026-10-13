@@ -57,4 +57,4 @@ Conséquence pratique : **ne jamais économiser sur la capsule, le trailer ou la
 - 🎬 Trailer Steam
 - 🖼️ Capsule art
 
-**Voir aussi** : [[Marketing et Steam]] · [[Plan 3 mois]]
+**Voir aussi** : [[Feuille de route]] · [[Marketing et Steam]] · [[Périmètre et coupes]]

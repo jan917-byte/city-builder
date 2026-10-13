@@ -112,7 +112,7 @@ Un îlot à 40 % de canopée ne détient pas 40 % de la canopée de la ville —
 
 Effet secondaire propre : `riverain_moy` ne comptait que les îlots habités — un cas particulier écrit à la main. Pondéré par la population, un îlot inhabité pèse zéro **tout seul**. La règle absorbe l'exception au lieu de la lister.
 
-☐ **À reprendre** : les trois moyennes de `partie.csv` sont encore simples, côté classeur **et** côté Godot. Le contrôle de recoupement des deux moteurs se refait après.
+☐ **À reprendre** : les trois moyennes sont encore simples dans Godot (le classeur n'est plus tenu à jour, 39c).
 
 ### Un indicateur vit sur l'entité qui porte sa donnée
 
@@ -211,8 +211,8 @@ Proposition : la sortir de la rangée et la poser **dessous, en travers, comme l
 - ☐ **Surchauffe et desserte n'ont pas de jalon.** Candidats : *« la ville n'est plus plus chaude que ses champs »* et *« tout le monde à moins de 300 m d'un arrêt »*. Tous deux passent le test de la capture sans interface → [[Milestones]]
 - ☐ **Trois valeurs à t0 manquent** : la ville exposée, le CO2, la desserte. Calculables sur les attributs existants.
 - ☐ **Le temps et les chantiers en cours** n'ont pas de place dans le bandeau, alors que c'est l'anti-spectateur → [[Chantiers et temps]]
-- ☐ **Comment le capital politique se regagne** n'a aucune forme à l'écran. Un nombre nu ne dit pas *« ça revient parce que ça s'est vu »* → [[Ressources]]
+- ✅ **Comment la confiance se regagne** : à la livraison, et le journal dit pourquoi (96) → [[Ressources]]
 - 🔴 **`stationnement` porte deux sens** — part de surface sur l'îlot, places sur rue sur le tronçon. À renommer avant que « l'emprise voiture » ait une formule.
-- ☐ **Trois moyennes à repondérer** dans le classeur et dans Godot (`canopee_moy`, `impermeabilise_moy`, `riverain_moy`), puis refaire le recoupement des deux moteurs.
+- ☐ **Trois moyennes à repondérer** dans Godot (`canopee_moy`, `impermeabilise_moy`, `riverain_moy`).
 
 **Voir aussi** : [[Diagnostic et calques]] · [[Ressources]] · [[Milestones]] · [[Pièges connus]] · [[Fins et pluralisme]]

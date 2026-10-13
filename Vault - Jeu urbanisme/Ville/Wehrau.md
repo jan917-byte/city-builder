@@ -7,7 +7,7 @@ habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 
 # Wehrau
 
-> 🎯 **C'est le périmètre du prototype.** Tout le mois 1 se joue ici.
+> 🎯 **C'est le périmètre du prototype.** Tout le prototype se joue ici.
 > **Wehrau n'est pas [[Vallmar]]** — c'est une autre ville, plus petite, qu'on voit **en entier**. Vallmar reste la ville visée pour le jeu complet ; on verra plus tard si ce centre y devient un quartier.
 
 **Une rivière : l'Ilse. Une petite ville qu'on tient tout entière dans un écran.**
@@ -29,7 +29,6 @@ habitants: 5350  # arrêté le 2026-08-11 → Décisions arrêtées 13d
 > est coupé par une nouvelle rue en **45 et 72**, deux fronts commerçants. La
 > catégorie qui ne servait qu'à cette galerie disparaît. → [[Décisions arrêtées]] 71
 
-C'est la sortie attendue de la semaine 1. → [[Plan 3 mois]]
 
 ## Les noms affichés
 
@@ -96,7 +95,7 @@ Ce que la carte porte, si on veut chiffrer l'événement :
 
 Ce n'est pas la ville industrielle sinistrée du brainstorm d'origine : c'est **le petit bout de ville d'en face**, celui qu'on pourrait décider de ne pas relever. Plus dur, et plus juste par rapport à ce que dit la géométrie — l'amont imperméabilise, l'aval encaisse.
 
-⚠️ **Ce qui reste à écrire** : quelles décisions le premier tour propose, et laquelle est « rendre à l'eau ». C'est le travail de la semaine 2. → [[Décisions]] · [[Plan 3 mois]]
+Ce que le joueur y fait depuis : reloger, rouvrir un pont, relever le faubourg — et choisir pour chaque îlot sinistré entre rebâtir et rendre à l'eau (95). → [[Premiers pas après la crue]]
 
 ## Le tissu
 
@@ -159,7 +158,7 @@ Le principe : *dur mais réparable*. Chaque plaie se répare par une décision *
 
 Et ce n'est pas qu'une affaire de position sur une ligne : **la vallée s'élargit vers l'aval**, donc à distance égale de l'eau on y est plus exposé. Aléa moyen 0,41 en amont, 0,51 en aval. L'injustice est dans le terrain, pas dans un coefficient. → [[Géométrie et données]]
 
-C'est le pilier « le lieu change le résultat », testable dès le mois 1. → [[Périmètre et coupes]]
+C'est le pilier « le lieu change le résultat ». → [[Périmètre et coupes]]
 
 ## Rapport à Vallmar
 

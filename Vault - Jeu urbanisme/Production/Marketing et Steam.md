@@ -35,11 +35,14 @@ Devlog · Reddit · Discord · **presse spécialisée urbanisme et climat** (c'e
 
 Publicité payante : **0 €**.
 
-## Nom — non décidé
+## Nom — *Desire Path*
 
 Candidats les plus forts :
-- **Unpave** — clarté commerciale
-- **Desire Lines** — profondeur conceptuelle
+✅ **Tranché par l'auteur le 2026-10-12** (111). Un *desire path* est le sentier que les gens tracent eux-mêmes hors des allées prévues : la ville qui se transforme selon l'usage, pas selon le plan. Le terme est connu des urbanistes et parle au grand public.
+
+*Écartés : **Unpave** (clarté commerciale), **Desire Lines** (même idée, moins courant en anglais).*
+
+⚠️ **Avant la page** : vérifier les marques et le nom de domaine. Le mot *Desire* seul remonte des jeux pour adultes dans les recherches ; c'est le titre entier, avec le visuel de la capsule, qui doit lever l'ambiguïté.
 
 ⚠️ Le cadrage « ville du quart d'heure » est à **éviter en communication** — associations avec les théories du complot.
 

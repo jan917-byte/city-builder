@@ -12,7 +12,7 @@ maj: 2026-08-25
 
 ## Ce que ça change vraiment
 
-**Sous le capot : rien.** Un tick par mois simulé. Ce qu'on abandonne, ce n'est pas la discrétisation, c'est **l'arrêt forcé**. Le classeur du mois 1 marche pareil : une ligne = un mois. Coût zéro sur le prototype.
+**Sous le capot : rien.** Un tick par mois simulé. Ce qu'on abandonne, ce n'est pas la discrétisation, c'est **l'arrêt forcé**. La maquette avance mois par mois, et la pause reste à un clic.
 
 ## Paramètres
 
@@ -33,10 +33,10 @@ maj: 2026-08-25
 - **La preview de la fiche est non négociable.** Tout réglage qui change un îlot ou un tronçon met immédiatement à jour la miniature de l'objet sélectionné ; elle montre l'état qui sera livré, avant validation comme pendant le chantier.
 - **La ville ne montre jamais le futur.** Avant la livraison, elle garde son état construit réel ; pendant les travaux, seul le signal de chantier partagé s'y ajoute. Le résultat apparaît dans la ville quand le chantier est fini.
 - **La miniature ne ment pas** : elle est produite par les mêmes paramètres et la même recette visuelle que l'objet livré, jamais par une vignette dessinée à part.
-- **Le délai est la variable centrale** du design en temps continu. Il doit être modélisé dès le classeur du mois 1, sinon on teste un jeu qui n'est pas le sien.
+- **Le délai est la variable centrale** du design en temps continu. Un prix sans délai teste un autre jeu que celui-ci : le pont provisoire contre le pont en dur (87) n'est un choix que parce qu'il gagne cinq mois.
 
 ## Plusieurs chantiers en vol
 
 Règle de rythme : **toujours 3 chantiers à des stades différents**. Une seule décision en cours = on attend. Trois décalées = on arbitre en continu.
 
-**Voir aussi** : [[Boucle de jeu]] · [[Décisions]] · [[Plan 3 mois]]
+**Voir aussi** : [[Boucle de jeu]] · [[Décisions]] · [[Premiers pas après la crue]]

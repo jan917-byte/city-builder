@@ -1,14 +1,14 @@
 ---
 tags: [système, moc, vue-d-ensemble]
 statut: vivant
-maj: 2026-08-12
+maj: 2026-10-12
 cssclasses:
   - large
 ---
 
 # Carte des systèmes
 
-> **Une seule page pour tenir l'ensemble en tête.** Trois schémas : la machine, les sept, les tensions.
+> **Une seule page pour tenir l'ensemble en tête.** Trois schémas : la machine, les thèmes, les tensions.
 > Ce n'est pas une source de vérité — chaque boîte renvoie à la note qui la tranche. Si un schéma contredit une note, **c'est la note qui a raison**.
 
 ---
@@ -37,7 +37,7 @@ flowchart TB
   subgraph RESS["💰 RESSOURCES · compteurs"]
     direction TB
     ARGENT["💶 ARGENT<br/>avoir · engagé · libre"]
-    CAPITAL["🗳️ CAPITAL POLITIQUE<br/>un chiffre"]
+    CAPITAL["🗳️ CONFIANCE<br/>un chiffre"]
     ARGENT <-.-> CAPITAL
   end
 
@@ -48,7 +48,7 @@ flowchart TB
   CAPITAL -->|"comptant"| DEC
   EFFET -->|"ça s'est vu"| CAPITAL
 
-  IND["📊 LES SEPT<br/>écart à t0"]
+  IND["📊 CO₂ + SIX THÈMES<br/>vers leur jalon"]
   MIL["🎯 MILESTONES"]
   VILLE ==> IND
   IND -->|"un chiffre, un calque"| DIAG
@@ -92,69 +92,55 @@ flowchart TB
 
 ---
 
-## 2. Les sept — un chiffre, un calque, un jalon
+## 2. Le CO₂ et six thèmes — un chiffre, un calque, un jalon
 
-La règle qui commande tout : **aucun chiffre global sans son calque.** Le chiffre dit *que* ça bouge, le calque dit *où*. Un indicateur dont on ne saurait pas dessiner la carte ne doit pas exister.
+La règle qui commande tout : **aucun chiffre global sans son calque** (53). Le chiffre dit *que* ça bouge, le calque dit *où*. Depuis 91, les indicateurs se rangent sous **six thèmes**, coiffés par le CO₂ ; chaque barre va de l'état de départ à son jalon.
 
 ```mermaid
 flowchart LR
 
-  subgraph CH["LE CHIFFRE"]
-    direction TB
-    C1["🌡️ Surchauffe"]
-    C2["💧 Ville exposée"]
-    C3["🚗 Emprise voiture"]
-    C4["🏠 Habitants d'origine"]
-    C5["🏭 CO2"]
-    C6["☀️ Toits qui produisent"]
-    C7["🚋 Ce qui est desservi"]
-  end
+  CO2["🏭 CO₂"] --> JCO2["zéro carbone"]
 
-  subgraph CA["SON CALQUE"]
+  subgraph TH["LE THÈME"]
     direction TB
-    L1["îlot de chaleur"]
-    L2["aléa + fil de l'eau"]
-    L3["stationnement + charge"]
-    L4["riverain"]
-    L5["trafic + chauffage"]
-    L6["potentiel solaire"]
-    L7["desserte TC"]
+    T1["⚡ Énergie"]
+    T2["🚗 Mobilité"]
+    T3["🌾 Agriculture"]
+    T4["🦋 Biodiversité"]
+    T5["🌊 Dangers naturels"]
+    T6["🏠 Habitants"]
   end
 
   subgraph JA["SON JALON"]
     direction TB
-    J1["❓ plus chaude<br/>que ses champs"]
-    J2["ville-éponge"]
-    J3["zéro voiture"]
-    J4["personne<br/>n'a été chassé"]
-    J5["zéro carbone"]
-    J6["autonome<br/>en énergie"]
-    J7["❓ tous à 300 m<br/>d'un arrêt"]
+    J1["autonome<br/>en énergie"]
+    J2["zéro voiture"]
+    J3["autonome<br/>en nourriture"]
+    J4["❓ à nommer"]
+    J5["ville-éponge"]
+    J6["personne<br/>n'a été chassé"]
   end
 
-  C1 --> L1 --> J1
-  C2 --> L2 --> J2
-  C3 --> L3 --> J3
-  C4 --> L4 --> J4
-  C5 --> L5 --> J5
-  C6 --> L6 --> J6
-  C7 --> L7 --> J7
+  T1 --> J1
+  T2 --> J2
+  T3 --> J3
+  T4 --> J4
+  T5 --> J5
+  T6 --> J6
 
-  classDef ch fill:#e4f3e9,stroke:#3f8f5f,color:#12301f;
-  classDef ca fill:#e6eefc,stroke:#3f6db5,color:#12213a;
+  classDef th fill:#e4f3e9,stroke:#3f8f5f,color:#12301f;
   classDef ja fill:#fdf0dc,stroke:#c98a2e,color:#3a2a10;
   classDef ouvert fill:#f4f4f4,stroke:#8a8a8a,color:#2a2a2a,stroke-dasharray: 4 3;
-  class C1,C2,C3,C4,C5,C6,C7 ch;
-  class L1,L2,L3,L4,L5,L6,L7 ca;
-  class J2,J3,J5,J6 ja;
-  class J1,J4,J7 ouvert;
+  class CO2,T1,T2,T3,T4,T5,T6 th;
+  class JCO2,J1,J2,J3,J5,J6 ja;
+  class J4 ouvert;
 ```
 
-En pointillés gris : les trois jalons **non tranchés**. Les valeurs à t0 sont dans [[Indicateurs globaux]] — trois manquent encore.
+En pointillés gris : le jalon **non tranché**. Ce que chaque thème range dessous est dans [[Indicateurs globaux]].
 
-**En contexte, pas en objectif** : la population, la densité, la date, et l'état de l'économie. On ne joue à faire monter aucun des quatre.
+**En contexte, pas en objectif** : la population, la date, la température et la saison. On ne joue à faire monter aucun des quatre.
 
-🏠 **« Habitants d'origine » part plein et ne peut que s'entamer.** Il ne se dessine pas comme les six autres : il se pose en travers, dessous, comme une ligne de prix. Tout ce qui se remplit en haut se paie là.
+🏠 **« Habitants d'origine » part plein et ne peut que s'entamer.** Tout ce qui se remplit ailleurs se paie là.
 
 → [[Indicateurs globaux]] · [[Diagnostic et calques]] · [[Milestones]]
 
@@ -198,9 +184,9 @@ Ce sont les endroits où le schéma dessine une flèche que le jeu ne sait pas e
 
 | Où | Ce qui manque |
 |---|---|
-| 🔴 `EFFET → CAPITAL` | **comment le capital se regagne n'a aucune forme à l'écran.** Un nombre nu ne dit pas *« ça revient parce que ça s'est vu »* — or c'est toute la mécanique de rythme → [[Ressources]] |
+| 🟢 `EFFET → CAPITAL` | la confiance se regagne à la livraison, et le journal dit pourquoi (96) |
 | ☐ `ECO → ARGENT` | la barre et le budget sont loin l'un de l'autre à l'écran : **rien ne dit au joueur que l'un commande l'autre** → [[Questions ouvertes]] n°21 |
-| 🟠 le bandeau | **onze nombres permanents** (7 + capital + 3 de budget), pour un seuil défendu à six. À trancher devant une maquette → [[Direction artistique]] |
+| 🟠 le bandeau | les thèmes sont tranchés (91) ; **les nombres du budget et la confiance** restent à placer → [[Questions ouvertes]] n°19 |
 | ☐ la boucle | **le temps et les chantiers en cours n'ont pas de place dans le bandeau**, alors que c'est l'anti-spectateur → [[Chantiers et temps]] |
 | ⚠️ hors carte | **[[Fins et pluralisme]]** n'apparaît pas ici, et c'est le symptôme : les trois archétypes tiennent encore sur un seul axe. Le deuxième axe manque |
 

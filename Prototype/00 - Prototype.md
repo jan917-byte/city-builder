@@ -20,8 +20,8 @@
 
 ## Ce qui commande le prototype
 
-- 🎯 **Une seule décision testée** (68), mais elle a un prix et un rendement qui dépendent du tissu (69) : le prototype teste le lien **local → global**, et « où investir ? ».
-- 🔗 **La 3D et l'énergie se rejoignent sur le toit** (41 · 56 · 64) : la 3D produit `toit_m2`, `toit_pente`, `toit_plat_m2` et l'ombrage ; l'énergie les lit sans savoir qui parle. 🔴 **L'énergie n'attend jamais la 3D** — le prototype reste jouable avec les toits estimés.
+- 🎯 **Le prototype part de l'ouverture après la crue** (107) : reloger, reconnecter, relever, protéger. Chaque levier a un prix et un rendement qui dépendent du lieu (69) → `Vault - Jeu urbanisme/Vision/Boucle de jeu.md`.
+- 🔗 **La 3D et l'énergie se rejoignent sur le toit** (41 · 56) : la 3D produit `toit_m2`, `toit_pente`, `toit_plat_m2` et l'ombrage ; l'énergie les lit sans savoir qui parle. 🔴 **L'énergie n'attend jamais la 3D** — le prototype reste jouable avec les toits estimés.
 - 🏘️ **Le prototype est Wehrau**, une ville entière qu'on voit en entier (13b · 13d) : elle a un amont et un aval, un quartier n'en a pas.
 - 🎨 **Townscaper pour le rendu** (42b), **Wehrau pastel au sol minéral** (42c) — le pastel étant celui des **murs** seulement depuis le 2026-08-18.
 - 🗺️ **La zone jouable reste plate**, hors chenal de l'Ilse (fond à −2,85 m, nappe à −2 m) et talus des 4 champs riverains. Le décor extérieur porte les montagnes de la vallée (demande de l'auteur, 2026-09-05) ; il ne change pas les altitudes de jeu.

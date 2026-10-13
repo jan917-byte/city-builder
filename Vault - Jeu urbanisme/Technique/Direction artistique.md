@@ -1,14 +1,12 @@
 ---
-tags: [technique, da, actif]
-statut: 🎯 phase active depuis le 2026-08-12 — référence Townscaper depuis le 2026-08-11
-maj: 2026-09-30
+tags: [technique, da]
+statut: arrêtée pour le prototype — référence Townscaper depuis le 2026-08-11
+maj: 2026-10-12
 ---
 
 # Direction artistique
 
-> 🔄 **Ce n'est plus une décision reportable.** Tant que la DA attendait le vertical slice, elle pouvait dormir. La phase actuelle est de **rendre [[Wehrau]] crédible et regardable à t0** — il faut donc un registre visuel maintenant, quitte à en changer.
->
-> 🎯 **Et depuis le 2026-08-12, ce n'est plus seulement un registre à choisir : c'est le travail en cours.** → [[Décisions arrêtées]] 51
+> Le registre visuel du prototype : choisi en août pour rendre [[Wehrau]] crédible et regardable, il porte depuis toute la maquette. Il reste un registre de travail, pas un verrou (42b).
 
 ## La direction retenue
 
@@ -80,8 +78,6 @@ C'est la règle générale du projet appliquée à la couleur : *aucun état vis
 > **Le brief est plus dur que celui de Stålberg** : rendre la banalité périurbaine sans la rendre laide ni cynique, et faire que l'après soit visiblement meilleur. Personne ne l'a résolu — c'est précisément le terrain.
 
 ## 🎯 Ce que « belle » veut dire ici — depuis le 2026-08-12
-
-La DA cesse d'être un registre à choisir pour devenir **le travail en cours**. → [[Décisions arrêtées]] 51 · [[Plan 3 mois]] phase A
 
 Le seuil n'est plus *« on doit sentir le lieu »* mais **« on doit avoir envie de la regarder, et croire qu'on y habite »**. Ce qui manque à la maquette, dans l'ordre où ça change l'image :
 

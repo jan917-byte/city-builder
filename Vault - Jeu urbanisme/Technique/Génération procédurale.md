@@ -1,12 +1,14 @@
 ---
-tags: [technique, procédural, 3d, actif]
-statut: ✅ parcelles et toits FAITS le 2026-08-12 — parcellaire refait au **peigne sur rue** le 2026-08-13 : 1 096 parcelles, 987 sur rue. Carte plate depuis le 2026-08-12.
-maj: 2026-08-13
+tags: [technique, procédural, 3d]
+statut: méthode en service — l'étape Parcelles est en pause (`Prototype/00 - Prototype.md`)
+maj: 2026-10-12
 ---
 
 # Génération procédurale
 
 C'est le **moteur de la beauté** du jeu, pas un raccourci. Le joueur écrit la structure, le système écrit le grain. → [[Vision et prémisses]]
+
+> 🗓️ **Les sections datées d'août racontent comment la méthode a été trouvée** — les références, les pièges, les choix. Leurs chiffres sont ceux du jour : la chaîne les remesure à chaque passage, et c'est elle qui fait foi.
 
 ## ✅ Ce qui est fait — le 2026-08-12
 
@@ -141,7 +143,7 @@ Corollaire à tenir dès la maquette de masses : **aucun état visuel n'est pos�
 | 4. Détail — toits, gabarits, matériau de sol | 🟡 | 🟡 **toits faits** (624 à deux pentes, le joint en toiture compris). Le matériau de sol reste à faire |
 | 5. Scatter au sol (arbres, mobilier) | 🟡 | 🟢 les arbres d'alignement poussent avec `canopee` |
 | 6. **Carrefours** | 🔴 ~~le plus dur de tous~~ | 🟡 **largement dissous par 32f** — plus de rubans à raccorder, un vide qui se referme |
-| 7. **Le trafic visible** | 🟡 | 🎯 en phase — **un flux, pas des agents** (62) |
+| 7. **Le trafic visible** | 🟡 | ✅ un flux et ses véhicules figurés, piétons compris (62) — l'étape Trafic est en pause, son critère reste à juger |
 
 ## ⚠️ La contrainte architecturale du projet
 
@@ -191,4 +193,4 @@ Arbres, voitures, voitures garées, mobilier : **une seule instance multiple par
 
 Le jeu porte sur la **transformation** : chaque élément a besoin d'**au moins deux états**. Donc la géométrie doit être **paramétrique**, pas modélisée à la main. C'est ce qui a disqualifié le pixel art. → [[Direction artistique]]
 
-**Voir aussi** : [[Moteur et architecture]] · [[Géométrie et données]] · [[Plan 3 mois]]
+**Voir aussi** : [[Moteur et architecture]] · [[Géométrie et données]] · [[Direction artistique]]

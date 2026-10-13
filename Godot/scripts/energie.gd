@@ -5,7 +5,7 @@ extends RefCounted
 # `ville.gd` casse au chargement, et un cycle RefCounted fuirait.
 # Aucun nœud, aucune couleur, aucun signal. Tout se dérive d'attributs existants
 # (décision 56) ; `toit_m2` et `canopee` sont lus sans savoir qui les fabrique
-# (décisions 41 · 64 · 64b).
+# (décision 41).
 #
 # 🌿 LE TOIT VERT EST ICI POUR SON PRIX ET SA SURFACE, PAS POUR SON ÉNERGIE : il
 # ne produit rien et n'isole rien dans ce prototype. Ce qu'il rachète — la crue
@@ -334,7 +334,7 @@ static func derive(v, fid: int, champ: String, t: float) -> float:
 		"_toit_vert_m2":
 			return toit_vert_m2(v, fid, t)
 		# Lus par NOM DE CHAMP par les chantiers, qui ignorent qu'ils parlent
-		# d'énergie — c'est ce qui les garde génériques (décision 64).
+		# d'énergie — c'est ce qui les garde génériques.
 		"_cout_x_solaire":
 			return ligne(v, fid)["cout_x"]
 		"_cout_x_isolation":

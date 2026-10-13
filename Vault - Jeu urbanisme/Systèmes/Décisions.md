@@ -16,7 +16,7 @@ Le cœur du jeu. Le joueur ne construit pas, il **décide**. → [[Vision et pr�
 
 L'échelle retenue pour le jeu est **la ville entière avec interventions par quartier**, articulée sur deux niveaux : **réseau** et **tissu**.
 
-## Anatomie d'une décision (schéma du classeur)
+## Anatomie d'une décision
 
 | Champ | Description |
 |---|---|

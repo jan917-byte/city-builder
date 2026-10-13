@@ -1,7 +1,7 @@
 ---
 tags: [production, périmètre]
-statut: tranché pour le prototype — ⚠️ le périmètre a grandi le 2026-08-12
-maj: 2026-09-02
+statut: tranché pour le prototype
+maj: 2026-10-12
 ---
 
 # Périmètre et coupes
@@ -39,22 +39,15 @@ La coupe est la même en coût — une carte d'un kilomètre carré, 69 polygone
 
 1. ~~Ville entière → un seul quartier~~ → **une petite ville entière** ✅ **fait**, et mieux que prévu
 2. **Abandonner l'importateur OSM générique** → une seule ville en dur ✅ *acquis, la carte est générée*
-3. **Caméra axonométrique fixe** au lieu d'une caméra libre ✅ *acquis* — élimine le LOD et la question des façades
-4. 🎯 **Kit de ~15 volumes paramétriques** au lieu d'une grammaire procédurale ouverte — **c'est la coupe à appliquer maintenant**, voir ci-dessous
+3. ~~**Caméra axonométrique fixe** au lieu d'une caméra libre~~ — **non appliquée** : la caméra est libre, façon Google Earth (83). Le LOD et les façades vues de près redeviennent des sujets
+4. **Kit fermé de volumes paramétriques** au lieu d'une grammaire procédurale ouverte — la consigne du générateur de bâtiments → [[Génération procédurale]]
 5. **Un seul axe de progression, 2–3 issues** → [[Fins et pluralisme]]
-6. **Un seul événement climatique scripté** au lieu d'un système d'événements
+6. **Un seul événement climatique scripté** au lieu d'un système d'événements — c'est ce que fait le prototype : une crue, la canicule plus tard (102)
 7. **Externaliser / licencier** l'audio et les assets marketing
 
-## ⚠️ Le périmètre a grandi le 2026-08-12
+## Ce qui est entré dans le périmètre depuis août
 
-La décision **51** fait entrer en phase ce qui en était explicitement exclu : la **subdivision de l'îlot en parcelles**, les toits, le trafic visible. C'est 2 à 4 semaines d'itération sur le seul point dur du pipeline. → [[Plan 3 mois]] · [[Génération procédurale]]
-
-Deux conséquences pour cette note :
-
-- **La coupe n°4 cesse d'être une réserve et devient la consigne.** Un kit fermé de volumes paramétriques, pas une grammaire ouverte : c'est ce qui borne la subdivision. Le garde-fou général est dans **52** — *si je devais en faire 200, est-ce que je tiendrais ?*
-- **« Style graphique » sort de la liste « peut attendre ».** Il était réversible tant qu'il dormait ; il est maintenant le travail en cours. → [[Direction artistique]]
-
-Et le pilier n°1 ci-dessous cesse d'être une intention : **les parcelles persistantes vont être écrites**, donc 35 se met à l'épreuve du code cette fois-ci.
+La subdivision en parcelles, les toits, le trafic visible (août) ; puis la crue d'ouverture jouée, l'université, la mairie, la campagne et ses champs, les saisons (septembre–octobre). Chaque entrée a été un choix de l'auteur, et le garde-fou reste le même : **une seule étape ouverte**, et la règle des 200 (52). → `Prototype/00 - Prototype.md`
 
 ## 🚫 Les deux piliers non négociables
 
@@ -66,6 +59,6 @@ Parcelles persistantes, avant/après visible. → [[Génération procédurale]]
 
 ## Ce qui peut attendre (réversible)
 
-~~Style graphique~~ *(c'est la phase active depuis le 2026-08-12)* · moteur · nom · modèle économique
+~~Style graphique~~ *(arrêté pour le prototype, 42b)* · nom · modèle économique
 
-**Voir aussi** : [[Décisions arrêtées]] · [[Wehrau]] · [[Plan 3 mois]]
+**Voir aussi** : [[Décisions arrêtées]] · [[Wehrau]] · [[Calendrier et budget]]

@@ -1173,13 +1173,13 @@ def main():
                 cours.append((fid, n_pl, n_box, len(fentes_cour) // 5,
                               int(d["stationnement"] or 0)))
 
-            # 🔗 L'INTERFACE DU TOIT — décisions 41 et 64.
+            # 🔗 L'INTERFACE DU TOIT — décision 41.
             # Un objet bâti expose quatre nombres : surface de toit, pente,
             # orientation, ombrage. Aujourd'hui c'est le générateur de
             # parcelles qui les produit ; avant lui, une table de coefficients
             # par `sous_type` en tenait lieu. 🔴 Le code d'énergie ne doit
             # jamais savoir lequel des deux parle — c'est ce qui fait que
-            # l'énergie n'attend pas la 3D (64b).
+            # l'énergie n'attend pas la 3D.
             #   `toit_m2` est la surface RÉELLE, pente comprise : un toit à
             #   45° porte 1,41 fois l'emprise qu'il couvre, et c'est cette
             #   surface-là qu'on couvrirait de panneaux. Elle est sommée

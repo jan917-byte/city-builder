@@ -1,7 +1,7 @@
 ---
 tags: [moc, brainstorming]
-statut: vivant
-maj: 2026-09-30
+statut: archive — les discussions brutes, rangées le 2026-10-12
+maj: 2026-10-12
 ---
 
 # 💭 Brainstorming
@@ -10,11 +10,13 @@ maj: 2026-09-30
 
 Je dépose les `.md` de conversation dans ce dossier tel quel, sans les nettoyer. Le tri se fait après, pas pendant.
 
+🗄️ **Rangé dans `Archives/` le 2026-10-12** (choix de l'auteur) : ce qui vaut est remonté dans [[Décisions arrêtées]], [[Questions ouvertes]] et les notes de système ; ce qui n'est pas remonté a été passé en revue ce jour-là. Les nouvelles discussions brutes se déposent ici aussi.
+
 ---
 
 ## 📥 Comment déposer une discussion
 
-1. Coller le `.md` dans `Brainstorming/`
+1. Coller le `.md` dans `Archives/Brainstorming/`
 2. Le renommer : `AAAA-MM-JJ — sujet en 3 mots.md`
 3. Ajouter l'en-tête du [[_Modèle discussion]] en haut (30 secondes, c'est ce qui rend le fichier retrouvable dans 6 mois)
 4. Le lister dans [Les discussions](#-les-discussions) ci-dessous

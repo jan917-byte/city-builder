@@ -1,10 +1,12 @@
 ---
-tags: [production, plan, actif]
-statut: 🔄 réordonné le 2026-08-12 — le prototype énergie devient la colonne vertébrale
-maj: 2026-08-12
+tags: [production, plan, archive]
+statut: archivé le 2026-10-12 — le plan d'août, dépassé
+maj: 2026-10-12
 ---
 
 # Plan 3 mois
+
+> 🗄️ **Archivé le 2026-10-12.** Le plan d'août, construit autour du prototype énergie (64, retirée par 107). Le jeu s'est construit ensuite depuis l'ouverture après la crue → [[Boucle de jeu]]. Où on en est : `ETAT.md` et `Prototype/00 - Prototype.md` ; où on va : [[Feuille de route]].
 
 > **Le principe qui gouverne tout** : tant que la question ouverte est *quelles décisions et quels effets*, la traiter dans un outil où **changer d'avis est gratuit**. Le classeur reste cet outil — il ne disparaît pas, il devient le banc d'essai. → [[Décisions arrêtées]] 39c
 

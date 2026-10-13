@@ -1,7 +1,7 @@
 ---
 tags: [système, ui, da]
 statut: arrêté
-maj: 2026-08-12
+maj: 2026-10-12
 ---
 
 # Diagnostic et calques
@@ -12,41 +12,25 @@ maj: 2026-08-12
 
 Cadeau caché : ces vues thématiques sont **belles**, elles sont mon métier, et elles règlent en partie le problème de style graphique. Une ville qui bascule en carte de chaleur, c'est un moment visuel fort et pas cher.
 
-## Architecture des calques
+## Les calques se rangent sous les thèmes
 
-Trois calques parents, avec sous-calques :
+🔄 **Depuis le 2026-09-29, les calques suivent les six thèmes** (91) — il n'y a plus trois calques parents (25, retirée). Chaque thème ouvre ses cartes, et le bandeau devient le sommaire du diagnostic.
 
-### 🌳 Vert / climat
-canopée · îlot de chaleur · perméabilité · biodiversité
-
-### 🚋 Mobilité
-axes · desserte TC · flux · accessibilité piétonne · stationnement
-
-### 👥 Social / économique
-densité · loyers · mixité · commerce · vulnérabilité
-
-### Candidats supplémentaires
-💧 eau / ruissellement · ⚡ énergie · ⏳ temps et phases de chantier
+| Le thème | Ses calques, dans la maquette ou à venir |
+|---|---|
+| 🏭 CO₂ | trafic · chauffage · carbone gris |
+| ⚡ Énergie | potentiel solaire · production · consommation |
+| 🚗 Mobilité | charge du trafic · rues coupées · stationnement · desserte |
+| 🌾 Agriculture | champs et cultures · ce qu'ils nourrissent |
+| 🦋 Biodiversité | berges · toits verts · arbres · haies et bois |
+| 🌊 Dangers naturels | **prochaine crue** (eau attendue îlot par îlot) · **dégâts** · sols (ce qui boit l'eau) · surchauffe |
+| 🏠 Habitants | relogement · logements · habitants d'origine |
 
 ## 🎯 Chaque calque est apparié à un chiffre — arrêté le 2026-08-12
 
 > **Aucun chiffre global sans son calque.** Le chiffre dit *que* ça bouge, le calque dit *où*.
 
-Ce que la règle change ici : les calques cessent d'être une bibliothèque qu'on consulte si on y pense. **Chacun des sept [[Indicateurs globaux]] est la porte d'entrée d'un calque**, donc le bandeau devient le sommaire du diagnostic.
-
-| L'indicateur | Ouvre le calque |
-|---|---|
-| 🌡️ Surchauffe | îlot de chaleur |
-| 💧 La ville exposée | aléa + fil de l'eau |
-| 🚗 L'emprise voiture | stationnement + charge |
-| 🏠 Les habitants d'origine | riverain |
-| 🏭 CO2 | trafic + chauffage |
-| ☀️ Les toits qui produisent | potentiel solaire |
-| 🚋 Ce qui est desservi | desserte TC |
-
 Sans cet appariement, un chiffre global est une **moyenne**, et une moyenne efface l'injustice géographique — planter au cœur ancien ou au Ried donnerait le même écart à l'écran. C'est aussi ce qui empêche le bandeau de devenir un tableau de bord qu'on optimise. → [[Décisions arrêtées]] 53 · [[Pièges connus]]
-
-**Ce que ça ajoute à la liste des calques ci-dessus** : le **potentiel solaire** et le **CO2 par îlot** sont neufs, et l'eau cesse d'être un « candidat supplémentaire » pour devenir un calque de premier rang — le jeu s'ouvre dessus.
 
 ### 🔗 Un calque n'illustre pas un indicateur, il **est** l'indicateur
 
