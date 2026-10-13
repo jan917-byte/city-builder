@@ -173,10 +173,6 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// ⚠ LINÉAIRE. #3A424B en sRGB : du verre qui reflète un ciel\n" \
 		+ "// couvert. Une vitre noire donne à la ville l'air bombardée.\n" \
 		+ "const vec3 VITRE = vec3(0.042, 0.055, 0.070);\n" \
-		+ "// ⚠ LINÉAIRE. #D2CFC9 en sRGB : le carton d'une maquette\n" \
-		+ "// d'architecte. Assez clair pour que les quatre signaux\n" \
-		+ "// saturés ressortent, assez gris pour ne pas brûler au soleil.\n" \
-		+ "const vec3 PAPIER = vec3(0.624, 0.605, 0.560);\n" \
 		+ "// Teintes de rive en espace linéaire.\n" \
 		+ "const vec3 RIVE_VERTE = vec3(0.112, 0.230, 0.105);\n" \
 		+ "const vec3 RIVE_SABLE = vec3(0.620, 0.548, 0.398);\n" \
@@ -807,27 +803,36 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// seul le thème est en couleur, donc tout thème est lisible.\n" \
 		+ "\t// Les quatre signaux s'excluent — un thème remplit un seul.\n" \
 		+ "\tif (maquette_blanche > 0.5) {\n" \
-		+ "\t\tbase = (crue_vue > 0 ? CRUE_PAPIER : PAPIER) * COLOR.a;\n" \
-		+ "\t\t// Dangers : la maquette sans cheminées ni débris. La souche se\n" \
+		+ "\t\t// 🔄 Le papier blanc des dangers, sur toutes les cartes (auteur, 2026-10-12).\n" \
+		+ "\t\tbase = CRUE_PAPIER * COLOR.a;\n" \
+		+ "\t\t// La maquette sans cheminées ni débris. La souche se\n" \
 		+ "\t\t// reconnaît à sa teinte, PAL.CHEMINEE #7B6659 en linéaire : « sans UV\n" \
 		+ "\t\t// au-dessus de 3,2 m » effaçait aussi les granges des fermes.\n" \
 		+ "\t\tbool souche = dot(UV, UV) < 0.01 && distance(COLOR.rgb, vec3(0.198, 0.133, 0.100)) < 0.01;\n" \
-		+ "\t\tif (crue_vue > 0 && (debris || souche)) discard;\n" \
+		+ "\t\tif (debris || souche) discard;\n" \
 		+ "\t\trugosite = 1.0;\n" \
-		+ "\t\t// Le calque continu : énergie, trafic, tissu. Opacité pleine,\n" \
-		+ "\t\t// il n'y a plus de matière sous lui à ménager.\n" \
-		+ "\t\tif (calque.a > 0.0 && diagnostic_sol < 2.5) {\n" \
+		+ "\t\t// Bâti = mur (UV.y = longueur de façade) ou toit (UV unitaire) au-dessus\n" \
+		+ "\t\t// d'1 m : la place-parking porte aussi un axe dans UV, à plat.\n" \
+		+ "\t\tbool mur = abs(normale_monde.y) < 0.30 && UV.y > 1.05;\n" \
+		+ "\t\tbool toit = dot(UV, UV) > 0.25 && pos_monde.y > 1.0;\n" \
+		+ "\t\t// Le calque continu : énergie, trafic, champs. Opacité pleine,\n" \
+		+ "\t\t// il n'y a plus de matière sous lui à ménager. 4 = le bâti seul.\n" \
+		+ "\t\tif (calque.a > 0.0 && (diagnostic_sol < 2.5 || (diagnostic_sol > 3.5 && diagnostic_sol < 4.5 && (mur || toit)))) {\n" \
 		+ "\t\t\tbase = mix(base, calque.rgb * COLOR.a, calque.a);\n" \
 		+ "\t\t}\n" \
 		+ "\t\t// 💧 3 = LA CARTE DES SOLS (101) : le calque prend le sol, un toit\n" \
 		+ "\t\t// nu est en dur, un toit vert boit, les murs restent du papier.\n" \
+		+ "\t\t// 5 = la même, au mètre (îlots de ville) : ce que la ville vivante peint\n" \
+		+ "\t\t// en vert boit, le reste (cours, places) prend le calque, gris en dur.\n" \
 		+ "\t\t// ⚠ Les deux teintes sont aussi dans `maquette.SOLS_*`, en sRGB.\n" \
-		+ "\t\tif (diagnostic_sol > 2.5) {\n" \
-		+ "\t\t\tbool toit = vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5;\n" \
-		+ "\t\t\tif (toit) {\n" \
-		+ "\t\t\t\tbase = mix(vec3(0.162, 0.162, 0.181), vec3(0.107, 0.352, 0.107), toit_vert_ici) * COLOR.a;\n" \
+		+ "\t\tif ((diagnostic_sol > 2.5 && diagnostic_sol < 3.5) || diagnostic_sol > 4.5) {\n" \
+		+ "\t\t\tvec3 boit = vec3(0.127, 0.552, 0.141);\n" \
+		+ "\t\t\tif (vers_le_ciel > 0.55 && pos_monde.y > 1.0 && length(UV) > 0.5) {\n" \
+		+ "\t\t\t\tbase = mix(vec3(0.552, 0.552, 0.591), boit, toit_vert_ici) * COLOR.a;\n" \
 		+ "\t\t\t} else if (vers_le_ciel > 0.55 && calque.a > 0.0) {\n" \
-		+ "\t\t\t\tbase = calque.rgb * COLOR.a;\n" \
+		+ "\t\t\t\tvec3 brut_sol = COLOR.rgb / max(COLOR.a, 0.05);\n" \
+		+ "\t\t\t\tbool vert = diagnostic_sol > 4.5 && brut_sol.g - max(brut_sol.r, brut_sol.b) > 0.03;\n" \
+		+ "\t\t\t\tbase = (vert ? boit : calque.rgb) * COLOR.a;\n" \
 		+ "\t\t\t}\n" \
 		+ "\t\t}\n" \
 		+ "\t\t// Dangers (crue.gdshaderinc) : le sol prend l'eau au mètre près, le\n" \
@@ -839,10 +844,6 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat fw_eau = fwidth(h_eau);\n" \
 		+ "\t\tif (crue_vue > 0 && diagnostic_sol > 0.5 && diagnostic_sol < 2.5) {\n" \
 		+ "\t\t\t// 2,60 = SEUIL_RUINE de `04e`, le plafond du rez.\n" \
-		+ "\t\t\t// Bâti = mur (UV.y = longueur de façade) ou toit (UV unitaire) au-dessus\n" \
-		+ "\t\t\t// d'1 m : la place-parking porte aussi un axe dans UV, à plat.\n" \
-		+ "\t\t\tbool mur = abs(normale_monde.y) < 0.30 && UV.y > 1.05;\n" \
-		+ "\t\t\tbool toit = dot(UV, UV) > 0.25 && pos_monde.y > 1.0;\n" \
 		+ "\t\t\tif (diagnostic_bati < 0.5 || (ruine < 0.5 && !mur && !toit)) {\n" \
 		+ "\t\t\t\tvec4 eau = crue_sol(h_eau, fw_eau);\n" \
 		+ "\t\t\t\tbase = mix(base, eau.rgb * COLOR.a, eau.a);\n" \

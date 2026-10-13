@@ -761,6 +761,9 @@ Demande de l'auteur. Les champs font 1 268 × 1 473 m ; à 32° ils tiennent ent
 **2026-10-12 — Le pack d'arbres Stylized Nature MegaKit (Quaternius) est essayé contre nos arbres, et écarté (106).**
 Demande de l'auteur, qui aimait ses arbres et y voyait une façon d'éviter le flaggable (90). Captures côte à côte rendues par un script jetable, hors dépôt (pack chargé à l'exécution).
 De près le pack gagne ; à l'échelle de la ville, points sombres et forêt clairsemée : « nos arbres donnent mieux ».
+**2026-10-12 — Ponts plus courts d'un mois, le jaune du campus passe par Dangers, et tout s'ouvre au pont rouvert (provisoire).**
+Demande de l'auteur après une partie : provisoire 3 → 2 mois, dur 8 → 7 (87) ; sur la carte, la tuile Université s'allume pour y revenir (un bouton écrit, écarté : la carte reste nue) ; le guide dit pourquoi rouvrir un pont (texte flaggable) ; 105 suspendue (`tout_ouvert`).
+Essais ouverture, étude, déblaiement, rebâtir, progression, caméra à 0 échec ; livre (1), capital (2), travaux (1), sauvegarde (92) échouaient déjà avant.
 **2026-10-12 — Le vault est remis à jour sur le jeu tel qu'il se joue : registre court, questions ouvertes seules, Boucle de jeu réécrite, Archives/.**
 Demande de l'auteur (« tu t'y fies trop »). Tranché par lui : 107 retire le prototype énergie (64 à 68), 108 reporte la traduction, 109 réserve 🔒 à ce qui change la nature du jeu. Brainstorms, Plan 3 mois et versions longues du registre et des questions rangés dans Archives/.
 Registre 16 800 → 3 500 mots ; Index, Pipeline, Moteur, Diagnostic, Carte des systèmes, Pièges, Périmètre corrigés ; commentaires de code qui citaient 64 repointés sur 41 ; aucun lien du vault cassé.
@@ -770,6 +773,6 @@ Jalons proposés : chapitre fermé et test 1 fin nov. 2026, slice mi-fév. 2027,
 **2026-10-12 — Le jeu s'appelle Desire Path (111) ; la démo va au Next Fest d'octobre 2027 (110) ; l'argent passe avant la seconde crue.**
 Tranché par l'auteur. Ouverte : n°47, où s'arrête la démo (recommandé : la crue tombe, le bilan, puis l'annonce de la canicule).
 Aucun jeu Steam trouvé sous ce nom exact ; marques et domaine restent à vérifier avant la page.
-**2026-10-12 — Ponts plus courts d'un mois, le jaune du campus passe par Dangers, et tout s'ouvre au pont rouvert (provisoire).**
-Demande de l'auteur après une partie : provisoire 3 → 2 mois, dur 8 → 7 (87) ; sur la carte, la tuile Université s'allume pour y revenir (un bouton écrit, écarté : la carte reste nue) ; le guide dit pourquoi rouvrir un pont (texte flaggable) ; 105 suspendue (`tout_ouvert`).
-Essais ouverture, étude, déblaiement, rebâtir, progression, caméra à 0 échec ; livre (1), capital (2), travaux (1), sauvegarde (92) échouaient déjà avant.
+**2026-10-12 — Diagnostic : toutes les pages passent au papier blanc des Dangers, la page Agriculture (branche du 2026-10-09) remplace Tissu, la carte des sols se lit au mètre en gris et vert.**
+Demande de l'auteur (« seulement l'élément important ») ; fond, relief et forêt en papier, débris retirés, berges teintées seulement dans Sols et Chantiers, Énergie sur le bâti seul ; Sols : jardins verts, cours, places et parkings gris, champs vert pâle.
+`--essai` sans erreur (agriculture : 88 objets peints) ; captures `apercu_diagnostics.gd` ; légendes Sols et Agriculture flaggables (90).

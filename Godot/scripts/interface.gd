@@ -1174,7 +1174,6 @@ const DESSINS := {
 	"duree": "<circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/>",
 	"annuler": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/>",
 	"trafic": "<path d='M5 17h14l-1-6-2-3H8l-2 3-1 6zm1 0v3m12-3v3M7 13h10M8 17h1m6 0h1'/>",
-	"tissu": "<path d='M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'/>",
 	# 💧 Lucide « droplets » : la carte des sols (101).
 	"sols": "<path d='M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z'/><path d='M12.56 6.6A10.97 10.97 0 0014 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 01-11.91 4.97'/>",
 	# 🏛️🎓 Les deux lieux du rail (Lucide « landmark », « graduation-cap ») :
@@ -1558,7 +1557,7 @@ func _panneau_rail() -> void:
 
 	for t in themes:
 		var id := str(t["id"])
-		var b := _tuile_rail(id, str(t.get("court", t["nom"])),
+		var b := _tuile_rail(str(t.get("icone", id)), str(t.get("court", t["nom"])),
 			"%s — %s" % [str(t["nom"]), str(t.get("resume", ""))])
 		b.toggle_mode = true
 		b.button_group = groupe
@@ -1727,7 +1726,7 @@ func _placer_detail() -> void:
 	_ville_panneau.visible = _detail_ouvert and _theme_courant == ""
 	_diagnostic_panneau.visible = _detail_ouvert and genre == "crue"
 	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
-	_calque_panneau.visible = _detail_ouvert and genre in ["calque", "tissu", "sols"]
+	_calque_panneau.visible = _detail_ouvert and genre in ["calque", "sols", "agriculture"]
 	if ouverture != null:
 		ouverture.visible = ouverture.paraitre()
 
@@ -1738,7 +1737,7 @@ func _bilan_differe() -> bool:
 		and not ouverture.suite and not ouverture.termine
 
 
-## Le panneau des thèmes CONTINUS — énergie, trafic — et du tissu. Un thème
+## Le panneau des thèmes CONTINUS — énergie, trafic — des sols et des champs. Un thème
 ## neuf n'écrit rien de plus : il tombe ici par son `genre`.
 func _panneau_calque() -> void:
 	_calque_panneau = PanelContainer.new()
@@ -1781,10 +1780,12 @@ func _panneau_calque() -> void:
 	_sols_bloc.visible = false
 	v.add_child(_sols_bloc)
 	_legende(_sols_bloc, SOL_BOIT, "Boit la pluie : jardins, prés, toits verts")
-	_legende(_sols_bloc, SOL_DUR, "La renvoie à l'Ilse : rues, toits, cours en dur")
-	_legende(_sols_bloc, SOL_PARKING, "Parking : places de rue et place-parking")
+	_legende(_sols_bloc, SOL_DUR, "La renvoie à l'Ilse : rues, parkings, toits, cours en dur")
+	# 🔴 Texte de prototype, flaggable (90).
+	_legende(_sols_bloc, SOL_CHAMP, "Champs : ils boivent aussi")
 	_sols_bloc.add_child(HSeparator.new())
 	_sols_chiffre = _ligne_chiffre(_sols_bloc, "Sol de la ville qui boit")
+	_panneau_agriculture(v)
 	# 🧹 Tout déblayer d'un coup (auteur, 2026-10-05). 🔴 Texte de prototype, flaggable (90).
 	_boue_bloc = VBoxContainer.new()
 	_boue_bloc.add_theme_constant_override("separation", 6)
@@ -1807,10 +1808,91 @@ var _boue_ville: Label
 var _sols_bloc: VBoxContainer
 var _sols_chiffre: Label
 var _sols_depart := -1.0
-const SOL_BOIT := Color8(92, 160, 92)
-const SOL_DUR := Color8(112, 112, 118)
-const SOL_PARKING := Color8(240, 150, 30)
+const SOL_BOIT := Color8(100, 196, 105)
+const SOL_DUR := Color8(196, 196, 202)
+const SOL_CHAMP := Color8(226, 238, 214)
 var _boue_bouton: Button
+
+
+# 🌾 LA PAGE AGRICULTURE (auteur, 2026-10-09) : une teinte par culture, et par
+# culture ce qu'elle occupe, son rendement et qui elle nourrit ce mois-ci.
+# ⚠ Lue aussi par `maquette._teinte_champ`, en sRGB. 🔴 Textes flaggables (90).
+const CULTURE_TEINTES := [Color8(236, 206, 100), Color8(78, 159, 61),
+	Color8(176, 128, 196), Color8(176, 214, 140)]
+const CAMP_TEINTE := Color8(140, 123, 107)
+var _agri_bloc: VBoxContainer
+var _agri_cases := []    # par ligne : [ha, nourris]
+var _agri_part: Label
+var _agri_achat: Label
+
+
+func _panneau_agriculture(v: VBoxContainer) -> void:
+	_agri_bloc = VBoxContainer.new()
+	_agri_bloc.add_theme_constant_override("separation", 6)
+	_agri_bloc.visible = false
+	v.add_child(_agri_bloc)
+	var g := GridContainer.new()
+	g.columns = 5
+	g.add_theme_constant_override("h_separation", 10)
+	g.add_theme_constant_override("v_separation", 5)
+	_agri_bloc.add_child(g)
+	for titre in ["", "", "ha", "pers./ha", "nourris"]:
+		var l := _label(titre, 11, GRIS)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		g.add_child(l)
+	var lignes := []
+	for c in Ville.CULTURES.size():
+		lignes.append([CULTURE_TEINTES[c], str(Ville.CULTURES[c]["nom"]).capitalize(),
+			_nb(float(Ville.CULTURES[c]["personnes_ha"]), 0)])
+	lignes.append([CAMP_TEINTE, "Campement", "0"])
+	for ligne in lignes:
+		var carre := Panel.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = ligne[0]
+		sb.set_corner_radius_all(_r(4))
+		carre.add_theme_stylebox_override("panel", sb)
+		carre.custom_minimum_size = Vector2(15, 15)
+		carre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		carre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		g.add_child(carre)
+		var nom := _label(ligne[1], 12, TEXTE)
+		nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		g.add_child(nom)
+		var cases := []
+		for texte in ["—", ligne[2], "—"]:
+			var l := _label(texte, 12, TEXTE)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			g.add_child(l)
+			cases.append(l)
+		_agri_cases.append([cases[0], cases[2]])
+	var note := _label("Pâle : pas encore de récolte (mise en culture, verger de moins de 4 ans).", 11, GRIS)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_agri_bloc.add_child(note)
+	_agri_bloc.add_child(HSeparator.new())
+	_agri_part = _ligne_chiffre(_agri_bloc, "Ville nourrie par ses champs")
+	_agri_achat = _ligne_chiffre(_agri_bloc, "Nourriture achetée")
+
+
+func _maj_agriculture(mois: float) -> void:
+	var ha := []
+	var nourris := []
+	for k in _agri_cases.size():
+		ha.append(0.0)
+		nourris.append(0.0)
+	for f in ville.ilots:
+		var fid := int(f)
+		if not ville.est_champ(fid):
+			continue
+		var k: int = _agri_cases.size() - 1 if ville.est_campement(fid, mois) \
+			else ville.champ_culture(fid, mois)
+		ha[k] += ville.base("i", fid, "surface_m2") / 10000.0
+		nourris[k] += ville.champ_rendement(fid, mois)
+	for k in _agri_cases.size():
+		(_agri_cases[k][0] as Label).text = _nb(ha[k], 1)
+		(_agri_cases[k][1] as Label).text = _nb(nourris[k], 0)
+	_agri_part.text = "%d %% · %s / %s" % [int(roundf(ville.nourriture_part(mois) * 100.0)),
+		_nb(ville.nourriture_personnes(mois), 0), _nb(Ville.HABITANTS, 0)]
+	_agri_achat.text = "%s k€/mois" % _nb(ville.achat_nourriture_ke_mois(mois), 1)
 
 
 ## Les rues que « Tout déblayer » prendrait : celles que le guide laisse engager,
@@ -1906,10 +1988,10 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 	if _calque_panneau.visible:
 		_calque_note.text = str(t.get("note", ""))
 		_calque_note.visible = _calque_note.text != ""
-		# Le tissu n'a pas d'échelle : une teinte par sous_type, donc ni rampe
-		# ni bornes. C'est la seule différence entre les deux genres ici.
+		# Sols et champs n'ont pas d'échelle : une légende, ni rampe ni bornes.
 		var continu := genre == "calque"
 		_sols_bloc.visible = genre == "sols"
+		_agri_bloc.visible = genre == "agriculture"
 		if continu and _calque_barre.texture == null:
 			_calque_barre.texture = _texture_rampe()
 		_calque_barre.visible = continu
@@ -3025,6 +3107,11 @@ const VIGNETTES_ETUDE := ["ruine", "eponge", "pilotis"]
 var financements_ouverts := false
 
 
+## 🔓 Ouverts aussi, le pont rouvert, tant que le guide ouvre tout (`ouverture.tout_ouvert`).
+func _financements() -> bool:
+	return financements_ouverts or (ouverture != null and ouverture.tout_ouvert and _verrou() == "")
+
+
 func _lieu_du_fid(fid: int) -> String:
 	for cle in LIEUX_ORDRE:
 		if int(LIEUX[cle]["fid"]) == fid:
@@ -3138,7 +3225,9 @@ func _panneau_lieu() -> void:
 	_etude_biblio = _partie_etude(parties, "bibliotheque", "Retenir l'eau",
 		"La ville-éponge : berges, sols, toits, prés.", "Lire à la bibliothèque",
 		ouvrir_lieu.bind("bibliotheque", "eponge"), "eponge")
-	# 🟡 Elle clignote tant que la page n'est pas lue (`_maj_lieu`).
+	# 🟡 D'abord la carte, puis la bibliothèque tant que sa page n'est pas lue
+	# (auteur, 2026-10-12 ; c'était la bibliothèque seule) — `_maj_lieu`.
+	_anneau_appel(_etude_voir, 9)
 	_anneau_appel(_etude_biblio, 9)
 	# Les pilotis, une recherche parmi d'autres (auteur, 2026-10-09).
 	_etude_institut = _partie_etude(parties, "institut", "S'adapter à la montée des eaux",
@@ -3620,7 +3709,7 @@ func _brancher_lieu() -> void:
 func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
-	_lieu_intro.visible = financements_ouverts
+	_lieu_intro.visible = _financements()
 	_campus_intro.visible = _page_ouverte == ""
 	for i in CAMPUS.size():
 		(_campus_bloc.get_child(i) as Button).set_pressed_no_signal(CAMPUS[i] == _lieu_ouvert)
@@ -3631,20 +3720,24 @@ func _maj_lieu() -> void:
 	if _biblio_bloc.visible:
 		_maj_bibliotheque()
 	if _etude_bloc.visible:
-		var anneau: Control = _etude_biblio.get_meta("anneau")
-		anneau.visible = ouverture != null and ouverture.page_nouvelle("eponge")
+		var carte_vue: bool = ouverture == null or ouverture.prochaine_vue
+		var anneau: Control = _etude_voir.get_meta("anneau")
+		anneau.visible = not carte_vue
+		anneau.modulate.a = _pouls()
+		anneau = _etude_biblio.get_meta("anneau")
+		anneau.visible = carte_vue and ouverture != null and ouverture.page_nouvelle("eponge")
 		anneau.modulate.a = _pouls()
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: Control = l["bloc"]
 		var recherche: bool = String(l["genre"]) == "recherche"
 		bloc.visible = _lieu_ouvert == "institut" if recherche \
-			else (_lieu_ouvert == "mairie" and financements_ouverts)
+			else (_lieu_ouvert == "mairie" and _financements())
 		if not bloc.visible:
 			continue
 		if recherche:
 			# 🏗️ Les pilotis dès l'ouverture ; le reste garde son nom, grisé, jusqu'aux financements.
-			var ouvert: bool = cle in Recherche.SUJETS_OUVERTURE or financements_ouverts
+			var ouvert: bool = cle in Recherche.SUJETS_OUVERTURE or _financements()
 			bloc.modulate.a = 1.0 if ouvert else 0.45
 			(l["jauge"] as Control).visible = ouvert
 			(l["etat"] as Control).visible = ouvert
@@ -4453,6 +4546,8 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 			_maj_prochaine()
 	if _chantiers_panneau.visible:
 		maj_chantiers(ville.chantiers(mois))
+	if _agri_bloc.visible and _calque_panneau.visible:
+		_maj_agriculture(mois)
 	if _sols_bloc.visible and _calque_panneau.visible:
 		var part := ville.part_sol_permeable(mois)
 		if _sols_depart < 0.0:

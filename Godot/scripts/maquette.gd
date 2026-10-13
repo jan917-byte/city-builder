@@ -74,21 +74,18 @@ const RAMPE := [
 const RAMPE_EAU := [Color8(196, 226, 240), Color8(22, 84, 150)]
 # 🚧 Hors de la rampe, et d'aucune de ses teintes : un brun se lisait « saturé ».
 const COUPEE := Color8(150, 88, 204)
-## 💧 Les trois teintes de la carte des sols, aussi dans `interface.SOL_*`.
-const SOLS_BOIT := Color8(92, 160, 92)
-const SOLS_DUR := Color8(112, 112, 118)
-const SOLS_PARKING := Color8(240, 150, 30)
+## 💧 Les teintes de la carte des sols, aussi dans `interface.SOL_*`. 🔄 Gris et
+## vert éclaircis, le parking orange passé au gris du dur (auteur, 2026-10-12).
+const SOLS_BOIT := Color8(100, 196, 105)
+const SOLS_DUR := Color8(196, 196, 202)
+## Le champ boit aussi, mais il n'est pas le sujet : un vert bien plus léger.
+const SOLS_CHAMP := Color8(226, 238, 214)
 # Des facteurs, pas des couleurs : assez forts pour se voir sur un pastel
 # clair, assez faibles pour ne pas le brûler.
 const SURVOL := Color(1.15, 1.15, 1.08)
 # 🔄 Moins jaune depuis le 2026-08-18 : sur un enduit gris neutre l'ancien
 # 1,42/1,38/1,06 virait à l'olive, et l'îlot avait l'air d'un autre matériau
 # au lieu d'avoir l'air éclairé.
-## 🌊 LES TROIS CRANS D'UNE BERGE, et l'asphalte n'en porte aucune : à l'état de
-## départ le mur de quai garde le minéral que 07 lui a donné. Une teinte de plus
-## aurait fait croire à une quatrième chose à faire.
-const BERGE_TEINTES := [Color(1.0, 1.0, 1.0, 0.0),
-	Color8(214, 198, 168, 235), Color8(126, 158, 96, 255)]
 const CHOISI := Color(1.34, 1.32, 1.16)
 
 # ✏️ LE TRAIT AUTOUR DE L'OBJET CHOISI — 2026-08-18. L'éclaircissement seul ne
@@ -135,7 +132,7 @@ var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
 var mat_terrain: ShaderMaterial
 var _environnement: Environment
-## Le ciel de la carte des dangers, assorti à `CRUE_PAPIER` (crue.gdshaderinc).
+## Le ciel des cartes de diagnostic, assorti à `CRUE_PAPIER` (crue.gdshaderinc).
 const FOND_DANGERS := Color8(255, 255, 252)
 var masque: SubViewport
 var cam_masque: Camera3D
@@ -1257,8 +1254,8 @@ ESSAI — la ville, sans décision")
 		# voit pas sur une capture qu'on ne compare à rien. « dangers » a déjà
 		# ses trois comptes ci-dessus, d'où le −1 qui le laisse passer.
 		var peints := -1    # −1 = compté autrement, jamais « rien de peint »
-		if _genre() == "tissu":
-			peints = _teintes_tissu.size()
+		if _genre() == "agriculture":
+			peints = ville.ilots.keys().filter(func(f) -> bool: return ville.est_champ(int(f))).size()
 		elif _genre() == "calque":
 			peints = 0
 			for fid in noeuds[calque_couche]:
@@ -2372,11 +2369,11 @@ const DISPO := {
 # `interface.gd`. Un thème `calque` n'a rien d'autre à écrire qu'une ligne.
 #
 #   genre "calque"    un champ + la rampe. La voie normale d'un thème neuf.
-#   genre "tissu"     une teinte par sous_type, pas une échelle continue.
+#   genre "agriculture" une teinte par culture, sur les champs seuls.
 #   genre "crue"      trois signaux de l'eau + les croix des routes coupées.
 #   genre "chantiers" l'état d'avancement de l'objet entier.
-#   genre "sols"      le sol de l'îlot par sa part en dur, les toits nus en dur,
-#                     les toits verts et les berges rendues qui boivent, les places en orange.
+#   genre "sols"      le sol au mètre (vert il boit, gris en dur), les toits nus
+#                     en dur, les toits verts et les berges rendues qui boivent.
 const THEMES := [
 	{"id": "dangers", "court": "Dangers", "nom": "Dangers naturels", "genre": "crue",
 		"resume": "Ce que la crue a laissé dans la ville"},
@@ -2394,8 +2391,9 @@ const THEMES := [
 		"resume": "La charge des rues, après la crue",
 		"bas": "Rue calme", "haut": "Saturée",
 		"note": "Violet : endommagée par la crue."},
-	{"id": "tissu", "court": "Tissu", "nom": "Tissu urbain", "genre": "tissu",
-		"resume": "Une teinte par type de tissu"},
+	# 🔄 Remplace « Tissu urbain » (auteur, 2026-10-09 : « elle dit rien »).
+	{"id": "agriculture", "court": "Agriculture", "nom": "Agriculture", "genre": "agriculture",
+		"icone": "nourriture", "resume": "Ce que portent les champs, ce qu'ils nourrissent"},
 	# 💧 La carte des sols (101) : ce qui boit la pluie, ce qui la renvoie à l'Ilse.
 	{"id": "sols", "court": "Sols", "nom": "Sols", "genre": "sols",
 		"resume": "Ce qui boit la pluie, ce qui la renvoie à l'Ilse"},
@@ -2451,21 +2449,36 @@ func _crue_param(nom: String, valeur: Variant) -> void:
 			m.set_shader_parameter(nom, valeur)
 
 
-## 💧 Le sol d'un îlot, de vert (il boit) à gris (en dur) ; la place-parking en
-## orange tant qu'elle est en dur ; une rue en dur ; une berge selon son état.
+## 💧 Ce que prend la part en dur du sol : gris, puis vert à mesure que les
+## travaux la rendent perméable ; le vert du sol, lui, est lu par le shader.
 func _teinte_sol(couche: String, fid: int) -> Color:
 	var c: Color = SOLS_DUR
-	if couche == "i":
-		var dur := ville.valeur("i", fid, "impermeabilise", mois)
-		c = SOLS_BOIT.lerp(SOLS_DUR, clampf(dur, 0.0, 1.0))
-		if ville.base("i", fid, "stationnement") > 0.0 and ville.permeable_possible(fid):
-			c = SOLS_PARKING.lerp(SOLS_BOIT, clampf((1.0 - dur) / (1.0 - Ville.PERMEABLE_RESTE), 0.0, 1.0))
+	if couche == "i" and ville.est_champ(fid):
+		c = SOLS_CHAMP
+	elif couche == "i":
+		var avant := ville.base("i", fid, "impermeabilise")
+		if avant > Ville.PERMEABLE_RESTE:
+			var rendu := (avant - ville.valeur("i", fid, "impermeabilise", mois)) 				/ (avant - Ville.PERMEABLE_RESTE)
+			c = SOLS_DUR.lerp(SOLS_BOIT, clampf(rendu, 0.0, 1.0))
 		if str(ville.ilots[fid].get("sous_type", "")) == "riviere":
 			return Color(1.0, 1.0, 1.0, 0.0)
 	elif couche == "b":
 		var e := ville.berge_etat(fid, mois)
 		c = SOLS_BOIT if e == Ville.BERGE_RENATUREE else (SOLS_DUR.lerp(SOLS_BOIT, 0.35)
 			if e == Ville.BERGE_APAISEE else SOLS_DUR)
+	var l := c.srgb_to_linear()
+	l.a = 1.0
+	return l
+
+
+## 🌾 Un champ par sa culture ; pâli tant qu'il ne récolte pas (chantier, verger
+## trop jeune). ⚠ Teintes en sRGB dans `interface.CULTURE_TEINTES`, la légende.
+func _teinte_champ(fid: int) -> Color:
+	var c: Color = interface.CULTURE_TEINTES[ville.champ_culture(fid, mois)]
+	if ville.est_campement(fid, mois):
+		c = interface.CAMP_TEINTE
+	elif ville.champ_rendement(fid, mois) <= 0.0 and ville.champ_nourriture(fid, mois) > 0.0:
+		c = c.lerp(Color.WHITE, 0.55)
 	var l := c.srgb_to_linear()
 	l.a = 1.0
 	return l
@@ -2518,14 +2531,6 @@ func _genre() -> String:
 	return str(_theme_actif().get("genre", ""))
 
 
-# 🎨 LE THÈME « TISSU » — 2026-08-18. Depuis que les bâtiments sont rendus par
-# MATÉRIAU, la couleur ne dit plus la typologie : ce thème repeint la ville
-# avec la palette d'avant, le temps d'un coup d'œil. Il passe par le MÊME
-# uniforme `calque` que les thèmes continus, donc l'AO bakée survit et deux
-# repeints ne peuvent pas se superposer.
-var _teintes_tissu := {}
-
-
 ## Le seul aiguillage des deux vues. `id` vide ramène à la ville vivante ;
 ## sinon c'est un `id` de THEMES, et il chasse le précédent parce qu'il n'y a
 ## qu'une case — l'exclusion mutuelle n'est plus écrite nulle part.
@@ -2540,14 +2545,6 @@ func _sur_theme(id: String) -> void:
 		theme = ""
 		t = {}
 	var genre := str(t.get("genre", ""))
-
-	if genre == "tissu" and _teintes_tissu.is_empty():
-		for f in (donnees["objets"]["ilots"] as Dictionary):
-			var st: String = donnees["objets"]["ilots"][f]["sous_type"]
-			# ⚠ Palette en sRGB, uniforme en LINÉAIRE : sans conversion le
-			# repeint ressort délavé (cf. `vers_lineaire` côté Python).
-			_teintes_tissu[int(f)] = Donnees.teinte(
-				donnees, st, Color.MAGENTA).srgb_to_linear()
 
 	calque_couche = str(t.get("couche", ""))
 	calque_champ = str(t.get("champ", ""))
@@ -2607,11 +2604,10 @@ func _habiller_monde(diagnostic: bool) -> void:
 	if eau != null:
 		(eau.material_override as ShaderMaterial).set_shader_parameter("diagnostic", diagnostic)
 	if _environnement != null:
-		_environnement.background_color = FOND_DANGERS if theme == "dangers" \
+		_environnement.background_color = FOND_DANGERS if diagnostic \
 			else Donnees.teinte(donnees, "_ciel")
-	# ⚠ Les deux papiers : PAPIER (`materiaux.gd`) et CRUE_PAPIER (crue.gdshaderinc).
-	camp.en_maquette(Color(0, 0, 0, 0) if not diagnostic else (Color(0.880, 0.870, 0.840)
-		if theme == "dangers" else Color(0.624, 0.605, 0.560)))
+	# ⚠ Le même papier que CRUE_PAPIER (crue.gdshaderinc).
+	camp.en_maquette(Color(0.880, 0.870, 0.840) if diagnostic else Color(0, 0, 0, 0))
 
 
 func _val(couche: String, fid: int, t: float) -> float:
@@ -2640,20 +2636,17 @@ func _peindre() -> void:
 						and str(ville.routes[fid].get("etat_crue", "")) == "coupe":
 					diagnostic_sol = 2.0
 			var c := Color(1.0, 1.0, 1.0, 0.0)
-			# 🌊 L'ÉTAT D'UNE BERGE SE VOIT SANS OUVRIR SA FICHE, et c'est tout
-			# l'intérêt d'en avoir fait un objet. Le calque est libre sur cette
-			# couche : aucun thème ne la peint.
+			# 🔄 RETOUR EN ARRIÈRE SIGNALÉ : l'état d'une berge se peignait sur
+			# toutes les cartes. Une carte ne colore plus que son sujet (auteur,
+			# 2026-10-12) ; la berge se lit dans Sols et Chantiers.
+			var champ: bool = couche == "i" and ville.est_champ(fid)
 			if genre == "sols":
 				c = _teinte_sol(couche, fid)
 				# 3 : le calque ne prend que le sol ; toits et murs sont lus par le shader.
-				diagnostic_sol = 3.0
-			elif couche == "b" and genre != "crue":
-				c = BERGE_TEINTES[ville.berge_etat(fid, mois)]
-			elif genre == "tissu" and couche == "i":
-				c = _teintes_tissu.get(fid, Color.MAGENTA)
-				# 1,0 et pas 0,88 : ce thème REMPLACE le carton. Une opacité
-				# partielle laisserait le gris teinter chaque sous_type.
-				c.a = 1.0
+				# 5 : îlot de ville, son sol lu au mètre.
+				diagnostic_sol = 5.0 if couche == "i" and not champ else 3.0
+			elif genre == "agriculture" and champ:
+				c = _teinte_champ(fid)
 			elif genre == "calque" and calque_couche == couche \
 					and _disponible(couche, fid):
 				c = _rampe(_val(couche, fid, mois))
@@ -2663,6 +2656,9 @@ func _peindre() -> void:
 				if calque_champ == "charge" and not ville.route_praticable(fid, mois):
 					c = COUPEE.srgb_to_linear()
 				c.a = 1.0
+				# 4 : sur un îlot, ce sont les toits qu'on lit, pas la cour.
+				if couche == "i":
+					diagnostic_sol = 4.0
 			var etat_travaux := ville.etat_chantier(couche, fid, mois) \
 				if genre == "chantiers" else 0
 			# Le nœud réparé prend les MÊMES paramètres que celui qu'il
@@ -2697,9 +2693,7 @@ func _peindre() -> void:
 					ville.parcelle_code(fid, mois) if couche == "i" else 0.0)
 				mj.set_instance_shader_parameter("diagnostic_bati", diagnostic_bati)
 				mj.set_instance_shader_parameter("chantier_etat", float(etat_travaux))
-				# 🅿️ Sur la carte des sols, la file peinte se lit en parking, pas en rue.
-				mj.set_instance_shader_parameter("calque", SOLS_PARKING.srgb_to_linear()
-					if genre == "sols" and mj == places_rue.get(fid) and couche == "r" else c)
+				mj.set_instance_shader_parameter("calque", c)
 				mj.set_instance_shader_parameter("teinte", _teinte(couche, fid))
 				if couche == "b":
 					# 🔴 LA TEINTE DIT UN CHANGEMENT, PAS UN ÉTAT. Une berge de

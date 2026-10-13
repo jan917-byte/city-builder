@@ -1,7 +1,7 @@
 # La campagne — ce que porte un champ
 
 > Étape 7 ouverte le 2026-09-29 à la demande de l'auteur ; les Premiers pas passent en pause.
-> Design : `Vault - Jeu urbanisme/Brainstorming/2026-09-29_brainstorm_campagne-vivant-indicateurs.md`, décisions 77c · 77d · 91.
+> Design : `Vault - Jeu urbanisme/Archives/Brainstorming/2026-09-29_brainstorm_campagne-vivant-indicateurs.md`, décisions 77c · 77d · 91.
 
 ## Ce que l'auteur a tranché (2026-09-29)
 
@@ -48,6 +48,6 @@ Serait un défaut : un champ qui change de couleur hors de son contour, une cult
 - les **saisons** : la couleur des champs ne change pas encore avec l'année
 - les bandes du maraîchage suivent l'axe est-ouest, pas le sens du champ ; les fleurs de la prairie ne se voient que tout près
 - la miniature montre le champ **entier** depuis le 2026-09-29 (le plafond de 240 m des îlots le coupait) ; elle ne plante pas encore les arbres du verger, seulement son herbe
-- une **vue Campagne** sur le rail (un calque par culture) n'existe pas
+- 🌾 **la page Agriculture du diagnostic** (2026-10-09, à la place de Tissu) : une teinte par culture, pâle tant que le champ ne récolte pas, et un tableau ha · pers./ha · nourris, puis la part de la ville nourrie et l'achat du mois → `QGIS/rendus/wehrau_diagnostic_agriculture.png` (`apercu_diagnostics.gd`) ; 🔴 textes et teintes à juger, flaggables (90)
 - la **biodiversité** (thème séparé, 91) : la prairie et le verger devraient y compter
 - serre et pâture, le jour où l'on en ouvre plus que quatre

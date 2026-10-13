@@ -25,12 +25,13 @@ void fragment() {
 	float net = 1.0 - smoothstep(0.3, 1.2, length(fwidth(monde.xz)));
 	float fin = bruit(monde.xz * 1.6);
 	float grain = (large - 0.5) * mix(0.05, 0.20, vert) + (fin - 0.5) * 0.055 * net;
-	ALBEDO = diagnostic ? COLOR.rgb * 0.394 : herbe_saison(COLOR.rgb, vert) * (1.0 + grain);
+	ALBEDO = herbe_saison(COLOR.rgb, vert) * (1.0 + grain);
 	// La carte des dangers ne s'arrête pas au dernier îlot : le champ, si.
 	float h_eau = crue_vue > 0 ? crue_hauteur(monde.xz, 1.0) : 0.0;
 	float fw_eau = fwidth(h_eau);
-	if (diagnostic && crue_vue > 0) {
-		// Un fond de carte, pas un relief : les collines ne s'ombrent plus.
+	if (diagnostic) {
+		// Un fond de carte, pas un relief : ni ombre de colline ni forêt peinte,
+		// sur toutes les cartes (auteur, 2026-10-12).
 		ALBEDO = CRUE_PAPIER;
 		NORMAL = (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 	}
