@@ -74,17 +74,30 @@ func executer() -> void:
 		noms.append((b as Button).text)
 	verifier(noms == ["Université", "Bibliothèque", "Institut de recherche"],
 		"Les onglets dans l'ordre de l'auteur : %s" % ", ".join(noms))
-	# 🌊 Trois parties (auteur, 2026-10-09) : Dangers, la bibliothèque qui clignote, l'institut.
+	# 🌊 Trois parties (auteur, 2026-10-09) ; le jaune sur la carte d'abord (auteur, 2026-10-12).
 	verifier(ui._etude_voir.is_visible_in_tree() and ui._etude_institut.is_visible_in_tree()
-		and ui._etude_biblio.get_meta("anneau").visible,
-		"L'étude en trois parties, la bibliothèque appelée tant que sa page n'est pas lue")
+		and ui._etude_voir.get_meta("anneau").visible and not ui._etude_biblio.get_meta("anneau").visible,
+		"L'étude en trois parties, la carte de Dangers appelée avant la bibliothèque")
 	await capture("campus_02_fiche")
+	await cliquer(ui._etude_voir)
+	actualiser(jeu.mois)
+	ui._maj_rail()
+	verifier(o.prochaine_vue and not ui._campus_panneau.visible and o.rail_appel() == "universite"
+		and tuile("universite").get_meta("anneau").visible and ui._fleche.visible,
+		"Sur la carte de la prochaine crue, la tuile de l'université appelle la suite")
+	await capture("campus_02c_dangers_retour")
+	await cliquer(tuile("universite"))
+	actualiser(jeu.mois)
+	verifier(ui._lieu_ouvert == "universite" and jeu.theme == "" and not ui._etude_voir.get_meta("anneau").visible
+		and ui._etude_biblio.get_meta("anneau").visible,
+		"De retour à l'université, le jaune passe sur la bibliothèque")
+	await capture("campus_02d_retour_universite")
 	await cliquer(ui._etude_biblio)
 	actualiser(jeu.mois)
 	verifier(ui._lieu_ouvert == "bibliotheque" and ui._page_ouverte == "eponge"
-		and ui._leviers_crue["berge"].is_visible_in_tree() and not ui._leviers_crue["vert"].is_visible_in_tree()
+		and ui._leviers_crue["berge"].is_visible_in_tree() and ui._leviers_crue["vert"].is_visible_in_tree()
 		and not o.page_nouvelle("eponge"),
-		"« Lire à la bibliothèque » ouvre la ville-éponge et son levier, la berge")
+		"« Lire à la bibliothèque » ouvre la ville-éponge et ses leviers, tous ouverts pour l'instant")
 	await capture("campus_02a_bibliotheque")
 	ui.ouvrir_lieu("universite")
 	actualiser(jeu.mois)
@@ -93,8 +106,8 @@ func executer() -> void:
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
 	verifier(ui._lieu_ouvert == "institut" and ligne["bloc"].visible and ligne["bouton"].visible
 		and not ui._etude_bloc.visible and ui._lieu_lignes["sedum"]["bloc"].visible
-		and not ui._lieu_lignes["sedum"]["bouton"].visible,
-		"L'onglet de l'institut : les pilotis à financer, les autres sujets grisés")
+		and ui._lieu_lignes["sedum"]["bouton"].visible,
+		"L'onglet de l'institut : les pilotis et, pour l'instant, tous les sujets à financer")
 	await capture("campus_02b_institut")
 	ui._fermer_campus()
 	verifier(not ui._campus_panneau.visible and not ui._fiche_panneau.visible,

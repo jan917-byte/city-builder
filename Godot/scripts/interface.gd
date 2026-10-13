@@ -1575,7 +1575,14 @@ func _panneau_rail() -> void:
 		var cle: String = lieu
 		var b := _tuile_rail(cle, String(LIEUX[cle]["court"]), "%s (îlot %d) — %s" % [String(LIEUX[cle]["nom"]),
 			int(LIEUX[cle]["fid"]), String(LIEUX[cle]["quoi"])])
-		b.pressed.connect(func() -> void: ouvrir_lieu(cle))
+		b.pressed.connect(func() -> void:
+			# 🎓 Appelée depuis Dangers, la vue repasse sur la ville : la fenêtre
+			# refermée, le guide et les îlots à rebâtir y attendent.
+			if ouverture != null and ouverture.rail_appel() == cle:
+				theme_demande.emit("")
+				_detail_ouvert = false
+				_placer_detail()
+			ouvrir_lieu(cle))
 		v.add_child(b)
 		_rail_lieux.append(b)
 	accueil.set_pressed_no_signal(true)

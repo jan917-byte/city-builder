@@ -770,3 +770,6 @@ Jalons proposés : chapitre fermé et test 1 fin nov. 2026, slice mi-fév. 2027,
 **2026-10-12 — Le jeu s'appelle Desire Path (111) ; la démo va au Next Fest d'octobre 2027 (110) ; l'argent passe avant la seconde crue.**
 Tranché par l'auteur. Ouverte : n°47, où s'arrête la démo (recommandé : la crue tombe, le bilan, puis l'annonce de la canicule).
 Aucun jeu Steam trouvé sous ce nom exact ; marques et domaine restent à vérifier avant la page.
+**2026-10-12 — Ponts plus courts d'un mois, le jaune du campus passe par Dangers, et tout s'ouvre au pont rouvert (provisoire).**
+Demande de l'auteur après une partie : provisoire 3 → 2 mois, dur 8 → 7 (87) ; sur la carte, la tuile Université s'allume pour y revenir (un bouton écrit, écarté : la carte reste nue) ; le guide dit pourquoi rouvrir un pont (texte flaggable) ; 105 suspendue (`tout_ouvert`).
+Essais ouverture, étude, déblaiement, rebâtir, progression, caméra à 0 échec ; livre (1), capital (2), travaux (1), sauvegarde (92) échouaient déjà avant.

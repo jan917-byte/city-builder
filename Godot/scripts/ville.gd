@@ -163,10 +163,10 @@ const CHAMPS_MOBILES := {
 # chiffres de la carte. Repère : la pose solaire d'un îlot tient en un mois.
 const RECONSTRUCTION_MOIS := 12.0    # un îlot relevé : un an de chantier
 const DEBLAIEMENT_MOIS := 2.0 / 30.0 # la vase enlevée d'une rue : deux jours (auteur, 2026-09-26)
-const PONT_MOIS := 8.0               # un franchissement rebâti en dur (87)
+const PONT_MOIS := 7.0               # un franchissement rebâti en dur (87) ; 8 → 7 (auteur, 2026-10-12)
 # 🌉 LE PONT PROVISOIRE (87). 🎚️ Proposition à juger : durée, part du prix en
 # dur, débit d'une voie en alternat (lu par `trafic.gd`).
-const PONT_PROVISOIRE_MOIS := 3.0
+const PONT_PROVISOIRE_MOIS := 2.0    # 3 → 2 (auteur, 2026-10-12) : l'attente du premier pont
 const PONT_PROVISOIRE_PART := 0.25
 const PONT_PROVISOIRE_CAPACITE := 0.5
 # 🏗️ REBÂTIR UN ÎLOT SINISTRÉ, quatre façons qui se valent (95, auteur 2026-10-02) :

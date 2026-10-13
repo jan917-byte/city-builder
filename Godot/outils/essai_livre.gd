@@ -16,6 +16,7 @@ func executer() -> void:
 	jeu.recit.terminer()
 	jeu._sur_vitesse(0.0)
 	var o = jeu.ouverture
+	o.tout_ouvert = false  # la progression du livre, sans le déblocage provisoire
 	var ui = jeu.interface
 	var v = jeu.ville
 	jeu._sur_reset()

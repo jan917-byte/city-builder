@@ -13,6 +13,8 @@ const SOLAIRE := 32
 const TOIT_PLAT := 31
 const PRE := 1065
 const PARKING := 19   # la place-parking, le sol qu'on rend perméable (101)
+# 🌉 Le relogement fait, la raison du pont (idée de l'auteur, 2026-10-12). 🔴 Reformulé par moi : flaggable (90).
+const POURQUOI_LE_PONT := "Leurs maisons sont sur l'autre rive. Pour les rebâtir, il faut d'abord rouvrir un pont : sans lui, ni camions ni matériaux ne passent."
 
 var jeu
 var suite := false
@@ -365,6 +367,10 @@ func rail_appel() -> String:
 	# (auteur, 2026-10-06). Une fois revenu, plus d'appel.
 	if etape == "pont_travaux" and not boue_vue and jeu.theme != "" and not acces_degage():
 		return "ville"
+	# 🎓 La prochaine crue vue, la tuile de l'université appelle la suite, sans texte
+	# sur la carte (auteur, 2026-10-12).
+	if prochaine_vue and page_nouvelle("eponge") and jeu.theme == "dangers" 			and not jeu.interface._campus_panneau.visible:
+		return "universite"
 	if not ouvert:
 		return ""
 	if etape == "trafic":
@@ -488,6 +494,10 @@ func prochaine_ouverte() -> void:
 # 🚪 Une livraison, une porte (auteur, 2026-10-06) : l'étude n'ouvre que la berge ;
 # une berge rendue ouvre les autres leviers ; un autre chantier livré, le concours.
 const PREMIER_LEVIER := "berge"
+## 🔓 PROVISOIRE (auteur, 2026-10-12) : le pont rouvert, tous les leviers, les règles de
+## la mairie et les recherches s'ouvrent ; l'institut les distribuera plus tard. Les
+## pages du livre gardent leur ordre. `essai_livre` l'éteint pour éprouver la progression.
+var tout_ouvert := true
 
 func concept_ouvert(id: String) -> bool:
 	match id:
@@ -540,6 +550,8 @@ func ville_reparee() -> bool:
 
 ## "" si le levier est ouvert ; sinon ce qui l'ouvrira, en clair.
 func levier_ferme(levier: String) -> String:
+	if tout_ouvert and verrou() == "":
+		return ""
 	var id := Livre.concept_du_levier(levier)
 	if id == "eponge" and concept_ouvert(id) and levier != PREMIER_LEVIER and not berge_rendue():
 		return "S'ouvre quand une première berge sera rendue à l'Ilse."
@@ -884,16 +896,16 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 		"camp_attente":
 			_poser_reperes([])
 			_titre.text = "Les premiers abris arrivent"
-			_texte.text = ""
+			_texte.text = POURQUOI_LE_PONT
 			_bouton("Laisser avancer en ×4", func() -> void: jeu._sur_vitesse(4.0))
 		"trafic":
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
 			# 🧭 Sans bouton (auteur, 2026-10-02) : la tuile entourée de la colonne y mène.
-			_texte.text = ""
+			_texte.text = POURQUOI_LE_PONT
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = ""
+			_texte.text = POURQUOI_LE_PONT
 			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
 			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
 			for fid in jeu.ville.ponts_coupes():
