@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-12
+maj: 2026-10-13
 ---
 
 # Décisions arrêtées
@@ -77,7 +77,8 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 74 | Une berge rendue **abaisse la prochaine crue** dans son bief, sur les deux rives | 🔓 | 2026-08-26 · [[Questions ouvertes]] n°24 |
 | 75 | **L'îlot 36 est l'université** : le savoir se débloque à un lieu | 🔓 | 2026-09-02 · [[Université et recherche]] |
 | 76 | **L'îlot 20 est la mairie**, en face de l'église | 🔓 | 2026-09-02 · [[Mairie et politiques]] |
-| 79 | L'université est **un labo qu'on finance** ; un palier profite à toute la ville, déjà-posé compris | 🔓 | 2026-09-02 · [[Université et recherche]] |
+| 79 | ~~L'université est un labo qu'on finance~~ (→ 113) ; un palier profite à toute la ville, déjà-posé compris | 🔓 | 2026-09-02 · [[Université et recherche]] |
+| 113 | **La recherche se paie en points, pas en argent, et se débloque au clic** : 2 au départ, +2 chaque janvier, +1 à la première livraison de chaque geste de la ville-éponge ; un sujet coûte 1, 2 ou 3 selon sa taille (rendement · geste nouveau · objet neuf). Les points couvrent environ la moitié des sujets avant la crue | 🟡 | 2026-10-13, tranché par l'auteur, révise 79 : la caisse dit quoi bâtir, les points quoi apprendre, et une recherche n'attend plus avant son chantier · écarté : prix croissant au rang (20, 25, 30…), qui ne demandait que l'ordre → [[Université et recherche]] |
 | 80 | La mairie signe des **règles** (payées en confiance) et des **subventions** (payées chaque mois) | 🔓 | 2026-09-02 · [[Mairie et politiques]] |
 | 96 | **La confiance** se dépense à la décision et se regagne à la livraison ; habitants rentrés et pont rouvert en rendent le plus | 🟡 | 2026-09-30 · [[Ressources]] |
 | 97 | À l'écran, le capital politique s'appelle **« confiance »** | 🔓 | 2026-09-30 · [[Glossaire]] |

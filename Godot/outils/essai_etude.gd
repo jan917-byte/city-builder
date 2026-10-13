@@ -141,16 +141,15 @@ func executer() -> void:
 	await capture("campus_04_pilotis_grise")
 	ui._fermer_fiche()
 	ui.ouvrir_lieu("institut")
+	var points: int = jeu.Recherche.points(jeu.ville, jeu.mois)
+	verifier(points >= jeu.Recherche.prix(jeu.Recherche.PILOTIS) and not ligne["bouton"].disabled,
+		"Les points du départ suffisent aux pilotis")
 	await cliquer(ligne["bouton"])
-	verifier(jeu.ville.recherche_engagee(jeu.Recherche.PILOTIS), "La recherche sur pilotis est lancée")
-	ui._fermer_lieu()
-	jeu._sur_choix("i", o.MAISONS)
-	jeu._rafraichir(true)
-	verifier(pil.disabled and "en recherche" in pil.text, "Pendant la recherche, « Sur pilotis » le dit")
-	ui._fermer_fiche()
-	actualiser(jeu.mois + float(jeu.Recherche.SUJETS[jeu.Recherche.PILOTIS]["mois"]) + 0.1)
 	verifier(jeu.Recherche.acquis(jeu.ville, jeu.Recherche.PILOTIS, jeu.mois)
-		and "pilotis" in str(ui.retours.journal), "Six mois plus tard, la recherche est achevée et le journal le dit")
+		and jeu.Recherche.points(jeu.ville, jeu.mois) == points - jeu.Recherche.prix(jeu.Recherche.PILOTIS)
+		and "pilotis" in str(ui.retours.journal).to_lower(),
+		"Au clic, les pilotis sont acquis, les points baissent et le journal le dit")
+	ui._fermer_lieu()
 	jeu._sur_choix("i", o.MAISONS)
 	jeu._rafraichir(true)
 	verifier(ui._rebatir_boutons["tradition"].visible and pil.visible and not pil.disabled

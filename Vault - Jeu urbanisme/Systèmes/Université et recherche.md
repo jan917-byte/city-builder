@@ -1,20 +1,50 @@
 ---
 tags: [système, gameplay, progression]
 statut: en cours de spécification
-maj: 2026-09-30
+maj: 2026-10-13
 ---
 
 # Université et recherche
 
 Le lieu est l'**îlot 36** ([[Décisions arrêtées]] 75) ; ce qu'on y fait est arrêté le 2026-09-02 (**79**). C'est le menu des déblocages, et il a une adresse qu'on regarde et qu'on peut transformer comme le reste de [[Wehrau]].
 
-## Ce que c'est : un labo qu'on finance
+## Ce que c'est : des points, qu'on dépense au clic
 
-Une **liste de sujets**. Le joueur pose de l'argent sur un sujet, chaque mois. Au bout d'un certain temps, le **palier s'ouvre**. Le savoir **s'achète** — il ne dépend pas de ce que la ville a déjà fait.
+> Arbitrage de l'auteur, 2026-10-13 ([[Décisions arrêtées]] 113, révise 79). **La caisse dit quoi bâtir, les points disent quoi apprendre.** Le joueur ne se demande plus « un pont ou une recherche ? », seulement « quelle recherche d'abord ? ». Et un sujet vaut **dès le clic** : on n'attend plus la recherche, puis le chantier.
 
-> Arbitrage de l'auteur, 2026-09-02. L'option concurrente — *le savoir vient d'un pilote réussi sur un îlot* — est **écartée** : elle liait la progression au passé de la partie, celle-ci la met dans les mains du joueur, tout de suite et à tout moment.
+| D'où viennent les points | Combien |
+|---|---|
+| au départ | **2** |
+| chaque janvier, avec le budget de l'année | **+2** |
+| la première livraison de chaque geste de la ville-éponge — berge, toit vert, sol perméable, culture | **+1** chacune |
+| agrandir le campus, un chantier payé en argent — *pas encore dans la maquette* | **+1 par an** |
 
-**La tension est dans la caisse, et elle est suffisante.** La recherche mange le même argent que les chantiers ([[Ressources]] · 69) : chaque euro de labo est un euro qui ne pose pas de panneau ce mois-ci. On paie aujourd'hui pour produire plus dans trois ans, et vingt ans de partie rendent cet arbitrage réel — financer tard ne laisse pas le temps d'en profiter.
+| Taille du sujet | Prix | Ce que c'est |
+|---|---|---|
+| petit | **1** | un rendement : un nombre existant bouge |
+| moyen | **2** | un geste nouveau entre dans les fiches |
+| grand | **3** | un objet neuf qui change la ville |
+
+🔴 **Le garde-fou** : avant la crue, les points couvrent **environ la moitié** du prix de tous les sujets. Sinon on finit par tout acquérir, et choisir ne sert plus. Avec une vingtaine de sujets (~34 points), c'est 16 à 18 points en six ans.
+
+Écarté : un prix qui monte avec le rang (20, 25, 30…) — il ne demandait que *l'ordre*, jamais *deux petits ou un grand*.
+
+### Une première liste — 🟡 proposition, à corriger par l'auteur
+
+C'est du level design. 🔴 **Les noms sont flaggables (90)** : ils sont affichés. ✅ = déjà dans la maquette.
+
+| Petit · 1 | Moyen · 2 | Grand · 3 |
+|---|---|---|
+| ✅ Rendement des panneaux | ✅ Construction sur pilotis | Réseau de chaleur |
+| ✅ Pose industrialisée | Noue dans la rue | Stockage d'énergie de quartier |
+| ✅ Substrat léger (toit vert) | Rez-de-chaussée inondable | Bassin de rétention |
+| Chantiers coordonnés (plus rapides) | Étages en bois | Agrivoltaïsme |
+| Réemploi des gravats (déblaiement) | Prés inondables (expansion de crue) | |
+| Containers isolés (le camp use moins) | Toit mixte, solaire et vert | |
+| Semences locales (les champs nourrissent plus) | | |
+| Pépinière municipale (arbres) | | |
+| Béton drainant (sol perméable) | | |
+| Génie végétal (berges) | | |
 
 ## Deux natures de palier, jamais mélangées
 
@@ -43,6 +73,6 @@ Le menu s'ouvre par un **bouton permanent** de la barre du bas, **et** par un bo
 - **La liste des sujets, leurs prix, leurs durées** — du level design, donc de l'auteur. Rien n'est chiffré ici tant que ce n'est pas jugé à l'écran.
 - **Le nom** : une université de plein exercice n'existe pas à 5 350 habitants ; une antenne, une Hochschule, oui — et **13d** avait prévu l'inverse (le lycée descendait en Realschule).
 - **L'emploi** : **50b** tenait le moulin et la brasserie pour le seul levier d'emploi de la ville. Un labo qui grandit en est un deuxième.
-- **Le lieu abîmé** : îlot 36 inondé ou coupé. La piste tenable est le **ralentissement** de la recherche, pas son blocage — le jeu s'ouvre sur une crue (15 · 72), et un menu fermé au premier mois est punitif.
+- **Le lieu abîmé** : îlot 36 inondé ou coupé. La piste tenable, depuis 113 : **moins de points en janvier**, jamais un menu fermé — le jeu s'ouvre sur une crue (15 · 72), et un menu fermé au premier mois est punitif.
 
 **Voir aussi** : [[Mairie et politiques]] · [[Ressources]] · [[Décisions]] · [[Milestones]] · [[Boucle de jeu]] · [[Wehrau]] · [[Questions ouvertes]]

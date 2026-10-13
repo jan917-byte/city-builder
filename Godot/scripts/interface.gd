@@ -1161,6 +1161,8 @@ const DESSINS := {
 	"temperature": "<path d='M14 4v10.54a4 4 0 11-4 0V4a2 2 0 014 0z'/>",
 	# 🗳️ Lucide « vote » : le capital politique.
 	"capital": "<path d='M9 12l2 2 4-4'/><path d='M5 7c0-1.1.9-2 2-2h10a2 2 0 012 2v12H5V7z'/><path d='M22 19H2'/>",
+	# 🎓 Lucide « flask-conical » : les points de recherche (113).
+	"recherche": "<path d='M10 2v7.5L4.7 20.5a1 1 0 00.9 1.5h12.8a1 1 0 00.9-1.5L14 9.5V2'/><path d='M8.5 2h7'/><path d='M7 16h10'/>",
 	"caisse": "<circle cx='12' cy='12' r='9'/><path d='M15 8c-1-1-5-1-5 1 0 3 5 1 5 4 0 2-4 3-6 1m3-9v14'/>",
 	"dangers": "<path d='M12 3L2 21h20L12 3zm0 6v5m0 3v1'/>",
 	"chantiers": "<rect x='2' y='6' width='20' height='8' rx='1'/><path d='M17 14v7M7 14v7M17 3v3M7 3v3M10 14L2.3 6.3M14 6l7.7 7.7M8 6l8 8'/>",
@@ -3325,12 +3327,6 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	var l_quoi := _label(quoi, 11, GRIS)
 	l_quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(l_quoi)
-	var jauge := Jauge.new()
-	jauge.custom_minimum_size = Vector2(0, 9)
-	jauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	jauge.colorer(ACCENT_VIF)
-	jauge.visible = genre == "recherche"
-	bloc.add_child(jauge)
 	var etat := _label("", 12, TEXTE)
 	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(etat)
@@ -3338,7 +3334,7 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	_habiller_principal(b)
 	b.focus_mode = Control.FOCUS_NONE
 	bloc.add_child(b)
-	return {"bloc": tenue, "genre": genre, "etat": etat, "jauge": jauge, "bouton": b}
+	return {"bloc": tenue, "genre": genre, "etat": etat, "bouton": b}
 
 
 ## 🎓 La miniature d'une vignette du campus, rendue par la maquette.
@@ -3693,9 +3689,11 @@ func _brancher_lieu() -> void:
 		var k: String = cle
 		if String(l["genre"]) == "recherche":
 			b.pressed.connect(func() -> void:
-				if ville.financer_recherche(k, _mois):
+				if ville.acquerir_recherche(k, _mois):
 					var sujet: Dictionary = Recherche.SUJETS[k]
-					retours.consigner("%s : financement engagé, %s k€ en %s." % [sujet["nom"], _milliers(Recherche.cout_total_ke(k)), _duree(sujet["mois"])], _mois)
+					# 🔴 Flaggable (90).
+					retours.consigner("%s : mis au point, −%d point%s, vaut tout de suite." % [sujet["nom"], Recherche.prix(k), "s" if Recherche.prix(k) > 1 else ""], _mois)
+					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % Recherche.prix(k), "", ALERTE)
 					retours.actualiser(_mois)
 				_maj_lieu())
 		else:
@@ -3739,7 +3737,6 @@ func _maj_lieu() -> void:
 			# 🏗️ Les pilotis dès l'ouverture ; le reste garde son nom, grisé, jusqu'aux financements.
 			var ouvert: bool = cle in Recherche.SUJETS_OUVERTURE or _financements()
 			bloc.modulate.a = 1.0 if ouvert else 0.45
-			(l["jauge"] as Control).visible = ouvert
 			(l["etat"] as Control).visible = ouvert
 			(l["bouton"] as Control).visible = ouvert
 			if ouvert:
@@ -3835,27 +3832,18 @@ func _ranger_leviers() -> void:
 
 
 func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
-	var s: Dictionary = Recherche.SUJETS[cle]
 	var etat: Label = l["etat"]
 	var b: Button = l["bouton"]
-	var jauge: Jauge = l["jauge"]
 	if Recherche.acquis(ville, cle, _mois):
-		jauge.regler(1.0, 1.0)
 		etat.text = "Acquis %s, vaut pour toute la ville." % \
 			Calendrier.en(Recherche.mois_palier(ville, cle))
 		b.visible = false
-	elif ville.recherche_engagee(cle):
-		var reste: float = Recherche.reste_mois(ville, cle, _mois)
-		jauge.regler(1.0 - reste / float(s["mois"]), 1.0)
-		etat.text = "En cours, encore %s" % _duree(reste)
-		b.visible = false
 	else:
-		jauge.regler(0.0, 0.0)
-		# Un mois chacune (auteur, 2026-10-09) : le prix et la durée, sans « par mois ».
-		etat.text = "%s k€ en %s" % [_milliers(Recherche.cout_total_ke(cle)), _duree(float(s["mois"]))]
+		var prix := Recherche.prix(cle)
+		etat.text = "%d point%s" % [prix, "s" if prix > 1 else ""]
 		b.visible = true
-		b.disabled = _caisse_ke < float(s["ke_mois"])
-		b.text = "Financer" if not b.disabled else "Caisse insuffisante"
+		b.disabled = Recherche.points(ville, _mois) < prix
+		b.text = "Mettre au point" if not b.disabled else "Points insuffisants"
 
 
 func _maj_ligne_politique(cle: String, l: Dictionary) -> void:
@@ -3970,6 +3958,8 @@ func _barre_compteurs() -> void:
 	# 🔲 En vitre, l'argent et la confiance seuls (auteur, 2026-10-02) : l'énergie est à gauche.
 	if VITRE:
 		lignes.resize(2)
+	# 🎓 Puis les points de l'institut (113) : ce qu'on peut apprendre.
+	lignes.insert(2, ["recherche", "recherche", Color8(70, 98, 150), "Points de recherche"])
 	# 🌡️ La température de l'autre côté (décision 92), sans le mot de la saison : le mois le dit.
 	lignes.append(["temperature", "temperature", Color8(176, 92, 64), "Température moyenne du mois"])
 	for ligne in lignes:
@@ -3985,7 +3975,7 @@ func _barre_compteurs() -> void:
 		bloc.mouse_filter = Control.MOUSE_FILTER_STOP
 		h.add_child(bloc)
 		# 🧾 Au clic, pourquoi le compteur monte ou baisse (auteur, 2026-10-02).
-		if ligne[0] in ["caisse", "capital"]:
+		if ligne[0] in ["caisse", "capital", "recherche"]:
 			bloc.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 			bloc.gui_input.connect(_clic_compteur.bind(ligne[0]))
 		var pic := TextureRect.new()
@@ -4020,6 +4010,13 @@ func _clic_historique(e: InputEvent) -> void:
 	_historique_ouvert = not _historique_ouvert
 	_detail_lignes = []
 	_maj_detail.call_deferred(ville.indicateurs(_mois), _mois)
+
+
+## Un compteur de la barre, avec le filet qui le précède.
+func _montrer_compteur(cle: String, oui: bool) -> void:
+	var bloc: Control = (_barre_valeurs[cle] as Label).get_parent()
+	bloc.visible = oui
+	bloc.get_parent().get_child(bloc.get_index() - 1).visible = oui
 
 
 func _clic_compteur(e: InputEvent, sujet: String) -> void:
@@ -4062,7 +4059,11 @@ func _maj_detail(indic: Dictionary, mois: float) -> void:
 	_detail_panneau.visible = _detail_sujet != ""
 	if _detail_sujet == "":
 		return
-	var lignes := _lignes_caisse(indic, mois) if _detail_sujet == "caisse" else _lignes_capital(mois)
+	var lignes: Array
+	match _detail_sujet:
+		"caisse": lignes = _lignes_caisse(indic, mois)
+		"recherche": lignes = _lignes_recherche(mois)
+		_: lignes = _lignes_capital(mois)
 	if lignes == _detail_lignes:
 		return
 	_detail_lignes = lignes
@@ -4130,6 +4131,23 @@ static func _blocs_mensuels(flux: Array, fmt: Callable, seuil: float) -> Array:
 	return out
 
 
+## 🎓 D'où viennent les points et où ils sont partis (113). 🔴 Textes flaggables (90).
+func _lignes_recherche(mois: float) -> Array:
+	var out := [["Reçus par l'institut", null, 0, false]]
+	for g in Recherche.gains(ville, mois):
+		out.append([g[0], "+%d" % int(g[1]), 1, false])
+	var acquis := false
+	for cle in Recherche.ORDRE:
+		if Recherche.acquis(ville, cle, mois):
+			if not acquis:
+				out.append(["Mis au point", null, 0, false])
+				acquis = true
+			out.append([String(Recherche.SUJETS[cle]["nom"]), "−%d" % Recherche.prix(cle), -1, false])
+	out.append(["Points aujourd'hui", str(Recherche.points(ville, mois)), 0, true])
+	out.append(["En janvier", "+%d" % Recherche.POINTS_PAR_AN, 0, false])
+	return out
+
+
 func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 	var out := []
 	var dense_mois := 0.0
@@ -4143,7 +4161,7 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		["Loyers des étages ajoutés", dense_mois],
 		["Aide aux personnes sans abri", -ville.aide_mensuelle_ke(mois)],
 		["Nourriture achetée en plus" if nourriture > 0.0 else "Nourriture économisée", -nourriture],
-		["Université et mairie", -ville.charge_mensuelle_ke(mois)],
+		["Mairie", -ville.charge_mensuelle_ke(mois)],
 	]
 	out.append_array(_blocs_mensuels(flux, func(v): return _nb(v, 1) + " k€/mois", 0.05))
 	out.append([HISTORIQUE, null, 0, false])
@@ -4163,7 +4181,6 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 	cumul.append_array([
 		["Aide aux personnes sans abri", -ville.aide_cumulee_ke(mois)],
 		["Nourriture achetée en plus" if achat > 0.0 else "Nourriture économisée", -achat],
-		["Université", -Recherche.depense_ke(ville, mois)],
 		["Mairie", -Politiques.depense_ke(ville, mois)],
 	])
 	for c in cumul:
@@ -4529,8 +4546,12 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 	_barre.visible = _menu_panneau.visible and (not _bilan_differe() or not ville._camps.is_empty())
 	if _barre.visible:
 		for cle in _barre_valeurs:
-			if cle != "temperature":
+			if not cle in ["temperature", "recherche"]:
 				(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
+		# 🎓 Les points dès que l'institut est atteignable : avant, ils ne servent à rien.
+		var points: Label = _barre_valeurs["recherche"]
+		points.text = str(Recherche.points(ville, mois))
+		_montrer_compteur("recherche", etude_publiee() or _financements())
 		var degres: float = saison.temperature(mois) if saison != null else Calendrier.temperature(mois)
 		(_barre_valeurs["temperature"] as Label).text = "%s °C" % _nb(degres, 0)
 		_thermo_pic.texture = _thermometre(degres, 22, Color8(176, 92, 64))
@@ -5838,8 +5859,7 @@ func _maj_reparation(o: Dictionary) -> void:
 			_posee(_rebatir_boutons["pilotis"], "reparer", "Sur pilotis", "pilotis")
 		else:
 			# 🔴 Flaggable (90).
-			_rebatir_boutons["pilotis"].text = "Sur pilotis, en recherche à l'institut" \
-				if ville.recherche_engagee(Recherche.PILOTIS) else "Sur pilotis, à mettre au point à l'institut"
+			_rebatir_boutons["pilotis"].text = "Sur pilotis, à mettre au point à l'institut"
 		var choisi := str(_pose.get("reparer", ""))
 		if concours and rendu:
 			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \

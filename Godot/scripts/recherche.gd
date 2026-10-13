@@ -1,46 +1,50 @@
 extends RefCounted
-# L'université (décision 79) : on finance un sujet, on attend, un palier tombe.
-# L'état — quel sujet est engagé, à quel mois — vit dans `ville.gd`, comme les
+# L'institut (113, révise 79) : un sujet s'achète en points, au clic, et vaut tout de suite.
+# L'état — quel sujet est acquis, à quel mois — vit dans `ville.gd`, comme les
 # poses ; ici, la table et les fonctions pures.
+const Calendrier := preload("res://scripts/calendrier.gd")
 
 # ==========================================================================
-# 🎚️ LEVEL DESIGN — la table que l'auteur règle (décision 79)
+# 🎚️ LEVEL DESIGN — les tables que l'auteur règle (113)
 # ==========================================================================
-# `ke_mois` × `mois` sort de LA MÊME caisse que les poses : financer, c'est ne
-# pas équiper ce mois-ci. Un sujet engagé ne s'arrête plus — c'est un chantier
-# sans géométrie, et un chantier ne se révise pas (`lancer_solaire`).
-# 🔴 Des paliers PETITS, exprès : un gros palier tardif rattraperait une partie
-# ratée. Les grands gains doivent venir des objets neufs, qui restent à écrire.
-# ⏱️ Un mois chacune, même prix total (auteur, 2026-10-09 : attendre plus est trop long au début).
+# La caisse dit quoi bâtir, les points quoi apprendre : aucun euro ici.
+# 🔴 Garde-fou de 113 : avant la crue, les points couvrent environ la MOITIÉ du
+# prix de tous les sujets — sinon on finit par tout acquérir et choisir ne sert plus.
+const POINTS_DEPART := 2
+const POINTS_PAR_AN := 2           # chaque janvier, avec le budget (`Calendrier.an`)
+const POINTS_PREMIERE_FOIS := 1    # la première livraison de chacun de ces gestes :
+const PREMIERES_FOIS := ["berge", "toit vert", "sol perméable", "culture"]  # la ville-éponge
+# Prix selon la taille : 1 un rendement, 2 un geste nouveau, 3 un objet neuf.
+# 🔴 Des paliers de rendement PETITS, exprès : un gros palier tardif rattraperait
+# une partie ratée. Les grands gains viennent des objets neufs, encore à écrire.
 const SUJETS := {
 	"rendement": {
 		"nom": "Rendement des panneaux",
 		"quoi": "+8 % de production sur TOUS les toits, posés compris",
-		"ke_mois": 600.0, "mois": 1.0,
+		"points": 1,
 		"effet": "rendement_x", "valeur": 1.08, "domaine": "solaire",
 	},
 	"pose": {
 		"nom": "Pose industrialisée",
 		"quoi": "−15 % sur le prix de pose des panneaux",
-		"ke_mois": 360.0, "mois": 1.0,
+		"points": 1,
 		"effet": "cout_panneau_x", "valeur": 0.85, "domaine": "solaire",
 	},
 	"pilotis": {
 		"nom": "Construction sur pilotis",
 		"quoi": "Rebâtir un îlot sinistré le rez sur poteaux : l'eau passe dessous.",
-		"ke_mois": 120.0, "mois": 1.0,
+		"points": 2,
 		"effet": "facon_pilotis", "valeur": 1.0, "domaine": "logement",
 	},
 	"sedum": {
 		"nom": "Substrat léger",
 		"quoi": "−20 % sur le prix d'un toit vert",
-		"ke_mois": 144.0, "mois": 1.0,
+		"points": 1,
 		"effet": "cout_vert_x", "valeur": 0.80, "domaine": "toits",
 	},
 }
-# 🏗️ L'institut (auteur, 2026-10-08) : la seule recherche ouverte dès l'ouverture. Elle ne
-# change aucun prix, elle permet de rebâtir sur pilotis (`Ville.facon_permise`).
-# 🔴 120 k€ en un mois, le prix du concours qu'elle remplace : à juger.
+# 🏗️ La seule recherche ouverte dès l'ouverture (auteur, 2026-10-08). Elle ne change
+# aucun prix, elle permet de rebâtir sur pilotis (`Ville.facon_permise`).
 const PILOTIS := "pilotis"
 const SUJETS_OUVERTURE := [PILOTIS]
 const ORDRE := ["pilotis", "rendement", "pose", "sedum"]
@@ -48,20 +52,47 @@ const ORDRE := ["pilotis", "rendement", "pose", "sedum"]
 const DOMAINES := [["logement", "Logement"], ["solaire", "Solaire"], ["toits", "Toits verts"], ["eau", "Eau"]]
 
 
-## Le mois où le palier tombe. INF tant que le sujet n'est pas financé.
+## Le mois où le sujet a été acquis. INF tant qu'il ne l'est pas.
 static func mois_palier(v, cle: String) -> float:
 	if not v._recherche.has(cle):
 		return INF
-	return float(v._recherche[cle]) + float(SUJETS[cle]["mois"])
+	return float(v._recherche[cle])
 
 
 static func acquis(v, cle: String, t: float) -> bool:
 	return t >= mois_palier(v, cle)
 
 
-## Ce qu'il reste à attendre, en mois. 0 une fois le palier tombé.
-static func reste_mois(v, cle: String, t: float) -> float:
-	return maxf(mois_palier(v, cle) - t, 0.0)
+static func prix(cle: String) -> int:
+	return int(SUJETS[cle]["points"])
+
+
+## Ce qui a fait monter le compteur jusqu'au mois `t` : [[raison, points], …].
+## Fonction PURE du temps, comme la caisse : « Recommencer » n'a rien à rembobiner.
+static func gains(v, t: float) -> Array:
+	var out := [["Au départ", POINTS_DEPART]]
+	var ans := Calendrier.an(t) - 1
+	if ans > 0:
+		out.append(["%d nouvelles années" % ans if ans > 1 else "Une nouvelle année", ans * POINTS_PAR_AN])
+	for genre in PREMIERES_FOIS:
+		if float(v._premieres.get(genre, INF)) <= t:
+			out.append(["Premier chantier livré : %s" % genre, POINTS_PREMIERE_FOIS])
+	return out
+
+
+static func depenses(v, t: float) -> int:
+	var n := 0
+	for cle in v._recherche:
+		if acquis(v, cle, t):
+			n += prix(cle)
+	return n
+
+
+static func points(v, t: float) -> int:
+	var n := 0
+	for g in gains(v, t):
+		n += int(g[1])
+	return n - depenses(v, t)
 
 
 ## Le produit des paliers acquis pour un effet donné.
@@ -89,18 +120,3 @@ static func marches(v, effet: String) -> Array:
 		f *= float(d[1])
 		m.append([float(d[0]), f])
 	return m
-
-
-## En k€ depuis le mois 0 : on paie chaque mois, jusqu'au palier et pas au-delà.
-static func depense_ke(v, t: float) -> float:
-	var ke := 0.0
-	for cle in v._recherche:
-		var s: Dictionary = SUJETS[cle]
-		var mois := clampf(t - float(v._recherche[cle]), 0.0, float(s["mois"]))
-		ke += mois * float(s["ke_mois"])
-	return ke
-
-
-## Le coût total d'un sujet, annoncé avant de s'engager.
-static func cout_total_ke(cle: String) -> float:
-	return float(SUJETS[cle]["ke_mois"]) * float(SUJETS[cle]["mois"])

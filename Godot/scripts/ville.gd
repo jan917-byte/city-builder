@@ -45,8 +45,10 @@ var _solaire := {}         # fid -> {debut, duree, cible, cout_ke}
 var _vert := {}            # fid -> idem, pour les toits verts
 var _stationnement_supprime := {}  # fid -> mois d'engagement
 var _dense := {}           # fid -> {debut, duree, etages, logements, cout_ke}
-## 🎓 Sujet de recherche -> mois d'engagement. Un sujet engagé ne s'arrête plus.
+## 🎓 Sujet de recherche -> mois où il a été acquis (113 : au clic, sans durée).
 var _recherche := {}
+## 🎓 Geste de `Recherche.PREMIERES_FOIS` -> mois de sa première livraison : un point de plus.
+var _premieres := {}
 ## 🏛️ Politique -> [[début, fin], …] ; fin = -1 tant qu'elle est en vigueur.
 var _politiques := {}
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
@@ -314,11 +316,11 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
-	"_permeable", "_concours", "_labours"]
+	"_permeable", "_concours", "_labours", "_premieres"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours"]
+	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -364,7 +366,8 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_labours": [ilots, 0.0],
 		"_rebati": [ilots, ""],
 		"_demandes": [DEMANDES, 0.0],
-		"_recherche": [Recherche.SUJETS, 0.0]}
+		"_recherche": [Recherche.SUJETS, 0.0],
+		"_premieres": [Recherche.PREMIERES_FOIS, 0.0]}
 	for champ in formes:
 		if not etat.has(champ):
 			continue
@@ -480,6 +483,7 @@ func transformer_berge(fid: int, cible: int, t: float) -> bool:
 	_berge[fid] = {"cible": cible, "depuis": de, "debut": t,
 		"duree": _delai(BERGE_MOIS[cible] - BERGE_MOIS[de]), "cout_ke": cout}
 	_depenser("berge", cout)
+	_premiere("berge", t + float(_berge[fid]["duree"]))
 	return true
 
 
@@ -799,6 +803,7 @@ func trafic_vu(fid: int, t: float) -> float:
 func reinitialiser() -> void:
 	_solaire.clear()
 	_recherche.clear()
+	_premieres.clear()
 	_politiques.clear()
 	_vert.clear()
 	_stationnement_supprime.clear()
@@ -940,6 +945,7 @@ func lancer_vert(fid: int, part: float, t: float) -> bool:
 	_vert[fid] = {"debut": t, "duree": duree, "cible": cible, "cout_ke": cout}
 	_vert_ha_mois = INF
 	_depenser("vert", cout)
+	_premiere("toit vert", t + duree)
 	return true
 
 
@@ -1030,6 +1036,7 @@ func rendre_permeable(fid: int, t: float) -> bool:
 		PERMEABLE_RESTE - base("i", fid, "impermeabilise"), t, 0.0, duree)
 	_permeable[fid] = {"debut": t, "duree": duree, "cout_ke": cout}
 	_depenser("permeable", cout)
+	_premiere("sol perméable", t + duree)
 	return true
 
 
@@ -1829,6 +1836,7 @@ func cultiver(fid: int, culture: int, t: float) -> bool:
 		_cultures[fid] = []
 	_cultures[fid].append({"debut": t, "culture": culture, "cout_ke": cout})
 	_depenser("culture", cout)
+	_premiere("culture", t + _delai(CULTURES[culture]["mois"]))
 	_crue_champs_mois = INF
 	return true
 
@@ -1939,15 +1947,19 @@ func facteur(effet: String, t: float) -> float:
 	return Recherche.facteur(self, effet, t) * Politiques.facteur(self, effet, t)
 
 
-## `false` si le sujet est déjà financé, ou si la caisse ne tient pas le premier
-## mois. Une fois engagé, il court jusqu'au palier : c'est un chantier.
-func financer_recherche(cle: String, t: float) -> bool:
+## `false` si le sujet est déjà acquis, ou s'il manque des points (113).
+func acquerir_recherche(cle: String, t: float) -> bool:
 	if not Recherche.SUJETS.has(cle) or _recherche.has(cle):
 		return false
-	if caisse_ke(t) < float(Recherche.SUJETS[cle]["ke_mois"]):
+	if Recherche.points(self, t) < Recherche.prix(cle):
 		return false
 	_recherche[cle] = t
 	return true
+
+
+## La livraison la plus tôt compte : un chantier plus court lancé après peut la devancer.
+func _premiere(genre: String, livraison: float) -> void:
+	_premieres[genre] = minf(float(_premieres.get(genre, INF)), livraison)
 
 
 ## Signer, ou retirer. 🔴 Retirer arrête la dépense et ne rembourse rien ;
@@ -1965,16 +1977,9 @@ func basculer_politique(cle: String, t: float) -> bool:
 	return true
 
 
-func recherche_engagee(cle: String) -> bool:
-	return _recherche.has(cle)
-
-
-## Ce que l'université et la mairie prélèvent CE mois-ci, en k€.
+## Ce que la mairie prélève CE mois-ci, en k€ (l'institut se paie en points, 113).
 func charge_mensuelle_ke(t: float) -> float:
 	var ke := 0.0
-	for cle in _recherche:
-		if not Recherche.acquis(self, cle, t):
-			ke += float(Recherche.SUJETS[cle]["ke_mois"])
 	for cle in _politiques:
 		if Politiques.active(self, cle):
 			ke += float(Politiques.POLITIQUES[cle]["ke_mois"])
@@ -2045,7 +2050,7 @@ func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
-		- Recherche.depense_ke(self, t) - Politiques.depense_ke(self, t)
+		- Politiques.depense_ke(self, t)
 
 
 func _depenser(genre: String, ke: float) -> void:

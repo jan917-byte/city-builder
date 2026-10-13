@@ -126,10 +126,20 @@ func executer() -> void:
 	jeu.interface.financements_ouverts = true
 	# 🔬 Les sujets sont à l'institut depuis le 2026-10-08.
 	jeu.interface.ouvrir_lieu("institut")
+	var points: int = jeu.Recherche.points(jeu.ville, jeu.mois)
+	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
 	await cliquer(jeu.interface._lieu_lignes["sedum"]["bouton"])
-	verifier(jeu.ville.recherche_engagee("sedum") and "k€ en" in retours.journal[-1], "Le financement de recherche annonce son coût et sa durée")
+	verifier(jeu.Recherche.acquis(jeu.ville, "sedum", jeu.mois) and "−1 point," in retours.journal[-1],
+		"Un sujet se met au point au clic, et le journal dit les points dépensés")
+	verifier(jeu.Recherche.points(jeu.ville, jeu.mois) == points - 1
+		and is_equal_approx(jeu.ville.caisse_ke(jeu.mois), caisse),
+		"Il coûte un point et pas un euro (113)")
 	actualiser(jeu.mois + 12.0)
-	verifier("recherche achevée" in retours.journal[-1], "Le résultat de recherche est annoncé à son échéance")
+	verifier(jeu.Recherche.points(jeu.ville, jeu.mois) == points - 1 + jeu.Recherche.POINTS_PAR_AN,
+		"Une année plus tard, janvier a rendu ses points")
+	verifier(jeu.interface._barre_valeurs["recherche"].text == str(jeu.Recherche.points(jeu.ville, jeu.mois))
+		and jeu.interface._barre_valeurs["recherche"].get_parent().visible,
+		"Le compteur du haut dit les points")
 	jeu.interface.ouvrir_lieu("mairie")
 	await cliquer(jeu.interface._lieu_lignes["subv_vert"]["bouton"])
 	verifier("k€/mois" in retours.journal[-1], "Une subvention annonce son coût récurrent")

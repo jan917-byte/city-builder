@@ -1,7 +1,7 @@
 ---
 tags: [système, économie]
 statut: arrêté (paramètres ouverts)
-maj: 2026-09-30
+maj: 2026-10-13
 ---
 
 # Ressources
@@ -96,6 +96,10 @@ Ce sont les deux vrais leviers du métier. Le joueur les sentira sans jamais lir
 **Comment on le récupère sans jauges** : chaque décision **nomme qui perd**, dans son `effet_de_bord`. Les commerçants, les artisans qui livrent, les parents d'élèves — ils ne sont pas comptés, ils sont **dits**, et ils reviennent à l'écran. Le pluralisme passe dans le texte et dans l'image, pas dans quatre barres de couleur. C'est aussi ce qui tient la cible de ~10 000 mots. → [[Décisions]] · [[Ton et règles d'écriture]]
 
 ⚠️ **Conséquence sur la rejouabilité** : un chiffre unique limite le **rythme**, jamais la **direction**. Il ne peut donc pas empêcher un joueur patient de tout accomplir — ce n'est pas lui qui porte l'arbitrage entre [[Milestones]]. Ce sont le sol et le temps.
+
+## 🎓 Les points de recherche — à part, et non convertibles (113)
+
+Une troisième réserve, **hors de la caisse** : l'institut reçoit des points (au départ, chaque janvier, à la première livraison de chaque geste de la ville-éponge) et un sujet s'acquiert au clic. Chaque compteur répond à sa question : **l'argent**, ce qu'on peut bâtir · **la confiance**, ce qu'on peut imposer · **les points**, ce qu'on peut apprendre. Le seul pont entre l'argent et les points est l'agrandissement du campus. → [[Université et recherche]]
 
 ## ❌ Écarté
 

@@ -776,3 +776,6 @@ Aucun jeu Steam trouvé sous ce nom exact ; marques et domaine restent à vérif
 **2026-10-12 — Diagnostic : toutes les pages passent au papier blanc des Dangers, la page Agriculture (branche du 2026-10-09) remplace Tissu, la carte des sols se lit au mètre en gris et vert.**
 Demande de l'auteur (« seulement l'élément important ») ; fond, relief et forêt en papier, débris retirés, berges teintées seulement dans Sols et Chantiers, Énergie sur le bâti seul ; Sols : jardins verts, cours, places et parkings gris, champs vert pâle.
 `--essai` sans erreur (agriculture : 88 objets peints) ; captures `apercu_diagnostics.gd` ; légendes Sols et Agriculture flaggables (90).
+**2026-10-13 — La recherche se paie en points, plus en argent, et vaut au clic (113, révise 79) ; compteur de points en haut, détail au clic.**
+Tranché par l'auteur : la caisse dit quoi bâtir, les points quoi apprendre ; écarté le prix croissant au rang (20, 25, 30…). 2 au départ, +2 chaque janvier, +1 par première livraison de berge, toit vert, sol perméable, culture ; sujets à 1, 2 ou 3.
+Essais étude, progression, ouverture, rebâtir, concours à 0 échec ; sauvegarde 92, capital 2, livre 1, travaux 1, identiques avant la modification. Liste de 20 sujets proposée au vault ; campus agrandi pas encore dans la maquette.

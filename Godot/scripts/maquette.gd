@@ -588,10 +588,9 @@ func _essai_interface() -> void:
 	# 🎓 LE PALIER EST RÉTROACTIF, et c'est LE contrôle de 79 : le toit est posé
 	# au mois 0, le palier tombe au 24, et c'est CE toit-là qui produit plus au
 	# 25 — sans qu'on y retouche. (La caisse est remplie par l'outil d'essai.)
-	# Financé au 23 : une recherche dure un mois (auteur, 2026-10-09).
 	ville.crediter_essai_ke(5000.0)
 	var pose := ville.lancer_solaire(49, 1.0, 0.0)
-	ville.financer_recherche("rendement", 23.0)
+	ville.acquerir_recherche("rendement", 24.0)
 	var prod_23: float = ville.indicateurs(23.0)["production_mwh"]
 	var prod_25: float = ville.indicateurs(25.0)["production_mwh"]
 	print("  palier de rendement au mois %.0f · la ville passe de %.0f à %.0f MWh/an "

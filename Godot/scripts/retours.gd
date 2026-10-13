@@ -343,9 +343,6 @@ func _chantiers(mois: float, en_cours: Array = []) -> Dictionary:
 		en_cours = ui.ville.chantiers(mois)["en_cours"]
 	for c in en_cours:
 		resultat["%s:%s:%s" % [c["couche"], c["fid"], c["genre"]]] = c
-	for cle in ui.ville._recherche:
-		if not ui.Recherche.acquis(ui.ville, cle, mois):
-			resultat["recherche:" + cle] = {"genre": "recherche", "cle": cle}
 	return resultat
 
 
@@ -411,10 +408,6 @@ Cliquez sur Trafic pour tout déblayer." % ui.rues_a_deblayer().size(), mois, ui
 
 
 func livraison(c: Dictionary, mois: float) -> void:
-	if c["genre"] == "recherche":
-		var sujet: Dictionary = ui.Recherche.SUJETS[c["cle"]]
-		annoncer("%s : recherche achevée." % sujet["nom"], mois)
-		return
 	var fid := int(c["fid"])
 	var couche := str(c["couche"])
 	var nom: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
