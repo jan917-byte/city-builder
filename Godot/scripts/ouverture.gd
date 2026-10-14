@@ -74,8 +74,7 @@ var pages_lues := {}
 func batir(maquette) -> void:
 	jeu = maquette
 	var ui = jeu.interface
-	theme = ui._theme_ui
-	ui._poser_boite(self)
+	ui._poser_histoire(self)
 	offset_left = ui.DETAIL_X
 	offset_right = ui.DETAIL_X + ui.DETAIL_LARGEUR
 	offset_top = ui.HAUT
@@ -88,7 +87,7 @@ func batir(maquette) -> void:
 	# creusait une ligne vide au-dessus.
 	var entete := HBoxContainer.new()
 	_corps.add_child(entete)
-	_titre = ui._label("", 22, ui.TEXTE)
+	_titre = ui._label("", 22, ui.ENCRE_HISTOIRE)
 	_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_titre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	entete.add_child(_titre)
@@ -122,7 +121,7 @@ func batir(maquette) -> void:
 func _batir_annonce(ui) -> void:
 	annonce = Control.new()
 	annonce.name = "AnnonceEtude"
-	annonce.theme = ui._theme_ui
+	annonce.theme = ui._theme_histoire
 	annonce.mouse_filter = Control.MOUSE_FILTER_STOP
 	annonce.visible = false
 	jeu.interface.add_child(annonce)
@@ -140,16 +139,16 @@ func _batir_annonce(ui) -> void:
 	annonce.add_child(centre)
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var boite := PanelContainer.new()
-	ui._poser_boite(boite)
+	ui._poser_histoire(boite)
 	boite.custom_minimum_size.x = 440
 	centre.add_child(boite)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	boite.add_child(v)
-	_annonce_titre = ui._label("", 22, ui.TEXTE)
+	_annonce_titre = ui._label("", 22, ui.ENCRE_HISTOIRE)
 	_annonce_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_annonce_titre)
-	_annonce_texte = ui._label("", 14, ui.TEXTE)
+	_annonce_texte = ui._label("", 14, ui.ENCRE_HISTOIRE)
 	_annonce_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_annonce_texte)
 	annonce_principal = Button.new()
@@ -222,13 +221,13 @@ func _legende_trafic(ui) -> void:
 	barre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_legende.add_child(barre)
 	var h := HBoxContainer.new()
-	h.add_child(ui._label(str(t.get("bas", "")), 12, ui.GRIS))
-	var haut: Label = ui._label(str(t.get("haut", "")), 12, ui.GRIS)
+	h.add_child(ui._label(str(t.get("bas", "")), 12, ui.GRIS_HISTOIRE))
+	var haut: Label = ui._label(str(t.get("haut", "")), 12, ui.GRIS_HISTOIRE)
 	haut.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(haut)
 	_legende.add_child(h)
-	ui._legende(_legende, jeu.COUPEE, "Endommagée par la crue")
+	ui._legende(_legende, jeu.COUPEE, "Endommagée par la crue", ui.ENCRE_HISTOIRE)
 
 
 # Les repères du guide restent dans l'interface (décision 85).
@@ -237,7 +236,7 @@ func _poser_reperes(_lieux: Array) -> void:
 
 
 func _paragraphe(texte: String, taille: int) -> Label:
-	var l: Label = jeu.interface._label(texte, taille, jeu.interface.TEXTE)
+	var l: Label = jeu.interface._label(texte, taille, jeu.interface.ENCRE_HISTOIRE)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_corps.add_child(l)
 	return l

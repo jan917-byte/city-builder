@@ -43,10 +43,28 @@ extends Resource
 @export_range(0, 40) var marge_interieure := 14
 ## Les coins : 0 = angles droits, 1 = l'arrondi des anciens habillages.
 @export_range(0.0, 2.0, 0.05) var arrondi := 0.0
+## L'ombre portée qui détache un panneau clair du papier blanc des diagnostics. A = 0 l'éteint.
+@export var ombre := Color(0.10, 0.10, 0.08, 0.22)
+## La taille de cette ombre, en pixels.
+@export_range(0, 40) var ombre_taille := 8
 ## Le fond des bulles qui montent de la ville.
 @export var fond_bulles := Color8(244, 245, 243)
 ## Le fond d'un onglet survolé et des cartes du concours.
 @export var fond_cartes := Color8(226, 229, 226)
+
+@export_group("Histoire")
+## Le récit, le guide des premiers pas et ses annonces : quand le jeu raconte, il parle en sombre.
+## Les outils (fiches, diagnostics, rail) restent clairs.
+@export var verre_histoire := Color(0.11, 0.125, 0.137, 0.88)
+@export var lisere_histoire := Color(1, 1, 1, 0.12)
+## Le texte de l'histoire.
+@export var encre_histoire := Color.WHITE
+## Les phrases secondaires et les petites étiquettes de l'histoire.
+@export var gris_histoire := Color8(190, 197, 201)
+## Les boutons sur le sombre : une plaque à peine plus claire, bordée de blanc.
+@export var fond_bouton_histoire := Color(1, 1, 1, 0.08)
+@export var bord_bouton_histoire := Color(1, 1, 1, 0.30)
+@export var survol_bouton_histoire := Color(1, 1, 1, 0.20)
 
 @export_group("Boutons")
 ## Taille du texte des boutons.

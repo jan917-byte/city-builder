@@ -3,7 +3,8 @@
 ## Ouvrir la fiche
 1. Ouvrir le projet dans **Godot lui-même**. Le raccourci « Ouvrir Wehrau.app » lance le jeu, pas l'éditeur.
 2. En bas à gauche, dans la liste des fichiers, double-cliquer sur **habillage.tres**.
-3. À droite, la fiche s'ouvre en six rubriques : *Texte*, *Couleurs du jeu*, *Panneaux*, *Boutons*, *Bouton qui engage*, *Jauges*.
+3. À droite, la fiche s'ouvre en sept rubriques : *Texte*, *Couleurs du jeu*, *Panneaux*, *Histoire*, *Boutons*, *Bouton qui engage*, *Jauges*.
+   *Histoire* règle les panneaux qui racontent (récit, premiers pas, annonces), en sombre ; tout le reste est clair.
    Survoler un réglage affiche une bulle qui dit à quoi il sert.
 4. Changer ce qu'on veut, enregistrer (**Cmd+S**), puis lancer le jeu (**F5**).
 

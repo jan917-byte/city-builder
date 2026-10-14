@@ -34,9 +34,9 @@ func batir(maquette) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	var ui = jeu.interface
-	theme = ui._theme_ui
+	theme = ui._theme_histoire
 	var boite := PanelContainer.new()
-	ui._poser_boite(boite)
+	ui._poser_histoire(boite)
 	boite.custom_minimum_size.x = 420
 	# 🔴 LA CARTE NE COUVRE PAS CE QU'ELLE RACONTE : centrée en largeur,
 	# posée au-dessus des commandes du temps, elle laisse la ville visible.
@@ -52,17 +52,17 @@ func batir(maquette) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	boite.add_child(v)
-	_titre = ui._label("", 22, ui.TEXTE)
+	_titre = ui._label("", 22, ui.ENCRE_HISTOIRE)
 	_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_titre)
-	_texte = ui._label("", 14, ui.TEXTE)
+	_texte = ui._label("", 14, ui.ENCRE_HISTOIRE)
 	_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_texte)
 	v.add_child(HSeparator.new())
 	var bas := HBoxContainer.new()
 	bas.add_theme_constant_override("separation", 10)
 	v.add_child(bas)
-	_compte = ui._label("", 11, ui.GRIS)
+	_compte = ui._label("", 11, ui.GRIS_HISTOIRE)
 	_compte.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_compte.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	bas.add_child(_compte)

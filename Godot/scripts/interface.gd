@@ -580,6 +580,11 @@ var _theme_courant := ""
 var _theme_actuel := {}
 var _detail_ouvert := true
 var _theme_ui: Theme
+## 📖 L'HISTOIRE PARLE EN SOMBRE, LES OUTILS RESTENT CLAIRS (auteur, 2026-10-14) : le
+## récit, le guide des premiers pas et ses annonces, rien d'autre — sinon le sombre ne dit plus rien.
+var _theme_histoire: Theme
+var ENCRE_HISTOIRE := TEXTE
+var GRIS_HISTOIRE := GRIS
 var _fonte_grasse: FontVariation
 var _police: Font
 var _fonte_texte: FontVariation
@@ -600,6 +605,7 @@ func batir() -> void:
 	# poids typographique qui dit lequel des trois éléments d'une ligne compte.
 	_fonte_grasse = _peser(_fiche.graisse_boutons if VITRE else 700, 0.34)
 	_theme_ui = _creer_theme()
+	_theme_histoire = _creer_theme_histoire()
 	bulles.ui = self
 	add_child(bulles)
 	_panneau_bilan()
@@ -629,6 +635,9 @@ func _habiller() -> void:
 		_habiller_vitre()
 	elif BOIS:
 		_habiller_bois()
+	if not VITRE:
+		ENCRE_HISTOIRE = TEXTE
+		GRIS_HISTOIRE = GRIS
 
 
 ## Un angle arrondi des deux anciens habillages ; en vitre, la fiche le dose (0 = droit).
@@ -666,6 +675,8 @@ func _habiller_vitre() -> void:
 	ALERTE = f.alerte
 	APPEL = f.appel
 	RAIL_SURVOL = f.rail_survol
+	ENCRE_HISTOIRE = f.encre_histoire
+	GRIS_HISTOIRE = f.gris_histoire
 
 
 ## 🪵 L'habillage du 2026-09-28 : les mêmes rôles de couleur, en brun sur crème.
@@ -777,7 +788,7 @@ func _boite() -> StyleBoxFlat:
 		# le verre, et grisait le crème de 245 à 220 : elle passe sous le verre (`_vitrer`).
 		sb.shadow_size = 0
 	if VITRE:
-		# Le bord du verre : un pixel clair, aucune ombre.
+		# Le bord du verre : un pixel clair ; l'ombre passe sous le verre (`_vitrer`).
 		sb.shadow_size = 0
 		sb.border_color = _fiche.lisere
 		sb.set_border_width_all(_fiche.lisere_epaisseur)
@@ -807,7 +818,9 @@ func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 	p.add_child(fond)
 	p.move_child(fond, 0)
 	var ombre: Panel
-	if BOIS:
+	# 🔄 L'ombre revient sous la vitre (auteur, 2026-10-14) : sans elle, un panneau
+	# clair se perdait sur le papier blanc des diagnostics.
+	if BOIS or (VITRE and _fiche.ombre.a > 0.0):
 		ombre = Panel.new()
 		ombre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ombre.z_index = -2
@@ -817,6 +830,9 @@ func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 		sb.shadow_color = Color(0.25, 0.12, 0.05, 0.28)
 		sb.shadow_size = 12
 		sb.shadow_offset = Vector2(0, 4)
+		if VITRE:
+			sb.shadow_color = _fiche.ombre
+			sb.shadow_size = _fiche.ombre_taille
 		ombre.add_theme_stylebox_override("panel", sb)
 		p.add_child(ombre)
 		p.move_child(ombre, 0)
@@ -843,6 +859,49 @@ func _poser_boite(p: Control, cadre := false) -> void:
 		sb.set_border_width_all(7)
 	p.add_theme_stylebox_override("panel", sb)
 	_vitrer(p)
+
+
+## Un panneau qui raconte : verre sombre, texte clair. Hors vitre, c'est un panneau comme les autres.
+func _poser_histoire(p: Control) -> void:
+	if not VITRE:
+		_poser_boite(p)
+		return
+	p.theme = _theme_histoire
+	var sb := _boite()
+	sb.border_color = _fiche.lisere_histoire
+	if not VERRE:
+		sb.bg_color = Color(_fiche.verre_histoire, 1.0)
+	p.add_theme_stylebox_override("panel", sb)
+	_vitrer(p, _fiche.verre_histoire)
+
+
+## Le thème des panneaux clairs, recoloré pour le sombre : mêmes marges, mêmes polices.
+func _creer_theme_histoire() -> Theme:
+	if not VITRE:
+		return _theme_ui
+	var t: Theme = _theme_ui.duplicate()
+	var f := _fiche
+	var couleurs := {
+		"normal": [f.fond_bouton_histoire, f.bord_bouton_histoire],
+		"hover": [f.survol_bouton_histoire, Color(f.encre_histoire, 0.6)],
+		# Un choix posé s'inverse : plaque claire, encre sombre.
+		"pressed": [f.encre_histoire, f.encre_histoire],
+		"hover_pressed": [f.encre_histoire, f.encre_histoire],
+		"disabled": [Color(f.fond_bouton_histoire, f.fond_bouton_histoire.a * 0.5),
+			Color(f.bord_bouton_histoire, f.bord_bouton_histoire.a * 0.4)],
+	}
+	for etat in couleurs:
+		var sb: StyleBoxFlat = t.get_stylebox(etat, "Button").duplicate()
+		sb.bg_color = couleurs[etat][0]
+		sb.border_color = couleurs[etat][1]
+		t.set_stylebox(etat, "Button", sb)
+	for c in ["font_color", "font_hover_color"]:
+		t.set_color(c, "Button", f.encre_histoire)
+	for c in ["font_pressed_color", "font_hover_pressed_color", "icon_pressed_color",
+			"icon_hover_pressed_color"]:
+		t.set_color(c, "Button", Color(f.verre_histoire, 1.0))
+	t.set_color("font_disabled_color", "Button", Color(f.gris_histoire, 0.6))
+	return t
 
 
 func _creer_theme() -> Theme:
@@ -2331,7 +2390,7 @@ func _premieres_maisons_m() -> float:
 	return 0.0
 
 
-func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
+func _legende(parent: VBoxContainer, couleur: Color, texte: String, encre := TEXTE) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
 	var carre := Panel.new()
@@ -2342,7 +2401,7 @@ func _legende(parent: VBoxContainer, couleur: Color, texte: String) -> void:
 	carre.custom_minimum_size = Vector2(15, 15)
 	carre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(carre)
-	h.add_child(_label(texte, 12, TEXTE))
+	h.add_child(_label(texte, 12, encre))
 	parent.add_child(h)
 
 
