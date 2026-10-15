@@ -205,6 +205,35 @@ var _sol_tri := PackedVector3Array()
 var _sol_cases := {}
 var _courbe_suivant := PackedInt32Array()
 var _signature_circuit := "?"
+## fid → voitures visibles dessus, et le quota que la pulsation lui donne.
+var _occupe := {}
+var _quota := {}
+## arc → l'heure (horloge du trafic) où la dernière voiture visible y est entrée.
+var _entree_vue := PackedFloat32Array()
+var _recompter := true
+## arc → sa courbe, ce que ses virages permettent, et le profil de vitesse retenu.
+var _courbes := []
+var _plafonds := []
+var _profils := []
+## arc → sa vitesse la plus basse, en part de celle de la rue.
+var _lent := PackedFloat32Array()
+## arc → les arcs qui y mènent (les ouverts seulement, s'il y en a).
+var _precedents := []
+## fid → la vitesse à laquelle ses arcs ont été cuits, et ces arcs.
+var _vitesse_profil := {}
+var _arcs_du_fid := {}
+## 🐢 TROIS NOMBRES DE LEVEL DESIGN, à juger à l'écran : l'accélération latérale
+## tolérée (3 m/s² : une rue à 30 km/h tourne à droite vers 11 km/h, à gauche
+## vers 9 — mesuré par diag_trafic), le freinage et la reprise.
+const A_LATERALE := 3.0
+const FREINAGE := 1.6
+const REPRISE := 1.2
+const VITESSE_VIRAGE_MIN := 1.2
+const PAS_PROFIL := 0.5
+## 🚦 Deux voitures visibles de la même file : la règle des deux secondes, et
+## jamais moins de 6 m entre leurs centres (la plus longue fait 4,23 m).
+const ECART_TEMPS := 2.0
+const ECART_MIN := 6.0
 
 
 ## 🅿️ L'écart à l'axe d'une voiture garée SUR LE MORCEAU DROIT DE LA FICHE : le
@@ -411,6 +440,8 @@ func batir(donnees: Dictionary, etat_ville) -> void:
 	_arc_vu.resize(_roulantes.size())
 	_arc_vu.fill(-1)
 	_arrivee.resize(_roulantes.size())
+	_entree_vue.resize(_arc_L.size())
+	_entree_vue.fill(-INF)
 	_semer_circuit()
 	_maj_roulantes(0.0, true)
 	for k in _garees.size():
@@ -504,22 +535,17 @@ func _reveiller(fam: Famille, actif: bool) -> void:
 			ESPACEMENT_VELO_RARE, _impraticables(_mois))
 
 
-## 🔴 LA DENSITÉ RESTE UNE PROPRIÉTÉ DE LA RUE, pas de la voiture. Depuis que
-## les voitures circulent, ce n'est plus leur rang de semis qui décide de leur
-## visibilité — c'est un QUOTA par tronçon, tenu ici : la rue à `charge = 1,00`
-## en montre autant qu'avant, mais celles qui ne tiennent pas dedans s'effacent
-## AU CARREFOUR au lieu du milieu de la rue.
+## 🔴 LA DENSITÉ RESTE UNE PROPRIÉTÉ DE LA RUE, pas de la voiture : un QUOTA
+## par tronçon. La pulsation ne fait que le recalculer ; c'est `_changer_de_rue`
+## qui l'applique, au carrefour. Recompter ici à chaque pulsation éteignait ou
+## rallumait une voiture en pleine rue ~35 fois par seconde (diag_trafic, 2026-10-15).
+## Seules une rue fermée et un recomptage forcé effacent sur place.
 func _maj_roulantes(mois: float, force: bool) -> void:
 	_derniere_charge = mois
 	# La charge est une propriété de 178 rues, pas de milliers de voitures.
 	var vitesses := {}
-	var quota := {}
+	var quota := _quota
 	_indispo_courant = _indisponibles(mois)
-	var signature := _signature(_indispo_courant)
-	if signature != _signature_circuit:
-		_raccorder_circuit()
-		_signature_circuit = signature
-		force = true
 	for fid in ville.routes:
 		var praticable := not _indispo_courant.has(fid)
 		var part: float = ville.part_trafic(fid, mois) if praticable else 0.0
@@ -541,16 +567,41 @@ func _maj_roulantes(mois: float, force: bool) -> void:
 		var n_vu := float(_long_fid.get(fid, 0.0)) / esp
 		quota[fid] = (maxi(1, int(floor(n_vu))) if part >= 0.999 \
 			else int(round(n_vu * part))) if praticable else 0
-	var occupe := {}
+	# 🐢 Le profil des virages est cuit à la vitesse de la rue : à 10 % près, sinon
+	# un bouchon à 4 km/h ralentirait encore dans le virage et s'y tasserait.
+	var a_revoir := []
+	for fid in vitesses:
+		var avant := float(_vitesse_profil.get(fid, -1.0))
+		if absf(float(vitesses[fid]) - avant) > 0.1 * avant:
+			_vitesse_profil[fid] = vitesses[fid]
+			a_revoir.append_array(_arcs_du_fid.get(fid, []))
+	var signature := _signature(_indispo_courant)
+	if signature != _signature_circuit:
+		_raccorder_circuit(true, a_revoir)
+		_signature_circuit = signature
+		force = true
+	elif not a_revoir.is_empty():
+		_raccorder_circuit(false, a_revoir)
+	force = force or _recompter
+	_recompter = false
+	if force:
+		_occupe.clear()
+		_entree_vue.fill(-INF)
 	for k in _roulantes.size():
 		var a: Dictionary = _roulantes[k]
 		var e: int = a["arc"]
 		var fid := _arc_fid[e]
-		var n := int(occupe.get(fid, 0))
-		var place := n < int(quota[fid])
-		if place:
-			occupe[fid] = n + 1
-		elif _visibles_roule[k] == 1 or force:
+		var n := int(_occupe.get(fid, 0))
+		var place: bool
+		if force:
+			place = n < int(quota[fid])
+			if place:
+				_occupe[fid] = n + 1
+		else:
+			place = _visibles_roule[k] == 1 and int(quota[fid]) > 0
+			if _visibles_roule[k] == 1 and not place:
+				_occupe[fid] = n - 1
+		if not place and (_visibles_roule[k] == 1 or force):
 			_mm_roule.set_instance_transform(k, _vide)
 			_mm_roule_ombre.set_instance_transform(k, _vide)
 			_arc_vu[k] = -1
@@ -561,6 +612,8 @@ func _maj_roulantes(mois: float, force: bool) -> void:
 			_recaler(k, a, v)
 		if place and (force or change or _arc_vu[k] != e):
 			_ecrire(k, a)
+		if place and force:
+			_entree_vue[e] = maxf(_entree_vue[e], _arrivee[k] - _arc_L[e] / float(a["v"]))
 
 
 func _compter_visibles() -> int:
@@ -1327,6 +1380,10 @@ func _batir_arcs(couloirs: Dictionary) -> void:
 		for e in (sorties[u] as Array):
 			_sortie_arc.append(int(e))
 	_sortie_deb[sorties.size()] = _sortie_arc.size()
+	for e in _arc_L.size():
+		if not _arcs_du_fid.has(_arc_fid[e]):
+			_arcs_du_fid[_arc_fid[e]] = []
+		(_arcs_du_fid[_arc_fid[e]] as Array).append(e)
 	_arc_longueur_droite = _arc_L.duplicate()
 	_arc_suivant.resize(_arc_L.size())
 	_arc_suivant.fill(-1)
@@ -1429,8 +1486,9 @@ func _suivant(e: int) -> int:
 
 
 ## Réapparier les seules branches ouvertes conserve les circuits après un clic.
-func _raccorder_circuit() -> void:
-	for u in _sortie_deb.size() - 1:
+## `lents` : des arcs à recuire parce que la vitesse de leur rue a changé.
+func _raccorder_circuit(apparier := true, lents := []) -> void:
+	for u in (_sortie_deb.size() - 1) if apparier else 0:
 		var ins := []
 		var outs := []
 		for i in range(_sortie_deb[u], _sortie_deb[u + 1]):
@@ -1440,7 +1498,7 @@ func _raccorder_circuit() -> void:
 				ins.append(_arc_inverse[e])
 		if not ins.is_empty():
 			_apparier(ins, outs)
-	for e in _arc_L.size():
+	for e in _arc_L.size() if apparier else 0:
 		if _indispo_courant.has(_arc_fid[e]):
 			_arc_suivant[e] = _droit_devant(e, _indispo_courant)
 	var anciennes := _arc_L.duplicate()
@@ -1449,32 +1507,26 @@ func _raccorder_circuit() -> void:
 		_hauteurs_pixels.resize(PAS_COURBE * _arc_L.size())
 		_courbe_suivant.resize(_arc_L.size())
 		_courbe_suivant.fill(-1)
+		_courbes.resize(_arc_L.size())
+		_plafonds.resize(_arc_L.size())
+		_profils.resize(_arc_L.size())
+		_profils.fill(PackedFloat32Array())
+		_lent.resize(_arc_L.size())
+		_lent.fill(1.0)
+	var a_revoir := {}
 	for e in _arc_L.size():
 		if _courbe_suivant[e] == _arc_suivant[e]:
 			continue
 		_courbe_suivant[e] = _arc_suivant[e]
-		var courbe := _courbe_arc(e)
-		var longueur := courbe.get_baked_length()
-		_arc_L[e] = maxf(longueur, 0.01)
-		var inverse := _arc_t[e].affine_inverse()
-		for j in PAS_COURBE:
-			var s := longueur * float(j) / float(PAS_COURBE - 1)
-			var p := inverse * courbe.sample_baked(s, true)
-			var direction: Vector3
-			if j == 0:
-				direction = _arc_t[e].basis.z
-			elif j == PAS_COURBE - 1:
-				direction = _arc_t[_arc_suivant[e]].basis.z
-			else:
-				direction = (courbe.sample_baked(minf(longueur, s + 0.05), true)
-					- courbe.sample_baked(maxf(0.0, s - 0.05), true)).normalized()
-			direction = inverse.basis * direction
-			var idx := (e * PAS_COURBE + j) * 4
-			_trajets_pixels[idx] = p.x
-			_trajets_pixels[idx + 1] = p.z
-			_trajets_pixels[idx + 2] = direction.x
-			_trajets_pixels[idx + 3] = direction.z
-			_hauteurs_pixels[e * PAS_COURBE + j] = p.y
+		_courbes[e] = _courbe_arc(e)
+		a_revoir[e] = true
+	for e in lents:
+		a_revoir[e] = true
+	for e in a_revoir:
+		_plafonds[e] = _plafond(e, _courbes[e])
+	var ecrits := _profiler(a_revoir.keys())
+	for e in ecrits:
+		_ecrire_trajet(e)
 	var img := Image.create_from_data(PAS_COURBE, _arc_L.size(), false,
 		Image.FORMAT_RGBAF, _trajets_pixels.to_byte_array())
 	if _trajets_gpu == null:
@@ -1493,10 +1545,13 @@ func _raccorder_circuit() -> void:
 	for k in _roulantes.size():
 		var a: Dictionary = _roulantes[k]
 		var e := int(a["arc"])
+		if not ecrits.has(e):
+			continue
 		var avancement := clampf((float(a["phase"]) + _temps_trafic * float(a["v"]))
 			/ anciennes[e], 0.0, 1.0)
 		a["phase"] = avancement * _arc_L[e] - _temps_trafic * float(a["v"])
 		_recaler(k, a, float(a["v"]))
+		_arc_vu[k] = -1
 
 
 ## La fin du trajet rejoint la file suivante avec sa tangente, même en impasse.
@@ -1518,6 +1573,141 @@ func _courbe_arc(e: int) -> Curve3D:
 	courbe.add_point(coin, Vector3.ZERO, u * poignee)
 	courbe.add_point(fin, -v * poignee)
 	return courbe
+
+
+## La vitesse de la rue d'un arc, en m/s, telle que son profil a été cuit.
+func _libre(e: int) -> float:
+	return float(_vitesse_profil.get(_arc_fid[e], float(VITESSES.get(str(
+		ville.routes.get(_arc_fid[e], {}).get("hierarchie", "rue")), 30.0)) / 3.6))
+
+
+## 🐢 Ce que le virage permet, tous les PAS_PROFIL mètres de la courbe :
+## √(A_LATERALE / courbure), jamais plus que la vitesse de la rue. La
+## courbure se lit sur une corde de 2 m, sinon le raccord du coin la fait vibrer.
+func _plafond(e: int, courbe: Curve3D) -> PackedFloat32Array:
+	var longueur := courbe.get_baked_length()
+	var m := maxi(5, ceili(longueur / PAS_PROFIL) + 1)
+	var pts := PackedVector2Array()
+	for i in m:
+		var p := courbe.sample_baked(longueur * float(i) / float(m - 1), true)
+		pts.append(Vector2(p.x, p.z))
+	var libre := _libre(e)
+	var out := PackedFloat32Array()
+	out.resize(m)
+	for i in m:
+		var c := clampi(i, 2, m - 3)
+		var a := pts[c - 2]
+		var b := pts[c]
+		var d := pts[c + 2]
+		var den := a.distance_to(b) * b.distance_to(d) * a.distance_to(d)
+		var courbure := 2.0 * absf((b - a).cross(d - a)) / den if den > 1e-6 else 0.0
+		out[i] = clampf(sqrt(A_LATERALE / maxf(courbure, 1e-6)), VITESSE_VIRAGE_MIN, libre)
+	return out
+
+
+## Le profil de vitesse de chaque arc touché : son plafond, puis le freinage
+## avant le virage et la reprise après, bornés. Un arc court ne freine pas seul :
+## son début vaut la fin de l'arc d'avant et sa fin le début du suivant, donc on
+## propage jusqu'à ce que plus rien ne bouge. Rend les arcs dont le profil a changé.
+func _profiler(touches: Array) -> Dictionary:
+	var n := _arc_L.size()
+	var precedents := _precedents
+	precedents.clear()
+	precedents.resize(n)
+	for e in n:
+		precedents[e] = []
+	for d in n:
+		(precedents[_arc_suivant[d]] as Array).append(d)
+	# Un arc ouvert ne freine pas pour les voitures cachées d'une rue fermée.
+	for e in n:
+		var ouverts := []
+		for d in (precedents[e] as Array):
+			if not _indispo_courant.has(_arc_fid[d]):
+				ouverts.append(d)
+		if not ouverts.is_empty():
+			precedents[e] = ouverts
+	var file := touches.duplicate()
+	var en_file := {}
+	for e in file:
+		en_file[e] = true
+	var ecrits := {}
+	var garde := 20 * n
+	while not file.is_empty() and garde > 0:
+		garde -= 1
+		var e: int = file.pop_back()
+		en_file.erase(e)
+		var p: PackedFloat32Array = (_plafonds[e] as PackedFloat32Array).duplicate()
+		var m := p.size()
+		for d in (precedents[e] as Array):
+			var avant: PackedFloat32Array = _profils[d] if not (_profils[d] as PackedFloat32Array).is_empty() else _plafonds[d]
+			p[0] = minf(p[0], avant[avant.size() - 1])
+		var f := _arc_suivant[e]
+		var apres: PackedFloat32Array = _profils[f] if not (_profils[f] as PackedFloat32Array).is_empty() else _plafonds[f]
+		p[m - 1] = minf(p[m - 1], apres[0])
+		var ds := (_courbes[e] as Curve3D).get_baked_length() / float(m - 1)
+		for i in range(1, m):
+			p[i] = minf(p[i], sqrt(p[i - 1] * p[i - 1] + 2.0 * REPRISE * ds))
+		for i in range(m - 2, -1, -1):
+			p[i] = minf(p[i], sqrt(p[i + 1] * p[i + 1] + 2.0 * FREINAGE * ds))
+		var ancien: PackedFloat32Array = _profils[e]
+		_profils[e] = p
+		_lent[e] = Array(p).min() / _libre(e)
+		ecrits[e] = true
+		var voisins := []
+		if ancien.is_empty() or absf(ancien[0] - p[0]) > 0.01:
+			voisins.append_array(precedents[e])
+		if ancien.is_empty() or absf(ancien[ancien.size() - 1] - p[m - 1]) > 0.01:
+			voisins.append(f)
+		for g in voisins:
+			if not en_file.has(g):
+				en_file[g] = true
+				file.append(g)
+	return ecrits
+
+
+## L'arc dans la texture du shader, échantillonné AU TEMPS et non au mètre : un
+## mètre pris à la moitié de la vitesse de la rue compte double. Le shader avance
+## toujours d'un pas égal, donc la voiture ralentit là où les points se serrent,
+## sans rien changer au GPU ni à l'horloge des arrivées. `_arc_L` est cette
+## longueur « au temps » : en ligne droite, elle vaut la longueur réelle.
+func _ecrire_trajet(e: int) -> void:
+	var courbe: Curve3D = _courbes[e]
+	var longueur := courbe.get_baked_length()
+	var profil: PackedFloat32Array = _profils[e]
+	var libre := _libre(e)
+	var m := profil.size()
+	var ds := longueur / float(m - 1)
+	var cumul := PackedFloat32Array()
+	cumul.resize(m)
+	cumul[0] = 0.0
+	for i in range(1, m):
+		cumul[i] = cumul[i - 1] + ds * libre * 0.5 * (1.0 / profil[i - 1] + 1.0 / profil[i])
+	var total := cumul[m - 1]
+	_arc_L[e] = maxf(total, 0.01)
+	var inverse := _arc_t[e].affine_inverse()
+	var i := 0
+	for j in PAS_COURBE:
+		var cible := total * float(j) / float(PAS_COURBE - 1)
+		while i < m - 2 and cumul[i + 1] < cible:
+			i += 1
+		var f := clampf((cible - cumul[i]) / maxf(cumul[i + 1] - cumul[i], 1e-6), 0.0, 1.0)
+		var s := minf(longueur, ds * (float(i) + f))
+		var p := inverse * courbe.sample_baked(s, true)
+		var direction: Vector3
+		if j == 0:
+			direction = _arc_t[e].basis.z
+		elif j == PAS_COURBE - 1:
+			direction = _arc_t[_arc_suivant[e]].basis.z
+		else:
+			direction = (courbe.sample_baked(minf(longueur, s + 0.05), true)
+				- courbe.sample_baked(maxf(0.0, s - 0.05), true)).normalized()
+		direction = inverse.basis * direction
+		var idx := (e * PAS_COURBE + j) * 4
+		_trajets_pixels[idx] = p.x
+		_trajets_pixels[idx + 1] = p.z
+		_trajets_pixels[idx + 2] = direction.x
+		_trajets_pixels[idx + 3] = direction.z
+		_hauteurs_pixels[e * PAS_COURBE + j] = p.y
 
 
 ## De (chemin, abscisse, sens) à (arc, distance parcourue dessus). Rend un arc
@@ -1569,6 +1759,7 @@ func _recaler(k: int, a: Dictionary, v: float) -> void:
 ## Remettre toutes les voitures là où le semis les avait posées : sans ça, une
 ## partie relancée ne repart pas de la même image que la précédente.
 func _semer_circuit() -> void:
+	_recompter = true
 	for k in _roulantes.size():
 		var a: Dictionary = _roulantes[k]
 		var e := int(a["arc0"])
@@ -1607,8 +1798,58 @@ func _process(delta: float) -> void:
 	for k in _arrivee.size():
 		while _temps_trafic >= _arrivee[k]:
 			var debut := float(_arrivee[k])
-			var e := _suivant(int((_roulantes[k] as Dictionary)["arc"]))
-			_engager(k, e, _vitesse_de(_arc_fid[e]), debut)
+			var d := int((_roulantes[k] as Dictionary)["arc"])
+			var e := _suivant(d)
+			var v := _vitesse_de(_arc_fid[e])
+			if _arc_fid[e] != _arc_fid[d] or e == _arc_inverse[d]:
+				_changer_de_rue(k, _arc_fid[d], e, v, debut)
+			_engager(k, e, v, debut)
+
+
+## La vitesse la plus basse d'ici au bout de la rue : la file ne se compare
+## qu'en entrant dans la rue, les arcs suivants de la même rue n'ont pas de seuil.
+func _lent_rue(e: int) -> float:
+	var x := _lent[e]
+	var f := _arc_suivant[e]
+	var garde := 64
+	while _arc_fid[f] == _arc_fid[e] and f != e and garde > 0:
+		x = minf(x, _lent[f])
+		f = _arc_suivant[f]
+		garde -= 1
+	return x
+
+
+## 🚦 LE SEUL ENDROIT où une voiture s'allume ou s'éteint hors fermeture : au
+## sortir du carrefour, 4 m dans la nouvelle rue. Il faut une place au quota et
+## l'écart à la voiture visible d'avant, jugé au point le plus lent de la rue :
+## deux voitures du même circuit gardent leur décalage pour toujours, donc trop
+## proches une fois, superposées à chaque virage. Une voiture déjà visible a une
+## place de plus : moitié moins de disparitions, ~400 visibles comme avant.
+func _changer_de_rue(k: int, depuis: int, e: int, v: float, debut: float) -> void:
+	var fid := _arc_fid[e]
+	if _visibles_roule[k] == 1:
+		_occupe[depuis] = int(_occupe.get(depuis, 1)) - 1
+	var quota := int(_quota.get(fid, 0))
+	if _visibles_roule[k] == 1 and quota > 0:
+		quota += 1
+	var ecart := maxf(ECART_TEMPS, ECART_MIN / (v * _lent_rue(e)))
+	var place := int(_occupe.get(fid, 0)) < quota and debut - _entree_vue[e] >= ecart
+	# Se rallumer devant une voiture visible qui suit de trop près, c'est la
+	# même superposition vue de l'autre bout.
+	if place and _visibles_roule[k] == 0:
+		for j in _roulantes.size():
+			if _visibles_roule[j] == 1 and _arrivee[j] - debut < ecart \
+					and (_precedents[e] as Array).has(int((_roulantes[j] as Dictionary)["arc"])):
+				place = false
+				break
+	if place:
+		_occupe[fid] = int(_occupe.get(fid, 0)) + 1
+		_entree_vue[e] = debut
+	elif _visibles_roule[k] == 1:
+		_mm_roule.set_instance_transform(k, _vide)
+		_mm_roule_ombre.set_instance_transform(k, _vide)
+		_arc_vu[k] = -1
+	_visibles_roule[k] = 1 if place else 0
 
 
 func _vitesse_de(fid: int) -> float:

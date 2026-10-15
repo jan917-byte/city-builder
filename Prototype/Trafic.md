@@ -126,7 +126,7 @@ Ce qui prouverait que c'est cassé : une voiture ou un arbre sur une image de di
 
 ## Ce qui reste
 - **À regarder par l'auteur** : `wehrau_essai_axe.png` puis `wehrau_essai_axe_2s.png` (le tour), puis `wehrau_essai_axe_ferme.png`, `wehrau_essai_rue_calme.png` puis `wehrau_essai_stationnement_retire.png`, et `wehrau_essai_report_trafic.png`.
-- La vue rapprochée porte **329 voitures roulantes visibles sur 963 en circuit** et **1 008 voitures garées symboliques sur 3 310 places** : deux MultiMesh, deux appels de rendu, aucune ombre.
+- 🚦 **Une voiture ne s'allume et ne s'éteint plus qu'au sortir d'un carrefour, et elle freine dans les virages** (2026-10-15). `Godot --headless --path Godot --script res://outils/diag_trafic.gd` remesure tout en deux minutes de jeu : allumages hors carrefour, voitures qui se touchent (même file ou croisement), vitesse la plus basse des virages. 🔴 Reste ouvert : **les voitures se traversent aux carrefours**, aucune ne cède le passage.
 - Le trafic visible s'anime sur le **GPU à la fréquence de l'écran (60 Hz visés)**. Le CPU ne déplace aucune voiture : il n'engage que celles qui changent d'arc, et une pulsation plafonnée à 4 Hz ne relit `charge` que lorsqu'elle a changé, une fois par rue.
 - Au-delà d'une taille de caméra de 700 m, les véhicules sont sous le pixel : les deux MultiMesh sont masqués et la pulsation sort immédiatement.
 - Une charge à 1 tasse la file à 4,8 m et ralentit à environ 4 km/h ; la rue calme espace le flux jusqu'à 48 m.
