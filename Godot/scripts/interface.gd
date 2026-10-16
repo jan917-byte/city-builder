@@ -450,6 +450,7 @@ var _calque_bas: Label
 var _calque_haut: Label
 var _calque_barre: TextureRect
 var _calque_note: Label
+var _calque_note_carre: Panel   # 🟪 la teinte de la note, si le thème en porte une
 ## Les trois panneaux de thème portent le MÊME en-tête, tiré de la table :
 ## le nom et le résumé ne sont écrits qu'une fois, dans `maquette.THEMES`.
 var _entetes := {}
@@ -530,8 +531,6 @@ var _campus_bloc: HBoxContainer
 var _campus_intro: Label
 var _recherche_bloc: HBoxContainer
 var _univ_vide: Label
-## ⏸️ La vitesse d'avant la fenêtre, rendue à sa fermeture ; -1 fenêtre fermée.
-var _vitesse_avant_campus := -1.0
 ## Le panneau du calque, caché sous la fenêtre et rendu à sa fermeture.
 var _detail_avant_campus := false
 var _vitesse_courante := 0.0
@@ -1826,9 +1825,20 @@ func _panneau_calque() -> void:
 	_calque_haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(_calque_haut)
 	v.add_child(h)
+	# 🟪 Une note à teinte (Trafic) se lit comme la légende du guide, carré compris :
+	# le violet ne disparaît plus quand le guide rend le panneau (auteur, 2026-10-16).
+	var ligne_note := HBoxContainer.new()
+	ligne_note.add_theme_constant_override("separation", 8)
+	_calque_note_carre = Panel.new()
+	_calque_note_carre.custom_minimum_size = Vector2(15, 15)
+	_calque_note_carre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_calque_note_carre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ligne_note.add_child(_calque_note_carre)
 	_calque_note = _label("", 11, GRIS)
 	_calque_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(_calque_note)
+	_calque_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ligne_note.add_child(_calque_note)
+	v.add_child(ligne_note)
 	# 🟫 Le pont engagé, la boue se déblaie depuis la ville (auteur, 2026-10-08). 🔴 Flaggable (90).
 	_boue_ville = _label("Les rues boueuses se déblaient depuis la ville.", 13, TEXTE)
 	_boue_ville.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2049,6 +2059,15 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 	if _calque_panneau.visible:
 		_calque_note.text = str(t.get("note", ""))
 		_calque_note.visible = _calque_note.text != ""
+		var teinte: Variant = t.get("note_teinte")
+		_calque_note_carre.visible = _calque_note.visible and teinte is Color
+		_calque_note.add_theme_font_size_override("font_size", 12 if teinte is Color else 11)
+		_calque_note.add_theme_color_override("font_color", TEXTE if teinte is Color else GRIS)
+		if teinte is Color:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = teinte
+			sb.set_corner_radius_all(_r(4))
+			_calque_note_carre.add_theme_stylebox_override("panel", sb)
 		# Sols et champs n'ont pas d'échelle : une légende, ni rampe ni bornes.
 		var continu := genre == "calque"
 		_sols_bloc.visible = genre == "sols"
@@ -3448,8 +3467,8 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 		ouverture.page_lue(_page_ouverte)
 	_biblio_cle = ""
 	var campus: bool = cle in CAMPUS
+	# 🔄 Le temps ne s'arrête plus à l'ouverture du campus (auteur, 2026-10-16 ; il s'arrêtait depuis le 2026-10-09).
 	if campus:
-		_pause_campus()
 		# Le panneau du calque passait sous le verre et se lisait à travers (sur Dangers, fond blanc).
 		if _detail_ouvert and not _campus_panneau.visible:
 			_detail_avant_campus = true
@@ -3457,7 +3476,6 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 			_placer_detail()
 	elif _campus_panneau.visible:
 		_campus_panneau.visible = false
-		_reprendre_campus()
 	_lieu_ouvert = cle
 	_lieu_panneau.visible = not campus
 	_campus_panneau.visible = campus
@@ -3483,24 +3501,6 @@ func ouvrir_lieu_clique(couche: String, fid: int) -> void:
 	var cle := _lieu_du_fid(fid) if couche == "i" else ""
 	if cle in CAMPUS and _verrou() == "" and (ouverture == null or ouverture.rail_visible(cle)):
 		ouvrir_lieu(cle)
-
-
-## ⏸️ La fenêtre ouverte, le temps s'arrête (auteur, 2026-10-09).
-func _pause_campus() -> void:
-	if _vitesse_avant_campus >= 0.0:
-		return
-	_vitesse_avant_campus = _vitesse_courante
-	if _vitesse_courante > 0.0:
-		vitesse_demandee.emit(0.0)
-		_vitesse_courante = 0.0
-
-
-## ▶️ Fermée, il repart à sa vitesse d'avant, sauf si le joueur l'a relancé entre-temps.
-func _reprendre_campus() -> void:
-	if _vitesse_avant_campus > 0.0 and _vitesse_courante == 0.0:
-		vitesse_demandee.emit(_vitesse_avant_campus)
-		_vitesse_courante = _vitesse_avant_campus
-	_vitesse_avant_campus = -1.0
 
 
 # ==========================================================================
@@ -3720,7 +3720,6 @@ func _fermer_lieu() -> void:
 	_lieu_panneau.visible = false
 	if campus:
 		_campus_panneau.visible = false
-		_reprendre_campus()
 		if _detail_avant_campus:
 			_detail_avant_campus = false
 			_detail_ouvert = true
@@ -5982,7 +5981,7 @@ func _maj_camp() -> void:
 		# 🌉 Le camp promis, et personne dedans : c'est la carte, elle peut changer.
 		# Le reste (logés, containers) est dans le résumé et les tuiles.
 		_camp_texte.text = "" if ville.camp_accessible(fid, _mois) or not ville.camp_livre(fid, _mois) \
-			else "Camp vide : aucun pont n'y mène."
+			else "Camp vide : aucun pont n'y mène.\nLes personnes sans logement ne peuvent pas y accéder."
 		_camp_bouton.disabled = true
 		_camp_bouton.visible = false
 		_marquer(_camp_bouton, false)
@@ -6003,7 +6002,9 @@ func _maj_camp() -> void:
 		return
 	var places: int = ville.camp_taille(fid, _mois)
 	# 🔄 Ce que le camp abrite est passé dans les conséquences (auteur, 2026-10-08).
-	_camp_texte.text = "" if ville.camp_accessible(fid, _mois) else "⚠ Autre rive : inaccessible"
+	# 🔴 Seconde phrase de l'auteur (2026-10-16), flaggable (90).
+	_camp_texte.text = "" if ville.camp_accessible(fid, _mois) \
+		else "⚠ Autre rive : inaccessible.\nLes personnes sans logement ne peuvent pas y accéder."
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
 	_camp_bouton.visible = true

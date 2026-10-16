@@ -373,6 +373,8 @@ func executer() -> void:
 	jeu.interface.poser("camp")
 	verifier(not jeu.interface._camp_bouton.disabled,
 		"Le jeu prévient mais laisse poser le camp")
+	verifier("sans logement ne peuvent pas y accéder" in jeu.interface._camp_texte.text,
+		"Le champ de l'autre rive dit que les sans-logis n'y accèdent pas")
 	jeu._sur_commande("i", lointain, jeu.interface._reglages())
 	actualiser(0.2)
 	verifier(jeu.ville.camp_pose(lointain) and jeu.ville.caisse_ke(0.2) < avant_caisse,
@@ -380,6 +382,9 @@ func executer() -> void:
 	verifier(jeu.ville.camp_occupants(lointain, 0.2) == 0.0
 		and jeu.ville.sans_toit(0.2) == dehors,
 		"Personne ne peut y aller : le camp reste vide")
+	verifier("sans logement ne peuvent pas y accéder" in jeu.interface._camp_texte.text
+		and "sans logement ne peuvent pas y accéder" in o._texte.text,
+		"La fiche du camp vide et le guide disent que les sans-logis n'y accèdent pas")
 	await capture("08_camp_vide")
 	jeu._sur_reset()
 	actualiser(0.0)
@@ -503,6 +508,17 @@ func essayer_ponts(lointain: int) -> void:
 		verifier(jeu.ruines_ponts[fid].visible and not jeu.reparations["r"][fid].visible
 			and jeu.icones_ponts.has(fid) and jeu.icones_ponts[fid].visible,
 			"Le calque Trafic montre le pont %d coupé, un pictogramme au-dessus" % fid)
+		# 🌉 Un clic au milieu de l'Ilse, entre les moignons, prend le pont (auteur, 2026-10-16).
+		var axe: Array = jeu.donnees["couloirs"][str(fid)][1][0]
+		var m := Vector3((float(axe[0]) + float(axe[-2])) * 0.5, 0.0, (float(axe[1]) + float(axe[-1])) * 0.5)
+		var rayon := PhysicsRayQueryParameters3D.create(m + Vector3.UP * 500.0, m + Vector3.DOWN * 50.0)
+		var touche: Dictionary = jeu.selection.camera.get_world_3d().direct_space_state.intersect_ray(rayon)
+		var n: Node = touche.get("collider")
+		while n != null and not n.has_meta("fid"):
+			n = n.get_parent()
+		verifier(n != null and str(n.get_meta("couche")) == "r" and int(n.get_meta("fid")) == fid,
+			"Un clic au milieu de l'Ilse prend le pont %d" % fid)
+	verifier(o._legende.is_visible_in_tree(), "Le guide porte la légende du violet")
 	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
 	var pont := -1
 	var prix := INF
@@ -594,6 +610,9 @@ func essayer_ponts(lointain: int) -> void:
 	jeu.interface._maj_boue()
 	verifier(jeu.interface._fleche.visible and jeu.interface._boue_ville.is_visible_in_tree(),
 		"Une flèche montre la tuile Ville, et le calque Trafic dit que la boue se déblaie depuis la ville")
+	verifier(jeu.interface._calque_note_carre.is_visible_in_tree()
+		and jeu.interface._calque_note.text == "Endommagée par la crue",
+		"Le panneau du calque garde le carré violet quand le guide se tait")
 	await capture("12d_trafic_vers_la_ville")
 	jeu._sur_theme("")
 	jeu._sur_theme("trafic")

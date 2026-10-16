@@ -204,8 +204,8 @@ func camp_le_plus_plein() -> int:
 	return meilleur
 
 
-## 🌉 Pendant la phase du pont, ce panneau remplace celui du calque Trafic :
-## il en porte donc la légende, mêmes couleurs, mêmes mots.
+## 🌉 Sur le calque Trafic, ce panneau remplace celui du calque : il en porte donc
+## la légende, mêmes couleurs, mêmes mots, à toutes les étapes (auteur, 2026-10-16).
 func _legende_trafic(ui) -> void:
 	var t: Dictionary = {}
 	for th in jeu.THEMES:
@@ -782,7 +782,7 @@ func actualiser(force := false) -> void:
 		for r in _reperes.get_children():
 			(r as Label3D).pixel_size = jeu.pivot.taille * 0.0012
 	# Deux fois : changer de calque ne fait pas avancer le temps, et l'étape change après.
-	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
+	_legende.visible = jeu.theme == "trafic"
 	if not force and absf(jeu.mois - _dernier_mois) < 0.02:
 		return
 	_dernier_mois = jeu.mois
@@ -865,7 +865,7 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 	_remplir_carte()
 	# Recalculé : la carte a pu se fermer pendant cet appel.
 	visible = paraitre()
-	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
+	_legende.visible = jeu.theme == "trafic"
 	_progression.visible = etape == "travaux"
 	_detail.visible = _progression.visible
 	if _progression.visible:
@@ -941,7 +941,9 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
-					_texte.text += "\n%s est sur l'autre rive." % _nom_champ(int(fid))
+					# 🔴 Seconde phrase de l'auteur (2026-10-16), flaggable (90).
+					_texte.text += "\n%s est sur l'autre rive : les personnes sans logement ne peuvent pas y accéder." \
+						% _nom_champ(int(fid))
 			_poser_reperes([])
 		"choix":
 			# 🔄 LE JOUEUR CHOISIT SON ÎLOT (auteur, 2026-10-06) : ni bouton ni lieu
