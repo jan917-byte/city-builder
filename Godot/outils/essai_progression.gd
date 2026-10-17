@@ -66,7 +66,7 @@ func executer() -> void:
 		jeu.ville.abriter(champ, 0.0)
 		jeu.ville.abriter(o._champs_accessibles()[1], 0.0)
 		actualiser(0.2)
-		jeu.interface._sur_rail("trafic")
+		jeu.interface._sur_rail("chantiers")
 		var caisse: float = jeu.ville.caisse_ke(jeu.mois)
 		var acces: Dictionary = jeu.trafic.acces_pont(pont, jeu.mois)
 		var prevision: Dictionary = jeu.trafic.prevoir_pont(pont, jeu.mois)

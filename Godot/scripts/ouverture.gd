@@ -15,12 +15,19 @@ const PRE := 1065
 const PARKING := 19   # la place-parking, le sol qu'on rend perméable (101)
 # 🌉 Le relogement fait, la raison du pont (idée de l'auteur, 2026-10-12). 🔴 Reformulé par moi : flaggable (90).
 const POURQUOI_LE_PONT := "Leurs maisons sont sur l'autre rive. Pour les rebâtir, il faut d'abord rouvrir un pont : sans lui, ni camions ni matériaux ne passent."
+## 🧭 LE GUIDE DIT OÙ CLIQUER, IL NE CLIQUE PLUS (auteur, 2026-10-17) : aucun bouton
+## d'action dans les premiers pas, seuls restent ceux qui font avancer le guide.
+## Revient sur « plus de où cliquer » du 2026-10-08, pour ce panneau seul. 🔴 Flaggable (90).
+const DIRE_X4 := "Cliquez sur ×4, en haut à droite, pour avancer plus vite."
+const DIRE_CHANTIERS := "Cliquez sur Chantiers, dans la colonne de gauche, pour voir ce qui est cassé."
+const DIRE_PONT := "Cliquez sur un pont coupé, dans Chantiers ou sur la carte, puis choisissez comment le rebâtir dans sa fiche."
 
 var jeu
 var suite := false
 var termine := false
 var ouvert := true
-var trafic_vu := false
+## 🚧 La phase du pont passe par Chantiers, plus par Trafic (auteur, 2026-10-17).
+var chantiers_vu := false
 var pont_termine := false
 ## Le mois où l'on quitte la carte du pont rouvert : une rue engagée avant appartient au pont.
 var pont_termine_mois := 0.0
@@ -47,7 +54,6 @@ var _actions: VBoxContainer
 var _progression: ProgressBar
 var _detail: Label
 var _corps: VBoxContainer
-var _legende: VBoxContainer
 var _dernier_mois := -1.0
 var _reperes: Node3D
 var _reperes_poses := ""
@@ -100,7 +106,6 @@ func batir(maquette) -> void:
 		actualiser(true))
 	entete.add_child(fermer)
 	_texte = _paragraphe("", 14)
-	_legende_trafic(ui)
 	_progression = ProgressBar.new()
 	_progression.custom_minimum_size.y = 8
 	_progression.show_percentage = false
@@ -204,32 +209,6 @@ func camp_le_plus_plein() -> int:
 	return meilleur
 
 
-## 🌉 Pendant la phase du pont, ce panneau remplace celui du calque Trafic :
-## il en porte donc la légende, mêmes couleurs, mêmes mots.
-func _legende_trafic(ui) -> void:
-	var t: Dictionary = {}
-	for th in jeu.THEMES:
-		if th["id"] == "trafic":
-			t = th
-	_legende = VBoxContainer.new()
-	_legende.add_theme_constant_override("separation", 4)
-	_corps.add_child(_legende)
-	var barre := TextureRect.new()
-	barre.texture = ui._texture_rampe()
-	barre.custom_minimum_size = Vector2(0, 13)
-	barre.stretch_mode = TextureRect.STRETCH_SCALE
-	barre.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_legende.add_child(barre)
-	var h := HBoxContainer.new()
-	h.add_child(ui._label(str(t.get("bas", "")), 12, ui.GRIS_HISTOIRE))
-	var haut: Label = ui._label(str(t.get("haut", "")), 12, ui.GRIS_HISTOIRE)
-	haut.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(haut)
-	_legende.add_child(h)
-	ui._legende(_legende, jeu.COUPEE, "Endommagée par la crue", ui.ENCRE_HISTOIRE)
-
-
 # Les repères du guide restent dans l'interface (décision 85).
 func _poser_reperes(_lieux: Array) -> void:
 	pass
@@ -251,6 +230,11 @@ func _bouton(texte: String, action: Callable) -> Button:
 	b.pressed.connect(action)
 	_actions.add_child(b)
 	return b
+
+
+## Tu dès qu'on y est, comme l'annonce du chemin dégagé.
+func _dire_x4() -> String:
+	return "" if jeu.vitesse >= 4.0 else "\n\n" + DIRE_X4
 
 
 func _nom(couche: String, fid: int) -> String:
@@ -350,7 +334,7 @@ func rail_ouvert(id: String) -> bool:
 	if suite or termine or prochaine_vue or id == "":
 		return true
 	match id:
-		"trafic":
+		"trafic", "chantiers":
 			return not etape in ["", "reloger", "camp_attente"]
 		"universite", "dangers", "institut", "bibliotheque":
 			return etude_lue
@@ -359,9 +343,9 @@ func rail_ouvert(id: String) -> bool:
 
 ## La tuile que le guide demande, entourée jusqu'au clic.
 func rail_appel() -> String:
-	# 🧹 Trafic s'entoure quand il propose de tout déblayer, jusqu'à ce qu'on l'ouvre.
-	if not deblaiement_vu and jeu.theme != "trafic" and jeu.interface.deblaiement_propose():
-		return "trafic"
+	# 🧹 Chantiers s'entoure quand il propose de tout déblayer, jusqu'à ce qu'on l'ouvre.
+	if not deblaiement_vu and jeu.theme != "chantiers" and jeu.interface.deblaiement_propose():
+		return "chantiers"
 	# 🟫 Le pont engagé, la Ville s'entoure : la boue se voit là, pas sur le calque
 	# (auteur, 2026-10-06). Une fois revenu, plus d'appel.
 	if etape == "pont_travaux" and not boue_vue and jeu.theme != "" and not acces_degage():
@@ -372,8 +356,8 @@ func rail_appel() -> String:
 		return "universite"
 	if not ouvert:
 		return ""
-	if etape == "trafic":
-		return "trafic" if jeu.theme != "trafic" else ""
+	if etape == "chantiers":
+		return "chantiers" if jeu.theme != "chantiers" else ""
 	return ""
 
 
@@ -443,13 +427,16 @@ func terminer_pont() -> void:
 ## 🎓 Les îlots que le guide entoure d'un trait qui clignote, la ville nue à l'écran :
 ## le campus à trouver, puis les îlots sinistrés à rebâtir (auteur, 2026-10-08).
 func groupe_carte() -> Array:
-	if suite or termine or not ouvert or jeu.theme != "":
+	if termine or not ouvert or jeu.theme != "":
 		return []
 	match etape:
 		"etude":
 			return campus() if carte_etude == 2 else []
-		"choix":
+		# 🧭 Le guide dit « l'îlot qui clignote » à la place des boutons (auteur, 2026-10-17).
+		"choix", "suite":
 			return ilots_a_rebatir()
+		"livraison":
+			return [int(premier["fid"])] if premier["couche"] == "i" else []
 	return []
 
 
@@ -636,37 +623,6 @@ func page_lue(id: String) -> void:
 		actualiser(true)
 
 
-func _reparation(couche: String, fid: int, titre: String) -> void:
-	var v = jeu.ville
-	var texte := titre
-	# ⚖️ Un îlot sinistré s'ouvre sans façon posée : le joueur choisit (95).
-	var reglage := "" if couche == "i" and v.base("i", fid, "logements_sinistres") > 0.0 else "reparer"
-	if v.reparation_finie(couche, fid, jeu.mois):
-		texte += "\nLivré, voir le lieu"
-		reglage = ""
-	elif v.est_repare(couche, fid):
-		texte += "\nEn travaux, voir l'avancement"
-		reglage = ""
-	elif reglage != "":
-		texte += "\n%.0f k€ en %s" % [v.cout_reparation_ke(couche, fid),
-			jeu.interface._duree(v.duree_reparation_mois(couche, fid))]
-	if couche == "i" and reglage == "" and not v.est_repare(couche, fid):
-		_bouton(texte, func() -> void:
-			examiner(couche, fid)
-			jeu.interface.ouvrir_onglet("crue"))
-		return
-	_bouton(texte, examiner.bind(couche, fid, reglage))
-
-
-## Un pont coupé, son nom seul : les prix se lisent et se comparent dans sa
-## fiche, en l'ouvrant (auteur, 2026-09-26).
-func _bouton_pont(fid: int) -> void:
-	if jeu.ville.est_repare("r", fid):
-		_reparation("r", fid, _nom("r", fid))
-		return
-	_bouton(_nom("r", fid), examiner.bind("r", fid))
-
-
 ## 🌉 Les champs que les sinistrés peuvent atteindre, du plus grand au plus
 ## petit. Aucune liste de fid : c'est le morceau de réseau mesuré par `07`, donc
 ## redessiner un pont déplace la scène sans toucher à ce fichier.
@@ -731,22 +687,18 @@ func voir_ville() -> void:
 		boue_vue = true
 
 
-func voir_trafic() -> void:
+## 🚧 Le panneau Chantiers reste ouvert : il porte la liste des ponts coupés (auteur, 2026-10-17).
+func voir_chantiers() -> void:
 	if jeu.interface.deblaiement_propose():
 		deblaiement_vu = true
-	# Muet pendant le chantier du pont : le calque garde son propre panneau.
 	if not _camp_pose() or pont_termine or suite or termine or etape == "pont_travaux":
 		return
-	var premiere_fois := not trafic_vu
-	trafic_vu = true
-	if ouvert:
-		jeu.interface._detail_ouvert = false
-		jeu.interface._placer_detail()
-		if premiere_fois:
-			# La fiche du dernier camp restait à côté de la liste des ponts (partie jouée, 2026-10-10).
-			jeu.interface._fermer_fiche()
-			jeu.selection.sel_fid = -1
-			jeu._repere("ville")
+	if not chantiers_vu and ouvert:
+		# La fiche du dernier camp restait à côté de la liste des ponts (partie jouée, 2026-10-10).
+		jeu.interface._fermer_fiche()
+		jeu.selection.sel_fid = -1
+		jeu._repere("ville")
+	chantiers_vu = true
 	actualiser(true)
 
 
@@ -777,17 +729,15 @@ func paraitre() -> bool:
 func actualiser(force := false) -> void:
 	visible = paraitre()
 	if _reperes != null:
-		_reperes.visible = visible and jeu.theme in ["", "trafic"] and not suite and not termine
+		_reperes.visible = visible and jeu.theme in ["", "chantiers"] and not suite and not termine
 		# Même règle que les pastilles : taille constante à l'écran.
 		for r in _reperes.get_children():
 			(r as Label3D).pixel_size = jeu.pivot.taille * 0.0012
-	# Deux fois : changer de calque ne fait pas avancer le temps, et l'étape change après.
-	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
 	if not force and absf(jeu.mois - _dernier_mois) < 0.02:
 		return
 	_dernier_mois = jeu.mois
-	if _camp_pose() and jeu.theme == "trafic":
-		trafic_vu = true
+	if _camp_pose() and jeu.theme == "chantiers":
+		chantiers_vu = true
 	premier = _premiere_reparation()
 	var pont := _premier_pont()
 	var ancienne := etape
@@ -812,7 +762,7 @@ func actualiser(force := false) -> void:
 		elif jeu.ville.sans_toit(jeu.mois) > 0.0:
 			etape = "camp_attente"
 		else:
-			etape = "pont_choix" if trafic_vu else "trafic"
+			etape = "pont_choix" if chantiers_vu else "chantiers"
 	elif etude_parue and not etude_lue:
 		etape = "etude"
 	elif premier.is_empty():
@@ -827,16 +777,15 @@ func actualiser(force := false) -> void:
 		if jeu.vitesse >= 4.0:
 			jeu.interface.retours.annoncer("Chemin du pont dégagé.", jeu.mois)
 		else:
-			jeu.interface.retours.annoncer("Chemin du pont dégagé.
-Passez en ×4 pour avancer plus vite.", jeu.mois,
+			jeu.interface.retours.annoncer("Chemin du pont dégagé.\n" + DIRE_X4, jeu.mois,
 				func() -> bool: return jeu.vitesse < 4.0 and etape == "pont_travaux")
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
-	# Le guide remplaçait le panneau du calque Trafic : muet, il le rend.
+	# La fiche du pont avait fermé le panneau Chantiers : le guide muet le rend.
 	# Pont engagé depuis la ville : la boue est déjà sous les yeux.
 	if etape == "pont_travaux" and jeu.theme == "":
 		boue_vue = true
-	if etape == "pont_travaux" and ancienne != "pont_travaux" and jeu.theme == "trafic":
+	if etape == "pont_travaux" and ancienne != "pont_travaux" and jeu.theme == "chantiers":
 		jeu.interface._detail_ouvert = true
 		jeu.interface._placer_detail()
 	if etape == "pont_livre" and ancienne != "pont_livre":
@@ -865,7 +814,6 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 	_remplir_carte()
 	# Recalculé : la carte a pu se fermer pendant cet appel.
 	visible = paraitre()
-	_legende.visible = jeu.theme == "trafic" and etape.begins_with("pont")
 	_progression.visible = etape == "travaux"
 	_detail.visible = _progression.visible
 	if _progression.visible:
@@ -884,7 +832,7 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	_annoncer_pages()
 	_annoncer_portes()
-	signature += "/%s/%s" % [concept_ouvert("attenuer"), etude_parue]
+	signature += "/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, jeu.vitesse >= 4.0]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -895,20 +843,17 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 		"camp_attente":
 			_poser_reperes([])
 			_titre.text = "Les premiers abris arrivent"
-			_texte.text = POURQUOI_LE_PONT
-			_bouton("Laisser avancer en ×4", func() -> void: jeu._sur_vitesse(4.0))
-		"trafic":
+			_texte.text = POURQUOI_LE_PONT + _dire_x4()
+		"chantiers":
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
-			# 🧭 Sans bouton (auteur, 2026-10-02) : la tuile entourée de la colonne y mène.
-			_texte.text = POURQUOI_LE_PONT
+			# 🧭 La tuile Chantiers s'entoure, et le guide la nomme.
+			_texte.text = POURQUOI_LE_PONT + "\n\n" + DIRE_CHANTIERS
 		"pont_choix":
 			_titre.text = "Rebâtir un pont"
-			_texte.text = POURQUOI_LE_PONT
-			# 🌉 Un bouton par pont (auteur, 2026-09-22) : on les trouvait mal sur
-			# la carte. Les repères restent dans l'interface (85), la carte reste nue.
-			for fid in jeu.ville.ponts_coupes():
-				_bouton_pont(fid)
+			# 🌉 Les ponts se trouvent mal sur la carte (auteur, 2026-09-22) : leur liste est dans
+			# Chantiers, et leur pictogramme clignote.
+			_texte.text = POURQUOI_LE_PONT + "\n\n" + DIRE_PONT
 		"pont_acces":
 			# 🔄 Aucun nom de rue ni bouton (auteur, 2026-09-26) : la boue se voit
 			# sur la carte, et seule la fiche d'une route qui barre le pont répond.
@@ -952,16 +897,15 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 				int(jeu.ville.reloges(jeu.mois))
 		"travaux":
 			_titre.text = "Le premier chantier avance"
-			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
-			_bouton("Laisser avancer en ×4", func() -> void: jeu._sur_vitesse(4.0))
-			_bouton("Voir mon chantier", examiner.bind(premier["couche"], premier["fid"]))
+			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"]) + _dire_x4()
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
 			if premier["couche"] == "r":
 				_texte.text = "%s est praticable." % _nom("r", premier["fid"])
 			else:
-				_texte.text = _livraison_ilot(int(premier["fid"]))
-			_bouton("Voir le résultat", examiner.bind(premier["couche"], premier["fid"]))
+				# 🔴 Flaggable (90).
+				_texte.text = _livraison_ilot(int(premier["fid"])) \
+					+ "\n\nCliquez sur l'îlot qui clignote pour voir le résultat."
 			_bouton("Et maintenant ?", func() -> void:
 				suite = true
 				# Protéger demande l'étude : elle paraît ici si aucun îlot ne l'a appelée.
@@ -972,16 +916,14 @@ Passez en ×4 pour avancer plus vite.", jeu.mois,
 			# 🏠 Plus de « renaturer la berge » ici (auteur, 2026-10-08) : rebâtir d'abord,
 			# la berge reste dans sa fiche.
 			_titre.text = "Réparer ou investir ?"
-			_texte.text = ""
-			_reparation("i", MAISONS, "Poursuivre les réparations")
-			if not jeu.ville.est_repare("r", RUE):
-				_reparation("r", RUE, "Rendre aussi la rue praticable")
+			# 🔴 Flaggable (90).
+			var lignes := []
+			if not ilots_a_rebatir().is_empty():
+				lignes.append("Pour réparer, cliquez sur un îlot qui clignote.")
 			# 📖 Investir est l'autre chapitre : il attend la ville réparée (101).
-			var investir := _bouton("Investir : comparer les toits solaires",
-				examiner.bind("i", SOLAIRE, "solaire", 0.3))
-			if levier_ferme("solaire") != "":
-				investir.text = "Investir quand la ville sera réparée"
-				investir.disabled = true
+			lignes.append("Investir viendra quand la ville sera réparée." if levier_ferme("solaire") != ""
+				else "Pour investir, cliquez sur Énergie, dans la colonne de gauche : elle montre où le solaire s'amortit.")
+			_texte.text = "\n\n".join(lignes)
 			_bouton("Continuer à mon rythme", func() -> void:
 				termine = true
 				ouvert = false
@@ -1013,7 +955,7 @@ func _livraison_ilot(fid: int) -> String:
 
 func exporter() -> Dictionary:
 	return {"suite": suite, "termine": termine, "ouvert": ouvert,
-		"trafic_vu": trafic_vu, "pont_termine": pont_termine,
+		"chantiers_vu": chantiers_vu, "pont_termine": pont_termine,
 		"pont_termine_mois": pont_termine_mois,
 		"etude_parue": etude_parue, "etude_mois": etude_mois, "carte_etude": carte_etude,
 		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte,
@@ -1028,7 +970,8 @@ func reprendre(etat: Dictionary) -> void:
 	suite = bool(etat.get("suite", false))
 	termine = bool(etat.get("termine", false))
 	ouvert = bool(etat.get("ouvert", true))
-	trafic_vu = bool(etat.get("trafic_vu", false))
+	# Avant le 2026-10-17, la phase du pont passait par Trafic.
+	chantiers_vu = bool(etat.get("chantiers_vu", etat.get("trafic_vu", false)))
 	pont_termine = bool(etat.get("pont_termine", suite or termine))
 	pont_termine_mois = float(etat.get("pont_termine_mois", 0.0))
 	# Avant le 2026-10-06, l'étude paraissait avec le pont : on ne la rejoue pas.

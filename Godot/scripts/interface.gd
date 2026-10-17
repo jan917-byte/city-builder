@@ -1829,11 +1829,6 @@ func _panneau_calque() -> void:
 	_calque_note = _label("", 11, GRIS)
 	_calque_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_calque_note)
-	# 🟫 Le pont engagé, la boue se déblaie depuis la ville (auteur, 2026-10-08). 🔴 Flaggable (90).
-	_boue_ville = _label("Les rues boueuses se déblaient depuis la ville.", 13, TEXTE)
-	_boue_ville.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_boue_ville.visible = false
-	v.add_child(_boue_ville)
 	# 💧 LA CARTE DES SOLS (101) : trois teintes et le chiffre qui les résume.
 	# ⚠ Les teintes sont aussi dans `maquette.SOLS_*`, en sRGB.
 	_sols_bloc = VBoxContainer.new()
@@ -1847,20 +1842,6 @@ func _panneau_calque() -> void:
 	_sols_bloc.add_child(HSeparator.new())
 	_sols_chiffre = _ligne_chiffre(_sols_bloc, "Sol de la ville qui boit")
 	_panneau_agriculture(v)
-	# 🧹 Tout déblayer d'un coup (auteur, 2026-10-05). 🔴 Texte de prototype, flaggable (90).
-	_boue_bloc = VBoxContainer.new()
-	_boue_bloc.add_theme_constant_override("separation", 6)
-	_boue_bloc.visible = false
-	v.add_child(_boue_bloc)
-	_boue_bloc.add_child(HSeparator.new())
-	_boue_texte = _label("", 13, TEXTE)
-	_boue_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_boue_bloc.add_child(_boue_texte)
-	_boue_bouton = Button.new()
-	_boue_bouton.text = "Tout déblayer"
-	_habiller_principal(_boue_bouton)
-	_boue_bouton.pressed.connect(func() -> void: deblaiement_demande.emit())
-	_boue_bloc.add_child(_boue_bouton)
 
 
 var _boue_bloc: VBoxContainer
@@ -1980,9 +1961,9 @@ func deblaiement_propose() -> bool:
 func _maj_boue() -> void:
 	if _boue_bloc == null:
 		return
-	_boue_ville.visible = _calque_panneau.visible and _theme_courant == "trafic" and ouverture != null \
+	_boue_ville.visible = _chantiers_panneau.visible and ouverture != null \
 		and ouverture.etape == "pont_travaux" and ouverture.boue_a_engager()
-	_boue_bloc.visible = _calque_panneau.visible and _theme_courant == "trafic" and deblaiement_propose()
+	_boue_bloc.visible = _chantiers_panneau.visible and deblaiement_propose()
 	if not _boue_bloc.visible:
 		return
 	var rues := rues_a_deblayer()
@@ -2433,6 +2414,17 @@ func _panneau_chantiers() -> void:
 	_legende(v, EN_TRAVAUX, "Chantier en cours")
 	_legende(v, FAIT, "Fait, la ville est réparée là")
 	v.add_child(HSeparator.new())
+	# 🌉 Les ponts coupés, leur nom y mène : ils quittent les premiers pas (auteur, 2026-10-17).
+	_ponts_bloc = VBoxContainer.new()
+	_ponts_bloc.add_theme_constant_override("separation", 6)
+	_ponts_bloc.visible = false
+	v.add_child(_ponts_bloc)
+	_ponts_bloc.add_child(_label("Ponts coupés", 12, GRIS))
+	# 🟫 Le pont engagé, on renvoie sur la ville voir la boue (auteur, 2026-10-08 et 2026-10-17). 🔴 Flaggable (90).
+	_boue_ville = _label("Cliquez sur Ville, en haut de la colonne de gauche, pour voir ce qui barre le chemin du pont.", 13, TEXTE)
+	_boue_ville.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_boue_ville.visible = false
+	v.add_child(_boue_ville)
 	for ligne in [
 		["casses", "Encore cassé"],
 		["reste", "Reste à payer"],
@@ -2455,12 +2447,55 @@ func _panneau_chantiers() -> void:
 		l.visible = false
 		_chantiers_lignes.append(l)
 		v.add_child(l)
+	# 🧹 Tout déblayer d'un coup (auteur, 2026-10-05), passé de Trafic à Chantiers (2026-10-17). 🔴 Flaggable (90).
+	_boue_bloc = VBoxContainer.new()
+	_boue_bloc.add_theme_constant_override("separation", 6)
+	_boue_bloc.visible = false
+	v.add_child(_boue_bloc)
+	_boue_bloc.add_child(HSeparator.new())
+	_boue_texte = _label("", 13, TEXTE)
+	_boue_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_boue_bloc.add_child(_boue_texte)
+	_boue_bouton = Button.new()
+	_boue_bouton.text = "Tout déblayer"
+	_habiller_principal(_boue_bouton)
+	_boue_bouton.pressed.connect(func() -> void: deblaiement_demande.emit())
+	_boue_bloc.add_child(_boue_bouton)
+
+
+var _ponts_bloc: VBoxContainer
+var _ponts_listes := []
+
+
+## Un bouton par pont coupé que rien n'engage encore ; refait seulement quand la liste change.
+func _maj_ponts_coupes() -> void:
+	var libres := []
+	for p in ville.ponts_coupes():
+		if not ville.est_repare("r", p):
+			libres.append(int(p))
+	_ponts_bloc.visible = not libres.is_empty()
+	if libres == _ponts_listes:
+		return
+	_ponts_listes = libres
+	while _ponts_bloc.get_child_count() > 1:
+		var b := _ponts_bloc.get_child(1)
+		_ponts_bloc.remove_child(b)
+		b.queue_free()
+	for p in libres:
+		var b := Button.new()
+		b.text = lieux.nom("r", p)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		_habiller_secondaire(b)
+		b.pressed.connect(func() -> void: examen_demande.emit("r", p, "", true))
+		_ponts_bloc.add_child(b)
 
 
 ## ⚠️ Appelé seulement quand le panneau est ouvert : `ville.chantiers` parcourt
 ## les 69 îlots et les 178 tronçons, et ce serait une troisième traversée par
 ## image pour un panneau que personne ne regarde.
 func maj_chantiers(d: Dictionary) -> void:
+	_maj_ponts_coupes()
 	var g: Dictionary = d["casses_par_genre"]
 	(_chantiers_valeurs["casses"] as Label).text = "%d îlots, %d ponts, %d rues" % [
 		int(g["reconstruction"]), int(g["pont"]), int(g["deblaiement"])]

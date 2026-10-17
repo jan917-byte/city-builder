@@ -1963,7 +1963,7 @@ func _montrer_reparations() -> void:
 		var mi: MeshInstance3D = ruines_ponts[fid]
 		mi.visible = not ville.reparation_finie("r", fid, mois)
 		_corps(mi, mi.visible)
-		_icone_pont(fid, theme == "trafic" and mi.visible)
+		_icone_pont(fid, theme in ["trafic", "chantiers"] and mi.visible)
 	for couche in ["i", "r"]:
 		for fid in reparations[couche]:
 			var mi: MeshInstance3D = reparations[couche][fid]
@@ -2299,6 +2299,11 @@ func _rafraichir(force: bool) -> void:
 	_maj_contour()
 	_maj_apercu()
 	_maj_apercus_projets()
+	# 🌉 Les ponts à choisir clignotent, au rythme de la tuile entourée (auteur, 2026-10-17).
+	var appel := ouverture != null and ouverture.etape in ["chantiers", "pont_choix"]
+	for icone in icones_ponts.values():
+		(icone as Sprite3D).modulate.a = 0.15 + 0.85 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.008)) \
+			if appel else 1.0
 	force = force or _dernier_peint < 0.0
 	var ms := Time.get_ticks_msec()
 	if not force and (absf(mois - _dernier_peint) < 0.002
@@ -2560,8 +2565,8 @@ func _sur_theme(id: String) -> void:
 	# deux vues comparables, et un avant/après lisible sans recadrer à la main.
 	_dernier_peint = -1.0
 	_rafraichir(true)
-	if id == "trafic" and ouverture != null:
-		ouverture.voir_trafic()
+	if id == "chantiers" and ouverture != null:
+		ouverture.voir_chantiers()
 	elif id == "" and ouverture != null:
 		ouverture.voir_ville()
 
@@ -3362,7 +3367,7 @@ func _partie_valide(p: Dictionary) -> bool:
 	if p.has("ouverture"):
 		if not p["ouverture"] is Dictionary:
 			return false
-		for cle in ["suite", "termine", "ouvert", "trafic_vu", "pont_termine", "etude_parue"]:
+		for cle in ["suite", "termine", "ouvert", "trafic_vu", "chantiers_vu", "pont_termine", "etude_parue"]:
 			if p["ouverture"].has(cle) and not p["ouverture"][cle] is bool:
 				return false
 		for cle in ["pont_termine_mois", "etude_mois"]:

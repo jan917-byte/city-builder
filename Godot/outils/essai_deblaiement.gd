@@ -1,6 +1,6 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/essai_deblaiement.gd -- --ouverture [--captures]
-## 🧹 Tout déblayer d'un coup, proposé par Trafic après trois rues faites à la main.
+## 🧹 Tout déblayer d'un coup, proposé par Chantiers après trois rues faites à la main.
 
 
 func executer() -> void:
@@ -39,19 +39,19 @@ func executer() -> void:
 			"Après %d rue(s) à la main, proposé : %s" % [i + 1, ui.deblaiement_propose()])
 	verifier("sous la boue" in ui.retours.journal.back(), "La troisième rue annonce la proposition : %s" % ui.retours.journal.back())
 	ui._maj_rail()
-	verifier(entouree("trafic"), "La tuile Trafic s'entoure")
+	verifier(entouree("chantiers"), "La tuile Chantiers s'entoure")
 	var reste: Array = ui.rues_a_deblayer()
 	var cout := 0.0
 	for f in reste:
 		cout += v.cout_reparation_ke("r", int(f))
 	print("DÉBLAIEMENT : %d rues, %.0f k€" % [reste.size(), cout])
-	jeu._sur_theme("trafic")
+	jeu._sur_theme("chantiers")
 	jeu._repere("faubourg")
 	jeu._rafraichir(true)
 	ui._maj_rail()
-	verifier(not o.visible and ui._calque_panneau.visible and ui._boue_bloc.visible
-		and ("%d rues" % reste.size()) in ui._boue_texte.text and not entouree("trafic"),
-		"Pendant le chantier du pont, Trafic montre son panneau et propose le reste : %s" % ui._boue_texte.text)
+	verifier(not o.visible and ui._chantiers_panneau.visible and ui._boue_bloc.visible
+		and ("%d rues" % reste.size()) in ui._boue_texte.text and not entouree("chantiers"),
+		"Pendant le chantier du pont, Chantiers montre son panneau et propose le reste : %s" % ui._boue_texte.text)
 	await capture("deblaiement_01_propose")
 	var caisse: float = v.caisse_ke(jeu.mois)
 	await cliquer(ui._boue_bouton)

@@ -8,9 +8,12 @@ const Bulles := preload("res://scripts/bulles.gd")
 const MOMENTS := {
 	"01_relogement": "1_urgence",
 	"02_camp": "2_camp_livre",
-	"10_comparer_ponts": "3_choisir_le_pont",
-	"12_pont_travaux": "4_pont_en_travaux",
-	"14_pont_rouvert": "5_pont_rouvert",
+	"09_decouvrir_chantiers": "3_rives_coupees",
+	"10_comparer_ponts": "4_liste_des_ponts",
+	"11_fiche_pont": "5_fiche_du_pont",
+	"12d_chantiers_vers_la_ville": "6_vers_la_ville",
+	"12b_chemin_degage": "7_chemin_degage",
+	"14_pont_rouvert": "8_pont_rouvert",
 }
 var _numeros := {}    # instance_id -> n°
 var _textes := {}     # n° -> {écran: texte}

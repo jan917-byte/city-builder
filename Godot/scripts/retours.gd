@@ -127,8 +127,8 @@ func batir(interface) -> void:
 	pile.minimum_size_changed.connect(ui._clamper_fiche)
 	ui.add_child(survol)
 	avis = PanelContainer.new()
-	avis.theme = ui._theme_ui
-	ui._poser_boite(avis)
+	# 🌑 Le bandeau raconte : sombre comme les premiers pas (auteur, 2026-10-17), le journal avec.
+	ui._poser_histoire(avis)
 	# Largeur nulle, croissance des deux côtés : le bandeau épouse son texte,
 	# centré (`_ajuster_largeur`). À 410 px fixes, un message court laissait un vide.
 	avis.anchor_left = 0.5
@@ -139,7 +139,7 @@ func batir(interface) -> void:
 	ui.add_child(avis)
 	var contenu := VBoxContainer.new()
 	avis.add_child(contenu)
-	texte = ui._label("", 14, ui.TEXTE)
+	texte = ui._label("", 14, ui.ENCRE_HISTOIRE)
 	texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	contenu.add_child(texte)
 	historique = RichTextLabel.new()
