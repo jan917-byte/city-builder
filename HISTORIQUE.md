@@ -785,3 +785,6 @@ Mesuré par `outils/diag_trafic.gd` sur 2 min : 4 134 → 0 allumages hors carre
 **2026-10-17 — L'interface grandit avec la fenêtre (réglage d'étirement du projet, base 1600×900).**
 Demande de l'auteur ; écartés les vrais pourcentages panneau par panneau (déformés sur écran large). Un curseur « taille de l'interface » reste à faire le jour d'un écran d'options.
 Captures 1280×720, 1920×1080, 2560×1440 (QGIS/rendus/wehrau_interface_echelle.png) ; clic et contour justes en 2560×1440 ; essai_camera 0 échec.
+**2026-10-17 — Le guide des premiers pas dit où cliquer au lieu d'offrir des boutons ; la phase du pont passe par Chantiers ; le bandeau du haut passe en sombre.**
+Demande de l'auteur : plus de « ×4 », « Voir mon chantier », bouton par pont, « Poursuivre », « Investir » ; restent « Et maintenant ? » et « Continuer à mon rythme ». Revient sur « plus de où cliquer » (2026-10-08) pour ce panneau seul. Liste des ponts coupés et « Tout déblayer » déplacées de Trafic au panneau Chantiers, pictogrammes des ponts qui clignotent.
+Essais ouverture, déblaiement, progression, étude, concours, rebâtir, labour, vie_camp, relogement, trafic, caméra à 0 échec ; livre 1, campagne 7, travaux 1, capital 2, sauvegarde 92 identiques avant la modification. Planche `apercu_debut` en 8 écrans.
