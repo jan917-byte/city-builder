@@ -782,3 +782,6 @@ Essais étude, progression, ouverture, rebâtir, concours à 0 échec ; sauvegar
 **2026-10-15 — Trafic : les voitures ne s'effacent plus en pleine rue, ne se superposent plus dans une file, et freinent dans les virages.**
 Cause : la pulsation recomptait le quota de chaque rue toutes les 3 s et éteignait/rallumait ~35 voitures par seconde en pleine rue ; le quota ne s'applique plus qu'au carrefour, avec deux secondes et 6 m d'écart jugés au point le plus lent. Profil de vitesse cuit dans la texture des trajets (3 m/s² latéral, rue à 30 km/h : droite 11, gauche 8 km/h).
 Mesuré par `outils/diag_trafic.gd` sur 2 min : 4 134 → 0 allumages hors carrefour, 89 → 1 contacts en file, croisements 287 → 482 (on reste plus longtemps au carrefour) ; essai_trafic 0 échec, bâtir 308 → 378 ms.
+**2026-10-17 — L'interface grandit avec la fenêtre (réglage d'étirement du projet, base 1600×900).**
+Demande de l'auteur ; écartés les vrais pourcentages panneau par panneau (déformés sur écran large). Un curseur « taille de l'interface » reste à faire le jour d'un écran d'options.
+Captures 1280×720, 1920×1080, 2560×1440 (QGIS/rendus/wehrau_interface_echelle.png) ; clic et contour justes en 2560×1440 ; essai_camera 0 échec.
