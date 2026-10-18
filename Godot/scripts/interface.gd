@@ -5330,9 +5330,9 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	# retirées. 🔄 L'usure du camp n'y passe plus : sa carte la dit (auteur, 2026-10-02).
 	var k0 := ville_essai.capital(_mois) - ville.capital(_mois)
 	var k1 := ville_essai.capital(t) - ville.capital(t) - k0
-	# 🔄 Une ligne, sans « à la livraison » (auteur, 2026-10-08) ; rien pour un camp (2026-10-18).
-	if absf(k0 + k1) >= 0.5 and not r.has("camp"):
-		out.append(["capital", "%+d confiance" % int(roundf(k0 + k1)), _sens(k0 + k1)])
+	# 🔄 Une ligne, sans « à la livraison » (auteur, 2026-10-08) ; le nombre et l'icône, sans le mot (2026-10-18).
+	if absf(k0 + k1) >= 0.5:
+		out.append(["capital", "%+d" % int(roundf(k0 + k1)), _sens(k0 + k1)])
 	# 🚶 Le retour des places se juge sur la rue (99) : la fiche ne peut pas le
 	# connaître, elle annonce la fourchette.
 	if absf(k0) >= 0.5 and (r.has("places") or r.has("axe")):
