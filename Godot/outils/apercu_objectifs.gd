@@ -1,0 +1,45 @@
+extends "res://outils/essai_ouverture.gd"
+## --script res://outils/apercu_objectifs.gd -- --ouverture --captures
+## Les objectifs en bas à gauche (auteur, 2026-10-18) : le premier qui se remplit, monte et
+## laisse place au suivant ; le guide ne dit plus que où cliquer.
+## → QGIS/rendus/wehrau_ouverture_objectifs_N_*.png
+
+
+func attendre(s: float) -> void:
+	await create_timer(s).timeout
+
+
+func executer() -> void:
+	root.size = Vector2i(1600, 900)
+	jeu = Maquette.new()
+	root.add_child(jeu)
+	jeu.set_process(false)
+	jeu.horloge_trafic.stop()
+	jeu.moniteur_performances.hide()
+	jeu.chemin_sauvegarde = "res://../QGIS/rendus/essai_objectifs.wehrau"
+	var o = jeu.ouverture
+	jeu._sur_mode(false)
+	jeu.recit.commencer()
+	for i in 5:
+		await cliquer(jeu.recit._fleche)
+	jeu._sur_vitesse(0.0)
+	actualiser(0.0)
+	await attendre(0.8)
+	await capture("objectifs_1_reloger")
+	var champs: Array = o._champs_accessibles()
+	jeu.ville.abriter(champs[0], 0.0)
+	jeu.ville.abriter(champs[1], 0.0)
+	actualiser(0.2)
+	await attendre(0.35)
+	await capture("objectifs_2_cercle_plein")
+	await attendre(0.45)
+	await capture("objectifs_3_il_monte")
+	await attendre(1.2)
+	await capture("objectifs_4_le_suivant")
+	jeu._sur_theme("chantiers")
+	actualiser(0.25)
+	await attendre(0.3)
+	await capture("objectifs_5_avec_chantiers")
+	jeu.queue_free()
+	await process_frame
+	quit(0)

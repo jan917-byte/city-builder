@@ -4631,10 +4631,11 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		for cle in _barre_valeurs:
 			if not cle in ["temperature", "recherche"]:
 				(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
-		# 🎓 Les points dès que l'institut est atteignable : avant, ils ne servent à rien.
+		# 🎓 Les points dès que l'institut est atteignable, ou dès le premier objectif atteint
+		# (auteur, 2026-10-18) : on les voit monter avant de pouvoir les dépenser.
 		var points: Label = _barre_valeurs["recherche"]
 		points.text = str(Recherche.points(ville, mois))
-		_montrer_compteur("recherche", etude_publiee() or _financements())
+		_montrer_compteur("recherche", etude_publiee() or _financements() or not ville._objectifs.is_empty())
 		var degres: float = saison.temperature(mois) if saison != null else Calendrier.temperature(mois)
 		(_barre_valeurs["temperature"] as Label).text = "%s °C" % _nb(degres, 0)
 		_thermo_pic.texture = _thermometre(degres, 22, Color8(176, 92, 64))

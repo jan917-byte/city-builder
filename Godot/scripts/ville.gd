@@ -8,6 +8,7 @@ extends RefCounted
 
 const Energie := preload("res://scripts/energie.gd")
 const Recherche := preload("res://scripts/recherche.gd")
+const Objectifs := preload("res://scripts/objectifs.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 const Calendrier := preload("res://scripts/calendrier.gd")
 var _ponts: Array[int] = []
@@ -51,6 +52,8 @@ var _dense := {}           # fid -> {debut, duree, etages, logements, cout_ke}
 var _recherche := {}
 ## 🎓 Geste de `Recherche.PREMIERES_FOIS` -> mois de sa première livraison : un point de plus.
 var _premieres := {}
+## 🎯 Objectif de `objectifs.gd` -> mois où il a été atteint : un point de plus.
+var _objectifs := {}
 ## 🏛️ Politique -> [[début, fin], …] ; fin = -1 tant qu'elle est en vigueur.
 var _politiques := {}
 var _depense_ke := 0.0     # tout ce qui a été engagé en poses depuis le mois 0
@@ -319,11 +322,11 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
-	"_permeable", "_concours", "_labours", "_premieres"]
+	"_permeable", "_concours", "_labours", "_premieres", "_objectifs"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres"]
+	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -370,7 +373,8 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_rebati": [ilots, ""],
 		"_demandes": [DEMANDES, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0],
-		"_premieres": [Recherche.PREMIERES_FOIS, 0.0]}
+		"_premieres": [Recherche.PREMIERES_FOIS, 0.0],
+		"_objectifs": [Objectifs.OBJECTIFS, 0.0]}
 	for champ in formes:
 		if not etat.has(champ):
 			continue
@@ -807,6 +811,7 @@ func reinitialiser() -> void:
 	_solaire.clear()
 	_recherche.clear()
 	_premieres.clear()
+	_objectifs.clear()
 	_politiques.clear()
 	_vert.clear()
 	_stationnement_supprime.clear()

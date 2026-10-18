@@ -1,6 +1,7 @@
 extends SceneTree
 ## --script res://outils/essai_ouverture.gd -- --ouverture [--captures]
 const Maquette := preload("res://scripts/maquette.gd")
+const Recherche := preload("res://scripts/recherche.gd")
 var jeu
 var echecs := 0
 ## 🚿 La plainte du camp a son essai (`essai_vie_camp`) : ailleurs, sa carte bloquerait les clics.
@@ -295,7 +296,7 @@ func executer() -> void:
 
 	verifier(o.etape == "choix", "Le relogement fait, le budget prend la main")
 	# 🔄 Le joueur choisit son îlot (auteur, 2026-10-06) : aucun bouton, aucun lieu désigné.
-	verifier(o._actions.get_child_count() == 0 and "containers" in o._texte.text,
+	verifier(o._actions.get_child_count() == 0 and o.DIRE_ILOT in o._texte.text,
 		"Le guide demande de choisir un îlot, sans en désigner : %s" % o._texte.text)
 	# Ce contrôle isole les choix locaux sans avoir payé de pont.
 	verifier(jeu.ville.cout_reparation_ke("r", o.RUE) < jeu.ville.caisse_ke(0.0),
@@ -646,7 +647,7 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in str(jeu.interface.retours._recent)
 		and o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
 		"Le chemin déblayé pendant le chantier, les îlots sinistrés s'engagent")
-	verifier(o.visible and o._titre.text == "Rebâtir les logements" and "Dangers" in o._texte.text
+	verifier(o.visible and o.DIRE_ILOT in o._texte.text and "Dangers" in o._texte.text
 		and o.rail_ouvert("dangers") and o.MAISONS in o.groupe_carte(),
 		"Le guide propose de rebâtir, demande Dangers et fait clignoter les îlots : %s" % o._texte.text)
 	await capture("12b_chemin_degage")
@@ -712,8 +713,18 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.pont_termine and o.carte == "" and not o.etude_parue and o.verrou() == "rebatir"
 		and "rouvert" in str(jeu.interface.retours.journal),
 		"La première année, le pont rouvert ne publie pas l'étude ; seul rebâtir reste ouvert")
-	verifier(o.etape == "choix" and o._titre.text == "Rebâtir les logements",
+	verifier(o.etape == "choix" and o.DIRE_ILOT in o._texte.text,
 		"Le pont rouvert, le guide propose de rebâtir")
+	# 🎯 Les objectifs en bas à gauche (auteur, 2026-10-18) : deux atteints, deux points.
+	var obj = o.objectifs
+	verifier(jeu.ville._objectifs.has("abriter") and jeu.ville._objectifs.has("pont")
+		and not jeu.ville._objectifs.has("ilot") and obj.visible
+		and obj._lignes.has("ilot") and obj._lignes.has("logements")
+		and Recherche.points(jeu.ville, jeu.mois) == Recherche.POINTS_DEPART + 2
+		and "Objectif atteint" in str(jeu.interface.retours.journal),
+		"Abriter et rouvrir un pont font deux objectifs, deux points ; les deux suivants s'affichent")
+	verifier(not o._titre.visible, "Le guide ne répète plus le but : %s" % o._titre.text)
+	await capture("14b_objectifs")
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(not jeu.interface._solaire_bloc.visible and not jeu.interface._vert_bloc.visible,
 		"La fiche d'un îlot sinistré ne montre que la reconstruction")
@@ -771,12 +782,13 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.pont_termine and o.etape == "choix" and not o.annonce.visible,
 		"Le campus trouvé, le guide propose de rebâtir")
 	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
-	verifier(o._actions.get_child_count() == 0 and "containers" in o._texte.text,
+	verifier(o._actions.get_child_count() == 0 and o.DIRE_ILOT in o._texte.text,
 		"Le pont rouvert, le guide laisse choisir l'îlot : %s" % o._texte.text)
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()
 	verifier(o.pont_termine and o.etape == "choix", "Une reprise après livraison ne redemande pas un pont")
+	verifier(jeu.ville._objectifs.has("pont"), "Une reprise garde les objectifs atteints")
 	# Reconstruire directement sur la carte ne dépend pas de la visite du calque.
 	jeu._sur_reset()
 	jeu.ville.abriter(bons[0], 0.0)

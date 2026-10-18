@@ -91,7 +91,7 @@ func executer() -> void:
 	o.carte_etude = 2
 	o.etude_lue = true
 	o.actualiser(true)
-	verifier(o.etape == "choix" and o._actions.get_child_count() == 0 and "containers" in o._texte.text,
+	verifier(o.etape == "choix" and o._actions.get_child_count() == 0 and o.DIRE_ILOT in o._texte.text,
 		"Le pont livré : %s" % o._texte.text)
 	await capture("deblaiement_04_choisir_ilot")
 	print("DÉBLAIEMENT : %d échec(s)" % echecs)

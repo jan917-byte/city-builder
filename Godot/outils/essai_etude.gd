@@ -126,7 +126,7 @@ func executer() -> void:
 	o.actualiser()
 
 	# 🏠 REBÂTIR D'ABORD : les îlots sinistrés clignotent, aucune berge proposée.
-	verifier(o.etape == "choix" and o._titre.text == "Rebâtir les logements" and o.visible
+	verifier(o.etape == "choix" and o.DIRE_ILOT in o._texte.text and o.visible
 		and o._actions.get_child_count() == 0,
 		"Le campus vu, le guide demande de rebâtir les logements, sans bouton")
 	var sinistres: Array = o.ilots_a_rebatir()

@@ -3,6 +3,7 @@ extends PanelContainer
 
 const Ville := preload("res://scripts/ville.gd")
 const Livre := preload("res://scripts/livre.gd")
+const Objectifs := preload("res://scripts/objectifs.gd")
 # Lieux touchés dans l’emprise corrigée le 2026-09-16.
 const RUE := 148
 const MAISONS := 59
@@ -13,11 +14,13 @@ const SOLAIRE := 32
 const TOIT_PLAT := 31
 const PRE := 1065
 const PARKING := 19   # la place-parking, le sol qu'on rend perméable (101)
-# 🌉 Le choix du pont, sans le donner (auteur, 2026-10-18) ; plus de « rouvrir avant de rebâtir ». 🔴 Flaggable (90).
-const POURQUOI_LE_PONT := "La ville est coupée en deux : il faut la relier au plus vite. Les ponts ne coûtent pas tous le même prix, ni le même temps."
+# 🌉 Le choix du pont, sans le donner (auteur, 2026-10-18). 🔴 Flaggable (90).
+const PONTS_DIFFERENTS := "Les ponts ne coûtent pas tous le même prix, ni le même temps."
 ## 🧭 LE GUIDE DIT OÙ CLIQUER, IL NE CLIQUE PLUS (auteur, 2026-10-17) : aucun bouton
 ## d'action dans les premiers pas, seuls restent ceux qui font avancer le guide.
 ## Revient sur « plus de où cliquer » du 2026-10-08, pour ce panneau seul. 🔴 Flaggable (90).
+## 🎯 Le but est passé aux objectifs, en bas à gauche (auteur, 2026-10-18) : plus de titre
+## qui le répète, seulement où cliquer ; un guide qui n'a rien à dire se cache.
 const DIRE_CHANTIERS := "Cliquez sur Chantiers, dans la colonne de gauche, pour voir ce qui est cassé."
 const DIRE_PONT := "Cliquez sur un pont coupé, dans Chantiers ou sur la carte, puis choisissez comment le rebâtir dans sa fiche."
 const DIRE_DANGERS := "Cliquez sur Dangers, dans la colonne de gauche, pour voir où l'eau a frappé le plus fort."
@@ -55,6 +58,10 @@ var _actions: VBoxContainer
 var _progression: ProgressBar
 var _detail: Label
 var _corps: VBoxContainer
+var _entete: HBoxContainer
+var objectifs: Objectifs
+## Rien à dire ni à cliquer : le guide se cache, les objectifs suffisent.
+var _muet := false
 var _dernier_mois := -1.0
 var _reperes: Node3D
 var _reperes_poses := ""
@@ -104,6 +111,7 @@ func batir(maquette) -> void:
 	# 🔄 Le « − » sur la ligne du titre (auteur, 2026-09-28) : seul en tête, il
 	# creusait une ligne vide au-dessus.
 	var entete := HBoxContainer.new()
+	_entete = entete
 	_corps.add_child(entete)
 	_titre = ui._label("", 22, ui.ENCRE_HISTOIRE)
 	_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -131,6 +139,8 @@ func batir(maquette) -> void:
 	_reperes = Node3D.new()
 	_reperes.name = "PremiersLieux"
 	jeu.monde.add_child(_reperes)
+	objectifs = Objectifs.new()
+	objectifs.batir(jeu)
 	actualiser(true)
 
 
@@ -749,7 +759,7 @@ func _choisir_pont(fid: int) -> void:
 ## Ouvert, sans panneau de détail, carte au centre ni fenêtre du campus, et muet pendant
 ## le chantier du pont (auteur, 2026-10-05) comme pendant l'attente de sa carte.
 func paraitre() -> bool:
-	return ouvert and not jeu.interface._detail_ouvert and not annonce.visible \
+	return ouvert and not _muet and not jeu.interface._detail_ouvert and not annonce.visible \
 		and not jeu.interface._campus_panneau.visible \
 		and (etape not in ["pont_travaux", "pont_livre"] or guide_rebatir())
 
@@ -768,6 +778,8 @@ func _ilot_engage() -> bool:
 
 
 func actualiser(force := false) -> void:
+	if objectifs != null:
+		objectifs.actualiser()
 	visible = paraitre()
 	if _reperes != null:
 		_reperes.visible = visible and jeu.theme in ["", "chantiers"] and not suite and not termine
@@ -879,25 +891,25 @@ func actualiser(force := false) -> void:
 	match etape:
 		"camp_attente":
 			_poser_reperes([])
-			_titre.text = "Les premiers abris arrivent"
+			_titre.text = ""
 			_texte.text = ""
 		"chantiers":
 			_poser_reperes([])
-			_titre.text = "Les deux rives sont coupées"
+			_titre.text = ""
 			# 🧭 La tuile Chantiers s'entoure, et le guide la nomme.
-			_texte.text = POURQUOI_LE_PONT + "\n\n" + DIRE_CHANTIERS
+			_texte.text = DIRE_CHANTIERS
 		"pont_choix":
-			_titre.text = "Rebâtir un pont"
+			_titre.text = ""
 			# 🌉 Les ponts se trouvent mal sur la carte (auteur, 2026-09-22) : leur liste est dans
 			# Chantiers, et leur pictogramme clignote.
-			_texte.text = POURQUOI_LE_PONT + "\n\n" + DIRE_PONT
+			_texte.text = DIRE_PONT + "\n\n" + PONTS_DIFFERENTS
 		"pont_acces":
 			# 🔄 Aucun nom de rue ni bouton (auteur, 2026-09-26) : la boue se voit
 			# sur la carte, et seule la fiche d'une route qui barre le pont répond.
-			_titre.text = "Le pont est prêt, personne ne passe"
+			_titre.text = ""
 			_texte.text = description_pont(int(premier["fid"]))
 			if jeu.trafic.acces_pont(int(premier["fid"]), jeu.mois)["possible"]:
-				_texte.text = "La boue bloque encore le chemin jusqu'au pont."
+				_texte.text = "La boue bloque encore le chemin jusqu'au pont : cliquez sur une rue boueuse pour la déblayer."
 		"pont_travaux":
 			# 🔇 Le guide se tait (auteur, 2026-10-05) : le bandeau dit la boue puis
 			# le chemin dégagé, les chantiers en cours portent l'avancement.
@@ -916,15 +928,13 @@ func actualiser(force := false) -> void:
 		"reloger":
 			# 🧭 Ni chiffre sur la carte ni bouton qui mène aux champs (auteur, 2026-09-17) ;
 			# le guide dit « un champ » et les ponts coupés (tableau de l'auteur, 2026-10-07).
-			var sans_toit: float = jeu.ville.sans_toit(jeu.mois)
-			var commandees: int = jeu.ville.places_commandees(jeu.mois)
-			_titre.text = "%d personnes sont dehors" % int(sans_toit)
+			_titre.text = ""
 			var coupes: int = int(jeu.ville.degats(jeu.mois)["franchissements_coupes"])
 			# 🔴 Texte du tableau de l'auteur (2026-10-07), flaggable (90).
-			_texte.text = "%d ponts coupés : elles restent sur leur rive." % coupes
-			if commandees > 0:
-				_texte.text = "Abris commandés : %d places. Il manque encore %d places." % [
-					commandees, int(jeu.ville.besoin_non_couvert(jeu.mois))]
+			_texte.text = "%d ponts coupés : les sinistrés restent sur leur rive. Cliquez sur un champ de cette rive pour y poser un camp." % coupes
+			if jeu.ville.places_commandees(jeu.mois) > 0:
+				_texte.text = "Il manque encore %d places : cliquez sur un autre champ." % \
+					int(jeu.ville.besoin_non_couvert(jeu.mois))
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
 					_texte.text += "\n%s est sur l'autre rive." % _nom_champ(int(fid))
@@ -933,11 +943,8 @@ func actualiser(force := false) -> void:
 			# 🔄 LE JOUEUR CHOISIT SON ÎLOT (auteur, 2026-10-06) : ni bouton ni lieu
 			# désigné ; la fiche d'îlot sinistré le compare par ses tuiles.
 			# 🏠 Rebâtir d'abord (auteur, 2026-10-08) : les îlots sinistrés clignotent. 🔴 Flaggable (90).
-			_titre.text = "Rebâtir les logements"
-			_texte.text = "%d personnes vivent encore dans les containers." % \
-				int(jeu.ville.reloges(jeu.mois))
-			if annee_un():
-				_texte_rebatir()
+			_texte.text = ""
+			_texte_rebatir()
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
@@ -982,12 +989,27 @@ func actualiser(force := false) -> void:
 				suite = true
 				actualiser(true))
 	_texte.visible = _texte.text != ""
+	_titre.visible = _titre.text != ""
+	_texte_en_tete(not _titre.visible)
+	_muet = _titre.text == "" and _texte.text == "" and _actions.get_child_count() == 0
+	visible = paraitre()
 	reset_size()
+
+
+## Sans titre, le texte prend sa place, à côté du « − » : sinon une ligne vide au-dessus.
+func _texte_en_tete(oui: bool) -> void:
+	var parent: Container = _entete if oui else _corps
+	if _texte.get_parent() == parent:
+		return
+	_texte.get_parent().remove_child(_texte)
+	parent.add_child(_texte)
+	parent.move_child(_texte, 0 if oui else 1)
+	_texte.size_flags_horizontal = Control.SIZE_EXPAND_FILL if oui else Control.SIZE_FILL
 
 
 ## 🌉 Le guide de la reconstruction, la première année. 🔴 Flaggable (90).
 func _texte_rebatir() -> void:
-	_titre.text = "Rebâtir les logements"
+	_titre.text = ""
 	var lignes := [] if _texte.text == "" else [_texte.text]
 	if not (_ilot_engage() and etape == "pont_travaux"):
 		if not degats_vus:

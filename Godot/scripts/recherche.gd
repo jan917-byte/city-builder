@@ -3,6 +3,7 @@ extends RefCounted
 # L'état — quel sujet est acquis, à quel mois — vit dans `ville.gd`, comme les
 # poses ; ici, la table et les fonctions pures.
 const Calendrier := preload("res://scripts/calendrier.gd")
+const Objectifs := preload("res://scripts/objectifs.gd")
 
 # ==========================================================================
 # 🎚️ LEVEL DESIGN — les tables que l'auteur règle (113)
@@ -14,6 +15,7 @@ const POINTS_DEPART := 2
 const POINTS_PAR_AN := 2           # chaque janvier, avec le budget (`Calendrier.an`)
 const POINTS_PREMIERE_FOIS := 1    # la première livraison de chacun de ces gestes :
 const PREMIERES_FOIS := ["berge", "toit vert", "sol perméable", "culture"]  # la ville-éponge
+const POINTS_OBJECTIF := 1        # chaque objectif atteint, en bas à gauche (auteur, 2026-10-18)
 # Prix selon la taille : 1 un rendement, 2 un geste nouveau, 3 un objet neuf.
 # 🔴 Des paliers de rendement PETITS, exprès : un gros palier tardif rattraperait
 # une partie ratée. Les grands gains viennent des objets neufs, encore à écrire.
@@ -77,6 +79,9 @@ static func gains(v, t: float) -> Array:
 	for genre in PREMIERES_FOIS:
 		if float(v._premieres.get(genre, INF)) <= t:
 			out.append(["Premier chantier livré : %s" % genre, POINTS_PREMIERE_FOIS])
+	for id in v._objectifs:
+		if float(v._objectifs[id]) <= t:
+			out.append(["Objectif atteint : %s" % Objectifs.OBJECTIFS.get(id, id), POINTS_OBJECTIF])
 	return out
 
 
