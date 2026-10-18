@@ -5,7 +5,8 @@ extends Resource
 
 @export_group("Texte")
 ## La police de toute l'interface. Les fichiers sont dans le dossier « polices ».
-@export_enum("rubik", "grotesk", "barlow", "nunito", "fredoka", "baloo", "godot") var police := "rubik"
+## Cabin n'a que trois graisses, 400, 600 et 700 : les autres valeurs prennent la plus proche.
+@export_enum("rubik", "grotesk", "barlow", "nunito", "fredoka", "baloo", "cabin", "godot") var police := "cabin"
 ## Graisse du texte courant : 400 = normal, 700 = gras.
 @export_range(100, 900, 50) var graisse_texte := 600
 ## Graisse des titres de fiche.

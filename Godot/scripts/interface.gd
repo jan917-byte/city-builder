@@ -45,10 +45,9 @@ const Livre := preload("res://scripts/livre.gd")
 var lieux := Lieux.new()
 var _reprendre: Button
 
-## 🔤 LA POLICE, À TRANCHER DEVANT L'IMAGE. Trois candidates dans
-## `Godot/polices/`, toutes sous licence SIL OFL (leur `*-OFL.txt` est à côté du
-## fichier) — donc libres pour un jeu vendu. `-- --police <clé>` en essaie une
-## sans toucher au fichier ; « godot » est la police d'origine.
+## 🔤 LA POLICE : Cabin (auteur, 2026-10-18). Toutes dans `Godot/polices/`, sous
+## licence SIL OFL (leur `*-OFL.txt` est à côté) — donc libres pour un jeu vendu.
+## `-- --police <clé>` en essaie une sans toucher au fichier ; « godot » est la police d'origine.
 const POLICES := {
 	"godot": "",
 	"rubik": "res://polices/Rubik.ttf",
@@ -57,8 +56,17 @@ const POLICES := {
 	"nunito": "res://polices/Nunito.ttf",
 	"fredoka": "res://polices/Fredoka.ttf",
 	"baloo": "res://polices/Baloo2.ttf",
+	"cabin": "res://polices/Cabin-Regular.ttf",
 }
 const POLICE := "rubik"
+## 🔴 PIÈGE PAYÉ LE 2026-10-17 : Cabin variable (wght + wdth) perdait sa graisse
+## au fil de la partie d'essai et tout sortait en 400. Elle vient donc en
+## fichiers fixes, un par graisse ; `_peser` prend le plus proche.
+const GRAISSES := {
+	"cabin": {400: "res://polices/Cabin-Regular.ttf", 600: "res://polices/Cabin-SemiBold.ttf",
+		700: "res://polices/Cabin-Bold.ttf"},
+}
+var _nom_police := ""
 ## 🔲 HABILLAGE « VITRE », EN PLACE (auteur, 2026-10-02, après « trop IA, trop rempli ») :
 ## verre neutre à angles droits, liseré d'un pixel, sans ombre ; le temps en haut à droite.
 ## `-- --habillage bois` rend le brun et crème du 2026-09-28, `verre` le crème et vert d'avant.
@@ -723,6 +731,7 @@ func _charger_police() -> Font:
 	var i := args.find("--police")
 	if i >= 0 and i + 1 < args.size():
 		nom = args[i + 1]
+	_nom_police = nom
 	var chemin := str(POLICES.get(nom, ""))
 	if chemin == "" or not ResourceLoader.exists(chemin):
 		if chemin != "":
@@ -742,7 +751,14 @@ func _charger_police() -> Font:
 func _peser(poids: int, grossir: float) -> FontVariation:
 	var f := FontVariation.new()
 	f.base_font = _police
-	if _police != null and not _police.get_supported_variation_list().is_empty():
+	if GRAISSES.has(_nom_police):
+		var fichiers: Dictionary = GRAISSES[_nom_police]
+		var proche: int = fichiers.keys()[0]
+		for p in fichiers:
+			if absi(p - poids) < absi(proche - poids):
+				proche = p
+		f.base_font = load(fichiers[proche])
+	elif _police != null and not _police.get_supported_variation_list().is_empty():
 		var tag := TextServerManager.get_primary_interface().name_to_tag("wght")
 		f.variation_opentype = {tag: poids}
 	else:
