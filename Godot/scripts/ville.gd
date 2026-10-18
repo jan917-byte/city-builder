@@ -9,6 +9,7 @@ extends RefCounted
 const Energie := preload("res://scripts/energie.gd")
 const Recherche := preload("res://scripts/recherche.gd")
 const Politiques := preload("res://scripts/politiques.gd")
+const Calendrier := preload("res://scripts/calendrier.gd")
 var _ponts: Array[int] = []
 
 const HORIZON_MOIS := 240                  # 20 ans. Le classeur s'arrête à 60.
@@ -25,7 +26,8 @@ const CAPITAL_DEPART := 50.0               # décision 16b
 # mais possible ». Trop haut, on équipe sans choisir ; trop bas, on regarde le
 # temps passer. Repère imprimé par `-- --essai`.
 const CAISSE_DEPART_KE := 3500.0           # relogement, un pont au choix et déblaiement (auteur, 2026-09-20)
-const DOTATION_KE_MOIS := 30.0             # 360 k€/an votés pour la transition
+# 🗓️ Versée en une fois chaque janvier, au lieu de 30 k€ par mois (auteur, 2026-10-18).
+const DOTATION_KE_AN := 360.0
 
 # 🌳 CE QU'IL RESTE DE TRAFIC AU VERGER tant que la boue y est — voir
 # `part_trafic`. 🎚️ Level design, à juger devant l'image.
@@ -2047,10 +2049,15 @@ func _integrale_part_rendue(fid: int, t: float) -> float:
 ## En k€. Fonction PURE du temps et des chantiers engagés : « Recommencer »
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
-	return CAISSE_DEPART_KE + DOTATION_KE_MOIS * t \
+	return CAISSE_DEPART_KE + dotation_cumulee_ke(t) \
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Politiques.depense_ke(self, t)
+
+
+## Les budgets de janvier reçus jusqu'au mois `t` ; l'an 1 n'a que la caisse de départ.
+static func dotation_cumulee_ke(t: float) -> float:
+	return DOTATION_KE_AN * (Calendrier.an(t) - 1)
 
 
 func _depenser(genre: String, ke: float) -> void:
@@ -2439,6 +2446,8 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 		return false
 	if couche == "i":
 		_rebati[fid] = facon_reparation(fid, facon)
+		# 🌉 Engagé pendant le chantier du pont, l'îlot attend sa livraison (auteur, 2026-10-18).
+		t = debut_travaux_ilot(t)
 	_repare[couche + ":" + str(fid)] = t
 	if provisoire and couche == "r" and fid in _ponts:
 		_provisoire[fid] = true
@@ -2465,6 +2474,25 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 			ilots[fid]["toit_m2"] = neuf
 			_vert_ha_mois = INF
 	return true
+
+
+## Le mois où un îlot engagé à `t` commence : sans pont, ni camions ni matériaux.
+## Le premier pont engagé fixe la date ; un pont livré, on commence tout de suite.
+func debut_travaux_ilot(t: float) -> float:
+	var fin := INF
+	for p in ponts_coupes():
+		if not est_repare("r", p):
+			continue
+		var f := float(_repare["r:%d" % p]) + duree_reparation_mois("r", p)
+		if f <= t:
+			return t
+		fin = minf(fin, f)
+	return t if fin == INF else fin
+
+
+## Engagé et payé, mais le pont n'est pas encore livré.
+func attend_pont(couche: String, fid: int, t: float) -> bool:
+	return couche == "i" and est_repare(couche, fid) and float(_repare["i:%d" % fid]) > t
 
 
 func concours_lance() -> bool:

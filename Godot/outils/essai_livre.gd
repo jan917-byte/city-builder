@@ -15,6 +15,8 @@ func executer() -> void:
 	jeu._sur_mode(false)
 	jeu.recit.terminer()
 	jeu._sur_vitesse(0.0)
+	# Le chapitre de l'étude, après la première année (2026-10-18).
+	jeu.ouverture.premiere_annee = false
 	var o = jeu.ouverture
 	o.tout_ouvert = false  # la progression du livre, sans le déblocage provisoire
 	var ui = jeu.interface

@@ -1150,9 +1150,9 @@ func _calculer_dispo() -> Dictionary:
 	# un îlot bâti muet et oriente vers les champs sans les désigner.
 	# 🌉 Puis un seul : la crue, sur un pont coupé ou une rue qui y mène.
 	var verrou := _verrou()
-	var garde: String = {"reloger": "campagne", "pont": "crue"}.get(verrou, "")
+	var garde: String = {"reloger": "campagne", "pont": "crue", "rebatir": "crue"}.get(verrou, "")
 	# 🚿 Le camp habité garde ses demandes pendant le chantier du pont.
-	if verrou == "pont" and _fiche_couche == "i" and ville.camp_pose(fid):
+	if verrou in ["pont", "rebatir"] and _fiche_couche == "i" and ville.camp_pose(fid):
 		garde = "campagne"
 	var permis := verrou == "" or _autorise(_fiche_couche, fid)
 	for id in d.keys():
@@ -4250,7 +4250,6 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 	var nourriture := (ville.nourriture_depart() - ville.nourriture_personnes(mois)) \
 		* Ville.NOURRITURE_KE_PERSONNE_MOIS
 	var flux := [
-		["Dotation de la transition", Ville.DOTATION_KE_MOIS],
 		["Électricité solaire vendue", float(indic["recette_ke_an"]) / 12.0],
 		["Loyers des étages ajoutés", dense_mois],
 		["Aide aux personnes sans abri", -ville.aide_mensuelle_ke(mois)],
@@ -4258,10 +4257,12 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		["Mairie", -ville.charge_mensuelle_ke(mois)],
 	]
 	out.append_array(_blocs_mensuels(flux, func(v): return _nb(v, 1) + " k€/mois", 0.05))
+	# 🗓️ Le budget tombe en janvier (auteur, 2026-10-18), comme les points de recherche.
+	out.append(["En janvier", "+%s k€" % _milliers(Ville.DOTATION_KE_AN), 0, false])
 	out.append([HISTORIQUE, null, 0, false])
 	var cumul := [
 		["Caisse de départ", Ville.CAISSE_DEPART_KE],
-		["Dotation, %s mois" % _nb(mois, 0), Ville.DOTATION_KE_MOIS * mois],
+		["Budgets de janvier", Ville.dotation_cumulee_ke(mois)],
 		["Électricité solaire vendue", ville.recette_cumulee_ke(mois)],
 		["Loyers des étages ajoutés", ville.solde_dense_ke(mois)],
 		["Crédit d'essai", ville._credit_essai_ke],
@@ -4844,7 +4845,11 @@ func _maj_fiche() -> void:
 		_message.text = "Rien à engager ici avant d'avoir abrité les sinistrés." \
 			if verrou == "reloger" else "Rien à engager ici avant d'avoir rouvert un pont et ses accès."
 		if verrou == "pont" and _fiche_couche == "i" and ville.base("i", _fiche_fid, "cout_reparation_ke") > 0.0:
-			_message.text = "Relevable une fois un pont rouvert."
+			_message.text = "Relevable une fois un pont rouvert." if ouverture == null or not ouverture.annee_un() \
+				else "Relevable dès qu'un pont est en chantier."
+		# 🔒 La première année ne rebâtit que (auteur, 2026-10-18). 🔴 Flaggable (90).
+		if verrou == "rebatir":
+			_message.text = "Rien à engager ici cette année : on rebâtit d'abord."
 	elif _message_urgence:
 		_message.text = ""
 	_message_urgence = muet
@@ -5895,7 +5900,8 @@ func _maj_reparation(o: Dictionary) -> void:
 		and (ouverture == null or ouverture.concours_ouvert())
 	# 🏗️ Sur pilotis dès que l'institut l'a mis au point (auteur, 2026-10-08), sans concours ;
 	# avant, grisé : il dit où il se met au point.
-	var pilotis_vu: bool = rebatir and not (concours and rendu)
+	var pilotis_vu: bool = rebatir and not (concours and rendu) \
+		and (ouverture == null or not ouverture.annee_un())
 	var pilotis: bool = pilotis_vu and ville.facon_permise(_fiche_fid, "pilotis", _mois)
 	for facon in _rebatir_boutons:
 		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition" \
@@ -5932,6 +5938,9 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_etat.add_theme_color_override("font_color", GRIS_FORT)
 		_repare_etat.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid) \
 			else "Chantier en cours"
+		# 🌉 Payé pendant le chantier du pont : il attend sa livraison (auteur, 2026-10-18).
+		if ville.attend_pont(couche, _fiche_fid, _mois):
+			_repare_etat.text = "En attente du pont"
 		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
 			_repare_etat.text += ", " + String(Ville.RECONSTRUCTIONS[
 				ville.facon_reparation(_fiche_fid)]["nom"]).to_lower()

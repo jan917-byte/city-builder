@@ -36,6 +36,8 @@ var _en_cours := {}
 var _nb_chantiers := 0
 var _ponts := {}
 var _sans_toit := -1
+## 🗓️ L'an du dernier constat : son changement apporte le budget de janvier.
+var _an := -1
 ## 🗳️ Les mouvements de capital déjà dits, par identité et non par date : en mode
 ## auteur un gain tombe au mois même de la décision.
 var _capital_dits := {}
@@ -357,6 +359,7 @@ func reprendre(mois: float, messages: Array = []) -> void:
 	_historique_ouvert = false
 	_en_cours = _chantiers(mois)
 	_sans_toit = int(ui.ville.sans_toit(mois))
+	_an = ui.Ville.Calendrier.an(mois)
 	_capital_dits.clear()
 	for m in ui.ville.capital_mouvements():
 		if float(m["mois"]) <= mois:
@@ -503,6 +506,13 @@ func actualiser(mois: float) -> void:
 		consigner("%d personnes abritées, %d encore dehors." % [_sans_toit - n, n] if n > 0
 			else "%d personnes abritées, plus personne dehors." % (_sans_toit - n), mois)
 	_sans_toit = n
+	# 🗓️ Le budget de janvier (auteur, 2026-10-18). 🔴 Flaggable (90).
+	var an: int = ui.Ville.Calendrier.an(mois)
+	if _an > 0 and an > _an:
+		var budget: String = ui._milliers(ui.Ville.DOTATION_KE_AN)
+		annoncer("Budget de l'an %d : %s k€." % [an, budget], mois)
+		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "+%s k€" % budget, "", ui.FAIT_TEXTE)
+	_an = an
 	_dire_capital(mois)
 	_retirer_faits()
 	for pont in ui.ville.ponts_coupes():

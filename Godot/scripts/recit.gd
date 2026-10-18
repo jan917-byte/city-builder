@@ -1,6 +1,6 @@
 extends Control
 ## 📖 LE RÉCIT D'OUVERTURE, et il ne fait qu'une chose : poser la situation
-## avant que le joueur ait une décision à prendre. Quatre pages, une flèche.
+## avant que le joueur ait une décision à prendre. Cinq pages, une flèche.
 ##
 ## 🔴 CHAQUE PAGE CADRE CE QU'ELLE RACONTE — le texte ne dit rien que l'image
 ## ne montre, sans pictogrammes sur la carte. Aucun
@@ -13,6 +13,8 @@ extends Control
 ## 🎚️ LEVEL DESIGN : ce que la carte laisse libre en bas, au-dessus des
 ## commandes du temps.
 const HAUTEUR_BAS := 104.0
+
+const Ville := preload("res://scripts/ville.gd")
 
 var jeu
 var page := 0
@@ -105,6 +107,16 @@ func _batir_pages() -> void:
 				% int(d["logements_perdus"])
 				+ " et il n'y a plus aucun moyen de traverser l'Ilse.",
 			"repere": "pont_casse", "taille": 340.0, "lacet": 40.0, "hauteur": 26.0,
+		},
+		# 🗓️ D'où vient l'argent, quand il revient, et que l'eau reviendra (auteur, 2026-10-18).
+		# 🔴 Mots proposés par moi, flaggables (90), à réécrire par l'auteur.
+		{
+			"titre": "Le budget",
+			"texte": "Vous recevez %s millions d'euros pour rebâtir le faubourg."
+				% String.num(Ville.CAISSE_DEPART_KE / 1000.0, 1).replace(".", ",")
+				+ " Un nouveau budget sera voté chaque janvier."
+				+ " L'Ilse reviendra : ce qui sera rebâti au bord de l'eau, elle pourra le reprendre.",
+			"repere": "faubourg", "lacet": 60.0, "hauteur": 30.0,
 		},
 		{
 			"titre": "Que faire ?",

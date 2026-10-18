@@ -133,9 +133,13 @@ func executer() -> void:
 	verifier(jeu.recit.page == 2 and jeu.pastilles == null, "La page des dégâts conserve une carte sans pastille")
 	await capture("00_recit_3_degats")
 	await cliquer(jeu.recit._fleche)
-	verifier(jeu.recit.page == 3 and jeu.recit.en_cours(),
+	verifier(jeu.recit.page == 3 and "janvier" in jeu.recit._texte.text,
+		"L'avant-dernière page dit le budget et son retour en janvier")
+	await capture("00_recit_4_budget")
+	await cliquer(jeu.recit._fleche)
+	verifier(jeu.recit.page == 4 and jeu.recit.en_cours(),
 		"La dernière page demande un endroit où installer les sinistrés")
-	await capture("00_recit_4_mission")
+	await capture("00_recit_5_mission")
 	await cliquer(jeu.recit._fleche)
 	verifier(not jeu.recit.en_cours() and o.visible,
 		"La flèche finit le récit et rend la main au jeu")
@@ -401,7 +405,7 @@ func executer() -> void:
 	jeu.interface.poser("camp")
 	jeu._sur_commande("i", champs2[0], jeu.interface._reglages())
 	jeu.ville.abriter(champs2[1], 0.0)
-	# Huit mois de dotation : ce que le camp a coûté aux logements.
+	# Huit mois plus tard : ce que le camp a coûté aux logements.
 	actualiser(8.0)
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(jeu.interface._onglet_actif == "crue" and jeu.interface._repare_texte.text == "",
@@ -626,11 +630,12 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._sur_reprise()
 	verifier(o.etape == "pont_travaux", "La reprise conserve le pont en travaux")
 	# 🧹 Dit dès l'engagement, sans nommer la rue (auteur, 2026-09-26).
-	verifier(not o.visible and not o.autorise("i", o.MAISONS),
-		"Pendant le chantier, le guide reste caché et les logements attendent")
+	# 🌉 La première année, un îlot sinistré s'engage dès le pont lancé (auteur, 2026-10-18).
+	verifier(not o.visible and o.autorise("i", o.MAISONS),
+		"Pendant le chantier, le guide reste caché ; les îlots sinistrés s'engagent déjà")
 	await capture("12_pont_travaux")
-	# Le chemin déblayé ne rouvre pas les îlots sinistrés : ils attendent l'étude
-	# (auteur, 2026-10-02). Puis on revient à la sauvegarde pour jouer l'oubli du déblaiement.
+	# 🌉 Le chemin déblayé, le guide propose de rebâtir et demande Dangers (auteur, 2026-10-18).
+	# Puis on revient à la sauvegarde pour jouer l'oubli du déblaiement.
 	jeu._sur_sauvegarde()
 	var pendant := debut + 0.5
 	actualiser(pendant)
@@ -640,8 +645,11 @@ func essayer_ponts(lointain: int) -> void:
 		"Une rue se déblaie en deux jours")
 	actualiser(pendant + 2.0 / 30.0)
 	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in str(jeu.interface.retours._recent)
-		and not o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
-		"Le chemin déblayé pendant le chantier laisse les îlots sinistrés fermés")
+		and o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
+		"Le chemin déblayé pendant le chantier, les îlots sinistrés s'engagent")
+	verifier(o.visible and o._titre.text == "Rebâtir les logements" and "Dangers" in o._texte.text
+		and o.rail_ouvert("dangers") and o.MAISONS in o.groupe_carte(),
+		"Le guide propose de rebâtir, demande Dangers et fait clignoter les îlots : %s" % o._texte.text)
 	await capture("12b_chemin_degage")
 	# 🧹 Toute rue boueuse se déblaie pendant le chantier, sur le chemin ou non (auteur, 2026-09-26).
 	var boueuse := -1
@@ -660,8 +668,17 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(jeu.interface._recap_bloc.visible and not jeu.interface._recap_bouton.disabled, "Le déblaiement choisi, « Mettre en place » paraît")
 	jeu.interface._vider_pose()
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(not jeu.interface._repare_bloc.visible and "pont rouvert" in jeu.interface._message.text,
-		"Pendant le chantier du pont, la fiche d'un îlot sinistré ne propose rien")
+	verifier(jeu.interface._repare_bloc.visible and jeu.interface._rebatir_boutons["tradition"].visible
+		and not jeu.interface._rebatir_boutons["pilotis"].visible,
+		"Pendant le chantier du pont, un îlot sinistré se rebâtit comme avant, sans pilotis")
+	jeu._sur_commande("i", o.MAISONS, {"reparer": "tradition"})
+	jeu._sur_choix("i", o.MAISONS)
+	verifier(jeu.ville.attend_pont("i", o.MAISONS, jeu.mois)
+		and is_equal_approx(float(jeu.ville._repare["i:%d" % o.MAISONS]), fin)
+		and "attente du pont" in jeu.interface._repare_etat.text,
+		"Engagé pendant le chantier, l'îlot attend la livraison du pont")
+	verifier(o.levier_ferme("solaire") != "" and o.verrou() == "pont",
+		"La première année, aucun levier ne s'ouvre")
 	jeu._sur_reprise()
 	actualiser(fin - 0.01)
 	verifier(o.etape == "pont_travaux" and not o.acces_degage(), "La reprise rend la boue")
@@ -692,6 +709,19 @@ func essayer_ponts(lointain: int) -> void:
 		"Le pont livré, le temps court encore et rien ne couvre la ville")
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
+	# 🔒 La première année, pas d'étude au pont : seule la reconstruction reste (auteur, 2026-10-18).
+	verifier(o.pont_termine and o.carte == "" and not o.etude_parue and o.verrou() == "rebatir"
+		and "rouvert" in str(jeu.interface.retours.journal),
+		"La première année, le pont rouvert ne publie pas l'étude ; seul rebâtir reste ouvert")
+	verifier(o.etape == "choix" and o._titre.text == "Rebâtir les logements",
+		"Le pont rouvert, le guide propose de rebâtir")
+	jeu._sur_choix("i", o.MAISONS)
+	verifier(not jeu.interface._solaire_bloc.visible and not jeu.interface._vert_bloc.visible,
+		"La fiche d'un îlot sinistré ne montre que la reconstruction")
+	jeu.interface._fermer_fiche()
+	await capture("13a_rebatir_premiere_annee")
+	# Le chapitre suivant : l'étude, comme avant le 2026-10-18 ; elle clôt la première année.
+	o.publier_etude()
 	# 🎓 Une seule carte, l'étude (auteur, 2026-10-08) : le pont rouvert passe au bandeau.
 	verifier(o.pont_termine and o.carte == "etude" and jeu.vitesse == 0.0 and "rouvert" in str(jeu.interface.retours.journal),
 		"5 s plus tard, la carte de l'étude met le jeu en pause ; le bandeau dit le pont rouvert")

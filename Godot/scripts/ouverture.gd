@@ -21,6 +21,9 @@ const POURQUOI_LE_PONT := "Leurs maisons sont sur l'autre rive. Pour les rebâti
 const DIRE_X4 := "Cliquez sur ×4, en haut à droite, pour avancer plus vite."
 const DIRE_CHANTIERS := "Cliquez sur Chantiers, dans la colonne de gauche, pour voir ce qui est cassé."
 const DIRE_PONT := "Cliquez sur un pont coupé, dans Chantiers ou sur la carte, puis choisissez comment le rebâtir dans sa fiche."
+const DIRE_DANGERS := "Cliquez sur Dangers, dans la colonne de gauche, pour voir où l'eau a frappé le plus fort."
+const DIRE_ILOT := "Cliquez sur un îlot qui clignote pour le rebâtir."
+const DIRE_ATTENTE := "Les travaux commenceront à l'ouverture du pont."
 
 var jeu
 var suite := false
@@ -75,6 +78,17 @@ var deblaiement_vu := false
 var boue_vue := false
 ## 📖 Les pages du livre déjà ouvertes : « nouveau » sur les autres (101).
 var pages_lues := {}
+## 🔒 LA PREMIÈRE ANNÉE (auteur, 2026-10-18) : après les camps, seuls se rebâtissent les
+## ponts, les rues et les îlots sinistrés, comme avant ; ni étude, ni université, ni levier.
+## Les essais du chapitre suivant l'éteignent ; elle finit seule quand l'étude paraît.
+var premiere_annee := true
+## L'étude parue, la première année est finie : une partie d'avant le 2026-10-18 garde sa suite.
+func annee_un() -> bool:
+	return premiere_annee and not etude_parue
+
+
+## Dangers ouvert une fois pendant la reconstruction : le guide cesse de le demander.
+var degats_vus := false
 
 
 func batir(maquette) -> void:
@@ -250,6 +264,11 @@ func _nom_champ(fid: int) -> String:
 ## relie les rives avec ses accès, puis plus rien. Levé pour de bon dès que le
 ## joueur choisit la suite : fermer une rue plus tard ne le remet pas.
 func verrou() -> String:
+	var v := _verrou_urgence()
+	return "rebatir" if v == "" and annee_un() else v
+
+
+func _verrou_urgence() -> String:
 	if pont_termine or suite or termine:
 		return ""
 	if jeu.ville.sans_toit(jeu.mois) > 0.0:
@@ -272,9 +291,13 @@ func autorise(couche: String, fid: int) -> bool:
 		"reloger":
 			return couche == "i" and jeu.ville.camp_possible(fid)
 	if couche == "i":
-		return jeu.ville.camp_pose(fid)
+		# 🌉 Rebâtir s'engage dès qu'un pont est lancé ; les travaux attendent sa livraison.
+		return jeu.ville.camp_pose(fid) or annee_un() and _pont_engage() \
+			and jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0
 	if couche != "r":
 		return false
+	if verrou() == "rebatir":
+		return jeu.ville.base("r", fid, "cout_reparation_ke") > 0.0
 	if fid in _rues_du_pont():
 		return true
 	return _pont_engage() and not fid in jeu.ville.ponts_coupes() \
@@ -331,6 +354,8 @@ func boue_a_engager() -> bool:
 ## 🧭 La colonne de gauche s'ouvre au fil du guide (auteur, 2026-10-02) : une
 ## tuile reste grise tant que le guide ne l'a pas demandée, puis reste ouverte.
 func rail_ouvert(id: String) -> bool:
+	if id == "dangers" and annee_un() and _pont_engage():
+		return true
 	if suite or termine or prochaine_vue or id == "":
 		return true
 	match id:
@@ -354,8 +379,13 @@ func rail_appel() -> String:
 	# sur la carte (auteur, 2026-10-12).
 	if prochaine_vue and page_nouvelle("eponge") and jeu.theme == "dangers" 			and not jeu.interface._campus_panneau.visible:
 		return "universite"
+	if jeu.theme == "dangers" and not degats_vus:
+		degats_vus = true
+		actualiser.call_deferred(true)
 	if not ouvert:
 		return ""
+	if guide_rebatir() and not degats_vus:
+		return "dangers"
 	if etape == "chantiers":
 		return "chantiers" if jeu.theme != "chantiers" else ""
 	return ""
@@ -412,7 +442,8 @@ func trouve(couche: String, fid: int) -> void:
 func _pont_rouvert() -> void:
 	jeu.interface.retours.annoncer("%s rouvert." % _nom("r", int(premier["fid"])), jeu.mois)
 	terminer_pont()
-	publier_etude()
+	if not annee_un():
+		publier_etude()
 
 
 func terminer_pont() -> void:
@@ -435,6 +466,8 @@ func groupe_carte() -> Array:
 		# 🧭 Le guide dit « l'îlot qui clignote » à la place des boutons (auteur, 2026-10-17).
 		"choix", "suite":
 			return ilots_a_rebatir()
+		"pont_travaux":
+			return ilots_a_rebatir() if guide_rebatir() else []
 		"livraison":
 			return [int(premier["fid"])] if premier["couche"] == "i" else []
 	return []
@@ -536,6 +569,8 @@ func ville_reparee() -> bool:
 
 ## "" si le levier est ouvert ; sinon ce qui l'ouvrira, en clair.
 func levier_ferme(levier: String) -> String:
+	if annee_un():
+		return "Plus tard."
 	if tout_ouvert and verrou() == "":
 		return ""
 	var id := Livre.concept_du_levier(levier)
@@ -723,7 +758,20 @@ func _choisir_pont(fid: int) -> void:
 func paraitre() -> bool:
 	return ouvert and not jeu.interface._detail_ouvert and not annonce.visible \
 		and not jeu.interface._campus_panneau.visible \
-		and etape not in ["pont_travaux", "pont_livre"]
+		and (etape not in ["pont_travaux", "pont_livre"] or guide_rebatir())
+
+
+## 🌉 La première année, le guide propose de rebâtir dès le chemin du pont dégagé.
+func guide_rebatir() -> bool:
+	return annee_un() and (etape == "choix" or etape == "pont_travaux" and acces_degage())
+
+
+## Un îlot sinistré déjà engagé, qui attend peut-être le pont.
+func _ilot_engage() -> bool:
+	for fid in jeu.ville.ilots:
+		if jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0 and jeu.ville.est_repare("i", fid):
+			return true
+	return false
 
 
 func actualiser(force := false) -> void:
@@ -832,7 +880,7 @@ func actualiser(force := false) -> void:
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	_annoncer_pages()
 	_annoncer_portes()
-	signature += "/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, jeu.vitesse >= 4.0]
+	signature += "/%s/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, jeu.vitesse >= 4.0, degats_vus]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -864,7 +912,11 @@ func actualiser(force := false) -> void:
 		"pont_travaux":
 			# 🔇 Le guide se tait (auteur, 2026-10-05) : le bandeau dit la boue puis
 			# le chemin dégagé, les chantiers en cours portent l'avancement.
+			# 🌉 Sauf la première année, le chemin dégagé : on rebâtit pendant le pont.
 			_poser_reperes([])
+			if guide_rebatir():
+				_texte.text = ""
+				_texte_rebatir()
 		"pont_livre":
 			_poser_reperes([])
 		"etude":
@@ -895,6 +947,8 @@ func actualiser(force := false) -> void:
 			_titre.text = "Rebâtir les logements"
 			_texte.text = "%d personnes vivent encore dans les containers." % \
 				int(jeu.ville.reloges(jeu.mois))
+			if annee_un():
+				_texte_rebatir()
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"]) + _dire_x4()
@@ -909,7 +963,7 @@ func actualiser(force := false) -> void:
 			_bouton("Et maintenant ?", func() -> void:
 				suite = true
 				# Protéger demande l'étude : elle paraît ici si aucun îlot ne l'a appelée.
-				if not etude_parue:
+				if not etude_parue and not annee_un():
 					publier_etude()
 				actualiser(true))
 		"suite":
@@ -921,7 +975,10 @@ func actualiser(force := false) -> void:
 			if not ilots_a_rebatir().is_empty():
 				lignes.append("Pour réparer, cliquez sur un îlot qui clignote.")
 			# 📖 Investir est l'autre chapitre : il attend la ville réparée (101).
-			lignes.append("Investir viendra quand la ville sera réparée." if levier_ferme("solaire") != ""
+			if annee_un():
+				lignes.append("Le prochain budget arrivera en janvier.")
+			else:
+				lignes.append("Investir viendra quand la ville sera réparée." if levier_ferme("solaire") != ""
 				else "Pour investir, cliquez sur Énergie, dans la colonne de gauche : elle montre où le solaire s'amortit.")
 			_texte.text = "\n\n".join(lignes)
 			_bouton("Continuer à mon rythme", func() -> void:
@@ -937,6 +994,19 @@ func actualiser(force := false) -> void:
 				actualiser(true))
 	_texte.visible = _texte.text != ""
 	reset_size()
+
+
+## 🌉 Le guide de la reconstruction, la première année. 🔴 Flaggable (90).
+func _texte_rebatir() -> void:
+	_titre.text = "Rebâtir les logements"
+	var lignes := [] if _texte.text == "" else [_texte.text]
+	if etape == "pont_travaux":
+		lignes.append(DIRE_ATTENTE)
+	if not (_ilot_engage() and etape == "pont_travaux"):
+		if not degats_vus:
+			lignes.append(DIRE_DANGERS)
+		lignes.append(DIRE_ILOT)
+	_texte.text = "\n\n".join(lignes)
 
 
 ## 🏗️ Ce que la livraison dit, selon la façon de relever.
@@ -960,7 +1030,7 @@ func exporter() -> Dictionary:
 		"etude_parue": etude_parue, "etude_mois": etude_mois, "carte_etude": carte_etude,
 		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte,
 		"institut_vu": institut_vu, "biblio_vue": biblio_vue,
-		"pages_lues": pages_lues.duplicate()}
+		"pages_lues": pages_lues.duplicate(), "degats_vus": degats_vus}
 
 
 func reprendre(etat: Dictionary) -> void:
@@ -983,6 +1053,7 @@ func reprendre(etat: Dictionary) -> void:
 	institut_vu = bool(etat.get("institut_vu", prochaine_vue))
 	biblio_vue = bool(etat.get("biblio_vue", prochaine_vue))
 	plainte = int(etat.get("plainte", 2 if pont_termine else 0))
+	degats_vus = bool(etat.get("degats_vus", false))
 	pages_lues = {}
 	_pages_dites = {}
 	_portes_dites = {}
@@ -1000,5 +1071,5 @@ func reprendre(etat: Dictionary) -> void:
 	etape = ""
 	_signature = ""
 	actualiser(true)
-	if pont_termine and not etude_parue and not suite and not termine:
+	if pont_termine and not etude_parue and not suite and not termine and not annee_un():
 		publier_etude()

@@ -1389,7 +1389,7 @@ BERGE — trois états francs")
 
 
 ## 🎚️ LE compte rendu qui sert à régler `CAISSE_DEPART_KE` et
-## `DOTATION_KE_MOIS` : sans lui les deux se règlent à l'aveugle.
+## `DOTATION_KE_AN` : sans lui les deux se règlent à l'aveugle.
 ## Les amortissements sont rangés par tissu parce que c'est LÀ qu'est la
 ## décision — une barre de 1974 et un cœur ancien ne se remboursent pas dans le
 ## même siècle.
@@ -1642,8 +1642,7 @@ func _essai_economie() -> int:
 	print("
 ÉCONOMIE — au mois 0")
 	print("  caisse de départ        %8.0f k€" % Ville.CAISSE_DEPART_KE)
-	print("  dotation                %8.0f k€/mois (%.0f k€/an)"
-		% [Ville.DOTATION_KE_MOIS, Ville.DOTATION_KE_MOIS * 12.0])
+	print("  dotation                %8.0f k€/an, en janvier" % Ville.DOTATION_KE_AN)
 	print("  équiper toute la ville  %8.0f k€  → %.0f k€/an de recette"
 		% [cout_ville, recette_ville])
 	print("  payables au mois 0      %8d îlots sur %d équipables"

@@ -18,6 +18,8 @@ func executer() -> void:
 	jeu._sur_mode(false)
 	jeu.recit.terminer()
 	jeu._sur_vitesse(0.0)
+	# Le chapitre de l'étude, après la première année (2026-10-18).
+	jeu.ouverture.premiere_annee = false
 	# ⏸️ Éteint en jeu depuis le 2026-10-08 (l'institut le remplace) : l'essai le rallume.
 	jeu.ouverture.concours_actif = true
 	var v = jeu.ville

@@ -37,7 +37,7 @@ func _initialize() -> void:
 				+ (besoin - v.camp_capacite(premier)) * 0.25)
 			verifier(is_equal_approx(v.aide_cumulee_ke(0.5), aide),
 				"Aide d'urgence : %.1f k€ jusqu'au second camp" % aide)
-			verifier(is_equal_approx(v.caisse_ke(0.5), Ville.CAISSE_DEPART_KE + 0.5 * Ville.DOTATION_KE_MOIS - 195.0 - aide),
+			verifier(is_equal_approx(v.caisse_ke(0.5), Ville.CAISSE_DEPART_KE + Ville.dotation_cumulee_ke(0.5) - 195.0 - aide),
 				"195 k€ payés pour les logements, pas pour les occupants")
 			var sauvegarde := v.exporter_partie()
 			verifier(v.valider_partie(sauvegarde), "Sauvegarde valide")
