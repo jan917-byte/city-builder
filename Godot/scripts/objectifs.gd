@@ -4,12 +4,23 @@ extends PanelContainer
 ## et s'efface ; il vaut un point de recherche (`Recherche.gains`). 🔴 Textes flaggables (90).
 
 ## L'ordre est celui de la partie ; un objectif atteint le reste (`ville._objectifs`).
+## 🌳 Après les quatre de l'ouverture, un par action de l'institut : il paraît quand
+## elle est achetée, et la faire une fois rend un des points qu'elle a coûtés.
 const OBJECTIFS := {
 	"abriter": "Abriter tout le monde",
 	"pont": "Rouvrir un pont",
 	"ilot": "Rebâtir un premier îlot",
 	"logements": "Rebâtir les logements",
+	"densifier": "Densifier un îlot",
+	"berge": "Rendre une berge à l'Ilse",
+	"pre": "Laisser un pré déborder",
+	"permeable": "Rendre un parking perméable",
+	"vert": "Verdir un toit plat",
+	"solaire": "Poser des panneaux solaires",
+	"rue": "Fermer une rue ou retirer des places",
+	"arbres": "Planter des arbres",
 }
+const OUVERTURE := ["abriter", "pont", "ilot", "logements"]
 const LIGNE := 30.0
 const LARGEUR := 260.0
 const SUIVANT_ALPHA := 0.45
@@ -56,13 +67,18 @@ func batir(maquette) -> void:
 	ui.add_child(self)
 
 
-## Le premier objectif pas encore atteint, et le suivant. Fonction de la ville seule.
+## Les objectifs pas encore atteints qui ont paru, dans l'ordre. Fonction de la ville seule.
 func _restants() -> Array:
 	var out := []
 	for id in OBJECTIFS:
-		if not jeu.ville._objectifs.has(id):
+		if not jeu.ville._objectifs.has(id) and paru(id):
 			out.append(id)
 	return out
+
+
+## Ceux de l'ouverture tout de suite ; une action, une fois achetée à l'institut.
+func paru(id: String) -> bool:
+	return id in OUVERTURE or float(jeu.ville._recherche.get(id, INF)) <= jeu.mois
 
 
 func atteint(id: String) -> bool:
@@ -80,6 +96,36 @@ func atteint(id: String) -> bool:
 			return _rebatis() > 0
 		"logements":
 			return _rebatis() == _sinistres()
+		"berge":
+			return float(v._premieres.get("berge", INF)) <= t
+		"vert":
+			return float(v._premieres.get("toit vert", INF)) <= t
+		"permeable":
+			return float(v._premieres.get("sol perméable", INF)) <= t
+		"pre":
+			for fid in v._cultures:
+				if float(v.CULTURES[v.champ_culture(fid, t)]["crue_m_ha"]) > 0.0 and not v.culture_en_cours(fid, t):
+					return true
+			return false
+		"solaire":
+			return _livre(v._solaire, t)
+		"densifier":
+			return _livre(v._dense, t)
+		"arbres":
+			return _livre(v._plantation, t)
+		"rue":
+			for fid in v._stationnement_supprime:
+				if float(v._stationnement_supprime[fid]) <= t:
+					return true
+			return not jeu.trafic.exporter_fermetures().is_empty()
+	return false
+
+
+## Un chantier de cette table livré au mois `t` (`debut` + `duree`).
+func _livre(chantiers: Dictionary, t: float) -> bool:
+	for fid in chantiers:
+		if float(chantiers[fid]["debut"]) + float(chantiers[fid]["duree"]) <= t:
+			return true
 	return false
 
 
@@ -115,8 +161,14 @@ func actualiser() -> void:
 	offset_bottom = -16.0 - ui._camera_panneau.size.y - 10.0
 	var restants := _restants()
 	var attente := 0.0
-	if not restants.is_empty() and atteint(restants[0]) and visible:
-		var id: String = restants[0]
+	# 🌳 Les actions se font dans l'ordre du joueur : le premier atteint, pas le premier listé.
+	var fait := ""
+	for id in restants:
+		if atteint(id):
+			fait = id
+			break
+	if fait != "" and visible:
+		var id: String = fait
 		jeu.ville._objectifs[id] = jeu.mois
 		ui.retours.consigner("Objectif atteint : %s. Un point de recherche." % OBJECTIFS[id], jeu.mois)
 		_reussir(id)
@@ -168,6 +220,8 @@ func _reussir(id: String) -> void:
 	var l: HBoxContainer = _lignes.get(id)
 	_lignes.erase(id)
 	if l == null:
+		# Hors des deux lignes montrées : le point se dit quand même.
+		ui.bulles.sous(ui._barre_valeurs.get("recherche"), "+1", "recherche", ui.FAIT_TEXTE)
 		return
 	(l.get_child(1) as Label).text = _texte(id)
 	var tw := create_tween()

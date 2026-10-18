@@ -709,29 +709,25 @@ func essayer_ponts(lointain: int) -> void:
 		"Le pont livré, le temps court encore et rien ne couvre la ville")
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
-	# 🔒 La première année, pas d'étude au pont : seule la reconstruction reste (auteur, 2026-10-18).
-	verifier(o.pont_termine and o.carte == "" and not o.etude_parue and o.verrou() == "rebatir"
+	# 🎓 Le pont rouvert publie l'étude, et rien d'autre ne s'ouvre (auteur, 2026-10-18 au soir).
+	verifier(o.pont_termine and o.etude_parue and o.verrou() == ""
 		and "rouvert" in str(jeu.interface.retours.journal),
-		"La première année, le pont rouvert ne publie pas l'étude ; seul rebâtir reste ouvert")
-	verifier(o.etape == "choix" and o.DIRE_ILOT in o._texte.text,
-		"Le pont rouvert, le guide propose de rebâtir")
+		"Le pont rouvert publie l'étude")
+	verifier(o.levier_ferme("densifier") != "" and o.levier_ferme("berge") != ""
+		and o.levier_ferme("solaire") != "",
+		"Aucune action ne s'ouvre avec le pont : elles s'achètent à l'institut")
 	# 🎯 Les objectifs en bas à gauche (auteur, 2026-10-18) : deux atteints, deux points.
 	var obj = o.objectifs
 	verifier(jeu.ville._objectifs.has("abriter") and jeu.ville._objectifs.has("pont")
-		and not jeu.ville._objectifs.has("ilot") and obj.visible
+		and not jeu.ville._objectifs.has("ilot")
 		and obj._lignes.has("ilot") and obj._lignes.has("logements")
-		and Recherche.points(jeu.ville, jeu.mois) == Recherche.POINTS_DEPART + 2
+		and Recherche.points(jeu.ville, jeu.mois) == 2
 		and "Objectif atteint" in str(jeu.interface.retours.journal),
 		"Abriter et rouvrir un pont font deux objectifs, deux points ; les deux suivants s'affichent")
-	verifier(not o._titre.visible, "Le guide ne répète plus le but : %s" % o._titre.text)
-	await capture("14b_objectifs")
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(not jeu.interface._solaire_bloc.visible and not jeu.interface._vert_bloc.visible,
 		"La fiche d'un îlot sinistré ne montre que la reconstruction")
 	jeu.interface._fermer_fiche()
-	await capture("13a_rebatir_premiere_annee")
-	# Le chapitre suivant : l'étude, comme avant le 2026-10-18 ; elle clôt la première année.
-	o.publier_etude()
 	# 🎓 Une seule carte, l'étude (auteur, 2026-10-08) : le pont rouvert passe au bandeau.
 	verifier(o.pont_termine and o.carte == "etude" and jeu.vitesse == 0.0 and "rouvert" in str(jeu.interface.retours.journal),
 		"5 s plus tard, la carte de l'étude met le jeu en pause ; le bandeau dit le pont rouvert")

@@ -96,10 +96,11 @@ func executer() -> void:
 	await capture("campus_02d_retour_universite")
 	await cliquer(ui._etude_biblio)
 	actualiser(jeu.mois)
+	# 🌳 Les leviers s'achètent à l'institut (auteur, 2026-10-18).
 	verifier(ui._lieu_ouvert == "bibliotheque" and ui._page_ouverte == "eponge"
-		and ui._leviers_crue["berge"].is_visible_in_tree() and ui._leviers_crue["vert"].is_visible_in_tree()
+		and not ui._leviers_crue["berge"].is_visible_in_tree() and not ui._leviers_crue["vert"].is_visible_in_tree()
 		and not o.page_nouvelle("eponge"),
-		"« Lire à la bibliothèque » ouvre la ville-éponge et ses leviers, tous ouverts pour l'instant")
+		"« Lire à la bibliothèque » ouvre la ville-éponge ; ses leviers attendent l'institut")
 	await capture("campus_02a_bibliotheque")
 	ui.ouvrir_lieu("universite")
 	actualiser(jeu.mois)
@@ -107,9 +108,10 @@ func executer() -> void:
 	await cliquer(ui._etude_institut)
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
 	verifier(ui._lieu_ouvert == "institut" and ligne["bloc"].visible and ligne["bouton"].visible
-		and not ui._etude_bloc.visible and ui._lieu_lignes["sedum"]["bloc"].visible
-		and ui._lieu_lignes["sedum"]["bouton"].visible,
-		"L'onglet de l'institut : les pilotis et, pour l'instant, tous les sujets à financer")
+		and not ui._etude_bloc.visible and ui._lieu_lignes["berge"]["bouton"].visible
+		and ui._lieu_lignes["sedum"]["bloc"].visible and not ui._lieu_lignes["sedum"]["bouton"].visible
+		and "Toits verts" in ui._lieu_lignes["sedum"]["etat"].text,
+		"L'institut : pilotis et parc inondable à acheter, le reste grisé dit ce qui manque")
 	await capture("campus_02b_institut")
 	ui._fermer_campus()
 	verifier(not ui._campus_panneau.visible and not ui._fiche_panneau.visible,
@@ -142,10 +144,13 @@ func executer() -> void:
 		"Avant la recherche, « Sur pilotis » est grisé et dit où il se met au point")
 	await capture("campus_04_pilotis_grise")
 	ui._fermer_fiche()
+	# Comme en jeu : abriter et rouvrir le pont ont payé deux points.
+	jeu.ville._objectifs["abriter"] = jeu.mois
+	jeu.ville._objectifs["pont"] = jeu.mois
 	ui.ouvrir_lieu("institut")
 	var points: int = jeu.Recherche.points(jeu.ville, jeu.mois)
-	verifier(points >= jeu.Recherche.prix(jeu.Recherche.PILOTIS) and not ligne["bouton"].disabled,
-		"Les points du départ suffisent aux pilotis")
+	verifier(points == 2 and points >= jeu.Recherche.prix(jeu.Recherche.PILOTIS) and not ligne["bouton"].disabled,
+		"Les deux premiers objectifs suffisent aux pilotis")
 	await cliquer(ligne["bouton"])
 	verifier(jeu.Recherche.acquis(jeu.ville, jeu.Recherche.PILOTIS, jeu.mois)
 		and jeu.Recherche.points(jeu.ville, jeu.mois) == points - jeu.Recherche.prix(jeu.Recherche.PILOTIS)
@@ -202,10 +207,23 @@ func executer() -> void:
 	ui.ouvrir_lieu("universite")
 	actualiser(jeu.mois)
 	await capture("etude_05d_universite")
+	# 🌳 Deux objectifs de plus : le parc inondable, puis la berge rendue paie le pré.
+	jeu.ville._objectifs["ilot"] = jeu.mois
+	jeu.ville._objectifs["logements"] = jeu.mois
+	ui.ouvrir_lieu("institut")
+	verifier(not ui._lieu_lignes["pre"]["bouton"].visible and jeu.ville.acquerir_recherche("berge", jeu.mois)
+		and not jeu.ville.acquerir_recherche("pre", jeu.mois),
+		"Le pré attend le parc inondable, puis un point de plus")
+	verifier(o.objectifs.paru("berge") and o.objectifs.atteint("berge"),
+		"Le parc acheté, son objectif paraît ; la berge déjà rendue l'atteint")
+	jeu.ville._objectifs["berge"] = jeu.mois
+	verifier(jeu.ville.acquerir_recherche("pre", jeu.mois), "Le point de la berge achète le pré")
+	actualiser(jeu.mois)
+	await capture("etude_05f_institut_arbre")
 	ui.ouvrir_lieu("bibliotheque", "eponge")
 	actualiser(jeu.mois)
-	verifier(ui._leviers_crue["pre"].is_visible_in_tree() and ui._leviers_crue["vert"].is_visible_in_tree(),
-		"La berge rendue, la page de la bibliothèque ouvre les autres leviers")
+	verifier(ui._leviers_crue["pre"].is_visible_in_tree() and not ui._leviers_crue["vert"].is_visible_in_tree(),
+		"À la bibliothèque, le pré acheté s'ouvre, les toits verts attendent")
 	await capture("etude_05e_bibliotheque_leviers")
 	await cliquer(ui._prochaine_valeurs["levier_culture"])
 	verifier(jeu.selection.sel_fid == o.PRE and jeu.theme == "dangers",

@@ -15,17 +15,18 @@ const POLITIQUES := {
 	"subv_solaire": {
 		"nom": "Subvention à la pose",
 		"quoi": "−20 % sur le prix des panneaux, tant qu'elle tient",
-		"ke_mois": 6.0,
+		"ke_mois": 6.0, "levier": "solaire",
 		"effet": "cout_panneau_x", "valeur": 0.80,
 	},
 	"subv_vert": {
 		"nom": "Prime au toit vert",
 		"quoi": "−25 % sur le prix d'un toit vert, tant qu'elle tient",
-		"ke_mois": 4.0,
+		"ke_mois": 4.0, "levier": "vert",
 		"effet": "cout_vert_x", "valeur": 0.75,
 	},
 }
 const ORDRE := ["subv_solaire", "subv_vert"]
+# 🌳 Une subvention paraît à la mairie quand son levier est acheté à l'institut (`levier`).
 
 # 🔴 LES RÈGLES NE SONT PAS ÉCRITES. Stationnement payant, toit vert obligatoire
 # au neuf : ni argent ni capital dépensé, mais un SEUIL de capital politique pour

@@ -125,18 +125,21 @@ func executer() -> void:
 	jeu.interface.choisir_vue_crue("prochaine")
 	jeu.interface.financements_ouverts = true
 	# 🔬 Les sujets sont à l'institut depuis le 2026-10-08.
+	# Comme en jeu : abriter et rouvrir le pont ont payé deux points.
+	jeu.ville._objectifs["abriter"] = jeu.mois
+	jeu.ville._objectifs["pont"] = jeu.mois
 	jeu.interface.ouvrir_lieu("institut")
 	var points: int = jeu.Recherche.points(jeu.ville, jeu.mois)
 	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
-	await cliquer(jeu.interface._lieu_lignes["sedum"]["bouton"])
-	verifier(jeu.Recherche.acquis(jeu.ville, "sedum", jeu.mois) and "−1 point," in retours.journal[-1],
+	await cliquer(jeu.interface._lieu_lignes["berge"]["bouton"])
+	verifier(jeu.Recherche.acquis(jeu.ville, "berge", jeu.mois) and "−2 points," in retours.journal[-1],
 		"Un sujet se met au point au clic, et le journal dit les points dépensés")
-	verifier(jeu.Recherche.points(jeu.ville, jeu.mois) == points - 1
+	verifier(jeu.Recherche.points(jeu.ville, jeu.mois) == points - 2
 		and is_equal_approx(jeu.ville.caisse_ke(jeu.mois), caisse),
-		"Il coûte un point et pas un euro (113)")
+		"Il coûte deux points et pas un euro (113)")
 	actualiser(jeu.mois + 12.0)
-	verifier(jeu.Recherche.points(jeu.ville, jeu.mois) == points - 1 + jeu.Recherche.POINTS_PAR_AN,
-		"Une année plus tard, janvier a rendu ses points")
+	verifier(jeu.Recherche.gains(jeu.ville, jeu.mois).all(func(g) -> bool: return "Objectif" in str(g[0])),
+		"Une année plus tard, les points ne viennent que des objectifs")
 	verifier(jeu.interface._barre_valeurs["recherche"].text == str(jeu.Recherche.points(jeu.ville, jeu.mois))
 		and jeu.interface._barre_valeurs["recherche"].get_parent().visible,
 		"Le compteur du haut dit les points")

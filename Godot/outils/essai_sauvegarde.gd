@@ -48,10 +48,14 @@ func executer() -> void:
 	verifier(m.ville.planter(55, 0.4, 0.0), "Plantation de contrôle refusée")
 	m.ville.commander("r", 55, {"axe": true}, 0.0)
 	m.trafic.retirer_axe(55, 0.0)
-	verifier(m.ville.acquerir_recherche("rendement", 0.0), "Recherche de contrôle refusée")
+	# 🌳 Les points ne viennent que des objectifs (2026-10-18) : deux, puis la berge plus tard.
+	m.ville._objectifs["abriter"] = 0.0
+	m.ville._objectifs["pont"] = 0.0
+	m.ville._objectifs["berge"] = 24.0
+	verifier(m.ville.acquerir_recherche("berge", 0.0), "Recherche de contrôle refusée")
 	verifier(m.Recherche.gains(m.ville, 24.0).any(func(g): return "berge" in g[0])
 		and not m.Recherche.gains(m.ville, 0.0).any(func(g): return "berge" in g[0]),
-		"La première berge rapporte un point à sa livraison, pas avant")
+		"L'objectif de la berge rapporte un point quand il est atteint, pas avant")
 	m.ville.basculer_politique("subv_solaire", 0.0)
 	m.mois = 0.25
 	m.pivot.caler(75.0, 40.0)

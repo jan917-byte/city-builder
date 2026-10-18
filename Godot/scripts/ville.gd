@@ -50,7 +50,7 @@ var _stationnement_supprime := {}  # fid -> mois d'engagement
 var _dense := {}           # fid -> {debut, duree, etages, logements, cout_ke}
 ## 🎓 Sujet de recherche -> mois où il a été acquis (113 : au clic, sans durée).
 var _recherche := {}
-## 🎓 Geste de `Recherche.PREMIERES_FOIS` -> mois de sa première livraison : un point de plus.
+## 🎓 Geste de `Recherche.PREMIERES_FOIS` -> mois de sa première livraison.
 var _premieres := {}
 ## 🎯 Objectif de `objectifs.gd` -> mois où il a été atteint : un point de plus.
 var _objectifs := {}
@@ -1955,9 +1955,9 @@ func facteur(effet: String, t: float) -> float:
 	return Recherche.facteur(self, effet, t) * Politiques.facteur(self, effet, t)
 
 
-## `false` si le sujet est déjà acquis, ou s'il manque des points (113).
+## `false` si le sujet est déjà acquis, s'il manque un parent ou des points (113).
 func acquerir_recherche(cle: String, t: float) -> bool:
-	if not Recherche.SUJETS.has(cle) or _recherche.has(cle):
+	if not Recherche.SUJETS.has(cle) or _recherche.has(cle) or Recherche.manque(self, cle, t) != "":
 		return false
 	if Recherche.points(self, t) < Recherche.prix(cle):
 		return false

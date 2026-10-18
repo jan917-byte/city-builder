@@ -3184,14 +3184,13 @@ const CAMPUS_TAILLE := Vector2(880, 560)
 ## 🎓 Ce que chaque recherche montre, et chaque partie de l'étude (auteur, 2026-10-11 :
 ## « un aperçu du rendu, genre maison sur pilotis »).
 const VIGNETTE_RECHERCHE := {"pilotis": "pilotis", "rendement": "solaire", "pose": "solaire",
-	"sedum": "vert"}
+	"sedum": "vert", "berge": "eponge", "pre": "eponge", "permeable": "eponge", "vert": "vert",
+	"solaire": "solaire"}
 const VIGNETTES_ETUDE := ["ruine", "eponge", "pilotis"]
-## 🎓🏛️ Sujets de recherche et subventions arriveront plus tard (auteur, 2026-10-02) :
-## l'institut ne montre que les pilotis (`Recherche.SUJETS_OUVERTURE`). Les essais le rouvrent.
+## 🏛️ Les subventions suivent l'institut (`Politiques` « levier ») ; les essais les ouvrent toutes.
 var financements_ouverts := false
 
 
-## 🔓 Ouverts aussi, le pont rouvert, tant que le guide ouvre tout (`ouverture.tout_ouvert`).
 func _financements() -> bool:
 	return financements_ouverts or (ouverture != null and ouverture.tout_ouvert and _verrou() == "")
 
@@ -3342,7 +3341,7 @@ func _panneau_lieu() -> void:
 			if String(Recherche.SUJETS[cle]["domaine"]) == d[0]:
 				_lieu_lignes[cle] = _ligne_lieu(col, "recherche",
 					String(Recherche.SUJETS[cle]["nom"]),
-					String(Recherche.SUJETS[cle]["quoi"]), VIGNETTE_RECHERCHE[cle])
+					String(Recherche.SUJETS[cle]["quoi"]), VIGNETTE_RECHERCHE.get(cle, ""))
 		if col.get_child_count() == 1:
 			titre.modulate.a = 0.45
 
@@ -3392,7 +3391,7 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	var bloc := VBoxContainer.new()
 	bloc.add_theme_constant_override("separation", 3)
 	var tenue: Control = bloc
-	if vignette != "":
+	if genre == "recherche":
 		var carte := PanelContainer.new()
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = FOND_FORT
@@ -3401,7 +3400,8 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 		carte.add_theme_stylebox_override("panel", sb)
 		carte.add_child(bloc)
 		tenue = carte
-		bloc.add_child(_vignette(vignette))
+		if vignette != "":
+			bloc.add_child(_vignette(vignette))
 	else:
 		bloc.add_child(HSeparator.new())
 	parent.add_child(tenue)
@@ -3789,7 +3789,7 @@ func _brancher_lieu() -> void:
 func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
-	_lieu_intro.visible = _financements()
+	_lieu_intro.visible = _politique_ouverte("subv_solaire") or _politique_ouverte("subv_vert")
 	_campus_intro.visible = _page_ouverte == ""
 	for i in CAMPUS.size():
 		(_campus_bloc.get_child(i) as Button).set_pressed_no_signal(CAMPUS[i] == _lieu_ouvert)
@@ -3812,17 +3812,18 @@ func _maj_lieu() -> void:
 		var bloc: Control = l["bloc"]
 		var recherche: bool = String(l["genre"]) == "recherche"
 		bloc.visible = _lieu_ouvert == "institut" if recherche \
-			else (_lieu_ouvert == "mairie" and _financements())
+			else (_lieu_ouvert == "mairie" and _politique_ouverte(String(cle)))
 		if not bloc.visible:
 			continue
 		if recherche:
-			# 🏗️ Les pilotis dès l'ouverture ; le reste garde son nom, grisé, jusqu'aux financements.
-			var ouvert: bool = cle in Recherche.SUJETS_OUVERTURE or _financements()
-			bloc.modulate.a = 1.0 if ouvert else 0.45
-			(l["etat"] as Control).visible = ouvert
-			(l["bouton"] as Control).visible = ouvert
-			if ouvert:
+			# 🌳 Un sujet dont un parent manque garde son nom, grisé, et dit lequel.
+			var manque := Recherche.manque(ville, String(cle), _mois)
+			bloc.modulate.a = 1.0 if manque == "" else 0.45
+			if manque == "":
 				_maj_ligne_recherche(String(cle), l)
+			else:
+				(l["etat"] as Label).text = "Après : %s" % manque
+				(l["bouton"] as Control).visible = false
 		else:
 			_maj_ligne_politique(String(cle), l)
 	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
@@ -3830,6 +3831,10 @@ func _maj_lieu() -> void:
 	_lieu_message.text = "" if _lieu_ouvert != "mairie" else \
 		"Les règles — stationnement payant, toit vert obligatoire au neuf — " \
 		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
+
+
+func _politique_ouverte(cle: String) -> bool:
+	return _financements() or _levier_ferme(String(Politiques.POLITIQUES[cle]["levier"])) == ""
 
 
 ## 📖 Une page existe dès qu'elle a un texte ; elle s'ouvre quand la ville l'a rencontrée.
@@ -4226,7 +4231,6 @@ func _lignes_recherche(mois: float) -> Array:
 				acquis = true
 			out.append([String(Recherche.SUJETS[cle]["nom"]), "−%d" % Recherche.prix(cle), -1, false])
 	out.append(["Points aujourd'hui", str(Recherche.points(ville, mois)), 0, true])
-	out.append(["En janvier", "+%d" % Recherche.POINTS_PAR_AN, 0, false])
 	return out
 
 
@@ -4720,7 +4724,8 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# reloge et relève d'abord ; les panneaux ne s'ouvrent qu'ensuite.
 	# 🏢 Un îlot dont rien ne peut monter n'a pas de bloc : le cœur ancien,
 	# le front commerçant, et tout ce qui n'est pas bâti.
-	_bloc_dispo[_dense_bloc] = couche == "i" and ville.dense_logements_etage(fid) > 0
+	_bloc_dispo[_dense_bloc] = couche == "i" and ville.dense_logements_etage(fid) > 0 \
+		and _levier_ferme("densifier") == ""
 	_leviers_sig = ""
 	_maj_fiche()
 

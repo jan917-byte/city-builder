@@ -4,6 +4,7 @@ extends PanelContainer
 const Ville := preload("res://scripts/ville.gd")
 const Livre := preload("res://scripts/livre.gd")
 const Objectifs := preload("res://scripts/objectifs.gd")
+const Recherche := preload("res://scripts/recherche.gd")
 # Lieux touchés dans l’emprise corrigée le 2026-09-16.
 const RUE := 148
 const MAISONS := 59
@@ -85,7 +86,7 @@ var boue_vue := false
 var pages_lues := {}
 ## 🔒 LA PREMIÈRE ANNÉE (auteur, 2026-10-18) : après les camps, seuls se rebâtissent les
 ## ponts, les rues et les îlots sinistrés, comme avant ; ni étude, ni université, ni levier.
-## Les essais du chapitre suivant l'éteignent ; elle finit seule quand l'étude paraît.
+## Les essais du chapitre suivant l'éteignent ; elle finit quand l'étude paraît, au pont rouvert.
 var premiere_annee := true
 ## L'étude parue, la première année est finie : une partie d'avant le 2026-10-18 garde sa suite.
 func annee_un() -> bool:
@@ -445,8 +446,8 @@ func trouve(couche: String, fid: int) -> void:
 func _pont_rouvert() -> void:
 	jeu.interface.retours.annoncer("%s rouvert." % _nom("r", int(premier["fid"])), jeu.mois)
 	terminer_pont()
-	if not annee_un():
-		publier_etude()
+	# 🎓 Le pont rouvert ouvre l'université, et elle seule (auteur, 2026-10-18 au soir).
+	publier_etude()
 
 
 func terminer_pont() -> void:
@@ -513,13 +514,9 @@ func prochaine_ouverte() -> void:
 # 🎚️ LEVEL DESIGN : quand chaque page s'ouvre. La ville-éponge à l'étude ; « ne
 # pas aggraver » quand la ville est réparée (A, auteur, 2026-10-06 ; n°23) ;
 # l'îlot de chaleur avec la canicule, plus tard (102). Sans guide, tout est ouvert.
-# 🚪 Une livraison, une porte (auteur, 2026-10-06) : l'étude n'ouvre que la berge ;
-# une berge rendue ouvre les autres leviers ; un autre chantier livré, le concours.
-const PREMIER_LEVIER := "berge"
-## 🔓 PROVISOIRE (auteur, 2026-10-12) : le pont rouvert, tous les leviers, les règles de
-## la mairie et les recherches s'ouvrent ; l'institut les distribuera plus tard. Les
-## pages du livre gardent leur ordre. `essai_livre` l'éteint pour éprouver la progression.
-var tout_ouvert := true
+# 🌳 Les leviers s'achètent à l'institut (auteur, 2026-10-18), plus par les pages.
+## 🔓 Pour les essais seuls : tout levier ouvert hors urgence, sans rien acheter.
+var tout_ouvert := false
 
 func concept_ouvert(id: String) -> bool:
 	match id:
@@ -576,17 +573,9 @@ func levier_ferme(levier: String) -> String:
 		return "Plus tard."
 	if tout_ouvert and verrou() == "":
 		return ""
-	var id := Livre.concept_du_levier(levier)
-	if id == "eponge" and concept_ouvert(id) and levier != PREMIER_LEVIER and not berge_rendue():
-		return "S'ouvre quand une première berge sera rendue à l'Ilse."
-	if id == "" or concept_ouvert(id):
-		return ""
-	match id:
-		"eponge":
-			return "S'ouvre avec la page « La ville-éponge », à la bibliothèque."
-		"attenuer":
-			return "S'ouvre quand la ville sera réparée : voir la page « Ne pas aggraver » à la bibliothèque."
-	return "Plus tard."
+	if Recherche.SUJETS.has(levier) and not Recherche.ouvre(jeu.ville, levier, jeu.mois):
+		return "S'achète à l'institut."
+	return ""
 
 
 ## Une berge que le joueur a rendue à l'Ilse, chantier livré.
@@ -959,7 +948,7 @@ func actualiser(force := false) -> void:
 			_bouton("Et maintenant ?", func() -> void:
 				suite = true
 				# Protéger demande l'étude : elle paraît ici si aucun îlot ne l'a appelée.
-				if not etude_parue and not annee_un():
+				if not etude_parue:
 					publier_etude()
 				actualiser(true))
 		"suite":
@@ -974,7 +963,7 @@ func actualiser(force := false) -> void:
 			if annee_un():
 				lignes.append("Le prochain budget arrivera en janvier.")
 			else:
-				lignes.append("Investir viendra quand la ville sera réparée." if levier_ferme("solaire") != ""
+				lignes.append("Pour agir autrement, cliquez sur l'institut, dans la colonne de gauche." if levier_ferme("solaire") != ""
 				else "Pour investir, cliquez sur Énergie, dans la colonne de gauche : elle montre où le solaire s'amortit.")
 			_texte.text = "\n\n".join(lignes)
 			_bouton("Continuer à mon rythme", func() -> void:
@@ -1080,5 +1069,5 @@ func reprendre(etat: Dictionary) -> void:
 	etape = ""
 	_signature = ""
 	actualiser(true)
-	if pont_termine and not etude_parue and not suite and not termine and not annee_un():
+	if pont_termine and not etude_parue and not suite and not termine:
 		publier_etude()
