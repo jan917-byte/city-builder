@@ -165,7 +165,8 @@ const CHAMPS_MOBILES := {
 #
 # 🎚️ LES TROIS DURÉES, elles, sont d'ici — ce sont des durées de JEU, pas des
 # chiffres de la carte. Repère : la pose solaire d'un îlot tient en un mois.
-const RECONSTRUCTION_MOIS := 12.0    # un îlot relevé : un an de chantier
+const RECONSTRUCTION_MOIS := 12.0    # un îlot entièrement sinistré : un an de chantier
+const RECONSTRUCTION_PART_MIN := 1.0 / 6.0
 const DEBLAIEMENT_MOIS := 2.0 / 30.0 # la vase enlevée d'une rue : deux jours (auteur, 2026-09-26)
 const PONT_MOIS := 7.0               # un franchissement rebâti en dur (87) ; 8 → 7 (auteur, 2026-10-12)
 # 🌉 LE PONT PROVISOIRE (87). 🎚️ Proposition à juger : durée, part du prix en
@@ -2342,8 +2343,11 @@ func duree_reparation_mois(couche: String, fid: int, provisoire := false, facon 
 	return _delai(PONT_PROVISOIRE_MOIS if provisoire else PONT_MOIS)
 
 
+## ⏱️ Au prorata de ce que la crue a touché (auteur, 2026-10-18) : le Lavoir (19 %) en 2,3 mois,
+## un îlot détruit en un an. 🎚️ Plancher : deux mois.
 func _reconstruction_mois(fid: int, facon := "") -> float:
-	return RECONSTRUCTION_MOIS * float(RECONSTRUCTIONS[facon_reparation(fid, facon)]["duree"])
+	var part := clampf(base("i", fid, "part_sinistree"), RECONSTRUCTION_PART_MIN, 1.0)
+	return RECONSTRUCTION_MOIS * part * float(RECONSTRUCTIONS[facon_reparation(fid, facon)]["duree"])
 
 
 ## Ce qui reste avant que la géométrie neuve n'apparaisse. 0 = c'est fini.
@@ -2446,8 +2450,7 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 		return false
 	if couche == "i":
 		_rebati[fid] = facon_reparation(fid, facon)
-		# 🌉 Engagé pendant le chantier du pont, l'îlot attend sa livraison (auteur, 2026-10-18).
-		t = debut_travaux_ilot(t)
+		# 🔄 L'îlot n'attend plus la livraison du pont (auteur, 2026-10-18 soir) : ses travaux partent tout de suite.
 	_repare[couche + ":" + str(fid)] = t
 	if provisoire and couche == "r" and fid in _ponts:
 		_provisoire[fid] = true
@@ -2474,25 +2477,6 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 			ilots[fid]["toit_m2"] = neuf
 			_vert_ha_mois = INF
 	return true
-
-
-## Le mois où un îlot engagé à `t` commence : sans pont, ni camions ni matériaux.
-## Le premier pont engagé fixe la date ; un pont livré, on commence tout de suite.
-func debut_travaux_ilot(t: float) -> float:
-	var fin := INF
-	for p in ponts_coupes():
-		if not est_repare("r", p):
-			continue
-		var f := float(_repare["r:%d" % p]) + duree_reparation_mois("r", p)
-		if f <= t:
-			return t
-		fin = minf(fin, f)
-	return t if fin == INF else fin
-
-
-## Engagé et payé, mais le pont n'est pas encore livré.
-func attend_pont(couche: String, fid: int, t: float) -> bool:
-	return couche == "i" and est_repare(couche, fid) and float(_repare["i:%d" % fid]) > t
 
 
 func concours_lance() -> bool:

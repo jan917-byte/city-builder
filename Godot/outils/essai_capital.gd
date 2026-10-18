@@ -23,9 +23,9 @@ func _initialize() -> void:
 			break
 	var gain := v.base("i", ilot, "logements_sinistres") * Ville.CAPITAL_PAR_LOGEMENT_RENTRE
 	verifier(v.reparer("i", ilot, 0.0), "Îlot %d relevé" % ilot)
-	verifier(is_equal_approx(v.capital(Ville.RECONSTRUCTION_MOIS - 0.1), Ville.CAPITAL_DEPART),
+	verifier(is_equal_approx(v.capital(v.duree_reparation_mois("i", ilot) - 0.1), Ville.CAPITAL_DEPART),
 		"Rien avant la livraison")
-	verifier(is_equal_approx(v.capital(Ville.RECONSTRUCTION_MOIS), Ville.CAPITAL_DEPART + gain),
+	verifier(is_equal_approx(v.capital(v.duree_reparation_mois("i", ilot)), Ville.CAPITAL_DEPART + gain),
 		"Îlot %d livré : %+.1f" % [ilot, gain])
 
 	# Le pont rouvert rapporte à sa livraison.

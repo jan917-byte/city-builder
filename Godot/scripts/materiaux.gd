@@ -87,6 +87,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "instance uniform float boue_propre = 0.0;\n" \
 		+ "instance uniform vec4 boue_acces = vec4(0.0);\n" \
 		+ "instance uniform float boue_largeur = 0.0;\n" \
+		# ⚠️ 16 uniformes d'instance au plus : sous −1, `boue_hauteur` porte le plancher de boue (−1 − h).
 		+ "instance uniform float boue_hauteur = -1.0;\n" \
 		+ "instance uniform vec4 teinte = vec4(1.0, 1.0, 1.0, 1.0);\n" \
 		+ "instance uniform vec4 calque = vec4(1.0, 1.0, 1.0, 0.0);\n" \
@@ -752,7 +753,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// voir SANS ouvrir le diagnostic, sinon la décision n'a pas d'effet.\n" \
 		+ "\tif (parcelle_agricole > 0.5) base *= grain_champ(pos_monde.xz);\n" \
 		+ "\tif (parcelle_agricole > 1.5 && vers_le_ciel > 0.5) base = culture_champ(base, pos_monde.xz, parcelle_agricole, COLOR.a);\n" \
-		+ "\tvec4 depot = boue_hauteur >= 0.0 ? depot_boue_local(pos_monde, boue_hauteur, 0.0) : depot_boue(pos_monde);\n" \
+		+ "\tvec4 depot = boue_hauteur >= 0.0 ? depot_boue_local(pos_monde, boue_hauteur, 0.0) : depot_boue_plancher(pos_monde, -1.0 - boue_hauteur);\n" \
 		+ "\tfloat propre = boue_propre * boue_nettoyage_acces(pos_monde.xz, boue_acces, boue_largeur);\n" \
 		+ "\t// Sous la boue pleine, un tronc ou une tuile se confondrait avec le sol.\n" \
 		+ "\tif (debris) depot.a *= 0.5;\n" \

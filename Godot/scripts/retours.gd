@@ -47,9 +47,6 @@ var _recent: Array[String] = []
 var _tient := {}
 var _expiration := 0
 var _historique_ouvert := false
-## 🎚️ LEVEL DESIGN : dès quelle durée l'engagement rappelle ×4 — à ×1, un pont
-## de 18 mois dure 18 minutes.
-const ACCELERER_MOIS := 3.0
 
 
 func batir(interface) -> void:
@@ -391,8 +388,7 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 		message += ", −%s nourris" % nourris
 		# 🌾 La récolte perdue monte sur le champ (auteur, 2026-10-02).
 		ui.bulles.sur_lieu(couche, fid, "−%s" % nourris, "nourriture", ui.ALERTE)
-	elif duree >= ACCELERER_MOIS:
-		message += ", environ %d s en ×4" % int(ceil(duree * 15.0))
+	# 🔄 Plus de rappel du ×4 à l'engagement (auteur, 2026-10-18).
 	consigner(message, mois)
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
 		# 🔴 Textes de prototype, flaggables (90) : la Ville s'entoure en même temps (auteur, 2026-10-06).
@@ -423,7 +419,7 @@ func livraison(c: Dictionary, mois: float) -> void:
 		var accueillis := int(ui.ville.camp_occupants(fid, mois))
 		resultat = "%d containers livrés, %d personnes accueillies." % [
 			ui.ville.camp_taille(fid, mois), accueillis]
-		ui.bulles.sur_lieu(couche, fid, "+%d" % accueillis, "logement", ui.FAIT_TEXTE)
+		ui.bulles.sur_lieu(couche, fid, "+%d" % accueillis, "personnes", ui.FAIT_TEXTE)
 	elif couche == "r" and fid in ui.ville.ponts_coupes():
 		resultat = "Pont provisoire posé." if ui.ville.pont_provisoire(fid) else "Pont rebâti."
 		if not ui.trafic.pont_fonctionnel(fid, mois):

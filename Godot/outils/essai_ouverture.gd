@@ -209,9 +209,9 @@ func executer() -> void:
 	verifier(jeu.interface._camp_bloc.visible,
 		"Le champ atteignable ouvre le relogement")
 	var abrite: Array = jeu.interface.consequences({"camp": true}, 0.0).filter(
-		func(e: Array) -> bool: return e[0] == "camp")
+		func(e: Array) -> bool: return e[0] == "personnes")
 	verifier(jeu.interface._camp_texte.text == "" and abrite.size() == 1
-		and "personnes" in str(abrite[0][1]),
+		and str(abrite[0][1]).is_valid_int(),
 		"Ce que le camp abrite est dans les conséquences : %s" % str(abrite))
 	# 🌾 Ce que le champ nourrit n'est que dans les conséquences (auteur, 2026-10-07).
 	var nourri_champ: float = jeu.ville.champ_nourriture(champs[0])
@@ -324,14 +324,13 @@ func executer() -> void:
 	verifier(o.etape == "travaux" and is_equal_approx(jeu.mois, fin_rue - 0.01) and not jeu.ville.route_praticable(o.RUE, jeu.mois),
 		"Une reprise pendant le chantier conserve l'attente et la rue fermée")
 	# 🧭 Le guide dit où cliquer, sans bouton d'action (auteur, 2026-10-17).
+	# 🔄 Plus d'invitation au ×4 ni de pause à la livraison (auteur, 2026-10-18).
 	verifier(bouton("Laisser avancer") == null and bouton("Voir mon chantier") == null
-		and o.DIRE_X4 in o._texte.text, "Le guide dit où passer en ×4, sans bouton : %s" % o._texte.text)
+		and not "×4" in o._texte.text, "Le guide ne parle pas de ×4, sans bouton : %s" % o._texte.text)
 	jeu._sur_vitesse(4.0)
-	o.actualiser(true)
-	verifier(jeu.vitesse == 4.0 and not "×4" in o._texte.text, "En ×4, le guide ne le redit plus")
 	actualiser(fin_rue)
-	verifier(o.etape == "livraison" and jeu.vitesse == 0.0,
-		"La première livraison met le jeu en pause")
+	verifier(o.etape == "livraison" and jeu.vitesse == 4.0,
+		"La première livraison laisse le temps courir")
 	verifier(jeu.ville.route_praticable(o.RUE, fin_rue)
 		and jeu.reparations["r"][o.RUE].visible, "La rue réparée est visible et praticable")
 	var pietons: int = jeu.trafic.doux_visibles_sur(o.RUE)[0]
@@ -673,10 +672,10 @@ func essayer_ponts(lointain: int) -> void:
 		"Pendant le chantier du pont, un îlot sinistré se rebâtit comme avant, sans pilotis")
 	jeu._sur_commande("i", o.MAISONS, {"reparer": "tradition"})
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(jeu.ville.attend_pont("i", o.MAISONS, jeu.mois)
-		and is_equal_approx(float(jeu.ville._repare["i:%d" % o.MAISONS]), fin)
-		and "attente du pont" in jeu.interface._repare_etat.text,
-		"Engagé pendant le chantier, l'îlot attend la livraison du pont")
+	# 🔄 L'îlot n'attend plus le pont (auteur, 2026-10-18 soir).
+	verifier(is_equal_approx(float(jeu.ville._repare["i:%d" % o.MAISONS]), jeu.mois)
+		and "Chantier en cours" in jeu.interface._repare_etat.text,
+		"Engagé pendant le chantier du pont, l'îlot commence tout de suite")
 	verifier(o.levier_ferme("solaire") != "" and o.verrou() == "pont",
 		"La première année, aucun levier ne s'ouvre")
 	jeu._sur_reprise()
@@ -685,9 +684,9 @@ func essayer_ponts(lointain: int) -> void:
 	# Livré, le pont reste barré par la boue : le jeu s'arrête et le dit, sans plus.
 	jeu._sur_vitesse(4.0)
 	actualiser(fin)
-	verifier(o.etape == "pont_acces" and jeu.vitesse == 0.0 and "boue" in o._texte.text
+	verifier(o.etape == "pont_acces" and jeu.vitesse == 4.0 and "boue" in o._texte.text
 		and o._actions.get_child_count() == 0,
-		"Le pont livré sans accès met en pause et dit que la boue bloque, sans bouton")
+		"Le pont livré sans accès dit que la boue bloque, sans bouton ni pause")
 	await capture("12a_pont_bloque_par_la_boue")
 	# 🔄 Une rue envasée hors du chemin se déblaie aussi (auteur, 2026-09-26).
 	jeu._sur_choix("r", boueuse)

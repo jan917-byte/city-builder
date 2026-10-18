@@ -13,17 +13,15 @@ const SOLAIRE := 32
 const TOIT_PLAT := 31
 const PRE := 1065
 const PARKING := 19   # la place-parking, le sol qu'on rend perméable (101)
-# 🌉 Le relogement fait, la raison du pont (idée de l'auteur, 2026-10-12). 🔴 Reformulé par moi : flaggable (90).
-const POURQUOI_LE_PONT := "Leurs maisons sont sur l'autre rive. Pour les rebâtir, il faut d'abord rouvrir un pont : sans lui, ni camions ni matériaux ne passent."
+# 🌉 Le choix du pont, sans le donner (auteur, 2026-10-18) ; plus de « rouvrir avant de rebâtir ». 🔴 Flaggable (90).
+const POURQUOI_LE_PONT := "La ville est coupée en deux : il faut la relier au plus vite. Les ponts ne coûtent pas tous le même prix, ni le même temps."
 ## 🧭 LE GUIDE DIT OÙ CLIQUER, IL NE CLIQUE PLUS (auteur, 2026-10-17) : aucun bouton
 ## d'action dans les premiers pas, seuls restent ceux qui font avancer le guide.
 ## Revient sur « plus de où cliquer » du 2026-10-08, pour ce panneau seul. 🔴 Flaggable (90).
-const DIRE_X4 := "Cliquez sur ×4, en haut à droite, pour avancer plus vite."
 const DIRE_CHANTIERS := "Cliquez sur Chantiers, dans la colonne de gauche, pour voir ce qui est cassé."
 const DIRE_PONT := "Cliquez sur un pont coupé, dans Chantiers ou sur la carte, puis choisissez comment le rebâtir dans sa fiche."
 const DIRE_DANGERS := "Cliquez sur Dangers, dans la colonne de gauche, pour voir où l'eau a frappé le plus fort."
 const DIRE_ILOT := "Cliquez sur un îlot qui clignote pour le rebâtir."
-const DIRE_ATTENTE := "Les travaux commenceront à l'ouverture du pont."
 
 var jeu
 var suite := false
@@ -246,11 +244,6 @@ func _bouton(texte: String, action: Callable) -> Button:
 	return b
 
 
-## Tu dès qu'on y est, comme l'annonce du chemin dégagé.
-func _dire_x4() -> String:
-	return "" if jeu.vitesse >= 4.0 else "\n\n" + DIRE_X4
-
-
 func _nom(couche: String, fid: int) -> String:
 	return jeu.interface.lieux.nom(couche, fid)
 
@@ -282,7 +275,7 @@ func _verrou_urgence() -> String:
 ## Ce que le verrou laisse engager : un champ pendant le relogement ; un pont
 ## coupé ou une rue qui barre l'accès à l'un d'eux pendant la phase du pont, et
 ## toute rue boueuse dès qu'un pont est engagé (auteur, 2026-09-26). Les îlots
-## sinistrés attendent le pont, et leur fiche fait paraître l'étude (`trouve`) :
+## sinistrés attendent un pont engagé, et leur fiche fait paraître l'étude (`trouve`) :
 ## on rebâtit en sachant la prochaine crue (auteur, 2026-10-02 et 2026-10-06).
 func autorise(couche: String, fid: int) -> bool:
 	match verrou():
@@ -291,7 +284,7 @@ func autorise(couche: String, fid: int) -> bool:
 		"reloger":
 			return couche == "i" and jeu.ville.camp_possible(fid)
 	if couche == "i":
-		# 🌉 Rebâtir s'engage dès qu'un pont est lancé ; les travaux attendent sa livraison.
+		# 🌉 Rebâtir s'engage dès qu'un pont est lancé, et commence aussitôt (auteur, 2026-10-18).
 		return jeu.ville.camp_pose(fid) or annee_un() and _pont_engage() \
 			and jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0
 	if couche != "r":
@@ -766,7 +759,7 @@ func guide_rebatir() -> bool:
 	return annee_un() and (etape == "choix" or etape == "pont_travaux" and acces_degage())
 
 
-## Un îlot sinistré déjà engagé, qui attend peut-être le pont.
+## Un îlot sinistré déjà engagé.
 func _ilot_engage() -> bool:
 	for fid in jeu.ville.ilots:
 		if jeu.ville.base("i", fid, "cout_reparation_ke") > 0.0 and jeu.ville.est_repare("i", fid):
@@ -821,12 +814,8 @@ func actualiser(force := false) -> void:
 		etape = "livraison"
 	var degage := etape == "pont_travaux" and acces_degage()
 	if degage and _degage_annonce == 0:
-		# ⏩ L'invitation au ×4 (auteur, 2026-10-09), tue dès qu'on y est. 🔴 Flaggable (90).
-		if jeu.vitesse >= 4.0:
-			jeu.interface.retours.annoncer("Chemin du pont dégagé.", jeu.mois)
-		else:
-			jeu.interface.retours.annoncer("Chemin du pont dégagé.\n" + DIRE_X4, jeu.mois,
-				func() -> bool: return jeu.vitesse < 4.0 and etape == "pont_travaux")
+		# 🔄 Plus d'invitation au ×4 (auteur, 2026-10-18). 🔴 Flaggable (90).
+		jeu.interface.retours.annoncer("Chemin du pont dégagé.", jeu.mois)
 	# Une reprise ne rejoue pas l'annonce : -1 attend le premier constat.
 	_degage_annonce = 1 if degage else (0 if etape == "pont_travaux" else _degage_annonce)
 	# La fiche du pont avait fermé le panneau Chantiers : le guide muet le rend.
@@ -846,7 +835,7 @@ func actualiser(force := false) -> void:
 		return
 	if (etape == "livraison" and ancienne == "travaux" or
 			etape == "pont_acces" and ancienne == "pont_travaux") and ouvert:
-		jeu._sur_vitesse(0.0)
+		# 🔄 Le temps ne s'arrête plus seul ici (auteur, 2026-10-18) : seules les cartes au centre l'arrêtent.
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
 		visible = true
@@ -868,7 +857,7 @@ func actualiser(force := false) -> void:
 		var duree: float = jeu.ville.duree_reparation_mois(premier["couche"], premier["fid"])
 		var reste: float = float(premier["fin"]) - jeu.mois
 		_progression.value = (1.0 - reste / duree) * 100.0
-		_detail.text = "Encore %s, environ %d s en ×4" % [jeu.interface._duree(reste), int(ceil(reste * 15.0))]
+		_detail.text = "Encore %s" % jeu.interface._duree(reste)
 	# Les boutons restent en place sous le doigt ; seuls les changements de décision les refont.
 	var signature := "%s/%s/%s/%s/%s/%s/%s/%s/%d" % [etape, premier,
 		jeu.ville.est_repare("r", RUE), jeu.ville.est_repare("i", MAISONS),
@@ -880,7 +869,7 @@ func actualiser(force := false) -> void:
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	_annoncer_pages()
 	_annoncer_portes()
-	signature += "/%s/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, jeu.vitesse >= 4.0, degats_vus]
+	signature += "/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, degats_vus]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -891,7 +880,7 @@ func actualiser(force := false) -> void:
 		"camp_attente":
 			_poser_reperes([])
 			_titre.text = "Les premiers abris arrivent"
-			_texte.text = POURQUOI_LE_PONT + _dire_x4()
+			_texte.text = ""
 		"chantiers":
 			_poser_reperes([])
 			_titre.text = "Les deux rives sont coupées"
@@ -951,7 +940,7 @@ func actualiser(force := false) -> void:
 				_texte_rebatir()
 		"travaux":
 			_titre.text = "Le premier chantier avance"
-			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"]) + _dire_x4()
+			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
 			if premier["couche"] == "r":
@@ -1000,8 +989,6 @@ func actualiser(force := false) -> void:
 func _texte_rebatir() -> void:
 	_titre.text = "Rebâtir les logements"
 	var lignes := [] if _texte.text == "" else [_texte.text]
-	if etape == "pont_travaux":
-		lignes.append(DIRE_ATTENTE)
 	if not (_ilot_engage() and etape == "pont_travaux"):
 		if not degats_vus:
 			lignes.append(DIRE_DANGERS)

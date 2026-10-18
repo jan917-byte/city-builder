@@ -157,6 +157,9 @@ var apercus_projets := {}
 var _projets_fid := -1
 ## 🎓 Les vignettes du campus, un objet seul chacune, rendues une fois (auteur, 2026-10-11).
 const VIGNETTES_CAMPUS := ["ruine", "eponge", "pilotis", "solaire", "vert"]
+## 🟫 Sur tout îlot sinistré, la boue d'au moins cette crue (auteur,
+## 2026-10-18 : le Lavoir paraissait intact). 🎚️ À juger : la laisse monte à ~1 m, le rez.
+const BOUE_SINISTRE_M := 3.5
 var _couloirs := {}
 var _plaques := {}
 var _berges_contour := {}
@@ -2685,6 +2688,9 @@ func _peindre() -> void:
 					1.0 if blanche else 0.0)
 				mj.set_instance_shader_parameter("boue_propre",
 					1.0 if ville.reparation_finie(couche, fid, mois) else 0.0)
+				# −1 : la carte seule ; plus bas, la carte et un plancher (`materiaux`).
+				mj.set_instance_shader_parameter("boue_hauteur", -1.0 - BOUE_SINISTRE_M
+					if couche == "i" and ville.base("i", fid, "part_sinistree") > 0.0 else -1.0)
 				mj.set_instance_shader_parameter("boue_acces",
 					reparations["r"][fid].mesh.get_meta("boue_acces", Vector4.ZERO)
 					if couche == "r" and ruines_ponts.has(fid) else Vector4.ZERO)

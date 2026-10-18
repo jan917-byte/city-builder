@@ -40,11 +40,17 @@ vec4 depot_boue_local(vec3 p, float hauteur, float rive) {
     float couverture = mix(mix(0.53, 0.85, veinage), mix(0.90, 0.98, veinage), epaisseur);
     return vec4(terre, bord * murs * couverture);
 }
-vec4 depot_boue(vec3 p) {
+// `plancher` : au moins ce dépôt, sur tout l'objet. Un îlot peu touché se lit sinistré.
+vec4 depot_boue_plancher(vec3 p, float plancher) {
     if (!boue_active || p.y > 3.0 || p.y < -1.8) return vec4(0.0);
     vec2 derive = vec2(boue_bruit(p.xz * 0.12), boue_bruit(p.zx * 0.13 + 41.0)) - 0.5;
     vec2 uv = (p.xz + derive * 9.0 - boue_repere.xy) / boue_repere.zw;
     if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec4(0.0);
     vec2 carte = texture(boue_carte, uv).rg;
-    return depot_boue_local(p, carte.r * 6.0, carte.g * 2.0 - 1.0);
+    float h = carte.r * 6.0;
+    h = max(h, plancher);
+    return depot_boue_local(p, h, carte.g * 2.0 - 1.0);
+}
+vec4 depot_boue(vec3 p) {
+    return depot_boue_plancher(p, 0.0);
 }

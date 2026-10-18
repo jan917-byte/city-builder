@@ -100,6 +100,8 @@ var ACCENT_VIF := Color8(62, 124, 70)
 # Le seul refus du prototype : la caisse ne suit pas. Un bouton grisé sans
 # raison écrite est une panne, pas une règle.
 var ALERTE := Color8(198, 76, 66)
+## 🪙 L'argent est jaune orangé, partout où il se lit (auteur, 2026-10-18).
+var ARGENT := Color8(206, 132, 16)
 ## 🟡 L'anneau de la tuile que le guide demande. Plus franc que le trait de
 ## sélection 3D (`maquette.CONTOUR_COULEUR`), qui se perdrait sur le verre clair.
 var APPEL := Color8(240, 190, 40)
@@ -464,7 +466,6 @@ var _entetes := {}
 ## Rouvrir le diagnostic doit rendre le thème qu'on regardait, pas le premier
 ## de la liste : sinon comparer deux mois coûte deux clics au lieu d'un.
 var _chantiers_valeurs := {}
-var _chantiers_lignes := []
 var _fiche_panneau: PanelContainer
 var _depart_panneau: CenterContainer
 var _fiche_defilement: ScrollContainer
@@ -1282,6 +1283,8 @@ const DESSINS := {
 	"cube": "<path d='M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/><path d='M3.3 7L12 12l8.7-5M12 22V12'/>",
 	"croix": "<path d='M18 6L6 18M6 6l12 12'/>",
 	"camp": "<path d='M3.5 21L14 3M20.5 21L10 3M15.5 21L12 15l-3.5 6M2 21h20'/>",
+	# 👥 Lucide « users » : des personnes, là où la tente se lisait mal (auteur, 2026-10-18).
+	"personnes": "<path d='M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75'/>",
 	"journal": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l4 2'/>",
 }
 
@@ -2408,11 +2411,6 @@ func _legende(parent: VBoxContainer, couleur: Color, texte: String, encre := TEX
 # une fois pour toutes ; celui-ci montre l'état COURANT — ce qui est encore
 # cassé, ce qui est en travaux, ce qui est fait.
 
-## Six chantiers listés, le septième dit combien débordent. Au-delà, le
-## panneau couvrirait la ville qu'il commente.
-const CHANTIERS_LIGNES := 7
-
-
 func _panneau_chantiers() -> void:
 	_chantiers_panneau = PanelContainer.new()
 	_chantiers_panneau.theme = _theme_ui
@@ -2455,14 +2453,7 @@ func _panneau_chantiers() -> void:
 		h.add_child(val)
 		_chantiers_valeurs[ligne[0]] = val
 		v.add_child(h)
-	v.add_child(HSeparator.new())
-	# Les lignes sont créées UNE fois et remplies ensuite : bâtir des Labels à
-	# chaque image ferait tomber la maquette pour un panneau de texte.
-	for i in CHANTIERS_LIGNES:
-		var l := _label("", 12, TEXTE)
-		l.visible = false
-		_chantiers_lignes.append(l)
-		v.add_child(l)
+	# 🔄 Plus de liste des chantiers en cours ici (auteur, 2026-10-18) : la carte en bas à droite la porte.
 	# 🧹 Tout déblayer d'un coup (auteur, 2026-10-05), passé de Trafic à Chantiers (2026-10-17). 🔴 Flaggable (90).
 	_boue_bloc = VBoxContainer.new()
 	_boue_bloc.add_theme_constant_override("separation", 6)
@@ -2520,26 +2511,6 @@ func maj_chantiers(d: Dictionary) -> void:
 	var liste: Array = d["en_cours"]
 	(_chantiers_valeurs["en_cours"] as Label).text = "%d" % liste.size()
 	(_chantiers_valeurs["faits"] as Label).text = "%d" % int(d["faits"])
-	for i in _chantiers_lignes.size():
-		var texte := ""
-		if liste.is_empty():
-			texte = "Aucun chantier en cours." if i == 0 else ""
-		elif i == CHANTIERS_LIGNES - 1 and liste.size() > CHANTIERS_LIGNES:
-			texte = "… et %d de plus" % (liste.size() - i)
-		elif i < liste.size():
-			texte = _ligne_chantier(liste[i])
-		var l: Label = _chantiers_lignes[i]
-		if l.text != texte:
-			l.text = texte
-		l.visible = texte != ""
-
-
-## Le même nom que la fiche pour retrouver un chantier dans la ville.
-func _ligne_chantier(c: Dictionary) -> String:
-	var genre: String = {"pont": "tablier", "deblaiement": "déblaiement",
-		"solaire": "panneaux", "berge": "transformation"}.get(c["genre"], c["genre"])
-	var nom: String = "%d rues" % int(c["rues"]) if c.has("rues") else lieux.nom(c["couche"], int(c["fid"]))
-	return "%s, %s, encore %s" % [nom, genre, _duree(float(c["reste_mois"]))]
 
 
 ## 🔄 RETOUR EN ARRIÈRE SIGNALÉ, 2026-08-25 : la fiche se retirait dès qu'un
@@ -3006,16 +2977,17 @@ func _panneau_ilot() -> void:
 	v.add_child(_recap_bloc)
 	# 🔄 Les conséquences se lisent en pictogrammes, plus en phrase (auteur,
 	# 2026-09-26) : prix, durée, puis ce qui bouge dans la ville.
+	# 🔎 Plus grand et sur fond plus franc (auteur, 2026-10-18) : on le lisait mal.
 	var cadre := PanelContainer.new()
 	var fond_effets := StyleBoxFlat.new()
-	fond_effets.bg_color = Color8(255, 255, 255, 70)
+	fond_effets.bg_color = Color8(255, 255, 255, 150)
 	fond_effets.set_corner_radius_all(_r(9))
-	fond_effets.set_content_margin_all(8)
+	fond_effets.set_content_margin_all(10)
 	cadre.add_theme_stylebox_override("panel", fond_effets)
 	_recap_bloc.add_child(cadre)
 	_recap_effets = HFlowContainer.new()
-	_recap_effets.add_theme_constant_override("h_separation", 12)
-	_recap_effets.add_theme_constant_override("v_separation", 6)
+	_recap_effets.add_theme_constant_override("h_separation", 16)
+	_recap_effets.add_theme_constant_override("v_separation", 8)
 	cadre.add_child(_recap_effets)
 	# Caché : gardé pour `_alerter_cout`, le refus s'écrit dans la pastille du prix.
 	_recap_texte = _label("", 12, GRIS_FORT)
@@ -3706,8 +3678,8 @@ func _projet(f: String) -> Array:
 	ville_essai.commander("i", _fiche_fid, r, _mois)
 	var logements := ville_essai.valeur("i", _fiche_fid, "logements", t) \
 		- ville.valeur("i", _fiche_fid, "logements", t)
-	out.append(["logement", "+%d logements" % int(roundf(logements)), 1] if logements >= 1.0
-		else ["logement", "Personne ne rentre", -1])
+	out.append(["personnes", "+%d" % int(roundf(logements)), 1] if logements >= 1.0
+		else ["personnes", "Personne ne rentre", -1])
 	var k0 := ville_essai.capital(_mois) - ville.capital(_mois)
 	var k1 := ville_essai.capital(t) - ville.capital(t) - k0
 	if absf(k0) >= 0.5:
@@ -4059,7 +4031,7 @@ func _barre_compteurs() -> void:
 	h.add_theme_constant_override("separation", 16)
 	p.add_child(h)
 	var lignes := [
-		["caisse", "caisse", Color8(78, 121, 67), "Caisse"],
+		["caisse", "caisse", ARGENT, "Caisse"],
 		["capital", "capital", Color8(122, 84, 48), "Confiance"],
 		["conso", "conso", Color8(198, 126, 32), "Consommation"],
 		["production", "production", Color8(214, 158, 44), "Solaire"],
@@ -4095,7 +4067,7 @@ func _barre_compteurs() -> void:
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bloc.add_child(pic)
-		var valeur := _titre("—", 15, TEXTE)
+		var valeur := _titre("—", 15, ARGENT if ligne[0] == "caisse" else TEXTE)
 		valeur.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		bloc.add_child(valeur)
 		_barre_valeurs[ligne[0]] = valeur
@@ -5358,8 +5330,8 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	# retirées. 🔄 L'usure du camp n'y passe plus : sa carte la dit (auteur, 2026-10-02).
 	var k0 := ville_essai.capital(_mois) - ville.capital(_mois)
 	var k1 := ville_essai.capital(t) - ville.capital(t) - k0
-	# 🔄 Une ligne, sans « à la livraison » (auteur, 2026-10-08).
-	if absf(k0 + k1) >= 0.5:
+	# 🔄 Une ligne, sans « à la livraison » (auteur, 2026-10-08) ; rien pour un camp (2026-10-18).
+	if absf(k0 + k1) >= 0.5 and not r.has("camp"):
 		out.append(["capital", "%+d confiance" % int(roundf(k0 + k1)), _sens(k0 + k1)])
 	# 🚶 Le retour des places se juge sur la rue (99) : la fiche ne peut pas le
 	# connaître, elle annonce la fourchette.
@@ -5375,8 +5347,9 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	if _fiche_couche == "i":
 		logements = ville_essai.valeur("i", _fiche_fid, "logements", t) \
 			- ville.valeur("i", _fiche_fid, "logements", t)
+	# 👥 Un logement, une personne dans le noyau (`sans_toit`) : le nombre et l'icône (auteur, 2026-10-18).
 	if absf(logements) >= 1.0:
-		out.append(["logement", "%+d logements" % int(roundf(logements)), _sens(logements)])
+		out.append(["personnes", "%+d" % int(roundf(logements)), _sens(logements)])
 	# 🏗️ Ce que la prochaine crue emporterait : c'est ce qui départage les façons de rebâtir.
 	if etude_publiee():
 		var exposes := float(ville_essai.prochaine_crue(t)["logements_perdus"]) \
@@ -5386,10 +5359,10 @@ func consequences(r: Dictionary, duree: float) -> Array:
 				-_sens(exposes)])
 	var abrites := ville.sans_toit(t) - ville_essai.sans_toit(t)
 	if r.has("camp") and _fiche_couche == "i":
-		out.append(["camp", "%d personnes" % (ville.camp_taille(_fiche_fid, _mois)
+		out.append(["personnes", "%d" % (ville.camp_taille(_fiche_fid, _mois)
 			* Ville.CAMP_PERSONNES_LOGEMENT), 1])
 	elif abrites >= 1.0:
-		out.append(["logement", "+%d abrités" % int(roundf(abrites)), 1])
+		out.append(["personnes", "+%d" % int(roundf(abrites)), 1])
 	var ponts := int(da["franchissements_coupes"]) - int(db["franchissements_coupes"])
 	if ponts > 0:
 		out.append(["pont", "+%d pont" % ponts, 1])
@@ -5406,25 +5379,27 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	elif absf(eau) >= 0.1:
 		# 🌾 Une prairie retient quelques millimètres : sous le centimètre, une décimale.
 		out.append(["eau", "%s cm de crue" % ("%+.1f" % eau).replace(".", ","), -_sens(eau)])
+	# ⚡ La première année on rebâtit : ni énergie ni CO₂ dans la fiche (auteur, 2026-10-18).
+	var energie: bool = ouverture == null or not ouverture.annee_un()
 	var prod := float(b["production_mwh"]) - float(a["production_mwh"])
-	if absf(prod) >= 1.0:
+	if energie and absf(prod) >= 1.0:
 		out.append(["production", "%+d MWh/an" % int(roundf(prod)), _sens(prod)])
 	var conso := float(b["conso_mwh"]) - float(a["conso_mwh"])
-	if absf(conso) >= 1.0:
+	if energie and absf(conso) >= 1.0:
 		out.append(["conso", "%+d MWh/an" % int(roundf(conso)), -_sens(conso)])
 	var co2 := (float(b["co2_kt"]) - float(a["co2_kt"])) * 1000.0
-	if absf(co2) >= 1.0:
+	if energie and absf(co2) >= 1.0:
 		out.append(["co2", "%+d t/an" % int(roundf(co2)), -_sens(co2)])
 	var nourris := float(b["nourriture_personnes"]) - float(a["nourriture_personnes"])
 	if absf(nourris) >= 1.0:
-		out.append(["feuille", "%+d nourris" % int(roundf(nourris)), _sens(nourris)])
+		out.append(["nourriture", "%+d" % int(roundf(nourris)), _sens(nourris)])
 	# 🌾 Le verger ne rend rien avant cinq ans : sa promesse se lit à la récolte.
 	if r.has("culture") and _fiche_couche == "i":
 		var attente := ville_essai.recolte_dans_mois(_fiche_fid, t)
 		if attente > 0.0:
 			var plus_tard := ville_essai.champ_nourriture(_fiche_fid, t) \
 				- ville.champ_rendement(_fiche_fid, t)
-			out.append(["feuille", "%+d nourris dans %s" % [int(roundf(plus_tard)),
+			out.append(["nourriture", "%+d dans %s" % [int(roundf(plus_tard)),
 				_duree(attente)], _sens(plus_tard)])
 	var achats := float(b["achat_nourriture_ke_mois"]) - float(a["achat_nourriture_ke_mois"])
 	if absf(achats) >= 0.05:
@@ -5441,13 +5416,16 @@ static func _sens(x: float) -> int:
 
 func _effet(nom: String, texte: String, sens: int, parent: Control = null) -> void:
 	var coul: Color = TEXTE if sens == 0 else (FAIT_TEXTE if sens > 0 else ALERTE)
+	if nom == "caisse" and sens == 0:
+		coul = ARGENT
+	var recap := parent == null
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 4)
+	h.add_theme_constant_override("separation", 5 if recap else 4)
 	var ic := TextureRect.new()
-	ic.texture = _icone(nom, 16, coul)
+	ic.texture = _icone(nom, 22 if recap else 16, coul)
 	ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	h.add_child(ic)
-	var l := _label(texte, 13, coul)
+	var l := _titre(texte, 17, coul) if recap else _label(texte, 13, coul)
 	if parent != null:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -5954,9 +5932,6 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_etat.add_theme_color_override("font_color", GRIS_FORT)
 		_repare_etat.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid) \
 			else "Chantier en cours"
-		# 🌉 Payé pendant le chantier du pont : il attend sa livraison (auteur, 2026-10-18).
-		if ville.attend_pont(couche, _fiche_fid, _mois):
-			_repare_etat.text = "En attente du pont"
 		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
 			_repare_etat.text += ", " + String(Ville.RECONSTRUCTIONS[
 				ville.facon_reparation(_fiche_fid)]["nom"]).to_lower()
@@ -5973,7 +5948,8 @@ func _maj_reparation(o: Dictionary) -> void:
 	if rebatir:
 		# ⚖️ Aucune n'est conseillée (95) : le prix et les effets se lisent dans les conséquences.
 		# 🔴 Textes flaggables (90).
-		_posee(_rebatir_boutons["tradition"], "reparer", "Comme avant", "tradition")
+		# 🔄 « Comme avant » → « Reconstruire l'îlot » (auteur, 2026-10-18) ; le projet garde son nom.
+		_posee(_rebatir_boutons["tradition"], "reparer", "Reconstruire l'îlot", "tradition")
 		if pilotis:
 			_posee(_rebatir_boutons["pilotis"], "reparer", "Sur pilotis", "pilotis")
 		else:
