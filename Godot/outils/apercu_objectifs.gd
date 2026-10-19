@@ -1,7 +1,7 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/apercu_objectifs.gd -- --ouverture --captures
 ## Les objectifs en bas à gauche (auteur, 2026-10-18) : le premier qui se remplit, monte et
-## laisse place au suivant ; le guide ne dit plus que où cliquer.
+## reste au-dessus, pâle ; le guide ne dit plus que où cliquer.
 ## → QGIS/rendus/wehrau_ouverture_objectifs_N_*.png
 
 
@@ -36,10 +36,16 @@ func executer() -> void:
 	await capture("objectifs_3_il_monte")
 	await attendre(1.2)
 	await capture("objectifs_4_le_suivant")
+	# Posés à la main : seule la pile des atteints est regardée ici.
+	jeu.ville._objectifs["pont"] = 0.3
+	jeu.ville._objectifs["ilot"] = 0.4
+	actualiser(0.5)
+	await attendre(1.0)
+	await capture("objectifs_5_trois_atteints")
 	jeu._sur_theme("chantiers")
 	actualiser(0.25)
 	await attendre(0.3)
-	await capture("objectifs_5_avec_chantiers")
+	await capture("objectifs_6_avec_chantiers")
 	jeu.queue_free()
 	await process_frame
 	quit(0)
