@@ -1727,10 +1727,12 @@ func _panneau_rail() -> void:
 	# raccourci, jamais le seul chemin. Hors du groupe — un lieu n'est pas une
 	# vue : il ouvre une fiche à droite et ne repeint pas la ville.
 	v.add_child(_filet_rail())
-	for lieu in LIEUX_ORDRE:
+	for lieu in RAIL_LIEUX:
 		var cle: String = lieu
-		var b := _tuile_rail(cle, String(LIEUX[cle]["court"]), "%s (îlot %d) — %s" % [String(LIEUX[cle]["nom"]),
-			int(LIEUX[cle]["fid"]), String(LIEUX[cle]["quoi"])])
+		# 🔴 Flaggable (90).
+		var bulle := "Université — ses études, sa bibliothèque, son institut de recherche." if cle == "universite" \
+			else "%s (îlot %d) — %s" % [String(LIEUX[cle]["nom"]), int(LIEUX[cle]["fid"]), String(LIEUX[cle]["quoi"])]
+		var b := _tuile_rail(cle, String(LIEUX[cle]["court"]), bulle)
 		b.pressed.connect(func() -> void:
 			# 🎓 Appelée depuis Dangers, la vue repasse sur la ville : la fenêtre
 			# refermée, le guide et les îlots à rebâtir y attendent.
@@ -1816,11 +1818,14 @@ func _pouls() -> float:
 ## 🧭 Grise tant que le guide ne l'a pas demandée, entourée quand il la demande.
 func _maj_rail() -> void:
 	var tuiles := _menu_boutons.duplicate()
-	for i in LIEUX_ORDRE.size():
-		tuiles[LIEUX_ORDRE[i]] = _rail_lieux[i]
+	for i in RAIL_LIEUX.size():
+		tuiles[RAIL_LIEUX[i]] = _rail_lieux[i]
 	var appel: String = ouverture.rail_appel() if ouverture != null else ""
 	# La tuile Ville est rangée sous "" : « ville » la désigne.
 	var cle := "" if appel == "ville" else appel
+	# Un lieu du campus s'appelle par la tuile qui le contient (114).
+	if cle in CAMPUS:
+		cle = "universite"
 	# 🔄 Clignote franchement (auteur, 2026-10-08) : il remplace « Ouvrez le trafic… ».
 	var pouls := _pouls()
 	for id in tuiles:
@@ -3262,19 +3267,22 @@ func _habiller_principal(b: Button) -> void:
 
 # 🎓 Le campus en trois îlots (auteur, 2026-10-08) : l'université publie, l'institut
 # met au point, la bibliothèque range. Un nom et un verbe, rien d'autre. 🔴 Flaggable (90).
+# L'université CONTIENT les deux autres (114) : une tuile au rail, trois onglets.
 const LIEUX := {
 	"mairie": {"fid": 20, "nom": "Mairie", "court": "Mairie", "article": "la mairie",
 		"quoi": "Une politique n'est pas un chantier : elle dure, et elle se paie tous les mois tant qu'elle tient."},
 	"universite": {"fid": 36, "nom": "Université", "court": "Univ.", "article": "l'université",
-		"quoi": "Publie les études."},
+		"quoi": "Publie les études.", "onglet": "Études"},
 	"institut": {"fid": 78, "nom": "Institut de recherche", "court": "Institut", "article": "l'institut",
 		"quoi": "Met au point de nouvelles façons de bâtir."},
 	"bibliotheque": {"fid": 77, "nom": "Bibliothèque", "court": "Biblio.", "article": "la bibliothèque",
 		"quoi": "Range les concepts."},
 }
-# L'ordre des onglets et du rail (auteur, 2026-10-09) : on lit, puis on cherche.
+# L'ordre des lieux (auteur, 2026-10-09) : on lit, puis on cherche.
 const LIEUX_ORDRE := ["mairie", "universite", "bibliotheque", "institut"]
 const CAMPUS := ["universite", "bibliotheque", "institut"]
+## Le rail : deux portes de même rang (114).
+const RAIL_LIEUX := ["mairie", "universite"]
 const CAMPUS_TAILLE := Vector2(880, 560)
 ## 🎓 Ce que chaque recherche montre, et chaque partie de l'étude (auteur, 2026-10-11 :
 ## « un aperçu du rendu, genre maison sur pilotis »).
@@ -3323,7 +3331,7 @@ func _panneau_lieu() -> void:
 	v.add_child(_lieu_intro)
 
 	# 🎓 LA FENÊTRE DU CAMPUS (auteur, 2026-10-09) : grande, au milieu de la place que
-	# laissent la colonne et la fiche, comme le concours ; un onglet par lieu.
+	# laissent la colonne et la fiche, comme le concours ; un onglet par lieu du campus.
 	var c := PanelContainer.new()
 	_campus_panneau = c
 	_poser_boite(c)
@@ -3344,14 +3352,14 @@ func _panneau_lieu() -> void:
 	var cv := VBoxContainer.new()
 	cv.add_theme_constant_override("separation", 10)
 	c.add_child(cv)
-	_bandeau(cv, "Campus")
+	_bandeau(cv, "Université")
 	_campus_bloc = HBoxContainer.new()
 	_campus_bloc.add_theme_constant_override("separation", 6)
 	cv.add_child(_campus_bloc)
 	var groupe := ButtonGroup.new()
 	for cle in CAMPUS:
 		var b := Button.new()
-		b.text = String(LIEUX[cle]["nom"])
+		b.text = String(LIEUX[cle].get("onglet", LIEUX[cle]["nom"]))
 		# Icône blanche teintée par l'état : sur l'onglet actif, foncé, elle reste lisible.
 		b.icon = _icone(cle, 18, Color.WHITE)
 		b.toggle_mode = true

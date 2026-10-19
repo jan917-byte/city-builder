@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-13
+maj: 2026-10-19
 ---
 
 # Décisions arrêtées
@@ -85,6 +85,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 98 | Une règle se signe **au-dessus d'un seuil** de confiance, qui monte à chaque règle signée | 🟡 | 2026-09-30 |
 | 99 | Retirer des places rend de la confiance **selon ce que la rue est devenue**, un an après | 🟡 | 2026-09-30 |
 | 101 | **Un livre des concepts** à la bibliothèque de l'université : un concept s'ouvre quand la ville le rencontre, et ouvre ses leviers ; aucune page sans lieu | 🟡 | 2026-10-06 · [[Université et recherche]] |
+| 114 | **L'université contient la bibliothèque et l'institut** : au rail, deux portes de même rang — mairie et université ; dans l'université, trois onglets — Études, Bibliothèque, Institut. Les trois îlots du campus restent sur la carte et ouvrent chacun son onglet | 🟡 | 2026-10-19, tranché par l'auteur · [[Université et recherche]] |
 
 ## Indicateurs et interface
 

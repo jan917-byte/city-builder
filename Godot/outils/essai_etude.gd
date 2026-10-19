@@ -30,8 +30,8 @@ func executer() -> void:
 	jeu._sur_theme("")
 
 	var univ: Button = tuile("universite")
-	verifier(not univ.visible and not tuile("institut").visible and not tuile("bibliotheque").visible,
-		"Avant le pont, la colonne n'a aucune tuile du campus")
+	verifier(not univ.visible and ui._rail_lieux.size() == 2,
+		"Avant le pont, la colonne n'a pas l'université, et elle n'a que deux lieux (114)")
 	# 🎓 Le pont livré, une seule carte : l'étude (auteur, 2026-10-08).
 	o.premier = {"couche": "r", "fid": jeu.ville.ponts_coupes()[0], "fin": 0.0}
 	o._pont_rouvert()
@@ -65,16 +65,16 @@ func executer() -> void:
 		and ui._fiche_panneau.visible and ui._etude_bloc.visible and ui._etude_voir.visible,
 		"N'importe quel îlot du campus ouvre la fenêtre au centre sur l'université et l'étude, sa fiche à côté")
 	verifier(jeu._contour_fids == campus, "La fiche ouverte, le trait garde le campus entier")
-	verifier(univ.visible and tuile("institut").visible and tuile("bibliotheque").visible
+	verifier(univ.visible and not univ.disabled
 		and not ui._menu_boutons["dangers"].disabled and not entouree("dangers"),
-		"Le campus trouvé, ses trois tuiles apparaissent, Dangers s'ouvre sans être appelée")
+		"Le campus trouvé, la tuile de l'université apparaît, Dangers s'ouvre sans être appelée")
 	verifier(not ui._biblio_bloc.visible and not ui._lieu_lignes[jeu.Recherche.PILOTIS]["bloc"].visible
 		and not ui._leviers_crue["berge"].is_visible_in_tree(),
 		"L'onglet de l'université ne montre ni recherche, ni livre, ni levier")
 	var noms := []
 	for b in ui._campus_bloc.get_children():
 		noms.append((b as Button).text)
-	verifier(noms == ["Université", "Bibliothèque", "Institut de recherche"],
+	verifier(noms == ["Études", "Bibliothèque", "Institut de recherche"],
 		"Les onglets dans l'ordre de l'auteur : %s" % ", ".join(noms))
 	# 🌊 Trois parties (auteur, 2026-10-09) ; le jaune sur la carte d'abord (auteur, 2026-10-12).
 	verifier(ui._etude_voir.is_visible_in_tree() and ui._etude_institut.is_visible_in_tree()

@@ -1,12 +1,14 @@
 ---
 tags: [système, gameplay, progression]
 statut: en cours de spécification
-maj: 2026-10-13
+maj: 2026-10-19
 ---
 
 # Université et recherche
 
 Le lieu est l'**îlot 36** ([[Décisions arrêtées]] 75) ; ce qu'on y fait est arrêté le 2026-09-02 (**79**). C'est le menu des déblocages, et il a une adresse qu'on regarde et qu'on peut transformer comme le reste de [[Wehrau]].
+
+**À l'écran, l'université contient les deux autres lieux du campus** ([[Décisions arrêtées]] 114, 2026-10-19) : une seule tuile dans la colonne de gauche, à côté de la mairie, et trois onglets dedans — **Études** (elle publie), **Bibliothèque** (elle range les concepts), **Institut** (il met au point). Sur la carte, les îlots 36, 77 et 78 restent trois bâtiments.
 
 ## Ce que c'est : des points, qu'on dépense au clic
 

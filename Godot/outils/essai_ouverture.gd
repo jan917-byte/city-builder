@@ -34,7 +34,7 @@ func actualiser(mois: float) -> void:
 ## 🧭 Une tuile de la colonne de gauche : ouverte, et entourée.
 func tuile(id: String) -> Button:
 	var ui = jeu.interface
-	return ui._menu_boutons[id] if ui._menu_boutons.has(id) else ui._rail_lieux[ui.LIEUX_ORDRE.find(id)]
+	return ui._menu_boutons[id] if ui._menu_boutons.has(id) else ui._rail_lieux[ui.RAIL_LIEUX.find(id)]
 
 
 func entouree(id: String) -> bool:

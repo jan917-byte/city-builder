@@ -806,3 +806,6 @@ Essais ouverture, étude, déblaiement, progression, relogement, rebâtir, vie_c
 **2026-10-19 — Les objectifs atteints restent au-dessus, de plus en plus pâles ; le bloc perd sa boîte sombre ; chaque ligne montre « +1 fiole » et la fiole vole jusqu'au compteur.**
 Demande de l'auteur (« plus discrets ») : texte 13 au lieu de 15 avec un liseré sombre, posé sur la carte ; les trois derniers atteints gardés (pâleur 0,45 / 0,28 / 0,15), le plus ancien sort par le haut. Options A+B choisies par l'auteur : la récompense sur la ligne, puis le vol ; le compteur n'avance qu'à l'arrivée.
 Sur le Mac, essai ouverture à 82 échecs avec ou sans la modification (récit, clics perdus) : à reprendre sous Windows. Planche wehrau_ouverture_objectifs_1 à _6.
+**2026-10-19 — L'université contient la bibliothèque et l'institut : le rail n'a plus que Mairie et Université, la fenêtre s'appelle Université, ses onglets Études · Bibliothèque · Institut.**
+Demande de l'auteur (« pas au même niveau »), option A sur trois, décision 114 ; les trois îlots du campus restent sur la carte et ouvrent chacun son onglet.
+Essais étude et ouverture à 0 échec sur le Mac, sans fenêtre ; pas de capture.
