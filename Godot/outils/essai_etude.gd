@@ -53,6 +53,9 @@ func executer() -> void:
 		and not prog["bouton"].disabled and prog["bouton"].text == "Adopter"
 		and not ligne_etude["bloc"].visible and not entouree("mairie"),
 		"La mairie propose le concours d'urbanisme, 1 point, et pas encore l'étude")
+	verifier(ui._campus_panneau.visible and not ui._campus_bloc.visible and ui._fenetre_titre.text == "Mairie"
+		and ui._mairie_bloc.visible and not ui._etude_bloc.visible,
+		"La mairie s'ouvre dans la grande fenêtre, sans les onglets du campus")
 	await capture("mairie_01_concours")
 	var points_avant: int = jeu.Recherche.points(jeu.ville, jeu.mois)
 	await cliquer(prog["bouton"])
@@ -79,8 +82,17 @@ func executer() -> void:
 	verifier(o.etude_proposee() and entouree("mairie")
 		and "commander une étude" in str(ui.retours.journal),
 		"Le concours rendu, la mairie s'entoure et le bandeau propose l'étude")
-	await cliquer(tuile("mairie"))
+	# La fiche de l'îlot de la mairie, puis « Ouvrir la mairie » : la fiche reste à côté.
+	var fid_mairie := int(ui.LIEUX["mairie"]["fid"])
+	jeu._sur_choix("i", fid_mairie)
+	jeu._rafraichir(true)
+	verifier(ui._fiche_panneau.visible and ui._lieu_bouton.visible and ui._lieu_bouton.text == "Ouvrir la mairie"
+		and ui._lieu_ouvert == "", "L'îlot de la mairie ouvre sa fiche, avec « Ouvrir la mairie »")
+	await capture("mairie_01b_fiche")
+	await cliquer(ui._lieu_bouton)
 	ui._maj_rail()
+	verifier(ui._lieu_ouvert == "mairie" and ui._campus_panneau.visible and ui._fiche_panneau.visible,
+		"« Ouvrir la mairie » ouvre la fenêtre, la fiche reste à côté")
 	verifier(ligne_etude["bloc"].visible and ligne_etude["bouton"].text == "Commander"
 		and not entouree("mairie"), "La mairie propose l'étude, en euros")
 	await capture("mairie_02_etude")
@@ -103,7 +115,7 @@ func executer() -> void:
 	jeu._rafraichir(true)
 	var campus: Array = o.campus()
 	verifier(jeu.selection.sel_fid == -1 and o.groupe_carte() == campus and campus.size() == 3
-		and jeu._contour_fids == campus and not ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
+		and jeu._contour_fids == campus and not ui._fiche_panneau.visible and ui._lieu_ouvert == "",
 		"Les trois îlots du campus sont entourés d'un seul trait, aucune fiche ouverte")
 	verifier(is_equal_approx(jeu.pivot.taille, o.CADRAGE_UNIVERSITE), "La caméra montre la ville bâtie")
 	verifier(not univ.visible and ui._menu_boutons["dangers"].disabled,
@@ -113,7 +125,7 @@ func executer() -> void:
 		"Pendant la recherche du campus, le guide dit ce qu'est l'université : %s" % o._texte.text)
 	await capture("campus_01_trouver")
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(not o.etude_lue and ui._fiche_panneau.visible and not ui._lieu_panneau.visible,
+	verifier(not o.etude_lue and ui._fiche_panneau.visible and ui._lieu_ouvert == "",
 		"Un autre îlot ouvre sa fiche, pas le campus")
 	ui._fermer_fiche()
 	var fid_inst := int(ui.LIEUX["institut"]["fid"])

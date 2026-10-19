@@ -444,11 +444,11 @@ var _menu_panneau: PanelContainer
 var _menu_boutons := {}
 ## 🔒 Les tuiles de la mairie et de l'université, grisées pendant le verrou.
 var _rail_lieux: Array[Button] = []
-## 🎓🏛️ LES DEUX MENUS QUI ONT UN LIEU (décision 81). `_lieu_ouvert` vaut ""
-## quand la fiche d'îlot est en place : les deux ne s'affichent jamais ensemble.
-var _lieu_panneau: PanelContainer
-var _lieu_titre: Label
-var _lieu_intro: Label
+## 🎓🏛️ LES DEUX LIEUX (décision 81), une seule grande fenêtre (`_campus_panneau`) :
+## `_lieu_ouvert` vaut "" quand elle est fermée.
+var _fenetre_titre: Label
+## 🏛️ La mairie en colonnes, comme l'institut (auteur, 2026-10-19) : ce qui viendra s'y range.
+var _mairie_bloc: HBoxContainer
 var _lieu_message: Label
 var _lieu_lignes := {}
 var _lieu_ouvert := ""
@@ -3133,7 +3133,7 @@ func montrer_jeu(oui: bool) -> void:
 	retours.actualiser_affichage()
 	if not oui:
 		for panneau in [_fiche_panneau, _diagnostic_panneau,
-				_chantiers_panneau, _calque_panneau, _lieu_panneau, _campus_panneau, _detail_panneau]:
+				_chantiers_panneau, _calque_panneau, _campus_panneau, _detail_panneau]:
 			if panneau != null:
 				(panneau as Control).visible = false
 		_detail_sujet = ""
@@ -3270,7 +3270,7 @@ func _habiller_principal(b: Button) -> void:
 # L'université CONTIENT les deux autres (114) : une tuile au rail, trois onglets.
 const LIEUX := {
 	"mairie": {"fid": 20, "nom": "Mairie", "court": "Mairie", "article": "la mairie",
-		"quoi": "Une politique n'est pas un chantier : elle dure, et elle se paie tous les mois tant qu'elle tient."},
+		"quoi": "Décide pour la ville."},
 	"universite": {"fid": 36, "nom": "Université", "court": "Univ.", "article": "l'université",
 		"quoi": "Publie les études.", "onglet": "Études"},
 	"institut": {"fid": 78, "nom": "Institut de recherche", "court": "Institut", "article": "l'institut",
@@ -3281,6 +3281,9 @@ const LIEUX := {
 # L'ordre des lieux (auteur, 2026-10-09) : on lit, puis on cherche.
 const LIEUX_ORDRE := ["mairie", "universite", "bibliotheque", "institut"]
 const CAMPUS := ["universite", "bibliotheque", "institut"]
+## 🏛️ Les colonnes de la mairie ; une colonne vide se retire. 🔴 Flaggable (90).
+const MAIRIE_COLONNES := [["programmes", "Programmes"], ["etudes", "Études"],
+	["subventions", "Subventions"], ["regles", "Règles"]]
 ## Le rail : deux portes de même rang (114).
 const RAIL_LIEUX := ["mairie", "universite"]
 const CAMPUS_TAILLE := Vector2(880, 560)
@@ -3308,32 +3311,8 @@ func _lieu_du_fid(fid: int) -> String:
 
 
 func _panneau_lieu() -> void:
-	# Même gabarit et même place que la fiche d'îlot : c'est une fiche, et elle
-	# prend la place de l'autre plutôt que de s'ajouter à côté (53).
-	var p := PanelContainer.new()
-	_lieu_panneau = p
-	p.theme = _theme_ui
-	_poser_boite(p)
-	p.anchor_left = 1.0
-	p.anchor_right = 1.0
-	p.offset_left = -FICHE_LARGEUR - 16.0
-	p.offset_right = -16
-	p.offset_top = _haut_fiche()
-	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	p.visible = false
-	add_child(p)
-	_croix(p, _fermer_lieu)
-
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
-	p.add_child(v)
-	_lieu_titre = _bandeau(v, "Mairie")
-	_lieu_intro = _label("", 12, GRIS)
-	_lieu_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(_lieu_intro)
-
-	# 🎓 LA FENÊTRE DU CAMPUS (auteur, 2026-10-09) : grande, au milieu de la place que
-	# laissent la colonne et la fiche, comme le concours ; un onglet par lieu du campus.
+	# 🎓 LA FENÊTRE DES LIEUX (auteur, 2026-10-09 ; la mairie aussi depuis le 2026-10-19) :
+	# grande, au milieu de la place que laissent la colonne et la fiche ; un onglet par lieu du campus.
 	var c := PanelContainer.new()
 	_campus_panneau = c
 	_poser_boite(c)
@@ -3354,7 +3333,7 @@ func _panneau_lieu() -> void:
 	var cv := VBoxContainer.new()
 	cv.add_theme_constant_override("separation", 10)
 	c.add_child(cv)
-	_bandeau(cv, "Université")
+	_fenetre_titre = _bandeau(cv, "Université")
 	_campus_bloc = HBoxContainer.new()
 	_campus_bloc.add_theme_constant_override("separation", 6)
 	cv.add_child(_campus_bloc)
@@ -3425,13 +3404,24 @@ func _panneau_lieu() -> void:
 
 
 	# 🏛️ La mairie ouvre en points, puis fait en euros (117). 🔴 Textes flaggables (90).
+	_mairie_bloc = HBoxContainer.new()
+	_mairie_bloc.add_theme_constant_override("separation", 14)
+	contenu.add_child(_mairie_bloc)
+	var cols := {}
+	for d in MAIRIE_COLONNES:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 4)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_mairie_bloc.add_child(col)
+		_titre_section(col, String(d[1]))
+		cols[d[0]] = col
 	for cle in Politiques.PROGRAMMES_ORDRE:
-		_lieu_lignes["programme_" + cle] = _ligne_lieu(v, "programme",
+		_lieu_lignes["programme_" + cle] = _ligne_lieu(cols["programmes"], "programme",
 			String(Politiques.PROGRAMMES[cle]["nom"]), String(Politiques.PROGRAMMES[cle]["quoi"]))
-	_lieu_lignes["etude"] = _ligne_lieu(v, "etude", "Étude de la prochaine crue",
+	_lieu_lignes["etude"] = _ligne_lieu(cols["etudes"], "etude", "Étude de la prochaine crue",
 		"Demander à l'université où l'eau reviendra, et comment s'y préparer.")
 	for cle in Politiques.ORDRE:
-		_lieu_lignes[cle] = _ligne_lieu(v, "politique",
+		_lieu_lignes[cle] = _ligne_lieu(cols["subventions"], "politique",
 			String(Politiques.POLITIQUES[cle]["nom"]),
 			String(Politiques.POLITIQUES[cle]["quoi"]))
 	# 🎓 L'institut range ses sujets par domaine, une colonne chacun ; un domaine
@@ -3489,44 +3479,39 @@ func _panneau_lieu() -> void:
 
 	_lieu_message = _label("", 11, GRIS)
 	_lieu_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(_lieu_message)
+	cols["regles"].add_child(_lieu_message)
 
 
 ## Une ligne de menu : ce que c'est, ce que ça fait, où ça en est, et LE bouton.
-## 🎓 Une recherche est une carte, sa vignette en tête, comme au concours.
 func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 		quoi: String, vignette := "") -> Dictionary:
 	var bloc := VBoxContainer.new()
 	bloc.add_theme_constant_override("separation", 3)
-	var tenue: Control = bloc
+	# 🗂️ Une carte par ligne ; la vignette pour l'institut seul, la mairie en cartes nues (2026-10-19).
+	var carte := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = FOND_FORT
+	sb.set_corner_radius_all(_r(9))
+	sb.set_content_margin_all(8)
+	carte.add_theme_stylebox_override("panel", sb)
+	carte.add_child(bloc)
+	# 🗂️ Même gabarit pour toutes les recherches (auteur, 2026-10-19) : la vignette en petit à
+	# gauche du nom, une place vide sans elle ; en grand, les cartes à dessin écrasaient les colonnes.
+	var tete := HBoxContainer.new()
+	tete.add_theme_constant_override("separation", 8)
+	bloc.add_child(tete)
 	if genre == "recherche":
-		var carte := PanelContainer.new()
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = FOND_FORT
-		sb.set_corner_radius_all(_r(9))
-		sb.set_content_margin_all(8)
-		carte.add_theme_stylebox_override("panel", sb)
-		carte.add_child(bloc)
-		tenue = carte
-		# 🗂️ Même gabarit pour toutes (auteur, 2026-10-19) : la vignette en petit à gauche du nom,
-		# une place vide sans elle ; en grand, les cartes à dessin écrasaient les colonnes.
-		var tete := HBoxContainer.new()
-		tete.add_theme_constant_override("separation", 8)
-		bloc.add_child(tete)
 		var vue: Control = _vignette(vignette) if vignette != "" else Control.new()
 		vue.custom_minimum_size = Vector2(VIGNETTE_RECHERCHE_PX, VIGNETTE_RECHERCHE_PX)
 		tete.add_child(vue)
-		var l_nom := _label(nom, 14, TEXTE)
-		l_nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l_nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		l_nom.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		tete.add_child(l_nom)
+	var l_nom := _label(nom, 14, TEXTE)
+	l_nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l_nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l_nom.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tete.add_child(l_nom)
+	if genre == "recherche":
 		carte.custom_minimum_size.y = CARTE_RECHERCHE_H
-		parent.add_child(tenue)
-	else:
-		bloc.add_child(HSeparator.new())
-		parent.add_child(tenue)
-		bloc.add_child(_label(nom, 14, TEXTE))
+	parent.add_child(carte)
 	var l_quoi := _label(quoi, 11, GRIS)
 	l_quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(l_quoi)
@@ -3537,7 +3522,7 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	_habiller_principal(b)
 	b.focus_mode = Control.FOCUS_NONE
 	bloc.add_child(b)
-	return {"bloc": tenue, "genre": genre, "etat": etat, "bouton": b}
+	return {"bloc": carte, "genre": genre, "etat": etat, "bouton": b}
 
 
 ## 🎓 La miniature d'une vignette du campus, rendue par la maquette.
@@ -3591,26 +3576,17 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	if _page_ouverte != "" and ouverture != null:
 		ouverture.page_lue(_page_ouverte)
 	_biblio_cle = ""
-	var campus: bool = cle in CAMPUS
-	if campus:
-		_pause_campus()
-		# Le panneau du calque passait sous le verre et se lisait à travers (sur Dangers, fond blanc).
-		if _detail_ouvert and not _campus_panneau.visible:
-			_detail_avant_campus = true
-			_detail_ouvert = false
-			_placer_detail()
-	elif _campus_panneau.visible:
-		_campus_panneau.visible = false
-		_reprendre_campus()
+	_pause_campus()
+	# Le panneau du calque passait sous le verre et se lisait à travers (sur Dangers, fond blanc).
+	if _detail_ouvert and not _campus_panneau.visible:
+		_detail_avant_campus = true
+		_detail_ouvert = false
+		_placer_detail()
 	_lieu_ouvert = cle
-	_lieu_panneau.visible = not campus
-	_campus_panneau.visible = campus
-	if campus:
-		_campus_intro.text = String(LIEUX[cle]["quoi"])
-	else:
-		_fiche_panneau.visible = false
-		_lieu_titre.text = String(LIEUX[cle]["nom"])
-		_lieu_intro.text = String(LIEUX[cle]["quoi"])
+	_campus_panneau.visible = true
+	_campus_bloc.visible = cle in CAMPUS
+	_fenetre_titre.text = "Université" if cle in CAMPUS else String(LIEUX[cle]["nom"])
+	_campus_intro.text = String(LIEUX[cle]["quoi"])
 	_brancher_lieu()
 	_maj_lieu()
 	if cle == "mairie" and ouverture != null:
@@ -3867,18 +3843,15 @@ func _fermer_fiche() -> void:
 
 
 func _fermer_lieu() -> void:
-	var campus: bool = _lieu_ouvert in CAMPUS
+	var ouvert: bool = _lieu_ouvert != ""
 	_lieu_ouvert = ""
-	_lieu_panneau.visible = false
-	if campus:
+	if ouvert:
 		_campus_panneau.visible = false
 		_reprendre_campus()
 		if _detail_avant_campus:
 			_detail_avant_campus = false
 			_detail_ouvert = true
 			_placer_detail()
-	else:
-		_fiche_panneau.visible = true
 
 
 ## ✕ de la fenêtre : un îlot du campus en fiche se referme avec elle, la ville
@@ -3941,7 +3914,7 @@ func _brancher_lieu() -> void:
 func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
-	_lieu_intro.visible = _politique_ouverte("subv_solaire") or _politique_ouverte("subv_vert")
+	_mairie_bloc.visible = _lieu_ouvert == "mairie"
 	_campus_intro.visible = _page_ouverte == ""
 	for i in CAMPUS.size():
 		(_campus_bloc.get_child(i) as Button).set_pressed_no_signal(CAMPUS[i] == _lieu_ouvert)
@@ -3971,7 +3944,7 @@ func _maj_lieu() -> void:
 		else:
 			_maj_ligne_politique(String(cle), l)
 	# Une colonne sans sujet montré se retire, son titre avec.
-	for col in _recherche_bloc.get_children():
+	for col in _recherche_bloc.get_children() + _mairie_bloc.get_children():
 		var montre := false
 		for i in range(1, col.get_child_count()):
 			montre = montre or (col.get_child(i) as Control).visible
@@ -5025,8 +4998,11 @@ func _maj_fiche() -> void:
 	_repare_texte.visible = _repare_texte.text != ""
 	_camp_texte.visible = _camp_texte.text != ""
 	var verrou := _verrou()
-	# 🎓 La fenêtre du campus ouverte, « Ouvrir … » se tait ; refermée, il revient.
-	_lieu_bouton.visible = verrou == "" and not _campus_panneau.visible 		and _fiche_couche == "i" and _lieu_du_fid(_fiche_fid) != ""
+	# 🎓 La fenêtre ouverte, « Ouvrir … » se tait ; refermée, il revient.
+	# 🏛️ La mairie s'ouvre dès sa tuile ouverte, verrou ou non (117).
+	var lieu := _lieu_du_fid(_fiche_fid) if _fiche_couche == "i" else ""
+	_lieu_bouton.visible = lieu != "" and not _campus_panneau.visible and (verrou == ""
+		or lieu == "mairie" and ouverture != null and ouverture.rail_ouvert("mairie"))
 	# 🗂️ `_maj_fiche_contenu` vient de dire ce qui existe ; on en déduit les
 	# onglets. On ne les repeint QUE s'ils ont changé : on passe ici à chaque
 	# image, et refaire sept boîtes de style par image pour rien se verrait.
