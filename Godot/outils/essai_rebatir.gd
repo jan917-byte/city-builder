@@ -1,6 +1,7 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/essai_rebatir.gd -- --ouverture [--captures]
-## 🏗️ Les quatre façons de relever un îlot sinistré (95), mesurées sur les Forgerons.
+## 🏗️ Les quatre façons de relever un îlot sinistré (95), mesurées sur les Forgerons,
+## le concours rendu : seul il ouvre les projets neufs (auteur, 2026-10-19 au soir).
 
 
 func executer() -> void:
@@ -25,7 +26,7 @@ func executer() -> void:
 	# --- Le modèle : une partie neuve par façon, la même commande.
 	var mesures := {}
 	for f in v.RECONSTRUCTIONS_ORDRE:
-		_apres_etude(t0)
+		_apres_etude(t0, true)
 		var duree: float = v.duree_reparation_mois("i", m, false, f)
 		var t1 := t0 + duree + 0.05
 		var avant := {"perdus": float(v.prochaine_crue(t1)["logements_perdus"]),
@@ -70,17 +71,17 @@ func executer() -> void:
 	verifier(v.facon_reparation(m) == "parc", "La reprise garde le parc")
 
 	# --- Le guide et la fiche.
-	_apres_etude(t0)
+	_apres_etude(t0, true)
 	verifier(o.etape == "choix" and not "caisse" in o._texte.text,
 		"Le guide ne commente plus la caisse : %s" % o._texte.text)
 	jeu._sur_choix("i", m)
 	verifier(ui._fiche_fid == m and ui._pose.is_empty() and not ui._repare_bouton.visible
 		and ui._rebatir_boutons["tradition"].visible and ui._projets_bouton.visible
-		and ui._concours_bouton.visible,
-		"Sans concours : reconstruire, voir les quatre projets ou lancer le concours, aucun posé")
+		and not ui._concours_bouton.visible,
+		"Le concours rendu : reconstruire ou voir les projets des lauréats, aucun posé")
 	await cliquer(ui._projets_bouton)
-	verifier(ui._projets_panneau.visible and ui._projets_titre.text.begins_with("Projets"),
-		"« Voir les quatre projets » s'ouvre sans concours")
+	verifier(ui._projets_panneau.visible and ui._projets_titre.text.begins_with("Lauréats"),
+		"« Voir les projets des lauréats » ouvre les quatre")
 	await capture("rebatir_01_quatre_facons")
 	var n := 2
 	for f in v.RECONSTRUCTIONS_ORDRE:
@@ -98,7 +99,7 @@ func executer() -> void:
 	# --- La ville, livrée, au même cadrage : quatre allures, et la ruine partie.
 	var b0: AABB = (jeu.noeuds["i"][m] as MeshInstance3D).get_aabb()
 	for f in v.RECONSTRUCTIONS_ORDRE:
-		_apres_etude(t0)
+		_apres_etude(t0, true)
 		jeu._sur_commande("i", m, {"reparer": f})
 		actualiser(t0 + v.duree_reparation_mois("i", m, false, f) + 0.1)
 		jeu.selection.sel_fid = -1

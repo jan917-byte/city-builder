@@ -22,10 +22,15 @@ const PONTS_DIFFERENTS := "Les ponts ne coûtent pas tous le même prix, ni le m
 ## Revient sur « plus de où cliquer » du 2026-10-08, pour ce panneau seul. 🔴 Flaggable (90).
 ## 🎯 Le but est passé aux objectifs, en bas à gauche (auteur, 2026-10-18) : plus de titre
 ## qui le répète, seulement où cliquer ; un guide qui n'a rien à dire se cache.
-const DIRE_CHANTIERS := "Cliquez sur Chantiers, dans la colonne de gauche, pour voir ce qui est cassé."
+## 🌉 Dire tout de suite qu'il faudra cliquer un pont, et pourquoi (auteur, 2026-10-19). 🔴 Flaggable (90).
+const DIRE_CHANTIERS := "%d ponts sont coupés : les deux rives ne se rejoignent plus. Cliquez sur Chantiers, dans la colonne de gauche, puis sur un pont coupé."
 const DIRE_PONT := "Cliquez sur un pont coupé, dans Chantiers ou sur la carte, puis choisissez comment le rebâtir dans sa fiche."
-const DIRE_DANGERS := "Cliquez sur Dangers, dans la colonne de gauche, pour voir où l'eau a frappé le plus fort."
 const DIRE_ILOT := "Cliquez sur un îlot qui clignote pour le rebâtir."
+## 🧹 Le Lavoir d'abord, conseillé sans être imposé (auteur, 2026-10-19) : maisons debout, chantier court. 🔴 Flaggable (90).
+const LAVOIR := 62
+const DIRE_LAVOIR := "Commencez par les Maisons du Lavoir, qui clignotent : leurs maisons tiennent debout, il suffit de les nettoyer. C'est le chantier le plus court."
+## 🎓 Ce qu'est l'université, sans le chemin (auteur, 2026-10-19 : « pas besoin de mettre des trucs en jaune »). 🔴 Flaggable (90).
+const DIRE_UNIVERSITE := "Elle a trois lieux. L'université publie ses études sur Wehrau, la bibliothèque raconte comment d'autres villes s'y sont prises, l'institut met au point de nouvelles façons de bâtir. Chaque objectif atteint, en bas à gauche, rapporte un point à dépenser à l'institut."
 
 var jeu
 var suite := false
@@ -93,8 +98,11 @@ func annee_un() -> bool:
 	return premiere_annee and not etude_parue
 
 
-## Dangers ouvert une fois pendant la reconstruction : le guide cesse de le demander.
+## 🔄 Dangers n'est plus demandé la première année (auteur, 2026-10-19) : gardé pour les sauvegardes.
 var degats_vus := false
+## 🏛️ La carte du concours : 0 à venir, 1 affichée, 2 passée. Elle paraît à la première fiche
+## d'un îlot aux maisons tombées, l'étude parue (auteur, 2026-10-19 : « introduire les concours »).
+var carte_concours := 0
 
 
 func batir(maquette) -> void:
@@ -203,10 +211,24 @@ func _remplir_carte() -> void:
 			_annonce_texte.text = "Ils ont un toit, pas de quoi vivre."
 			annonce_principal.text = "Voir le campement"
 			annonce_second.text = "Plus tard"
+		"concours":
+			# 🔴 Mes mots, flaggables (90).
+			_annonce_titre.text = "Un concours d'architectes"
+			_annonce_texte.text = ("Des maisons sont tombées, et l'étude annonce une crue plus forte. "
+				+ "Les reconstruire comme avant, c'est les exposer de nouveau.\n\n"
+				+ "Un concours demande à des architectes d'autres projets pour toute la zone sinistrée. "
+				+ "Il dure %s et coûte %d k€. En attendant, on peut toujours reconstruire comme avant.") % [
+				jeu.interface._duree(Ville.CONCOURS_MOIS), int(Ville.CONCOURS_KE)]
+			annonce_principal.text = "Revenir à l'îlot"
+			annonce_second.text = ""
 	annonce_second.visible = annonce_second.text != ""
 
 
 func _sur_carte(principal: bool) -> void:
+	if carte == "concours":
+		carte_concours = 2
+		actualiser(true)
+		return
 	if carte == "etude":
 		carte_etude = 2
 		actualiser(true)
@@ -358,8 +380,6 @@ func boue_a_engager() -> bool:
 ## 🧭 La colonne de gauche s'ouvre au fil du guide (auteur, 2026-10-02) : une
 ## tuile reste grise tant que le guide ne l'a pas demandée, puis reste ouverte.
 func rail_ouvert(id: String) -> bool:
-	if id == "dangers" and annee_un() and _pont_engage():
-		return true
 	if suite or termine or prochaine_vue or id == "":
 		return true
 	match id:
@@ -368,6 +388,12 @@ func rail_ouvert(id: String) -> bool:
 		"universite", "dangers", "institut", "bibliotheque":
 			return etude_lue
 	return false
+
+
+## 🎓 La prochaine crue vue, l'université rouvre sur la ville, sans plus clignoter (auteur, 2026-10-19).
+func retour_universite() -> String:
+	return "universite" if prochaine_vue and page_nouvelle("eponge") and jeu.theme == "dangers" \
+		and not jeu.interface._campus_panneau.visible else ""
 
 
 ## La tuile que le guide demande, entourée jusqu'au clic.
@@ -379,17 +405,9 @@ func rail_appel() -> String:
 	# (auteur, 2026-10-06). Une fois revenu, plus d'appel.
 	if etape == "pont_travaux" and not boue_vue and jeu.theme != "" and not acces_degage():
 		return "ville"
-	# 🎓 La prochaine crue vue, la tuile de l'université appelle la suite, sans texte
-	# sur la carte (auteur, 2026-10-12).
-	if prochaine_vue and page_nouvelle("eponge") and jeu.theme == "dangers" 			and not jeu.interface._campus_panneau.visible:
-		return "universite"
-	if jeu.theme == "dangers" and not degats_vus:
-		degats_vus = true
-		actualiser.call_deferred(true)
+	# 🔄 Plus d'appel vers l'université ni vers Dangers (auteur, 2026-10-19) : le guide explique.
 	if not ouvert:
 		return ""
-	if guide_rebatir() and not degats_vus:
-		return "dangers"
 	if etape == "chantiers":
 		return "chantiers" if jeu.theme != "chantiers" else ""
 	return ""
@@ -469,12 +487,21 @@ func groupe_carte() -> Array:
 			return campus() if carte_etude == 2 else []
 		# 🧭 Le guide dit « l'îlot qui clignote » à la place des boutons (auteur, 2026-10-17).
 		"choix", "suite":
-			return ilots_a_rebatir()
+			return _a_faire_clignoter()
 		"pont_travaux":
-			return ilots_a_rebatir() if guide_rebatir() else []
+			return _a_faire_clignoter() if guide_rebatir() else []
 		"livraison":
 			return [int(premier["fid"])] if premier["couche"] == "i" else []
 	return []
+
+
+## Le Lavoir seul tant que le guide le conseille ; les autres restent cliquables.
+func _a_faire_clignoter() -> Array:
+	return [LAVOIR] if lavoir_conseille() else ilots_a_rebatir()
+
+
+func lavoir_conseille() -> bool:
+	return annee_un() and not _ilot_engage() and LAVOIR in ilots_a_rebatir()
 
 
 func ilots_a_rebatir() -> Array:
@@ -588,10 +615,18 @@ func berge_rendue() -> bool:
 	return false
 
 
-## 🏛️ Le concours (104 revue, auteur 2026-10-19) : facultatif, il s'offre avec les quatre façons,
-## l'étude parue. Plus d'annonce : le bouton de la fiche suffit.
-func concours_ouvert() -> bool:
-	return jeu.ville.concours_lance() or not annee_un()
+## 🏛️ Le concours attend le campus trouvé : l'étude d'abord, une chose à la fois (auteur, 2026-10-19).
+func concours_offert() -> bool:
+	return jeu.ville.concours_lance() or not annee_un() and (etude_lue or tout_ouvert)
+
+
+## 🏛️ La fiche d'un îlot aux maisons tombées, le campus trouvé, annonce le concours une fois.
+func annoncer_concours() -> void:
+	if carte_concours != 0 or jeu.ville.concours_lance():
+		return
+	carte_concours = 1
+	jeu._sur_vitesse(0.0)
+	actualiser(true)
 
 
 ## 🚪 Ce qui s'ouvre se dit une fois, au bandeau et au journal.
@@ -825,7 +860,8 @@ func actualiser(force := false) -> void:
 		jeu._sur_vitesse(0.0)
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
-	carte = "etude" if carte_etude == 1 else ("camp" if plainte == 1 else "")
+	carte = "etude" if carte_etude == 1 else ("concours" if carte_concours == 1
+		else ("camp" if plainte == 1 else ""))
 	annonce.visible = carte != ""
 	_remplir_carte()
 	# Recalculé : la carte a pu se fermer pendant cet appel.
@@ -864,7 +900,7 @@ func actualiser(force := false) -> void:
 			_poser_reperes([])
 			_titre.text = ""
 			# 🧭 La tuile Chantiers s'entoure, et le guide la nomme.
-			_texte.text = DIRE_CHANTIERS
+			_texte.text = DIRE_CHANTIERS % int(jeu.ville.degats(jeu.mois)["franchissements_coupes"])
 		"pont_choix":
 			_titre.text = ""
 			# 🌉 Les ponts se trouvent mal sur la carte (auteur, 2026-09-22) : leur liste est dans
@@ -891,7 +927,7 @@ func actualiser(force := false) -> void:
 			# 🎓 Le nom seul : le contour qui clignote y mène (auteur, 2026-10-08).
 			_poser_reperes([])
 			_titre.text = "L'université"
-			_texte.text = ""
+			_texte.text = DIRE_UNIVERSITE
 		"reloger":
 			# 🧭 Ni chiffre sur la carte ni bouton qui mène aux champs (auteur, 2026-09-17) ;
 			# le guide dit « un champ » et les ponts coupés (tableau de l'auteur, 2026-10-07).
@@ -979,9 +1015,7 @@ func _texte_rebatir() -> void:
 	_titre.text = ""
 	var lignes := [] if _texte.text == "" else [_texte.text]
 	if not (_ilot_engage() and etape == "pont_travaux"):
-		if not degats_vus:
-			lignes.append(DIRE_DANGERS)
-		lignes.append(DIRE_ILOT)
+		lignes.append(DIRE_LAVOIR if lavoir_conseille() else DIRE_ILOT)
 	_texte.text = "\n\n".join(lignes)
 
 
@@ -1006,7 +1040,8 @@ func exporter() -> Dictionary:
 		"etude_parue": etude_parue, "etude_mois": etude_mois, "carte_etude": carte_etude,
 		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte,
 		"institut_vu": institut_vu, "biblio_vue": biblio_vue,
-		"pages_lues": pages_lues.duplicate(), "degats_vus": degats_vus}
+		"pages_lues": pages_lues.duplicate(), "degats_vus": degats_vus,
+		"carte_concours": carte_concours}
 
 
 func reprendre(etat: Dictionary) -> void:
@@ -1030,6 +1065,7 @@ func reprendre(etat: Dictionary) -> void:
 	biblio_vue = bool(etat.get("biblio_vue", prochaine_vue))
 	plainte = int(etat.get("plainte", 2 if pont_termine else 0))
 	degats_vus = bool(etat.get("degats_vus", false))
+	carte_concours = int(etat.get("carte_concours", 0))
 	pages_lues = {}
 	_pages_dites = {}
 	_portes_dites = {}

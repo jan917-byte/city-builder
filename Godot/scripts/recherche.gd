@@ -107,6 +107,8 @@ const SUJETS := {
 		"effet": "ouvre", "valeur": 1.0, "domaine": "trafic",
 	},
 }
+## 🎚️ Ce que l'institut montre avant le premier achat : les réponses à la crue (auteur, 2026-10-19).
+const D_ABORD := ["pilotis", "parc", "berge"]
 const PILOTIS := "pilotis"
 const PARC := "parc"
 const ORDRE := ["pilotis", "densifier", "vert", "sedum", "parc", "berge", "pre", "permeable",

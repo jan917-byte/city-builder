@@ -1736,7 +1736,7 @@ func _panneau_rail() -> void:
 		b.pressed.connect(func() -> void:
 			# 🎓 Appelée depuis Dangers, la vue repasse sur la ville : la fenêtre
 			# refermée, le guide et les îlots à rebâtir y attendent.
-			if ouverture != null and ouverture.rail_appel() == cle:
+			if ouverture != null and (ouverture.rail_appel() == cle or ouverture.retour_universite() == cle):
 				theme_demande.emit("")
 				_detail_ouvert = false
 				_placer_detail()
@@ -3413,10 +3413,7 @@ func _panneau_lieu() -> void:
 	_etude_biblio = _partie_etude(parties, "bibliotheque", "Retenir l'eau",
 		"La ville-éponge : berges, sols, toits, prés.", "Lire à la bibliothèque",
 		ouvrir_lieu.bind("bibliotheque", "eponge"), "eponge")
-	# 🟡 D'abord la carte, puis la bibliothèque tant que sa page n'est pas lue
-	# (auteur, 2026-10-12 ; c'était la bibliothèque seule) — `_maj_lieu`.
-	_anneau_appel(_etude_voir, 9)
-	_anneau_appel(_etude_biblio, 9)
+	# 🔄 Plus d'anneau jaune sur la carte ni la bibliothèque (auteur, 2026-10-19) : le guide explique.
 	# Les pilotis, une recherche parmi d'autres (auteur, 2026-10-09).
 	_etude_institut = _partie_etude(parties, "institut", "S'adapter à la montée des eaux",
 		"Les recherches de l'institut, dont les pilotis.", "Voir à l'institut", ouvrir_lieu.bind("institut", ""), "pilotis")
@@ -3726,7 +3723,8 @@ func _panneau_projets() -> void:
 
 
 func ouvrir_projets() -> void:
-	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_utile(_fiche_fid):
+	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_utile(_fiche_fid) \
+			or not ville.concours_rendu(_mois):
 		return
 	_projets_cle = ""
 	_projets_panneau.visible = true
@@ -3922,38 +3920,43 @@ func _maj_lieu() -> void:
 	_biblio_bloc.visible = _lieu_ouvert == "bibliotheque"
 	if _biblio_bloc.visible:
 		_maj_bibliotheque()
-	if _etude_bloc.visible:
-		var carte_vue: bool = ouverture == null or ouverture.prochaine_vue
-		var anneau: Control = _etude_voir.get_meta("anneau")
-		anneau.visible = not carte_vue
-		anneau.modulate.a = _pouls()
-		anneau = _etude_biblio.get_meta("anneau")
-		anneau.visible = carte_vue and ouverture != null and ouverture.page_nouvelle("eponge")
-		anneau.modulate.a = _pouls()
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: Control = l["bloc"]
 		var recherche: bool = String(l["genre"]) == "recherche"
-		bloc.visible = _lieu_ouvert == "institut" if recherche \
+		bloc.visible = (_lieu_ouvert == "institut" and _sujet_montre(String(cle))) if recherche \
 			else (_lieu_ouvert == "mairie" and _politique_ouverte(String(cle)))
 		if not bloc.visible:
 			continue
 		if recherche:
-			# 🌳 Un sujet dont un parent manque garde son nom, grisé, et dit lequel.
-			var manque := Recherche.manque(ville, String(cle), _mois)
-			bloc.modulate.a = 1.0 if manque == "" else 0.45
-			if manque == "":
-				_maj_ligne_recherche(String(cle), l)
-			else:
-				(l["etat"] as Label).text = "Après : %s" % manque
-				(l["bouton"] as Control).visible = false
+			# 🔄 Plus de sujet grisé « Après : … » (auteur, 2026-10-19) : il attend caché.
+			_maj_ligne_recherche(String(cle), l)
 		else:
 			_maj_ligne_politique(String(cle), l)
+	# Une colonne sans sujet montré se retire, son titre avec.
+	for col in _recherche_bloc.get_children():
+		var montre := false
+		for i in range(1, col.get_child_count()):
+			montre = montre or (col.get_child(i) as Control).visible
+		(col as Control).visible = montre
 	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
 	# capital, elle en demande un seuil (auteur, 2026-09-30) ; aucune n'est écrite.
 	_lieu_message.text = "" if _lieu_ouvert != "mairie" else \
 		"Les règles — stationnement payant, toit vert obligatoire au neuf — " \
 		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
+
+
+## 🌳 L'INSTITUT S'OUVRE PEU À PEU (auteur, 2026-10-19 : « tout s'ouvre trop en même temps ») :
+## un sujet n'apparaît que ses parents acquis ; avant le premier achat, seuls ceux de la crue.
+func _sujet_montre(cle: String) -> bool:
+	if Recherche.manque(ville, cle, _mois) != "":
+		return false
+	if ouverture == null or ouverture.tout_ouvert or cle in Recherche.D_ABORD:
+		return true
+	for k in Recherche.ORDRE:
+		if Recherche.acquis(ville, k, _mois):
+			return true
+	return false
 
 
 func _politique_ouverte(cle: String) -> bool:
@@ -6029,20 +6032,18 @@ func _maj_reparation(o: Dictionary) -> void:
 	# 🏗️ Un îlot sinistré se relève de quatre façons ; elles remplacent le bouton.
 	var rebatir := couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0 \
 		and not ville.est_repare(couche, _fiche_fid) and float(o.get("cout_reparation_ke", 0.0)) > 0.0
-	# 🏛️ L'étude parue et des maisons tombées : les quatre projets côte à côte, et un concours
-	# facultatif qui les rend moins chers (104 revue, auteur 2026-10-19). Sinon, comme avant seul.
+	# 🏛️ DEUX CHOIX, l'étude parue et des maisons tombées (auteur, 2026-10-19 au soir) :
+	# reconstruire, ou le concours ; ses lauréats seuls montrent les projets. Plus de pilotis ici.
 	var rendu := ville.concours_rendu(_mois)
 	var apres_etude: bool = rebatir and (ouverture == null or not ouverture.annee_un())
-	var projets: bool = apres_etude and ville.concours_utile(_fiche_fid)
-	var concours: bool = projets and (ouverture == null or ouverture.concours_ouvert())
-	# 🏗️ Sur pilotis dès que l'institut l'a mis au point (auteur, 2026-10-08) ;
-	# avant, grisé : il dit où il se met au point.
-	var pilotis: bool = apres_etude and ville.facon_permise(_fiche_fid, "pilotis", _mois)
+	var concours: bool = apres_etude and ville.concours_utile(_fiche_fid) \
+		and (ouverture == null or ouverture.concours_offert())
+	var projets: bool = concours and rendu
 	for facon in _rebatir_boutons:
-		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition" \
-			or facon == "pilotis" and apres_etude
-	(_rebatir_boutons["pilotis"] as Button).disabled = not pilotis
+		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition"
 	_concours_bouton.visible = concours and not rendu
+	if concours and not rendu and ouverture != null:
+		ouverture.annoncer_concours()
 	_projets_bouton.visible = projets
 	_repare_etat.visible = false
 	_repare_bouton.visible = not rebatir
@@ -6058,7 +6059,8 @@ func _maj_reparation(o: Dictionary) -> void:
 		# 🔄 Ni « Remis en état » ni « ✓ Chantier terminé » (auteur, 2026-10-08) : la tuile Crue le dit.
 		_repare_texte.text = ""
 		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
-			_repare_texte.text = FAIT_REBATI[ville.facon_reparation(_fiche_fid)]
+			_repare_texte.text = FAIT_REBATI[ville.facon_reparation(_fiche_fid)] \
+				if ville.concours_utile(_fiche_fid) else "Nettoyé et remis en état."
 		if pont:
 			_repare_texte.text = ouverture.description_pont(_fiche_fid) if ouverture != null else "Pont reconstruit."
 		_repare_bouton.visible = false
@@ -6090,23 +6092,19 @@ func _maj_reparation(o: Dictionary) -> void:
 		# ⚖️ Aucune n'est conseillée (95) : le prix et les effets se lisent dans les conséquences.
 		# 🔴 Textes flaggables (90).
 		# 🔄 « Comme avant » → « Reconstruire l'îlot » (auteur, 2026-10-18) ; le projet garde son nom.
-		_posee(_rebatir_boutons["tradition"], "reparer", "Reconstruire l'îlot", "tradition")
-		if pilotis:
-			_posee(_rebatir_boutons["pilotis"], "reparer", "Sur pilotis", "pilotis")
-		else:
-			# 🔴 Flaggable (90).
-			_rebatir_boutons["pilotis"].text = "Sur pilotis, à mettre au point à l'institut"
+		# 🧹 Maisons debout, on nettoie : « reconstruire » sonnait faux au Lavoir (auteur, 2026-10-19). 🔴 Flaggable (90).
+		_posee(_rebatir_boutons["tradition"], "reparer", "Reconstruire l'îlot"
+			if ville.concours_utile(_fiche_fid) else "Nettoyer et remettre en état", "tradition")
 		var choisi := str(_pose.get("reparer", ""))
 		if projets:
-			_projets_bouton.text = "Voir les quatre projets" if not Ville.RECONSTRUCTIONS.has(choisi) \
+			_projets_bouton.text = "Voir les projets des lauréats" if not Ville.RECONSTRUCTIONS.has(choisi) \
 				else "Projet : %s, revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
 		if concours and ville.concours_lance():
 			_concours_bouton.text = "Concours en cours"
 			_concours_bouton.disabled = true
 			_marquer(_concours_bouton, false)
 		elif concours:
-			_posee(_concours_bouton, "concours", "Lancer un concours : projets neufs à −%d %%"
-				% int(roundf((1.0 - Ville.CONCOURS_LAUREAT_PRIX) * 100.0)))
+			_posee(_concours_bouton, "concours", "Lancer un concours d'architectes")
 			_concours_bouton.disabled = false
 	if pont:
 		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une

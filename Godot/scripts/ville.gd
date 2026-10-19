@@ -2511,14 +2511,16 @@ func concours_utile(fid: int) -> bool:
 	return base("i", fid, "batiments_ruines") > 0.0
 
 
-## Comme avant toujours ; sur pilotis quand l'institut l'a mis au point (auteur, 2026-10-08) ;
-## moderne et parc là où des maisons sont tombées, concours ou non (115), le parc après l'institut.
+## Comme avant toujours ; les trois projets neufs là où des maisons sont tombées, le concours
+## rendu (auteur, 2026-10-19 au soir, revient sur « concours ou non ») ; pilotis et parc après l'institut.
 func facon_permise(fid: int, facon: String, t: float) -> bool:
+	if not RECONSTRUCTIONS.has(facon) or facon == "tradition":
+		return true
+	if not (concours_utile(fid) and concours_rendu(t)):
+		return false
 	if facon == "pilotis":
 		return Recherche.acquis(self, Recherche.PILOTIS, t)
-	if facon == "parc" and not Recherche.acquis(self, Recherche.PARC, t):
-		return false
-	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" or concours_utile(fid)
+	return facon != "parc" or Recherche.acquis(self, Recherche.PARC, t)
 
 
 ## 🏛️ Le concours rendu ne change que les projets neufs : « comme avant » n'a rien à concourir.

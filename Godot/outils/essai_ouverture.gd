@@ -401,6 +401,7 @@ func executer() -> void:
 	o.prochaine_vue = true
 	o.institut_vu = true
 	o.biblio_vue = true
+	o.carte_concours = 2
 	jeu._sur_choix("i", champs2[0])
 	jeu.interface.poser("camp")
 	jeu._sur_commande("i", champs2[0], jeu.interface._reglages())
@@ -489,8 +490,8 @@ func executer() -> void:
 
 func essayer_ponts(lointain: int) -> void:
 	var o = jeu.ouverture
-	verifier(o.etape == "chantiers" and o.DIRE_CHANTIERS in o._texte.text,
-		"Tout le monde abrité, le guide envoie sur Chantiers")
+	verifier(o.etape == "chantiers" and o._texte.text == o.DIRE_CHANTIERS % int(jeu.ville.degats(jeu.mois)["franchissements_coupes"]),
+		"Tout le monde abrité, le guide envoie sur Chantiers, puis sur un pont coupé : %s" % o._texte.text)
 	# 🔒 PENDANT LA PHASE DU PONT, seuls les ponts et leurs accès s'engagent.
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(not jeu.interface._repare_bloc.visible and "pont" in jeu.interface._message.text,
@@ -647,9 +648,9 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in str(jeu.interface.retours._recent)
 		and o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
 		"Le chemin déblayé pendant le chantier, les îlots sinistrés s'engagent")
-	verifier(o.visible and o.DIRE_ILOT in o._texte.text and "Dangers" in o._texte.text
-		and o.rail_ouvert("dangers") and o.MAISONS in o.groupe_carte(),
-		"Le guide propose de rebâtir, demande Dangers et fait clignoter les îlots : %s" % o._texte.text)
+	verifier(o.visible and o.DIRE_LAVOIR in o._texte.text and not "Dangers" in o._texte.text
+		and not o.rail_ouvert("dangers") and o.groupe_carte() == [o.LAVOIR] and o.autorise("i", o.MAISONS),
+		"Le guide conseille le Lavoir, seul à clignoter, sans demander Dangers : %s" % o._texte.text)
 	await capture("12b_chemin_degage")
 	# 🧹 Toute rue boueuse se déblaie pendant le chantier, sur le chemin ou non (auteur, 2026-09-26).
 	var boueuse := -1

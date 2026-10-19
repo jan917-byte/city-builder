@@ -56,8 +56,8 @@ func executer() -> void:
 	ui.ouvrir_lieu("universite")
 	actualiser(t)
 	verifier(ui._etude_bloc.visible and not ui._leviers_crue["berge"].is_visible_in_tree()
-		and ui._etude_biblio.get_meta("anneau").visible and o.page_nouvelle("eponge"),
-		"L'université renvoie à la bibliothèque, qui clignote ; aucun levier chez elle")
+		and not ui._etude_biblio.has_meta("anneau") and o.page_nouvelle("eponge"),
+		"L'université renvoie à la bibliothèque, sans jaune ; aucun levier chez elle")
 	await cliquer(ui._etude_biblio)
 	actualiser(t)
 	verifier(ui._page_bloc.visible and ui._leviers_crue["berge"].is_visible_in_tree()

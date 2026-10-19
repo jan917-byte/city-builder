@@ -1,7 +1,7 @@
 extends "res://outils/essai_rebatir.gd"
 ## --script res://outils/essai_concours.gd -- --ouverture [--captures]
-## 🏛️ Le concours facultatif (104 revue, 2026-10-19) : les quatre projets sans lui ;
-## lancé, un mois et 120 k€ pour toute la zone, puis les projets neufs coûtent moins.
+## 🏛️ Le concours (auteur, 2026-10-19 au soir) : seul chemin vers les projets neufs ;
+## annoncé par une carte, un mois et 120 k€ pour toute la zone, puis les lauréats.
 
 const LAVOIR := 62     # aucune maison détruite : ni projets ni concours (auteur, 2026-10-06)
 const COLOMBIER := 63  # 4,3 m d'eau
@@ -43,38 +43,37 @@ func executer() -> void:
 			print("%4d  %-26s %-9s  %7.0f  %10.0f" % [fid, ui.lieux.nom("i", fid).left(26), f,
 				v.cout_reparation_ke("i", fid, false, f), v.cout_reparation_ke("i", fid, false, f, t0)])
 
-	# --- Le noyau : sans concours, les quatre façons ; le Lavoir, comme avant ou pilotis.
+	# --- Le noyau : sans concours, comme avant seul ; le Lavoir, comme avant seul.
 	_apres_etude(t0)
 	v.crediter_essai_ke(5000.0)
-	var plein: float = v.cout_reparation_ke("i", m, false, "moderne", t0)
-	verifier(is_equal_approx(plein, v.base("i", m, "cout_reparation_ke") * 1.3),
-		"Sans concours, le moderne coûte son prix plein : %.0f k€" % plein)
-	verifier(v.commander("i", m, {"reparer": "moderne"}, t0)["ok"] and v.facon_reparation(m) == "moderne",
-		"Sans concours, le moderne s'engage")
-	verifier(not v.facon_permise(LAVOIR, "moderne", t0) and not v.facon_permise(LAVOIR, "parc", t0)
-		and v.facon_permise(LAVOIR, "tradition", t0), "Au Lavoir, ni moderne ni parc")
+	verifier(not v.facon_permise(m, "moderne", t0) and not v.facon_permise(m, "pilotis", t0)
+		and not v.commander("i", m, {"reparer": "moderne"}, t0)["ok"] and v.facon_permise(m, "tradition", t0),
+		"Sans concours, aucun projet neuf, pas même les pilotis acquis")
+	verifier(not v.facon_permise(LAVOIR, "moderne", t0) and not v.facon_permise(LAVOIR, "pilotis", t0)
+		and v.facon_permise(LAVOIR, "tradition", t0), "Au Lavoir, comme avant seul")
 	verifier(not v.lancer_concours(LAVOIR, t0), "Le Lavoir, maisons debout, ne lance pas de concours")
-	v._recherche.erase(jeu.Recherche.PARC)
-	verifier(not v.facon_permise(m, "parc", t0) and not v.commander("i", FOUR, {"reparer": "parc"}, t0)["ok"],
-		"Sans la recherche de l'institut, pas de parc inondable")
 
-	# --- La fiche, l'étude parue : reconstruire tout de suite, les projets, ou le concours.
+	# --- La fiche, l'étude parue : la carte du concours, puis deux choix.
 	_apres_etude(t0)
 	var caisse0: float = v.caisse_ke(t0)
 	jeu._sur_choix("i", m)
 	jeu._rafraichir(true)
+	var o = jeu.ouverture
+	verifier(o.carte == "concours" and o.annonce.visible and "120 k€" in o._annonce_texte.text,
+		"La première fiche aux maisons tombées annonce le concours : %s" % o._annonce_texte.text)
+	await capture("concours_00_carte")
+	await cliquer(o.annonce_principal)
+	jeu._rafraichir(true)
+	verifier(not o.annonce.visible and o.carte_concours == 2, "La carte se ferme au clic")
 	verifier(ui._fiche_fid == m and ui._rebatir_boutons["tradition"].visible
-		and ui._projets_bouton.visible and ui._concours_bouton.visible
-		and "20 %" in ui._concours_bouton.text and not ui._rebatir_boutons["parc"].visible,
-		"La fiche offre reconstruire, les quatre projets et le concours : %s" % ui._concours_bouton.text)
+		and ui._rebatir_boutons["tradition"].text == "Reconstruire l'îlot"
+		and not ui._rebatir_boutons["pilotis"].visible and not ui._projets_bouton.visible
+		and ui._concours_bouton.visible and ui._concours_bouton.text == "Lancer un concours d'architectes",
+		"La fiche n'offre que reconstruire et le concours : %s" % ui._concours_bouton.text)
 	jeu.examiner("i", m)
+	jeu._rafraichir(true)
+	verifier(o.carte == "", "La carte ne revient pas")
 	await capture("concours_01_fiche")
-	await _ouvrir_projets(ui)
-	verifier(ui._projets_panneau.visible and ui._projets_titre.text.begins_with("Projets")
-		and not "concours" in _lignes(ui, "moderne"),
-		"Sans concours, les projets s'ouvrent au prix plein : %s" % _lignes(ui, "moderne"))
-	await capture("concours_02_projets_sans")
-	ui.fermer_projets()
 	await cliquer(ui._concours_bouton)
 	verifier(ui._pose.get("concours", false) == true, "« Lancer un concours » se pose")
 	jeu._rafraichir(true)
@@ -85,22 +84,27 @@ func executer() -> void:
 	verifier(v.concours_lance() and absf(caisse0 - v.caisse_ke(t0) - v.CONCOURS_KE) < 0.5,
 		"Mettre en place lance le concours et le paie")
 	verifier(ui._concours_bouton.visible and ui._concours_bouton.disabled
-		and ui._concours_bouton.text == "Concours en cours" and ui._rebatir_boutons["tradition"].visible,
+		and ui._concours_bouton.text == "Concours en cours" and ui._rebatir_boutons["tradition"].visible
+		and not ui._projets_bouton.visible,
 		"Pendant le mois, la fiche dit qu'on attend, et reconstruire reste offert")
 	var site := "i%d" % m
 	verifier(not jeu.travaux.sites.has(site) or not (jeu.travaux.sites[site] as Node3D).visible,
 		"Pendant le concours, ni grue ni palissade sur l'îlot")
 	await capture("concours_03_en_cours")
 
-	# --- Un mois plus tard : rendu pour toute la zone, les projets neufs à −20 %.
+	# --- Un mois plus tard : rendu pour toute la zone, les projets des lauréats.
 	actualiser(t0 + 1.05)
-	verifier(v.concours_rendu(jeu.mois) and ui._projets_bouton.visible and not ui._concours_bouton.visible,
-		"Rendu, le bouton du concours s'efface")
+	verifier(v.concours_rendu(jeu.mois) and ui._projets_bouton.visible and not ui._concours_bouton.visible
+		and ui._projets_bouton.text == "Voir les projets des lauréats",
+		"Rendu, le concours s'efface et les projets paraissent : %s" % ui._projets_bouton.text)
 	verifier("20 %" in str(ui.retours.journal[-1]), "Le bandeau dit le rabais : %s" % ui.retours.journal[-1])
+	var plein: float = v.base("i", m, "cout_reparation_ke") * 1.3
 	verifier(is_equal_approx(v.cout_reparation_ke("i", m, false, "moderne", jeu.mois), plein * rabais)
 		and is_equal_approx(v.cout_reparation_ke("i", m, false, "tradition", jeu.mois),
 			v.base("i", m, "cout_reparation_ke")),
 		"Lauréat : le moderne à −20 %, « comme avant » inchangé")
+	verifier(v.facon_permise(m, "moderne", jeu.mois) and v.facon_permise(m, "pilotis", jeu.mois),
+		"Rendu, le moderne et les pilotis s'offrent")
 	await _ouvrir_projets(ui)
 	verifier(ui._projets_panneau.visible and "Forgerons" in ui._projets_titre.text
 		and ui._projets_titre.text.begins_with("Lauréats")
@@ -151,8 +155,9 @@ func executer() -> void:
 	jeu.examiner("i", LAVOIR)
 	jeu._rafraichir(true)
 	verifier(ui._rebatir_boutons["tradition"].visible and not ui._concours_bouton.visible
-		and not ui._projets_bouton.visible,
-		"Au Lavoir, la fiche n'offre que reconstruire (et les pilotis)")
+		and not ui._projets_bouton.visible
+		and ui._rebatir_boutons["tradition"].text == "Nettoyer et remettre en état",
+		"Au Lavoir, la fiche n'offre que nettoyer : %s" % ui._rebatir_boutons["tradition"].text)
 	await capture("concours_07_lavoir")
 
 	# --- La sauvegarde garde le concours.
