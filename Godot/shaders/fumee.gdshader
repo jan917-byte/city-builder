@@ -2,8 +2,7 @@
 // hiver. Une bouffée = un carré face caméra qui monte, grossit, part au vent.
 // 🔴 Flaggable (90) : rendu choisi par Claude, provisoire (2026-10-19).
 shader_type spatial;
-render_mode blend_mix, depth_draw_never, cull_disabled, skip_vertex_transform,
-	specular_disabled, shadows_disabled;
+render_mode blend_mix, depth_draw_never, cull_disabled, skip_vertex_transform, unshaded;
 #include "res://shaders/saison.gdshaderinc"
 
 // La même montée que la ville (`materiaux.gd`, DENSE_VERTEX) : la souche suit son toit.
@@ -36,16 +35,15 @@ void vertex() {
 	vec3 centre = MODEL_MATRIX[3].xyz + vec3(d.x, leve + 0.3 + h, d.y);
 	float taille = mix(0.7, 4.2, sqrt(age)) * mix(0.75, 1.15, f);
 	VERTEX = (VIEW_MATRIX * vec4(centre, 1.0)).xyz + vec3(VERTEX.xy * taille, 0.0);
-	NORMAL = vec3(0.0, 0.0, 1.0);
-	opacite = allume * smoothstep(0.0, 0.08, age) * pow(1.0 - age, 1.6) * mix(0.25, 0.6, f);
+	opacite = allume * smoothstep(0.0, 0.08, age) * pow(1.0 - age, 1.6) * mix(0.25, 0.75, f);
 	graine = c.z * 37.0;
 }
 
 void fragment() {
 	float r = length(UV - 0.5) * 2.0;
 	float n = saison_bruit(UV * 3.0 + graine) * 0.6 + saison_bruit(UV * 7.0 - graine) * 0.4;
-	ALBEDO = vec3(0.78, 0.78, 0.80);
-	EMISSION = ALBEDO * 0.15;
-	ROUGHNESS = 1.0;
+	// Sans lumière, sinon le soleil la blanchit quelle que soit sa teinte, et sur
+	// la neige elle se perdait (auteur, 2026-10-19). Le jeu n'a pas de nuit.
+	ALBEDO = mix(vec3(0.30, 0.30, 0.31), vec3(0.15, 0.15, 0.16), saison_neige);
 	ALPHA = smoothstep(1.0, 0.25, r + (n - 0.5) * 0.7) * opacite;
 }

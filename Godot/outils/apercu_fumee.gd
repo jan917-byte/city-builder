@@ -23,6 +23,8 @@ func capturer() -> void:
 	if jeu.ouverture != null:
 		jeu.ouverture.hide()
 		jeu.ouverture._reperes.hide()
+		# Le guide recadre la caméra au fil des images : sans ceci, deux vues sur quatre partaient ailleurs.
+		jeu.ouverture.process_mode = Node.PROCESS_MODE_DISABLED
 	jeu.set_process(false)
 	jeu.paysage.mat_nuages.set_shader_parameter("horloge", 0.0)
 	(jeu.flocons.material as ShaderMaterial).set_shader_parameter("horloge", 3.0)
@@ -68,3 +70,8 @@ func _vue(v: Array, mois: float) -> void:
 	for f in 6:
 		await process_frame
 		await RenderingServer.frame_post_draw
+	jeu.pivot._zoom_actif = false
+	jeu._viser_objet(v[1][0], int(v[1][1]), float(v[2]))
+	jeu.pivot.caler(float(v[3]), float(v[4]))
+	await process_frame
+	await RenderingServer.frame_post_draw
