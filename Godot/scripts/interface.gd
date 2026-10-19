@@ -1293,6 +1293,11 @@ func _icone(nom: String, taille := 25, coul := TEXTE, angle := 0) -> Texture2D:
 	var cle := "%s_%d_%s_%d" % [nom, taille, coul.to_html(false), angle]
 	if _icones.has(cle):
 		return _icones[cle]
+	# ✏️ Un dessin de l'auteur dans `res://icones/` passe avant la table, en ses couleurs.
+	var dessin := _icone_dessinee(nom, taille)
+	if dessin != null:
+		_icones[cle] = dessin
+		return dessin
 	# 🎨 `@` = LA COULEUR DU TRAIT : c'est ce qui permet un aplat (`fill='@'`)
 	# dans une table qui est sinon tout en traits.
 	var corps: String = str(DESSINS.get(nom, DESSINS["diagnostic"])) 		.replace("@", "#" + coul.to_html(false))
@@ -1312,6 +1317,25 @@ func _thermometre(celsius: float, taille: int, coul: Color) -> Texture2D:
 	var haut := lerpf(15.5, 5.0, clampf(degre / 22.0, 0.0, 1.0))
 	var corps := "<g stroke-opacity='0.35'>%s</g>" % DESSINS["temperature"] + 		"<path stroke-width='2.4' d='M12 18V%.1f'/><circle cx='12' cy='18' r='1.8' fill='@'/>" % haut
 	return _rendre_icone(cle, corps.replace("@", "#" + coul.to_html(false)), taille, coul)
+
+
+## La plus grande dimension du viewBox tient dans `taille`.
+## ⚠️ Lu en fichier brut : à ajouter au filtre d'export le jour où on exporte.
+static func _icone_dessinee(nom: String, taille: int) -> Texture2D:
+	var chemin := "res://icones/%s.svg" % nom
+	if not FileAccess.file_exists(chemin):
+		return null
+	var svg := FileAccess.get_file_as_string(chemin)
+	var vb := RegEx.create_from_string("viewBox=\"[\\d.]+ [\\d.]+ ([\\d.]+) ([\\d.]+)\"").search(svg)
+	var cote := maxf(float(vb.get_string(1)), float(vb.get_string(2))) if vb else 24.0
+	var img := Image.new()
+	if img.load_svg_from_string(svg, float(taille) / cote) != OK:
+		return null
+	return ImageTexture.create_from_image(img)
+
+
+static func est_dessinee(nom: String) -> bool:
+	return FileAccess.file_exists("res://icones/%s.svg" % nom)
 
 
 func _rendre_icone(cle: String, corps: String, taille: int, coul: Color) -> Texture2D:
@@ -1690,6 +1714,12 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	b.tooltip_text = bulle
 	_habiller_tuile_rail(b)
+	if est_dessinee(icone):
+		# Plus grand que le trait : il remplit son carré, et l'auteur le voulait plus gros.
+		b.icon = _icone(icone, 36, Color.WHITE)
+		# Un dessin en couleurs ne se teinte pas : le brun du thème l'aurait noirci.
+		for etat in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:
+			b.add_theme_color_override(etat, Color.WHITE)
 	# 🧭 L'anneau de la tuile que le guide demande (`_maj_rail`).
 	_anneau_appel(b, 12)
 	return b
@@ -4100,6 +4130,14 @@ func _clic_historique(e: InputEvent) -> void:
 
 
 ## Un compteur de la barre, avec le filet qui le précède.
+## Les points d'un objectif atteint dont la fiole vole encore (`objectifs.gd`).
+var points_en_vol := 0
+
+
+func actualiser_points(mois: float) -> void:
+	(_barre_valeurs["recherche"] as Label).text = str(Recherche.points(ville, mois) - points_en_vol)
+
+
 func _montrer_compteur(cle: String, oui: bool) -> void:
 	var bloc: Control = (_barre_valeurs[cle] as Label).get_parent()
 	bloc.visible = oui
@@ -4637,8 +4675,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 				(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
 		# 🎓 Les points dès que l'institut est atteignable, ou dès le premier objectif atteint
 		# (auteur, 2026-10-18) : on les voit monter avant de pouvoir les dépenser.
-		var points: Label = _barre_valeurs["recherche"]
-		points.text = str(Recherche.points(ville, mois))
+		actualiser_points(mois)
 		_montrer_compteur("recherche", etude_publiee() or _financements() or not ville._objectifs.is_empty())
 		var degres: float = saison.temperature(mois) if saison != null else Calendrier.temperature(mois)
 		(_barre_valeurs["temperature"] as Label).text = "%s °C" % _nb(degres, 0)

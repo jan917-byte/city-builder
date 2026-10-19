@@ -31,6 +31,9 @@ const ATTEINT_ALPHA := [0.45, 0.28, 0.15]
 const REMPLIR_S := 0.5
 const TENIR_S := 0.9   # le cercle plein reste en place avant de monter
 const MONTER_S := 0.6
+const VOLER_S := 0.8
+## Le bleu du compteur de recherche, éclairci pour se lire sur la carte.
+const BLEU := Color8(165, 192, 240)
 
 var jeu
 var _scene: Control
@@ -53,6 +56,17 @@ class Cercle extends Control:
 		if remplissage > 0.0:
 			draw_circle(c, 6.0 * remplissage, plein)
 		draw_arc(c, 6.0, 0.0, TAU, 32, plein if remplissage >= 1.0 else encre, 1.5, true)
+
+
+## La fiole : posée au bout d'une ligne (ce que l'objectif rapporte), puis en vol vers le
+## compteur. Node2D : une Control s'arrondit au pixel et le vol saccaderait (`bulles.gd`).
+class Fiole extends Node2D:
+	var icone: Texture2D
+
+	func _draw() -> void:
+		var o := -icone.get_size() / 2.0
+		draw_texture(icone, o + Vector2(1, 1), Color(0, 0, 0, 0.5))
+		draw_texture(icone, o)
 
 
 func batir(maquette) -> void:
@@ -212,8 +226,10 @@ func _ranger(id: String, y: float, alpha: float, attente: float, fait: bool) -> 
 	var c: Cercle = l.get_child(0)
 	if fait and c.remplissage == 0.0 and not l.has_meta("remplit"):
 		c.remplissage = 1.0
+		l.get_child(2).visible = false
 	elif not fait:
 		c.remplissage = 0.0
+		l.get_child(2).visible = true
 	# Appelé à chaque actualisation : on ne relance que si la place change, sinon l'attente
 	# du cercle plein serait écrasée.
 	if l.get_meta("cible", Vector2(-1, -1)) == Vector2(y, alpha):
@@ -245,6 +261,24 @@ func _ligne(id: String, fait: bool) -> HBoxContainer:
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	t.custom_minimum_size.y = LIGNE
 	l.add_child(t)
+	# A (auteur, 2026-10-19) : ce que l'objectif rapporte, au bout de la ligne.
+	var gain := HBoxContainer.new()
+	gain.add_theme_constant_override("separation", 1)
+	gain.visible = not fait
+	var plus: Label = ui._label("+1", 13, BLEU)
+	plus.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
+	plus.add_theme_constant_override("outline_size", 4)
+	plus.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	plus.custom_minimum_size.y = LIGNE
+	gain.add_child(plus)
+	var place := Control.new()
+	place.custom_minimum_size = Vector2(14, LIGNE)
+	var f := Fiole.new()
+	f.icone = ui._icone("recherche", 14, BLEU)
+	f.position = Vector2(7, LIGNE / 2.0)
+	place.add_child(f)
+	gain.add_child(place)
+	l.add_child(gain)
 	_scene.add_child(l)
 	return l
 
@@ -259,17 +293,51 @@ func _effacer(l: Control, attente: float) -> void:
 	tw.chain().tween_callback(l.queue_free)
 
 
-## Le cercle se remplit, le point monte sous le compteur ; `actualiser` range ensuite la ligne
-## avec les atteints.
+## Le cercle se remplit, puis la fiole du bout de la ligne vole jusqu'au compteur (B, auteur,
+## 2026-10-19) ; `actualiser` range ensuite la ligne avec les atteints.
 func _reussir(id: String) -> void:
 	var ui = jeu.interface
+	# Le compteur n'avance qu'à l'arrivée de la fiole.
+	ui.points_en_vol += 1
 	var l: HBoxContainer = _lignes.get(id)
 	if l == null:
-		# Hors des lignes montrées : le point se dit quand même, la ligne paraîtra pleine.
-		ui.bulles.sous(ui._barre_valeurs.get("recherche"), "+1", "recherche", ui.FAIT_TEXTE)
+		# Hors des lignes montrées : la fiole part du bas du bloc.
+		_voler(global_position + Vector2(LARGEUR * 0.5, size.y), 0.0)
 		return
 	l.set_meta("remplit", true)
+	var gain: Control = l.get_child(2)
 	var tw := l.create_tween()
 	tw.tween_property(l.get_child(0), "remplissage", 1.0, REMPLIR_S)
 	tw.tween_callback(func() -> void:
-		ui.bulles.sous(ui._barre_valeurs.get("recherche"), "+1", "recherche", ui.FAIT_TEXTE))
+		var depart: Vector2 = gain.get_child(1).get_global_rect().get_center()
+		gain.visible = false
+		_voler(depart, 0.0))
+
+
+func _voler(depart: Vector2, attente: float) -> void:
+	var ui = jeu.interface
+	var f := Fiole.new()
+	f.icone = ui._icone("recherche", 22, BLEU)
+	f.position = depart
+	ui.add_child(f)
+	var tw := f.create_tween()
+	tw.tween_interval(attente)
+	# Le compteur peut paraître pendant le vol (premier objectif) : la cible se relit à chaque pas.
+	tw.tween_method(func(t: float) -> void:
+		var bloc: Control = ui._barre_valeurs["recherche"].get_parent()
+		var cible: Vector2 = bloc.get_child(0).get_global_rect().get_center()
+		var haut := Vector2(lerpf(depart.x, cible.x, 0.3), minf(depart.y, cible.y) + 0.35 * absf(cible.y - depart.y))
+		var u := 1.0 - t
+		f.position = u * u * depart + 2.0 * u * t * haut + t * t * cible
+		f.scale = Vector2.ONE * lerpf(1.0, 1.3, sin(t * PI)),
+		0.0, 1.0, VOLER_S).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func() -> void:
+		f.queue_free()
+		ui.points_en_vol = maxi(0, ui.points_en_vol - 1)
+		ui.actualiser_points(jeu.mois)
+		var bloc: Control = ui._barre_valeurs["recherche"].get_parent()
+		bloc.pivot_offset = bloc.size / 2.0
+		var bond := bloc.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		bloc.scale = Vector2.ONE * 1.3
+		bond.tween_property(bloc, "scale", Vector2.ONE, 0.35)
+		ui.bulles.sous(bloc, "+1", "recherche", ui.FAIT_TEXTE))

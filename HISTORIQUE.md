@@ -803,6 +803,6 @@ Essais ouverture (objectifs, points, reprise), étude, déblaiement, progression
 **2026-10-18 tard — L'institut vend toutes les actions, en arbre ; les points ne viennent que des objectifs ; le pont rouvert publie à nouveau l'étude.**
 Demande de l'auteur : l'université seule au pont, plus rien d'ouvert d'office (densifier compris) ; 12 sujets (Pilotis et Parc inondable en racines), un objectif par action achetée, plus de points de départ ni de janvier ; les subventions suivent leur action. Revient sur « plus d'étude au pont » et sur les pages qui ouvraient les leviers.
 Essais ouverture, étude, déblaiement, progression, relogement, rebâtir, vie_camp, labour, concours à 0 échec ; livre 1 et sauvegarde 92 comme avant. Capture de l'arbre à faire (l'auteur jouait).
-**2026-10-19 — Les objectifs atteints restent au-dessus, de plus en plus pâles ; le bloc perd sa boîte sombre.**
-Demande de l'auteur (« plus discrets ») : texte 13 au lieu de 15 avec un liseré sombre, posé sur la carte ; les trois derniers atteints gardés (pâleur 0,45 / 0,28 / 0,15), le plus ancien sort par le haut.
+**2026-10-19 — Les objectifs atteints restent au-dessus, de plus en plus pâles ; le bloc perd sa boîte sombre ; chaque ligne montre « +1 fiole » et la fiole vole jusqu'au compteur.**
+Demande de l'auteur (« plus discrets ») : texte 13 au lieu de 15 avec un liseré sombre, posé sur la carte ; les trois derniers atteints gardés (pâleur 0,45 / 0,28 / 0,15), le plus ancien sort par le haut. Options A+B choisies par l'auteur : la récompense sur la ligne, puis le vol ; le compteur n'avance qu'à l'arrivée.
 Sur le Mac, essai ouverture à 82 échecs avec ou sans la modification (récit, clics perdus) : à reprendre sous Windows. Planche wehrau_ouverture_objectifs_1 à _6.
