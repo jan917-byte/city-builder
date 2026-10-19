@@ -41,6 +41,9 @@ func executer() -> void:
 		"Le pont rouvert, aucune carte : le guide envoie à la mairie : %s" % o._texte.text)
 	verifier(not tuile("mairie").disabled and entouree("mairie") and not univ.visible,
 		"La tuile de la mairie s'ouvre et s'entoure, l'université reste cachée")
+	# La tuile vient de s'ouvrir : la colonne se range à l'image suivante, la flèche avec.
+	await process_frame
+	ui._maj_rail()
 	await capture("mairie_00_appel")
 	await cliquer(tuile("mairie"))
 	var prog: Dictionary = ui._lieu_lignes["programme_concours"]
