@@ -100,6 +100,9 @@ from export_godot.reglages import (
     HAIE_HAUTEUR,
     HAIE_HAUTEUR_FOND,
     ACROTERE,
+    attiques,
+    finis,
+    installations,
     AIRE_JARDIN_MIN,
     ALLEE_PARKING,
     BANDE_CHAMP,
@@ -1433,6 +1436,9 @@ def main():
               % (DEBORD_TOIT, n_pentu, ACROTERE))
         print("        %d souches de cheminée (%.0f %% des toits pentus)"
               % (cheminees[0], 100.0 * cheminees[0] / max(n_pentu, 1)))
+        print("        bâti moderne : %d attiques, %d installations sur %d toits"
+              " plats ; finis gravier %d · membrane %d · dalles %d"
+              % (attiques[0], installations[0], installations[1], *finis))
         # 🪟 LES FAÇADES. Ce tableau est le seul endroit où le percement se
         # vérifie sans lancer Godot : il dit ce que l'export a DÉCIDÉ, pas ce
         # que le shader dessine. Le dessin, lui, se juge à l'écran (§3 bis).

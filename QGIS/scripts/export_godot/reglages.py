@@ -678,6 +678,27 @@ CHEMINEE_AIRE_MIN = 45.0   # une remise de fond de cour n'a pas de cheminée
 
 PART_CHEMINEES = 0.80      # pas toutes : une rangée régulière serait un peigne
 
+# 🏢 LE BÂTI MODERNE (FAMILLE_FACADE 4 et 6), demande de l'auteur du 2026-10-19 :
+# un attique sur toute l'emprise, en léger retrait, et des toits plats équipés.
+# Cosmétique : l'attique ne loge personne, `logements` sort du plancher (04d).
+ATTIQUE_FAMILLES = (4, 6)
+ATTIQUE_PART = 0.45        # des bâtiments éligibles qui en portent un
+ATTIQUE_AIRE_MIN = 140.0   # m² d'emprise : sous ça, l'attique fait cabanon
+ATTIQUE_RETRAIT = 1.2      # m depuis la façade : il doit se lire en recul
+ATTIQUE_LARGEUR_MIN = 4.5
+
+# Le fini du toit plat, voyage en dixièmes dans UV2.x (−famille − k/10) :
+# 0 gravier, 1 membrane en lés, 2 dalles sur plots. Parts par famille.
+FINIS_TOIT = {4: (0.50, 0.30, 0.20), 6: (0.35, 0.35, 0.30)}
+
+# Les installations techniques : les cages d'escalier et un écran technique,
+# alignés au milieu du toit. Le semis de caissons et d'extracteurs a été refusé
+# (auteur, 2026-10-19 : « trop random », « pas fan »).
+EDICULE = ((1.8, 2.2), (2.0, 2.4), (1.6, 1.9))    # (côté u, côté v, hauteur) m
+ECRAN = (6.0, 3.0, 1.0)                           # longueur, largeur, hauteur max.
+TOIT_NU = 0.15             # des toits plats sans rien dessus, sinon c'est un motif
+TOIT_GRAND = 300.0         # m² : au-delà, toujours équipé (ascenseurs, ventilation)
+
 # ============================ LES FENÊTRES (2026-08-18) ==================
 # 🪟 DEMANDÉES PAR L'AUTEUR le 2026-08-18, juste après le lot toits + sol. La
 # note d'étape disait « pas les fenêtres » ; elle ne le dit plus.
@@ -996,6 +1017,17 @@ rectangles = [0]        # volumes ramenés à une boîte
 minces = [0]            # empreintes trop fines, rendues au jardin
 
 cheminees = [0]         # souches posées — 2026-08-18
+
+attiques = [0]          # [attiques posés] — 2026-10-19
+
+installations = [0, 0]  # [objets posés, toits plats modernes équipés]
+
+finis = [0, 0, 0]       # toits plats modernes : gravier, membrane, dalles
+
+# Le métal de l'écran technique. ⚠ flaggable (90).
+COUL_CAISSON = PAL.vers_lineaire("#A9ACAD")
+# Ce vers quoi tire la teinte du toit selon son fini (membrane, dalles).
+COUL_FINIS = (None, PAL.vers_lineaire("#9C9D99"), PAL.vers_lineaire("#B4AEA3"))
 
 # La brique enduite de la souche, une fois pour toutes : convertie à l'import
 # plutôt qu'à chaque bâtiment, et posée ici pour qu'aucun appel de `_toit`

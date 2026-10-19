@@ -300,6 +300,21 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tvec2 gt = vec2(dot(pos_monde, axe_t), dot(pos_monde, vec3(-axe_t.z, 0.0, axe_t.x)));\n" \
 		+ "\t\tfloat aat = max(max(fwidth(gt.x), fwidth(gt.y)), 0.0005);\n" \
 		+ "\t\tbase *= mix(1.0, 0.93 + 0.14 * bruit(pos_monde.xz * 2.3), clamp(1.2 - 3.0 * aat, 0.0, 1.0));\n" \
+		+ "\t\t// 🏢 Le fini du bâti moderne (07, dixièmes de UV2.x) : 1 membrane\n" \
+		+ "\t\t// en lés d'un mètre, joints soudés clairs ; 2 dalles de 60 cm.\n" \
+		+ "\t\tfloat fini = floor(fract(-UV2.x) * 10.0 + 0.5);\n" \
+		+ "\t\tif (fini > 0.5 && fini < 1.5) {\n" \
+		+ "\t\t\tfloat al = max(fwidth(gt.y), 0.0005);\n" \
+		+ "\t\t\tfloat dl = abs(fract(gt.y + 0.5) - 0.5);\n" \
+		+ "\t\t\tbase *= mix(1.0, mix(1.12, 1.0, smoothstep(0.035 - al, 0.035 + al, dl)), clamp(1.3 - 4.0 * al, 0.0, 1.0));\n" \
+		+ "\t\t} else if (fini > 1.5) {\n" \
+		+ "\t\t\tvec2 dd = gt / 0.6;\n" \
+		+ "\t\t\tfloat ad = max(max(fwidth(dd.x), fwidth(dd.y)), 0.0005);\n" \
+		+ "\t\t\tvec2 fd = abs(fract(dd + 0.5) - 0.5);\n" \
+		+ "\t\t\tfloat jd = smoothstep(0.05 - ad, 0.05 + ad, min(fd.x, fd.y));\n" \
+		+ "\t\t\tfloat hd = fract(sin(dot(floor(dd), vec2(12.9898, 78.233))) * 43758.545);\n" \
+		+ "\t\t\tbase *= mix(1.0, mix(0.80, 0.96 + 0.08 * hd, jd), clamp(1.3 - 4.0 * ad, 0.0, 1.0));\n" \
+		+ "\t\t}\n" \
 		+ "\t\tif (UV2.x < -4.5 && UV2.x > -5.5) {\n" \
 		+ "\t\t\tfloat t = abs(fract(gt.x / 7.5) - 0.5) * 7.5;\n" \
 		+ "\t\t\tfloat verriere = smoothstep(0.60 + aat, 0.60 - aat, t);\n" \

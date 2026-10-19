@@ -19,6 +19,22 @@ from .geometrie import (
 )
 from .reglages import (
     ACROTERE,
+    ATTIQUE_AIRE_MIN,
+    ATTIQUE_FAMILLES,
+    ATTIQUE_LARGEUR_MIN,
+    ATTIQUE_PART,
+    ATTIQUE_RETRAIT,
+    COUL_CAISSON,
+    COUL_FINIS,
+    EDICULE,
+    ECRAN,
+    FACADE_BANDEAU,
+    FINIS_TOIT,
+    TOIT_GRAND,
+    TOIT_NU,
+    attiques,
+    finis,
+    installations,
     AIRE_JARDIN_MIN,
     ANGLE_MIN_DEG,
     AO_HAUTEUR,
@@ -626,27 +642,181 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
         m.sol = None
         return ok, n, h, t
 
-    haut_ok = 0
-    tris = trianguler(anneau)
-    for ia, ib, ic in tris:
-        a, b, c = anneau[ia], anneau[ib], anneau[ic]
-        pa = G(a[0], a[1], y_haut)
-        pb = G(b[0], b[1], y_haut)
-        pc = G(c[0], c[1], y_haut)
-        # 🌿 UV2 = (−famille, rang) sur un toit : ≤ 0 n'est pas une façade,
-        # donc les fenêtres ne s'y percent pas ; la famille y pose les
-        # verrières des halles ; `rang` dit au shader si CE toit-ci verdit en
-        # entier. Les versants gardent (0, 0) : ils ne verdissent jamais.
-        m.triangle(pa, pb, pc, coul_toit, axe_toit=axe_uv,
-                   genre=(-float(famille), rang_vert))
-        if normale(pa, pb, pc)[1] > 0.0:
-            haut_ok += 1
+    # 🏢 Le bâti moderne : un fini de toit tiré du lieu, puis attique et installations.
+    moderne = famille in ATTIQUE_FAMILLES and abs(aire_signee(anneau)) >= 20.0
+    rng = random.Random(_graine_lieu(anneau) ^ 0xA771)
+    fini = 0
+    if moderne:
+        parts = FINIS_TOIT[famille]
+        t = rng.random()
+        fini = 0 if t < parts[0] else 1 if t < parts[0] + parts[1] else 2
+        finis[fini] += 1
+        if COUL_FINIS[fini] is not None:
+            coul_toit = tuple(a * 0.45 + b * 0.55
+                              for a, b in zip(coul_toit, COUL_FINIS[fini]))
+    # 🌿 UV2 = (−famille − fini/10, rang) sur un toit : ≤ 0 n'est pas une
+    # façade, donc les fenêtres ne s'y percent pas ; la famille y pose les
+    # verrières des halles ; `rang` dit au shader si CE toit-ci verdit en
+    # entier. Les versants gardent (0, 0) : ils ne verdissent jamais.
+    genre_toit = (-float(famille) - fini / 10.0, rang_vert)
+    haut_ok, n_tris = _dessus(m, anneau, y_haut, coul_toit, axe_uv,
+                              genre_toit, G)
     # L'acrotère est posé sur TOUS les toits plats : un dessus rasé se lit
     # comme une boîte coupée.
     if abs(aire_signee(anneau)) >= 20.0:
         _acrotere(m, anneau, y_haut, tuple(c * 0.88 for c in coul), G)
+    if moderne:
+        att = _attique_empreinte(anneau, rng)
+        if att is not None:
+            attiques[0] += 1
+            genre_mur = (float(FACADE_BANDEAU if famille == 4
+                               else FACADE_LOGEMENT),
+                         famille + min(alea, 0.998))
+            a, b = _murs(m, att, y_haut - 0.05, y_haut + ETAGE_M, coul,
+                         genre_mur, G)
+            ok, n = ok + a, n + b
+            a, b = _dessus(m, att, y_haut + ETAGE_M, coul_toit, axe_uv,
+                           genre_toit, G)
+            haut_ok, n_tris = haut_ok + a, n_tris + b
+            _acrotere(m, att, y_haut + ETAGE_M,
+                      tuple(c * 0.88 for c in coul), G)
+        # Sur l'attique s'il y en a un : le retrait autour est trop étroit.
+        if att is None:
+            _installations(m, anneau, y_haut, coul, rng, G)
+        else:
+            _installations(m, att, y_haut + ETAGE_M, coul, rng, G,
+                           edicules=False)
     m.sol = None
-    return ok, n, haut_ok, len(tris)
+    return ok, n, haut_ok, n_tris
+
+
+def _dessus(m, anneau, y, coul, axe_uv, genre, G):
+    """Un toit plat triangulé à `y`. Rend (faces vers le ciel, faces)."""
+    ok = 0
+    tris = trianguler(anneau)
+    for ia, ib, ic in tris:
+        a, b, c = anneau[ia], anneau[ib], anneau[ic]
+        pa, pb, pc = G(a[0], a[1], y), G(b[0], b[1], y), G(c[0], c[1], y)
+        m.triangle(pa, pb, pc, coul, axe_toit=axe_uv, genre=genre)
+        if normale(pa, pb, pc)[1] > 0.0:
+            ok += 1
+    return ok, len(tris)
+
+
+def _murs(m, anneau, y_bas, y_haut, coul, genre, G):
+    """Les murs d'un attique : percés si assez longs (FACADE_MIN), sinon
+    aveugles. Anneau trigonométrique. Rend (murs dehors, murs)."""
+    ok = 0
+    n = len(anneau)
+    for i in range(n):
+        a, b = anneau[i], anneau[(i + 1) % n]
+        pa_b, pb_b = G(a[0], a[1], y_bas), G(b[0], b[1], y_bas)
+        pa_h, pb_h = G(a[0], a[1], y_haut), G(b[0], b[1], y_haut)
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy)
+        perce = L >= FACADE_MIN
+        pied, tete = (0.0, L), (L, L)
+        # La couture au toit du dessous : un pied à l'ombre de l'acrotère.
+        m.triangle(pa_b, pb_b, pb_h, coul, (0.80, 0.80, 1.0),
+                   facade=(pied, tete, tete) if perce else None,
+                   genre=genre if perce else None)
+        m.triangle(pa_b, pb_h, pa_h, coul, (0.80, 1.0, 1.0),
+                   facade=(pied, tete, pied) if perce else None,
+                   genre=genre if perce else None)
+        nn = normale(pa_b, pb_b, pb_h)
+        if L > 1e-9 and (nn[0] * dy + nn[2] * dx) / L > 0.9:
+            ok += 1
+    return ok, n
+
+
+def _attique_empreinte(anneau, rng):
+    """L'emprise de l'attique : tout le toit, rentré de ATTIQUE_RETRAIT
+    (auteur, 2026-10-19 : « la même emprise, un peu plus petit »).
+    None si le bâtiment est petit, pas tiré, ou si le retrait le déforme."""
+    if (abs(aire_signee(anneau)) < ATTIQUE_AIRE_MIN
+            or rng.random() >= ATTIQUE_PART):
+        return None
+    sens = 1.0 if aire_signee(anneau) > 0.0 else -1.0
+    rentre = _decaler(anneau, -ATTIQUE_RETRAIT)
+    ferme = list(anneau) + [anneau[0]]
+    # ⚠️ Un retrait sur une empreinte concave peut se retourner : on le refuse.
+    if (aire_signee(rentre) * sens <= 0.0
+            or not all(dedans(ferme, p) for p in rentre)):
+        return None
+    poly = _sans_doublons(list(rentre))
+    if (len(poly) < 3 or abs(aire_signee(poly)) < 35.0
+            or _largeur_min(poly) < ATTIQUE_LARGEUR_MIN):
+        return None
+    if aire_signee(poly) < 0.0:
+        poly.reverse()
+    return poly
+
+
+def _installations(m, anneau, y_toit, coul_mur, rng, G, edicules=True):
+    """Ce qui dépasse d'un toit plat, aligné sur le grand
+    côté. Sans cage sur un attique : elle y arrive. Aucun objet ne porte d'UV :
+    ni gravier, ni panneau, ni sédum."""
+    aire = abs(aire_signee(anneau))
+    if aire < TOIT_GRAND and rng.random() < TOIT_NU:
+        return
+    zone = _decaler(anneau, -0.9)          # loin de l'acrotère
+    if aire_signee(zone) * aire_signee(anneau) <= 0.0:
+        return
+    ferme = list(zone) + [zone[0]]
+    # L'axe est le grand côté de l'empreinte, pas le faîtage tiré de la rue.
+    p0, p1 = max(((anneau[i], anneau[(i + 1) % len(anneau)])
+                  for i in range(len(anneau))),
+                 key=lambda e: math.hypot(e[1][0] - e[0][0], e[1][1] - e[0][1]))
+    L0 = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+    u = ((p1[0] - p0[0]) / L0, (p1[1] - p0[1]) / L0)
+    v = (-u[1], u[0])
+    q = [(p[0] * u[0] + p[1] * u[1], p[0] * v[0] + p[1] * v[1]) for p in zone]
+    s0, s1 = min(a for a, _b in q), max(a for a, _b in q)
+    t0, t1 = min(b for _a, b in q), max(b for _a, b in q)
+    L, tc = s1 - s0, 0.5 * (t0 + t1)
+    pris = []
+    poses = [0]
+
+    def poser(cs, ct, lu, lv, h, coul):
+        coins = [(cs + a * lu / 2, ct + b * lv / 2)
+                 for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        if not all(dedans(ferme, (a * u[0] + b * v[0], a * u[1] + b * v[1]))
+                   for a, b in coins):
+            return False
+        if any(abs(cs - ps) < (lu / 2 + pu + 0.3) and abs(ct - pt) < (lv / 2 + pv + 0.3)
+               for ps, pt, pu, pv in pris):
+            return False
+        pris.append((cs, ct, lu / 2, lv / 2))
+        _boite(m, (cs * u[0] + ct * v[0], cs * u[1] + ct * v[1]), u, lu, lv,
+               y_toit - 0.05, y_toit + h, coul, G)
+        poses[0] += 1
+        return True
+
+    def tirer(taille):
+        return tuple(rng.uniform(*taille[k]) for k in range(3))
+    # Les cages, dans l'enduit de la façade et coiffées d'une dalle, puis un
+    # écran technique entre deux cages, ou à côté de la seule (« un mix des deux »).
+    n_ed = min(3, max(1, int(round(L / 20.0)))) if edicules and L >= 6.0 else 0
+    eu, ev, eh = tirer(EDICULE)
+    dalle = tuple(c * 0.70 for c in coul_mur)
+    for k in range(n_ed):
+        sc = s0 + (k + 0.5) * L / n_ed
+        if poser(sc, tc, eu, ev, eh, coul_mur):
+            c = (sc * u[0] + tc * v[0], sc * u[1] + tc * v[1])
+            _boite(m, c, u, eu + 0.3, ev + 0.3, y_toit + eh,
+                   y_toit + eh + 0.12, dalle, G)
+    lu = min(0.25 * L, ECRAN[0])
+    lv = min(0.40 * (t1 - t0), ECRAN[1])
+    if lu >= 2.0 and lv >= 1.5:
+        if n_ed >= 2:
+            se = s0 + L / n_ed
+        elif n_ed == 1:
+            se = 0.5 * (s0 + s1) + rng.choice((-1.0, 1.0)) * (eu / 2 + lu / 2 + 1.0)
+        else:
+            se = 0.5 * (s0 + s1)
+        poser(se, tc, lu, lv, ECRAN[2], COUL_CAISSON)
+    installations[0] += poses[0]
+    installations[1] += poses[0] > 0
 
 
 def _ruine(m, anneau, coul_mur, coul_gravats, G, rng, force=0.0):
