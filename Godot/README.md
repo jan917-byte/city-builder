@@ -64,6 +64,7 @@ En bas à gauche, la boussole **N** remet le nord en haut ; **Dessus / 3D** alte
 | `scripts/apercu.gd` · `echantillon.gd` | miniature et coupe de rue ou de berge |
 | `scripts/trafic.gd` · `materiaux.gd` · `camera_axo.gd` · `paysage.gd` | trafic, matières, caméra et décor extérieur exporté |
 | `outils/` · `scripts/moniteur_performances.gd` | contrôles autonomes et thermomètre F3 ; `chantiers.gd` reste l'ancien prototype |
+| `icones/` | les icônes isométriques de l'auteur : un `⟨nom⟩.svg` posé ici remplace l'icône en trait du même nom, en ses couleurs ; dessiner sur `_gabarit.svg` (son groupe « gabarit » est retiré au chargement, ne rien y grouper). `--script res://outils/apercu_icones.gd` rend la planche des noms et le rail. `.gdignore` : lus en brut, à ajouter au filtre d'export |
 | `assets/FREE_CAR_01.blend` → `data/voiture.json` | la voiture du trafic, allégée par `outils/voiture_blender.py` (`blender -b assets/FREE_CAR_01.blend --python outils/voiture_blender.py`). Le JSON est suivi par git : le Mac n'a pas Blender. `assets/` porte un `.gdignore`, sinon Godot tente d'importer le `.blend` |
 
 

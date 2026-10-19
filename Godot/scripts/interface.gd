@@ -1319,19 +1319,25 @@ func _thermometre(celsius: float, taille: int, coul: Color) -> Texture2D:
 	return _rendre_icone(cle, corps.replace("@", "#" + coul.to_html(false)), taille, coul)
 
 
-## La plus grande dimension du viewBox tient dans `taille`.
-## ⚠️ Lu en fichier brut : à ajouter au filtre d'export le jour où on exporte.
 static func _icone_dessinee(nom: String, taille: int) -> Texture2D:
+	var img := image_dessinee(nom, taille)
+	return ImageTexture.create_from_image(img) if img != null else null
+
+
+## Les icônes isométriques de l'auteur (`res://icones/⟨nom⟩.svg`, gabarit `_gabarit.svg`) :
+## la plus grande dimension du viewBox tient dans `taille`, le groupe « gabarit » est retiré.
+## ⚠️ Lu en fichier brut : à ajouter au filtre d'export le jour où on exporte.
+static func image_dessinee(nom: String, taille: int) -> Image:
 	var chemin := "res://icones/%s.svg" % nom
 	if not FileAccess.file_exists(chemin):
 		return null
-	var svg := FileAccess.get_file_as_string(chemin)
-	var vb := RegEx.create_from_string("viewBox=\"[\\d.]+ [\\d.]+ ([\\d.]+) ([\\d.]+)\"").search(svg)
+	var svg := RegEx.create_from_string("(?s)<g id=\"gabarit\".*?</g>") 		.sub(FileAccess.get_file_as_string(chemin), "")
+	var vb := RegEx.create_from_string("viewBox=\"[-\\d.]+ [-\\d.]+ ([\\d.]+) ([\\d.]+)\"").search(svg)
 	var cote := maxf(float(vb.get_string(1)), float(vb.get_string(2))) if vb else 24.0
 	var img := Image.new()
 	if img.load_svg_from_string(svg, float(taille) / cote) != OK:
 		return null
-	return ImageTexture.create_from_image(img)
+	return img
 
 
 static func est_dessinee(nom: String) -> bool:
@@ -1720,6 +1726,7 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 		# Un dessin en couleurs ne se teinte pas : le brun du thème l'aurait noirci.
 		for etat in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:
 			b.add_theme_color_override(etat, Color.WHITE)
+		b.add_theme_color_override("icon_disabled_color", Color(1, 1, 1, 0.35))
 	# 🧭 L'anneau de la tuile que le guide demande (`_maj_rail`).
 	_anneau_appel(b, 12)
 	return b
