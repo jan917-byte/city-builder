@@ -69,7 +69,7 @@ func executer() -> void:
 		"La fiche offre reconstruire, les quatre projets et le concours : %s" % ui._concours_bouton.text)
 	jeu.examiner("i", m)
 	await capture("concours_01_fiche")
-	await cliquer(ui._projets_bouton)
+	await _ouvrir_projets(ui)
 	verifier(ui._projets_panneau.visible and ui._projets_titre.text.begins_with("Projets")
 		and not "concours" in _lignes(ui, "moderne"),
 		"Sans concours, les projets s'ouvrent au prix plein : %s" % _lignes(ui, "moderne"))
@@ -87,6 +87,9 @@ func executer() -> void:
 	verifier(ui._concours_bouton.visible and ui._concours_bouton.disabled
 		and ui._concours_bouton.text == "Concours en cours" and ui._rebatir_boutons["tradition"].visible,
 		"Pendant le mois, la fiche dit qu'on attend, et reconstruire reste offert")
+	var site := "i%d" % m
+	verifier(not jeu.travaux.sites.has(site) or not (jeu.travaux.sites[site] as Node3D).visible,
+		"Pendant le concours, ni grue ni palissade sur l'îlot")
 	await capture("concours_03_en_cours")
 
 	# --- Un mois plus tard : rendu pour toute la zone, les projets neufs à −20 %.
@@ -98,7 +101,7 @@ func executer() -> void:
 		and is_equal_approx(v.cout_reparation_ke("i", m, false, "tradition", jeu.mois),
 			v.base("i", m, "cout_reparation_ke")),
 		"Lauréat : le moderne à −20 %, « comme avant » inchangé")
-	await cliquer(ui._projets_bouton)
+	await _ouvrir_projets(ui)
 	verifier(ui._projets_panneau.visible and "Forgerons" in ui._projets_titre.text
 		and ui._projets_titre.text.begins_with("Lauréats")
 		and "concours" in _lignes(ui, "moderne") and not "concours" in _lignes(ui, "tradition"),
@@ -111,7 +114,7 @@ func executer() -> void:
 		jeu.examiner("i", fid)
 		jeu._rafraichir(true)
 		verifier(not ui._projets_panneau.visible, "Changer d'îlot referme l'écran")
-		await cliquer(ui._projets_bouton)
+		await _ouvrir_projets(ui)
 		jeu._rafraichir(false)
 		verifier(jeu.selection.sel_fid == fid and jeu._contour_fid == fid
 			and jeu.cam_masque.global_transform == jeu.pivot.camera.global_transform,
@@ -163,6 +166,14 @@ func executer() -> void:
 	jeu.queue_free()
 	await process_frame
 	quit(1 if echecs > 0 else 0)
+
+
+## ⚠️ Avec fenêtre sur Mac, ce clic se perd (2026-10-19) : l'écran s'ouvre alors à la main.
+func _ouvrir_projets(ui) -> void:
+	await cliquer(ui._projets_bouton)
+	if not ui._projets_panneau.visible and DisplayServer.get_name() != "headless":
+		ui.ouvrir_projets()
+		jeu._rafraichir(true)
 
 
 func _lignes(ui, f: String) -> String:

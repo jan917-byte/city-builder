@@ -64,7 +64,9 @@ func actualiser(ville, mois: float) -> void:
 		for fid in _noeuds[couche]:
 			var cle := "%s%d" % [couche, fid]
 			# chantiers() omet le retrait des places ; chantier() couvre aussi les commandes groupées.
-			var actif: bool = ville.chantier(couche, fid, mois)["actif"]
+			var c: Dictionary = ville.chantier(couche, fid, mois)
+			# 🏛️ Un concours ne bâtit rien : ni grue ni palissade pendant son mois (auteur, 2026-10-19).
+			var actif: bool = c["actif"] and c["quoi"] != "concours"
 			if actif and not sites.has(cle):
 				sites[cle] = _batir_site(couche, fid)
 			if sites.has(cle):

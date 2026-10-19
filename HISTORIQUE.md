@@ -815,3 +815,6 @@ Essais concours, rebâtir, étude, ouverture, déblaiement, vie_camp, labour, re
 **2026-10-19 — L'institut se range en quatre colonnes (Bâti, Espace public, Énergie, Trafic), chacune sa racine ; le parc inondable d'un îlot se recherche en Espace public ; « Rendre la rue » devient Retirer des places puis Fermer une rue.**
 Choix de l'auteur (décision 116) : la recherche des berges s'appelle « Rendre une berge » ; « Fermer aux voitures » reste grisé jusqu'à sa recherche ; l'arbre passe de 21 à 24 points pour 13 à gagner (objectif « Retirer des places » en plus).
 Essais concours, rebâtir, étude, ouverture, déblaiement, vie_camp, labour, relogement à 0 échec sans fenêtre ; livre 1, progression 1, sauvegarde 92 comme avant ; pas de capture.
+**2026-10-19 — Plus de grue ni de palissade pendant le mois du concours ; les cartes de l'institut prennent toutes le même gabarit (petite vignette à gauche du nom, 150 px de haut).**
+Défauts relevés sur les captures, corrigés à la demande de l'auteur ; l'essai concours ouvre les projets à la main quand le clic se perd avec fenêtre sur Mac.
+Essais concours, étude, ouverture, rebâtir, déblaiement à 0 échec ; livre 1, progression 1 comme avant ; planche wehrau_corrections_planche.png.

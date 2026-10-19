@@ -3290,6 +3290,8 @@ const VIGNETTE_RECHERCHE := {"pilotis": "pilotis", "rendement": "solaire", "pose
 	"sedum": "vert", "berge": "eponge", "pre": "eponge", "permeable": "eponge", "vert": "vert",
 	"solaire": "solaire"}
 const VIGNETTES_ETUDE := ["ruine", "eponge", "pilotis"]
+const VIGNETTE_RECHERCHE_PX := 52.0
+const CARTE_RECHERCHE_H := 150.0   # 🎚️ la plus haute carte de l'institut, à l'œil
 ## 🏛️ Les subventions suivent l'institut (`Politiques` « levier ») ; les essais les ouvrent toutes.
 var financements_ouverts := false
 
@@ -3503,12 +3505,25 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 		carte.add_theme_stylebox_override("panel", sb)
 		carte.add_child(bloc)
 		tenue = carte
-		if vignette != "":
-			bloc.add_child(_vignette(vignette))
+		# 🗂️ Même gabarit pour toutes (auteur, 2026-10-19) : la vignette en petit à gauche du nom,
+		# une place vide sans elle ; en grand, les cartes à dessin écrasaient les colonnes.
+		var tete := HBoxContainer.new()
+		tete.add_theme_constant_override("separation", 8)
+		bloc.add_child(tete)
+		var vue: Control = _vignette(vignette) if vignette != "" else Control.new()
+		vue.custom_minimum_size = Vector2(VIGNETTE_RECHERCHE_PX, VIGNETTE_RECHERCHE_PX)
+		tete.add_child(vue)
+		var l_nom := _label(nom, 14, TEXTE)
+		l_nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l_nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l_nom.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tete.add_child(l_nom)
+		carte.custom_minimum_size.y = CARTE_RECHERCHE_H
+		parent.add_child(tenue)
 	else:
 		bloc.add_child(HSeparator.new())
-	parent.add_child(tenue)
-	bloc.add_child(_label(nom, 14, TEXTE))
+		parent.add_child(tenue)
+		bloc.add_child(_label(nom, 14, TEXTE))
 	var l_quoi := _label(quoi, 11, GRIS)
 	l_quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(l_quoi)
