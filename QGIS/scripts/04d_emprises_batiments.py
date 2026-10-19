@@ -269,6 +269,21 @@ PERCEE_SEGMENT_MIN = 12.0  # sous ça le tronçon restant n'est plus un immeuble
 # creusait dans le BÂTIMENT. Elle se prend maintenant sur la façade, avant que
 # le bâtiment n'existe (voir `pignon`), et il n'y a plus d'écharde à balayer.
 
+# 🏚️ LE BÂTIMENT DE COUR — 2026-10-19, sur une vue aérienne de Heidelberg :
+# atelier ou remise posé dans la cour quand elle est assez grande. Ni logement
+# ni densification : `bascule_logements` est passée avant, 07 l'écarte du reste.
+# Mesuré : les fonds de parcelle privés ne laissent presque jamais 6 m de cour,
+# ce sont les cœurs d'îlot qui en reçoivent.
+COUR_TISSUS = {"coeur_ancien", "maisons_de_ville", "front_commercant"}
+COUR_RECUL_BATI = 6.0      # la cour qui reste entre lui et tout autre bâtiment
+COUR_RECUL_RUE = 10.0      # jamais sur la rue ni sur une venelle
+COUR_PROF = 8.0
+COUR_LONGUEUR = 16.0
+COUR_MIN = (5.0, 4.0)      # longueur, profondeur
+COUR_PART_LIBRE = 0.35     # part du sol libre de la parcelle qu'il peut prendre
+COUR_PAR_PARCELLE = 2
+COUR_ETAGE_AIRE = 45.0     # au-dessus, deux niveaux ; en dessous, un
+
 # 🌿 LA PARCELLE SANS RUE EST UNE CATÉGORIE, PAS UN RÉSIDU — 2026-08-17.
 # 🔴 MESURÉ AVANT D'ÉCRIRE, et ça a annulé le travail prévu : les 15 parcelles
 # sans façade de Wehrau sont EXACTEMENT les 15 cœurs d'îlot. Aucune enclave
@@ -2114,13 +2129,14 @@ def main():
 
     controles(resultats, parcelles, refus, logements, emprises)
     neufs = bascule_logements(resultats, log_ilot)
+    cours = batiments_de_cour(parcelles, resultats, idx_bord, idx_venelle, dirs)
     if "--pourquoi" in sys.argv:
         pourquoi(detail)
 
     if BLANC:
         print("\nrien écrit (--blanc)")
         return
-    n = ecrire(resultats, neufs)
+    n = ecrire(resultats, neufs, cours)
     print("\n→ couche `batiments` (%d) et %d `logements` mesurés écrits dans %s"
           % (n, len(neufs), os.path.basename(GPKG)))
 
@@ -2435,7 +2451,98 @@ def bascule_logements(resultats, log_ilot):
     return neufs
 
 
-def ecrire(resultats, logements=None):
+def batiments_de_cour(parcelles, resultats, idx_bord, idx_venelle, dirs):
+    """Les bâtiments de cour, par parcelle : [(parcelle, anneau, niveaux)]."""
+    bati = {}
+    for r in resultats:
+        bati.setdefault(r["parcelle"]["ilot"], []).extend(r["emps"])
+    propres = {r["parcelle"]["fid"]: r["emps"] for r in resultats}
+    sortie = []
+    for p in parcelles:
+        if p["st"] not in COUR_TISSUS or p["origine"] == "chemin" \
+                or p["ilot"] in CAMPUS.CAMPUS:
+            continue
+        ring = ccw(sans_doublons(p["anneau"]))
+        n = len(ring)
+        if n < 3:
+            continue
+        ib, iv = idx_bord.get(p["ilot"], {}), idx_venelle.get(p["ilot"])
+        bords = []
+        for i in range(n):
+            a, b = ring[i], ring[(i + 1) % n]
+            m = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+            bords.append(sur_index(m, ib) or bool(iv and sur_index(m, iv)))
+        rues = [i for i in range(n) if bords[i]]
+        if rues:
+            i = max(rues, key=lambda k: math.dist(ring[k], ring[(k + 1) % n]))
+            a, b = ring[i], ring[(i + 1) % n]
+            L = math.dist(a, b)
+            u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+        else:
+            u = dirs.get(p["ilot"])
+        if u is None:
+            continue
+        nrm = (-u[1], u[0])
+        uv = [(q[0] * u[0] + q[1] * u[1], q[0] * nrm[0] + q[1] * nrm[1])
+              for q in ring]
+        us, vs = [q[0] for q in uv], [q[1] for q in uv]
+        u0, v0 = min(us), min(vs)
+        libre = abs(D4C.aire_signee(ring)) - sum(
+            abs(D4C.aire_signee(e)) for e in propres.get(p["fid"], ()))
+        pris = 0.0
+        for _ in range(COUR_PAR_PARCELLE):
+            proches = [[(q[0] * u[0] + q[1] * u[1], q[0] * nrm[0] + q[1] * nrm[1])
+                        for q in e] for e in bati.get(p["ilot"], ())]
+            proches = [e for e in proches
+                       if min(q[0] for q in e) < max(us) + COUR_RECUL_BATI
+                       and max(q[0] for q in e) > u0 - COUR_RECUL_BATI
+                       and min(q[1] for q in e) < max(vs) + COUR_RECUL_BATI
+                       and max(q[1] for q in e) > v0 - COUR_RECUL_BATI]
+            g, du, dv, nu, nv = eroder(
+                uv, [COUR_RECUL_RUE if r else 0.3 for r in bords],
+                u0, max(us), v0, max(vs), PAS_RASTER * 1.25)
+            marge = COUR_RECUL_BATI + 0.5 * math.hypot(du, dv)
+            for j in range(nv):
+                for i in range(nu):
+                    if g[j][i]:
+                        c = (u0 + (i + 0.5) * du, v0 + (j + 0.5) * dv)
+                        if any(dans(e, c) or dist_bord(c, e) < marge
+                               for e in proches):
+                            g[j][i] = False
+            r = rect_max(g, du, dv, nu, nv, u0, v0, COUR_PROF)
+            if r is None:
+                break
+            U0, U1, V0, V1 = r
+            h = V1 - V0
+            w = min(U1 - U0, COUR_LONGUEUR,
+                    (COUR_PART_LIBRE * libre - pris) / h if h > 0 else 0.0)
+            if w < COUR_MIN[0] or h < COUR_MIN[1]:
+                break
+            # Adossé au bout le plus proche d'une limite, comme une remise.
+            if dist_bord((U1, (V0 + V1) / 2.0), uv) < \
+                    dist_bord((U0, (V0 + V1) / 2.0), uv):
+                U0 = U1 - w
+            else:
+                U1 = U0 + w
+            anneau = [(x * u[0] + y * nrm[0], x * u[1] + y * nrm[1])
+                      for x, y in ((U0, V0), (U1, V0), (U1, V1), (U0, V1))]
+            aire = w * h
+            sortie.append((p, anneau, 2.0 if aire >= COUR_ETAGE_AIRE else 1.0))
+            bati.setdefault(p["ilot"], []).append(anneau)
+            pris += aire
+    par_ilot = {}
+    for p, an, _niv in sortie:
+        par_ilot[p["ilot"]] = par_ilot.get(p["ilot"], 0) + 1
+    print("\n  🏚️ BÂTIMENTS DE COUR — à %.0f m de tout bâtiment, hors logements"
+          % COUR_RECUL_BATI)
+    print("     %d bâtiments, %.0f m² au sol, sur %d îlots : %s"
+          % (len(sortie), sum(abs(D4C.aire_signee(a)) for _p, a, _n in sortie),
+             len(par_ilot), ", ".join("îlot %d (%d)" % kv
+                                      for kv in sorted(par_ilot.items()))))
+    return sortie
+
+
+def ecrire(resultats, logements=None, cours=()):
     """🔴 UNE SEULE COUCHE, `batiments`. La couche `jardins` a existé une demi-
     journée le 2026-08-17 et a été retirée le jour même : sans règle de
     profondeur (cœur ancien, maisons de ville), le fond de parcelle n'est plus
@@ -2456,7 +2563,9 @@ def ecrire(resultats, logements=None):
             sous_type TEXT,
             famille TEXT,
             surface_m2 REAL,
-            part_parcelle REAL)""")
+            part_parcelle REAL,
+            niveaux REAL,
+            cour INTEGER)""")
 
     xs, ys, n = [], [], 0
     for r in resultats:
@@ -2480,6 +2589,17 @@ def ecrire(resultats, logements=None):
                 xs.append(x)
                 ys.append(y)
             n += 1
+    # Après tous les autres : les fid des bâtiments existants ne bougent pas.
+    for p, emp, niv in cours:
+        aire = abs(D4C.aire_signee(emp))
+        cur.execute(
+            "INSERT INTO batiments (geom, fid_parcelle, fid_ilot, sous_type,"
+            " famille, surface_m2, part_parcelle, niveaux, cour)"
+            " VALUES (?,?,?,?,?,?,?,?,1)",
+            (D4B.blob_gpkg(D4B.wkb_polygone([emp])), p["fid"], p["ilot"],
+             p["st"], TISSU[p["st"]][6], round(aire, 1),
+             round(aire / abs(D4C.aire_signee(p["anneau"])), 3), niv))
+        n += 1
 
     cur.execute(
         "INSERT INTO gpkg_contents (table_name, data_type, identifier,"

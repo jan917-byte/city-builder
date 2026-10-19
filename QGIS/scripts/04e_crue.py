@@ -430,7 +430,7 @@ def main():
     # ligne de GDScript ne connaisse la crue. Godot lit `cout_reparation_ke`
     # et l'affiche ; il ne le calcule jamais.
     niveaux = dict(cur.execute(
-        "SELECT b.fid, p.niveaux FROM batiments b"
+        "SELECT b.fid, COALESCE(b.niveaux, p.niveaux) FROM batiments b"
         " JOIN parcelles p ON p.fid = b.fid_parcelle"))
     for b in bats:
         b["plancher"] = b["surf"] * (niveaux.get(b["fid"]) or 1.0)
