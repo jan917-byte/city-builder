@@ -827,3 +827,6 @@ Puis des sapins sous le couvert fermé et en altitude (feuillus 12 148, sapins 1
 **2026-10-19 — Bâti moderne (barre, collectif, îlot compact) : un attique sur toute l'emprise, rentré de 1,2 m, sur ~45 % des immeubles de plus de 140 m² ; toits plats en gravier, membrane ou dalles ; sur les toits, les cages d'escalier et un écran technique alignés au milieu.**
 Demande de l'auteur (« un demi-étage en plus », puis « plus grand, la même emprise un peu plus petite », puis caissons et extracteurs refusés, « un mix des deux » cages + écran) ; cosmétique, les logements ne changent pas ; formes et teintes flaggables (90).
 Export : 14 attiques, 55 objets sur 30 toits, rebâtir et concours à 0 échec, faces 6511/6511 et 4762/4762 ; aperçus `wehrau_moderne_toits_mix.png`, `wehrau_moderne_toits_AB.png` (outil `apercu_moderne.gd`).
+**2026-10-19 — Fumée des cheminées : des bouffées grises montent des souches des maisons anciennes et partent au vent ; quelques-unes l'été, toutes et plus épaisses quand il gèle.**
+Demande de l'auteur (« un peu de fumée qui sort des cheminées, plus visible en hiver ») ; Godot retrouve les souches dans le maillage à leur teinte, rien à réexporter ; rendu flaggable (90).
+450 souches, 6 bouffées chacune ; essais saison, rebâtir, ouverture sans fenêtre à 0 échec ; jamais vue à l'écran.

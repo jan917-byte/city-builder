@@ -62,3 +62,7 @@ saison_secheresse={
 "type": "float",
 "value": 0.0
 }
+saison_fumee={
+"type": "float",
+"value": 0.05
+}

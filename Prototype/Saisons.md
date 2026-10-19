@@ -30,6 +30,7 @@
 | Herbe | terne l'hiver, tendre au printemps, jaunie les étés chauds |
 | Neige | une fois par hiver, entre le 10 décembre et le 25 janvier ; douze jours pour arriver (collines, toits et couronnes, jardins et champs, par grands pans), dix pour fondre ; **la chaussée reste déneigée** |
 | Flocons | à l'écran, légers, seulement pendant l'arrivée ; absents en vue diagnostic |
+| Fumée (2026-10-19) | des bouffées grises sortent des souches des maisons anciennes et partent vers l'est ; en été une souche sur vingt, toutes sous 2 °C, plus épaisses et plus hautes ; ni des ruines ni du bâti rebâti moderne ; elle suit l'étage ajouté ; absente en vue diagnostic |
 | Collines | blanches en hiver au-dessus d'une limite qui monte avec les années |
 | Thermomètre du haut | la température **tirée** du mois, plus la normale |
 
@@ -65,6 +66,7 @@ En jouant : laisser filer en ×1 puis ×12 un hiver entier. **Ce qui prouverait 
 - 🌸 **Les arbres du printemps, à juger** (2026-10-19, demande de l'auteur : « au printemps c'est pas très beau ») : `apercu_arbres.gd -- --mois=1.5`, pépinière en 16 numéros. Le tilleul, les variétés et le choix d'essence par rue sont **proposés** : les parts sont en haut de `Constructeur.variete` et dans `maquette._essence_rue`. ⚠️ La teinte qui glisse d'un arbre à l'autre s'écarte de « une teinte, des valeurs » de la direction artistique : à trancher. La miniature de la fiche d'une rue montre encore un feuillu ordinaire.
 
 - 🎨 **Les couleurs** (`Godot/shaders/saison.gdshaderinc`), **les branches** (`Constructeur._ramure`) et **les flocons** (`Godot/shaders/flocons.gdshader`) sont flaggables : voie sans IA, l'auteur choisit les couleurs, modélise une ramure nue par essence (cinq pièces) et dessine un flocon.
+- 🔥 **La fumée, à juger** (2026-10-19, demande de l'auteur) : jamais vue à l'écran, essais sans fenêtre seulement. Flaggable (90), voie sans IA : l'auteur règle teinte, taille et vent en haut de `Godot/shaders/fumee.gdshader`. **Cassé si** : des carrés gris nets, de la fumée l'été sur toutes les cheminées, ou qui reste au toit d'avant un étage ajouté.
 - ☀️ Le soleil ne baisse pas l'hiver : les ombres sont les mêmes toute l'année.
 - 🌾 Les champs ne changent qu'avec la neige : leur saison viendra avec la Campagne.
 - 🔌 Brancher la saison sur le solaire, le chauffage et la crue : plus tard (auteur).

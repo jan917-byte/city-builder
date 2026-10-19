@@ -47,6 +47,7 @@ const Echantillon := preload("res://scripts/echantillon.gd")
 const Sauvegarde := preload("res://scripts/sauvegarde.gd")
 const Paysage := preload("res://scripts/paysage.gd")
 const Saison := preload("res://scripts/saison.gd")
+const Fumees := preload("res://scripts/fumees.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
 const Livre := preload("res://scripts/livre.gd")
 const Recit := preload("res://scripts/recit.gd")
@@ -1804,6 +1805,8 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 	parent.name = nom
 	monde.add_child(parent)
 	var tris := 0
+	if nom == "Ilots":
+		Fumees.compte = 0
 	for d in sources:
 		for g in (d["g"] as Array):
 			var gr: Array = g
@@ -1815,6 +1818,10 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 			mi.set_meta("fid", fid)
 			mi.set_meta("couche", couche)
 			parent.add_child(mi)
+			if couche == "i" and d.has("dense"):
+				var fu := Fumees.noeud(d, int(gr[1]), int(gr[2]))
+				if fu != null:
+					mi.add_child(fu)
 			# Le corps de collision devient un ENFANT du MeshInstance3D.
 			# `selection.gd` remonte au parent pour retrouver le fid.
 			mi.create_trimesh_collision()
@@ -1823,6 +1830,8 @@ func _par_objet(nom: String, sources: Array, couche: String) -> void:
 			var t3: int = int(gr[2]) / 3
 			tris += t3
 	print("  %-8s %3d objets, %6d triangles" % [nom, parent.get_child_count(), tris])
+	if nom == "Ilots":
+		print("  %-8s %3d souches qui fument" % ["Fumées", Fumees.compte])
 
 
 ## 🅿️ LES PLACES PEINTES, un nœud par tronçon. Elles partent VISIBLES et se
@@ -1941,6 +1950,10 @@ func _par_reparation(nom: String, source: Dictionary, couche: String) -> void:
 		mi.set_meta("couche", couche)
 		mi.visible = false
 		parent.add_child(mi)
+		if couche == "i":
+			var fu := Fumees.noeud(source, int(gr[1]), int(gr[2]))
+			if fu != null:
+				mi.add_child(fu)
 		mi.create_trimesh_collision()
 		_corps(mi, false)
 		reparations[couche][fid] = mi
@@ -2612,6 +2625,7 @@ func _habiller_monde(diagnostic: bool) -> void:
 		paysage.visible = not diagnostic
 	trafic.visible = not diagnostic
 	travaux.visible = not diagnostic
+	get_tree().set_group("fumees", "visible", not diagnostic)
 	for n in monde.get_children():
 		# « Rives » aussi : les saules des berges de campagne restaient debout.
 		if n is MultiMeshInstance3D and (str(n.name).begins_with("Arbres")
@@ -2750,9 +2764,12 @@ func _peindre() -> void:
 					# en prend l'allure, la ruine s'efface ou devient parc.
 					var rb := Ville.rendu_rebati(ville.facon_reparation(fid)) \
 						if ville.reparation_finie("i", fid, mois) else Vector2.ZERO
-					mj.set_instance_shader_parameter("densification",
-						Vector4(0.0, 1.0, rb.y, rb.x) if mj == reparations["i"].get(fid)
-						else Vector4(dn.x, dn.y, dn.z, rb.x))
+					var dv := Vector4(0.0, 1.0, rb.y, rb.x) if mj == reparations["i"].get(fid) \
+						else Vector4(dn.x, dn.y, dn.z, rb.x)
+					mj.set_instance_shader_parameter("densification", dv)
+					var fu := mj.get_node_or_null("Fumee") as GeometryInstance3D
+					if fu != null:
+						fu.set_instance_shader_parameter("densification", dv)
 
 
 

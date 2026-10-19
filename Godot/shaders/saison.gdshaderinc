@@ -5,6 +5,7 @@ global uniform vec2 saison_decalage;         // printemps, automne, en mois (< 0
 global uniform float saison_neige;           // la vallée plate, 0 à 1 : toits d'abord, sol ensuite
 global uniform float saison_neige_altitude;  // m : au-dessus, les collines sont blanches
 global uniform float saison_secheresse;      // herbe jaunie de fin d'été, 0 à 1
+global uniform float saison_fumee;           // le chauffage des souches, 0,05 en été à 1 au froid
 
 // 🔴 Flaggable (90) : couleurs provisoires choisies par Claude, que l'auteur
 // remplacera (2026-10-10). LINÉAIRE, sRGB en commentaire.

@@ -25,6 +25,9 @@ const MANTEAU_C := 1.0
 const GRADIENT_C_M := 0.0065
 const RETARD_MANTEAU_MOIS := 0.3
 const FOND_M := 120.0                 # plus bas, la vallée ne blanchit que par la neige de l'hiver
+## 🔥 Les souches fument dès que le mois passe sous CHAUFFE_C, toutes à FROID_C.
+const CHAUFFE_C := 17.0
+const FROID_C := 2.0
 const PHENO_MOIS_C := 5.0 / 30.0      # le printemps avance de cinq jours par degré
 const MOIS_TABLE := 300               # 25 ans : l'horizon et sa marge
 
@@ -126,6 +129,11 @@ func secheresse(t: float) -> float:
 	return clampf(0.3 + 0.35 * chaud, 0.0, 1.0) * ete
 
 
+## La fumée des souches, 0 à 1 : le froid du jour, jamais tout à fait nulle.
+func fumee(t: float) -> float:
+	return clampf(inverse_lerp(CHAUFFE_C, FROID_C, temperature(t)), 0.05, 1.0)
+
+
 func _ecart_de(m: int) -> float:
 	return _ecart[clampi(m, -2, MOIS_TABLE + 1) + 2]
 
@@ -138,6 +146,7 @@ func poser(t: float) -> void:
 	RenderingServer.global_shader_parameter_set("saison_neige", neige(t))
 	RenderingServer.global_shader_parameter_set("saison_neige_altitude", ligne_de_neige(t))
 	RenderingServer.global_shader_parameter_set("saison_secheresse", secheresse(t))
+	RenderingServer.global_shader_parameter_set("saison_fumee", fumee(t))
 
 
 ## La neige de l'hiver qui commence en décembre de l'an `an` : [début, fin de la tenue].
