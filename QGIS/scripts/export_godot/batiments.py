@@ -19,6 +19,22 @@ from .geometrie import (
 )
 from .reglages import (
     ACROTERE,
+    COUL_CADRE_LUCARNE,
+    COUL_CADRE_VELUX,
+    COUL_VITRE_TOIT,
+    LUCARNE,
+    LUCARNE_PAS,
+    LUCARNE_PENTE_MIN,
+    LUCARNE_RECUL,
+    OUVERTURE_EGOUT_MIN,
+    OUVERTURES_FAMILLES,
+    PART_LUCARNES,
+    PART_VELUX_ARRIERE,
+    PART_VELUX_DOUX,
+    PART_VELUX_RAIDE,
+    VELUX,
+    VELUX_PAS,
+    ouvertures,
     ATTIQUE_AIRE_MIN,
     ATTIQUE_FAMILLES,
     ATTIQUE_LARGEUR_MIN,
@@ -58,6 +74,7 @@ from .reglages import (
     FACADE_LOGEMENT,
     FACADE_MIN,
     FACADE_PORTE,
+    FACADE_VITRINE,
     FACADE_TISSU,
     FACADE_TISSU_DEFAUT,
     FAITAGE_MAX,
@@ -633,10 +650,25 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
         # qui dessine le contour de chaque maison vue d'en haut.
         _rive(m, bord, y_haut, EPAISSEUR_TOIT,
               tuple(c * 0.70 for c in coul_toit), G)
+        # 🪟 La rue, pour tourner les lucarnes vers elle : le milieu de la plus
+        # longue façade qui porte la porte ou la vitrine. Pas sur le bâti
+        # rebâti (rang 1e6) : son toit se rabat à plat.
+        ouv = None
+        if (famille in OUVERTURES_FAMILLES
+                and not (m.dense is not None and m.dense[0] > 1.0e5)):
+            rue = None
+            if genres is not None:
+                cotes = [(anneau[i], anneau[(i + 1) % n]) for i in range(n)
+                         if genres[i] in (FACADE_PORTE, FACADE_VITRINE)]
+                if cotes:
+                    a, b = max(cotes, key=lambda e: math.hypot(
+                        e[1][0] - e[0][0], e[1][1] - e[0][1]))
+                    rue = ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+            ouv = (rue, coul)
         h = t = 0
         for poly, fait in _toits_croises(morceaux, axe_toit):
             a, b = _toit(m, poly, y_haut + EPAISSEUR_TOIT, pente, fait,
-                         coul_toit, G, y_haut)
+                         coul_toit, G, y_haut, ouv)
             h += a
             t += b
         m.sol = None
@@ -981,7 +1013,7 @@ def _complexite(emp, faite):
     return pans + ecart / 45.0 / n
 
 
-def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
+def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None, ouv=None):
     """Un toit pentu sur une empreinte CONVEXE, sans un seul asset.
 
     Chaque arête de l'égout est un ÉGOUT (elle porte un versant) si elle court
@@ -1056,6 +1088,7 @@ def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
 
     # 🔥 LA SOUCHE, sur la ligne médiane de l'empreinte. Position et existence
     # tirées du LIEU (35) : mêmes cheminées aux mêmes endroits.
+    souche = None
     if y_mur is not None and abs(aire_signee(anneau)) >= CHEMINEE_AIRE_MIN:
         r = random.Random(_graine_lieu(anneau) ^ 0xC17E)
         if r.random() <= PART_CHEMINEES:
@@ -1068,9 +1101,192 @@ def _toit(m, anneau, y_egout, pente, faitage, coul, G, y_mur=None):
             x, y = ox + ux * t, oy + uy * t
             if min(dist(i, (x, y)) for i, l in enumerate(lignes) if l) > 0.5:
                 cheminees[0] += 1
+                souche = (x, y)
                 _cheminee(m, x, y, y_mur, haut((x, y)) + CHEMINEE_HAUT,
                           (ux, uy), COUL_CHEMINEE, G)
+    if ouv is not None:
+        _ouvertures(m, anneau, lignes, pans, dist, s, y_egout, ouv[0], ouv[1],
+                    coul, souche, G)
     return ok, tot
+
+
+def _face(m, pts, coul, dehors, G, axe=None):
+    """Un polygone plan convexe de points source (x, y, h), en éventail,
+    tourné vers `dehors` (x, y, h). G n'est pas affine (le niveau de rive) :
+    le sens se mesure autour du premier point."""
+    g = [G(*p) for p in pts]
+    p0 = pts[0]
+    o = G(*p0)
+    d = G(p0[0] + dehors[0], p0[1] + dehors[1], p0[2] + dehors[2])
+    dv = (d[0] - o[0], d[1] - o[1], d[2] - o[2])
+    for k in range(1, len(g) - 1):
+        tri = (g[0], g[k], g[k + 1])
+        if _degenere(tri):
+            continue
+        nn = normale(*tri)
+        if nn[0] * dv[0] + nn[1] * dv[1] + nn[2] * dv[2] < 0.0:
+            tri = (tri[0], tri[2], tri[1])
+        m.triangle(tri[0], tri[1], tri[2], coul, axe_toit=axe)
+
+
+def _cadre(m, P, du, dv, lu, lv, bord, dehors, coul_cadre, coul_verre, G):
+    """Une vitre bordée d'un cadre, dans le plan (du, dv) centré sur P : un
+    anneau de quatre quads et la vitre, sans recouvrement (pas de z-fight)."""
+    def pt(a, b):
+        return tuple(P[k] + du[k] * a + dv[k] * b for k in range(3))
+    A, B = lu / 2.0, lv / 2.0
+    a, b = A - bord, B - bord
+    ext = [pt(-A, -B), pt(A, -B), pt(A, B), pt(-A, B)]
+    inn = [pt(-a, -b), pt(a, -b), pt(a, b), pt(-a, b)]
+    for k in range(4):
+        _face(m, [ext[k], ext[(k + 1) % 4], inn[(k + 1) % 4], inn[k]],
+              coul_cadre, dehors, G)
+    _face(m, inn, coul_verre, dehors, G)
+
+
+def _ouvertures(m, anneau, lignes, pans, dist, s, y_egout, rue, coul_mur,
+                coul_toit, souche, G):
+    """Lucarnes sur le pan de la rue si le toit est raide, fenêtres de toit
+    derrière ou sur les toits doux (auteur, 2026-10-19)."""
+    if s <= 1e-6:
+        return
+    r = random.Random(_graine_lieu(anneau) ^ 0x10CA)
+    grands = []
+    for i, poly in pans.items():
+        a, (nx, ny), _e = lignes[i]
+        e = (ny, -nx)
+        q = [((p[0] - a[0]) * e[0] + (p[1] - a[1]) * e[1], dist(i, p))
+             for p in poly]
+        ws = [w for w, t in q if t < 0.5]
+        if (ws and max(ws) - min(ws) >= OUVERTURE_EGOUT_MIN
+                and max(t for _w, t in q) >= 2.5):
+            grands.append((i, q, a, e, (nx, ny), min(ws), max(ws)))
+    if not grands:
+        return
+    if rue is not None:
+        avant = min(grands, key=lambda g: abs(dist(g[0], rue)))
+    else:
+        avant = max(grands, key=lambda g: abs(aire_signee(g[1])))
+    t = r.random()
+    raide = s >= LUCARNE_PENTE_MIN
+    n0 = ouvertures[0] + ouvertures[1]
+    if raide and t < PART_LUCARNES:
+        _lucarnes(m, avant, s, y_egout, coul_mur, coul_toit, souche, G)
+        if r.random() < PART_VELUX_ARRIERE:
+            for g in grands:
+                if g is not avant:
+                    _velux(m, g, s, y_egout, souche, r, G)
+    elif t < (PART_LUCARNES + PART_VELUX_RAIDE if raide else PART_VELUX_DOUX):
+        derriere = [g for g in grands if g is not avant] or [avant]
+        _velux(m, r.choice(derriere), s, y_egout, souche, r, G)
+    ouvertures[2] += ouvertures[0] + ouvertures[1] > n0
+
+
+def _libre(q, coins, souche, a, e, n, marge=0.3):
+    """Les coins (w, t) tiennent dans le pan avec `marge`, loin de la souche."""
+    if not all(_dans_convexe(q, c, -marge) for c in coins):
+        return False
+    if souche is None:
+        return True
+    w = (souche[0] - a[0]) * e[0] + (souche[1] - a[1]) * e[1]
+    t = (souche[0] - a[0]) * n[0] + (souche[1] - a[1]) * n[1]
+    ws, ts = [c[0] for c in coins], [c[1] for c in coins]
+    return not (min(ws) - 0.9 < w < max(ws) + 0.9
+                and min(ts) - 0.9 < t < max(ts) + 0.9)
+
+
+def _lucarnes(m, pan, s, y_egout, coul_mur, coul_toit, souche, G):
+    """Lucarnes à deux pans, alignées sur l'égout. Ce qui passe sous la tuile
+    est caché dans le volume du toit : aucune découpe du versant."""
+    _i, q, a, e, n, w0, w1 = pan
+    hw, hf = LUCARNE[0] / 2.0, LUCARNE[1]
+    debord_f, debord_c = 0.20, 0.15
+    rh = hw                                # pignon à 45°
+    t0 = DEBORD_TOIT + LUCARNE_RECUL
+    t1 = t0 + hf / s
+    t2 = t0 + (hf + rh) / s
+    t1b = t0 + (hf - debord_c) / s
+    y0 = y_egout + s * t0
+    ye, yr = y0 + hf, y0 + hf + rh
+    L = w1 - w0
+    nb = max(1, min(3, int(L / LUCARNE_PAS)))
+    axe = (n[0], -n[1])
+
+    def P(w, t, h):
+        return (a[0] + e[0] * w + n[0] * t, a[1] + e[1] * w + n[1] * t, h)
+    for k in range(nb):
+        wc = w0 + (k + 0.5) * L / nb
+        W = hw + debord_c
+        coins = [(wc - W, t0 - debord_f), (wc + W, t0 - debord_f),
+                 (wc + W, t2), (wc - W, t2)]
+        if not _libre(q, coins, souche, a, e, n):
+            continue
+        ouvertures[0] += 1
+        avant = (-n[0], -n[1], 0.0)
+        _face(m, [P(wc - hw, t0, y0 - 0.2), P(wc + hw, t0, y0 - 0.2),
+                  P(wc + hw, t0, ye), P(wc, t0, yr), P(wc - hw, t0, ye)],
+              coul_mur, avant, G)
+        for sg in (-1.0, 1.0):
+            cote = (e[0] * sg, e[1] * sg, 0.0)
+            wj = wc + sg * hw
+            # La jouée : son bord bas file sous la tuile de t0 à t1.
+            _face(m, [P(wj, t0, y0 - 0.2), P(wj, t1, ye), P(wj, t0, ye)],
+                  coul_mur, cote, G)
+            # Le versant de la lucarne, du faîtage à l'égout, rive comprise.
+            we = wc + sg * W
+            _face(m, [P(wc, t0 - debord_f, yr), P(wc, t2, yr),
+                      P(we, t1b, ye - debord_c), P(we, t0 - debord_f, ye - debord_c)],
+                  coul_toit, (cote[0], cote[1], 1.0), G, axe)
+            _face(m, [P(wc, t0 - debord_f, yr), P(we, t0 - debord_f, ye - debord_c),
+                      P(we, t0 - debord_f, ye - debord_c - 0.12),
+                      P(wc, t0 - debord_f, yr - 0.12)],
+                  tuple(c * 0.70 for c in coul_toit), avant, G)
+        hv = (hf - 0.35)
+        _cadre(m, P(wc, t0 - 0.03, y0 + 0.2 + hv / 2.0), (e[0], e[1], 0.0),
+               (0.0, 0.0, 1.0), 2.0 * hw - 0.5, hv, 0.08, avant,
+               COUL_CADRE_LUCARNE, COUL_VITRE_TOIT, G)
+
+
+def _velux(m, pan, s, y_egout, souche, r, G):
+    """Fenêtres de toit posées sur le versant, 6 cm au-dessus de la tuile, à
+    mi-pente."""
+    _i, q, a, e, n, w0, w1 = pan
+    lu, lv = VELUX
+    k = math.sqrt(1.0 + s * s)
+    lt = lv / k                             # emprise horizontale de 1,20 m en pente
+    t_haut = max(t for _w, t in q)
+    tc = DEBORD_TOIT + r.uniform(0.40, 0.55) * (t_haut - DEBORD_TOIT)
+    L = w1 - w0
+    nb = min(max(1, min(3, int(L / VELUX_PAS))), r.choice((1, 1, 2, 2, 3)))
+    du = (e[0], e[1], 0.0)
+    dv = (n[0] / k, n[1] / k, s / k)        # le long de la pente, vers le haut
+    haut = (-n[0] * s / k, -n[1] * s / k, 1.0 / k)
+    lev = 0.06
+
+    def P(w, t, h=0.0):
+        return (a[0] + e[0] * w + n[0] * t, a[1] + e[1] * w + n[1] * t,
+                y_egout + s * t + h)
+    for j in range(nb):
+        wc = w0 + (j + 0.5) * L / nb
+        coins = [(wc - lu / 2, tc - lt / 2), (wc + lu / 2, tc - lt / 2),
+                 (wc + lu / 2, tc + lt / 2), (wc - lu / 2, tc + lt / 2)]
+        if not _libre(q, coins, souche, a, e, n):
+            continue
+        ouvertures[1] += 1
+        c = P(wc, tc)
+        top = tuple(c[x] + haut[x] * lev for x in range(3))
+        _cadre(m, top, du, dv, lu, lv, 0.08, haut,
+               COUL_CADRE_VELUX, COUL_VITRE_TOIT, G)
+        # Les quatre tranches du cadre, du dessous de la tuile au dessus.
+        bas = [P(w, t, -0.03) for w, t in coins]
+        hautp = [tuple(P(w, t)[x] + haut[x] * lev for x in range(3))
+                 for w, t in coins]
+        for i2 in range(4):
+            mid = ((coins[i2][0] + coins[(i2 + 1) % 4][0]) / 2 - wc,
+                   (coins[i2][1] + coins[(i2 + 1) % 4][1]) / 2 - tc)
+            dehors = (e[0] * mid[0] + n[0] * mid[1], e[1] * mid[0] + n[1] * mid[1], 0.0)
+            _face(m, [bas[i2], bas[(i2 + 1) % 4], hautp[(i2 + 1) % 4], hautp[i2]],
+                  COUL_CADRE_VELUX, dehors, G)
 
 
 def _couper(poly, f, seuil):

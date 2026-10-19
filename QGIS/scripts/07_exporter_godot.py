@@ -103,6 +103,7 @@ from export_godot.reglages import (
     attiques,
     finis,
     installations,
+    ouvertures,
     AIRE_JARDIN_MIN,
     ALLEE_PARKING,
     BANDE_CHAMP,
@@ -1436,6 +1437,8 @@ def main():
               % (DEBORD_TOIT, n_pentu, ACROTERE))
         print("        %d souches de cheminée (%.0f %% des toits pentus)"
               % (cheminees[0], 100.0 * cheminees[0] / max(n_pentu, 1)))
+        print("        %d lucarnes, %d fenêtres de toit sur %d toits de maison"
+              % tuple(ouvertures))
         print("        bâti moderne : %d attiques, %d installations sur %d toits"
               " plats ; finis gravier %d · membrane %d · dalles %d"
               % (attiques[0], installations[0], installations[1], *finis))

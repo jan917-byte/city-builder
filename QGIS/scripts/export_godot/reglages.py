@@ -678,6 +678,22 @@ CHEMINEE_AIRE_MIN = 45.0   # une remise de fond de cour n'a pas de cheminée
 
 PART_CHEMINEES = 0.80      # pas toutes : une rangée régulière serait un peigne
 
+# 🪟 LUCARNES ET FENÊTRES DE TOIT, demande de l'auteur du 2026-10-19. Maisons
+# seulement (familles de façade) ; lucarnes côté rue sur un toit raide, fenêtres
+# de toit derrière ou sur les toits doux. Tirées du lieu (35).
+OUVERTURES_FAMILLES = (1, 2, 3)
+LUCARNE_PENTE_MIN = 0.75   # sous ~37°, la lucarne ne tient pas sous le faîtage
+PART_LUCARNES = 0.65       # des toits raides (0,45 jugé trop peu, auteur)
+PART_VELUX_RAIDE = 0.20    # des toits raides sans lucarne
+PART_VELUX_DOUX = 0.40     # des toits doux
+PART_VELUX_ARRIERE = 0.50  # des toits à lucarnes qui en ont aussi derrière
+LUCARNE = (1.4, 1.25)      # largeur, hauteur du front au-dessus de la tuile, m
+LUCARNE_RECUL = 0.5        # m derrière la façade
+LUCARNE_PAS = 3.5          # m d'égout par lucarne, 3 au plus
+VELUX = (0.8, 1.2)         # le 78 × 118 du commerce, m
+VELUX_PAS = 3.0
+OUVERTURE_EGOUT_MIN = 3.0  # une croupe ou un appentis étroit n'en porte pas
+
 # 🏢 LE BÂTI MODERNE (FAMILLE_FACADE 4 et 6), demande de l'auteur du 2026-10-19 :
 # un attique sur toute l'emprise, en léger retrait, et des toits plats équipés.
 # Cosmétique : l'attique ne loge personne, `logements` sort du plancher (04d).
@@ -1023,6 +1039,13 @@ attiques = [0]          # [attiques posés] — 2026-10-19
 installations = [0, 0]  # [objets posés, toits plats modernes équipés]
 
 finis = [0, 0, 0]       # toits plats modernes : gravier, membrane, dalles
+
+ouvertures = [0, 0, 0]  # [lucarnes, fenêtres de toit, toits qui en portent]
+
+# Vitre et cadres des ouvertures de toit. ⚠ flaggable (90).
+COUL_VITRE_TOIT = PAL.vers_lineaire("#3A4550")
+COUL_CADRE_VELUX = PAL.vers_lineaire("#4A4D50")
+COUL_CADRE_LUCARNE = PAL.vers_lineaire("#E8E4DA")
 
 # Le métal de l'écran technique. ⚠ flaggable (90).
 COUL_CAISSON = PAL.vers_lineaire("#A9ACAD")

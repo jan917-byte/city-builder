@@ -830,3 +830,6 @@ Export : 14 attiques, 55 objets sur 30 toits, rebâtir et concours à 0 échec, 
 **2026-10-19 — Fumée des cheminées : des bouffées grises montent des souches des maisons anciennes et partent au vent ; quelques-unes l'été, toutes et plus épaisses quand il gèle.**
 Demande de l'auteur (« un peu de fumée qui sort des cheminées, plus visible en hiver ») ; Godot retrouve les souches dans le maillage à leur teinte, rien à réexporter ; rendu flaggable (90).
 450 souches, 6 bouffées chacune ; essais saison, rebâtir, ouverture sans fenêtre à 0 échec ; jamais vue à l'écran.
+**2026-10-19 — Lucarnes et fenêtres de toit sur les maisons à toit pentu : lucarnes à deux pans tournées vers la rue sur les toits raides, fenêtres de toit derrière ou sur les toits doux.**
+Demande de l'auteur (« ajoute des fenêtres de toits et des lucarnes », puis « rajoute juste des lucarnes » : 65 % des toits raides, une tous les 3,5 m ; « des deux côtés » essayé puis retiré par lui) ; tirées du lieu, jamais sur la souche ; formes et teintes flaggables (90).
+Export : 466 lucarnes, 437 fenêtres de toit sur 392 toits ; aperçus `wehrau_lucarnes_1..6_apres.png` (première version, outil `apercu_lucarnes.gd`) ; essais rebâtir, ouverture, concours à 0 échec sans fenêtre, sauvegarde 92 comme avant.
