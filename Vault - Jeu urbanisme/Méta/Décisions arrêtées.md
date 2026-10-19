@@ -64,7 +64,8 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 100 | L'université publie une **étude : une crue plus forte dans 6 à 8 ans** ; Dangers se lit en deux onglets, Prochaine crue et Dégâts | 🟡 | 2026-09-30, moment changé par 105 |
 | 102 | **Pas de répétition** avant la crue annoncée ; la **canicule** sera la deuxième urgence, plus tard | 🟡 | 2026-10-06 |
 | 103 | **« Ne pas aggraver » s'ouvre quand la ville est réparée** : tout le monde à l'abri, aucun quartier habité coupé, un îlot sinistré relevé | 🟡 | 2026-10-06 · [[Adaptation et réduction]] |
-| 104 | **Un concours** pour toute la zone sinistrée : un mois, un prix, puis quatre projets côte à côte par îlot détruit | 🟡 | 2026-10-06 · `Prototype/Premiers pas.md` |
+| 104 | ~~Un concours **obligatoire** avant les projets neufs~~ (→ 115) ; un pour toute la zone sinistrée, un mois, un prix | 🟡 | 2026-10-06 · `Prototype/Premiers pas.md` |
+| 115 | **Le concours est facultatif** : là où des maisons sont tombées, les quatre façons de rebâtir s'offrent côte à côte sans lui (pilotis après l'institut) ; lancé, il coûte et prend un mois pour toute la zone, puis les projets neufs coûtent moins — « comme avant » ne change pas. Par îlot, le joueur choisit lequel, comment, et s'il prend le temps | 🟡 | 2026-10-19, tranché par l'auteur (piste C) · écartés : le concours obligatoire (un péage avant le choix), les quatre façons sans concours (pas de pari sur le temps) · `Prototype/Premiers pas.md` |
 | 105 | **Une livraison ouvre une porte** : l'étude, puis la berge seule, puis les autres sols, puis le concours. ⏸️ **Suspendue le 2026-10-12** : tout s'ouvre au pont rouvert, l'institut distribuera plus tard | 🟡 | 2026-10-06 · `Prototype/Premiers pas.md` |
 
 ## Les leviers et les lieux

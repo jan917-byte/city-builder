@@ -588,29 +588,10 @@ func berge_rendue() -> bool:
 	return false
 
 
-## 🏛️ Le concours (104) en dernier : la berge n'a pas suffi, un autre sol boit déjà.
-## ⏸️ Éteint (auteur, 2026-10-08) : l'institut et ses pilotis le remplacent ; seul un
-## concours déjà lancé dans une partie sauvegardée le garde. `concours_actif` le rallume (essai_concours).
-var concours_actif := false
-
+## 🏛️ Le concours (104 revue, auteur 2026-10-19) : facultatif, il s'offre avec les quatre façons,
+## l'étude parue. Plus d'annonce : le bouton de la fiche suffit.
 func concours_ouvert() -> bool:
-	var v = jeu.ville
-	if v.concours_lance():
-		return true
-	if not concours_actif or not berge_rendue():
-		return false
-	for fid in v._vert:
-		if jeu.mois >= float(v._vert[fid]["debut"]) + float(v._vert[fid]["duree"]) \
-				and float(v._vert[fid]["cible"]) > 0.0:
-			return true
-	for fid in v._permeable:
-		if not v.permeable_en_cours(fid, jeu.mois):
-			return true
-	for fid in v._cultures:
-		if float(Ville.CULTURES[v.champ_culture(fid, jeu.mois)]["crue_m_ha"]) > 0.0 \
-				and not v.culture_en_cours(fid, jeu.mois):
-			return true
-	return false
+	return jeu.ville.concours_lance() or not annee_un()
 
 
 ## 🚪 Ce qui s'ouvre se dit une fois, au bandeau et au journal.
@@ -621,9 +602,6 @@ func _annoncer_portes() -> void:
 	if not "leviers" in _portes_dites and etude_parue and berge_rendue():
 		_portes_dites["leviers"] = true
 		jeu.interface.retours.annoncer("Berge rendue.", jeu.mois)
-	if not "concours" in _portes_dites and concours_ouvert() and not jeu.ville.concours_lance():
-		_portes_dites["concours"] = true
-		jeu.interface.retours.annoncer("Un concours est ouvert.", jeu.mois)
 
 
 ## 📖 Une page qui s'ouvre se dit une fois, au bandeau et au journal.
@@ -1064,8 +1042,6 @@ func reprendre(etat: Dictionary) -> void:
 	# Une reprise ne rejoue pas ce qui était déjà ouvert.
 	if etude_parue and berge_rendue():
 		_portes_dites["leviers"] = true
-	if concours_ouvert():
-		_portes_dites["concours"] = true
 	etape = ""
 	_signature = ""
 	actualiser(true)

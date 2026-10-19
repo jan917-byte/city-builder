@@ -191,11 +191,12 @@ const RECONSTRUCTIONS := {
 		"confiance": -1.0, "hausse_m": 0.0},
 }
 const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc"]
-# 🏛️ UN CONCOURS POUR TOUTE LA ZONE SINISTRÉE (104, auteur 2026-10-06) : il coûte
-# et prend un mois, puis chaque îlot montre ses quatre projets. « Comme avant »
-# n'en a pas besoin. 🎚️ Prix proposé, à juger : ~4 mois de dotation.
+# 🏛️ UN CONCOURS FACULTATIF POUR TOUTE LA ZONE SINISTRÉE (104 revue, auteur 2026-10-19) :
+# les quatre façons s'offrent sans lui ; lancé, il coûte et prend un mois, puis les projets
+# neufs (tout sauf « comme avant ») coûtent moins. 🎚️ Les trois nombres sont à juger.
 const CONCOURS_KE := 120.0
 const CONCOURS_MOIS := 1.0
+const CONCOURS_LAUREAT_PRIX := 0.8
 const PARC_BAISSE_M_PAR_HA := 0.10   # de crue en moins dans toute la ville, par hectare rendu
 
 
@@ -2285,12 +2286,15 @@ func indicateurs(t: float) -> Dictionary:
 
 ## Ce que `04e` a chiffré pour cet objet, 0 s'il n'y a rien à réparer ou si
 ## c'est déjà payé.
-func cout_reparation_ke(couche: String, fid: int, provisoire := false, facon := "") -> float:
+## `t` négatif : le prix sans concours (les appelants qui ne comparent que des ponts ou des rues).
+func cout_reparation_ke(couche: String, fid: int, provisoire := false, facon := "", t := -1.0) -> float:
 	if est_repare(couche, fid):
 		return 0.0
 	var part := PONT_PROVISOIRE_PART if provisoire and fid in _ponts and couche == "r" else 1.0
 	if couche == "i":
 		part = float(RECONSTRUCTIONS[facon_reparation(fid, facon)]["prix"])
+		if t >= 0.0 and laureat(fid, facon_reparation(fid, facon), t):
+			part *= CONCOURS_LAUREAT_PRIX
 	return base(couche, fid, "cout_reparation_ke") * part
 
 
@@ -2448,7 +2452,7 @@ func deblayer_tout(rues: Array, t: float) -> Dictionary:
 ## L'interface pré-vérifie et explique ; ici, le verrou seul — même partage que
 ## `lancer_solaire`.
 func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "") -> bool:
-	var cout := cout_reparation_ke(couche, fid, provisoire, facon)
+	var cout := cout_reparation_ke(couche, fid, provisoire, facon, t)
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
 		return false
 	if couche == "i" and not facon_permise(fid, facon, t):
@@ -2508,12 +2512,16 @@ func concours_utile(fid: int) -> bool:
 
 
 ## Comme avant toujours ; sur pilotis quand l'institut l'a mis au point (auteur, 2026-10-08) ;
-## le reste après un concours rendu (une façon inconnue en est une).
+## moderne et parc là où des maisons sont tombées, concours ou non (104 revue, 2026-10-19).
 func facon_permise(fid: int, facon: String, t: float) -> bool:
-	if facon == "pilotis" and Recherche.acquis(self, Recherche.PILOTIS, t):
-		return true
-	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" \
-		or (concours_rendu(t) and concours_utile(fid))
+	if facon == "pilotis":
+		return Recherche.acquis(self, Recherche.PILOTIS, t)
+	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" or concours_utile(fid)
+
+
+## 🏛️ Le concours rendu ne change que les projets neufs : « comme avant » n'a rien à concourir.
+func laureat(fid: int, facon: String, t: float) -> bool:
+	return facon != "tradition" and concours_rendu(t) and concours_utile(fid)
 
 
 func lancer_concours(fid: int, t: float) -> bool:
@@ -2655,7 +2663,7 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 	if r.has("concours"):
 		ke += cout_concours_ke()
 	if r.has("reparer"):
-		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire", str(r["reparer"]))
+		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire", str(r["reparer"]), t)
 	return ke
 
 

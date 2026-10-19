@@ -24,7 +24,7 @@ signal deblaiement_demande()
 signal vue_crue_demandee(id: String)
 ## Ouvrir la fiche d'un lieu, déjà réglée — `maquette.examiner`.
 signal examen_demande(couche: String, fid: int, reglage: String, valeur: Variant)
-## 🏛️ L'écran du concours s'ouvre sur cet îlot : `maquette` le remonte au-dessus.
+## 🏛️ L'écran des quatre projets s'ouvre sur cet îlot : `maquette` le remonte au-dessus.
 signal projets_ouverts(fid: int)
 ## 🛠️ Le mode choisi au lancement : histoire, ou auteur (chantiers livrés au clic).
 signal mode_choisi(auteur: bool)
@@ -340,7 +340,7 @@ var bulles := preload("res://scripts/bulles.gd").new()
 var _debut: Button
 ## 🔎 La texture de la miniature, posée par `maquette.gd` avant `batir()`.
 var apercu: Texture2D
-## 🏛️ Façon → la miniature de sa carte au concours, rendue par la maquette.
+## 🏛️ Façon → la miniature de sa carte de projet, rendue par la maquette.
 var apercus_projets := {}
 ## 🎓 Vignette du campus → sa figurine rendue (`maquette.VIGNETTES_CAMPUS`).
 var apercus_campus := {}
@@ -491,7 +491,7 @@ var _repare_bouton: Button
 var _repare_provisoire: Button   # 🌉 l'autre choix d'un pont coupé (auteur, 2026-09-24)
 ## 🏗️ Les quatre façons de relever un îlot sinistré (`Ville.RECONSTRUCTIONS`).
 var _rebatir_boutons := {}
-## 🏛️ Le concours (104) : lancé une fois, puis l'écran des quatre projets de chaque îlot.
+## 🏛️ Le concours (104 revue) : facultatif, une fois pour la zone ; les quatre projets s'ouvrent sans lui.
 var _concours_bouton: Button
 var _projets_bouton: Button
 var _projets_panneau: PanelContainer
@@ -3630,10 +3630,10 @@ func _reprendre_campus() -> void:
 
 
 # ==========================================================================
-# 🏛️ LE CONCOURS (104) — les quatre projets d'un îlot, côte à côte
+# 🏛️ LES QUATRE PROJETS d'un îlot, côte à côte (95 · 104 revue)
 # ==========================================================================
-# Le même concours vaut pour toute la zone : ce qui change d'un îlot à l'autre,
-# ce sont les chiffres (l'eau n'y monte pas pareil), pas les projets.
+# Ouverts sans concours ; le concours, facultatif et pour toute la zone, baisse
+# le prix des projets neufs. D'un îlot à l'autre, seuls les chiffres changent.
 
 ## 🔴 Textes flaggables (90).
 const PROJETS_QUOI := {
@@ -3711,8 +3711,7 @@ func _panneau_projets() -> void:
 
 
 func ouvrir_projets() -> void:
-	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_rendu(_mois) \
-			or not ville.concours_utile(_fiche_fid):
+	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_utile(_fiche_fid):
 		return
 	_projets_cle = ""
 	_projets_panneau.visible = true
@@ -3721,7 +3720,7 @@ func ouvrir_projets() -> void:
 	projets_ouverts.emit(_fiche_fid)
 
 
-## L'îlot dont l'écran du concours est ouvert, sinon -1 : la maquette y règle les miniatures.
+## L'îlot dont l'écran des projets est ouvert, sinon -1 : la maquette y règle les miniatures.
 func projets_fid() -> int:
 	return _fiche_fid if _projets_panneau != null and _projets_panneau.visible else -1
 
@@ -3737,20 +3736,23 @@ func fermer_projets() -> void:
 func _maj_projets() -> void:
 	if not _projets_panneau.visible:
 		return
-	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_rendu(_mois) \
-			or ville.est_repare("i", _fiche_fid):
+	if _fiche_couche != "i" or _fiche_fid < 0 or ville.est_repare("i", _fiche_fid):
 		fermer_projets()
 		return
 	for f in _projets_cartes:
 		var b: Button = _projets_cartes[f]["bouton"]
 		_posee(b, "reparer", "Choisir", f)
-		if str(_pose.get("reparer", "")) == f:
+		b.disabled = not ville.facon_permise(_fiche_fid, f, _mois)
+		if b.disabled:
+			b.text = "À l'institut d'abord"   # 🔴 Flaggable (90).
+		elif str(_pose.get("reparer", "")) == f:
 			b.text = "✓ Choisi"
-	var cle := "%d %d" % [_fiche_fid, int(_mois)]
+	var cle := "%d %d %s" % [_fiche_fid, int(_mois), ville.concours_rendu(_mois)]
 	if cle == _projets_cle:
 		return
 	_projets_cle = cle
-	_projets_titre.text = "Concours : %s" % lieux.nom("i", _fiche_fid)
+	_projets_titre.text = ("Lauréats du concours : %s" if ville.concours_rendu(_mois)
+		else "Projets : %s") % lieux.nom("i", _fiche_fid)
 	_projets_intro.text = "%.0f logements perdus. La prochaine crue y mettrait %s m d'eau." % [
 		ville.base("i", _fiche_fid, "logements_sinistres"),
 		_nb(ville.valeur("i", _fiche_fid, "hauteur_eau_annonce", _mois), 1)]
@@ -3771,9 +3773,12 @@ func _projet(f: String) -> Array:
 	var r := {"reparer": f}
 	var cout := ville.cout_commande_ke("i", _fiche_fid, r, _mois)
 	var duree := ville.duree_commande_mois("i", _fiche_fid, r, _mois)
-	var out := [["caisse", "%s k€" % _milliers(cout), 0],
-		["duree", _duree(duree), 0]]
-	if ville_essai == null:
+	var prix := "%s k€" % _milliers(cout)
+	if ville.laureat(_fiche_fid, f, _mois):
+		prix += ", −%d %% au concours" % int(roundf((1.0 - Ville.CONCOURS_LAUREAT_PRIX) * 100.0))
+	var out := [["caisse", prix, 0], ["duree", _duree(duree), 0]]
+	# Pas mis au point : le prix seul, la ville d'essai refuserait le chantier.
+	if ville_essai == null or not ville.facon_permise(_fiche_fid, f, _mois):
 		return out
 	var t := _mois + duree + 0.05
 	ville_essai.importer_partie(ville.exporter_partie())
@@ -6003,22 +6008,21 @@ func _maj_reparation(o: Dictionary) -> void:
 	# 🏗️ Un îlot sinistré se relève de quatre façons ; elles remplacent le bouton.
 	var rebatir := couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0 \
 		and not ville.est_repare(couche, _fiche_fid) and float(o.get("cout_reparation_ke", 0.0)) > 0.0
-	# 🏛️ Avant le concours (104), comme avant ou le concours ; après, l'écran des projets.
-	# Sans maison détruite, comme avant seulement.
+	# 🏛️ L'étude parue et des maisons tombées : les quatre projets côte à côte, et un concours
+	# facultatif qui les rend moins chers (104 revue, auteur 2026-10-19). Sinon, comme avant seul.
 	var rendu := ville.concours_rendu(_mois)
-	var concours: bool = rebatir and ville.concours_utile(_fiche_fid) \
-		and (ouverture == null or ouverture.concours_ouvert())
-	# 🏗️ Sur pilotis dès que l'institut l'a mis au point (auteur, 2026-10-08), sans concours ;
+	var apres_etude: bool = rebatir and (ouverture == null or not ouverture.annee_un())
+	var projets: bool = apres_etude and ville.concours_utile(_fiche_fid)
+	var concours: bool = projets and (ouverture == null or ouverture.concours_ouvert())
+	# 🏗️ Sur pilotis dès que l'institut l'a mis au point (auteur, 2026-10-08) ;
 	# avant, grisé : il dit où il se met au point.
-	var pilotis_vu: bool = rebatir and not (concours and rendu) \
-		and (ouverture == null or not ouverture.annee_un())
-	var pilotis: bool = pilotis_vu and ville.facon_permise(_fiche_fid, "pilotis", _mois)
+	var pilotis: bool = apres_etude and ville.facon_permise(_fiche_fid, "pilotis", _mois)
 	for facon in _rebatir_boutons:
 		(_rebatir_boutons[facon] as Button).visible = rebatir and facon == "tradition" \
-			and not (concours and rendu) or facon == "pilotis" and pilotis_vu
+			or facon == "pilotis" and apres_etude
 	(_rebatir_boutons["pilotis"] as Button).disabled = not pilotis
 	_concours_bouton.visible = concours and not rendu
-	_projets_bouton.visible = concours and rendu
+	_projets_bouton.visible = projets
 	_repare_etat.visible = false
 	_repare_bouton.visible = not rebatir
 	var prix := float(o.get("cout_reparation_ke", 0.0))
@@ -6072,15 +6076,16 @@ func _maj_reparation(o: Dictionary) -> void:
 			# 🔴 Flaggable (90).
 			_rebatir_boutons["pilotis"].text = "Sur pilotis, à mettre au point à l'institut"
 		var choisi := str(_pose.get("reparer", ""))
-		if concours and rendu:
-			_projets_bouton.text = "Voir les quatre projets" if choisi == "" \
+		if projets:
+			_projets_bouton.text = "Voir les quatre projets" if not Ville.RECONSTRUCTIONS.has(choisi) \
 				else "Projet : %s, revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
-		elif concours and ville.concours_lance():
+		if concours and ville.concours_lance():
 			_concours_bouton.text = "Concours en cours"
 			_concours_bouton.disabled = true
 			_marquer(_concours_bouton, false)
 		elif concours:
-			_posee(_concours_bouton, "concours", "Lancer un concours")
+			_posee(_concours_bouton, "concours", "Lancer un concours : projets neufs à −%d %%"
+				% int(roundf((1.0 - Ville.CONCOURS_LAUREAT_PRIX) * 100.0)))
 			_concours_bouton.disabled = false
 	if pont:
 		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une

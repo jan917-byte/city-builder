@@ -75,10 +75,12 @@ func executer() -> void:
 		"Le guide ne commente plus la caisse : %s" % o._texte.text)
 	jeu._sur_choix("i", m)
 	verifier(ui._fiche_fid == m and ui._pose.is_empty() and not ui._repare_bouton.visible
-		and not ui._rebatir_boutons["tradition"].visible and ui._projets_bouton.visible,
-		"Concours rendu : la fiche des Forgerons n'a plus qu'un bouton, les quatre projets, aucun posé")
+		and ui._rebatir_boutons["tradition"].visible and ui._projets_bouton.visible
+		and ui._concours_bouton.visible,
+		"Sans concours : reconstruire, voir les quatre projets ou lancer le concours, aucun posé")
 	await cliquer(ui._projets_bouton)
-	verifier(ui._projets_panneau.visible, "« Voir les quatre projets » ouvre l'écran du concours")
+	verifier(ui._projets_panneau.visible and ui._projets_titre.text.begins_with("Projets"),
+		"« Voir les quatre projets » s'ouvre sans concours")
 	await capture("rebatir_01_quatre_facons")
 	var n := 2
 	for f in v.RECONSTRUCTIONS_ORDRE:
@@ -115,9 +117,9 @@ func executer() -> void:
 	quit(1 if echecs > 0 else 0)
 
 
-## Une partie neuve, tout le monde au camp, l'étude lue : le menu des Forgerons s'ouvre.
+## Une partie neuve, tout le monde au camp, l'étude lue, les pilotis mis au point.
 ## `concours` : celui de la zone (104), lancé au mois 0 et rendu avant `t`, payé par l'essai.
-func _apres_etude(t: float, concours := true) -> void:
+func _apres_etude(t: float, concours := false) -> void:
 	var o = jeu.ouverture
 	jeu._sur_reset()
 	var champs: Array = o._champs_accessibles()
@@ -130,23 +132,11 @@ func _apres_etude(t: float, concours := true) -> void:
 	o.prochaine_vue = true
 	o.institut_vu = true
 	o.biblio_vue = true
+	jeu.ville._recherche[jeu.Recherche.PILOTIS] = 0.0
 	if concours:
 		jeu.ville.crediter_essai_ke(jeu.ville.CONCOURS_KE)
 		jeu.ville.lancer_concours(o.MAISONS, 0.0)
 	actualiser(t)
-
-
-## 🚪 Le concours attend une berge rendue et un autre sol livré : l'essai les pose
-## livrés d'avance, sans rampe ; `fermer` les retire, le concours lancé reste ouvert.
-func _portes_concours(ouvrir: bool) -> void:
-	var v = jeu.ville
-	if ouvrir:
-		v._berge[jeu.ouverture.BERGE] = {"cible": v.BERGE_RENATUREE,
-			"depuis": v.berge_depart(jeu.ouverture.BERGE), "debut": -40.0, "duree": 1.0, "cout_ke": 0.0}
-		v._permeable[jeu.ouverture.PARKING] = {"debut": -40.0, "duree": 1.0, "cout_ke": 0.0}
-	else:
-		v._berge.erase(jeu.ouverture.BERGE)
-		v._permeable.erase(jeu.ouverture.PARKING)
 
 
 func _effets(ui) -> String:

@@ -809,3 +809,6 @@ Sur le Mac, essai ouverture à 82 échecs avec ou sans la modification (récit, 
 **2026-10-19 — L'université contient la bibliothèque et l'institut : le rail n'a plus que Mairie et Université, la fenêtre s'appelle Université, ses onglets Études · Bibliothèque · Institut.**
 Demande de l'auteur (« pas au même niveau »), option A sur trois, décision 114 ; les trois îlots du campus restent sur la carte et ouvrent chacun son onglet.
 Essais étude et ouverture à 0 échec sur le Mac, sans fenêtre ; pas de capture.
+**2026-10-19 — Le concours devient facultatif (décision 115, piste C) : les quatre façons de rebâtir s'offrent côte à côte sans lui ; lancé, 120 k€ et un mois, puis moderne, pilotis et parc coûtent 20 % de moins.**
+Choix de l'auteur (« le joueur ne choisit que l'îlot ») : 104 barrée ; « comme avant » inchangé, pilotis toujours après l'institut, plus d'annonce « concours ouvert » ; le concours se rembourse dès 600 k€ de projets neufs (Forgerons moderne 955 → 764 k€).
+Essais concours, rebâtir, étude, ouverture, déblaiement, vie_camp, labour, relogement à 0 échec sans fenêtre ; livre 1, progression 1, sauvegarde 92, capital et travaux identiques avant la modification ; pas de capture.

@@ -88,7 +88,7 @@ func executer() -> void:
 	verifier(ui._menu_boutons["sols"].visible and o.levier_ferme("permeable") == ""
 		and o.levier_ferme("vert") != "" and o.levier_ferme("pre") != "",
 		"Le sol perméable acheté ouvre la carte des sols, pas les toits verts ni le pré")
-	verifier(not o.concours_ouvert(), "La berge seule n'ouvre pas encore le concours")
+	verifier(not "concours" in str(ui.retours.journal).to_lower(), "Le concours ne s'annonce pas : la fiche le propose")
 	for l in ["solaire", "rue", "arbres"]:
 		verifier(o.levier_ferme(l) != "", "Fermé : %s · %s" % [l, o.levier_ferme(l)])
 	var conds: Array = o.conditions_reparee()
@@ -154,9 +154,9 @@ func executer() -> void:
 		int(part0 * 100.0), int(v.part_sol_permeable(t2) * 100.0)])
 	verifier(eau1 < eau0 - 0.05 and v.part_sol_permeable(t2) > part0,
 		"Livré : la crue baisse et la ville boit plus")
-	# ⏸️ Le concours est éteint (auteur, 2026-10-08) : l'institut et ses pilotis le remplacent.
-	verifier(not o.concours_ouvert() and not "concours" in str(ui.retours.journal[-1]),
-		"Après la berge, un sol livré n'ouvre plus de concours : %s" % ui.retours.journal[-1])
+	# 🏛️ Le concours est facultatif (104 revue, 2026-10-19) : aucun sol ne l'ouvre, aucune annonce.
+	verifier(not "concours" in str(ui.retours.journal[-1]),
+		"Après la berge, un sol livré n'annonce pas de concours : %s" % ui.retours.journal[-1])
 	verifier(v.valeur("i", o.PARKING, "stationnement", t2) >= v.base("i", o.PARKING, "stationnement"),
 		"Les places restent")
 	ui._fermer_fiche()
@@ -183,7 +183,7 @@ func executer() -> void:
 
 	# --- La ville réparée : un îlot sinistré relevé, la page « Ne pas aggraver » s'ouvre.
 	jeu._sur_theme("")
-	# Comme avant : le parc attend le concours (104).
+	# Comme avant : au Lavoir, aucune maison n'est tombée.
 	var lavoir := 62
 	jeu._sur_commande("i", lavoir, {"reparer": "tradition"})
 	var t3: float = t2 + v.duree_reparation_mois("i", lavoir, false, "tradition") + 0.1

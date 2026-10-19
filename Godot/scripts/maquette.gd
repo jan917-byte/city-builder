@@ -152,7 +152,7 @@ var _apercu_couche := ""
 var _apercu_voitures := ""
 var _apercu_camp := ""
 var _apercu_provisoire := false
-## 🏛️ Une miniature par carte du concours (104), éteintes tant que l'écran est fermé.
+## 🏛️ Une miniature par carte de projet (95), éteintes tant que l'écran est fermé.
 var apercus_projets := {}
 var _projets_fid := -1
 ## 🎓 Les vignettes du campus, un objet seul chacune, rendues une fois (auteur, 2026-10-11).
@@ -3111,7 +3111,7 @@ func _maj_apercu() -> void:
 		apercu.ech_chaussee)
 
 
-## 🏛️ Les quatre cartes du concours : les maillages de la fiche, chacun réglé sur
+## 🏛️ Les quatre cartes de projet : les maillages de la fiche, chacun réglé sur
 ## sa façon. Le parc ne montre pas le bâti neuf : la ruine y devient prairie.
 func _maj_apercus_projets() -> void:
 	var fid: int = interface.projets_fid() if interface != null else -1
@@ -3552,7 +3552,7 @@ func _viser_objet(couche: String, fid: int, taille: float) -> void:
 	pivot.viser(Vector2(c.x, c.z), taille)
 
 
-## 🏛️ L'écran du concours prend le bas (104) : l'îlot remonte d'un cinquième d'écran.
+## 🏛️ L'écran des projets prend le bas (95) : l'îlot remonte d'un cinquième d'écran.
 func _cadrer_projets(fid: int) -> void:
 	var c := _centre_objet("i", fid)
 	pivot.viser(Vector2(c.x, c.z), 220.0)

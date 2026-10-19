@@ -140,8 +140,8 @@ func executer() -> void:
 	jeu._rafraichir(true)
 	var pil: Button = ui._rebatir_boutons["pilotis"]
 	verifier(ui._rebatir_boutons["tradition"].visible and pil.visible and pil.disabled
-		and "institut" in pil.text and not ui._concours_bouton.visible,
-		"Avant la recherche, « Sur pilotis » est grisé et dit où il se met au point")
+		and "institut" in pil.text and ui._concours_bouton.visible and ui._projets_bouton.visible,
+		"Avant la recherche, « Sur pilotis » est grisé et dit où il se met au point ; projets et concours s'offrent")
 	await capture("campus_04_pilotis_grise")
 	ui._fermer_fiche()
 	# Comme en jeu : abriter et rouvrir le pont ont payé deux points.
