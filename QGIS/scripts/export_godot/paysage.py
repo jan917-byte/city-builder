@@ -71,15 +71,30 @@ def clairiere(x, z):
 
 def repartir(arbres, eau=None):
     """Les arbres du décor rangés par ESSENCE selon l'altitude et le peuplement :
-    le sapin monte avec le versant et vit en taches, le feuillu tient le bas,
+    le sapin monte avec le versant, vit en taches dans la forêt et règne en haut, le feuillu tient le bas,
     le peuplier la rive. Ajoute la teinte du peuplement (6e nombre).
     `eau(x, z)` : distance au cours d'eau, ou None."""
     out = [[], [], []]
+    # 🌲 (auteur, 2026-10-19 : « des conifères dans les forêts et en hauteur »)
+    # Le couvert se lit au nombre de voisins : sous le couvert fermé le sapin
+    # entre par taches, l'arbre isolé du pré reste un feuillu.
+    voisins = {}
+    for liste in arbres:
+        for a in liste:
+            k = (int(a[0] // 25), int(a[2] // 25))
+            voisins[k] = voisins.get(k, 0) + 1
+
+    def ferme(x, z):
+        i, j = int(x // 25), int(z // 25)
+        n = sum(voisins.get((i + di, j + dj), 0) for di in (-1, 0, 1) for dj in (-1, 0, 1))
+        return fondu(3, 10, n)
+
     for liste in arbres:
         for a in liste:
             x, y, z = a[0], a[1], a[2]
             tache = bruit(x / 260.0, z / 260.0, GRAINE + 3)
-            sapin = max(0.0, min(1.0, (y - 40.0) / 320.0 + (tache - 0.5) * 1.1))
+            sapin = max(0.0, min(1.0, 0.40 * ferme(x, z) + (y - 30.0) / 220.0
+                                 + (tache - 0.5) * 0.9))
             h = _alea(int(x * 7.0), int(z * 7.0), GRAINE + 5)
             if h < sapin:
                 essence = 1
