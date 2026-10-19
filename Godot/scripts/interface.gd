@@ -1901,7 +1901,8 @@ func _sur_rail(id: String) -> void:
 ## un thème neuf n'écrit rien de plus ici.
 func _placer_detail() -> void:
 	var genre := str(_theme_actuel.get("genre", ""))
-	if _theme_courant == "" and _bilan_differe():
+	# 🔄 Panneau Données retiré de l'écran (auteur, 2026-10-19) : toujours bâti, pour le rendre.
+	if _theme_courant == "" and (PANNEAU_DONNEES_RETIRE or _bilan_differe()):
 		_detail_ouvert = false
 	_ville_panneau.visible = _detail_ouvert and _theme_courant == ""
 	_diagnostic_panneau.visible = _detail_ouvert and genre == "crue"
@@ -1909,6 +1910,9 @@ func _placer_detail() -> void:
 	_calque_panneau.visible = _detail_ouvert and genre in ["calque", "sols", "agriculture"]
 	if ouverture != null:
 		ouverture.visible = ouverture.paraitre()
+
+
+const PANNEAU_DONNEES_RETIRE := true
 
 
 ## Les données générales attendent la fin de la découverte du premier pont.
