@@ -1224,6 +1224,30 @@ func _maj_resume(dessin: String, texte: String) -> void:
 ## 🔴 LA TABLE DES DESSINS EST HORS DE `_icone` depuis le 2026-09-17 : les
 ## pastilles posées sur la ville (`pastilles.gd`) y puisent pour fabriquer leur
 ## propre image, contour compris. Deux tables finiraient par diverger.
+## 🎨 L'APLAT DES ICÔNES D'OBJETS (auteur, 2026-10-19 : « le trait, plus une couleur ») :
+## le dessin rempli dessous, le trait par-dessus. Les teintes sont celles des compteurs
+## et des jauges ; les commandes (pause, croix, sauver…) restent en trait seul.
+const TEINTES := {
+	"ville": Color8(216, 147, 147), "dangers": Color8(198, 76, 66), "chantiers": Color8(232, 170, 48),
+	"energie": Color8(214, 158, 44), "trafic": Color8(122, 112, 150), "nourriture": Color8(150, 128, 44),
+	"sols": Color8(100, 196, 105), "mairie": Color8(176, 150, 110), "universite": Color8(70, 98, 150),
+	"bibliotheque": Color8(70, 98, 150), "institut": Color8(70, 98, 150), "recherche": Color8(70, 98, 150),
+	"caisse": Color8(78, 121, 67), "capital": Color8(122, 84, 48), "conso": Color8(198, 126, 32),
+	"production": Color8(214, 158, 44), "achat": Color8(122, 112, 96), "co2": Color8(104, 116, 108),
+	"adaptation": Color8(46, 122, 146), "reduction": Color8(88, 128, 60), "logement": Color8(196, 120, 96),
+	"feuille": Color8(88, 128, 60), "eau": Color8(46, 122, 146), "camp": Color8(140, 123, 107),
+	"personnes": Color8(196, 120, 96), "pont": Color8(150, 140, 120),
+}
+
+
+## Le remplissage pastel, opaque : il se lit pareil sur le crème et sur la tuile enfoncée.
+static func aplat(nom: String) -> String:
+	if not TEINTES.has(nom):
+		return ""
+	var pastel: Color = (TEINTES[nom] as Color).lerp(Color.WHITE, 0.45)
+	return "<g fill='#%s' stroke='none'>%s</g>" % [pastel.to_html(false), str(DESSINS[nom]).replace("@", "none")]
+
+
 const DESSINS := {
 	"ville": "<path d='M3 21h18M5 21V9h5v12M10 21V4h6v17M16 21v-9h4v9M7 12h1m-1 3h1m-1 3h1m5-11h1m-1 4h1m-1 4h1m4 0h1m-1 3h1'/>",
 	"diagnostic": "<path d='M4 20h16M6 18v-6h3v6m3 0V6h3v12m3 0v-9h3v9'/>",
@@ -1300,7 +1324,7 @@ func _icone(nom: String, taille := 25, coul := TEXTE, angle := 0) -> Texture2D:
 		return dessin
 	# 🎨 `@` = LA COULEUR DU TRAIT : c'est ce qui permet un aplat (`fill='@'`)
 	# dans une table qui est sinon tout en traits.
-	var corps: String = str(DESSINS.get(nom, DESSINS["diagnostic"])) 		.replace("@", "#" + coul.to_html(false))
+	var corps: String = aplat(nom) + str(DESSINS.get(nom, DESSINS["diagnostic"])) 		.replace("@", "#" + coul.to_html(false))
 	if angle != 0:
 		corps = "<g transform='rotate(%d 12 12)'>%s</g>" % [angle, corps]
 	return _rendre_icone(cle, corps, taille, coul)
@@ -1324,20 +1348,43 @@ static func _icone_dessinee(nom: String, taille: int) -> Texture2D:
 	return ImageTexture.create_from_image(img) if img != null else null
 
 
-## Les icônes isométriques de l'auteur (`res://icones/⟨nom⟩.svg`, gabarit `_gabarit.svg`) :
+## Les icônes dessinées par l'auteur (`res://icones/⟨nom⟩.svg`, gabarit `_gabarit.svg`) :
 ## la plus grande dimension du viewBox tient dans `taille`, le groupe « gabarit » est retiré.
 ## ⚠️ Lu en fichier brut : à ajouter au filtre d'export le jour où on exporte.
 static func image_dessinee(nom: String, taille: int) -> Image:
 	var chemin := "res://icones/%s.svg" % nom
 	if not FileAccess.file_exists(chemin):
 		return null
-	var svg := RegEx.create_from_string("(?s)<g id=\"gabarit\".*?</g>") 		.sub(FileAccess.get_file_as_string(chemin), "")
+	var svg := _sans_gabarit(FileAccess.get_file_as_string(chemin))
 	var vb := RegEx.create_from_string("viewBox=\"[-\\d.]+ [-\\d.]+ ([\\d.]+) ([\\d.]+)\"").search(svg)
 	var cote := maxf(float(vb.get_string(1)), float(vb.get_string(2))) if vb else 24.0
 	var img := Image.new()
 	if img.load_svg_from_string(svg, float(taille) / cote) != OK:
 		return null
 	return img
+
+
+## Le groupe « gabarit » retiré en entier, groupes imbriqués compris (Illustrator en ajoute).
+static func _sans_gabarit(svg: String) -> String:
+	var debut := svg.find("<g id=\"gabarit\"")
+	if debut < 0:
+		return svg
+	var i := debut
+	var niveau := 0
+	while i < svg.length():
+		var ouvre := svg.find("<g", i + 1)
+		var ferme := svg.find("</g>", i + 1)
+		if ferme < 0:
+			return svg
+		if ouvre >= 0 and ouvre < ferme:
+			niveau += 1
+			i = ouvre
+		elif niveau > 0:
+			niveau -= 1
+			i = ferme
+		else:
+			return svg.substr(0, debut) + svg.substr(ferme + 4)
+	return svg
 
 
 static func est_dessinee(nom: String) -> bool:
@@ -1723,6 +1770,17 @@ func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	if est_dessinee(icone):
 		# Plus grand que le trait : il remplit son carré, et l'auteur le voulait plus gros.
 		b.icon = _icone(icone, 36, Color.WHITE)
+	elif TEINTES.has(icone):
+		# L'aplat ne doit pas passer par la teinte d'état : le trait prend la couleur
+		# d'état dans le dessin même, et l'icône change quand la tuile s'enfonce.
+		var repos := b.get_theme_color("icon_normal_color")
+		var enfonce := b.get_theme_color("icon_pressed_color")
+		b.icon = _icone(icone, 26, repos)
+		# ⚠️ `draw` et non `toggled` : le rail s'enfonce par `set_pressed_no_signal`.
+		# Différé : une icône changée pendant le dessin ne se redessine pas.
+		b.draw.connect(func() -> void:
+			b.set_deferred("icon", _icone(icone, 26, enfonce if b.button_pressed else repos)))
+	if est_dessinee(icone) or TEINTES.has(icone):
 		# Un dessin en couleurs ne se teinte pas : le brun du thème l'aurait noirci.
 		for etat in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:
 			b.add_theme_color_override(etat, Color.WHITE)

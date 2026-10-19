@@ -153,16 +153,17 @@ func _texture(nom: String) -> Texture2D:
 static func pictogramme(nom: String, fond: Color, encre: Color) -> Texture2D:
 	# 🎨 `@` = l'encre du dessin, la même table que l'interface (`_icone`).
 	var corps: String = str(Interface.DESSINS.get(nom, Interface.DESSINS["dangers"])) 		.replace("@", "#" + encre.to_html(false))
+	var dessous := Interface.aplat(nom)
 	var svg := ("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'"
 		+ " viewBox='-4 -4 32 32'>"
 		+ "<circle cx='12' cy='12' r='15' fill='#%s'/>" % encre.to_html(false)
 		+ "<circle cx='12' cy='12' r='13.2' fill='#%s'/>" % fond.to_html(false)
 		+ "<g fill='none' stroke='#%s' stroke-width='2.2'" % encre.to_html(false)
-		+ " stroke-linecap='round' stroke-linejoin='round'>" + corps + "</g></svg>")
+		+ " stroke-linecap='round' stroke-linejoin='round'>" + dessous + corps + "</g></svg>")
 	var dessin := Interface.image_dessinee(nom, int(TAILLE * 0.72))
 	if dessin != null:
 		# ✏️ Le dessin de l'auteur, en ses couleurs, dans le même disque.
-		svg = svg.replace(corps, "")
+		svg = svg.replace(dessous + corps, "")
 	var img := Image.new()
 	if img.load_svg_from_string(svg, float(TAILLE) / 32.0) != OK:
 		return null
