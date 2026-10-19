@@ -30,7 +30,7 @@
 | Herbe | terne l'hiver, tendre au printemps, jaunie les étés chauds |
 | Neige | une fois par hiver, entre le 10 décembre et le 25 janvier ; douze jours pour arriver (collines, toits et couronnes, jardins et champs, par grands pans), dix pour fondre ; **la chaussée reste déneigée** |
 | Flocons | à l'écran, légers, seulement pendant l'arrivée ; absents en vue diagnostic |
-| Fumée (2026-10-19) | des bouffées grises sortent des souches des maisons anciennes et partent vers l'est ; en été une souche sur vingt, toutes sous 2 °C, plus épaisses et plus hautes ; ni des ruines ni du bâti rebâti moderne ; elle suit l'étage ajouté ; absente en vue diagnostic |
+| Fumée (2026-10-19) | des bouffées grises sortent des souches des maisons anciennes et d'un toit plat sur deux (une souche au bord, deux sur les longs) et partent vers l'est ; en été une souche sur vingt, toutes sous 2 °C, plus épaisses et plus hautes ; ni des ruines ni du bâti rebâti moderne ; elle suit l'étage ajouté ; absente en vue diagnostic |
 | Collines | blanches en hiver au-dessus d'une limite qui monte avec les années |
 | Thermomètre du haut | la température **tirée** du mois, plus la normale |
 

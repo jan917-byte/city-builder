@@ -91,6 +91,7 @@ from .reglages import (
     MITOYEN_SINUS,
     PAN_COUPE_M,
     PART_CHEMINEES,
+    PART_CHEMINEES_PLAT,
     PAN_MIN_M2,
     PART_COTE_MAX,
     RECTANGULAIRE,
@@ -502,7 +503,7 @@ def _rangs_verts(volumes, pente):
     return rangs
 
 
-def _rangs_denses(volumes, st, loge):
+def _rangs_denses(volumes, st, loge, exclus=()):
     """k_vol -> la place de ce bâtiment sur [0,1[ dans l'ordre de montée.
 
     🏢 DU PLUS BAS AU PLUS HAUT (auteur, 2026-09-03) : un îlot qu'on
@@ -515,6 +516,7 @@ def _rangs_denses(volumes, st, loge):
     grandir —, et les îlots que la donnée ne LOGE PAS. Sans la dernière, une
     halle et l'université gagnaient des appartements : `logements` dit qui loge
     (04), le plancher dit combien (04d), et on n'ajoute que là où il y a déjà.
+    `exclus` : les bâtiments de cour, qui ne logent pas (04d).
     Rend aussi l'emprise réunie de ceux qui montent, dont sortent les logements
     qu'un étage ajoute.
     """
@@ -522,7 +524,7 @@ def _rangs_denses(volumes, st, loge):
         return {}, 0.0, []
     ordre = sorted((niv, abs(D4C.aire_signee(emp)), k)
                    for k, (emp, niv, _f, _p, crue, _e) in enumerate(volumes)
-                   if crue != "ruine")
+                   if crue != "ruine" and k not in exclus)
     n = len(ordre)
     if n == 0:
         return {}, 0.0, []
@@ -718,8 +720,52 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
         else:
             _installations(m, att, y_haut + ETAGE_M, coul, rng, G,
                            edicules=False)
+    # Sur l'attique s'il y en a un : posée autour, la souche y serait noyée.
+    if not (m.dense is not None and m.dense[0] > 1.0e5):
+        if moderne and att is not None:
+            _souches_plates(m, att, y_haut + ETAGE_M, G)
+        else:
+            _souches_plates(m, anneau, y_haut, G)
     m.sol = None
     return ok, n, haut_ok, n_tris
+
+
+def _souches_plates(m, anneau, y_toit, G):
+    """Une ou deux souches au bord d'un toit plat, vers les bouts du grand
+    côté : les cages et l'écran de `_installations` tiennent l'axe du milieu."""
+    if abs(aire_signee(anneau)) < CHEMINEE_AIRE_MIN:
+        return
+    r = random.Random(_graine_lieu(anneau) ^ 0xC17F)
+    if r.random() > PART_CHEMINEES_PLAT:
+        return
+    zone = _decaler(anneau, -0.6)
+    if aire_signee(zone) * aire_signee(anneau) <= 0.0:
+        return
+    ferme = list(zone) + [zone[0]]
+    p0, p1 = max(((anneau[i], anneau[(i + 1) % len(anneau)])
+                  for i in range(len(anneau))),
+                 key=lambda e: math.hypot(e[1][0] - e[0][0], e[1][1] - e[0][1]))
+    L0 = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+    u = ((p1[0] - p0[0]) / L0, (p1[1] - p0[1]) / L0)
+    v = (-u[1], u[0])
+    q = [(p[0] * u[0] + p[1] * u[1], p[0] * v[0] + p[1] * v[1]) for p in zone]
+    s0, s1 = min(a for a, _b in q), max(a for a, _b in q)
+    t0, t1 = min(b for _a, b in q), max(b for _a, b in q)
+    if t1 - t0 < 7.0:   # plus étroit, la souche toucherait l'écran ou une cage
+        return
+    L = s1 - s0
+    bouts = [r.random() < 0.5] if L < 24.0 else [True, False]
+    d = CHEMINEE_COTE / 2.0
+    for debut in bouts:
+        cs = s0 + r.uniform(0.12, 0.3) * L if debut else s1 - r.uniform(0.12, 0.3) * L
+        ct = t0 + 0.5 if r.random() < 0.5 else t1 - 0.5
+        if not all(dedans(ferme, ((cs + a) * u[0] + (ct + b) * v[0],
+                                  (cs + a) * u[1] + (ct + b) * v[1]))
+                   for a, b in ((-d, -d), (d, -d), (d, d), (-d, d))):
+            continue
+        cheminees[1] += 1
+        _cheminee(m, cs * u[0] + ct * v[0], cs * u[1] + ct * v[1],
+                  y_toit - 0.05, y_toit + CHEMINEE_HAUT, u, COUL_CHEMINEE, G)
 
 
 def _dessus(m, anneau, y, coul, axe_uv, genre, G):

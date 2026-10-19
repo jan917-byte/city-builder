@@ -306,14 +306,15 @@ def lire(con):
     # 🌊 `etat_crue` et `hauteur_eau` viennent de `04e` et ne servent QU'AU
     # RENDU ici : c'est la seule chose que la 3D sait de la crue. Le nombre qui
     # compte pour le jeu (`alea`, les parts sinistrées) reste sur l'îlot.
-    for fid_p, fid_i, geom, etat, h in con.execute(
-        "SELECT fid_parcelle, fid_ilot, geom, etat_crue, hauteur_eau"
-        " FROM batiments ORDER BY fid"
+    for fid_p, fid_i, geom, etat, h, niv, cour in con.execute(
+        "SELECT fid_parcelle, fid_ilot, geom, etat_crue, hauteur_eau,"
+        " niveaux, cour FROM batiments ORDER BY fid"
     ):
         if fid_i in ilots and fid_p in parcelles:
             ilots[fid_i]["batiments"].append(
                 {"anneau": anneau_ouvert(geom), "parcelle": parcelles[fid_p],
-                 "crue": etat or "intact", "eau": h or 0.0})
+                 "crue": etat or "intact", "eau": h or 0.0,
+                 "niveaux": niv, "cour": bool(cour)})
 
     routes = []
     for r in con.execute("SELECT %s, geom FROM routes ORDER BY fid"
@@ -813,6 +814,7 @@ def main():
             toit_plat_ilot = 0.0
             volumes = []
             batiments_par_parcelle = {}
+            cours_ilot = set()
             # 🚶 LA VENELLE NE SE BÂTIT PAS, ET ELLE EST UNE ADRESSE. Deux
             # choses en découlent, et il faut les deux : elle sort de la liste
             # des parcelles à bâtir — ses deux bouts touchent le bord de
@@ -828,6 +830,14 @@ def main():
                     p = b["parcelle"]
                     emp = b["anneau"]
                     faite = _direction_faitage(p["anneau"], idx)
+                    if b["cour"]:
+                        # 🏚️ Faîtage dans la longueur : il n'a pas de rue.
+                        a0, a1, a2 = emp[0], emp[1], emp[2]
+                        lg = a1 if math.dist(a0, a1) >= math.dist(a1, a2) else a2
+                        o = a0 if lg is a1 else a1
+                        L = math.dist(o, lg)
+                        faite = ((lg[0] - o[0]) / L, (lg[1] - o[1]) / L)
+                        cours_ilot.add(len(volumes))
                     # 🌊 LA HAUTEUR ET LE FAÎTAGE RESTENT CEUX DU BÂTIMENT
                     # INTACT, même pour une ruine : ce sont eux que le maillage
                     # « réparé » emploiera. Ce qu'une ruine perd — toit, étages,
@@ -836,7 +846,8 @@ def main():
                         n_ruine += 1
                     else:
                         n_sali += b["crue"] != "intact"
-                    niv_b = CP.du_plan(fid, emp)[1] if fid in CAMPUS else p["niveaux"]
+                    niv_b = CP.du_plan(fid, emp)[1] if fid in CAMPUS \
+                        else b["niveaux"] or p["niveaux"]
                     volumes.append((emp, niv_b, faite, p,
                                     b["crue"], b["eau"]))
                     batiments_par_parcelle.setdefault(p["fid"], []).append(emp)
@@ -856,7 +867,7 @@ def main():
             rangs_verts = _rangs_verts(volumes, pente)
             n_range += len(rangs_verts)
             rangs_denses, emprise_dense, cumul_dense = _rangs_denses(
-                volumes, st, int(d["logements"] or 0))
+                volumes, st, int(d["logements"] or 0), cours_ilot)
             d["dense_n"] = len(rangs_denses)
             d["dense_logements_etage"] = int(round(
                 emprise_dense / D4D.M2_BRUT_PAR_LOGEMENT))
@@ -944,7 +955,7 @@ def main():
                                   idx_murs, st)
                 alea = random.Random(gr ^ 0xFE4E).random()
                 # 🚪 Avant `_masse` : l'entrée peut déplacer la porte de mur.
-                ent = None if role else ENT.placer(
+                ent = None if role or k_vol in cours_ilot else ENT.placer(
                     emp, genres, alea, FAMILLE_FACADE.get(st, 0),
                     parcelle["anneau"],
                     [(k, (parcelle["anneau"][k],
@@ -1435,8 +1446,10 @@ def main():
         print("        débord de toit %.2f m sur les %d volumes à deux pentes,"
               " acrotère de %.2f m sur les toits plats"
               % (DEBORD_TOIT, n_pentu, ACROTERE))
-        print("        %d souches de cheminée (%.0f %% des toits pentus)"
-              % (cheminees[0], 100.0 * cheminees[0] / max(n_pentu, 1)))
+        print("        %d souches de cheminée (%.0f %% des toits pentus),"
+              " %d sur les toits plats"
+              % (cheminees[0], 100.0 * cheminees[0] / max(n_pentu, 1),
+                 cheminees[1]))
         print("        %d lucarnes, %d fenêtres de toit sur %d toits de maison"
               % tuple(ouvertures))
         print("        bâti moderne : %d attiques, %d installations sur %d toits"

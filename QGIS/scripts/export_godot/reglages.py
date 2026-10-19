@@ -677,6 +677,9 @@ CHEMINEE_HAUT = 1.3
 CHEMINEE_AIRE_MIN = 45.0   # une remise de fond de cour n'a pas de cheminée
 
 PART_CHEMINEES = 0.80      # pas toutes : une rangée régulière serait un peigne
+# Toits plats (auteur, 2026-10-19, « quelques cheminées ») : un sur deux, une
+# souche au bord, deux au-delà de 24 m de long, hors de l'axe des cages.
+PART_CHEMINEES_PLAT = 0.5
 
 # 🪟 LUCARNES ET FENÊTRES DE TOIT, demande de l'auteur du 2026-10-19. Maisons
 # seulement (familles de façade) ; lucarnes côté rue sur un toit raide, fenêtres
@@ -1032,7 +1035,7 @@ rectangles = [0]        # volumes ramenés à une boîte
 
 minces = [0]            # empreintes trop fines, rendues au jardin
 
-cheminees = [0]         # souches posées — 2026-08-18
+cheminees = [0, 0]      # souches posées [pentus, plats] — 2026-08-18, 2026-10-19
 
 attiques = [0]          # [attiques posés] — 2026-10-19
 

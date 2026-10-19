@@ -1,6 +1,6 @@
 extends SceneTree
 ## 🔥 LA FUMÉE DES SOUCHES, à juger : le cœur ancien en juillet, novembre et
-## janvier (avec et sans neige), même graine, bouffées figées. Îlots numérotés.
+## janvier (avec et sans neige), même graine, bouffées figées, puis les toits plats. Îlots numérotés.
 ## Godot --path Godot --position 6000,6000 --script res://outils/apercu_fumee.gd
 
 const Saison := preload("res://scripts/saison.gd")
@@ -53,7 +53,9 @@ func capturer() -> void:
 		["1_juillet", 4.5], ["2_novembre", 8.85],
 		["3_janvier", float(e[0]) - 0.1], ["4_neige", neige],
 	]
-	for v in [["pres", ["i", 22], 150.0, 32.0, 38.0], ["quartier", ["i", 14], 420.0, 34.0, 38.0]]:
+	# « plats » : la barre de 1974 et ses voisins, souches des toits plats (2026-10-19).
+	for v in [["pres", ["i", 22], 150.0, 32.0, 38.0], ["quartier", ["i", 14], 420.0, 34.0, 38.0],
+			["plats", ["i", 32], 170.0, 38.0, 38.0]]:
 		for d in dates:
 			await _vue(v, d[1])
 			await jeu._capturer("fumee_%s_%s" % [v[0], d[0]])
