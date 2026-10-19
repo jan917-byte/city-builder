@@ -120,13 +120,21 @@ const DERIVE_PRIX_ENERGIE_AN := 1.02  # l'énergie achetée coûte +2 % par an
 const CLASSES_ANNEES := [10.0, 17.0, 24.0]
 
 
+## ⚠️ Partagée entre appelants : la lire, jamais l'écrire.
 static func ligne(v, fid: int) -> Dictionary:
 	var st: String = str(v.ilots.get(fid, {}).get("sous_type", ""))
+	if _lignes.has(st):
+		return _lignes[st]
 	var brute: Array = ENERGIE.get(st, [])
 	var d := {}
 	for i in _COLS.size():
 		d[_COLS[i]] = float(brute[i]) if i < brute.size() else 0.0
+	_lignes[st] = d
 	return d
+
+
+## ⏱️ Une par sous-type : refaite à chaque appel, elle pesait un tiers des sommes de ville.
+static var _lignes := {}
 
 
 ## Un facteur annuel appliqué à un temps en mois : 0,94^(t/12).
@@ -281,9 +289,11 @@ static func classe_rentabilite(v, fid: int, t: float) -> int:
 static func ville_mwh(v, t: float) -> Dictionary:
 	var conso := 0.0
 	var prod := 0.0
+	# Le facteur hors de la boucle : c'est `production_mwh`, au même produit près.
+	var f: float = v.facteur("rendement_x", t)
 	for fid in v.fids_batis():
 		conso += conso_mwh(v, fid, t)
-		prod += production_mwh(v, fid, t)
+		prod += potentiel_mwh(v, fid, t) * v.valeur("i", fid, "part_rendue", t) * f
 	conso = maxf(conso - v.economie_plantation_mwh(t), 0.0)
 	return {"conso": conso, "production": prod, "achat": conso - prod}
 

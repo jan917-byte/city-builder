@@ -176,10 +176,20 @@ static func points(v, t: float) -> int:
 ## Le produit des paliers acquis pour un effet donné.
 static func facteur(v, effet: String, t: float) -> float:
 	var f := 1.0
-	for cle in ORDRE:
-		if SUJETS[cle]["effet"] == effet and acquis(v, cle, t):
+	for cle in _cles(effet):
+		if acquis(v, cle, t):
 			f *= float(SUJETS[cle]["valeur"])
 	return f
+
+
+## ⏱️ Les sujets d'un effet, dans l'ordre d'ORDRE : `facteur` passe ~1 000 fois par somme de ville.
+static var _par_effet := {}
+
+
+static func _cles(effet: String) -> Array:
+	if not _par_effet.has(effet):
+		_par_effet[effet] = ORDRE.filter(func(cle): return SUJETS[cle]["effet"] == effet)
+	return _par_effet[effet]
 
 
 ## Les marches de l'escalier, pour intégrer une recette dans le temps :
@@ -189,8 +199,8 @@ static func facteur(v, effet: String, t: float) -> float:
 static func marches(v, effet: String) -> Array:
 	var m := [[0.0, 1.0]]
 	var dates := []
-	for cle in ORDRE:
-		if SUJETS[cle]["effet"] == effet and v._recherche.has(cle):
+	for cle in _cles(effet):
+		if v._recherche.has(cle):
 			dates.append([mois_palier(v, cle), float(SUJETS[cle]["valeur"])])
 	dates.sort_custom(func(a, b): return a[0] < b[0])
 	var f := 1.0

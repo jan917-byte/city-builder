@@ -822,7 +822,7 @@ func _ilot_engage() -> bool:
 
 func actualiser(force := false) -> void:
 	if objectifs != null:
-		objectifs.actualiser()
+		objectifs.actualiser(force)
 	visible = paraitre()
 	if _reperes != null:
 		_reperes.visible = visible and jeu.theme in ["", "chantiers"] and not suite and not termine

@@ -608,6 +608,9 @@ func base(couche: String, fid: int, champ: String) -> float:
 	return 0.0 if v == null else float(v)
 
 
+const _CHAMPS_BERGE := ["alea", "part_ruinee_apres", "hauteur_eau_annonce"]
+
+
 ## La base plus les rampes en cours. Un champ préfixé `_` se CALCULE, côté
 ## énergie ; fiche, calques et ciblage passent tous par ici, donc voient les
 ## mêmes nombres sans savoir qui les fabrique (décision 41).
@@ -620,8 +623,7 @@ func valeur(couche: String, fid: int, champ: String, t: float) -> float:
 		return Energie.derive(self, fid, champ, t) if couche == "i" else 0.0
 	# 🌊 La berge passe AVANT les rampes : ces trois champs n'en portent aucune,
 	# et c'est ici que la seule contrepartie non monétaire du jeu entre.
-	if couche == "i" and champ in ["alea", "part_ruinee_apres",
-			"hauteur_eau_annonce"]:
+	if couche == "i" and champ in _CHAMPS_BERGE:
 		return _crue_apres_berges(fid, champ, t)
 	var v := base(couche, fid, champ)
 	for r in _rampes[couche].get(fid, []):
@@ -2038,10 +2040,11 @@ static func _integrale_avancement(t: float, d: float, L: float, M: float) -> flo
 ## reprendre le jour où une décision plantera DANS un îlot.
 func recette_cumulee_ke(t: float) -> float:
 	var ke := 0.0
+	var m := Recherche.marches(self, "rendement_x")
 	for fid in fids_batis():
 		var pot := Energie.potentiel_mwh(self, fid, t)
 		if pot > 0.0:
-			ke += pot * _integrale_part_rendue(fid, t) / 12.0 \
+			ke += pot * _integrale_part_rendue(fid, t, m) / 12.0 \
 				* Energie.PRIX_ENERGIE_EUR_MWH / 1000.0
 	return ke
 
@@ -2049,8 +2052,7 @@ func recette_cumulee_ke(t: float) -> float:
 ## ∫ `part` × le rendement du moment. 🔴 C'est ici que le palier de 79 est
 ## RÉTROACTIF sans être un cadeau : il vaut pour tout ce qui est déjà posé, à
 ## partir du mois où il tombe — jamais pour les MWh vendus avant lui.
-func _integrale_part_rendue(fid: int, t: float) -> float:
-	var m := Recherche.marches(self, "rendement_x")
+func _integrale_part_rendue(fid: int, t: float, m: Array) -> float:
 	if m.size() == 1:
 		return _integrale_part(fid, t)
 	var s := 0.0
@@ -2269,8 +2271,9 @@ func fids_batis() -> Array:
 ##
 ## ⚠️ CO2 de l'énergie ACHETÉE seulement ; l'interface et l'essai y ajoutent
 ## `chantiers.co2_gris_an(t)`.
-func indicateurs(t: float) -> Dictionary:
-	var m := Energie.ville_mwh(self, t)
+## `energie`, `caisse` : déjà calculées au même mois (la maquette les étale sur deux images).
+func indicateurs(t: float, energie := {}, caisse := NAN) -> Dictionary:
+	var m := Energie.ville_mwh(self, t) if energie.is_empty() else energie
 	var co2 := float(m["achat"]) * Energie.CO2_KG_KWH / 1000.0
 	var out := {
 		"conso_mwh": m["conso"],
@@ -2280,7 +2283,7 @@ func indicateurs(t: float) -> Dictionary:
 		# La petite économie : ce que les panneaux posés rapportent chaque année,
 		# et ce qui reste en caisse après les avoir payés.
 		"recette_ke_an": m["production"] * Energie.PRIX_ENERGIE_EUR_MWH / 1000.0,
-		"caisse_ke": caisse_ke(t),
+		"caisse_ke": caisse_ke(t) if is_nan(caisse) else caisse,
 		# 🌾 Ce que la campagne nourrit, et la part de la ville que ça couvre.
 		# Un champ bâti ne revient pas ; un champ cultivé autrement, si.
 		"nourriture_personnes": nourriture_personnes(t),
@@ -2581,7 +2584,8 @@ func lancer_concours(fid: int, t: float) -> bool:
 ## Ce que la crue a pris à la ville, et ce qu'il en reste à cet instant. Deux
 ## nombres seulement : sans eux, réparer un îlot ne change rien de VISIBLE au
 ## bandeau de gauche et la décision n'a pas de contrepartie lisible.
-func degats(t: float) -> Dictionary:
+## `caisse` : déjà calculée au même mois par l'appelant (1,7 ms de moins).
+func degats(t: float, caisse := NAN) -> Dictionary:
 	var perdus := 0.0
 	var a_reparer := 0.0
 	var coupes := 0
@@ -2615,7 +2619,7 @@ func degats(t: float) -> Dictionary:
 		"a_reparer_ke": a_reparer,
 		"franchissements_coupes": coupes,
 		"eau_prochaine_m": eau_prochaine,
-		"caisse_ke": caisse_ke(t),
+		"caisse_ke": caisse_ke(t) if is_nan(caisse) else caisse,
 	}
 
 

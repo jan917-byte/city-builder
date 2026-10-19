@@ -1303,6 +1303,8 @@ const DESSINS := {
 	"ouvrir": "<path d='M6 14l1.5-2.9A2 2 0 019.24 10H20a2 2 0 011.94 2.5l-1.54 6a2 2 0 01-1.95 1.5H4a2 2 0 01-2-2V5a2 2 0 012-2h3.9a2 2 0 011.69.9l.81 1.2a2 2 0 001.67.9H18a2 2 0 012 2v2'/>",
 	# L'aiguille : moitié nord pleine. `_icone(…, angle)` la tourne vers le nord.
 	"boussole": "<path fill='@' d='M12 2l4.5 10h-9z'/><path d='M7.5 12L12 22l4.5-10'/>",
+	# Lucide « settings-2 » : les réglages graphiques (`graphismes.gd`).
+	"graphismes": "<path d='M20 7h-9M14 17H5'/><circle cx='17' cy='17' r='3'/><circle cx='7' cy='7' r='3'/>",
 	"plan": "<path d='M14.1 5.55a2 2 0 001.8 0l3.65-1.83A1 1 0 0121 4.62v12.76a1 1 0 01-.55.9l-4.55 2.27a2 2 0 01-1.8 0L9.9 18.45a2 2 0 00-1.8 0l-3.65 1.83A1 1 0 013 19.38V6.62a1 1 0 01.55-.9l4.55-2.27a2 2 0 011.8 0zM15 5.76v15M9 3.24v15'/>",
 	"cube": "<path d='M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/><path d='M3.3 7L12 12l8.7-5M12 22V12'/>",
 	"croix": "<path d='M18 6L6 18M6 6l12 12'/>",

@@ -51,6 +51,7 @@ const Fumees := preload("res://scripts/fumees.gd")
 const Ouverture := preload("res://scripts/ouverture.gd")
 const Livre := preload("res://scripts/livre.gd")
 const Recit := preload("res://scripts/recit.gd")
+const Graphismes := preload("res://scripts/graphismes.gd")
 var ouverture: Ouverture
 var recit: Recit
 var paysage: Paysage
@@ -133,6 +134,8 @@ var horloge_trafic: Timer
 var mat_objet: ShaderMaterial
 var mat_terrain: ShaderMaterial
 var _environnement: Environment
+var soleil: DirectionalLight3D
+var graphismes: Graphismes
 ## Le ciel des cartes de diagnostic, assorti à `CRUE_PAPIER` (crue.gdshaderinc).
 const FOND_DANGERS := Color8(255, 255, 252)
 var masque: SubViewport
@@ -348,6 +351,8 @@ func _ready() -> void:
 	moniteur_performances.batir(false)
 
 	_batir_contour()
+	graphismes = Graphismes.new()
+	graphismes.batir(self)
 	var arguments := OS.get_cmdline_user_args()
 	if "--ouverture" in arguments or (not "--script" in OS.get_cmdline_args()
 			and not "--essai" in arguments and not "--interface" in arguments
@@ -2248,7 +2253,8 @@ func _decor() -> void:
 	add_child(we)
 
 	# 🔎 La même recette que la miniature de la fiche : voir `Materiaux.soleil`.
-	add_child(Materiaux.soleil(Donnees.teinte(donnees, "_soleil")))
+	soleil = Materiaux.soleil(Donnees.teinte(donnees, "_soleil"))
+	add_child(soleil)
 
 
 # ------------------------------------------------------------------ le temps
@@ -2286,12 +2292,20 @@ func _sur_pulsation_trafic() -> void:
 		_dernier_peint = -1.0
 
 
-## ⏱️ Les sommes de ville (~9 ms) et la repeinte (~11 ms) ne passent qu'au plus
-## 10×/s, et tout de suite après une décision ou un clic. Mesuré par `--banc`
-## (2026-10-07) : l'image est tenue par le SCRIPT, GPU ~3 ms — à ×12 la maquette
-## tombait à 43 ips. 🔄 Un essai à 10 Hz retiré le 2026-09-01 faisait rater le
-## clic de `--essai` sur la berge 6 : il ne rafraîchissait pas après le clic.
+## ⏱️ Les sommes de ville et la repeinte ne passent qu'au plus 10×/s, et tout de
+## suite après une décision ou un clic. 🔄 Un essai à 10 Hz retiré le 2026-09-01
+## faisait rater le clic de `--essai` sur la berge 6 : il ne rafraîchissait pas après le clic.
 const RAFRAICHIR_MS := 100
+## ⏱️ Quand le temps court, ce tour est ÉTALÉ sur `ETAPES_TOUR` images (`_etape_tour`) :
+## d'un bloc, ~20 images/s tombaient à 11-18 ms (`outils/sonde_perfs.gd`, 2026-10-19).
+## Un `force` refait tout sur l'image.
+const PARTS_PEINTURE := 4
+const ETAPES_TOUR := 3 + PARTS_PEINTURE
+var _tour := -1
+var _tour_mois := 0.0
+var _tour_energie := {}
+var _tour_caisse := 0.0
+var _tour_indic := {}
 
 var _indic := {}
 var _indic_mois := -1.0
@@ -2304,6 +2318,10 @@ func _input(e: InputEvent) -> void:
 	# Un curseur qu'on tire change la fiche : glisser compte comme un clic.
 	if e is InputEventMouseButton or e is InputEventKey \
 			or (e is InputEventMouseMotion and e.button_mask != 0):
+		# ⏱️ La molette au-dessus de la ville zoome : refaire les sommes à chaque cran coûtait ~5 ms.
+		if e is InputEventMouseButton and e.button_index in [MOUSE_BUTTON_WHEEL_UP,
+				MOUSE_BUTTON_WHEEL_DOWN] and get_viewport().gui_get_hovered_control() == null:
+			return
 		_clic = true
 
 
@@ -2313,7 +2331,7 @@ func _indicateurs(force: bool, attendre := false) -> Dictionary:
 	if force or _clic or _indic.is_empty() or (not attendre
 			and mois != _indic_mois and ms - _indic_ms >= RAFRAICHIR_MS):
 		_indic = ville.indicateurs(mois)
-		_indic["degats"] = ville.degats(mois)
+		_indic["degats"] = ville.degats(mois, _indic["caisse_ke"])
 		for v in _copies_ville:
 			(v as Ville).indicateurs(mois)
 			(v as Ville).degats(mois)
@@ -2335,32 +2353,66 @@ func _rafraichir(force: bool) -> void:
 			if appel else 1.0
 	force = force or _dernier_peint < 0.0
 	var ms := Time.get_ticks_msec()
-	if not force and (absf(mois - _dernier_peint) < 0.002
-			or ms - _peint_ms < RAFRAICHIR_MS):
-		interface.maj(_indicateurs(false), mois, vitesse)
+	if force:
+		_tour = -1
+		_dernier_peint = mois
+		_peint_ms = ms
+		for e in ETAPES_TOUR:
+			_etape_tour(e, true)
+		interface.maj(_indicateurs(true), mois, vitesse)
 		_clic = false
+		interface.retours.actualiser(mois)
 		return
-	_dernier_peint = mois
-	_peint_ms = ms
-	RenderingServer.global_shader_parameter_set("eau_limon", Ville.limon_eau(mois))
-	saison.poser(mois)
-	var f := saison.flocons(mois)
-	flocons.visible = f > 0.0
-	(flocons.material as ShaderMaterial).set_shader_parameter("intensite", f)
-	for k in _copies_ville.size() + 1:   # 🧪 --x4 : quatre fois le prix
-		_montrer_reparations()
-		_montrer_arbres()
-		_montrer_rives()
-		camp.montrer(ville, mois)
-		if pastilles != null:
-			pastilles.actualiser(mois)
-		travaux.actualiser(ville, mois)
-		_peindre()
-	# Sans décision, les sommes attendent l'image suivante : deux calculs
-	# lourds sur la même image faisaient un à-coup de 24 ms.
-	interface.maj(_indicateurs(force, true), mois, vitesse)
+	if _tour < 0 and absf(mois - _dernier_peint) >= 0.002 and ms - _peint_ms >= RAFRAICHIR_MS:
+		_tour = 0
+		_tour_mois = mois
+		_dernier_peint = mois
+		_peint_ms = ms
+	if _tour >= 0:
+		_etape_tour(_tour, false)
+		_tour = _tour + 1 if _tour + 1 < ETAPES_TOUR + 4 else -1
+	interface.maj(_indicateurs(false, true), mois, vitesse)
 	_clic = false
-	interface.retours.actualiser(mois)
+
+
+## Une image du tour. `seul` : les sommes ne sont pas les siennes (le `force` les refait).
+## Les quatre étapes après ETAPES_TOUR sont les sommes de ville, au mois du début du tour.
+func _etape_tour(e: int, seul: bool) -> void:
+	for k in _copies_ville.size() + 1:   # 🧪 --x4 : quatre fois le prix
+		if e == 0:
+			RenderingServer.global_shader_parameter_set("eau_limon", Ville.limon_eau(mois))
+			saison.poser(mois)
+			var f := saison.flocons(mois)
+			flocons.visible = f > 0.0
+			(flocons.material as ShaderMaterial).set_shader_parameter("intensite", f)
+			_montrer_reparations()
+			_montrer_arbres()
+			_montrer_rives()
+			camp.montrer(ville, mois)
+			if pastilles != null:
+				pastilles.actualiser(mois)
+		elif e == 1:
+			travaux.actualiser(ville, mois)
+		elif e < 2 + PARTS_PEINTURE:
+			_peindre(e - 2, PARTS_PEINTURE)
+		elif e == 2 + PARTS_PEINTURE and not seul:
+			interface.retours.actualiser(mois)
+	if seul or e < ETAPES_TOUR:
+		return
+	if e == ETAPES_TOUR:
+		_tour_energie = Energie.ville_mwh(ville, _tour_mois)
+	elif e == ETAPES_TOUR + 1:
+		_tour_caisse = ville.caisse_ke(_tour_mois)
+	elif e == ETAPES_TOUR + 2:
+		_tour_indic = ville.indicateurs(_tour_mois, _tour_energie, _tour_caisse)
+	elif _indic_mois <= _tour_mois:   # un clic pendant le tour a déjà refait des sommes plus fraîches
+		_indic = _tour_indic
+		_indic["degats"] = ville.degats(_tour_mois, _tour_caisse)
+		for v in _copies_ville:
+			(v as Ville).indicateurs(_tour_mois)
+			(v as Ville).degats(_tour_mois)
+		_indic_mois = _tour_mois
+		_indic_ms = Time.get_ticks_msec()
 
 
 # --------------------------------------------------------------- la couleur
@@ -2650,12 +2702,18 @@ func _val(couche: String, fid: int, t: float) -> float:
 	return ville.valeur(couche, fid, calque_champ, t)
 
 
-func _peindre() -> void:
+## `part` sur `parts` : un objet sur `parts`, pour étaler la repeinte (`_etape_tour`).
+func _peindre(part := 0, parts := 1) -> void:
 	var genre := _genre()
 	var blanche := theme != ""
-	_regler_crue(genre == "crue")
+	if part == 0:
+		_regler_crue(genre == "crue")
+	var rang := -1
 	for couche in ["i", "r", "b"]:
 		for fid in noeuds[couche]:
+			rang += 1
+			if rang % parts != part:
+				continue
 			var mi: MeshInstance3D = noeuds[couche][fid]
 			var diagnostic_sol := 0.0
 			var diagnostic_bati := 0.0

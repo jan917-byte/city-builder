@@ -190,14 +190,22 @@ func _atteints() -> Array:
 
 ## Appelé par le guide à chaque actualisation : l'objectif courant se vérifie, les lignes se
 ## rangent. Les atteints au-dessus, de plus en plus pâles ; le courant ; le suivant, pâle.
-func actualiser() -> void:
+## ⏱️ Le guetteur, 10×/s au plus hors `force` : à chaque image il pesait 0,6 ms (2026-10-19).
+const GUET_MS := 100
+var _guet_ms := -GUET_MS
+
+
+func actualiser(force := false) -> void:
 	var ui = jeu.interface
 	# Caché pendant le récit, comme les compteurs ; au-dessus des boutons de caméra.
 	visible = ui._menu_panneau.visible
 	offset_bottom = -16.0 - ui._camera_panneau.size.y - 10.0
 	var attente := 0.0
+	var guet := force or Time.get_ticks_msec() - _guet_ms >= GUET_MS
+	if guet:
+		_guet_ms = Time.get_ticks_msec()
 	# 🌳 Les actions se font dans l'ordre du joueur : le premier atteint, pas le premier listé.
-	for id in _restants():
+	for id in _restants() if guet else []:
 		if visible and atteint(id):
 			jeu.ville._objectifs[id] = jeu.mois
 			ui.retours.consigner("Objectif atteint : %s. Un point de recherche." % OBJECTIFS[id], jeu.mois)
