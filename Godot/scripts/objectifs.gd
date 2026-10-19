@@ -17,7 +17,8 @@ const OBJECTIFS := {
 	"permeable": "Rendre un parking perméable",
 	"vert": "Verdir un toit plat",
 	"solaire": "Poser des panneaux solaires",
-	"rue": "Fermer une rue ou retirer des places",
+	"places": "Retirer des places",
+	"rue": "Fermer une rue aux voitures",
 	"arbres": "Planter des arbres",
 }
 const OUVERTURE := ["abriter", "pont", "ilot", "logements"]
@@ -134,10 +135,12 @@ func atteint(id: String) -> bool:
 			return _livre(v._dense, t)
 		"arbres":
 			return _livre(v._plantation, t)
-		"rue":
+		"places":
 			for fid in v._stationnement_supprime:
 				if float(v._stationnement_supprime[fid]) <= t:
 					return true
+			return false
+		"rue":
 			return not jeu.trafic.exporter_fermetures().is_empty()
 	return false
 

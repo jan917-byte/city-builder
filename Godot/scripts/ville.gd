@@ -2512,10 +2512,12 @@ func concours_utile(fid: int) -> bool:
 
 
 ## Comme avant toujours ; sur pilotis quand l'institut l'a mis au point (auteur, 2026-10-08) ;
-## moderne et parc là où des maisons sont tombées, concours ou non (104 revue, 2026-10-19).
+## moderne et parc là où des maisons sont tombées, concours ou non (115), le parc après l'institut.
 func facon_permise(fid: int, facon: String, t: float) -> bool:
 	if facon == "pilotis":
 		return Recherche.acquis(self, Recherche.PILOTIS, t)
+	if facon == "parc" and not Recherche.acquis(self, Recherche.PARC, t):
+		return false
 	return not RECONSTRUCTIONS.has(facon) or facon == "tradition" or concours_utile(fid)
 
 

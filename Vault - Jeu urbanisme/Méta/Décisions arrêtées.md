@@ -87,6 +87,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 99 | Retirer des places rend de la confiance **selon ce que la rue est devenue**, un an après | 🟡 | 2026-09-30 |
 | 101 | **Un livre des concepts** à la bibliothèque de l'université : un concept s'ouvre quand la ville le rencontre, et ouvre ses leviers ; aucune page sans lieu | 🟡 | 2026-10-06 · [[Université et recherche]] |
 | 114 | **L'université contient la bibliothèque et l'institut** : au rail, deux portes de même rang — mairie et université ; dans l'université, trois onglets — Études, Bibliothèque, Institut. Les trois îlots du campus restent sur la carte et ouvrent chacun son onglet | 🟡 | 2026-10-19, tranché par l'auteur · [[Université et recherche]] |
+| 116 | **L'institut range ses recherches en quatre colonnes : Bâti, Espace public, Énergie, Trafic**, une racine chacune, aucun lien d'une colonne à l'autre. **Le parc inondable** (rebâtir un îlot en prairie) s'y recherche, en Espace public, et n'a rien à voir avec les berges (« Rendre une berge ») ; « Rendre la rue » se coupe en *Retirer des places* puis *Fermer une rue* | 🟡 | 2026-10-19, tranché par l'auteur · remplace les cinq colonnes du 2026-10-09 (Logement, Eau, Toits verts, Solaire, Rues) · [[Université et recherche]] |
 
 ## Indicateurs et interface
 

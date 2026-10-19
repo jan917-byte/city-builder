@@ -10,7 +10,7 @@ const Objectifs := preload("res://scripts/objectifs.gd")
 # La caisse dit quoi bâtir, les points quoi apprendre : aucun euro ici.
 # 🌳 L'ARBRE (auteur, 2026-10-18) : toute action du jeu s'achète ici ; `apres` la tient
 # fermée jusqu'à ses parents. Les points ne viennent que des objectifs, un chacun.
-# 🔴 Garde-fou de 113 : les objectifs paient environ la MOITIÉ de l'arbre (≈ 12 sur 21),
+# 🔴 Garde-fou de 113 : les objectifs paient environ la MOITIÉ de l'arbre (≈ 13 sur 24),
 # sinon on finit par tout acquérir et choisir ne sert plus.
 const POINTS_OBJECTIF := 1        # chaque objectif atteint, en bas à gauche
 # 🎓 Les gestes dont la première livraison se note (`ville._premieres`).
@@ -19,86 +19,101 @@ const PREMIERES_FOIS := ["berge", "toit vert", "sol perméable", "culture"]
 # 🔴 Des paliers de rendement PETITS, exprès : un gros palier tardif rattraperait
 # une partie ratée. Les grands gains viennent des objets neufs, encore à écrire.
 # « ouvre » : le sujet est une action, `levier` sa clé dans `ouverture.levier_ferme`.
+# 🗂️ QUATRE COLONNES, une racine chacune, aucun lien de l'une à l'autre (auteur, 2026-10-19).
 const SUJETS := {
 	"pilotis": {
 		"nom": "Construction sur pilotis",
 		"quoi": "Rebâtir un îlot sinistré le rez sur poteaux : l'eau passe dessous.",
 		"points": 2, "apres": [],
-		"effet": "facon_pilotis", "valeur": 1.0, "domaine": "logement",
+		"effet": "facon_pilotis", "valeur": 1.0, "domaine": "bati",
 	},
 	"densifier": {
 		"nom": "Densifier",
 		"quoi": "Monter un étage ou deux sur un îlot : plus de logements, sans s'étaler.",
 		"points": 3, "apres": ["pilotis"],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "logement",
-	},
-	"berge": {
-		"nom": "Parc inondable",
-		"quoi": "Rendre une berge à l'Ilse : la rivière déborde dans un parc, pas dans les rues.",
-		"points": 2, "apres": [],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "eau",
-	},
-	"pre": {
-		"nom": "Pré inondable",
-		"quoi": "Laisser un pré déborder : il retient l'eau avant la ville.",
-		"points": 1, "apres": ["berge"],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "eau",
-	},
-	"permeable": {
-		"nom": "Sol perméable",
-		"quoi": "Rendre un parking perméable : la pluie rentre dans la terre.",
-		"points": 2, "apres": ["berge"],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "eau",
+		"effet": "ouvre", "valeur": 1.0, "domaine": "bati",
 	},
 	"vert": {
 		"nom": "Toits verts",
 		"quoi": "Verdir les toits plats : ils boivent la pluie et rafraîchissent.",
-		"points": 2, "apres": ["permeable"],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "toits",
+		"points": 2, "apres": [],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "bati",
 	},
 	"sedum": {
 		"nom": "Substrat léger",
 		"quoi": "−20 % sur le prix d'un toit vert",
 		"points": 1, "apres": ["vert"],
-		"effet": "cout_vert_x", "valeur": 0.80, "domaine": "toits",
+		"effet": "cout_vert_x", "valeur": 0.80, "domaine": "bati",
+	},
+	# 🌿 Une façon de rebâtir (95), sans rapport avec les berges (auteur, 2026-10-19).
+	"parc": {
+		"nom": "Parc inondable",
+		"quoi": "Rebâtir un îlot sinistré en prairie : personne ne revient, la crue baisse dans toute la ville.",
+		"points": 2, "apres": [],
+		"effet": "facon_parc", "valeur": 1.0, "domaine": "public",
+	},
+	"berge": {
+		"nom": "Rendre une berge",
+		"quoi": "Rendre une berge à l'Ilse : la rive redevient naturelle, la crue baisse le long du bief.",
+		"points": 2, "apres": [],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "public",
+	},
+	"pre": {
+		"nom": "Pré inondable",
+		"quoi": "Laisser un pré déborder : il retient l'eau avant la ville.",
+		"points": 1, "apres": ["berge"],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "public",
+	},
+	"permeable": {
+		"nom": "Sol perméable",
+		"quoi": "Rendre un parking perméable : la pluie rentre dans la terre.",
+		"points": 2, "apres": [],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "public",
+	},
+	"arbres": {
+		"nom": "Planter des arbres",
+		"quoi": "Des arbres le long des rues : de l'ombre, et la pluie retenue.",
+		"points": 2, "apres": [],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "public",
 	},
 	"solaire": {
 		"nom": "Panneaux solaires",
 		"quoi": "Poser des panneaux sur les toits : la ville produit son énergie.",
-		"points": 2, "apres": ["vert"],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "solaire",
+		"points": 2, "apres": [],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "energie",
 	},
 	"rendement": {
 		"nom": "Rendement des panneaux",
 		"quoi": "+8 % de production sur TOUS les toits, posés compris",
 		"points": 1, "apres": ["solaire"],
-		"effet": "rendement_x", "valeur": 1.08, "domaine": "solaire",
+		"effet": "rendement_x", "valeur": 1.08, "domaine": "energie",
 	},
 	"pose": {
 		"nom": "Pose industrialisée",
 		"quoi": "−15 % sur le prix de pose des panneaux",
 		"points": 1, "apres": ["solaire"],
-		"effet": "cout_panneau_x", "valeur": 0.85, "domaine": "solaire",
+		"effet": "cout_panneau_x", "valeur": 0.85, "domaine": "energie",
+	},
+	"places": {
+		"nom": "Retirer des places",
+		"quoi": "Retirer le stationnement d'une rue : la place revient à autre chose.",
+		"points": 1, "apres": [],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "trafic",
 	},
 	"rue": {
-		"nom": "Rendre la rue",
-		"quoi": "Fermer une rue aux voitures, retirer des places.",
-		"points": 2, "apres": ["permeable"],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "rues",
-	},
-	"arbres": {
-		"nom": "Planter des arbres",
-		"quoi": "Des arbres le long des rues : de l'ombre, et la pluie retenue.",
-		"points": 2, "apres": ["rue"],
-		"effet": "ouvre", "valeur": 1.0, "domaine": "rues",
+		"nom": "Fermer une rue",
+		"quoi": "Fermer une rue aux voitures : le trafic se reporte ailleurs.",
+		"points": 2, "apres": ["places"],
+		"effet": "ouvre", "valeur": 1.0, "domaine": "trafic",
 	},
 }
 const PILOTIS := "pilotis"
-const ORDRE := ["pilotis", "densifier", "berge", "pre", "permeable", "vert", "sedum",
-	"solaire", "rendement", "pose", "rue", "arbres"]
-## 🎓 Les colonnes de l'institut, une branche chacune (auteur, 2026-10-09). 🔴 Flaggable (90).
-const DOMAINES := [["logement", "Logement"], ["eau", "Eau"], ["toits", "Toits verts"],
-	["solaire", "Solaire"], ["rues", "Rues"]]
+const PARC := "parc"
+const ORDRE := ["pilotis", "densifier", "vert", "sedum", "parc", "berge", "pre", "permeable",
+	"arbres", "solaire", "rendement", "pose", "places", "rue"]
+## 🎓 Les colonnes de l'institut (auteur, 2026-10-19 ; remplace les cinq du 2026-10-09). 🔴 Flaggable (90).
+const DOMAINES := [["bati", "Bâti"], ["public", "Espace public"], ["energie", "Énergie"],
+	["trafic", "Trafic"]]
 
 
 ## Le mois où le sujet a été acquis. INF tant qu'il ne l'est pas.

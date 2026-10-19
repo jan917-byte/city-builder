@@ -15,7 +15,7 @@ const CONCEPTS := {
 		"texte": "S'adapter change ce que la crue emporte ; réduire ce que la ville émet change la violence des prochaines. "
 			+ "Une petite ville ne refroidit pas le climat seule, mais elle peut cesser d'y ajouter : produire son énergie, "
 			+ "moins dépendre de la voiture.",
-		"leviers": ["solaire", "rue"],
+		"leviers": ["solaire", "places", "rue"],
 		"voir": "energie", "lieux": [["i", 32]]},
 	"chaleur": {"titre": "L'îlot de chaleur", "chapitre": "Plus tard",
 		"texte": "", "leviers": ["arbres"], "voir": "", "lieux": []},
@@ -28,7 +28,8 @@ const LEVIERS := {
 	"berge": "Rendre une berge à l'Ilse",
 	"pre": "Laisser un pré déborder",
 	"solaire": "Poser des panneaux solaires",
-	"rue": "Fermer une rue, retirer des places",
+	"places": "Retirer des places",
+	"rue": "Fermer une rue aux voitures",
 	"arbres": "Planter des arbres",
 }
 

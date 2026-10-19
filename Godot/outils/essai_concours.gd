@@ -54,6 +54,9 @@ func executer() -> void:
 	verifier(not v.facon_permise(LAVOIR, "moderne", t0) and not v.facon_permise(LAVOIR, "parc", t0)
 		and v.facon_permise(LAVOIR, "tradition", t0), "Au Lavoir, ni moderne ni parc")
 	verifier(not v.lancer_concours(LAVOIR, t0), "Le Lavoir, maisons debout, ne lance pas de concours")
+	v._recherche.erase(jeu.Recherche.PARC)
+	verifier(not v.facon_permise(m, "parc", t0) and not v.commander("i", FOUR, {"reparer": "parc"}, t0)["ok"],
+		"Sans la recherche de l'institut, pas de parc inondable")
 
 	# --- La fiche, l'étude parue : reconstruire tout de suite, les projets, ou le concours.
 	_apres_etude(t0)

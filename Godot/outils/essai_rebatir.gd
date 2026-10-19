@@ -117,7 +117,7 @@ func executer() -> void:
 	quit(1 if echecs > 0 else 0)
 
 
-## Une partie neuve, tout le monde au camp, l'étude lue, les pilotis mis au point.
+## Une partie neuve, tout le monde au camp, l'étude lue, les pilotis et le parc mis au point.
 ## `concours` : celui de la zone (104), lancé au mois 0 et rendu avant `t`, payé par l'essai.
 func _apres_etude(t: float, concours := false) -> void:
 	var o = jeu.ouverture
@@ -133,6 +133,7 @@ func _apres_etude(t: float, concours := false) -> void:
 	o.institut_vu = true
 	o.biblio_vue = true
 	jeu.ville._recherche[jeu.Recherche.PILOTIS] = 0.0
+	jeu.ville._recherche[jeu.Recherche.PARC] = 0.0
 	if concours:
 		jeu.ville.crediter_essai_ke(jeu.ville.CONCOURS_KE)
 		jeu.ville.lancer_concours(o.MAISONS, 0.0)

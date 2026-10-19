@@ -10,6 +10,8 @@ Le lieu est l'**îlot 36** ([[Décisions arrêtées]] 75) ; ce qu'on y fait est 
 
 **À l'écran, l'université contient les deux autres lieux du campus** ([[Décisions arrêtées]] 114, 2026-10-19) : une seule tuile dans la colonne de gauche, à côté de la mairie, et trois onglets dedans — **Études** (elle publie), **Bibliothèque** (elle range les concepts), **Institut** (il met au point). Sur la carte, les îlots 36, 77 et 78 restent trois bâtiments.
 
+**Quatre colonnes à l'institut** ([[Décisions arrêtées]] 116, 2026-10-19) : **Bâti** (pilotis → densifier, toits verts → substrat léger), **Espace public** (parc inondable, rendre une berge → pré inondable, sol perméable, arbres), **Énergie** (panneaux → rendement, pose), **Trafic** (retirer des places → fermer une rue). Chaque colonne a sa racine ; le Trafic attend ses vraies actions (bus, vélo, carrefours).
+
 ## Ce que c'est : des points, qu'on dépense au clic
 
 > Arbitrage de l'auteur, 2026-10-13 ([[Décisions arrêtées]] 113, révise 79). **La caisse dit quoi bâtir, les points disent quoi apprendre.** Le joueur ne se demande plus « un pont ou une recherche ? », seulement « quelle recherche d'abord ? ». Et un sujet vaut **dès le clic** : on n'attend plus la recherche, puis le chantier.

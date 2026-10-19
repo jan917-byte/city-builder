@@ -109,9 +109,11 @@ func executer() -> void:
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
 	verifier(ui._lieu_ouvert == "institut" and ligne["bloc"].visible and ligne["bouton"].visible
 		and not ui._etude_bloc.visible and ui._lieu_lignes["berge"]["bouton"].visible
+		and ui._lieu_lignes["parc"]["bouton"].visible and ui._lieu_lignes["places"]["bouton"].visible
 		and ui._lieu_lignes["sedum"]["bloc"].visible and not ui._lieu_lignes["sedum"]["bouton"].visible
-		and "Toits verts" in ui._lieu_lignes["sedum"]["etat"].text,
-		"L'institut : pilotis et parc inondable à acheter, le reste grisé dit ce qui manque")
+		and "Toits verts" in ui._lieu_lignes["sedum"]["etat"].text
+		and not ui._lieu_lignes["rue"]["bouton"].visible,
+		"L'institut : chaque racine à acheter (pilotis, parc, berge, places…), le reste grisé dit ce qui manque")
 	await capture("campus_02b_institut")
 	ui._fermer_campus()
 	verifier(not ui._campus_panneau.visible and not ui._fiche_panneau.visible,

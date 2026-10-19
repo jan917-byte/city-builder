@@ -4866,7 +4866,8 @@ func _dispo_leviers() -> void:
 		and ville.valeur("i", fid, "_part_plate", _mois) > 0.001
 	_bloc_dispo[_permeable_bloc] = couche == "i" and _levier_ferme("permeable") == "" \
 		and ville.permeable_possible(fid)
-	_bloc_dispo[_trafic_bloc] = couche == "r" and _levier_ferme("rue") == ""
+	# 🚗 Deux sujets (2026-10-19) : les places ouvrent le bloc, fermer la rue attend le sien.
+	_bloc_dispo[_trafic_bloc] = couche == "r" and _levier_ferme("places") == ""
 	# 🌳 Seulement là où il y a la place d'un arbre entre la chaussée et la
 	# limite d'emprise : `07` l'a tranché, les ruelles du cœur ancien n'en ont
 	# aucune. Un curseur qui ne planterait rien n'a pas à s'afficher.
@@ -5914,6 +5915,11 @@ func _maj_fiche_rue() -> void:
 	else:
 		_posee(_trafic_axe, "axe", "Fermer aux voitures")
 	_trafic_axe.disabled = axe_ferme or not ville.route_praticable(_fiche_fid, _mois) 		or ville.trafic_vu(_fiche_fid, _mois) < 0.20
+	if not axe_ferme and _levier_ferme("rue") != "":
+		# 🔴 Flaggable (90). Comme « Sur pilotis » : grisé, il dit où il se met au point.
+		_trafic_axe.text = "Fermer aux voitures, à mettre au point à l'institut"
+		_marquer(_trafic_axe, false)
+		_trafic_axe.disabled = true
 	_maj_arbres()
 	# 🌳 Le verger se NOMME sur la fiche : c'est là qu'on comprend pourquoi
 	# la rue est vide. Déblayée, elle le reste tant que le quartier l'est.
