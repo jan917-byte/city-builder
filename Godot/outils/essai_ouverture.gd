@@ -292,6 +292,7 @@ func executer() -> void:
 	o.prochaine_vue = true
 	o.institut_vu = true
 	o.biblio_vue = true
+	o.mairie_vue = true
 	actualiser(0.0)
 
 	verifier(o.etape == "choix", "Le relogement fait, le budget prend la main")
@@ -401,6 +402,7 @@ func executer() -> void:
 	o.prochaine_vue = true
 	o.institut_vu = true
 	o.biblio_vue = true
+	o.mairie_vue = true
 	o.carte_concours = 2
 	jeu._sur_choix("i", champs2[0])
 	jeu.interface.poser("camp")
@@ -710,10 +712,10 @@ func essayer_ponts(lointain: int) -> void:
 		"Le pont livré, le temps court encore et rien ne couvre la ville")
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
-	# 🎓 Le pont rouvert publie l'étude, et rien d'autre ne s'ouvre (auteur, 2026-10-18 au soir).
-	verifier(o.pont_termine and o.etude_parue and o.verrou() == ""
+	# 🏛️ Le pont rouvert ouvre la mairie, et rien d'autre (117) : l'étude s'y commandera.
+	verifier(o.pont_termine and not o.etude_parue and o.rail_ouvert("mairie") and not o.rail_ouvert("universite")
 		and "rouvert" in str(jeu.interface.retours.journal),
-		"Le pont rouvert publie l'étude")
+		"Le pont rouvert ouvre la mairie seule, sans publier l'étude")
 	verifier(o.levier_ferme("densifier") != "" and o.levier_ferme("berge") != ""
 		and o.levier_ferme("solaire") != "",
 		"Aucune action ne s'ouvre avec le pont : elles s'achètent à l'institut")
@@ -729,13 +731,11 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(not jeu.interface._solaire_bloc.visible and not jeu.interface._vert_bloc.visible,
 		"La fiche d'un îlot sinistré ne montre que la reconstruction")
 	jeu.interface._fermer_fiche()
-	# 🎓 Une seule carte, l'étude (auteur, 2026-10-08) : le pont rouvert passe au bandeau.
-	verifier(o.pont_termine and o.carte == "etude" and jeu.vitesse == 0.0 and "rouvert" in str(jeu.interface.retours.journal),
-		"5 s plus tard, la carte de l'étude met le jeu en pause ; le bandeau dit le pont rouvert")
-	verifier(o.annonce.visible and not o.visible and o.annonce_principal.text == "Trouver l'université"
-		and not o.annonce_second.visible,
-		"Une seule carte au centre, un seul bouton, le guide s'efface")
-	verifier(o.verrou() == "", "Le pont rouvert avec ses accès lève le verrou")
+	# 🏛️ Plus de carte au pont (117) : le guide envoie à la mairie, qui s'entoure.
+	verifier(o.pont_termine and o.carte == "" and not o.annonce.visible and o.etape == "mairie"
+		and o._texte.text == o.DIRE_MAIRIE and o.rail_appel() == "mairie",
+		"5 s plus tard, aucune carte : le guide envoie à la mairie, qui s'entoure")
+	verifier(o.verrou() == "rebatir", "La première année continue jusqu'à l'étude : on rebâtit seulement")
 	verifier(jeu.ville.route_praticable(pont, fin) and jeu.ponts_provisoires[pont].visible
 		and not jeu.reparations["r"][pont].visible and not jeu.ruines_ponts[pont].visible,
 		"Le pont provisoire livré remplace la ruine, sans le tablier en dur")
@@ -770,17 +770,18 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._rafraichir(true)
 	jeu.selection.sel_couche = "r"
 	jeu.selection.sel_fid = pont
-	await capture("14_annonce_etude")
-	# Le campus trouvé (essai_etude) : le guide passe aux logements.
-	o.carte_etude = 2
-	o.etude_lue = true
+	await capture("14_appel_mairie")
+	# La mairie vue (essai_etude) : le guide passe aux logements.
+	jeu.interface.ouvrir_lieu("mairie")
+	jeu.interface._fermer_lieu()
 	o.actualiser(true)
 	await capture("14_pont_rouvert")
-	verifier(o.pont_termine and o.etape == "choix" and not o.annonce.visible,
-		"Le campus trouvé, le guide propose de rebâtir")
+	verifier(o.pont_termine and o.mairie_vue and o.etape == "choix" and not o.annonce.visible,
+		"La mairie vue, le guide propose de rebâtir")
 	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
-	verifier(o._actions.get_child_count() == 0 and o.DIRE_ILOT in o._texte.text,
-		"Le pont rouvert, le guide laisse choisir l'îlot : %s" % o._texte.text)
+	# La première année dure jusqu'à l'étude (117) : le Lavoir reste conseillé.
+	verifier(o._actions.get_child_count() == 0 and o.DIRE_LAVOIR in o._texte.text,
+		"Le pont rouvert, le guide conseille le Lavoir sans l'imposer : %s" % o._texte.text)
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
 	jeu._sur_reprise()

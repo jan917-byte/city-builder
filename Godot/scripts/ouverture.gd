@@ -5,6 +5,7 @@ const Ville := preload("res://scripts/ville.gd")
 const Livre := preload("res://scripts/livre.gd")
 const Objectifs := preload("res://scripts/objectifs.gd")
 const Recherche := preload("res://scripts/recherche.gd")
+const Politiques := preload("res://scripts/politiques.gd")
 # Lieux touchés dans l’emprise corrigée le 2026-09-16.
 const RUE := 148
 const MAISONS := 59
@@ -30,7 +31,10 @@ const DIRE_ILOT := "Cliquez sur un îlot qui clignote pour le rebâtir."
 const LAVOIR := 62
 const DIRE_LAVOIR := "Commencez par les Maisons du Lavoir, qui clignotent : leurs maisons tiennent debout, il suffit de les nettoyer. C'est le chantier le plus court."
 ## 🎓 Ce qu'est l'université, sans le chemin (auteur, 2026-10-19 : « pas besoin de mettre des trucs en jaune »). 🔴 Flaggable (90).
-const DIRE_UNIVERSITE := "Elle a trois lieux. L'université publie ses études sur Wehrau, la bibliothèque raconte comment d'autres villes s'y sont prises, l'institut met au point de nouvelles façons de bâtir. Chaque objectif atteint, en bas à gauche, rapporte un point à dépenser à l'institut."
+const DIRE_UNIVERSITE := "Elle a trois lieux. L'université publie ses études sur Wehrau, la bibliothèque raconte comment d'autres villes s'y sont prises, l'institut met au point de nouvelles façons de bâtir. Chaque objectif atteint, en bas à gauche, rapporte un point à dépenser à la mairie ou à l'institut."
+## 🏛️ LA MAIRIE D'ABORD (117, auteur 2026-10-19) : au pont rouvert, elle seule s'ouvre ; le concours
+## s'y adopte en points, puis l'étude s'y commande en euros, et l'étude rendue ouvre l'université. 🔴 Flaggable (90).
+const DIRE_MAIRIE := "La mairie a rouvert. Cliquez sur la mairie, dans la colonne de gauche : chaque objectif atteint, en bas à gauche, y rapporte un point."
 
 var jeu
 var suite := false
@@ -103,6 +107,9 @@ var degats_vus := false
 ## 🏛️ La carte du concours : 0 à venir, 1 affichée, 2 passée. Elle paraît à la première fiche
 ## d'un îlot aux maisons tombées, l'étude parue (auteur, 2026-10-19 : « introduire les concours »).
 var carte_concours := 0
+## 🏛️ La mairie ouverte une fois après le pont ; l'étude proposée vue à la mairie (117).
+var mairie_vue := false
+var etude_proposee_vue := false
 
 
 func batir(maquette) -> void:
@@ -214,8 +221,8 @@ func _remplir_carte() -> void:
 		"concours":
 			# 🔴 Mes mots, flaggables (90).
 			_annonce_titre.text = "Un concours d'architectes"
-			_annonce_texte.text = ("Des maisons sont tombées, et l'étude annonce une crue plus forte. "
-				+ "Les reconstruire comme avant, c'est les exposer de nouveau.\n\n"
+			_annonce_texte.text = ("Des maisons sont tombées. "
+				+ "Les reconstruire comme avant, c'est les exposer de nouveau à la crue.\n\n"
 				+ "Un concours demande à des architectes d'autres projets pour toute la zone sinistrée. "
 				+ "Il dure %s et coûte %d k€. En attendant, on peut toujours reconstruire comme avant.") % [
 				jeu.interface._duree(Ville.CONCOURS_MOIS), int(Ville.CONCOURS_KE)]
@@ -380,6 +387,9 @@ func boue_a_engager() -> bool:
 ## 🧭 La colonne de gauche s'ouvre au fil du guide (auteur, 2026-10-02) : une
 ## tuile reste grise tant que le guide ne l'a pas demandée, puis reste ouverte.
 func rail_ouvert(id: String) -> bool:
+	# 🎓 Le campus attend l'étude, même guide fermé : elle ne paraît plus d'elle-même (117).
+	if id in ["universite", "dangers", "institut", "bibliotheque"] and not (etude_lue or tout_ouvert):
+		return false
 	if suite or termine or prochaine_vue or id == "":
 		return true
 	match id:
@@ -387,6 +397,8 @@ func rail_ouvert(id: String) -> bool:
 			return not etape in ["", "reloger", "camp_attente"]
 		"universite", "dangers", "institut", "bibliotheque":
 			return etude_lue
+		"mairie":
+			return pont_termine
 	return false
 
 
@@ -405,6 +417,9 @@ func rail_appel() -> String:
 	# (auteur, 2026-10-06). Une fois revenu, plus d'appel.
 	if etape == "pont_travaux" and not boue_vue and jeu.theme != "" and not acces_degage():
 		return "ville"
+	# 🏛️ La mairie s'entoure à son ouverture, puis quand elle propose l'étude (117).
+	if etape == "mairie" or etude_proposee() and not etude_proposee_vue and not jeu.ville.etude_commandee():
+		return "mairie" if jeu.interface._lieu_ouvert != "mairie" else ""
 	# 🔄 Plus d'appel vers l'université ni vers Dangers (auteur, 2026-10-19) : le guide explique.
 	if not ouvert:
 		return ""
@@ -460,12 +475,33 @@ func trouve(couche: String, fid: int) -> void:
 		jeu.interface.ouvrir_campus()
 
 
-## 🌉 Le pont livré et vu cinq secondes : le bandeau le dit, la carte au centre est l'étude.
+## 🌉 Le pont livré et vu cinq secondes : le bandeau le dit, la mairie s'ouvre (117).
+## 🔄 Il ne publie plus l'étude (décidé le 2026-10-18) : elle se commande à la mairie.
 func _pont_rouvert() -> void:
 	jeu.interface.retours.annoncer("%s rouvert." % _nom("r", int(premier["fid"])), jeu.mois)
 	terminer_pont()
-	# 🎓 Le pont rouvert ouvre l'université, et elle seule (auteur, 2026-10-18 au soir).
-	publier_etude()
+
+
+## 🏛️ La mairie ouverte : son appel s'éteint.
+func mairie_ouverte() -> void:
+	if not pont_termine:
+		return
+	mairie_vue = true
+	if etude_proposee():
+		etude_proposee_vue = true
+	actualiser(true)
+
+
+## 🎓 L'étude se propose après le concours (117) : rendu, ou plus aucun îlot où le lancer.
+func etude_proposee() -> bool:
+	if not pont_termine or etude_parue:
+		return false
+	if jeu.ville.concours_rendu(jeu.mois):
+		return true
+	for fid in ilots_a_rebatir():
+		if jeu.ville.concours_utile(fid):
+			return false
+	return true
 
 
 func terminer_pont() -> void:
@@ -615,9 +651,10 @@ func berge_rendue() -> bool:
 	return false
 
 
-## 🏛️ Le concours attend le campus trouvé : l'étude d'abord, une chose à la fois (auteur, 2026-10-19).
+## 🏛️ Le concours s'adopte à la mairie, avant l'étude (117) ; les essais l'ouvrent hors première année.
 func concours_offert() -> bool:
-	return jeu.ville.concours_lance() or not annee_un() and (etude_lue or tout_ouvert)
+	return jeu.ville.concours_lance() or Politiques.adopte(jeu.ville, "concours", jeu.mois) \
+		or tout_ouvert and not annee_un()
 
 
 ## 🏛️ La fiche d'un îlot aux maisons tombées, le campus trouvé, annonce le concours une fois.
@@ -637,6 +674,10 @@ func _annoncer_portes() -> void:
 	if not "leviers" in _portes_dites and etude_parue and berge_rendue():
 		_portes_dites["leviers"] = true
 		jeu.interface.retours.annoncer("Berge rendue.", jeu.mois)
+	# 🔴 Flaggable (90).
+	if not "etude" in _portes_dites and etude_proposee() and not jeu.ville.etude_commandee():
+		_portes_dites["etude"] = true
+		jeu.interface.retours.annoncer("La mairie peut commander une étude à l'université.", jeu.mois)
 
 
 ## 📖 Une page qui s'ouvre se dit une fois, au bandeau et au journal.
@@ -791,6 +832,10 @@ func actualiser(force := false) -> void:
 	if not force and absf(jeu.mois - _dernier_mois) < 0.02:
 		return
 	_dernier_mois = jeu.mois
+	# 🎓 Commandée à la mairie, rendue : elle paraît, sa carte au centre (117).
+	if not etude_parue and jeu.ville.etude_rendue(jeu.mois):
+		publier_etude()
+		return
 	if _camp_pose() and jeu.theme == "chantiers":
 		chantiers_vu = true
 	premier = _premiere_reparation()
@@ -820,6 +865,8 @@ func actualiser(force := false) -> void:
 			etape = "pont_choix" if chantiers_vu else "chantiers"
 	elif etude_parue and not etude_lue:
 		etape = "etude"
+	elif not mairie_vue:
+		etape = "mairie"
 	elif premier.is_empty():
 		etape = "choix"
 	elif jeu.mois < float(premier["fin"]):
@@ -884,7 +931,7 @@ func actualiser(force := false) -> void:
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	_annoncer_pages()
 	_annoncer_portes()
-	signature += "/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, degats_vus]
+	signature += "/%s/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, degats_vus, mairie_vue]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -923,6 +970,10 @@ func actualiser(force := false) -> void:
 				_texte_rebatir()
 		"pont_livre":
 			_poser_reperes([])
+		"mairie":
+			_poser_reperes([])
+			_titre.text = ""
+			_texte.text = DIRE_MAIRIE
 		"etude":
 			# 🎓 Le nom seul : le contour qui clignote y mène (auteur, 2026-10-08).
 			_poser_reperes([])
@@ -961,9 +1012,6 @@ func actualiser(force := false) -> void:
 					+ "\n\nCliquez sur l'îlot qui clignote pour voir le résultat."
 			_bouton("Et maintenant ?", func() -> void:
 				suite = true
-				# Protéger demande l'étude : elle paraît ici si aucun îlot ne l'a appelée.
-				if not etude_parue:
-					publier_etude()
 				actualiser(true))
 		"suite":
 			# 🏠 Plus de « renaturer la berge » ici (auteur, 2026-10-08) : rebâtir d'abord,
@@ -1041,7 +1089,8 @@ func exporter() -> Dictionary:
 		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte,
 		"institut_vu": institut_vu, "biblio_vue": biblio_vue,
 		"pages_lues": pages_lues.duplicate(), "degats_vus": degats_vus,
-		"carte_concours": carte_concours}
+		"carte_concours": carte_concours, "mairie_vue": mairie_vue,
+		"etude_proposee_vue": etude_proposee_vue}
 
 
 func reprendre(etat: Dictionary) -> void:
@@ -1066,6 +1115,9 @@ func reprendre(etat: Dictionary) -> void:
 	plainte = int(etat.get("plainte", 2 if pont_termine else 0))
 	degats_vus = bool(etat.get("degats_vus", false))
 	carte_concours = int(etat.get("carte_concours", 0))
+	# Avant 117, l'étude paraissait au pont : une partie d'avant n'a rien à voir à la mairie.
+	mairie_vue = bool(etat.get("mairie_vue", etude_parue))
+	etude_proposee_vue = bool(etat.get("etude_proposee_vue", etude_parue))
 	pages_lues = {}
 	_pages_dites = {}
 	_portes_dites = {}
@@ -1078,8 +1130,8 @@ func reprendre(etat: Dictionary) -> void:
 	# Une reprise ne rejoue pas ce qui était déjà ouvert.
 	if etude_parue and berge_rendue():
 		_portes_dites["leviers"] = true
+	if etude_proposee_vue or jeu.ville.etude_commandee():
+		_portes_dites["etude"] = true
 	etape = ""
 	_signature = ""
 	actualiser(true)
-	if pont_termine and not etude_parue and not suite and not termine:
-		publier_etude()

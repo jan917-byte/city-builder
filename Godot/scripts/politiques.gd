@@ -28,6 +28,30 @@ const POLITIQUES := {
 const ORDRE := ["subv_solaire", "subv_vert"]
 # 🌳 Une subvention paraît à la mairie quand son levier est acheté à l'institut (`levier`).
 
+# 🏛️ LES PROGRAMMES (117, auteur 2026-10-19) : les points ouvrent, l'argent fait. Adopté une
+# fois en points ; ce qu'il ouvre (chaque concours) se paie en euros. 🔴 Textes flaggables (90).
+const PROGRAMMES := {
+	"concours": {
+		"nom": "Concours d'urbanisme",
+		"quoi": "Là où des maisons sont tombées, demander à des architectes d'autres projets que les maisons d'avant.",
+		"points": 1,
+	},
+}
+const PROGRAMMES_ORDRE := ["concours"]
+
+
+static func adopte(v, cle: String, t: float) -> bool:
+	return v._programmes.has(cle) and t >= float(v._programmes[cle])
+
+
+## Les points pris par la mairie : `Recherche.points` les retire du même compteur.
+static func points_depenses(v, t: float) -> int:
+	var n := 0
+	for cle in v._programmes:
+		if PROGRAMMES.has(cle) and adopte(v, cle, t):
+			n += int(PROGRAMMES[cle]["points"])
+	return n
+
 # 🔴 LES RÈGLES NE SONT PAS ÉCRITES. Stationnement payant, toit vert obligatoire
 # au neuf : ni argent ni capital dépensé, mais un SEUIL de capital politique pour
 # les signer, relevé à chaque règle signée (98). Leurs effets restent à concevoir.

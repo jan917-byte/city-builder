@@ -3,6 +3,7 @@ extends RefCounted
 # L'état — quel sujet est acquis, à quel mois — vit dans `ville.gd`, comme les
 # poses ; ici, la table et les fonctions pures.
 const Objectifs := preload("res://scripts/objectifs.gd")
+const Politiques := preload("res://scripts/politiques.gd")
 
 # ==========================================================================
 # 🎚️ LEVEL DESIGN — les tables que l'auteur règle (113)
@@ -156,8 +157,9 @@ static func gains(v, t: float) -> Array:
 	return out
 
 
+## Institut et programmes de la mairie : un seul compteur (117).
 static func depenses(v, t: float) -> int:
-	var n := 0
+	var n := Politiques.points_depenses(v, t)
 	for cle in v._recherche:
 		if acquis(v, cle, t):
 			n += prix(cle)

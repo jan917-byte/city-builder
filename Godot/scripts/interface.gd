@@ -3424,6 +3424,12 @@ func _panneau_lieu() -> void:
 	_leviers_etude(_leviers_reserve)
 
 
+	# 🏛️ La mairie ouvre en points, puis fait en euros (117). 🔴 Textes flaggables (90).
+	for cle in Politiques.PROGRAMMES_ORDRE:
+		_lieu_lignes["programme_" + cle] = _ligne_lieu(v, "programme",
+			String(Politiques.PROGRAMMES[cle]["nom"]), String(Politiques.PROGRAMMES[cle]["quoi"]))
+	_lieu_lignes["etude"] = _ligne_lieu(v, "etude", "Étude de la prochaine crue",
+		"Demander à l'université où l'eau reviendra, et comment s'y préparer.")
 	for cle in Politiques.ORDRE:
 		_lieu_lignes[cle] = _ligne_lieu(v, "politique",
 			String(Politiques.POLITIQUES[cle]["nom"]),
@@ -3607,6 +3613,8 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 		_lieu_intro.text = String(LIEUX[cle]["quoi"])
 	_brancher_lieu()
 	_maj_lieu()
+	if cle == "mairie" and ouverture != null:
+		ouverture.mairie_ouverte()
 
 
 ## 🎓 Le campus trouvé sur la carte : la fenêtre s'ouvre sur l'université et l'étude.
@@ -3899,6 +3907,29 @@ func _brancher_lieu() -> void:
 					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % Recherche.prix(k), "", ALERTE)
 					retours.actualiser(_mois)
 				_maj_lieu())
+		elif String(l["genre"]) == "programme":
+			var prog: String = k.trim_prefix("programme_")
+			b.pressed.connect(func() -> void:
+				if ville.adopter_programme(prog, _mois):
+					var p: Dictionary = Politiques.PROGRAMMES[prog]
+					# 🔴 Flaggable (90).
+					retours.consigner("%s adopté, −%d point." % [p["nom"], int(p["points"])], _mois)
+					retours.annoncer("Un îlot aux maisons tombées peut lancer un concours.", _mois)
+					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % int(p["points"]), "", ALERTE)
+					retours.actualiser(_mois)
+					if ouverture != null:
+						ouverture.actualiser(true)
+				_maj_lieu())
+		elif String(l["genre"]) == "etude":
+			b.pressed.connect(func() -> void:
+				if ville.commander_etude(_mois):
+					# 🔴 Flaggable (90).
+					retours.consigner("Étude commandée à l'université : %s k€, rendue dans %s." % [
+						_milliers(Ville.ETUDE_KE), _duree(Ville.ETUDE_MOIS)], _mois)
+					retours.actualiser(_mois)
+					if ouverture != null:
+						ouverture.actualiser(true)
+				_maj_lieu())
 		else:
 			b.pressed.connect(func() -> void:
 				if ville.basculer_politique(k, _mois):
@@ -3923,14 +3954,20 @@ func _maj_lieu() -> void:
 	for cle in _lieu_lignes:
 		var l: Dictionary = _lieu_lignes[cle]
 		var bloc: Control = l["bloc"]
-		var recherche: bool = String(l["genre"]) == "recherche"
+		var genre := String(l["genre"])
+		var recherche: bool = genre == "recherche"
 		bloc.visible = (_lieu_ouvert == "institut" and _sujet_montre(String(cle))) if recherche \
-			else (_lieu_ouvert == "mairie" and _politique_ouverte(String(cle)))
+			else (_lieu_ouvert == "mairie" and (_etude_montree() if genre == "etude"
+				else genre == "programme" or _politique_ouverte(String(cle))))
 		if not bloc.visible:
 			continue
 		if recherche:
 			# 🔄 Plus de sujet grisé « Après : … » (auteur, 2026-10-19) : il attend caché.
 			_maj_ligne_recherche(String(cle), l)
+		elif genre == "programme":
+			_maj_ligne_programme(String(cle).trim_prefix("programme_"), l)
+		elif genre == "etude":
+			_maj_ligne_etude(l)
 		else:
 			_maj_ligne_politique(String(cle), l)
 	# Une colonne sans sujet montré se retire, son titre avec.
@@ -4057,6 +4094,39 @@ func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
 		b.visible = true
 		b.disabled = Recherche.points(ville, _mois) < prix
 		b.text = "Mettre au point" if not b.disabled else "Points insuffisants"
+
+
+func _maj_ligne_programme(cle: String, l: Dictionary) -> void:
+	var etat: Label = l["etat"]
+	var b: Button = l["bouton"]
+	if Politiques.adopte(ville, cle, _mois):
+		etat.text = "Adopté %s." % Calendrier.en(float(ville._programmes[cle]))
+		b.visible = false
+		return
+	var prix := int(Politiques.PROGRAMMES[cle]["points"])
+	etat.text = "%d point%s" % [prix, "s" if prix > 1 else ""]
+	b.visible = true
+	b.disabled = Recherche.points(ville, _mois) < prix
+	b.text = "Adopter" if not b.disabled else "Points insuffisants"
+
+
+## 🎓 Proposée après le concours (117) ; elle quitte la mairie une fois l'étude parue.
+func _etude_montree() -> bool:
+	return ouverture != null and not ouverture.etude_parue \
+		and (ville.etude_commandee() or ouverture.etude_proposee())
+
+
+func _maj_ligne_etude(l: Dictionary) -> void:
+	var etat: Label = l["etat"]
+	var b: Button = l["bouton"]
+	if ville.etude_commandee():
+		etat.text = "Commandée, rendue dans %s." % _duree(ville.etude_reste_mois(_mois))
+		b.visible = false
+		return
+	etat.text = "%s k€, rendue en %s" % [_milliers(Ville.ETUDE_KE), _duree(Ville.ETUDE_MOIS)]
+	b.visible = true
+	b.disabled = _caisse_ke < Ville.ETUDE_KE
+	b.text = "Commander" if not b.disabled else "Caisse insuffisante"
 
 
 func _maj_ligne_politique(cle: String, l: Dictionary) -> void:
@@ -4262,7 +4332,7 @@ const GENRES_DEPENSE := {
 	"rue": "Rues déblayées", "ilot": "Îlots relevés", "solaire": "Panneaux solaires",
 	"vert": "Toits verts", "dense": "Étages ajoutés", "berge": "Berges",
 	"plantation": "Arbres plantés", "culture": "Cultures", "concours": "Concours",
-	"labour": "Labours",
+	"labour": "Labours", "etude": "Étude de la crue",
 	"autres": "Autres chantiers",
 }
 
@@ -6032,11 +6102,10 @@ func _maj_reparation(o: Dictionary) -> void:
 	# 🏗️ Un îlot sinistré se relève de quatre façons ; elles remplacent le bouton.
 	var rebatir := couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0 \
 		and not ville.est_repare(couche, _fiche_fid) and float(o.get("cout_reparation_ke", 0.0)) > 0.0
-	# 🏛️ DEUX CHOIX, l'étude parue et des maisons tombées (auteur, 2026-10-19 au soir) :
-	# reconstruire, ou le concours ; ses lauréats seuls montrent les projets. Plus de pilotis ici.
+	# 🏛️ DEUX CHOIX là où des maisons sont tombées (auteur, 2026-10-19 au soir) : reconstruire,
+	# ou le concours, adopté à la mairie (117) ; ses lauréats seuls montrent les projets.
 	var rendu := ville.concours_rendu(_mois)
-	var apres_etude: bool = rebatir and (ouverture == null or not ouverture.annee_un())
-	var concours: bool = apres_etude and ville.concours_utile(_fiche_fid) \
+	var concours: bool = rebatir and ville.concours_utile(_fiche_fid) \
 		and (ouverture == null or ouverture.concours_offert())
 	var projets: bool = concours and rendu
 	for facon in _rebatir_boutons:

@@ -1,7 +1,7 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/essai_etude.gd -- --ouverture [--captures]
-## 🎓 Après le pont : l'étude, le campus trouvé sur la carte, sa fiche, puis les
-## îlots à rebâtir et les pilotis (auteur, 2026-10-08).
+## 🎓 Après le pont : la mairie (concours, puis étude commandée, 117), l'étude, le campus
+## trouvé sur la carte, sa fiche, puis les îlots à rebâtir et les pilotis (auteur, 2026-10-08).
 
 
 func executer() -> void:
@@ -32,15 +32,69 @@ func executer() -> void:
 	var univ: Button = tuile("universite")
 	verifier(not univ.visible and ui._rail_lieux.size() == 2,
 		"Avant le pont, la colonne n'a pas l'université, et elle n'a que deux lieux (114)")
-	# 🎓 Le pont livré, une seule carte : l'étude (auteur, 2026-10-08).
+	# 🏛️ LA MAIRIE D'ABORD (117) : le pont rouvert n'ouvre qu'elle.
 	o.premier = {"couche": "r", "fid": jeu.ville.ponts_coupes()[0], "fin": 0.0}
 	o._pont_rouvert()
-	verifier(o.pont_termine and o.etude_parue and o.carte == "etude" and o.annonce.visible
+	ui._maj_rail()
+	verifier(o.pont_termine and not o.etude_parue and not o.annonce.visible
+		and o.etape == "mairie" and o._texte.text == o.DIRE_MAIRIE,
+		"Le pont rouvert, aucune carte : le guide envoie à la mairie : %s" % o._texte.text)
+	verifier(not tuile("mairie").disabled and entouree("mairie") and not univ.visible,
+		"La tuile de la mairie s'ouvre et s'entoure, l'université reste cachée")
+	await capture("mairie_00_appel")
+	await cliquer(tuile("mairie"))
+	var prog: Dictionary = ui._lieu_lignes["programme_concours"]
+	var ligne_etude: Dictionary = ui._lieu_lignes["etude"]
+	ui._maj_rail()
+	verifier(o.mairie_vue and ui._lieu_ouvert == "mairie" and prog["bloc"].visible
+		and not prog["bouton"].disabled and prog["bouton"].text == "Adopter"
+		and not ligne_etude["bloc"].visible and not entouree("mairie"),
+		"La mairie propose le concours d'urbanisme, 1 point, et pas encore l'étude")
+	await capture("mairie_01_concours")
+	var points_avant: int = jeu.Recherche.points(jeu.ville, jeu.mois)
+	await cliquer(prog["bouton"])
+	verifier(jeu.Recherche.points(jeu.ville, jeu.mois) == points_avant - 1 and not prog["bouton"].visible
+		and "Adopté" in prog["etat"].text and not ligne_etude["bloc"].visible,
+		"Adopter coûte un point ; l'étude attend le concours")
+	ui._fermer_lieu()
+	verifier(o.concours_offert() and not o.etude_proposee(), "Adopté, le concours s'offre aux îlots")
+	jeu._sur_choix("i", o.MAISONS)
+	jeu._rafraichir(true)
+	var pil: Button = ui._rebatir_boutons["pilotis"]
+	verifier(o.carte == "concours" and o.annonce.visible, "La fiche des Forgerons annonce le concours")
+	await cliquer(o.annonce_principal)
+	jeu._rafraichir(true)
+	verifier(ui._rebatir_boutons["tradition"].visible and not pil.visible
+		and ui._concours_bouton.visible and not ui._projets_bouton.visible,
+		"Deux choix : reconstruire ou le concours ; ni pilotis ni projets")
+	await capture("campus_04_deux_choix")
+	ui._fermer_fiche()
+	# Le concours lancé puis rendu, la mairie propose l'étude.
+	verifier(jeu.ville.lancer_concours(o.MAISONS, jeu.mois), "Le concours se lance")
+	actualiser(jeu.mois + jeu.ville.CONCOURS_MOIS + 0.01)
+	ui._maj_rail()
+	verifier(o.etude_proposee() and entouree("mairie")
+		and "commander une étude" in str(ui.retours.journal),
+		"Le concours rendu, la mairie s'entoure et le bandeau propose l'étude")
+	await cliquer(tuile("mairie"))
+	ui._maj_rail()
+	verifier(ligne_etude["bloc"].visible and ligne_etude["bouton"].text == "Commander"
+		and not entouree("mairie"), "La mairie propose l'étude, en euros")
+	await capture("mairie_02_etude")
+	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
+	await cliquer(ligne_etude["bouton"])
+	verifier(jeu.ville.etude_commandee() and not o.etude_parue
+		and is_equal_approx(jeu.ville.caisse_ke(jeu.mois), caisse - jeu.ville.ETUDE_KE)
+		and "Commandée" in ligne_etude["etat"].text,
+		"Commander l'étude paie 80 k€ ; elle n'est pas encore rendue")
+	ui._fermer_lieu()
+	actualiser(jeu.mois + jeu.ville.ETUDE_MOIS + 0.01)
+	# 🎓 Rendue, une seule carte : l'étude (auteur, 2026-10-08).
+	verifier(o.etude_parue and o.carte == "etude" and o.annonce.visible
 		and jeu.vitesse == 0.0 and not o.annonce_second.visible
 		and o.annonce_principal.text == "Trouver l'université",
-		"Le pont rouvert, l'étude paraît : une carte au centre, un seul bouton, jeu en pause")
-	verifier("rouvert" in str(ui.retours.journal) and "étude" in ui.retours.journal[-1],
-		"Le bandeau dit le pont rouvert, le journal la parution")
+		"L'étude rendue paraît : une carte au centre, un seul bouton, jeu en pause")
+	verifier("étude" in ui.retours.journal[-1], "Le journal dit la parution")
 	await capture("campus_00_etude")
 	await cliquer(o.annonce_principal)
 	jeu._rafraichir(true)
@@ -134,24 +188,14 @@ func executer() -> void:
 		and o.MAISONS in sinistres,
 		"Les %d îlots sinistrés sont entourés et clignotent" % sinistres.size())
 	await capture("campus_03_rebatir")
-	jeu._sur_choix("i", o.MAISONS)
-	jeu._rafraichir(true)
-	var pil: Button = ui._rebatir_boutons["pilotis"]
-	verifier(o.carte == "concours" and o.annonce.visible, "La fiche des Forgerons annonce le concours")
-	await cliquer(o.annonce_principal)
-	jeu._rafraichir(true)
-	verifier(ui._rebatir_boutons["tradition"].visible and not pil.visible
-		and ui._concours_bouton.visible and not ui._projets_bouton.visible,
-		"Deux choix : reconstruire ou le concours ; ni pilotis ni projets")
-	await capture("campus_04_deux_choix")
-	ui._fermer_fiche()
-	# Comme en jeu : abriter et rouvrir le pont ont payé deux points.
+	# Comme en jeu : abriter, rouvrir le pont, relever le Lavoir, moins le point du concours (117).
 	jeu.ville._objectifs["abriter"] = jeu.mois
 	jeu.ville._objectifs["pont"] = jeu.mois
+	jeu.ville._objectifs["ilot"] = jeu.mois
 	ui.ouvrir_lieu("institut")
 	var points: int = jeu.Recherche.points(jeu.ville, jeu.mois)
 	verifier(points == 2 and points >= jeu.Recherche.prix(jeu.Recherche.PILOTIS) and not ligne["bouton"].disabled,
-		"Les deux premiers objectifs suffisent aux pilotis")
+		"Trois objectifs moins le concours suffisent aux pilotis")
 	await cliquer(ligne["bouton"])
 	verifier(jeu.Recherche.acquis(jeu.ville, jeu.Recherche.PILOTIS, jeu.mois)
 		and jeu.Recherche.points(jeu.ville, jeu.mois) == points - jeu.Recherche.prix(jeu.Recherche.PILOTIS)
@@ -211,8 +255,9 @@ func executer() -> void:
 	actualiser(jeu.mois)
 	await capture("etude_05d_universite")
 	# 🌳 Deux objectifs de plus : le parc inondable, puis la berge rendue paie le pré.
-	jeu.ville._objectifs["ilot"] = jeu.mois
+	# 🔴 Un objectif de plus qu'en jeu : le point du concours (117) manque à l'arbre, à régler par l'auteur.
 	jeu.ville._objectifs["logements"] = jeu.mois
+	jeu.ville._objectifs["densifier"] = jeu.mois
 	ui.ouvrir_lieu("institut")
 	verifier(not ui._lieu_lignes["pre"]["bloc"].visible and jeu.ville.acquerir_recherche("berge", jeu.mois)
 		and not jeu.ville.acquerir_recherche("pre", jeu.mois),

@@ -71,6 +71,8 @@ var _file_deblaiement := {}
 const DEBLAIEMENT_SEUIL := 3
 var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTIONS`)
 var _concours := {}        # {debut, fid} : le concours de la zone sinistrée (104), lancé depuis cet îlot
+var _programmes := {}      # clé de `Politiques.PROGRAMMES` -> le mois de l'adoption (117)
+var _etude := {}           # {debut} : l'étude de la crue commandée par la mairie (117)
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
 var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbres}
@@ -197,6 +199,10 @@ const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc"]
 const CONCOURS_KE := 120.0
 const CONCOURS_MOIS := 1.0
 const CONCOURS_LAUREAT_PRIX := 0.8
+# 🎓 L'étude de la crue, commandée par la mairie (117) ; à sa remise, l'université s'ouvre.
+# 🎚️ Proposés, à juger par l'auteur.
+const ETUDE_KE := 80.0
+const ETUDE_MOIS := 1.0
 const PARC_BAISSE_M_PAR_HA := 0.10   # de crue en moins dans toute la ville, par hectare rendu
 
 
@@ -323,11 +329,11 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
-	"_permeable", "_concours", "_labours", "_premieres", "_objectifs"]
+	"_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs"]
+	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -375,7 +381,8 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_demandes": [DEMANDES, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0],
 		"_premieres": [Recherche.PREMIERES_FOIS, 0.0],
-		"_objectifs": [Objectifs.OBJECTIFS, 0.0]}
+		"_objectifs": [Objectifs.OBJECTIFS, 0.0],
+		"_programmes": [Politiques.PROGRAMMES, 0.0]}
 	for champ in formes:
 		if not etat.has(champ):
 			continue
@@ -814,6 +821,8 @@ func reinitialiser() -> void:
 	_premieres.clear()
 	_objectifs.clear()
 	_politiques.clear()
+	_programmes.clear()
+	_etude.clear()
 	_vert.clear()
 	_stationnement_supprime.clear()
 	_dense.clear()
@@ -2526,6 +2535,38 @@ func facon_permise(fid: int, facon: String, t: float) -> bool:
 ## 🏛️ Le concours rendu ne change que les projets neufs : « comme avant » n'a rien à concourir.
 func laureat(fid: int, facon: String, t: float) -> bool:
 	return facon != "tradition" and concours_rendu(t) and concours_utile(fid)
+
+
+## 🏛️ Une fois, en points (117) : `false` si déjà adopté ou s'il en manque.
+func adopter_programme(cle: String, t: float) -> bool:
+	if not Politiques.PROGRAMMES.has(cle) or _programmes.has(cle):
+		return false
+	if Recherche.points(self, t) < int(Politiques.PROGRAMMES[cle]["points"]):
+		return false
+	_programmes[cle] = t
+	return true
+
+
+func etude_commandee() -> bool:
+	return not _etude.is_empty()
+
+
+func etude_reste_mois(t: float) -> float:
+	if _etude.is_empty():
+		return INF
+	return maxf(float(_etude["debut"]) + _delai(ETUDE_MOIS) - t, 0.0)
+
+
+func etude_rendue(t: float) -> bool:
+	return etude_commandee() and etude_reste_mois(t) <= 0.0
+
+
+func commander_etude(t: float) -> bool:
+	if etude_commandee() or ETUDE_KE > caisse_ke(t) + 0.001:
+		return false
+	_etude = {"debut": t}
+	_depenser("etude", ETUDE_KE)
+	return true
 
 
 func lancer_concours(fid: int, t: float) -> bool:

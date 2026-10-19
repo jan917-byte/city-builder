@@ -133,6 +133,9 @@ func _apres_etude(t: float, concours := false) -> void:
 	o.prochaine_vue = true
 	o.institut_vu = true
 	o.biblio_vue = true
+	# 🏛️ L'étude parue, la mairie a été vue et le concours adopté (117).
+	o.mairie_vue = true
+	jeu.ville._programmes["concours"] = 0.0
 	jeu.ville._recherche[jeu.Recherche.PILOTIS] = 0.0
 	jeu.ville._recherche[jeu.Recherche.PARC] = 0.0
 	if concours:
