@@ -18,6 +18,11 @@ const vec3 S_ROUX = vec3(0.468, 0.102, 0.027);         // #B65A2E
 const vec3 S_SAULE = vec3(0.584, 0.539, 0.112);        // #C9C25E
 const vec3 S_RAMURE = vec3(0.262, 0.205, 0.162);       // #8C7D70 les rameaux d'un arbre nu
 const vec3 S_FLEUR = vec3(0.888, 0.791, 0.807);        // #F2E6E8 fruitiers en avril
+const vec3 S_FLEUR_ROSE = vec3(0.871, 0.632, 0.679);   // #F0D0D8 pommier rose
+const vec3 S_ROSE = vec3(0.807, 0.413, 0.546);         // #E8AAC2 cerisier à fleurs
+const vec3 S_CITRON = vec3(0.610, 0.716, 0.188);       // #CDDC78 jeunes feuilles presque jaunes
+const vec3 S_POURPRE = vec3(0.235, 0.067, 0.107);      // #85495C hêtre pourpre
+const vec3 S_POURPRE_TENDRE = vec3(0.527, 0.195, 0.231); // #C07A84 ses jeunes feuilles
 
 float saison_alea(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float saison_bruit(vec2 p) {

@@ -18,13 +18,15 @@
 
 | | Ce qui change dans l'année |
 |---|---|
-| Feuillus de ville | vert tendre début avril, vert, couleurs d'automne en octobre (jaune, orange, roux selon l'arbre), nus fin novembre ; chaque arbre à une semaine près de son voisin |
+| Feuillus de ville | bourgeons en voile vert tendre deux semaines avant la feuille, puis vert tendre plus ou moins jaune, vert ; couleurs d'automne en octobre (jaune, orange, roux selon l'arbre), nus fin novembre ; chaque arbre à deux semaines près de son voisin, et chacun son vert, du jaune au bleuté |
+| Variétés (2026-10-19) | **cerisier à fleurs** rose avant ses feuilles (avril), **marronnier** à bougies blanches (mai), **hêtre pourpre** rouge vin l'été, rose cuivré au débourrement ; dans les jardins un feuillu sur six environ, sur une rue toute la rue |
+| Tilleul (2026-10-19) | l'arbre d'alignement : ovale, dense ; jaune à l'automne. Une rue plantée tire une essence pour toute sa longueur : tilleul, cerisier, marronnier ou feuillu |
 | Bouleau, peuplier | jaunes à l'automne ; le peuplier nu garde sa flèche |
-| Fruitiers | en fleurs blanc rosé mi-avril, avant leurs feuilles |
+| Fruitiers | en fleurs mi-avril, en taches sur le vert tendre ; un sur trois à fleurs roses |
 | Saule | le premier vert, le dernier jaune ; nu, ses rameaux retombent |
 | Conifères | verts toute l'année, la neige se pose dessus |
 | Roseaux | paille d'octobre à mai, sur pied |
-| Buissons, forêt | nus, ils gardent une masse de rameaux brun-gris (pas de branches) |
+| Buissons, forêt | nus, ils gardent une masse de rameaux brun-gris (pas de branches), qui verdit au débourrement |
 | Herbe | terne l'hiver, tendre au printemps, jaunie les étés chauds |
 | Neige | une fois par hiver, entre le 10 décembre et le 25 janvier ; douze jours pour arriver (collines, toits et couronnes, jardins et champs, par grands pans), dix pour fondre ; **la chaussée reste déneigée** |
 | Flocons | à l'écran, légers, seulement pendant l'arrivée ; absents en vue diagnostic |
@@ -59,6 +61,8 @@ En jouant : laisser filer en ×1 puis ×12 un hiver entier. **Ce qui prouverait 
 - **L'hiver sans neige** ne raconte plus le réchauffement : il se lit à la neige plus courte et aux collines qui ne blanchissent plus. À ×12, l'arrivée ne dure que deux secondes.
 
 ## Ce qui reste
+
+- 🌸 **Les arbres du printemps, à juger** (2026-10-19, demande de l'auteur : « au printemps c'est pas très beau ») : `apercu_arbres.gd -- --mois=1.5`, pépinière en 16 numéros. Le tilleul, les variétés et le choix d'essence par rue sont **proposés** : les parts sont en haut de `Constructeur.variete` et dans `maquette._essence_rue`. ⚠️ La teinte qui glisse d'un arbre à l'autre s'écarte de « une teinte, des valeurs » de la direction artistique : à trancher. La miniature de la fiche d'une rue montre encore un feuillu ordinaire.
 
 - 🎨 **Les couleurs** (`Godot/shaders/saison.gdshaderinc`), **les branches** (`Constructeur._ramure`) et **les flocons** (`Godot/shaders/flocons.gdshader`) sont flaggables : voie sans IA, l'auteur choisit les couleurs, modélise une ramure nue par essence (cinq pièces) et dessine un flocon.
 - ☀️ Le soleil ne baisse pas l'hiver : les ombres sont les mêmes toute l'année.

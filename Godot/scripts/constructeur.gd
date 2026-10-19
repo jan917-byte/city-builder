@@ -399,7 +399,17 @@ const BOULEAU := 4
 const PEUPLIER := 5
 const FRUITIER := 6
 const SAULE := 7
-const VILLE := [FEUILLU, CONIFERE, BOULEAU, PEUPLIER, FRUITIER, SAULE]
+## 🌳 L'arbre d'alignement allemand (2026-10-19) : ovale, dense, plus haut que large.
+const TILLEUL := 8
+const VILLE := [FEUILLU, CONIFERE, BOULEAU, PEUPLIER, FRUITIER, SAULE, TILLEUL]
+## 🌸 La VARIÉTÉ d'un arbre, 7e nombre de sa liste ou tirée de sa position, lue
+## par `feuillage.gdshader` (INSTANCE_CUSTOM.r) : même recette, autre année.
+## Sur un fruitier, ROSE = fleurs roses au lieu de blanches.
+## ⚠️ Flaggable (90) : couleurs de floraison choisies par Claude.
+const ORDINAIRE := 0
+const ROSE := 1         # cerisier à fleurs : rose avant les feuilles, début avril
+const MARRONNIER := 2   # bougies blanches en mai
+const POURPRE := 3      # hêtre pourpre : rouge vin tout l'été
 
 ## La teinte d'instance MULTIPLIE celle du sommet : au-dessus de 1, la tête
 ## reste plus claire que le vêtement, quel que soit le vêtement tiré.
@@ -662,17 +672,36 @@ static func arbres(liste: Array, essence: int, feuillage: Color,
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
+	mm.use_custom_data = true
 	mm.mesh = arbre(essence, tronc)
 	mm.instance_count = pris.size()
 
 	for k in pris.size():
 		var a: Array = pris[k]
 		mm.set_instance_transform(k, pose(a, essence))
+		mm.set_instance_custom_data(k, Color(float(variete(a, essence)), 0.0, 0.0, 0.0))
 		# Variation de valeur, pas de teinte (Direction artistique l.67).
 		var f: float = 0.86 + 0.28 * fmod(abs(float(a[4])) * 7.3, 1.0)
 		mm.set_instance_color(k, Color(feuillage.r * f, feuillage.g * f,
 			feuillage.b * f))
 	return mm
+
+
+## 🌸 Donnée par la liste (un alignement : une variété par rue), sinon tirée
+## du lieu. Parts à juger à l'écran.
+static func variete(a: Array, essence: int) -> int:
+	if a.size() > 6:
+		return int(a[6])
+	var t := fposmod(sin(float(a[0]) * 12.9898 + float(a[2]) * 78.233) * 43758.5453, 1.0)
+	if essence == FRUITIER:
+		return ROSE if t < 0.35 else ORDINAIRE
+	if essence != FEUILLU:
+		return ORDINAIRE
+	if t < 0.08:
+		return ROSE
+	if t < 0.14:
+		return MARRONNIER
+	return POURPRE if t < 0.18 else ORDINAIRE
 
 
 ## 🌳 La pose d'un arbre : [x, y, z, échelle, lacet]. Élancé ou trapu, un peu
@@ -684,8 +713,9 @@ static func pose(a: Array, essence: int) -> Transform3D:
 	var lacet := float(a[4])
 	var h := fmod(absf(lacet) * 3.17 + 0.21, 1.0)
 	var l := fmod(absf(lacet) * 5.31 + 0.47, 1.0)
+	# Élancé ou étalé : largeur et hauteur tirées à part (2026-10-19, plus d'écart).
 	var b := Basis(Vector3.UP, lacet).scaled(Vector3(
-		ech * lerpf(0.92, 1.08, l), ech * lerpf(0.88, 1.14, h), ech * lerpf(0.92, 1.08, l)))
+		ech * lerpf(0.84, 1.16, l), ech * lerpf(0.84, 1.18, h), ech * lerpf(0.84, 1.16, l)))
 	var penche := deg_to_rad(6.0 if essence == BOULEAU or essence == SAULE else 2.5) \
 		* fmod(absf(lacet) * 11.7, 1.0)
 	b = Basis(Vector3(cos(lacet * 2.3), 0.0, sin(lacet * 2.3)), penche) * b
@@ -761,6 +791,14 @@ static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMes
 			var a := float(k) * TAU / 6.0 + 0.4
 			f.lobe(Vector3(cos(a) * 2.05, 2.75, sin(a) * 2.05), 0.95, 0.56, 0.94,
 				SATELLITE + k, 2.0)
+	elif essence == TILLEUL:
+		# L'ovale : un corps étiré vers le haut, des lobes serrés autour.
+		f.lobe(Vector3(0.0, 5.5, 0.0), 2.10, 0.62, 1.12, COURONNE, 1.38)
+		f.lobe(Vector3(0.95, 4.4, 0.55), 1.40, 0.56, 0.96, SATELLITE, 1.10)
+		f.lobe(Vector3(-1.00, 4.6, -0.45), 1.35, 0.56, 0.96, SATELLITE + 1, 1.10)
+		f.lobe(Vector3(0.15, 7.6, -0.25), 1.25, 0.84, 1.18, SATELLITE + 2, 1.20)
+		f.lobe(Vector3(-0.45, 6.4, 0.95), 1.15, 0.72, 1.10, SATELLITE + 3, 1.10)
+		f.lobe(Vector3(0.75, 6.7, -0.85), 1.05, 0.74, 1.12, SATELLITE + 4, 1.10)
 	else:
 		# DÉCENTRÉS : concentriques, ils redonneraient la bille d'avant.
 		f.lobe(Vector3(0.0, 4.7, 0.0), 2.55, 0.66, 1.10, COURONNE)
@@ -781,7 +819,7 @@ static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMes
 	var t := _Volume.new()
 	t.cotes = 4 if foret != Vector2.ZERO else 5
 	var haut: float = {CONIFERE: 1.6, BOULEAU: 4.4, PEUPLIER: 2.0,
-		FRUITIER: 1.4, SAULE: 2.4}.get(essence, 3.4)
+		FRUITIER: 1.4, SAULE: 2.4, TILLEUL: 2.9}.get(essence, 3.4)
 	var rayon := 0.20 if essence == BOULEAU else 0.30
 	t.cone(rayon, 0.0, haut, 1.0, 1.0, FIXE, 0.72)
 	if foret == Vector2.ZERO and essence != CONIFERE:

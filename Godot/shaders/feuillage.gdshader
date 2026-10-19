@@ -16,6 +16,7 @@ uniform vec2 demi_emprise = vec2(0.0);
 varying vec3 local;
 varying vec3 monde;
 varying vec4 cycle;               // feuilles, roux, tendre, fleur : 0 à 1
+varying vec4 cycle2;              // voile du débourrement, bougies, variété, teinte
 varying float tirage;
 
 float alea(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -29,12 +30,14 @@ float bruit3(vec3 p) {
 }
 
 // 🍂 Débourrement et automne en mois du calendrier, par essence ; chaque arbre
-// à ±1 semaine, tiré de sa position.
-vec4 phenologie(vec3 origine) {
+// à ±2 semaines, tiré de sa position : en avril, la rue n'est pas d'un seul
+// ton (2026-10-19). `variete` = `Constructeur.ROSE`…
+vec4 phenologie(vec3 origine, int variete, out vec2 extra) {
+	extra = vec2(0.0);
 	if (essence == 1) return vec4(1.0, 0.0, 0.0, 0.0);   // le conifère ne bouge pas
-	float j = (alea(floor(origine.xz * 4.0) * 0.517 + 5.3) - 0.5) * 0.5;
+	float j = (alea(floor(origine.xz * 4.0) * 0.517 + 5.3) - 0.5) * 0.9;
 	float mp = saison_mois - saison_decalage.x - j;
-	float ma = saison_mois - saison_decalage.y - j;
+	float ma = saison_mois - saison_decalage.y - j * 0.6;
 	float s = 3.30;                                       // feuillu : début avril
 	float a = 9.25;                                       // et début octobre
 	if (essence == 2) { s = 4.20; a = 8.80; }             // roseau
@@ -43,22 +46,37 @@ vec4 phenologie(vec3 origine) {
 	else if (essence == 5) { s = 3.30; a = 9.10; }        // peuplier
 	else if (essence == 6) { s = 3.55; a = 9.40; }        // fruitier, après ses fleurs
 	else if (essence == 7) { s = 2.95; a = 9.70; }        // saule : le premier vert, le dernier jaune
+	else if (essence == 8) { s = 3.45; a = 9.15; }        // tilleul
+	if (variete == 2) s -= 0.20;                          // le marronnier, en avance
+	else if (variete == 1 && essence != 6) s += 0.25;     // le cerisier fleurit d'abord
 	float pousse = smoothstep(s, s + 0.8, mp);
 	float roux = smoothstep(a, a + 0.6, ma);
 	float tendre = 1.0 - smoothstep(s + 0.5, s + 1.6, mp);
+	// Deux semaines avant la feuille, les bourgeons verdissent la ramure.
+	extra.x = smoothstep(s - 0.55, s + 0.05, mp);
 	// Le roseau ne tombe pas : il sèche sur pied et reverdit en mai.
 	if (essence == 2) return vec4(1.0, max(roux, 1.0 - pousse), 0.0, 0.0);
 	float feuilles = pousse * (1.0 - smoothstep(a + 0.45, a + 1.25, ma));
-	float fleur = essence == 6
-		? smoothstep(s - 0.45, s - 0.2, mp) * (1.0 - smoothstep(s + 0.05, s + 0.4, mp)) : 0.0;
+	float fleur = 0.0;
+	if (essence == 6)
+		fleur = smoothstep(s - 0.45, s - 0.2, mp) * (1.0 - smoothstep(s + 0.05, s + 0.4, mp));
+	else if (variete == 1)
+		fleur = smoothstep(s - 0.55, s - 0.3, mp) * (1.0 - smoothstep(s + 0.05, s + 0.35, mp));
+	// Les bougies du marronnier, sur la feuille déjà faite : le mois de mai.
+	if (variete == 2)
+		extra.y = smoothstep(s + 0.85, s + 1.05, mp) * (1.0 - smoothstep(s + 1.45, s + 1.7, mp));
 	return vec4(feuilles, roux, tendre, fleur);
 }
 
 void vertex() {
 	vec3 origine = MODEL_MATRIX[3].xyz;
-	cycle = phenologie(origine);
-	float presence = max(cycle.x, cycle.w);
+	int variete = int(INSTANCE_CUSTOM.r + 0.5);   // 0 en forêt : pas de données
+	vec2 extra;
+	cycle = phenologie(origine, variete, extra);
 	tirage = alea(floor(origine.xz * 4.0) * 0.291 + 2.7);
+	cycle2 = vec4(extra, float(variete), alea(floor(origine.xz * 4.0) * 0.613 + 8.1));
+	// Le voile des bourgeons épaissit la ramure avant la feuille.
+	float presence = max(max(cycle.x, cycle.w), cycle2.x * 0.35);
 	// 🌳 Chaque arbre joue la recette à sa façon, tiré de SA position : même
 	// ville, mêmes arbres, et les ombres suivent (même calcul dans leur passe).
 	float role = CUSTOM0.w;
@@ -101,12 +119,14 @@ void vertex() {
 void fragment() {
 	vec3 couleur = ecorce;
 	if (!tronc) {
-		float presence = max(cycle.x, cycle.w);
+		int variete = int(cycle2.z + 0.5);
+		float voile = cycle2.x * (1.0 - cycle.x);
+		float presence = max(max(cycle.x, cycle.w), voile * 0.35);
 		// La couronne se troue quand elle se déshabille, dans l'espace de
 		// l'arbre : les trous ne scintillent pas quand la caméra bouge.
 		if (presence < 0.999) {
 			float dense = brume_ramure > 0.0 ? mix(brume_ramure, 1.0, presence) : presence;
-			if (bruit3(local * 1.4 + tirage * 31.0) > dense * 1.08) discard;
+			if (bruit3(local * 1.9 + tirage * 31.0) > dense * 1.08) discard;
 		}
 		float grain = sin(local.x * 4.0 + local.y * 2.1) * sin(local.z * 3.5 - local.y);
 		float net = 1.0 - smoothstep(0.2, 1.0, length(fwidth(local)));
@@ -114,20 +134,38 @@ void fragment() {
 		// palette : les couleurs de saison la gardent.
 		float ombre = dot(COLOR.rgb, vec3(1.0)) / 0.8097;
 		vec3 automne = S_ORANGE;
-		if (essence == 0) automne = tirage < 0.4 ? S_JAUNE : (tirage < 0.75 ? S_ORANGE : S_ROUX);
+		if (essence == 0 || essence == 8) automne = tirage < 0.4 ? S_JAUNE : (tirage < 0.75 ? S_ORANGE : S_ROUX);
 		else if (essence == 2) automne = S_PAILLE;
 		else if (essence == 3) automne = S_ROUX;
 		else if (essence == 4 || essence == 5) automne = S_JAUNE;
 		else if (essence == 6) automne = mix(S_ORANGE, S_ROUX, tirage);
 		else if (essence == 7) automne = S_SAULE;
+		if (variete == 3) automne = S_ROUX;
+		// 🌳 Chaque arbre son vert, du jaune au bleuté (2026-10-19) : la même
+		// valeur, une teinte qui glisse. Le conifère reste dans le sien.
 		vec3 c = COLOR.rgb * vec3(0.86, 1.0, 0.92);
-		c = mix(c, S_DEBOURRE * ombre, cycle.z * 0.7);
+		if (essence != 1 && essence != 2) {
+			c *= mix(vec3(1.10, 1.02, 0.82), vec3(0.90, 0.98, 1.18), cycle2.w);
+		}
+		if (variete == 3) c = S_POURPRE * ombre;
+		// Le vert tendre d'avril, plus ou moins jaune selon l'arbre. 🔄 Le bronze
+		// essayé le 2026-10-19 se lisait en arbre mort : retiré.
+		vec3 tendre = mix(S_DEBOURRE, S_CITRON, step(0.7, tirage));
+		if (variete == 3) tendre = S_POURPRE_TENDRE;
+		c = mix(c, tendre * ombre, cycle.z * 0.75);
 		if (essence != 1) c = mix(c, S_PAILLE * ombre, saison_secheresse * 0.18);
 		c = mix(c, automne * ombre, cycle.y);
-		c = mix(c, S_FLEUR * min(ombre, 1.0), cycle.w);
-		// Ce qui n'est plus feuille est bois.
-		if (brume_ramure > 0.0 && bruit3(local * 2.0 + 11.0) > presence) {
+		// 🌸 La fleur en taches sur le vert tendre, pas une boule blanche.
+		vec3 petale = variete == 1 ? (essence == 6 ? S_FLEUR_ROSE : S_ROSE) : S_FLEUR;
+		float fleurie = step(bruit3(local * 3.1 + tirage * 17.0), cycle.w * 0.95);
+		c = mix(c, petale * min(ombre, 1.05), fleurie);
+		// Les bougies du marronnier : de petits points blancs dressés.
+		if (cycle2.y > 0.0 && bruit3(local * vec3(5.0, 2.6, 5.0) + 3.0) > 1.0 - cycle2.y * 0.32)
+			c = S_FLEUR * min(ombre, 1.05);
+		// Ce qui n'est plus feuille est bois ; au débourrement, un voile vert.
+		if (brume_ramure > 0.0 && cycle.w < 0.05 && bruit3(local * 2.0 + 11.0) > max(presence, cycle.x)) {
 			c = S_RAMURE * mix(1.0, ombre, 0.35) * mix(0.88, 1.12, tirage);
+			c = mix(c, tendre * ombre * 0.92, smoothstep(0.0, 1.0, voile) * 0.8);
 		}
 		couleur = c * (1.0 + grain * 0.085 * net);
 		// ❄️ La neige se pose sur ce qui regarde le ciel : les sapins surtout.

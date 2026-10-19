@@ -1734,7 +1734,7 @@ func _construire() -> void:
 			var mm: MultiMesh = (_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh
 			print("  arbres   %-8s %5d instances"
 				% [["feuillu", "conifère", "", "", "bouleau", "peuplier",
-					"fruitier", "saule"][essence],
+					"fruitier", "saule", "tilleul"][essence],
 					0 if mm == null else mm.instance_count])
 
 	if not _ignore("Rives"):
@@ -2087,7 +2087,7 @@ func _verger_semis(fid: int) -> Array:
 ## Variation de VALEUR sur la teinte de feuillage, par essence (DA l.67) : le
 ## bouleau et le saule prennent la lumière, le peuplier la retient.
 const VALEUR_ESSENCE := {Constructeur.BOULEAU: 1.20, Constructeur.PEUPLIER: 0.90,
-	Constructeur.FRUITIER: 1.08, Constructeur.SAULE: 1.14}
+	Constructeur.FRUITIER: 1.08, Constructeur.SAULE: 1.14, Constructeur.TILLEUL: 0.94}
 const ECORCE_BOULEAU := Color("d8d3c6")
 
 
@@ -2135,7 +2135,7 @@ func _montrer_arbres() -> void:
 		if float(a[6]) <= float(canopee[int(a[5])]):
 			# Un alignement est d'une seule essence, et feuillu : personne ne
 			# plante une haie d'épicéas en ville.
-			liste.append([a[0], a[1], a[2], a[3], a[4], Constructeur.FEUILLU])
+			liste.append([a[0], a[1], a[2], a[3], a[4]] + _essence_rue(int(a[5])))
 	_arbres_compte = liste.size()
 	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
 	var brun := Donnees.teinte(donnees, "_tronc")
@@ -2149,6 +2149,20 @@ func _montrer_arbres() -> void:
 		(_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh = \
 			Constructeur.arbres(liste, essence, t,
 				ECORCE_BOULEAU if essence == Constructeur.BOULEAU else brun)
+
+
+## 🌳 L'essence et la variété d'un alignement, une par rue, tirées de son
+## numéro (2026-10-19) : tilleuls, cerisiers, marronniers ou feuillus. Une
+## proposition, que l'auteur corrige à la main s'il veut une rue précise.
+static func _essence_rue(fid: int) -> Array:
+	var t := fposmod(sin(float(fid) * 12.9898 + 4.1) * 43758.5453, 1.0)
+	if t < 0.40:
+		return [Constructeur.TILLEUL, Constructeur.ORDINAIRE]
+	if t < 0.52:
+		return [Constructeur.FEUILLU, Constructeur.ROSE]
+	if t < 0.62:
+		return [Constructeur.FEUILLU, Constructeur.MARRONNIER]
+	return [Constructeur.FEUILLU, Constructeur.ORDINAIRE]
 
 
 ## 🌿 UNE BERGE RENDUE AU FLEUVE SE PLANTE, et c'est ça qui la fait lire — un

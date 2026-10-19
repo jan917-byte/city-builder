@@ -96,7 +96,7 @@ func _pepiniere(suffixe: String) -> void:
 	jeu.add_child(p)
 	var dalle := MeshInstance3D.new()
 	var bm := BoxMesh.new()
-	bm.size = Vector3(190.0, 2.0, 70.0)
+	bm.size = Vector3(260.0, 2.0, 70.0)
 	dalle.mesh = bm
 	var md := StandardMaterial3D.new()
 	md.albedo_color = Color("c9c4b4")
@@ -108,22 +108,28 @@ func _pepiniere(suffixe: String) -> void:
 	var vert: Color = jeu.Donnees.teinte(jeu.donnees, "_feuillage").srgb_to_linear()
 	var brun: Color = jeu.Donnees.teinte(jeu.donnees, "_tronc")
 	var noms := []
-	var x := -70.0
-	var rangs := [C.FEUILLU, C.BOULEAU, C.FRUITIER, C.PEUPLIER, C.SAULE,
-		C.CONIFERE, C.BUISSON, C.ROSEAU]
-	for e in rangs:
-		var liste := [[x, 0.0, 6.0, 1.0, 0.6, e]]
+	var x := -100.0
+	# [essence, variété, nom] : les variétés de printemps ont chacune leur rang.
+	var rangs := [[C.FEUILLU, C.ORDINAIRE, "feuillu"], [C.TILLEUL, C.ORDINAIRE, "tilleul"],
+		[C.FEUILLU, C.ROSE, "cerisier"], [C.FEUILLU, C.MARRONNIER, "marronnier"],
+		[C.FEUILLU, C.POURPRE, "pourpre"], [C.BOULEAU, C.ORDINAIRE, "bouleau"],
+		[C.FRUITIER, C.ORDINAIRE, "fruitier"], [C.FRUITIER, C.ROSE, "fruitier rose"],
+		[C.PEUPLIER, C.ORDINAIRE, "peuplier"], [C.SAULE, C.ORDINAIRE, "saule"],
+		[C.CONIFERE, C.ORDINAIRE, "conifère"], [C.BUISSON, C.ORDINAIRE, "buisson"],
+		[C.ROSEAU, C.ORDINAIRE, "roseau"]]
+	for r in rangs:
+		var e: int = r[0]
+		var liste := [[x, 0.0, 6.0, 1.0, 0.6, e, r[1]]]
 		# Le rang du fond : jeune, moyen, vieux, tournés différemment.
 		for k in 3:
 			liste.append([x - 4.0 + 4.0 * k, 0.0, -14.0 - 3.0 * (k % 2),
-				[0.6, 0.85, 1.2][k], 1.3 + 2.1 * k, e])
+				[0.6, 0.85, 1.2][k], 1.3 + 2.1 * k, e, r[1]])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = C.arbres(liste, e, _teinte(e, vert),
 			jeu.ECORCE_BOULEAU if e == C.BOULEAU else brun)
 		p.add_child(mmi)
-		noms.append([Vector3(x, 0.0, 6.0), ["feuillu", "bouleau", "fruitier",
-			"peuplier", "saule", "conifère", "buisson", "roseau"][rangs.find(e)]])
-		x += 15.0
+		noms.append([Vector3(x, 0.0, 6.0), r[2]])
+		x += 13.0
 	# Les trois arbres du décor, tels que la forêt les plante.
 	for k in 3:
 		var foret: MultiMesh
@@ -143,17 +149,18 @@ func _pepiniere(suffixe: String) -> void:
 		p.add_child(mi)
 		noms.append([Vector3(x, 0.0, 6.0), ["forêt feuillu", "forêt sapin",
 			"forêt peuplier"][k]])
-		x += 15.0
+		x += 13.0
 
-	jeu.pivot.viser(Vector2(10.0, -4.0), 155.0)
+	jeu.pivot.viser(Vector2(8.0, -4.0), 215.0)
 	jeu.pivot.caler(0.0, 24.0)
 	titre.text = "Pépinière · devant : chaque essence · fond : trois âges"
 	await _attendre()
 	for k in noms.size():
-		var l := _etiquette(20)
+		var l := _etiquette(15)
 		l.text = "%d %s" % [k + 1, noms[k][1]]
 		var s: Vector2 = jeu.pivot.camera.unproject_position(noms[k][0] + Vector3(0, 0, 7.0))
-		l.position = s - Vector2(30.0, 0.0)
+		# En quinconce : seize noms ne tiennent pas sur une ligne.
+		l.position = s - Vector2(30.0, -40.0 * float(k % 2))
 		numeros.append(l)
 	await _attendre()
 	await jeu._capturer("arbres_01_pepiniere_%s" % suffixe)

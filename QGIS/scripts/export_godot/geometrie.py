@@ -1034,12 +1034,12 @@ def _tirage_lieu(x, y, graine=0x7A11):
 
 
 # 🌳 Les essences de la ville, mêmes codes que `constructeur.gd`.
-FEUILLU, CONIFERE, BUISSON, BOULEAU, PEUPLIER, FRUITIER, SAULE = 0, 1, 3, 4, 5, 6, 7
+FEUILLU, CONIFERE, BUISSON, BOULEAU, PEUPLIER, FRUITIER, SAULE, TILLEUL = 0, 1, 3, 4, 5, 6, 7, 8
 
 
 def varier_essence(x, y, essence, eau_m=None):
     """Le feuillu générique devient saule ou peuplier au bord de l'eau, parfois
-    bouleau ailleurs ; sur une rive rendue, un buisson sur trois est un saule.
+    bouleau ou tilleul ailleurs ; sur une rive rendue, un buisson sur trois est un saule.
     Tiré du lieu : la même ville plante les mêmes essences."""
     t = _tirage_lieu(x, y)
     if essence == BUISSON:
@@ -1048,7 +1048,8 @@ def varier_essence(x, y, essence, eau_m=None):
         return essence
     if eau_m is not None and eau_m < 30.0:
         return SAULE if t < 0.35 else PEUPLIER if t < 0.60 else FEUILLU
-    return BOULEAU if t > 0.86 else FEUILLU
+    # Le tilleul pris dans [0,55 ; 0,72[ : le jardin garde ses pommiers (t < 0,5).
+    return BOULEAU if t > 0.86 else TILLEUL if 0.55 <= t < 0.72 else FEUILLU
 
 
 def _unite(a, b):

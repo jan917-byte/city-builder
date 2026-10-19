@@ -818,3 +818,6 @@ Essais concours, rebâtir, étude, ouverture, déblaiement, vie_camp, labour, re
 **2026-10-19 — Plus de grue ni de palissade pendant le mois du concours ; les cartes de l'institut prennent toutes le même gabarit (petite vignette à gauche du nom, 150 px de haut).**
 Défauts relevés sur les captures, corrigés à la demande de l'auteur ; l'essai concours ouvre les projets à la main quand le clic se perd avec fenêtre sur Mac.
 Essais concours, étude, ouverture, rebâtir, déblaiement à 0 échec ; livre 1, progression 1 comme avant ; planche wehrau_corrections_planche.png.
+**2026-10-19 — Les arbres du printemps : voile vert au débourrement au lieu des boules brunes trouées, cerisiers roses, marronniers à bougies, hêtres pourpres, fruitiers roses ou blancs en taches ; un tilleul ovale en plus ; chaque arbre son vert ; une essence par rue plantée.**
+Demande de l'auteur (« au printemps c'est pas très beau ») ; couleurs flaggables (90), parts proposées ; ville : 551 feuillus, 281 tilleuls, 122 bouleaux, 181 fruitiers.
+Essais saison, caméra, rebâtir, ouverture à 0 échec sans fenêtre, sauvegarde 92 comme avant ; planche `wehrau_arbres_printemps_avant_apres.png`.
