@@ -48,14 +48,16 @@ def couleurs():
     return {g: PAL.vers_lineaire(c) for g, c in PAL.DECOR.items()}
 
 
-def semer(cellules, relief, y_plaque, facteur, G, massifs=None, densite=1.0):
+def semer(cellules, relief, y_plaque, facteur, G, massifs=None, densite=1.0,
+          tri=None):
     """Les arbres du bois dessiné, en coordonnées Godot, prêts à rejoindre les
     instances de `paysage.py` — donc sans ombre portée et sans coût de rendu
     par arbre.
 
     `cellules` sont les mailles de plaque tombées en `bois` : semer dedans
     plutôt que dans l'anneau évite de retirer ce que la ville recouvre, et la
-    forêt s'arrête d'elle-même au bord du champ."""
+    forêt s'arrête d'elle-même au bord du champ.
+    `tri(x, y)` → (part gardée, échelle) : la lisière et les bosquets."""
     rng = random.Random(GRAINE)
     out = [[], []]
     for cel in cellules:
@@ -69,6 +71,9 @@ def semer(cellules, relief, y_plaque, facteur, G, massifs=None, densite=1.0):
         for _ in range(n):
             x = rng.uniform(min(xs), max(xs))
             y = rng.uniform(min(ys), max(ys))
+            garde, taille = tri(x, y) if tri else (1.0, 1.0)
+            if rng.random() >= garde:
+                continue
             alt = y_plaque + (relief.z(x, y) * facteur if relief else 0.0)
             # Le massif soulève la plaque : un arbre qui l'ignore reste planté
             # à l'altitude de la vallée, donc enterré dans le versant.
@@ -78,9 +83,96 @@ def semer(cellules, relief, y_plaque, facteur, G, massifs=None, densite=1.0):
             # Essence 1 = le conifère de `paysage.py` : majoritaire en versant.
             espece = 1 if rng.random() < 0.42 else 0
             out[espece].append([round(p[0], 2), round(p[1], 2), round(p[2], 2),
-                                round(rng.uniform(0.85, 1.5), 3),
+                                round(rng.uniform(0.85, 1.5) * taille, 3),
                                 round(rng.uniform(0, math.tau), 3)])
     return out
+
+
+# 🌿 LE COUVERT DU DESSIN (auteur, 2026-10-19). Le genre « bois » est un PRÉ
+# semé de quelques arbres, « relief » une FORÊT qui s'épaissit en montant. La
+# limite entre les deux se fond sur FONDU_M en festons : peinte maille par
+# maille, elle sortait en escalier de 16 m.
+FONDU_M = 90.0
+
+
+class Couvert(object):
+    """Distance signée à la limite pré / forêt, sur la grille de la plaque :
+    > 0 dans la forêt, < 0 dans le pré. Le bord du monde ne compte pas."""
+
+    def __init__(self, x0, y0, pas, massifs=None):
+        self.x0, self.y0, self.pas = x0, y0, pas
+        self.massifs = massifs
+        self.foret_ = {}
+        self.signe = {}
+
+    def _cle(self, p):
+        return (int((p[0] - self.x0) // self.pas), int((p[1] - self.y0) // self.pas))
+
+    def noter(self, centre, foret):
+        k = self._cle(centre)
+        self.foret_[k] = self.foret_.get(k, True) and foret
+
+    def preparer(self):
+        import heapq
+        plafond = FONDU_M * 2.0
+        dist = {}
+        tas = []
+        for k, f in self.foret_.items():
+            # Une maille au contact de l'autre camp part de zéro.
+            if any(self.foret_.get((k[0] + di, k[1] + dj), f) != f
+                   for di in (-1, 0, 1) for dj in (-1, 0, 1)):
+                dist[k] = 0.0
+                tas.append((0.0, k))
+        heapq.heapify(tas)
+        while tas:
+            d, (i, j) = heapq.heappop(tas)
+            if d > dist[(i, j)]:
+                continue
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    n = (i + di, j + dj)
+                    if n == (i, j) or n not in self.foret_:
+                        continue
+                    nd = d + self.pas * (1.414 if di and dj else 1.0)
+                    if nd < plafond and nd < dist.get(n, 1e9):
+                        dist[n] = nd
+                        heapq.heappush(tas, (nd, n))
+        self.signe = {k: (1 if f else -1) * (dist.get(k, plafond) + self.pas / 2)
+                      for k, f in self.foret_.items()}
+
+    def distance(self, x, y):
+        u = (x - self.x0) / self.pas - 0.5
+        v = (y - self.y0) / self.pas - 0.5
+        i, j = math.floor(u), math.floor(v)
+        fu, fv = u - i, v - j
+        somme = poids = 0.0
+        for a, b, w in ((i, j, (1 - fu) * (1 - fv)), (i + 1, j, fu * (1 - fv)),
+                        (i, j + 1, (1 - fu) * fv), (i + 1, j + 1, fu * fv)):
+            if (a, b) in self.signe and w > 0:
+                somme += self.signe[(a, b)] * w
+                poids += w
+        return somme / poids if poids else None
+
+    def foret(self, x, y):
+        """0 = pré, 1 = forêt fermée ; plus haut sur le massif, plus dense."""
+        from .paysage import bruit, fondu
+        s = self.distance(x, y)
+        if s is None:
+            return 0.0
+        s += 55.0 * (bruit(x / 52.0, y / 52.0, GRAINE) - 0.5)
+        s += 40.0 * (bruit(x / 150.0, y / 150.0, GRAINE + 3) - 0.5)
+        f = fondu(-FONDU_M / 3, FONDU_M * 2 / 3, s)
+        if self.massifs is not None:
+            f *= 0.55 + 0.45 * fondu(5.0, 60.0, self.massifs.hauteur(x, y))
+        return f
+
+    def tri(self, x, y):
+        """Forêt, puis bosquets et arbres isolés dans le pré. Sous le couvert,
+        la taille des arbres du dehors (×1,3) : plus petits, le bois ne fermait pas."""
+        from .paysage import bruit, fondu
+        f = self.foret(x, y)
+        bosquet = 0.03 + 0.30 * fondu(0.62, 0.80, bruit(x / 60.0, y / 60.0, GRAINE + 1))
+        return f + (1 - f) * bosquet, 0.75 + 0.55 * f
 
 
 # Une haie tous les 19 m : au-delà la ligne se lit comme des arbres isolés, en
@@ -154,6 +246,8 @@ class Massifs(object):
                                 float(altitude) if altitude else defaut))
         self.grille = {}
         self.x0 = self.y0 = 0.0
+        # Le relief procédural de `paysage.Vallee`, sous les dômes dessinés.
+        self.vallee = None
 
     def preparer(self):
         """La grille de hauteur, une fois, sur l'étendue des massifs eux-mêmes.
@@ -189,6 +283,10 @@ class Massifs(object):
         return h
 
     def hauteur(self, x, y):
+        fond = self.vallee.hauteur(x, y) if self.vallee is not None else 0.0
+        return max(fond, self._dome(x, y))
+
+    def _dome(self, x, y):
         if not self.grille:
             return 0.0
         u = (x - self.x0) / MAILLE_HAUTEUR
@@ -214,10 +312,11 @@ def _d_point_seg(p, a, b):
     return math.hypot(p[0] - a[0] - t * vx, p[1] - a[1] - t * vy)
 
 
-def cap_plaque(m, anneau, y, coul, G, relief, facteur, massifs):
+def cap_plaque(m, anneau, y, coul, G, relief, facteur, massifs, teinte=None):
     """La maille de plaque, posée comme `_cap_plat` mais SOULEVÉE par le massif
     dessiné. La hauteur est prise SOMMET PAR SOMMET : au centre de la maille,
-    deux mailles voisines se sépareraient d'une marche de leur écart."""
+    deux mailles voisines se sépareraient d'une marche de leur écart.
+    `teinte(x, y)` : une couleur par sommet, pour la lisière."""
     from .geometrie import trianguler
 
     def alt(p):
@@ -227,4 +326,5 @@ def cap_plaque(m, anneau, y, coul, G, relief, facteur, massifs):
     for ia, ib, ic in trianguler(anneau):
         a, b, c = anneau[ia], anneau[ib], anneau[ic]
         m.triangle(G(a[0], a[1], alt(a)), G(b[0], b[1], alt(b)),
-                   G(c[0], c[1], alt(c)), coul)
+                   G(c[0], c[1], alt(c)), coul,
+                   couleurs=[teinte(*a), teinte(*b), teinte(*c)] if teinte else None)

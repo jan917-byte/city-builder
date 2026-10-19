@@ -86,8 +86,11 @@ EAU_ETATS = {
 # Plus sombres que les champs : vues d'en haut, ce sont les masses qui tiennent
 # la silhouette de la vallée, et une forêt claire se confond avec une prairie.
 DECOR = {
+    # 🔴 Le genre dessiné « bois » se peint en PRÉ, « relief » en FORÊT (auteur,
+    # 2026-10-19) : `Couvert` dans `decor.py` fond l'un dans l'autre.
     "bois":   "#5D7452",               # sous-bois, sous les instances d'arbres
-    "relief": "#7F8C6D",               # versant pâturé — le massif n'est pas nu
+    "relief": "#7F8C6D",               # pâture d'altitude et clairière, hors du dessin
+    "pre":    "#8A9D63",               # pré semé de quelques arbres, entre champ et forêt
     # Hors du dessin, par l'altitude et la pente (`paysage.py`) :
     "alpage": "#98A172",               # la chaume, au-dessus des arbres
     "roche":  "#8E8A7C",               # le rocher des pentes raides et des crêtes

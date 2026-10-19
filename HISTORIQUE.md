@@ -821,3 +821,6 @@ Essais concours, étude, ouverture, rebâtir, déblaiement à 0 échec ; livre 1
 **2026-10-19 — Les arbres du printemps : voile vert au débourrement au lieu des boules brunes trouées, cerisiers roses, marronniers à bougies, hêtres pourpres, fruitiers roses ou blancs en taches ; un tilleul ovale en plus ; chaque arbre son vert ; une essence par rue plantée.**
 Demande de l'auteur (« au printemps c'est pas très beau ») ; couleurs flaggables (90), parts proposées ; ville : 551 feuillus, 281 tilleuls, 122 bouleaux, 181 fruitiers.
 Essais saison, caméra, rebâtir, ouverture à 0 échec sans fenêtre, sauvegarde 92 comme avant ; planche `wehrau_arbres_printemps_avant_apres.png`.
+**2026-10-19 — Autour de la ville : le « bois » dessiné se peint en pré semé de bosquets, le « relief » en forêt plus dense en montant, fondus en festons ; plus de bandes droites au bord du dessin ; un relief procédural unique (`Vallee`, paysage.py) nul sur ville, champs et rivière, qui monte avec la distance à eux.**
+Demande de l'auteur (« champs → prés → forêt plus smooth », « montagnes qui s'approchent naturellement, avec la rivière ») ; les dômes dessinés restent, sous lui par `max`.
+Sommet 780 m, 30 900 arbres de décor ; essais campagne, saison, ouverture, camp (avec fenêtre) à 0 échec ; captures `wehrau_campagne_*_apres.png` + `_rasant_sud_apres`.

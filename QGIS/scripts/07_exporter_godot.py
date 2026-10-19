@@ -48,13 +48,14 @@ from export_godot.fermes import (
 )
 from export_godot.decor import (
     Decor,
+    Couvert,
     Massifs,
     cap_plaque as _cap_plaque,
     couleurs as _coul_decor,
     haies as _haies_domaines,
     semer as _semer_bois,
 )
-from export_godot.paysage import paysage, repartir
+from export_godot.paysage import Vallee, cours as _cours_dehors, paysage, repartir
 from export_godot.sorties import sorties, hors_routes, Surface
 from export_godot.ponts import _acces_pont, _pont_provisoire
 from export_godot.berges import (
@@ -558,6 +559,9 @@ def main():
     # et une montagne plate est pire qu'un trou : elle se lit comme une prairie.
     massifs = Massifs(decor)
     massifs.preparer()
+    massifs.vallee = Vallee(maxx - minx, maxy - miny, cx, cy,
+                            _cours_dehors(maxx - minx, maxy - miny, chenal, cx, cy)[1],
+                            lambda p: _dedans_index(_tous, p))
     # 🚜 Placées avant les champs : une cour retire ses places au camp.
     fermes = _placer_fermes(ilots, routes, domaines,
                             lambda x, y: relief.z(x, y) + massifs.hauteur(x, y))
@@ -567,6 +571,8 @@ def main():
     # Le paysage prolonge désormais cette plaque ; plus de cadre minéral.
     x0, y0, x1, y1 = minx, miny, maxx, maxy
     morceaux, approx = chenal.plaque(x0, y0, x1, y1, PAS_TERRAIN, relief)
+    couvert = Couvert(x0, y0, PAS_TERRAIN, massifs)
+    classes = []
     for mo in morceaux:
         centre = (sum(p[0] for p in mo) / len(mo),
                   sum(p[1] for p in mo) / len(mo))
@@ -578,25 +584,30 @@ def main():
         # sur une image où il n'y avait pas un pixel gris.
         if genre is None and _dedans_index(_tous, centre):
             genre = "sous un îlot"
+        # Un massif dessiné sous un champ ne fait pas forêt : le champ, si.
+        couvert.noter(centre, genre == "relief" and not _dedans_index(_tous, centre))
         aires[genre] = aires.get(genre, 0.0) + aire_mo
         if genre == "bois":
             cellules_bois.append(mo)
         elif genre == "relief":
             cellules_versants.append(mo)
+        classes.append((mo, genre))
+    couvert.preparer()
+    pre, sous_bois = teintes["pre"], teintes["bois"]
+
+    def _teinte_couvert(x, y):
+        f = couvert.foret(x, y)
+        return tuple(a + (b - a) * f for a, b in zip(pre, sous_bois))
+
+    for mo, genre in classes:
         # La plaque plonge un quart plus bas que le talus : elle est invisible
         # sous le champ, et cette marge est ce qui dispense de faire coïncider
         # deux découpages différents du même relief.
         _cap_plaque(terre, mo, Y_TERRAIN, teintes.get(genre, coul_terre), G,
-                    relief, 1.0 + TALUS_DESSOUS, massifs)
-        if genre == "sous un îlot":
-            genre = None
-    arbres_bois = _semer_bois(cellules_bois, relief, Y_TERRAIN,
-                              1.0 + TALUS_DESSOUS, G, massifs)
-
-    arbres_versants = _semer_bois(cellules_versants, relief, Y_TERRAIN,
-                                 1.0 + TALUS_DESSOUS, G, massifs, densite=.4)
-    for k in range(2):
-        arbres_bois[k].extend(arbres_versants[k])
+                    relief, 1.0 + TALUS_DESSOUS, massifs,
+                    _teinte_couvert if genre in ("bois", "relief") else None)
+    arbres_bois = _semer_bois(cellules_bois + cellules_versants, relief, Y_TERRAIN,
+                              1.0 + TALUS_DESSOUS, G, massifs, tri=couvert.tri)
 
     # 🚜 LA HAIE DE FERME. Un domaine n'a ni bâtiment ni couleur : son contour
     # ne portait rien à l'écran. Une haie le dit sans rien inventer d'autre.
@@ -2149,7 +2160,7 @@ def main():
     routes_sortie = sorties(routes, ilots, massifs, relief, G,
                             D4.EMPRISE_CIRCULATION, surface)
     vallee, eau_dehors = paysage(maxx - minx, maxy - miny, chenal, cx, cy,
-                                 massifs, dessin)
+                                 massifs, couvert)
     decor_vallee = _avec_bois(vallee, arbres_bois, arbres_haies)
     for axe in routes_sortie["axes"]:
         axe["points"] = [[p[0] - cx, cy - p[1]] for p in axe["points"]]

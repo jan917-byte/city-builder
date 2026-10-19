@@ -37,14 +37,22 @@ def bruit(x, z, graine=GRAINE):
 
 
 def rides(x, z):
-    """Crêtes et ravines : un bruit replié en V, trois octaves."""
-    somme, amp, f = 0.0, 1.0, 1.0
+    """Crêtes et ravines : bruit replié en V, multifractal — chaque octave ne
+    s'imprime que sur la crête de la précédente, les fonds restent lisses."""
+    somme, amp, f, poids = 0.0, 1.0, 1.0, 1.0
     for o in range(3):
         n = 1.0 - abs(2.0 * bruit(x * f, z * f, GRAINE + o) - 1.0)
-        somme += amp * n * n
+        n = n * n * poids
+        poids = min(1.0, n * 1.8)
+        somme += amp * n
         amp *= 0.5
-        f *= 2.03
-    return somme / 1.75
+        f *= 2.07
+    return somme / 1.5
+
+
+def ondule(x, z, graine):
+    """Deux octaves arrondies, centrées : collines de piémont, pas de crête."""
+    return (bruit(x, z, graine) + 0.5 * bruit(x * 2.1, z * 2.1, graine + 1)) / 1.5 - 0.5
 
 
 # 🌲 La limite des arbres, en mètres au-dessus du fond de vallée : au-dessus,
@@ -84,7 +92,9 @@ def repartir(arbres, eau=None):
     return out
 
 
-def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
+def cours(largeur, profondeur, chenal, cx, cy):
+    """Les bouts du chenal prolongés en méandres jusqu'au bout du monde :
+    (quadrilatères de rive, stations (centre, demi-largeur, sens de l'aval))."""
     hx, hz = largeur / 2, profondeur / 2
     rng = random.Random(GRAINE)
     # Les sorties sont les deux bouchons du chenal sur le bord de la carte.
@@ -128,6 +138,89 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
             fils.append(((x, z), w, sens))
         for (a, b), (c, d) in zip(rails, rails[1:]):
             canaux.append([a, b, d, c])
+    return canaux, fils
+
+
+# ⛰️ LA VALLÉE (auteur, 2026-10-19 : « les montagnes doivent s'approcher de la
+# ville de manière bien plus naturelle, avec la rivière »). UN relief pour tout
+# le monde, plaque comprise : nul sur ce qu'occupe l'homme — ville, champs,
+# rivière —, il monte avec la distance à cette empreinte. La vallée suit donc
+# le cours d'eau, et le pied des versants vient border les champs.
+VALLEE_PAS = 40.0
+PLAINE_M = (50.0, 260.0)    # fond plat au-delà de l'empreinte, selon l'endroit
+MONTEE_M = 1500.0           # du pied du versant à la pleine montagne
+
+
+class Vallee(object):
+    """Hauteur ajoutée au sol, en coordonnées SOURCE (`hauteur(x, y)`).
+    `occupe(p)` : le point source est-il sous un îlot ? `fils` : `cours()`."""
+
+    def __init__(self, largeur, profondeur, cx, cy, fils, occupe):
+        import heapq
+        self.cx, self.cy = cx, cy
+        hx, hz = largeur / 2, profondeur / 2
+        n = int((PORTEE + 300) // VALLEE_PAS)
+        self.n = n
+        P = VALLEE_PAS
+        dist = {}
+        for i in range(-n, n + 1):
+            for j in range(-n, n + 1):
+                x, z = i * P, j * P
+                if abs(x) <= hx and abs(z) <= hz and occupe((cx + x, cy - z)):
+                    dist[(i, j)] = 0.0
+        for (x, z), _w, _s in fils:
+            dist[(round(x / P), round(z / P))] = 0.0
+        tas = [(0.0, k) for k in dist]
+        heapq.heapify(tas)
+        while tas:
+            d, (i, j) = heapq.heappop(tas)
+            if d > dist[(i, j)]:
+                continue
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    k = (i + di, j + dj)
+                    if abs(k[0]) > n or abs(k[1]) > n:
+                        continue
+                    nd = d + P * (1.414 if di and dj else 1.0)
+                    if nd < dist.get(k, 1e9):
+                        dist[k] = nd
+                        heapq.heappush(tas, (nd, k))
+        self.grille = {k: self._brut(k[0] * P, k[1] * P, d) for k, d in dist.items()}
+        print("  vallée : relief procédural, %d mailles de %.0f m, sommet %.0f m"
+              % (len(self.grille), P, max(self.grille.values())))
+
+    @staticmethod
+    def _brut(x, z, d):
+        # Multiplicatif : nul SUR l'empreinte, quel que soit le bruit.
+        d *= 0.70 + 0.60 * bruit(x / 260, z / 260, GRAINE + 50)
+        plaine = PLAINE_M[0] + (PLAINE_M[1] - PLAINE_M[0]) * bruit(x / 700, z / 700, GRAINE + 51)
+        t = fondu(plaine, plaine + MONTEE_M, d)
+        if t <= 0:
+            return 0.0
+        wx = x + 380 * (bruit(x / 900, z / 900, GRAINE + 22) - 0.5)
+        wz = z + 380 * (bruit(x / 900 + 7.3, z / 900, GRAINE + 23) - 0.5)
+        crete = rides(wx / 1300, wz / 1300)
+        sommets = 0.6 + 0.8 * bruit(x / 1700, z / 1700, GRAINE + 24)
+        # Le fond des ravines descend presque au pied : des éperons, pas une marche.
+        h = t ** 1.35 * (60 + 500 * crete * sommets)
+        # Le piémont : des croupes rondes dès le bord de la plaine.
+        h += 45 * fondu(plaine, plaine + 500, d) * max(0.0, ondule(x / 420, z / 420, GRAINE + 25) + 0.2)
+        return h
+
+    def hauteur(self, x, y):
+        u, v = (x - self.cx) / VALLEE_PAS, (self.cy - y) / VALLEE_PAS
+        i, j = math.floor(u), math.floor(v)
+        fu, fv = u - i, v - j
+        g = self.grille.get
+        return ((g((i, j), 0.0) * (1 - fu) + g((i + 1, j), 0.0) * fu) * (1 - fv)
+                + (g((i, j + 1), 0.0) * (1 - fu) + g((i + 1, j + 1), 0.0) * fu) * fv)
+
+
+def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
+    """`dessin` : le `Couvert` de la plaque, dont le bord est prolongé."""
+    hx, hz = largeur / 2, profondeur / 2
+    canaux, fils = cours(largeur, profondeur, chenal, cx, cy)
+    rng = random.Random(GRAINE + 1)
     # Index des stations, 100 m de maille : la distance au fil se lit
     # ~150 000 fois (sol et normales), une boucle sur 400 stations ne tient pas.
     grille = {}
@@ -147,12 +240,7 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
         return dist
 
     def massif(x, z):
-        if massifs is None:
-            return 0.0
-        # Le bord du dessin devient un versant continu, jamais un second fond de vallée.
-        bx, bz = max(-hx, min(hx, x)), max(-hz, min(hz, z))
-        return max(massifs.hauteur(cx + x, cy - z),
-                   massifs.hauteur(cx + bx, cy - bz))
+        return massifs.hauteur(cx + x, cy - z) if massifs is not None else 0.0
 
     memo = {}
 
@@ -161,19 +249,10 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
         exacte = rive is None
         if exacte and cle in memo:
             return memo[cle]
-        d = distance(x, z)
         if exacte:
             rive = chenal.niveau_rive(cx + x, cy - z)
-        cote = fondu(220, 780, abs(x - 65 * math.sin(z / 520)))
-        collines = 0.70 + 0.19 * math.sin(z / 285 + x / 730) + 0.11 * math.cos(z / 131 - x / 270)
-        cretes = 420 * math.exp(-((abs(x) - hx - 740 - 160 * math.sin(z / 430)) / 480) ** 2)
-        arriere = 270 * fondu(1050, 2100, d)
-        relief = (cretes * collines + arriere) * cote * fondu(130, 580, d)
-        relief += 13 * fondu(0, 250, d) * (1 + math.sin(x / 155 + z / 210)) * cote
-        # Les ravines ne touchent que la montagne : le fond de vallée reste lisse.
-        relief += 150 * rides(x / 560, z / 560) * cote * fondu(260, 950, d)
         berge = bord_riviere(x, z)
-        fond = rive - 0.045 + relief * fondu(0, 190, berge)
+        fond = rive - 0.045
         h = -2.4 + (fond + 2.4) * fondu(0, 12, berge) + massif(x, z)
         if exacte and len(memo) < 400000:
             memo[cle] = h
@@ -191,34 +270,51 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
 
     teintes = {g: PAL.vers_lineaire(c) for g, c in PAL.DECOR.items()}
 
-    def genre(x, z):
+    def foret_dessin(x, z):
+        """Le couvert de la plaque, lu au point du bord le plus proche."""
         if dessin is None:
-            return "bois"
-        bx, bz = max(-hx, min(hx, x)), max(-hz, min(hz, z))
-        return (dessin.genre((cx + x, cy - z))
-                or dessin.genre((cx + bx, cy - bz)) or "bois")
+            return 1.0
+        bx, bz = max(-hx + 1, min(hx - 1, x)), max(-hz + 1, min(hz - 1, z))
+        return dessin.foret(cx + bx, cy - bz)
+
+    def bord(x, z):
+        """0 contre le dessin, 1 au-delà, en festons — et nul AU bord, sinon
+        le bruit y ouvre une marche droite le long du rectangle."""
+        return fondu(0, 420, distance(x, z) * (0.45 + 1.1 * bruit(x / 170, z / 170, GRAINE + 42)))
+
+    def couvert(x, z, h, raide):
+        """0 = pré, 1 = forêt. Le fond plat se fauche, la pente se boise, et
+        plus haut plus dense : la limite suit le relief et festonne."""
+        sauvage = (0.50 * fondu(12, 150, h) + 0.30 * fondu(250, 1300, distance(x, z))
+                   + 0.30 * fondu(0.18, 0.45, raide)
+                   + 0.55 * (bruit(x / 330, z / 330, GRAINE + 40) - 0.5)
+                   + 0.25 * (bruit(x / 110, z / 110, GRAINE + 41) - 0.5))
+        return fondu(0.24, 0.42, sauvage)
+
+    def sol_dessin(f):
+        return tuple(a + (b - a) * f for a, b in zip(teintes["pre"], teintes["bois"]))
 
     def couleur(x, z, sommet=None):
-        base = teintes[genre(x, z)]
-        t = fondu(0, 550, distance(x, z))
-        c = tuple(c * (1 - t) + f * t for c, f in zip(base, teintes["bois"]))
         if sommet is None:
-            return c
-        # Le genre dessiné se lit au centre de la facette ; chaume, roche et
-        # clairière au SOMMET, donc en fondu d'une facette à l'autre — lues au
-        # centre, les clairières sortaient en carreaux de 65 m.
+            return sol_dessin(foret_dessin(x, z))
         x, z = sommet
         h = altitude(x, z)
-        loin = fondu(150, 500, distance(x, z))
+        raide = pente(x, z)
+        f = couvert(x, z, h, raide)
+        prairie = tuple(a + (b - a) * fondu(40, 260, h)
+                        for a, b in zip(teintes["pre"], teintes["relief"]))
+        c = tuple(a + (b - a) * f for a, b in zip(prairie, teintes["bois"]))
         melange = [
-            (teintes["relief"], loin * fondu(0.02, -0.04, clairiere(x, z))),
-            (teintes["alpage"], loin * fondu(-30, 45, h - limite_arbres(x, z))),
-            (teintes["roche"], loin * max(fondu(0.80, 1.10, pente(x, z)),
-                                          0.55 * fondu(500, 600, h))),
+            (teintes["relief"], f * fondu(0.02, -0.04, clairiere(x, z))),
+            (teintes["alpage"], fondu(-30, 45, h - limite_arbres(x, z))),
+            (teintes["roche"], max(fondu(0.80, 1.10, raide), 0.55 * fondu(520, 640, h))),
         ]
         for teinte, k in melange:
             c = tuple(a * (1 - k) + b * k for a, b in zip(c, teinte))
-        return c
+        k = bord(x, z)
+        if k >= 1:
+            return c
+        return tuple(a * (1 - k) + b * k for a, b in zip(sol_dessin(foret_dessin(x, z)), c))
 
     sol, eau = Maillage(), Maillage()
 
@@ -310,36 +406,54 @@ def paysage(largeur, profondeur, chenal, cx, cy, massifs=None, dessin=None):
             else:
                 eau.triangle(pa, pc, pb, coul_eau, facade=[ua, uc, ub], uv2s=[sens[0], sens[2], sens[1]])
                 eau.triangle(pa, pd, pc, coul_eau, facade=[ua, ud, uc], uv2s=[sens[0], sens[3], sens[2]])
-    # Normales continues : le relief doit lire des versants, pas des facettes.
+    # Normales continues, lues à l'échelle de la maille (±20 m) : lues à ±1 m,
+    # la crête plus fine que 65 m éclairait chaque facette à part, en cristaux
+    # sous la neige. La rive garde ±1 m, sa marche fait 12 m.
     for k, (x, _, z) in enumerate(sol.v):
-        nx = altitude(x - 1, z) - altitude(x + 1, z)
-        nz = altitude(x, z - 1) - altitude(x, z + 1)
-        norme = math.sqrt(nx * nx + 4 + nz * nz)
-        sol.n[k] = (nx / norme, 2 / norme, nz / norme)
+        e = 1.0 if bord_riviere(x, z) < 40 else 20.0
+        nx = altitude(x - e, z) - altitude(x + e, z)
+        nz = altitude(x, z - e) - altitude(x, z + e)
+        norme = math.sqrt(nx * nx + 4 * e * e + nz * nz)
+        sol.n[k] = (nx / norme, 2 * e / norme, nz / norme)
 
     # 🌲 La forêt en peuplements : clairières, limite des arbres, pas de semis
     # sur le rocher. Au loin, moins d'arbres mais plus grands — la brume finit
     # le travail. L'essence est choisie plus tard, par `repartir`.
     arbres = [[], []]
-    for z0 in range(-3000, 3000, 26):
-        for x0 in range(-3000, 3000, 26):
-            x, z = x0 + rng.uniform(-12, 12), z0 + rng.uniform(-12, 12)
+    # 19 m de pas : le bois dessiné en porte un pour 260 m², une forêt plus
+    # claire dehors se lisait comme un second bord.
+    for z0 in range(-3000, 3000, 19):
+        for x0 in range(-3000, 3000, 19):
+            x, z = x0 + rng.uniform(-9, 9), z0 + rng.uniform(-9, 9)
             tirage = rng.random()
             echelle = rng.uniform(1.15, 1.95)
             lacet = rng.uniform(0, math.tau)
             d = distance(x, z)
             if d <= 0:
                 continue
-            dens = 0.92 - 0.55 * fondu(600, 1600, d) - 0.17 * fondu(1800, 2700, d)
-            dens *= 0.08 + 0.92 * fondu(-0.03, 0.03, clairiere(x, z))
-            if tirage > dens or bord_riviere(x, z) < 9:
+            dens = 0.95 - 0.55 * fondu(700, 1700, d) - 0.17 * fondu(1800, 2700, d)
+            if tirage > dens:
+                continue
+            riv = bord_riviere(x, z)
+            if riv < 9:
                 continue
             alt = altitude_loin(x, z)
+            raide = pente(x, z, altitude_loin)
+            f = couvert(x, z, alt, raide)
+            f *= 0.08 + 0.92 * fondu(-0.03, 0.03, clairiere(x, z))
+            # Hors du bois : bosquets, arbres isolés, et le cordon de la rive.
+            bocage = (0.03 + 0.30 * fondu(0.62, 0.80, bruit(x / 70, z / 70, GRAINE + 43))
+                      + 0.55 * fondu(60, 25, riv))
+            garde = f + (1 - f) * bocage
+            k = bord(x, z)
+            if k < 1:
+                fd = foret_dessin(x, z)
+                garde = garde * k + (fd + (1 - fd) * bocage) * (1 - k)
             haut = fondu(-40, 30, alt - limite_arbres(x, z))
-            raide = fondu(0.55, 0.85, pente(x, z, altitude_loin))
-            if tirage > dens * (1 - 0.94 * haut) * (1 - raide):
+            garde *= (1 - 0.94 * haut) * (1 - fondu(0.55, 0.85, raide))
+            if tirage > dens * garde:
                 continue
-            echelle *= 1 + 0.45 * fondu(1600, 2700, d)
+            echelle *= (0.8 + 0.2 * f) * (1 + 0.45 * fondu(1600, 2700, d))
             arbres[0].append([round(x, 2), round(alt, 2), round(z, 2),
                               round(echelle, 3), round(lacet, 3)])
 
