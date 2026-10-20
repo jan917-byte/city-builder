@@ -759,10 +759,11 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(not jeu.interface._solaire_bloc.visible and not jeu.interface._vert_bloc.visible,
 		"La fiche d'un îlot sinistré ne montre que la reconstruction")
 	jeu.interface._fermer_fiche()
-	# 🏛️ Plus de carte au pont (117) : le guide envoie à la mairie, qui s'entoure.
+	# 🏛️ Plus de carte au pont (117) : le guide envoie à la mairie, qui clignote sur la carte.
 	verifier(o.pont_termine and o.carte == "" and not o.annonce.visible and o.etape == "mairie"
-		and o._texte.text == o.DIRE_MAIRIE and o.rail_appel() == "mairie",
-		"5 s plus tard, aucune carte : le guide envoie à la mairie, qui s'entoure")
+		and o._texte.text == o.DIRE_MAIRIE and o.rail_appel() == ""
+		and o.groupe_carte() == [int(jeu.interface.LIEUX["mairie"]["fid"])],
+		"5 s plus tard, aucune carte : le guide envoie à la mairie, qui clignote sur la carte")
 	verifier(o.verrou() == "rebatir", "La première année continue jusqu'à l'étude : on rebâtit seulement")
 	verifier(jeu.ville.route_praticable(pont, fin) and jeu.ponts_provisoires[pont].visible
 		and not jeu.reparations["r"][pont].visible and not jeu.ruines_ponts[pont].visible,

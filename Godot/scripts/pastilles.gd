@@ -160,7 +160,7 @@ static func pictogramme(nom: String, fond: Color, encre: Color) -> Texture2D:
 		+ "<circle cx='12' cy='12' r='13.2' fill='#%s'/>" % fond.to_html(false)
 		+ "<g fill='none' stroke='#%s' stroke-width='2.2'" % encre.to_html(false)
 		+ " stroke-linecap='round' stroke-linejoin='round'>" + dessous + corps + "</g></svg>")
-	var dessin := Interface.image_dessinee(nom, int(TAILLE * 0.72))
+	var dessin := Interface.image_dessinee(nom, int(TAILLE * 0.62))
 	if dessin != null:
 		# ✏️ Le dessin de l'auteur, en ses couleurs, dans le même disque.
 		svg = svg.replace(dessous + corps, "")

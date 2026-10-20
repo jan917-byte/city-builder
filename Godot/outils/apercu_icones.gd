@@ -15,7 +15,7 @@ const QUOI := {
 	"energie": "Vue Énergie (rail)", "nourriture": "Vue Campagne (rail)",
 	"pont_casse": "Pastille : pont emporté", "pont": "Pont", "duree": "Durée",
 	"annuler": "Annuler les réglages", "trafic": "Vue Trafic (rail)", "sols": "Vue Sols (rail)",
-	"debut": "Revoir le début (rail)", "mairie": "Mairie (rail)", "institut": "Institut (rail)",
+	"guide": "Guide, rouvre les premiers pas (rail)", "mairie": "Mairie (rail)", "institut": "Institut (rail)",
 	"bibliotheque": "Bibliothèque (rail)", "universite": "Université (rail)",
 	"logement": "Bâti, sans-logis", "feuille": "Vert, arbres", "eau": "Eau",
 	"pause": "Pause", "lecture": "Lecture", "mois_zero": "Retour au mois 0",
@@ -68,7 +68,7 @@ func capturer() -> void:
 		case.add_theme_constant_override("separation", 0)
 		var ligne := HBoxContainer.new()
 		for t in [[ui._icone(nom, 64, ui.TEXTE), 64], [ui._icone(nom, 26, ui.TEXTE), 26],
-				[Pastilles.pictogramme(nom, Color.WHITE, ui.ALERTE), 40]]:
+				[Pastilles.pictogramme(nom, ui.ALERTE, Color.WHITE), 40]]:
 			var pic := TextureRect.new()
 			pic.texture = t[0]
 			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

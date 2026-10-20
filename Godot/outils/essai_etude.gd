@@ -39,20 +39,23 @@ func executer() -> void:
 	verifier(o.pont_termine and not o.etude_parue and not o.annonce.visible
 		and o.etape == "mairie" and o._texte.text == o.DIRE_MAIRIE,
 		"Le pont rouvert, aucune carte : le guide envoie à la mairie : %s" % o._texte.text)
-	verifier(not tuile("mairie").disabled and entouree("mairie") and not univ.visible,
-		"La tuile de la mairie s'ouvre et s'entoure, l'université reste cachée")
-	# La tuile vient de s'ouvrir : la colonne se range à l'image suivante, la flèche avec.
+	# 🏛️ Trouvée sur la carte comme l'université (auteur, 2026-10-20) : pas de tuile avant.
+	var fid_mairie := int(ui.LIEUX["mairie"]["fid"])
+	jeu.selection.sel_fid = -1
+	verifier(not tuile("mairie").visible and o.groupe_carte() == [fid_mairie] and not univ.visible,
+		"La mairie clignote sur la carte, sans tuile dans la colonne ; l'université reste cachée")
 	await process_frame
 	ui._maj_rail()
 	await capture("mairie_00_appel")
-	await cliquer(tuile("mairie"))
+	jeu._sur_choix("i", fid_mairie)
+	await process_frame
 	var prog: Dictionary = ui._lieu_lignes["programme_concours"]
 	var ligne_etude: Dictionary = ui._lieu_lignes["etude"]
 	ui._maj_rail()
 	verifier(o.mairie_vue and ui._lieu_ouvert == "mairie" and prog["bloc"].visible
-		and not prog["bouton"].disabled and prog["bouton"].text == "Adopter"
-		and not ligne_etude["bloc"].visible and not entouree("mairie"),
-		"La mairie propose le concours d'urbanisme, 1 point, et pas encore l'étude")
+		and not prog["bouton"].disabled and prog["bouton"].get_meta("verbe")[0].text == "Adopter"
+		and not ligne_etude["bloc"].visible and not entouree("mairie") and tuile("mairie").visible,
+		"Trouvée, la mairie propose le concours d'urbanisme, 1 point, et sa tuile rejoint la colonne")
 	verifier(ui._campus_panneau.visible and not ui._campus_bloc.visible and ui._fenetre_titre.text == "Mairie"
 		and ui._mairie_bloc.visible and not ui._etude_bloc.visible,
 		"La mairie s'ouvre dans la grande fenêtre, sans les onglets du campus")
@@ -82,18 +85,13 @@ func executer() -> void:
 	verifier(o.etude_proposee() and entouree("mairie")
 		and "commander une étude" in str(ui.retours.journal),
 		"Le concours rendu, la mairie s'entoure et le bandeau propose l'étude")
-	# La fiche de l'îlot de la mairie, puis « Ouvrir la mairie » : la fiche reste à côté.
-	var fid_mairie := int(ui.LIEUX["mairie"]["fid"])
+	# L'îlot de la mairie ouvre sa fenêtre, comme le campus ; sa fiche reste à côté.
 	jeu._sur_choix("i", fid_mairie)
 	jeu._rafraichir(true)
-	verifier(ui._fiche_panneau.visible and ui._lieu_bouton.visible and ui._lieu_bouton.text == "Ouvrir la mairie"
-		and ui._lieu_ouvert == "", "L'îlot de la mairie ouvre sa fiche, avec « Ouvrir la mairie »")
-	await capture("mairie_01b_fiche")
-	await cliquer(ui._lieu_bouton)
 	ui._maj_rail()
 	verifier(ui._lieu_ouvert == "mairie" and ui._campus_panneau.visible and ui._fiche_panneau.visible,
-		"« Ouvrir la mairie » ouvre la fenêtre, la fiche reste à côté")
-	verifier(ligne_etude["bloc"].visible and ligne_etude["bouton"].text == "Commander"
+		"L'îlot de la mairie ouvre la fenêtre, la fiche reste à côté")
+	verifier(ligne_etude["bloc"].visible and ligne_etude["bouton"].get_meta("verbe")[0].text == "Commander"
 		and not entouree("mairie"), "La mairie propose l'étude, en euros")
 	await capture("mairie_02_etude")
 	var caisse: float = jeu.ville.caisse_ke(jeu.mois)

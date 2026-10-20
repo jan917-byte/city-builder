@@ -37,7 +37,8 @@ const DIRE_UNIVERSITE := "Elle a trois lieux. L'université publie ses études s
 ## 🏛️ LA MAIRIE D'ABORD (117, auteur 2026-10-19) : au pont rouvert, elle seule s'ouvre ; le concours
 ## s'y adopte en points, puis l'étude s'y commande en euros, et l'étude rendue ouvre l'université. 🔴 Flaggable (90).
 ## 🏗️ Elle y demande le fonds de reconstruction (118). 🔴 Flaggable (90).
-const DIRE_MAIRIE := "La mairie a rouvert : elle peut demander le fonds de reconstruction. Cliquez sur la mairie, dans la colonne de gauche."
+## 🏛️ Trouvée sur la carte comme l'université, sa tuile ne vient qu'ensuite (auteur, 2026-10-20).
+const DIRE_MAIRIE := "La mairie a rouvert : elle peut demander le fonds de reconstruction. Trouvez-la sur la carte, elle clignote."
 const DIRE_FONDS := "Le budget d'urgence ne rebâtira pas tout : demandez le fonds de reconstruction à la mairie."
 ## 🧭 Le titre du guide de la reconstruction (auteur, 2026-10-20). 🔴 Flaggable (90).
 const TITRE_REBATIR := "Reconstruction"
@@ -144,7 +145,7 @@ func batir(maquette) -> void:
 	entete.add_child(_titre)
 	var fermer := Button.new()
 	fermer.text = "−"
-	fermer.tooltip_text = "Réduire les premiers pas. Le bouton Début les rouvre."
+	fermer.tooltip_text = "Réduire les premiers pas. Le bouton Guide les rouvre."
 	fermer.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	fermer.pressed.connect(func() -> void:
 		ouvert = false
@@ -428,8 +429,8 @@ func rail_appel() -> String:
 	# (auteur, 2026-10-06). Une fois revenu, plus d'appel.
 	if etape == "pont_travaux" and not boue_vue and jeu.theme != "" and not acces_degage():
 		return "ville"
-	# 🏛️ La mairie s'entoure à son ouverture, puis quand elle propose l'étude (117).
-	if etape == "mairie" or etude_proposee() and not etude_proposee_vue and not jeu.ville.etude_commandee():
+	# 🏛️ La mairie s'entoure quand elle propose l'étude (117) ; à son ouverture, c'est la carte qui l'appelle.
+	if mairie_vue and etude_proposee() and not etude_proposee_vue and not jeu.ville.etude_commandee():
 		return "mairie" if jeu.interface._lieu_ouvert != "mairie" else ""
 	# 🔄 Plus d'appel vers l'université ni vers Dangers (auteur, 2026-10-19) : le guide explique.
 	if not ouvert:
@@ -447,6 +448,8 @@ func rail_visible(id: String) -> bool:
 	# 🔍 Une carte de diagnostic attend son étude, Dangers celle de la crue (auteur, 2026-10-20).
 	if Ville.ETUDES_DIAGNOSTIC.has(id):
 		return tout_ouvert or jeu.ville.etude_diagnostic_rendue(id, jeu.mois)
+	if id == "mairie":
+		return mairie_vue or suite or termine or tout_ouvert
 	return not id in ["universite", "institut", "bibliotheque"] or rail_ouvert(id)
 
 
@@ -535,6 +538,8 @@ func groupe_carte() -> Array:
 	match etape:
 		"etude":
 			return campus() if carte_etude == 2 else []
+		"mairie":
+			return [int(jeu.interface.LIEUX["mairie"]["fid"])]
 		# 🧭 Le guide dit « l'îlot qui clignote » à la place des boutons (auteur, 2026-10-17).
 		"choix", "suite":
 			return _a_faire_clignoter()
@@ -1009,7 +1014,7 @@ func actualiser(force := false) -> void:
 			_poser_reperes([])
 		"mairie":
 			_poser_reperes([])
-			_titre.text = ""
+			_titre.text = "La mairie"
 			_texte.text = DIRE_MAIRIE
 		"etude":
 			# 🎓 Le nom seul : le contour qui clignote y mène (auteur, 2026-10-08).

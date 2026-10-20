@@ -1290,8 +1290,8 @@ const DESSINS := {
 	"sols": "<path d='M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z'/><path d='M12.56 6.6A10.97 10.97 0 0014 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 01-11.91 4.97'/>",
 	# 🏛️🎓 Les deux lieux du rail (Lucide « landmark », « graduation-cap ») :
 	# sans dessin, ils prenaient celui du diagnostic, deux fois.
-	# Lucide « book-open » : DÉBUT rouvre le récit des premiers pas.
-	"debut": "<path d='M12 7v14M3 18a1 1 0 01-1-1V4a1 1 0 011-1h5a4 4 0 014 4 4 4 0 014-4h5a1 1 0 011 1v13a1 1 0 01-1 1h-6a3 3 0 00-3 3 3 3 0 00-3-3z'/>",
+	# GUIDE rouvre les premiers pas ; dessin de l'auteur dans `icones/guide.svg`, ce trait en secours.
+	"guide":"<path d='M12 7v14M3 18a1 1 0 01-1-1V4a1 1 0 011-1h5a4 4 0 014 4 4 4 0 014-4h5a1 1 0 011 1v13a1 1 0 01-1 1h-6a3 3 0 00-3 3 3 3 0 00-3-3z'/>",
 	"mairie": "<path d='M3 22h18M6 18v-7m4 7v-7m4 7v-7m4 7v-7M12 2l8 5H4z'/>",
 	# Lucide « flask-conical » et « library » : l'institut et la bibliothèque du campus.
 	"institut": "<path d='M14 2v6a2 2 0 00.245.96l5.51 10.08A2 2 0 0118 22H6a2 2 0 01-1.755-2.96l5.51-10.08A2 2 0 0010 8V2M6.453 15h11.094M8.5 2h7'/>",
@@ -1375,7 +1375,44 @@ static func image_dessinee(nom: String, taille: int) -> Image:
 
 static func _svg_dessine(nom: String) -> String:
 	var chemin := "res://icones/%s.svg" % nom
-	return _sans_gabarit(FileAccess.get_file_as_string(chemin)) if FileAccess.file_exists(chemin) else ""
+	return _avec_lisere(_sans_gabarit(FileAccess.get_file_as_string(chemin))) if FileAccess.file_exists(chemin) else ""
+
+
+## ⬜ LE LISERÉ BLANC autour des dessins de l'auteur, partout (auteur, 2026-10-20) : 4 % du dessin.
+const LISERE := 0.04
+
+
+## Le dessin recopié dessous, tout en blanc et au trait épaissi ; le viewBox s'élargit d'autant.
+## Vectoriel, pour rester net en DPITexture. ⚠️ Les `<use>` (ombres en image) ne se recopient pas.
+static func _avec_lisere(svg: String) -> String:
+	var vb := RegEx.create_from_string(r'viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"').search(svg)
+	var ouvre := svg.find(">", svg.find("<svg")) + 1
+	var fin := svg.find("<defs")
+	fin = fin if fin >= 0 else svg.rfind("</svg>")
+	if vb == null or ouvre <= 0 or fin < ouvre:
+		return svg
+	var x := float(vb.get_string(1))
+	var y := float(vb.get_string(2))
+	var w := float(vb.get_string(3))
+	var h := float(vb.get_string(4))
+	var m := maxf(w, h) * LISERE
+	var copie := RegEx.create_from_string(r'<use[^>]*/>').sub(svg.substr(ouvre, fin - ouvre), "", true)
+	copie = RegEx.create_from_string(r'<(path|rect|circle)\b((?:(?!style=)[^>])*?)/>') \
+		.sub(copie, '<$1$2 style=""/>', true)
+	var morceaux := ""
+	var depuis := 0
+	for s in RegEx.create_from_string(r'style="([^"]*)"').search_all(copie):
+		var noir := RegEx.create_from_string(r'stroke-width:([\d.]+)').search(s.get_string(1))
+		var large := 2.0 * m + (float(noir.get_string(1)) if noir and s.get_string(1).contains("stroke:black") else 0.0)
+		morceaux += copie.substr(depuis, s.get_start() - depuis) \
+			+ 'style="fill:white;stroke:white;stroke-width:%.2fpx;stroke-linejoin:round;stroke-linecap:round"' % large
+		depuis = s.get_end()
+	copie = morceaux + copie.substr(depuis)
+	var cadre := 'viewBox="%.2f %.2f %.2f %.2f"' % [x - m, y - m, w + 2.0 * m, h + 2.0 * m]
+	var tete := svg.substr(0, ouvre).replace(vb.get_string(0), cadre)
+	tete = RegEx.create_from_string(r'(<svg[^>]*?) width="[^"]*" height="[^"]*"') \
+		.sub(tete, '$1 width="%.0f" height="%.0f"' % [w + 2.0 * m, h + 2.0 * m])
+	return tete + copie + svg.substr(ouvre)
 
 
 static func _cote_svg(svg: String) -> float:
@@ -1769,7 +1806,8 @@ func _panneau_rail() -> void:
 		_rail_lieux.append(b)
 	accueil.set_pressed_no_signal(true)
 	v.add_child(_filet_rail())
-	var debut := _tuile_rail("debut", "Début", "Revoir les premiers pas après la crue.")
+	# 🔄 « Début » devient Guide, à l'icône de l'auteur (2026-10-20). 🔴 Flaggable (90).
+	var debut := _tuile_rail("guide", "Guide", "Rouvrir le guide des premiers pas.")
 	_debut = debut
 	debut.pressed.connect(func() -> void:
 		if ouverture != null:
@@ -3313,8 +3351,8 @@ const AZIMUTS := ["du sud", "du sud-est", "de l'est", "du nord-est",
 	"du nord", "du nord-ouest", "de l'ouest", "du sud-ouest"]
 
 
-## 💶 LE CODE DES CLICS (auteur, 2026-10-20) : bleu = ça coûte, et la pastille dit quoi
-## (`_poser_prix`) ; encre pleine = gratuit (`_habiller_gratuit`). Angles droits. Pas de bleu sur un clic gratuit.
+## 💶 LE CODE DES CLICS (auteur, 2026-10-20) : bleu = ça coûte, et le prix est dessus
+## (`_poser_bouton_verbe`) ; encre pleine = gratuit (`_habiller_gratuit`). Angles droits. Pas de bleu sur un clic gratuit.
 func _habiller_principal(b: Button) -> void:
 	var plein := StyleBoxFlat.new()
 	plein.bg_color = ACCENT_VIF
@@ -3388,75 +3426,21 @@ func _teinte_monnaie(m: String) -> Color:
 	return ARGENT
 
 
-## 💶 La pastille du prix, à droite dans le bouton : l'icône de la monnaie et le montant.
-## `prix` = [[monnaie, montant], …], vide → gratuit ; `manque` = la monnaie qui manque, rougie. Le texte du bouton
-## reste l'action (les essais le lisent). Appelable à chaque image : ne refait qu'au changement.
-func _poser_prix(b: Button, prix: Array, manque := "") -> void:
-	var cle := "%s|%s|%s" % [prix, manque, b.disabled]
-	if b.get_meta("prix", "") == cle:
-		return
-	b.set_meta("prix", cle)
-	b.tooltip_text = ""
-	# Une pastille par bouton, gardée : on n'en refait que le contenu.
-	var pastille := b.get_node_or_null("Prix") as PanelContainer
-	if pastille == null:
-		pastille = PanelContainer.new()
-		pastille.name = "Prix"
-		pastille.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pastille.add_child(HBoxContainer.new())
-		b.add_child(pastille)
-		# ⚠️ Placée à la main : par ancres, elle restait en haut à gauche, étirée (2026-10-20).
-		b.resized.connect(_placer_pastille.bind(b))
-		pastille.minimum_size_changed.connect(_placer_pastille.bind(b))
-	pastille.visible = not prix.is_empty()
-	if prix.is_empty():
-		_habiller_gratuit(b)
-		return
-	_habiller_principal(b)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(1, 1, 1, 0.94 if not b.disabled or manque != "" else 0.6)
-	sb.content_margin_left = 6
-	sb.content_margin_right = 7
-	sb.content_margin_top = 2
-	sb.content_margin_bottom = 2
-	if manque != "":
-		sb.border_color = ALERTE
-		sb.set_border_width_all(2)
-	pastille.add_theme_stylebox_override("panel", sb)
-	var h := pastille.get_child(0) as HBoxContainer
-	h.add_theme_constant_override("separation", 3)
-	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for c in h.get_children():
-		h.remove_child(c)
-		c.queue_free()
-	for p in prix:
-		var ic := TextureRect.new()
-		ic.texture = _icone(String(p[0]), 16, _teinte_monnaie(String(p[0])))
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_child(ic)
-		var l := _titre(String(p[1]), 13, ALERTE if p[0] == manque else TEXTE)
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_child(l)
-	# Le texte se centre dans ce qui reste : la marge droite fait la place de la pastille.
-	var large := pastille.get_combined_minimum_size().x + 12.0
-	for etat in ["normal", "hover", "pressed", "disabled"]:
-		(b.get_theme_stylebox(etat) as StyleBoxFlat).content_margin_right = large
-	_placer_pastille(b)
-	# 🔴 Flaggable (90).
-	b.tooltip_text = {"caisse": "Caisse insuffisante", "recherche": "Points insuffisants",
-		"capital": "Confiance insuffisante"}.get(manque, "")
+## 💶 Un bouton de ligne de lieu (mairie, institut) au gabarit des fiches : le verbe change avec l'état.
+func _poser_ligne(b: Button, verbe: String, prix: Array, manque := "", sous := "") -> void:
+	(b.get_meta("verbe")[0] as Label).text = verbe
+	_poser_bouton_verbe(b, prix, manque, sous)
 
 
-## La pastille à droite, centrée en hauteur, à sa taille.
-func _placer_pastille(b: Button) -> void:
-	var pastille := b.get_node_or_null("Prix") as Control
-	if pastille == null:
-		return
-	var t := pastille.get_combined_minimum_size()
-	pastille.size = t
-	pastille.position = Vector2(b.size.x - t.x - 6.0, roundf((b.size.y - t.y) / 2.0))
+## Sous le verbe : ce qui manque à la caisse, sinon la durée (0 → rien).
+func _sous_caisse(ke: float, mois: float) -> String:
+	if ke > _caisse_ke + 0.001:
+		return "il manque %s k€" % _milliers(ke - _caisse_ke)
+	return _duree(mois) if mois > 0.0 else ""
+
+
+func _manque_points(manque: int) -> String:
+	return "" if manque <= 0 else "il manque %d point%s" % [manque, "s" if manque > 1 else ""]
 
 
 # ==========================================================================
@@ -3726,8 +3710,7 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	var etat := _label("", 12, TEXTE)
 	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(etat)
-	var b := Button.new()
-	_habiller_principal(b)
+	var b := _bouton_verbe("")
 	b.focus_mode = Control.FOCUS_NONE
 	bloc.add_child(b)
 	return {"bloc": carte, "genre": genre, "etat": etat, "bouton": b}
@@ -3811,7 +3794,10 @@ func ouvrir_campus() -> void:
 ## 🎓 Un îlot du campus cliqué ouvre aussi sa fenêtre, une fois le campus trouvé.
 func ouvrir_lieu_clique(couche: String, fid: int) -> void:
 	var cle := _lieu_du_fid(fid) if couche == "i" else ""
-	if cle in CAMPUS and _verrou() == "" and (ouverture == null or ouverture.rail_visible(cle)):
+	# 🏛️ La mairie aussi, dès qu'elle est ouverte : c'est ainsi qu'on la trouve (auteur, 2026-10-20).
+	var ouvert: bool = (cle in CAMPUS and (ouverture == null or ouverture.rail_visible(cle))) \
+		or (cle == "mairie" and (ouverture == null or ouverture.rail_ouvert(cle)))
+	if ouvert and _verrou() == "":
 		ouvrir_lieu(cle)
 
 
@@ -4302,9 +4288,10 @@ func _maj_ligne_recherche(cle: String, l: Dictionary) -> void:
 		var prix := Recherche.prix(cle)
 		etat.text = ""
 		b.visible = true
-		b.disabled = Recherche.points(ville, _mois) < prix
-		b.text = "Mettre au point"
-		_poser_prix(b, [["recherche", str(prix)]], "recherche" if b.disabled else "")
+		var manque := prix - Recherche.points(ville, _mois)
+		b.disabled = manque > 0
+		_poser_ligne(b, "Mettre au point", [["recherche", str(prix)]], "recherche" if b.disabled else "",
+			_manque_points(manque))
 
 
 func _maj_ligne_programme(cle: String, l: Dictionary) -> void:
@@ -4317,9 +4304,10 @@ func _maj_ligne_programme(cle: String, l: Dictionary) -> void:
 	var prix := int(Politiques.PROGRAMMES[cle]["points"])
 	etat.text = ""
 	b.visible = true
-	b.disabled = Recherche.points(ville, _mois) < prix
-	b.text = "Adopter"
-	_poser_prix(b, [["recherche", str(prix)]], "recherche" if b.disabled else "")
+	var manque := prix - Recherche.points(ville, _mois)
+	b.disabled = manque > 0
+	_poser_ligne(b, "Adopter", [["recherche", str(prix)]], "recherche" if b.disabled else "",
+		_manque_points(manque))
 
 
 ## 🎓 Proposée après le concours (117) ; elle quitte la mairie une fois l'étude parue.
@@ -4342,11 +4330,11 @@ func _maj_ligne_diagnostic(id: String, l: Dictionary) -> void:
 		etat.text = "Commandée, rendue dans %s." % _duree(ville.etude_diagnostic_reste_mois(id, _mois))
 		b.visible = false
 		return
-	etat.text = "Rendue en %s ; ouvre la carte %s" % [_duree(float(e["mois"])), e["carte"]]
+	etat.text = "Ouvre la carte %s" % e["carte"]
 	b.visible = true
 	b.disabled = _caisse_ke < float(e["ke"])
-	b.text = "Commander"
-	_poser_prix(b, [["caisse", "%s k€" % _milliers(float(e["ke"]))]], "caisse" if b.disabled else "")
+	_poser_ligne(b, "Commander", [["caisse", "%s k€" % _milliers(float(e["ke"]))]],
+		"caisse" if b.disabled else "", _sous_caisse(float(e["ke"]), float(e["mois"])))
 
 
 ## 🏗️ Le pont rouvert (118) : la mairie l'ouvre au même moment ; les essais sans guide, toujours.
@@ -4365,8 +4353,7 @@ func _maj_ligne_fonds(l: Dictionary) -> void:
 	etat.text = "+%s k€ dans la caisse, une seule fois" % _milliers(Ville.FONDS_RECONSTRUCTION_KE)
 	b.visible = true
 	b.disabled = not _fonds_demandable()
-	b.text = "Demander" if not b.disabled else "Après la réouverture d'un pont"
-	_poser_prix(b, [])
+	_poser_ligne(b, "Demander", [], "", "" if not b.disabled else "après la réouverture d'un pont")
 
 
 func _maj_ligne_etude(l: Dictionary) -> void:
@@ -4376,11 +4363,11 @@ func _maj_ligne_etude(l: Dictionary) -> void:
 		etat.text = "Commandée, rendue dans %s." % _duree(ville.etude_reste_mois(_mois))
 		b.visible = false
 		return
-	etat.text = "Rendue en %s" % _duree(Ville.ETUDE_MOIS)
+	etat.text = ""
 	b.visible = true
 	b.disabled = _caisse_ke < Ville.ETUDE_KE
-	b.text = "Commander"
-	_poser_prix(b, [["caisse", "%s k€" % _milliers(Ville.ETUDE_KE)]], "caisse" if b.disabled else "")
+	_poser_ligne(b, "Commander", [["caisse", "%s k€" % _milliers(Ville.ETUDE_KE)]],
+		"caisse" if b.disabled else "", _sous_caisse(Ville.ETUDE_KE, Ville.ETUDE_MOIS))
 
 
 func _maj_ligne_politique(cle: String, l: Dictionary) -> void:
@@ -4394,15 +4381,14 @@ func _maj_ligne_politique(cle: String, l: Dictionary) -> void:
 		etat.text = "En vigueur, %s k€/mois, %s k€ déjà versés" % [
 			_milliers(ke_mois), _milliers(verse)]
 		b.disabled = false
-		b.text = "Retirer"
-		_poser_prix(b, [])
+		_poser_ligne(b, "Retirer", [])
 	else:
 		etat.text = "Prélevé chaque mois dès la signature"
 		if verse > 0.0:
 			etat.text += " ; %s k€ versés avant retrait" % _milliers(verse)
 		b.disabled = _caisse_ke < ke_mois
-		b.text = "Signer"
-		_poser_prix(b, [["caisse", "%s k€/mois" % _milliers(ke_mois)]], "caisse" if b.disabled else "")
+		_poser_ligne(b, "Signer", [["caisse", "%s k€/mois" % _milliers(ke_mois)]],
+			"caisse" if b.disabled else "", _sous_caisse(ke_mois, 0.0))
 
 
 func _panneau_camera() -> void:
@@ -5903,8 +5889,9 @@ func _poser_bouton_verbe(b: Button, prix: Array, manque: String, sous: String) -
 		var m := String(p[0])
 		var ic := TextureRect.new()
 		# Sur le bleu, la pièce s'éclaircit : l'or du compteur y virait au brun.
+		# Les points aussi : leur bleu se perdait sur le bouton.
 		ic.texture = _icone(m, 20, Color8(250, 199, 117) if m == "caisse" and not b.disabled
-			else _teinte_monnaie(m))
+			else Color8(196, 214, 246) if m == "recherche" and not b.disabled else _teinte_monnaie(m))
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		boite.add_child(ic)
@@ -5913,7 +5900,8 @@ func _poser_bouton_verbe(b: Button, prix: Array, manque: String, sous: String) -
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		boite.add_child(l)
 	# 🔴 Flaggable (90).
-	b.tooltip_text = {"caisse": "Caisse insuffisante", "capital": "Confiance insuffisante"}.get(manque, "")
+	b.tooltip_text = {"caisse": "Caisse insuffisante", "recherche": "Points insuffisants",
+		"capital": "Confiance insuffisante"}.get(manque, "")
 
 
 ## 🧪 LES CONSÉQUENCES, MESURÉES ET NON ANNONCÉES : la ville d'essai reçoit la
