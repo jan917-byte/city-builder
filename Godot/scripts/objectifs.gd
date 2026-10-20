@@ -20,6 +20,7 @@ const OBJECTIFS := {
 	"places": "Retirer des places",
 	"rue": "Fermer une rue aux voitures",
 	"arbres": "Planter des arbres",
+	"pont_resistant": "Bâtir un pont résistant",
 }
 const OUVERTURE := ["abriter", "pont", "ilot", "logements"]
 const LIGNE := 24.0
@@ -59,9 +60,9 @@ class Cercle extends Control:
 		draw_arc(c, 6.0, 0.0, TAU, 32, plein if remplissage >= 1.0 else encre, 1.5, true)
 
 
-## La fiole : posée au bout d'une ligne (ce que l'objectif rapporte), puis en vol vers le
+## L'étoile : posée au bout d'une ligne (ce que l'objectif rapporte), puis en vol vers le
 ## compteur. Node2D : une Control s'arrondit au pixel et le vol saccaderait (`bulles.gd`).
-class Fiole extends Node2D:
+class Etoile extends Node2D:
 	var icone: Texture2D
 
 	func _draw() -> void:
@@ -142,6 +143,11 @@ func atteint(id: String) -> bool:
 			return false
 		"rue":
 			return not jeu.trafic.exporter_fermetures().is_empty()
+		"pont_resistant":
+			for p in v.ponts_coupes():
+				if v.pont_resistant_livre(p, t):
+					return true
+			return false
 	return false
 
 
@@ -284,7 +290,7 @@ func _ligne(id: String, fait: bool) -> HBoxContainer:
 	gain.add_child(plus)
 	var place := Control.new()
 	place.custom_minimum_size = Vector2(14, LIGNE)
-	var f := Fiole.new()
+	var f := Etoile.new()
 	f.icone = ui._icone("recherche", 14, BLEU)
 	f.position = Vector2(7, LIGNE / 2.0)
 	place.add_child(f)
@@ -304,15 +310,15 @@ func _effacer(l: Control, attente: float) -> void:
 	tw.chain().tween_callback(l.queue_free)
 
 
-## Le cercle se remplit, puis la fiole du bout de la ligne vole jusqu'au compteur (B, auteur,
+## Le cercle se remplit, puis l'étoile du bout de la ligne vole jusqu'au compteur (B, auteur,
 ## 2026-10-19) ; `actualiser` range ensuite la ligne avec les atteints.
 func _reussir(id: String) -> void:
 	var ui = jeu.interface
-	# Le compteur n'avance qu'à l'arrivée de la fiole.
+	# Le compteur n'avance qu'à l'arrivée de l'étoile.
 	ui.points_en_vol += 1
 	var l: HBoxContainer = _lignes.get(id)
 	if l == null:
-		# Hors des lignes montrées : la fiole part du bas du bloc.
+		# Hors des lignes montrées : l'étoile part du bas du bloc.
 		_voler(global_position + Vector2(LARGEUR * 0.5, size.y), 0.0)
 		return
 	l.set_meta("remplit", true)
@@ -327,7 +333,7 @@ func _reussir(id: String) -> void:
 
 func _voler(depart: Vector2, attente: float) -> void:
 	var ui = jeu.interface
-	var f := Fiole.new()
+	var f := Etoile.new()
 	f.icone = ui._icone("recherche", 22, BLEU)
 	f.position = depart
 	ui.add_child(f)

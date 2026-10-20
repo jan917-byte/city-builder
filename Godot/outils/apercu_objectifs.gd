@@ -1,7 +1,7 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/apercu_objectifs.gd -- --ouverture --captures
 ## Les objectifs en bas à gauche (auteur, 2026-10-18) : le premier qui se remplit, monte et
-## reste au-dessus, pâle ; sa fiole vole jusqu'au compteur de recherche.
+## reste au-dessus, pâle ; son étoile vole jusqu'au compteur de recherche.
 ## → QGIS/rendus/wehrau_ouverture_objectifs_N_*.png
 
 
@@ -35,7 +35,7 @@ func executer() -> void:
 	await attendre(0.3)
 	await capture("objectifs_2_cercle_plein")
 	await attendre(0.45)
-	await capture("objectifs_3_la_fiole_vole")
+	await capture("objectifs_3_l_etoile_vole")
 	await attendre(0.5)
 	await capture("objectifs_4_le_compteur_bondit")
 	await attendre(1.5)

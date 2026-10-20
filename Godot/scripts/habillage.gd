@@ -21,7 +21,7 @@ extends Resource
 @export var gris_etiquettes := Color8(70, 76, 80)
 
 @export_group("Couleurs du jeu")
-## Le vert du bouton qui engage la caisse et du remplissage des curseurs.
+## Le vert du remplissage des curseurs (le bouton qui coûte est bleu : « Bouton qui engage »).
 @export var vert := Color8(54, 122, 76)
 ## Les sommes d'argent, la poignée des curseurs.
 @export var accent := Color8(28, 32, 35)
@@ -83,14 +83,15 @@ extends Resource
 @export var rail_survol := Color8(255, 255, 255, 140)
 
 @export_group("Bouton qui engage")
-## « Mettre en place » : le seul bouton plein du jeu. Son fond est le vert de « Couleurs du jeu ».
+## Tout clic qui coûte une monnaie, et lui seul : bleu, avec la pastille du prix (auteur, 2026-10-20).
 @export_range(8, 30) var taille_engage := 15
-@export var bord_engage := Color8(38, 86, 44)
-@export var survol_engage := Color8(78, 142, 86)
-@export var appuye_engage := Color8(46, 100, 54)
-## Quand la caisse ne suit pas : il reste vert, éteint.
-@export var eteint_engage := Color8(204, 212, 188)
-@export var encre_eteint_engage := Color8(96, 114, 80)
+@export var fond_engage := Color8(36, 99, 176)
+@export var bord_engage := Color8(24, 70, 130)
+@export var survol_engage := Color8(62, 126, 202)
+@export var appuye_engage := Color8(26, 78, 140)
+## Quand la monnaie ne suit pas : il reste bleu, éteint.
+@export var eteint_engage := Color8(196, 208, 224)
+@export var encre_eteint_engage := Color8(82, 100, 128)
 
 @export_group("Jauges")
 ## La part encore vide d'une jauge et la gouttière des curseurs.

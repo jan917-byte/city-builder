@@ -27,6 +27,9 @@ const PONTS_DIFFERENTS := "Les ponts ne coûtent pas tous le même prix, ni le m
 const DIRE_CHANTIERS := "%d ponts sont coupés : les deux rives ne se rejoignent plus. Cliquez sur Chantiers, dans la colonne de gauche, puis sur un pont coupé."
 const DIRE_PONT := "Cliquez sur un pont coupé, dans Chantiers ou sur la carte, puis choisissez comment le rebâtir dans sa fiche."
 const DIRE_ILOT := "Cliquez sur un îlot qui clignote pour le rebâtir."
+## 🧹 Toutes les rues engagées avant de dire « rebâtir » (auteur, 2026-10-20). 🔴 Flaggable (90).
+const DIRE_DEBLAYER := "Avant de rebâtir, déblayez toutes les rues : %d sont encore sous la boue. Cliquez sur une rue boueuse pour la déblayer."
+const DIRE_TOUT_DEBLAYER := "Ou cliquez sur Chantiers, dans la colonne de gauche, puis sur « Tout déblayer »."
 ## 🧹 Le Lavoir d'abord, conseillé sans être imposé (auteur, 2026-10-19) : maisons debout, chantier court. 🔴 Flaggable (90).
 const LAVOIR := 62
 const DIRE_LAVOIR := "Commencez par les Maisons du Lavoir, qui clignotent : leurs maisons tiennent debout, il suffit de les nettoyer. C'est le chantier le plus court."
@@ -34,7 +37,14 @@ const DIRE_LAVOIR := "Commencez par les Maisons du Lavoir, qui clignotent : leur
 const DIRE_UNIVERSITE := "Elle a trois lieux. L'université publie ses études sur Wehrau, la bibliothèque raconte comment d'autres villes s'y sont prises, l'institut met au point de nouvelles façons de bâtir. Chaque objectif atteint, en bas à gauche, rapporte un point à dépenser à la mairie ou à l'institut."
 ## 🏛️ LA MAIRIE D'ABORD (117, auteur 2026-10-19) : au pont rouvert, elle seule s'ouvre ; le concours
 ## s'y adopte en points, puis l'étude s'y commande en euros, et l'étude rendue ouvre l'université. 🔴 Flaggable (90).
-const DIRE_MAIRIE := "La mairie a rouvert. Cliquez sur la mairie, dans la colonne de gauche : chaque objectif atteint, en bas à gauche, y rapporte un point."
+## 🏗️ Elle y demande le fonds de reconstruction (118). 🔴 Flaggable (90).
+const DIRE_MAIRIE := "La mairie a rouvert : elle peut demander le fonds de reconstruction. Cliquez sur la mairie, dans la colonne de gauche."
+const DIRE_FONDS := "Le budget d'urgence ne rebâtira pas tout : demandez le fonds de reconstruction à la mairie."
+## 🧭 Le titre du guide de la reconstruction (auteur, 2026-10-20). 🔴 Flaggable (90).
+const TITRE_REBATIR := "Reconstruction"
+## ⏩ Rues engagées et campement amélioré, le pont pas encore rouvert : on attend, et c'est le
+## seul endroit qui dit ×4 (auteur, 2026-10-20). 🔴 Flaggable (90).
+const DIRE_ATTENTE := "Quand le pont rouvrira, la mairie pourra débloquer un nouveau budget. D'ici là, cliquez sur ×4 pour accélérer le temps."
 
 var jeu
 var suite := false
@@ -195,7 +205,7 @@ func _batir_annonce(ui) -> void:
 	_annonce_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_annonce_texte)
 	annonce_principal = Button.new()
-	ui._habiller_principal(annonce_principal)
+	ui._habiller_gratuit(annonce_principal, true)
 	annonce_principal.pressed.connect(_sur_carte.bind(true))
 	v.add_child(annonce_principal)
 	annonce_second = Button.new()
@@ -433,6 +443,9 @@ func rail_visible(id: String) -> bool:
 	# 🧱 Les sols viennent avec leurs leviers, après la berge.
 	if id == "sols":
 		return concept_ouvert("eponge") and levier_ferme("permeable") == ""
+	# 🔍 Une carte de diagnostic attend son étude, Dangers celle de la crue (auteur, 2026-10-20).
+	if Ville.ETUDES_DIAGNOSTIC.has(id):
+		return tout_ouvert or jeu.ville.etude_diagnostic_rendue(id, jeu.mois)
 	return not id in ["universite", "institut", "bibliotheque"] or rail_ouvert(id)
 
 
@@ -533,11 +546,23 @@ func groupe_carte() -> Array:
 
 ## Le Lavoir seul tant que le guide le conseille ; les autres restent cliquables.
 func _a_faire_clignoter() -> Array:
+	if not rues_deblayees():
+		return []
 	return [LAVOIR] if lavoir_conseille() else ilots_a_rebatir()
 
 
 func lavoir_conseille() -> bool:
 	return annee_un() and not _ilot_engage() and LAVOIR in ilots_a_rebatir()
+
+
+## 🧹 Plus une rue boueuse sans chantier : engagée suffit, livrée ou non.
+func rues_deblayees() -> bool:
+	return jeu.ville.rues_boueuses().is_empty()
+
+
+func _dire_deblayer() -> String:
+	var texte := DIRE_DEBLAYER % jeu.ville.rues_boueuses().size()
+	return texte + "\n\n" + DIRE_TOUT_DEBLAYER if jeu.interface.deblaiement_propose() else texte
 
 
 func ilots_a_rebatir() -> Array:
@@ -678,6 +703,11 @@ func _annoncer_portes() -> void:
 	if not "etude" in _portes_dites and etude_proposee() and not jeu.ville.etude_commandee():
 		_portes_dites["etude"] = true
 		jeu.interface.retours.annoncer("La mairie peut commander une étude à l'université.", jeu.mois)
+	for id in Ville.ETUDES_DIAGNOSTIC_ORDRE:
+		if not id in _portes_dites and jeu.ville.etude_diagnostic_rendue(id, jeu.mois):
+			_portes_dites[id] = true
+			var e: Dictionary = Ville.ETUDES_DIAGNOSTIC[id]
+			jeu.interface.retours.annoncer("%s rendue : la carte %s s'ouvre." % [e["nom"], e["carte"]], jeu.mois)
 
 
 ## 📖 Une page qui s'ouvre se dit une fois, au bandeau et au journal.
@@ -790,7 +820,7 @@ func description_pont(fid: int) -> String:
 		return "Aucun accès continu : une rue voisine est fermée."
 	# 🔄 Ni les accès ni leur prix (auteur, 2026-09-26) : le joueur découvre à la
 	# livraison que la boue barre le chemin, et cherche lui-même la route.
-	return "Provisoire : une voie, en alternat." if jeu.ville.pont_provisoire(fid) else ""
+	return "Provisoire : une voie, en alternat." if jeu.ville.pont_provisoire(fid, jeu.mois) else ""
 
 
 ## 🌉 La fiche s'ouvre SANS choix posé (auteur, 2026-09-24) : provisoire ou en
@@ -809,7 +839,12 @@ func paraitre() -> bool:
 
 ## 🌉 La première année, le guide propose de rebâtir dès le chemin du pont dégagé.
 func guide_rebatir() -> bool:
-	return annee_un() and (etape == "choix" or etape == "pont_travaux" and acces_degage())
+	return annee_un() and (etape == "choix" or etape == "pont_travaux" and (acces_degage() or dire_attente()))
+
+
+func dire_attente() -> bool:
+	return annee_un() and etape == "pont_travaux" and rues_deblayees() \
+		and jeu.ville.demande_engagee("amelioration")
 
 
 ## Un îlot sinistré déjà engagé.
@@ -931,7 +966,8 @@ func actualiser(force := false) -> void:
 		jeu.ville._camps.size(), jeu.ville._repare.size(), acces_degage()]
 	_annoncer_pages()
 	_annoncer_portes()
-	signature += "/%s/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, degats_vus, mairie_vue]
+	signature += "/%s/%s/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, degats_vus, mairie_vue,
+		jeu.ville.demande_engagee("amelioration")]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -1019,11 +1055,13 @@ func actualiser(force := false) -> void:
 			_titre.text = "Réparer ou investir ?"
 			# 🔴 Flaggable (90).
 			var lignes := []
-			if not ilots_a_rebatir().is_empty():
+			if not rues_deblayees():
+				lignes.append(_dire_deblayer())
+			elif not ilots_a_rebatir().is_empty():
 				lignes.append("Pour réparer, cliquez sur un îlot qui clignote.")
 			# 📖 Investir est l'autre chapitre : il attend la ville réparée (101).
 			if annee_un():
-				lignes.append("Le prochain budget arrivera en janvier.")
+				lignes.append(DIRE_FONDS if not jeu.ville.fonds_recu(jeu.mois) else "Le prochain budget arrivera en janvier.")
 			else:
 				lignes.append("Pour agir autrement, cliquez sur l'institut, dans la colonne de gauche." if levier_ferme("solaire") != ""
 				else "Pour investir, cliquez sur Énergie, dans la colonne de gauche : elle montre où le solaire s'amortit.")
@@ -1060,11 +1098,17 @@ func _texte_en_tete(oui: bool) -> void:
 
 ## 🌉 Le guide de la reconstruction, la première année. 🔴 Flaggable (90).
 func _texte_rebatir() -> void:
-	_titre.text = ""
 	var lignes := [] if _texte.text == "" else [_texte.text]
-	if not (_ilot_engage() and etape == "pont_travaux"):
+	if not rues_deblayees():
+		lignes.append(_dire_deblayer())
+	elif not (_ilot_engage() and etape == "pont_travaux"):
 		lignes.append(DIRE_LAVOIR if lavoir_conseille() else DIRE_ILOT)
+	if pont_termine and not jeu.ville.fonds_recu(jeu.mois):
+		lignes.append(DIRE_FONDS)
+	if dire_attente():
+		lignes.append(DIRE_ATTENTE)
 	_texte.text = "\n\n".join(lignes)
+	_titre.text = TITRE_REBATIR if _texte.text != "" else ""
 
 
 ## 🏗️ Ce que la livraison dit, selon la façon de relever.
@@ -1132,6 +1176,9 @@ func reprendre(etat: Dictionary) -> void:
 		_portes_dites["leviers"] = true
 	if etude_proposee_vue or jeu.ville.etude_commandee():
 		_portes_dites["etude"] = true
+	for id in Ville.ETUDES_DIAGNOSTIC_ORDRE:
+		if jeu.ville.etude_diagnostic_rendue(id, jeu.mois):
+			_portes_dites[id] = true
 	etape = ""
 	_signature = ""
 	actualiser(true)

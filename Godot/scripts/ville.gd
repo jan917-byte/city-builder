@@ -26,7 +26,12 @@ const CAPITAL_DEPART := 50.0               # décision 16b
 # 🎚️ LEVEL DESIGN, pas physique : à eux seuls ils décident si le jeu est « dur
 # mais possible ». Trop haut, on équipe sans choisir ; trop bas, on regarde le
 # temps passer. Repère imprimé par `-- --essai`.
-const CAISSE_DEPART_KE := 3500.0           # relogement, un pont au choix et déblaiement (auteur, 2026-09-20)
+# 🚨 L'URGENCE SEULE (118, auteur 2026-10-20) : pont provisoire le plus cher 715 + camps 196 + leur
+# amélioration 130 + 22 rues 202 + Lavoir 66 = 1 309 k€, mesuré ; ~190 k€ de marge pour qui hésite.
+const CAISSE_DEPART_KE := 1500.0
+# 🏗️ LE FONDS DE RECONSTRUCTION (118), demandé à la mairie le pont rouvert : il ne paie pas tout
+# le faubourg (6 îlots 4 940 k€, ponts en dur 1 498 à 2 860). Somme des deux = l'ancienne caisse, 3 500.
+const FONDS_RECONSTRUCTION_KE := 2000.0
 # 🗓️ Versée en une fois chaque janvier, au lieu de 30 k€ par mois (auteur, 2026-10-18).
 const DOTATION_KE_AN := 360.0
 
@@ -73,6 +78,9 @@ var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTI
 var _concours := {}        # {debut, fid} : le concours de la zone sinistrée (104), lancé depuis cet îlot
 var _programmes := {}      # clé de `Politiques.PROGRAMMES` -> le mois de l'adoption (117)
 var _etude := {}           # {debut} : l'étude de la crue commandée par la mairie (117)
+var _etudes := {}          # id de `ETUDES_DIAGNOSTIC` -> mois de la commande
+var _fonds := {}           # {debut} : le fonds de reconstruction reçu (118)
+var _consolide := {}       # fid pont provisoire -> mois où son pont en dur est engagé (118)
 var _berge := {}           # fid -> {cible, debut, depuis, cout_ke}
 var _toit_avant := {}      # fid -> `toit_m2` d'avant la reconstruction
 var _plantation := {}      # fid tronçon -> {debut, duree, cible, cout_ke, arbres}
@@ -203,6 +211,17 @@ const CONCOURS_LAUREAT_PRIX := 0.8
 # 🎚️ Proposés, à juger par l'auteur.
 const ETUDE_KE := 80.0
 const ETUDE_MOIS := 1.0
+# 🔍 Chaque carte de diagnostic s'ouvre par son étude à la mairie, Dangers par celle de la crue
+# (auteur, 2026-10-20). Clé = id de la tuile. 🎚️ Prix et durée à juger ; 🔴 textes flaggables (90).
+const ETUDES_DIAGNOSTIC := {
+	"energie": {"nom": "Étude énergétique", "carte": "Énergie", "ke": 80.0, "mois": 1.0,
+		"quoi": "Mesurer ce que la ville consomme, et ce que ses toits pourraient produire."},
+	"trafic": {"nom": "Étude de circulation", "carte": "Trafic", "ke": 80.0, "mois": 1.0,
+		"quoi": "Compter les voitures rue par rue, et voir où ça bouche."},
+	"agriculture": {"nom": "Étude agricole", "carte": "Agriculture", "ke": 80.0, "mois": 1.0,
+		"quoi": "Savoir ce que portent les champs, et combien d'habitants ils nourrissent."},
+}
+const ETUDES_DIAGNOSTIC_ORDRE := ["energie", "trafic", "agriculture"]
 const PARC_BAISSE_M_PAR_HA := 0.10   # de crue en moins dans toute la ville, par hectare rendu
 
 
@@ -329,11 +348,13 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_dense", "_recherche", "_politiques", "_depense_ke", "_credit_essai_ke",
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
-	"_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude"]
+	"_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
+	"_fonds", "_consolide", "_etudes"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
-	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude"]
+	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
+	"_fonds", "_consolide", "_etudes"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -375,6 +396,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
+		"_consolide": [routes, 0.0],
 		"_file_deblaiement": [routes, 0.0],
 		"_labours": [ilots, 0.0],
 		"_rebati": [ilots, ""],
@@ -825,6 +847,7 @@ func reinitialiser() -> void:
 	_politiques.clear()
 	_programmes.clear()
 	_etude.clear()
+	_etudes.clear()
 	_vert.clear()
 	_stationnement_supprime.clear()
 	_dense.clear()
@@ -846,6 +869,8 @@ func reinitialiser() -> void:
 	_toit_avant.clear()
 	_repare.clear()
 	_provisoire.clear()
+	_consolide.clear()
+	_fonds.clear()
 	_file_deblaiement.clear()
 	_rebati.clear()
 	_concours.clear()
@@ -2067,7 +2092,7 @@ func _integrale_part_rendue(fid: int, t: float, m: Array) -> float:
 ## En k€. Fonction PURE du temps et des chantiers engagés : « Recommencer »
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
-	return CAISSE_DEPART_KE + dotation_cumulee_ke(t) \
+	return CAISSE_DEPART_KE + dotation_cumulee_ke(t) + fonds_recu_ke(t) \
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Politiques.depense_ke(self, t)
@@ -2342,9 +2367,101 @@ func hausse_m(fid: int) -> float:
 	return float(RECONSTRUCTIONS[facon_reparation(fid)]["hausse_m"]) if est_repare("i", fid) else 0.0
 
 
-## Rétabli par un pont provisoire, engagé ou livré.
-func pont_provisoire(fid: int) -> bool:
-	return _provisoire.has(fid)
+## Rétabli par un pont provisoire, engagé ou livré, tant que son pont en dur n'est pas livré au mois `t`.
+func pont_provisoire(fid: int, t: float) -> bool:
+	return _provisoire.has(fid) and not consolidation_finie(fid, t)
+
+
+# ---------------------------------------- le fonds et le pont en dur (118)
+
+func fonds_recu(t: float) -> bool:
+	return not _fonds.is_empty() and t >= float(_fonds["debut"])
+
+
+func fonds_recu_ke(t: float) -> float:
+	return FONDS_RECONSTRUCTION_KE if fonds_recu(t) else 0.0
+
+
+## 🏛️ Le pont rouvert : la mairie le demande, il tombe au clic. L'appelant dit si le pont l'est.
+func demander_fonds(t: float) -> bool:
+	if not _fonds.is_empty():
+		return false
+	_fonds = {"debut": t}
+	return true
+
+
+## 🌉 Le pont en dur n'existe qu'avec le fonds (118) : à neuf, ou à la place d'un provisoire.
+func pont_en_dur_permis(t: float) -> bool:
+	return fonds_recu(t)
+
+
+## Prix du pont en dur qui remplace un provisoire livré : le prix entier, le provisoire est perdu.
+func cout_consolidation_ke(fid: int, t: float) -> float:
+	if not consolidation_possible(fid, t):
+		return 0.0
+	return base("r", fid, "cout_reparation_ke")
+
+
+func consolidation_possible(fid: int, t: float) -> bool:
+	return _provisoire.has(fid) and not _consolide.has(fid) and reparation_finie("r", fid, t) \
+		and pont_en_dur_permis(t)
+
+
+func consolidation_reste_mois(fid: int, t: float) -> float:
+	if not _consolide.has(fid):
+		return INF
+	return maxf(float(_consolide[fid]) + _delai(PONT_MOIS) - t, 0.0)
+
+
+func consolidation_en_cours(fid: int, t: float) -> bool:
+	return _consolide.has(fid) and consolidation_reste_mois(fid, t) > 0.0
+
+
+func consolidation_finie(fid: int, t: float) -> bool:
+	return _consolide.has(fid) and consolidation_reste_mois(fid, t) <= 0.0
+
+
+## ⚠️ Le provisoire reste ouvert pendant le chantier : le trafic ne change qu'à la livraison.
+func consolider_pont(fid: int, t: float) -> bool:
+	var cout := cout_consolidation_ke(fid, t)
+	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
+		return false
+	_consolide[fid] = t
+	_depenser("pont", cout)
+	return true
+
+
+## Les ponts en dur livrés à la place d'un provisoire au mois `t` : le trafic se recalcule quand ça change.
+func signature_consolides(t: float) -> String:
+	var out := PackedStringArray()
+	for fid in _consolide:
+		if consolidation_finie(int(fid), t):
+			out.append(str(fid))
+	return ",".join(out)
+
+
+## 🌉 RÉSISTANT (118) : un pont en dur ENGAGÉ après la recherche de l'institut. Le provisoire,
+## l'en dur d'avant et le pont pas encore rebâti seraient emportés à la prochaine crue.
+func pont_resistant(fid: int) -> bool:
+	var debut := INF
+	if _consolide.has(fid):
+		debut = float(_consolide[fid])
+	elif est_repare("r", fid) and not _provisoire.has(fid):
+		debut = float(_repare["r:" + str(fid)])
+	return debut >= Recherche.mois_palier(self, Recherche.PONT) and debut < INF
+
+
+func pont_resistant_livre(fid: int, t: float) -> bool:
+	return pont_resistant(fid) and (consolidation_finie(fid, t)
+		or not _consolide.has(fid) and reparation_finie("r", fid, t))
+
+
+## Les ponts que la crue a coupés et que la prochaine emporterait encore.
+func ponts_emportes_prochaine() -> int:
+	var n := 0
+	for fid in _ponts:
+		n += int(not pont_resistant(fid))
+	return n
 
 
 func est_repare(couche: String, fid: int) -> bool:
@@ -2467,6 +2584,8 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 	var cout := cout_reparation_ke(couche, fid, provisoire, facon, t)
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001:
 		return false
+	if couche == "r" and fid in _ponts and not provisoire and not pont_en_dur_permis(t):
+		return false
 	if couche == "i" and not facon_permise(fid, facon, t):
 		return false
 	if couche == "i":
@@ -2569,6 +2688,25 @@ func commander_etude(t: float) -> bool:
 		return false
 	_etude = {"debut": t}
 	_depenser("etude", ETUDE_KE)
+	return true
+
+
+func etude_diagnostic_reste_mois(id: String, t: float) -> float:
+	if not _etudes.has(id):
+		return INF
+	return maxf(float(_etudes[id]) + _delai(float(ETUDES_DIAGNOSTIC[id]["mois"])) - t, 0.0)
+
+
+func etude_diagnostic_rendue(id: String, t: float) -> bool:
+	return etude_diagnostic_reste_mois(id, t) <= 0.0
+
+
+func commander_etude_diagnostic(id: String, t: float) -> bool:
+	var ke := float(ETUDES_DIAGNOSTIC[id]["ke"])
+	if _etudes.has(id) or ke > caisse_ke(t) + 0.001:
+		return false
+	_etudes[id] = t
+	_depenser("etudes", ke)
 	return true
 
 
@@ -2713,6 +2851,8 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 		ke += cout_concours_ke()
 	if r.has("reparer"):
 		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire", str(r["reparer"]), t)
+	if r.has("consolider") and couche == "r":
+		ke += cout_consolidation_ke(fid, t)
 	return ke
 
 
@@ -2755,6 +2895,8 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 	if r.has("reparer"):
 		m = maxf(m, duree_reparation_mois(couche, fid, str(r["reparer"]) == "provisoire",
 			str(r["reparer"])))
+	if r.has("consolider") and couche == "r" and not _consolide.has(fid):
+		m = maxf(m, _delai(PONT_MOIS))
 	return m
 
 
@@ -2811,6 +2953,8 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 	if r.has("reparer") and reparer(couche, fid, t, str(r["reparer"]) == "provisoire",
 			str(r["reparer"])):
 		faits.append("reparation")
+	if r.has("consolider") and couche == "r" and consolider_pont(fid, t):
+		faits.append("consolidation")
 	return {"ok": not faits.is_empty() or r.has("axe"), "manque": 0.0,
 		"cout_ke": cout, "faits": faits, "axe": r.has("axe"),
 		"capital": capital_depense if "stationnement" in faits else 0.0}
@@ -2829,6 +2973,8 @@ const CHANTIER_FAIT := 3
 
 
 func etat_chantier(couche: String, fid: int, t: float) -> int:
+	if couche == "r" and consolidation_en_cours(fid, t):
+		return CHANTIER_EN_COURS
 	if couche == "i" and labour_en_cours(fid, t):
 		return CHANTIER_EN_COURS
 	if couche == "i" and est_campement(fid, t):
@@ -2891,6 +3037,8 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "r" and plantation_en_cours(fid, t):
 		lot.append(["plantation", float(_plantation[fid]["duree"]),
 			plantation_reste_mois(fid, t)])
+	if couche == "r" and consolidation_en_cours(fid, t):
+		lot.append(["consolidation", _delai(PONT_MOIS), consolidation_reste_mois(fid, t)])
 	if couche == "r" and _stationnement_supprime.has(fid):
 		var reste: float = maxf(0.0,
 			float(_stationnement_supprime[fid]) + STATIONNEMENT_MOIS - t)
@@ -2939,6 +3087,11 @@ func chantiers(t: float) -> Dictionary:
 					"genre": genre, "cout_ke": prix,
 					"reste_mois": reste_reparation_mois(couche, fid, t),
 					"duree": duree_reparation_mois(couche, fid)})
+	for fid in _consolide:
+		if consolidation_en_cours(int(fid), t):
+			en_cours.append({"couche": "r", "fid": int(fid), "genre": "consolidation",
+				"cout_ke": base("r", int(fid), "cout_reparation_ke"),
+				"reste_mois": consolidation_reste_mois(int(fid), t), "duree": _delai(PONT_MOIS)})
 	if groupe["rues"] > 0:
 		for fid in _file_deblaiement:
 			groupe["cout"] += base("r", fid, "cout_reparation_ke")

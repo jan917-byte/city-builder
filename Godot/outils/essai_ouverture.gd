@@ -297,8 +297,10 @@ func executer() -> void:
 
 	verifier(o.etape == "choix", "Le relogement fait, le budget prend la main")
 	# 🔄 Le joueur choisit son îlot (auteur, 2026-10-06) : aucun bouton, aucun lieu désigné.
-	verifier(o._actions.get_child_count() == 0 and o.DIRE_ILOT in o._texte.text,
-		"Le guide demande de choisir un îlot, sans en désigner : %s" % o._texte.text)
+	# 🧹 Toutes les rues déblayées avant « rebâtir » (auteur, 2026-10-20).
+	verifier(o._actions.get_child_count() == 0 and "déblayez toutes les rues" in o._texte.text
+		and o.groupe_carte().is_empty(),
+		"Le guide demande d'abord de déblayer les rues, aucun îlot ne clignote : %s" % o._texte.text)
 	# Ce contrôle isole les choix locaux sans avoir payé de pont.
 	verifier(jeu.ville.cout_reparation_ke("r", o.RUE) < jeu.ville.caisse_ke(0.0),
 		"La rue reste finançable après le camp")
@@ -340,6 +342,10 @@ func executer() -> void:
 	await capture("05_livraison")
 	await cliquer(bouton("Et maintenant"))
 	verifier(o.etape == "suite", "La réussite conduit au choix de transformation")
+	verifier("déblayez toutes les rues" in o._texte.text and o.groupe_carte().is_empty(),
+		"Des rues restent sous la boue : la suite demande de les déblayer : %s" % o._texte.text)
+	verifier(jeu.ville.deblayer_tout(jeu.ville.rues_boueuses(), jeu.mois)["ok"], "Tout déblayer s'engage")
+	o.actualiser(true)
 	# 🏠 Rebâtir d'abord (auteur, 2026-10-08) : le guide ne pousse plus la berge, sa fiche la garde.
 	verifier(bouton("Protéger") == null and bouton("Poursuivre") == null and bouton("Investir") == null
 		and "îlot qui clignote" in o._texte.text and o.MAISONS in o.groupe_carte(),
@@ -520,6 +526,9 @@ func essayer_ponts(lointain: int) -> void:
 		verifier(jeu.ruines_ponts[fid].visible and not jeu.reparations["r"][fid].visible
 			and jeu.icones_ponts.has(fid) and jeu.icones_ponts[fid].visible,
 			"Le calque Chantiers montre le pont %d coupé, un pictogramme au-dessus" % fid)
+		var sur_icone: Vector2 = jeu.pivot.camera.unproject_position(jeu.icones_ponts[fid].global_position)
+		verifier(jeu.selection.sonder(sur_icone) == ["r", fid],
+			"Un clic sur le pictogramme du pont %d désigne le pont" % fid)
 	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
 	var pont := -1
 	var prix := INF
@@ -547,28 +556,28 @@ func essayer_ponts(lointain: int) -> void:
 		"La fiche ouverte, le guide revient et dit quoi faire, sans bouton")
 	o._choisir_pont(pont)
 	verifier(not jeu.interface._camp_bloc.visible, "La fiche du pont ne conserve pas les informations du camp")
+	# 🏗️ L'en dur attend le fonds de reconstruction (118) : la fiche le dit, sans bouton.
 	verifier(not jeu.interface._pose.has("reparer") and jeu.interface._repare_provisoire.visible
-		and jeu.interface._repare_bouton.visible, "La fiche du pont propose le provisoire et le pont en dur, sans choisir")
+		and not jeu.interface._repare_bouton.visible and "fonds de reconstruction" in jeu.interface._repare_texte.text,
+		"La fiche du pont propose le provisoire seul, sans choisir ; l'en dur attend le fonds")
 	verifier(jeu.ville.duree_reparation_mois("r", pont, true) < jeu.ville.duree_reparation_mois("r", pont)
 		and jeu.ville.cout_reparation_ke("r", pont, true) < jeu.ville.cout_reparation_ke("r", pont),
 		"Le provisoire est plus court et moins cher que le pont en dur")
-	await cliquer(jeu.interface._repare_bouton)
-	verifier(jeu.interface._pose.get("reparer") is bool and not jeu.interface._recap_bouton.disabled,
-		"Le pont en dur est finançable dès le départ dans la fiche")
+	verifier(not jeu.ville.reparer("r", pont, 0.0, false), "Sans le fonds, le pont en dur est refusé")
 	await capture("11_fiche_pont")
 	await cliquer(jeu.interface._repare_provisoire)
-	verifier(str(jeu.interface._pose.get("reparer")) == "provisoire",
-		"Après le pont en dur, un clic sur le provisoire le remplace")
+	verifier(str(jeu.interface._pose.get("reparer")) == "provisoire" and not jeu.interface._recap_bouton.disabled,
+		"Le provisoire se choisit dans la fiche et se finance dès le départ")
 	var effets := PackedStringArray()
 	for e in jeu.interface._recap_effets.get_children():
-		effets.append((e.get_child(1) as Label).text)
+		effets.append(str(e.get_meta("texte", "")))
 	print("CONSÉQUENCES du provisoire : ", " · ".join(effets))
-	verifier(effets.size() >= 3 and "+1 pont" in effets,
-		"Les conséquences du provisoire se lisent en pictogrammes : prix, durée, un pont de plus")
+	verifier("+1 pont" in effets,
+		"Les conséquences du provisoire se lisent ligne à ligne : un pont de plus (prix et durée sur le bouton)")
 	await cliquer(jeu.interface._recap_annuler)
 	verifier(jeu.interface._pose.is_empty() and not jeu.interface._recap_bloc.visible,
 		"Le bouton d'annulation remet la fiche comme avant")
-	await cliquer(jeu.interface._repare_bouton)
+	await cliquer(jeu.interface._repare_provisoire)
 	var cadrage: Vector3 = jeu.pivot.position
 	var taille: float = jeu.pivot.taille
 	jeu._sur_sauvegarde()
@@ -596,7 +605,7 @@ func essayer_ponts(lointain: int) -> void:
 	await cliquer(jeu.interface._repare_provisoire)
 	await cliquer(jeu.interface._recap_bouton)
 	verifier(o.etape == "pont_travaux" and not jeu.ville.route_praticable(pont, debut)
-		and jeu.ville.pont_provisoire(pont), "L'engagement paie le pont provisoire sans ouvrir sa traversée")
+		and jeu.ville.pont_provisoire(pont, jeu.mois), "L'engagement paie le pont provisoire sans ouvrir sa traversée")
 	# 🔄 Rien ne désigne les accès (auteur, 2026-09-26) : ni le bandeau, ni la fiche.
 	var boue := str(jeu.interface.retours.journal.back())
 	actualiser(debut)
@@ -650,9 +659,10 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.etape == "pont_travaux" and o.acces_degage() and "dégagé" in str(jeu.interface.retours._recent)
 		and o.autorise("i", o.MAISONS) and "dégagé" in str(jeu.interface.retours.journal.back()),
 		"Le chemin déblayé pendant le chantier, les îlots sinistrés s'engagent")
-	verifier(o.visible and o.DIRE_LAVOIR in o._texte.text and not "Dangers" in o._texte.text
-		and not o.rail_ouvert("dangers") and o.groupe_carte() == [o.LAVOIR] and o.autorise("i", o.MAISONS),
-		"Le guide conseille le Lavoir, seul à clignoter, sans demander Dangers : %s" % o._texte.text)
+	# 🧹 Le Lavoir attend les rues déblayées (auteur, 2026-10-20) : contrôlé au pont rouvert.
+	verifier(o.visible and "déblayez toutes les rues" in o._texte.text and not "Dangers" in o._texte.text
+		and not o.rail_ouvert("dangers") and o.groupe_carte().is_empty() and o.autorise("i", o.MAISONS),
+		"Le chemin dégagé, le guide demande de déblayer toutes les rues, sans Dangers : %s" % o._texte.text)
 	await capture("12b_chemin_degage")
 	# 🧹 Toute rue boueuse se déblaie pendant le chantier, sur le chemin ou non (auteur, 2026-09-26).
 	var boueuse := -1
@@ -670,14 +680,15 @@ func essayer_ponts(lointain: int) -> void:
 	await cliquer(jeu.interface._repare_bouton)
 	verifier(jeu.interface._recap_bloc.visible and not jeu.interface._recap_bouton.disabled, "Le déblaiement choisi, « Mettre en place » paraît")
 	jeu.interface._vider_pose()
-	jeu._sur_choix("i", o.MAISONS)
+	# 🚨 Le Lavoir : la caisse d'urgence le paie, pas les Forgerons (118).
+	jeu._sur_choix("i", o.LAVOIR)
 	verifier(jeu.interface._repare_bloc.visible and jeu.interface._rebatir_boutons["tradition"].visible
 		and not jeu.interface._rebatir_boutons["pilotis"].visible,
 		"Pendant le chantier du pont, un îlot sinistré se rebâtit comme avant, sans pilotis")
-	jeu._sur_commande("i", o.MAISONS, {"reparer": "tradition"})
-	jeu._sur_choix("i", o.MAISONS)
+	jeu._sur_commande("i", o.LAVOIR, {"reparer": "tradition"})
+	jeu._sur_choix("i", o.LAVOIR)
 	# 🔄 L'îlot n'attend plus le pont (auteur, 2026-10-18 soir).
-	verifier(is_equal_approx(float(jeu.ville._repare["i:%d" % o.MAISONS]), jeu.mois)
+	verifier(is_equal_approx(float(jeu.ville._repare.get("i:%d" % o.LAVOIR, -1.0)), jeu.mois)
 		and "Chantier en cours" in jeu.interface._repare_etat.text,
 		"Engagé pendant le chantier du pont, l'îlot commence tout de suite")
 	verifier(o.levier_ferme("solaire") != "" and o.verrou() == "pont",
@@ -779,8 +790,15 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.pont_termine and o.mairie_vue and o.etape == "choix" and not o.annonce.visible,
 		"La mairie vue, le guide propose de rebâtir")
 	verifier(o.autorise("i", o.MAISONS), "Le pont rouvert, les îlots sinistrés se relèvent")
+	verifier("déblayez toutes les rues" in o._texte.text and o.groupe_carte().is_empty(),
+		"Le pont rouvert, le guide demande d'abord de déblayer : %s" % o._texte.text)
+	# Déblayé pendant le chantier du pont, comme le guide le demande : sinon la première rue livrée
+	# deviendrait le premier chantier (`_premiere_reparation`).
+	verifier(jeu.ville.deblayer_tout(jeu.ville.rues_boueuses(), o.pont_termine_mois - 0.01)["ok"],
+		"Tout déblayer s'engage")
+	o.actualiser(true)
 	# La première année dure jusqu'à l'étude (117) : le Lavoir reste conseillé.
-	verifier(o._actions.get_child_count() == 0 and o.DIRE_LAVOIR in o._texte.text,
+	verifier(o.groupe_carte() == [o.LAVOIR] and o._actions.get_child_count() == 0 and o.DIRE_LAVOIR in o._texte.text,
 		"Le pont rouvert, le guide conseille le Lavoir sans l'imposer : %s" % o._texte.text)
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()
@@ -792,7 +810,7 @@ func essayer_ponts(lointain: int) -> void:
 	jeu.ville.abriter(bons[0], 0.0)
 	jeu.ville.abriter(bons[1], 0.0)
 	actualiser(debut)
-	jeu._sur_commande("r", pont, {"reparer": true})
+	jeu._sur_commande("r", pont, {"reparer": "provisoire"})
 	verifier(o.etape == "pont_travaux" and not o.chantiers_vu,
 		"Un pont engagé directement est reconnu sans imposer le clic tutoriel")
 	# 🔒 Un camp isolé ne débloque rien : le guide le dit et redemande un terrain.

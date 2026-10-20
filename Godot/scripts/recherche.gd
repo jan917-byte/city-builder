@@ -95,6 +95,13 @@ const SUJETS := {
 		"points": 1, "apres": ["solaire"],
 		"effet": "cout_panneau_x", "valeur": 0.85, "domaine": "energie",
 	},
+	# 🌉 Idée de l'auteur (118, 2026-10-20) : un pont en dur engagé après lui tient à la prochaine crue.
+	"pont_resistant": {
+		"nom": "Pont résistant",
+		"quoi": "Rebâtir les ponts plus hauts, sur moins de piles : la prochaine crue passe dessous.",
+		"points": 2, "apres": [],
+		"effet": "pont_resistant", "valeur": 1.0, "domaine": "trafic",
+	},
 	"places": {
 		"nom": "Retirer des places",
 		"quoi": "Retirer le stationnement d'une rue : la place revient à autre chose.",
@@ -109,11 +116,12 @@ const SUJETS := {
 	},
 }
 ## 🎚️ Ce que l'institut montre avant le premier achat : les réponses à la crue (auteur, 2026-10-19).
-const D_ABORD := ["pilotis", "parc", "berge"]
+const D_ABORD := ["pilotis", "parc", "berge"]   # 🌉 le pont résistant suit, après un premier achat
 const PILOTIS := "pilotis"
+const PONT := "pont_resistant"
 const PARC := "parc"
 const ORDRE := ["pilotis", "densifier", "vert", "sedum", "parc", "berge", "pre", "permeable",
-	"arbres", "solaire", "rendement", "pose", "places", "rue"]
+	"arbres", "solaire", "rendement", "pose", "pont_resistant", "places", "rue"]
 ## 🎓 Les colonnes de l'institut (auteur, 2026-10-19 ; remplace les cinq du 2026-10-09). 🔴 Flaggable (90).
 const DOMAINES := [["bati", "Bâti"], ["public", "Espace public"], ["energie", "Énergie"],
 	["trafic", "Trafic"]]

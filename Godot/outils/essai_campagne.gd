@@ -69,8 +69,8 @@ func executer() -> void:
 	ui._maj_fiche()
 	var effets := ""
 	for e in ui._recap_effets.get_children():
-		effets += (e.get_child(1) as Label).text + " | "
-	verifier("k€/mois d'achats" in effets, "Le récapitulatif annonce l'économie d'achats : " + effets)
+		effets += str(e.get_meta("texte", "")) + " | "
+	verifier("achats de nourriture" in effets, "Le récapitulatif annonce l'économie d'achats : " + effets)
 	await capture("campagne_fiche_maraichage")
 	var caisse := v.caisse_ke(0.0)
 	await cliquer(ui._recap_bouton)

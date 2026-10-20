@@ -326,7 +326,7 @@ func _maj_chantiers(en_cours: Array) -> void:
 		var couche := str(c["couche"])
 		var fid := int(c["fid"])
 		var genre := str(c["genre"])
-		(l["quoi"] as Label).text = "Pont provisoire" if genre == "pont" and ui.ville.pont_provisoire(fid) else ui.CHANTIER_MOTS.get(genre, genre.capitalize())
+		(l["quoi"] as Label).text = "Pont provisoire" if genre == "pont" and ui.ville.pont_provisoire(fid, ui._mois) else ui.CHANTIER_MOTS.get(genre, genre.capitalize())
 		var lieu: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
 		(l["nom"] as Label).text = "%d rues sous la boue" % int(c["rues"]) if c.has("rues") else lieu
 		(l["reste"] as Label).text = "encore %s" % ui._duree(float(c["reste_mois"]))
@@ -395,11 +395,11 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 		# 🧹 La consigne de clic est voulue (auteur, 2026-10-09), malgré « montrer, pas expliquer ».
 		annoncer("La boue bloque le chemin jusqu'au pont.\nCliquez sur les rues boueuses pour les déblayer.", mois,
 			func() -> bool: return ui.ouverture != null and ui.ouverture.boue_a_engager())
-	# 🧹 À la troisième rue faite à la main, Trafic propose le reste (auteur, 2026-10-05).
+	# 🧹 À la troisième rue faite à la main, Chantiers propose le reste (auteur, 2026-10-05 ; Trafic avant le 2026-10-17).
 	if couche == "r" and "reparation" in r["faits"] and not fid in ui.ville.ponts_coupes() \
 			and ui.ville.rues_deblayees_main() == ui.Ville.DEBLAIEMENT_SEUIL and ui.deblaiement_propose():
 		annoncer("Encore %d rues sous la boue.
-Cliquez sur Trafic pour tout déblayer." % ui.rues_a_deblayer().size(), mois, ui.deblaiement_propose)
+Cliquez sur Chantiers pour tout déblayer." % ui.rues_a_deblayer().size(), mois, ui.deblaiement_propose)
 	if duree <= 0.0:
 		for genre in r["faits"]:
 			livraison({"couche": couche, "fid": fid, "genre": genre}, mois)
@@ -421,7 +421,7 @@ func livraison(c: Dictionary, mois: float) -> void:
 			ui.ville.camp_taille(fid, mois), accueillis]
 		ui.bulles.sur_lieu(couche, fid, "+%d" % accueillis, "personnes", ui.FAIT_TEXTE)
 	elif couche == "r" and fid in ui.ville.ponts_coupes():
-		resultat = "Pont provisoire posé." if ui.ville.pont_provisoire(fid) else "Pont rebâti."
+		resultat = "Pont provisoire posé." if ui.ville.pont_provisoire(fid, mois) else "Pont rebâti."
 		if not ui.trafic.pont_fonctionnel(fid, mois):
 			resultat += " Ses accès restent coupés."
 	elif c["genre"] == "concours":

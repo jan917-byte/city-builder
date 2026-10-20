@@ -147,5 +147,5 @@ func _apres_etude(t: float, concours := false) -> void:
 func _effets(ui) -> String:
 	var out := []
 	for h in ui._recap_effets.get_children():
-		out.append((h.get_child(1) as Label).text)
+		out.append(str(h.get_meta("texte", "")))
 	return " · ".join(out)

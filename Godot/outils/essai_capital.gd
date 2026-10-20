@@ -31,6 +31,8 @@ func _initialize() -> void:
 	# Le pont rouvert rapporte à sa livraison.
 	v.reinitialiser()
 	var pont: int = v.ponts_coupes()[0]
+	# 🏗️ L'en dur attend le fonds de reconstruction (118).
+	v.demander_fonds(0.0)
 	verifier(v.reparer("r", pont, 0.0), "Pont %d engagé" % pont)
 	verifier(is_equal_approx(v.capital(Ville.PONT_MOIS), Ville.CAPITAL_DEPART + Ville.CAPITAL_PONT_ROUVERT),
 		"Pont %d livré : +%.0f" % [pont, Ville.CAPITAL_PONT_ROUVERT])

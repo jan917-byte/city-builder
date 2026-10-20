@@ -112,8 +112,10 @@ func _batir_pages() -> void:
 		# 🔴 Mots proposés par moi, flaggables (90), à réécrire par l'auteur.
 		{
 			"titre": "Le budget",
-			"texte": "Vous recevez %s millions d'euros pour rebâtir le faubourg."
-				% String.num(Ville.CAISSE_DEPART_KE / 1000.0, 1).replace(".", ",")
+			# 🏗️ Deux budgets (118) : l'urgence d'abord, la reconstruction à la mairie.
+			"texte": "Un budget d'urgence de %s d'euros vous a été attribué : abriter les sinistrés, rouvrir un pont, déblayer les rues."
+				% _millions(Ville.CAISSE_DEPART_KE)
+				+ " Quand les deux rives seront reconnectées, la mairie pourra débloquer un budget de reconstruction."
 				+ " Un nouveau budget sera voté chaque janvier."
 				+ " L'Ilse reviendra : ce qui sera rebâti au bord de l'eau, elle pourra le reprendre.",
 			"repere": "faubourg", "lacet": 60.0, "hauteur": 30.0,
@@ -125,6 +127,12 @@ func _batir_pages() -> void:
 			"repere": "", "lacet": 35.0, "hauteur": 42.0,
 		},
 	]
+
+
+## « 1,5 million », « 2 millions ».
+static func _millions(ke: float) -> String:
+	var m := ke / 1000.0
+	return "%s million%s" % [String.num(m, 1).replace(".", ","), "s" if m >= 2.0 else ""]
 
 
 ## Les îlots bâtis, champs exclus.

@@ -194,6 +194,12 @@ func executer() -> void:
 	# Le guide se cache sous la fenêtre ; en jeu, `_process` le rend à l'image suivante.
 	o.actualiser()
 
+	# 🧹 Les rues d'abord (auteur, 2026-10-20), déblayées pendant le chantier du pont.
+	verifier(o.etape == "choix" and "déblayez toutes les rues" in o._texte.text and o.groupe_carte().is_empty(),
+		"Des rues sous la boue : le guide demande de les déblayer avant de rebâtir")
+	jeu.ville.deblayer_tout(jeu.ville.rues_boueuses(), o.pont_termine_mois - 0.01)
+	jeu._rafraichir(true)
+	o.actualiser(true)
 	# 🏠 REBÂTIR D'ABORD : les îlots sinistrés clignotent, aucune berge proposée.
 	verifier(o.etape == "choix" and o.DIRE_ILOT in o._texte.text and o.visible
 		and o._actions.get_child_count() == 0,

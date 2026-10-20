@@ -43,17 +43,19 @@ func _initialize() -> void:
 			verifier(v.valider_partie(sauvegarde), "Sauvegarde valide")
 			v.importer_partie(sauvegarde)
 			verifier(v.sans_toit(0.5) == 0.0, "Reprise : tous les occupants conservés")
-	# Toute la remise en circulation doit tenir sans dotation ni crédit d'essai.
+	# 🚨 Toute l'urgence (118) tient dans la caisse de départ, sans dotation ni crédit d'essai.
 	for pont in v.ponts_coupes():
 		v.reinitialiser()
 		verifier(v.abriter(champs[0], 0.0) and v.abriter(champs[1], 0.25),
 			"Pont %d : relogement complet engagé" % pont)
-		verifier(v.reparer("r", pont, 0.0), "Pont %d : réparation financée au départ" % pont)
+		verifier(v.reparer("r", pont, 0.0, true), "Pont %d : provisoire financé au départ" % pont)
+		verifier(v.equiper_camp("amelioration", 0.0), "Pont %d : camp amélioré" % pont)
+		verifier(v.reparer("i", 62, 0.0), "Pont %d : Lavoir financé" % pont)
 		for rue in v.routes:
 			if rue not in v.ponts_coupes() and v.cout_reparation_ke("r", rue) > 0.0:
 				verifier(v.reparer("r", rue, 0.0), "Pont %d : déblaiement de la rue %d financé au départ" % [pont, rue])
 		verifier(v.caisse_ke(0.0) >= 0.0 and v.sans_toit(0.5) == 0.0,
-			"Pont %d : tout le relogement et toutes les routes financés, reste %.1f k€" % [pont, v.caisse_ke(0.0)])
+			"Pont %d : relogement, camp, Lavoir et routes financés, reste %.1f k€" % [pont, v.caisse_ke(0.0)])
 	# Un besoin impair ne doit ni disparaître par arrondi, ni créer un habitant.
 	v.reinitialiser()
 	for fid in v.ilots:

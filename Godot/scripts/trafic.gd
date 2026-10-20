@@ -482,7 +482,7 @@ func avancer(mois: float) -> void:
 	# ajoutent les rues fermées, les usagers doux non.
 	var doux := _impraticables(mois)
 	var indisponibles := _indisponibles(mois)
-	var signature := _signature(indisponibles)
+	var signature := _cle_reseau(indisponibles, mois)
 	if signature != _indisponibles_connues:
 		_reaffecter(mois, 0.0, indisponibles)
 	if not _actif:
@@ -1002,7 +1002,7 @@ func exporter_fermetures() -> Dictionary:
 func importer_fermetures(fermetures: Dictionary, mois: float) -> void:
 	_fermees = fermetures.duplicate()
 	# Les rampes de report sont déjà dans la ville sauvée : ne pas les rejouer.
-	_indisponibles_connues = _signature(_indisponibles(mois))
+	_indisponibles_connues = _cle_reseau(_indisponibles(mois), mois)
 	_signature_circuit = "?"
 	_dernier_etat = -1.0
 	_derniere_charge = -1.0
@@ -1018,12 +1018,17 @@ func report_en_cours(fid: int, mois: float) -> bool:
 func _reaffecter(mois: float, duree: float, indisponibles: Dictionary, cause := -1) -> void:
 	var brut: Array = _affectation(indisponibles)
 	for f in ville.routes:
-		var cible := _charge(brut, indisponibles, f, ville.pont_provisoire(f))
+		var cible := _charge(brut, indisponibles, f, ville.pont_provisoire(f, mois))
 		ville.ajouter_rampe("r", f, "charge",
 			cible - ville.valeur("r", f, "charge", mois), mois, 0.0, duree, cause)
-	_indisponibles_connues = _signature(indisponibles)
+	_indisponibles_connues = _cle_reseau(indisponibles, mois)
 	_derniere_charge = -1.0
 	_dernier_etat = -1.0
+
+
+## 🌉 Un pont en dur livré à la place d'un provisoire (118) rouvre ses deux voies : on réaffecte.
+func _cle_reseau(indisponibles: Dictionary, mois: float) -> String:
+	return _signature(indisponibles) + "|" + ville.signature_consolides(mois)
 
 
 ## 🌉 Un pont provisoire porte le même flux sur une voie alternée : il sature
@@ -1158,7 +1163,7 @@ func _raccorder_bouts_ponts(couloirs: Dictionary) -> void:
 ## Un essai de réseau sans rampe, dépense ni réparation appliquée à la partie.
 func prevoir_pont(fid: int, mois: float, provisoire := false) -> Dictionary:
 	if ville.est_repare("r", fid):
-		provisoire = ville.pont_provisoire(fid)
+		provisoire = ville.pont_provisoire(fid, mois)
 	var avant := _indisponibles(mois)
 	var cle := "%s/%d/%s" % [_signature(avant), fid, provisoire]
 	if _comparaisons_ponts.has(cle):

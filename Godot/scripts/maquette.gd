@@ -266,6 +266,7 @@ func _ready() -> void:
 	selection = Selection.new()
 	selection.name = "Selection"
 	selection.camera = pivot.camera
+	selection.icones["r"] = icones_ponts
 	selection.survole.connect(_sur_survol)
 	selection.choisi.connect(_sur_choix)
 	add_child(selection)
@@ -1996,7 +1997,7 @@ func _montrer_reparations() -> void:
 			# peignait le tablier manquant ; il montre la coupure et son pictogramme.
 			if couche == "r" and ponts_provisoires.has(fid):
 				var prov: MeshInstance3D = ponts_provisoires[fid]
-				var p: bool = fini and ville.pont_provisoire(fid) \
+				var p: bool = fini and ville.pont_provisoire(fid, mois) \
 					and ville.reparation_finie(couche, fid, mois)
 				fini = fini and not p
 				if p != prov.visible:
@@ -3589,6 +3590,8 @@ func voir_concept(id: String) -> void:
 	# 🚪 La berge seule tant que les autres leviers attendent (une livraison, une porte).
 	if id == "eponge" and ouverture != null and ouverture.levier_ferme("permeable") != "":
 		lieux = lieux.filter(func(l: Array) -> bool: return l[0] == "b")
+		voir = ""
+	if ouverture != null and not ouverture.rail_visible(voir):
 		voir = ""
 	_sur_theme(voir)
 	var boite := AABB()

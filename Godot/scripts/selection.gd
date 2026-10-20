@@ -13,6 +13,9 @@ var survol_couche := ""
 var survol_fid := -1
 var sel_couche := ""
 var sel_fid := -1
+## Les pictogrammes posés au-dessus d'un objet, couche -> {fid: Sprite3D} : vus
+## par-dessus les toits (`no_depth_test`), ils passent donc avant le rayon.
+var icones := {}
 
 
 func _process(_delta: float) -> void:
@@ -33,6 +36,9 @@ func choisir(pos: Vector2) -> void:
 
 
 func sonder(pos: Vector2) -> Array:
+	var icone := _sonder_icones(pos)
+	if not icone.is_empty():
+		return icone
 	var espace := camera.get_world_3d().direct_space_state
 	var p := PhysicsRayQueryParameters3D.create(
 		camera.project_ray_origin(pos),
@@ -47,3 +53,19 @@ func sonder(pos: Vector2) -> Array:
 	if n == null:
 		return ["", -1]
 	return [str(n.get_meta("couche")), int(n.get_meta("fid"))]
+
+
+## Le disque du pictogramme, mesuré à l'écran : rayon 15 sur 32 (`Pastilles.pictogramme`).
+func _sonder_icones(pos: Vector2) -> Array:
+	for couche in icones:
+		for fid in icones[couche]:
+			var s: Sprite3D = icones[couche][fid]
+			if s == null or not s.is_visible_in_tree() or s.texture == null \
+					or camera.is_position_behind(s.global_position):
+				continue
+			var centre := camera.unproject_position(s.global_position)
+			var bord := camera.unproject_position(s.global_position
+				+ camera.global_basis.x * s.pixel_size * s.texture.get_width() * 15.0 / 32.0)
+			if pos.distance_to(centre) <= centre.distance_to(bord):
+				return [couche, int(fid)]
+	return []
