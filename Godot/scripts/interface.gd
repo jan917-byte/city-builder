@@ -539,8 +539,6 @@ var _campus_bloc: HBoxContainer
 var _campus_intro: Label
 var _recherche_bloc: HBoxContainer
 var _univ_vide: Label
-## ⏸️ La vitesse d'avant la fenêtre, rendue à sa fermeture ; -1 fenêtre fermée.
-var _vitesse_avant_campus := -1.0
 ## Le panneau du calque, caché sous la fenêtre et rendu à sa fermeture.
 var _detail_avant_campus := false
 var _vitesse_courante := 0.0
@@ -2549,9 +2547,9 @@ func _panneau_chantiers() -> void:
 	_chantiers_panneau.add_child(v)
 	_entetes["chantiers"] = _entete(v)
 	v.add_child(HSeparator.new())
-	_legende(v, CASSE, "Cassé, rien d'engagé")
+	_legende(v, CASSE, "Détruit / Endommagé")
 	_legende(v, EN_TRAVAUX, "Chantier en cours")
-	_legende(v, FAIT, "Fait, la ville est réparée là")
+	_legende(v, FAIT, "Chantier terminé")
 	v.add_child(HSeparator.new())
 	# 🌉 Les ponts coupés, leur nom y mène : ils quittent les premiers pas (auteur, 2026-10-17).
 	_ponts_bloc = VBoxContainer.new()
@@ -3738,7 +3736,7 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	if _page_ouverte != "" and ouverture != null:
 		ouverture.page_lue(_page_ouverte)
 	_biblio_cle = ""
-	_pause_campus()
+	_ralentir_campus()
 	# Le panneau du calque passait sous le verre et se lisait à travers (sur Dangers, fond blanc).
 	if _detail_ouvert and not _campus_panneau.visible:
 		_detail_avant_campus = true
@@ -3769,22 +3767,11 @@ func ouvrir_lieu_clique(couche: String, fid: int) -> void:
 		ouvrir_lieu(cle)
 
 
-## ⏸️ La fenêtre ouverte, le temps s'arrête (auteur, 2026-10-09).
-func _pause_campus() -> void:
-	if _vitesse_avant_campus >= 0.0:
-		return
-	_vitesse_avant_campus = _vitesse_courante
-	if _vitesse_courante > 0.0:
-		vitesse_demandee.emit(0.0)
-		_vitesse_courante = 0.0
-
-
-## ▶️ Fermée, il repart à sa vitesse d'avant, sauf si le joueur l'a relancé entre-temps.
-func _reprendre_campus() -> void:
-	if _vitesse_avant_campus > 0.0 and _vitesse_courante == 0.0:
-		vitesse_demandee.emit(_vitesse_avant_campus)
-		_vitesse_courante = _vitesse_avant_campus
-	_vitesse_avant_campus = -1.0
+## ⏩ La fenêtre ouverte ramène ×2 et ×4 à ×1 et n'arrête plus le temps (auteur, 2026-10-20).
+func _ralentir_campus() -> void:
+	if _vitesse_courante > 1.0:
+		vitesse_demandee.emit(1.0)
+		_vitesse_courante = 1.0
 
 
 # ==========================================================================
@@ -3793,12 +3780,12 @@ func _reprendre_campus() -> void:
 # Ouverts sans concours ; le concours, facultatif et pour toute la zone, baisse
 # le prix des projets neufs. D'un îlot à l'autre, seuls les chiffres changent.
 
-## 🔴 Textes flaggables (90).
+## Textes de l'auteur (2026-10-20).
 const PROJETS_QUOI := {
-	"tradition": "Les maisons d'avant, au même endroit.",
+	"tradition": "Garde la forme historique des bâtiments.",
 	"moderne": "Plus de logements, isolés, sous un toit plat.",
-	"pilotis": "Le rez sur poteaux : l'eau passe dessous.",
-	"parc": "Personne ne revient : une prairie qui boit la crue.",
+	"pilotis": "Logements protégés d'une crue.",
+	"parc": "Protection en cas de crue, mais sans logements.",
 }
 
 
@@ -4009,7 +3996,6 @@ func _fermer_lieu() -> void:
 	_lieu_ouvert = ""
 	if ouvert:
 		_campus_panneau.visible = false
-		_reprendre_campus()
 		if _detail_avant_campus:
 			_detail_avant_campus = false
 			_detail_ouvert = true
@@ -6640,16 +6626,15 @@ func _verbe_reparation(couche: String, o: Dictionary) -> String:
 		return "Rebâtir en dur"
 	return "Déblayer la rue"
 
-## Ce que la crue a pris à CET objet, en une phrase. Sans elle, le prix n'a
-## pas de contrepartie et le joueur choisit à l'aveugle.
+## Ce que la crue a pris à CET objet, en une phrase : le pont seul ; la rue n'en
+## a plus (auteur, 2026-10-20).
 func _degat_en_clair(couche: String, o: Dictionary) -> String:
 	if couche == "i":
 		# 🔄 Rien sous les tuiles de l'îlot (auteur, 2026-10-08) : elles disent tout.
 		return ""
 	if str(o.get("etat_crue", "")) == "coupe":
 		return "Le tablier est parti ; la rive droite n'a plus d'accès routier."
-	return "La rue a gardé %s m de limon." % _nb(
-		float(o.get("hauteur_eau", 0.0)), 1)
+	return ""
 
 
 ## Ce que la crue coûte encore à la ville. Trois nombres, et ils baissent quand

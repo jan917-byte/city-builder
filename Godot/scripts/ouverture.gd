@@ -17,14 +17,13 @@ const TOIT_PLAT := 31
 const PRE := 1065
 const PARKING := 19   # la place-parking, le sol qu'on rend perméable (101)
 # 🌉 Le choix du pont, sans le donner (auteur, 2026-10-18). 🔴 Flaggable (90).
-const PONTS_DIFFERENTS := "Les ponts ne coûtent pas tous le même prix, ni le même temps."
 ## 🧭 LE GUIDE DIT OÙ CLIQUER, IL NE CLIQUE PLUS (auteur, 2026-10-17) : aucun bouton
 ## d'action dans les premiers pas, seuls restent ceux qui font avancer le guide.
 ## Revient sur « plus de où cliquer » du 2026-10-08, pour ce panneau seul. 🔴 Flaggable (90).
 ## 🎯 Le but est passé aux objectifs, en bas à gauche (auteur, 2026-10-18) : plus de titre
 ## qui le répète, seulement où cliquer ; un guide qui n'a rien à dire se cache.
 ## 🌉 Dire tout de suite qu'il faudra cliquer un pont, et pourquoi (auteur, 2026-10-19). 🔴 Flaggable (90).
-const DIRE_CHANTIERS := "%d ponts sont coupés : les deux rives ne se rejoignent plus. Cliquez sur Chantiers, dans la colonne de gauche, puis sur un pont coupé."
+const DIRE_CHANTIERS := "%d ponts sont coupés : les deux rives sont séparées. Cliquez sur Chantiers, dans la colonne de gauche, puis sur les ponts coupés pour comparer le coût et la durée d'une construction."
 const DIRE_PONT := "Cliquez sur un pont coupé, dans Chantiers ou sur la carte, puis choisissez comment le rebâtir dans sa fiche."
 const DIRE_ILOT := "Cliquez sur un îlot qui clignote pour le rebâtir."
 ## 🧹 Toutes les rues engagées avant de dire « rebâtir » (auteur, 2026-10-20). 🔴 Flaggable (90).
@@ -32,7 +31,7 @@ const DIRE_DEBLAYER := "Avant de rebâtir, déblayez toutes les rues : %d sont e
 const DIRE_TOUT_DEBLAYER := "Ou cliquez sur Chantiers, dans la colonne de gauche, puis sur « Tout déblayer »."
 ## 🧹 Le Lavoir d'abord, conseillé sans être imposé (auteur, 2026-10-19) : maisons debout, chantier court. 🔴 Flaggable (90).
 const LAVOIR := 62
-const DIRE_LAVOIR := "Commencez par les Maisons du Lavoir, qui clignotent : leurs maisons tiennent debout, il suffit de les nettoyer. C'est le chantier le plus court."
+const DIRE_LAVOIR := "Commencez par les Maisons du Lavoir : leurs maisons tiennent debout, il suffit de les nettoyer. C'est le chantier le plus court."
 ## 🎓 Ce qu'est l'université, sans le chemin (auteur, 2026-10-19 : « pas besoin de mettre des trucs en jaune »). 🔴 Flaggable (90).
 const DIRE_UNIVERSITE := "Elle a trois lieux. L'université publie ses études sur Wehrau, la bibliothèque raconte comment d'autres villes s'y sont prises, l'institut met au point de nouvelles façons de bâtir. Chaque objectif atteint, en bas à gauche, rapporte un point à dépenser à la mairie ou à l'institut."
 ## 🏛️ LA MAIRIE D'ABORD (117, auteur 2026-10-19) : au pont rouvert, elle seule s'ouvre ; le concours
@@ -44,7 +43,7 @@ const DIRE_FONDS := "Le budget d'urgence ne rebâtira pas tout : demandez le fon
 const TITRE_REBATIR := "Reconstruction"
 ## ⏩ Rues engagées et campement amélioré, le pont pas encore rouvert : on attend, et c'est le
 ## seul endroit qui dit ×4 (auteur, 2026-10-20). 🔴 Flaggable (90).
-const DIRE_ATTENTE := "Quand le pont rouvrira, la mairie pourra débloquer un nouveau budget. D'ici là, cliquez sur ×4 pour accélérer le temps."
+const DIRE_ATTENTE := "Quand le pont rouvrira, la mairie pourra débloquer un nouveau budget. Vous pouvez cliquer sur ×2 ou ×4 pour accélérer le temps."
 
 var jeu
 var suite := false
@@ -225,7 +224,9 @@ func _remplir_carte() -> void:
 			annonce_second.text = ""
 		"camp":
 			_annonce_titre.text = "Les habitants du camp sont mécontents"
-			_annonce_texte.text = "Ils ont un toit, pas de quoi vivre."
+			# Mots de l'auteur (2026-10-20).
+			_annonce_texte.text = ("Ils ont un toit, pas de quoi vivre. Une amélioration du campement"
+				+ " leur donnerait accès à des sanitaires et à une cantine commune.")
 			annonce_principal.text = "Voir le campement"
 			annonce_second.text = "Plus tard"
 		"concours":
@@ -584,7 +585,7 @@ func publier_etude() -> void:
 	etude_parue = true
 	etude_mois = jeu.mois
 	carte_etude = 1
-	jeu._sur_vitesse(0.0)
+	jeu.ralentir()
 	jeu.interface.retours.consigner("Université : une étude annonce une crue plus forte d'ici 6 à 8 ans.", jeu.mois)
 	actualiser(true)
 
@@ -687,7 +688,7 @@ func annoncer_concours() -> void:
 	if carte_concours != 0 or jeu.ville.concours_lance():
 		return
 	carte_concours = 1
-	jeu._sur_vitesse(0.0)
+	jeu.ralentir()
 	actualiser(true)
 
 
@@ -939,7 +940,7 @@ func actualiser(force := false) -> void:
 	if plainte == 0 and etape != "pont_livre" \
 			and jeu.ville.usure_camp_mois(jeu.mois) > 0.0:
 		plainte = 1
-		jeu._sur_vitesse(0.0)
+		jeu.ralentir()
 		jeu.interface._detail_ouvert = false
 		jeu.interface._placer_detail()
 	carte = "etude" if carte_etude == 1 else ("concours" if carte_concours == 1
@@ -988,7 +989,7 @@ func actualiser(force := false) -> void:
 			_titre.text = ""
 			# 🌉 Les ponts se trouvent mal sur la carte (auteur, 2026-09-22) : leur liste est dans
 			# Chantiers, et leur pictogramme clignote.
-			_texte.text = DIRE_PONT + "\n\n" + PONTS_DIFFERENTS
+			_texte.text = DIRE_PONT
 		"pont_acces":
 			# 🔄 Aucun nom de rue ni bouton (auteur, 2026-09-26) : la boue se voit
 			# sur la carte, et seule la fiche d'une route qui barre le pont répond.
@@ -1023,7 +1024,7 @@ func actualiser(force := false) -> void:
 			# 🔴 Texte du tableau de l'auteur (2026-10-07), flaggable (90).
 			_texte.text = "%d ponts coupés : les sinistrés restent sur leur rive. Cliquez sur un champ de cette rive pour y poser un camp." % coupes
 			if jeu.ville.places_commandees(jeu.mois) > 0:
-				_texte.text = "Il manque encore %d places : cliquez sur un autre champ." % \
+				_texte.text = "Il manque encore %d places : trouvez un autre champ disponible." % \
 					int(jeu.ville.besoin_non_couvert(jeu.mois))
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):

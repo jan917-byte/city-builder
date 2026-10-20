@@ -113,8 +113,7 @@ func executer() -> void:
 	var o = jeu.ouverture
 	jeu._sur_mode(false)
 
-	# 📖 LE RÉCIT : quatre pages, une flèche, et les pastilles qui
-	# s'allument à la page des dégâts.
+	# 📖 LE RÉCIT : cinq pages, une flèche, sans pastille.
 	jeu.recit.commencer()
 	verifier(jeu.recit.en_cours() and not o.visible,
 		"Le récit s'ouvre seul, sans le guide des premiers pas")
@@ -129,14 +128,16 @@ func executer() -> void:
 	verifier(jeu.vitesse == 0.0, "Le temps ne court pas pendant le récit")
 	await capture("00_recit_1_ville")
 	await cliquer(jeu.recit._fleche)
+	verifier(jeu.recit.page == 1 and jeu.pastilles == null, "La page de la crue conserve une carte sans pastille")
 	await capture("00_recit_2_crue")
 	await cliquer(jeu.recit._fleche)
-	verifier(jeu.recit.page == 2 and jeu.pastilles == null, "La page des dégâts conserve une carte sans pastille")
-	await capture("00_recit_3_degats")
+	verifier(jeu.recit.page == 2 and "million" in jeu.recit._texte.text,
+		"La troisième page dit le budget d'urgence")
+	await capture("00_recit_3_budget")
 	await cliquer(jeu.recit._fleche)
-	verifier(jeu.recit.page == 3 and "janvier" in jeu.recit._texte.text,
-		"L'avant-dernière page dit le budget et son retour en janvier")
-	await capture("00_recit_4_budget")
+	verifier(jeu.recit.page == 3 and not jeu.recit._titre.visible and "reviendra" in jeu.recit._texte.text,
+		"La quatrième page, sans titre, annonce la prochaine crue")
+	await capture("00_recit_4_menace")
 	await cliquer(jeu.recit._fleche)
 	verifier(jeu.recit.page == 4 and jeu.recit.en_cours(),
 		"La dernière page demande un endroit où installer les sinistrés")

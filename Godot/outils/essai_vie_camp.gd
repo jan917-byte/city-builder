@@ -59,10 +59,10 @@ func executer() -> void:
 		"Ni plainte ni baisse pendant le déblaiement")
 	o.examiner("i", champs[0])
 	verifier(not ui._demandes_bloc.is_visible_in_tree(), "Le bouton d'amélioration attend la plainte")
-	jeu._sur_vitesse(1.0)
+	jeu._sur_vitesse(4.0)
 	actualiser(debut + 0.05)
-	verifier(o.annonce.visible and o.carte == "camp" and jeu.vitesse == 0.0 and o.etape == "pont_travaux",
-		"Les habitants se plaignent pendant le chantier du pont, au centre, le temps en pause")
+	verifier(o.annonce.visible and o.carte == "camp" and jeu.vitesse == 1.0 and o.etape == "pont_travaux",
+		"Les habitants se plaignent pendant le chantier du pont, au centre, le ×4 revenu à ×1")
 	verifier(absf(v.usure_camp_mois(jeu.mois) - 2.6) < 0.05, "260 au camp usent %.2f par mois" % v.usure_camp_mois(jeu.mois))
 	verifier("/mois" in ui._barre_valeurs["capital"].text, "Le compteur dit la baisse : %s" % ui._barre_valeurs["capital"].text)
 	await capture("camp_02_plainte")
@@ -87,7 +87,7 @@ func executer() -> void:
 	await capture("camp_03_ameliorer")
 	await cliquer(ui._recap_bouton)
 	verifier(v.demande_engagee("amelioration"), "L'amélioration se commande depuis la fiche du camp")
-	verifier(jeu.vitesse == 1.0, "Améliorer le camp relance le temps à ×1 (vitesse %s)" % jeu.vitesse)
+	verifier(jeu.vitesse == 1.0, "Après l'amélioration, le temps court toujours à ×1 (vitesse %s)" % jeu.vitesse)
 	actualiser(jeu.mois + 0.5 * float(v.DEMANDES["amelioration"]["mois"]))
 	ui._maj_fiche()
 	var lignes: Array = v.chantiers(jeu.mois)["en_cours"].filter(func(c): return c["genre"] == "amelioration")

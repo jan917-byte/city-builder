@@ -393,7 +393,7 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
 		# 🔴 Textes de prototype, flaggables (90) : la Ville s'entoure en même temps (auteur, 2026-10-06).
 		# 🧹 La consigne de clic est voulue (auteur, 2026-10-09), malgré « montrer, pas expliquer ».
-		annoncer("La boue bloque le chemin jusqu'au pont.\nCliquez sur les rues boueuses pour les déblayer.", mois,
+		annoncer("La boue bloque encore le chemin jusqu'au pont.\nCliquez sur les rues boueuses pour les déblayer.", mois,
 			func() -> bool: return ui.ouverture != null and ui.ouverture.boue_a_engager())
 	# 🧹 À la troisième rue faite à la main, Chantiers propose le reste (auteur, 2026-10-05 ; Trafic avant le 2026-10-17).
 	if couche == "r" and "reparation" in r["faits"] and not fid in ui.ville.ponts_coupes() \

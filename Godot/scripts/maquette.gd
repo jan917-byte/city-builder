@@ -3299,9 +3299,6 @@ func _sur_commande(couche: String, fid: int, reglages: Dictionary) -> void:
 		r["cout_ke"], ville.duree_commande_mois(couche, fid, reglages, mois),
 		ville.caisse_ke(mois)])
 	interface.confirmer_solaire(float(r["cout_ke"]))
-	# 🚿 La plainte a mis en pause ; améliorer le camp relance à ×1 (auteur, 2026-10-02).
-	if vitesse == 0.0 and reglages.keys().any(func(k) -> bool: return str(k).begins_with("demande_")):
-		_sur_vitesse(1.0)
 	_dernier_peint = -1.0
 	_rafraichir(true)
 	if ouverture != null:
@@ -3413,6 +3410,12 @@ func _sur_vitesse(nouvelle: float) -> void:
 		t.regler_vitesse(nouvelle)
 	if nouvelle > 0.0:
 		_derniere_vitesse = nouvelle
+
+
+## ⏩ Une carte ou une fenêtre ramène ×2 et ×4 à ×1, sans jamais mettre en pause (auteur, 2026-10-20).
+func ralentir() -> void:
+	if vitesse > 1.0:
+		_sur_vitesse(1.0)
 
 
 func _creer_flocons() -> void:

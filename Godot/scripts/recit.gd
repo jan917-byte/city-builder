@@ -86,7 +86,7 @@ func batir(maquette) -> void:
 ## dernière, qui reprend le cadrage de la première décision.
 func _batir_pages() -> void:
 	var d: Dictionary = jeu.ville.degats(0.0)
-	# ✍️ Textes de l'auteur (2026-10-07).
+	# ✍️ Textes de l'auteur (2026-10-07 · 2026-10-20).
 	_pages = [
 		{
 			"titre": "Wehrau",
@@ -98,27 +98,28 @@ func _batir_pages() -> void:
 			"titre": "La crue",
 			"texte": "L'Ilse est sortie de son lit et a dévasté une partie de la"
 				+ " ville. Les trois ponts reliant le faubourg au"
-				+ " centre-ville ont été arrachés par le courant.",
+				+ " centre-ville ont été arrachés par le courant."
+				+ " %d personnes ont perdu leur logement du jour au lendemain"
+				% int(d["logements_perdus"])
+				+ " et il n'y a plus aucun moyen de traverser l'Ilse.",
 			"repere": "faubourg", "lacet": 22.0, "hauteur": 38.0,
 		},
 		{
-			"titre": "Les dégâts",
-			"texte": "%d personnes ont perdu leur logement du jour au lendemain"
-				% int(d["logements_perdus"])
-				+ " et il n'y a plus aucun moyen de traverser l'Ilse.",
-			"repere": "pont_casse", "taille": 340.0, "lacet": 40.0, "hauteur": 26.0,
-		},
-		# 🗓️ D'où vient l'argent, quand il revient, et que l'eau reviendra (auteur, 2026-10-18).
-		# 🔴 Mots proposés par moi, flaggables (90), à réécrire par l'auteur.
-		{
 			"titre": "Le budget",
 			# 🏗️ Deux budgets (118) : l'urgence d'abord, la reconstruction à la mairie.
-			"texte": "Un budget d'urgence de %s d'euros vous a été attribué : abriter les sinistrés, rouvrir un pont, déblayer les rues."
+			"texte": "Un budget d'urgence de %s d'euros vous a été attribué."
 				% _millions(Ville.CAISSE_DEPART_KE)
-				+ " Quand les deux rives seront reconnectées, la mairie pourra débloquer un budget de reconstruction."
-				+ " Un nouveau budget sera voté chaque janvier."
-				+ " L'Ilse reviendra : ce qui sera rebâti au bord de l'eau, elle pourra le reprendre.",
+				+ " Abritez les sinistrés et reconstruisez au moins un pont."
+				+ " Quand les deux rives seront reconnectées, la mairie pourra débloquer"
+				+ " un budget supplémentaire pour la reconstruction des logements détruits.",
 			"repere": "faubourg", "lacet": 60.0, "hauteur": 30.0,
+		},
+		# Page sans titre, voulue par l'auteur.
+		{
+			"titre": "",
+			"texte": "Une crue reviendra, mais personne ne sait quand. Certains disent"
+				+ " qu'elle sera encore plus destructrice que celle-là.",
+			"repere": "pont_casse", "taille": 340.0, "lacet": 40.0, "hauteur": 26.0,
 		},
 		{
 			"titre": "Que faire ?",
@@ -190,6 +191,7 @@ func terminer() -> void:
 func _afficher() -> void:
 	var p: Dictionary = _pages[page]
 	_titre.text = String(p["titre"])
+	_titre.visible = _titre.text != ""
 	_texte.text = String(p["texte"])
 	_compte.text = "%d / %d" % [page + 1, _pages.size()]
 	_passer.visible = page + 1 < _pages.size()

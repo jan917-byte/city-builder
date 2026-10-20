@@ -854,3 +854,9 @@ Essais comparés sur copies : mêmes échecs qu'avant, sauf concours +1 (prix su
 **2026-10-20 — « Tout déblayer » prend la forme du bouton de la fiche (durée sous le verbe, prix à droite) ; Chantiers perd ses quatre lignes de chiffres ; le guide titre « Reconstruction » et dit le budget de la mairie et le ×4 une fois rues et campement engagés.**
 Demande de l'auteur sur deux captures ; le bandeau de la 3ᵉ rue disait encore « Trafic », corrigé en « Chantiers » ; le tableau des textes est refait d'après le jeu (l'ancien reste en second onglet).
 Essais : déblaiement 0 échec, ouverture 1 comme avant ; essai jetable de la phrase d'attente à 0 ; captures non prises.
+**2026-10-20 — Code des clics : tout clic qui coûte une monnaie est bleu, avec une pastille blanche à droite (icône de la monnaie + montant) ; tout clic gratuit est en encre pleine ; angles droits.**
+Demande de l'auteur (« clair la monnaie et le prix de chaque décision », « bleu », « pas d'arrondis », « enlève l'argent des conséquences ») : mairie, institut, « Mettre en place », « Tout déblayer » ; le montant rougit quand la monnaie manque ; couleur réglable dans `habillage.tres` (« fond engage »).
+Commité dans 448470a par une autre session ; essai étude à 0 échec, concours à 1 comme avant ; captures non prises ; infobulles flaggables (90).
+**2026-10-20 — Textes de l'auteur au jeu (récit en cinq pages, dont une sans titre sur la prochaine crue ; campement, projets, légende de Chantiers) ; une carte ou une fenêtre ramène ×2 et ×4 à ×1 et n'arrête plus le temps.**
+Travail de deux sessions resté non commité, commité tel quel à la demande de l'auteur ; aucune vérification à l'écran.
+Essais sans fenêtre, version commitée contre celle-ci : ouverture 1 échec (44 avant), progression 6 (13), étude, fonds, labour, rebâtir, déblaiement à 0 ; relogement 12, campagne 3, capital 2 inchangés ; vie au camp plante dans les deux (essais périmés).

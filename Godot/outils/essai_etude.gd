@@ -103,12 +103,14 @@ func executer() -> void:
 		and "Commandée" in ligne_etude["etat"].text,
 		"Commander l'étude paie 80 k€ ; elle n'est pas encore rendue")
 	ui._fermer_lieu()
+	jeu._sur_vitesse(4.0)
 	actualiser(jeu.mois + jeu.ville.ETUDE_MOIS + 0.01)
 	# 🎓 Rendue, une seule carte : l'étude (auteur, 2026-10-08).
 	verifier(o.etude_parue and o.carte == "etude" and o.annonce.visible
-		and jeu.vitesse == 0.0 and not o.annonce_second.visible
+		and jeu.vitesse == 1.0 and not o.annonce_second.visible
 		and o.annonce_principal.text == "Trouver l'université",
-		"L'étude rendue paraît : une carte au centre, un seul bouton, jeu en pause")
+		"L'étude rendue paraît : une carte au centre, un seul bouton, ×4 revenu à ×1")
+	jeu._sur_vitesse(0.0)
 	verifier("étude" in ui.retours.journal[-1], "Le journal dit la parution")
 	await capture("campus_00_etude")
 	await cliquer(o.annonce_principal)
@@ -186,9 +188,9 @@ func executer() -> void:
 	jeu._sur_vitesse(4.0)
 	ui.maj({}, jeu.mois, jeu.vitesse)
 	ui.ouvrir_lieu("bibliotheque")
-	verifier(jeu.vitesse == 0.0 and ui._biblio_bloc.visible, "La fenêtre ouverte, le temps s'arrête")
+	verifier(jeu.vitesse == 1.0 and ui._biblio_bloc.visible, "La fenêtre ouverte, le ×4 revient à ×1")
 	ui._fermer_campus()
-	verifier(jeu.vitesse == 4.0, "Fermée, il repart à ×4")
+	verifier(jeu.vitesse == 1.0, "Fermée, le temps court toujours à ×1")
 	jeu._sur_vitesse(0.0)
 	jeu._rafraichir(true)
 	# Le guide se cache sous la fenêtre ; en jeu, `_process` le rend à l'image suivante.
