@@ -4073,7 +4073,7 @@ func _brancher_lieu() -> void:
 					var sujet: Dictionary = Recherche.SUJETS[k]
 					# 🔴 Flaggable (90).
 					retours.consigner("%s : mis au point, −%d point%s, vaut tout de suite." % [sujet["nom"], Recherche.prix(k), "s" if Recherche.prix(k) > 1 else ""], _mois)
-					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % Recherche.prix(k), "", ALERTE)
+					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % Recherche.prix(k), "")
 					retours.actualiser(_mois)
 				_maj_lieu())
 		elif String(l["genre"]) == "programme":
@@ -4084,7 +4084,7 @@ func _brancher_lieu() -> void:
 					# 🔴 Flaggable (90).
 					retours.consigner("%s adopté, −%d point." % [p["nom"], int(p["points"])], _mois)
 					retours.annoncer("Un îlot aux maisons tombées peut lancer un concours.", _mois)
-					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % int(p["points"]), "", ALERTE)
+					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % int(p["points"]), "")
 					retours.actualiser(_mois)
 					if ouverture != null:
 						ouverture.actualiser(true)
@@ -4095,7 +4095,8 @@ func _brancher_lieu() -> void:
 					# 🔴 Flaggable (90).
 					retours.consigner("Fonds de reconstruction reçu : +%s k€." % _milliers(Ville.FONDS_RECONSTRUCTION_KE), _mois)
 					retours.annoncer("Le fonds de reconstruction est arrivé : un pont en dur devient possible.", _mois)
-					bulles.sous(_barre_valeurs.get("caisse"), "+%s k€" % _milliers(Ville.FONDS_RECONSTRUCTION_KE), "", FAIT_TEXTE)
+					bulles.gain_ecran(b.get_global_rect().get_center(), "caisse",
+						"+%s k€" % _milliers(Ville.FONDS_RECONSTRUCTION_KE), Ville.FONDS_RECONSTRUCTION_KE)
 					retours.actualiser(_mois)
 					if ouverture != null:
 						ouverture.actualiser(true)
@@ -4545,6 +4546,17 @@ var points_en_vol := 0
 
 func actualiser_points(mois: float) -> void:
 	(_barre_valeurs["recherche"] as Label).text = str(Recherche.points(ville, mois) - points_en_vol)
+
+
+## La caisse ou la confiance, moins ce qui vole encore vers elles (`bulles.gd`).
+func actualiser_compteur(cle: String) -> void:
+	var vol: float = bulles.en_vol.get(cle, 0.0)
+	if cle == "caisse":
+		(_barre_valeurs["caisse"] as Label).text = _millions(ville.caisse_ke(_mois) - vol)
+	elif cle == "capital":
+		var usure := ville.usure_camp_mois(_mois)
+		(_barre_valeurs["capital"] as Label).text = _nb(ville.capital(_mois) - vol, 0) \
+			+ (" (−%s/mois)" % _nb(usure, 1) if usure >= 0.05 else "")
 
 
 func _montrer_compteur(cle: String, oui: bool) -> void:
@@ -5095,6 +5107,8 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		for cle in _barre_valeurs:
 			if not cle in ["temperature", "recherche"]:
 				(_barre_valeurs[cle] as Label).text = (_ville_valeurs[cle] as Label).text
+		for cle in bulles.en_vol:
+			actualiser_compteur(cle)
 		# 🎓 Les points dès que l'institut est atteignable, ou dès le premier objectif atteint
 		# (auteur, 2026-10-18) : on les voit monter avant de pouvoir les dépenser.
 		actualiser_points(mois)

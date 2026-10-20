@@ -357,4 +357,4 @@ func _voler(depart: Vector2, attente: float) -> void:
 		var bond := bloc.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		bloc.scale = Vector2.ONE * 1.3
 		bond.tween_property(bloc, "scale", Vector2.ONE, 0.35)
-		ui.bulles.sous(bloc, "+1", "recherche", ui.FAIT_TEXTE))
+		ui.bulles.sous(bloc, "+1", "recherche"))

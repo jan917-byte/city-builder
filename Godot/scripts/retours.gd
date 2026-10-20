@@ -369,7 +369,7 @@ func reprendre(mois: float, messages: Array = []) -> void:
 
 func deblaiement(rues: int, r: Dictionary, mois: float) -> void:
 	consigner("Déblaiement de %d rues : −%s k€, %s" % [rues, ui._milliers(r["cout_ke"]), ui._duree(r["duree"])], mois)
-	ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "", ui.ALERTE)
+	ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "")
 	actualiser(mois)
 
 
@@ -379,15 +379,15 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	var message := "%s : %s, %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
 	if float(r.get("capital", 0.0)) >= 0.5:
 		message += ", −%s confiance" % ui._nb(r["capital"], 0)
-		ui.bulles.sous(ui._barre_valeurs.get("capital"), "−%s" % ui._nb(r["capital"], 0), "capital", ui.ALERTE)
+		ui.bulles.sous(ui._barre_valeurs.get("capital"), "−%s" % ui._nb(r["capital"], 0), "capital")
 	# 🎈 La dépense descend sous la caisse (auteur, 2026-10-02).
 	if r["cout_ke"] > 0.0:
-		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "", ui.ALERTE)
+		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "")
 	if "relogement" in r["faits"]:
 		var nourris: String = ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
 		message += ", −%s nourris" % nourris
 		# 🌾 La récolte perdue monte sur le champ (auteur, 2026-10-02).
-		ui.bulles.sur_lieu(couche, fid, "−%s" % nourris, "nourriture", ui.ALERTE)
+		ui.bulles.sur_lieu(couche, fid, "−%s" % nourris, "nourriture")
 	# 🔄 Plus de rappel du ×4 à l'engagement (auteur, 2026-10-18).
 	consigner(message, mois)
 	if couche == "r" and fid in ui.ville.ponts_coupes() and not ui.trafic.acces_pont(fid, mois)["obstacles"].is_empty():
@@ -419,7 +419,7 @@ func livraison(c: Dictionary, mois: float) -> void:
 		var accueillis := int(ui.ville.camp_occupants(fid, mois))
 		resultat = "%d containers livrés, %d personnes accueillies." % [
 			ui.ville.camp_taille(fid, mois), accueillis]
-		ui.bulles.sur_lieu(couche, fid, "+%d" % accueillis, "personnes", ui.FAIT_TEXTE)
+		ui.bulles.sur_lieu(couche, fid, "+%d" % accueillis, "personnes")
 	elif couche == "r" and fid in ui.ville.ponts_coupes():
 		resultat = "Pont provisoire posé." if ui.ville.pont_provisoire(fid, mois) else "Pont rebâti."
 		if not ui.trafic.pont_fonctionnel(fid, mois):
@@ -508,7 +508,7 @@ func actualiser(mois: float) -> void:
 	if _an > 0 and an > _an:
 		var budget: String = ui._milliers(ui.Ville.DOTATION_KE_AN)
 		annoncer("Budget de l'an %d : %s k€." % [an, budget], mois)
-		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "+%s k€" % budget, "", ui.FAIT_TEXTE)
+		ui.bulles.gain_lieu("i", int(ui.LIEUX["mairie"]["fid"]), "caisse", "+%s k€" % budget, ui.Ville.DOTATION_KE_AN)
 	_an = an
 	_dire_capital(mois)
 	_retirer_faits()
@@ -572,11 +572,15 @@ func _dire_capital(mois: float) -> void:
 		var n := int(roundf(float(bulles[lieu])))
 		if n == 0:
 			continue
-		var coul: Color = ui.FAIT_TEXTE if n > 0 else ui.ALERTE
-		if lieu.is_empty():
-			ui.bulles.sous(ui._barre_valeurs.get("capital"), "%+d" % n, "capital", coul)
+		if n > 0:
+			if lieu.is_empty():
+				ui.bulles.gain_ecran(ui.get_viewport_rect().size * 0.5, "capital", "%+d" % n, n)
+			else:
+				ui.bulles.gain_lieu(lieu[0], lieu[1], "capital", "%+d" % n, n)
+		elif lieu.is_empty():
+			ui.bulles.sous(ui._barre_valeurs.get("capital"), "%+d" % n, "capital")
 		else:
-			ui.bulles.sur_lieu(lieu[0], lieu[1], "%+d" % n, "capital", coul)
+			ui.bulles.sur_lieu(lieu[0], lieu[1], "%+d" % n, "capital")
 
 
 ## Où monte le chiffre d'un mouvement : son lieu, sinon celui d'un mouvement du

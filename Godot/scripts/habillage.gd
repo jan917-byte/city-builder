@@ -49,7 +49,7 @@ extends Resource
 @export var ombre := Color(0.10, 0.10, 0.08, 0.35)
 ## Sa portée, en pixels : elle perd déjà les deux tiers au tiers de cette distance.
 @export_range(0, 40) var ombre_taille := 8
-## Le fond des bulles qui montent de la ville.
+## Le fond de secours des panneaux, quand le verre est coupé.
 @export var fond_bulles := Color8(244, 245, 243)
 ## Le fond d'un onglet survolé et des cartes du concours.
 @export var fond_cartes := Color8(226, 229, 226)
