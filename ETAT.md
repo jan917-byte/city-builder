@@ -30,8 +30,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - 🔴 **Ce qu'un arbre épargne** (0,34 % pour 880 k€) : un autre effet, ou l'assumer → [Trafic](Prototype/Trafic.md).
 - 🔴 **La berge au stade « quai apaisé » ne rachète plus rien** ; remplaçant possible : `rive_m` → [Trafic](Prototype/Trafic.md).
 - 🔴 **La barre fait 5 niveaux au lieu des 6 décidés** (`04c`, ±1 niveau).
-- 🟠 **Le classeur** : banc d'essai des seuils, ou archive ?
-- 🟠 **Le dessin** : accès aux 11 fermes, calque `routes` pour les tracés manuels.
+- 🟠 **Le classeur** : banc d'essai des seuils, ou archive ? **Le dessin** : accès aux 11 fermes, calque `routes` pour les tracés manuels.
 
 ## Les commandes du quotidien
 ```
