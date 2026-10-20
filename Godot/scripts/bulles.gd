@@ -150,29 +150,44 @@ func _bloc(cle: String) -> Control:
 	return l.get_parent() if l != null and l.is_visible_in_tree() else null
 
 
+## 🪙 Combien d'icônes volent : une par tranche, huit au plus (auteur, 2026-10-20 : « 2 M€, plusieurs pièces »).
+const TRANCHE := {"caisse": 250.0, "capital": 10.0}
+const ICONES_MAX := 8
+const CADENCE := 0.08   # s entre deux icônes
+
+
 ## La trajectoire de l'étoile des objectifs (`objectifs.gd`) ; la cible se relit à chaque pas.
+## Chaque icône porte sa part : le compteur monte par à-coups, une icône à la fois.
 func _voler(texture: Texture2D, depart: Vector2, cle: String, montant: float) -> void:
 	if _bloc(cle) == null:
 		_arriver(cle, montant, false)
 		return
-	var f := Sprite2D.new()
-	f.texture = texture
-	f.position = depart
-	ui.add_child(f)
-	var tw := f.create_tween()
-	tw.tween_method(func(t: float) -> void:
-		var bloc := _bloc(cle)
-		if bloc == null:
-			return
-		var cible: Vector2 = bloc.get_child(0).get_global_rect().get_center()
-		var haut := Vector2(lerpf(depart.x, cible.x, 0.3), minf(depart.y, cible.y) + 0.35 * absf(cible.y - depart.y))
-		var u := 1.0 - t
-		f.position = u * u * depart + 2.0 * u * t * haut + t * t * cible
-		f.scale = Vector2.ONE * lerpf(1.0, 1.3, sin(t * PI)),
-		0.0, 1.0, VOLER_S).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_callback(func() -> void:
-		f.queue_free()
-		_arriver(cle, montant, true))
+	var n := clampi(ceili(absf(montant) / float(TRANCHE.get(cle, INF)) - 0.001), 1, ICONES_MAX)
+	for i in n:
+		var f := Sprite2D.new()
+		f.texture = texture
+		# En gerbe autour du chiffre (angle d'or : jamais deux au même endroit), puis des arcs un peu différents.
+		var d := depart + Vector2.from_angle(i * 2.4) * (0.0 if i == 0 else 14.0)
+		var bosse := (float(i % 3) - 1.0) * 24.0
+		f.position = d
+		f.visible = i == 0
+		ui.add_child(f)
+		var tw := f.create_tween()
+		tw.tween_interval(i * CADENCE)
+		tw.tween_callback(f.show)
+		tw.tween_method(func(t: float) -> void:
+			var bloc := _bloc(cle)
+			if bloc == null:
+				return
+			var cible: Vector2 = bloc.get_child(0).get_global_rect().get_center()
+			var haut := Vector2(lerpf(d.x, cible.x, 0.3) + bosse, minf(d.y, cible.y) + 0.35 * absf(cible.y - d.y))
+			var u := 1.0 - t
+			f.position = u * u * d + 2.0 * u * t * haut + t * t * cible
+			f.scale = Vector2.ONE * lerpf(1.0, 1.3, sin(t * PI)),
+			0.0, 1.0, VOLER_S).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_callback(func() -> void:
+			f.queue_free()
+			_arriver(cle, montant / n, true))
 
 
 func _arriver(cle: String, montant: float, bondir: bool) -> void:

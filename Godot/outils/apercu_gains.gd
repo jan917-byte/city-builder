@@ -56,6 +56,13 @@ func executer() -> void:
 	verifier(ui.bulles.en_vol.is_empty(), "plus rien en vol")
 	verifier(ui._barre_valeurs["caisse"].text == ui._ville_valeurs["caisse"].text, "la caisse rattrape la ville")
 	await capture("gains_6_la_caisse_a_bondi")
+	# Le fonds (2 M€) : huit pièces, en gerbe. Posé à la main : seul le vol est regardé.
+	ui.bulles.gain_ecran(Vector2(800, 600), "caisse", "+2 000 k€", 2000.0)
+	await attendre(1.0)
+	verifier(ui.get_children().filter(func(c): return c is Sprite2D).size() == 8, "huit pièces pour 2 M€")
+	await capture("gains_7_huit_pieces")
+	await attendre(1.6)
+	verifier(ui.bulles.en_vol.is_empty(), "les huit sont arrivées")
 	print("gains : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame
