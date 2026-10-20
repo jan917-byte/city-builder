@@ -289,7 +289,10 @@ class JaugeDanger extends Control:
 ## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
 ## nulle part ailleurs — un panneau qui s'ancre tout seul se décale du rail.
 const RAIL_X := 14.0
-const RAIL_LARGEUR := 64.0
+const RAIL_LARGEUR := 72.0
+# Icônes du rail agrandies (auteur, 2026-10-20) : trait 26 → 34, dessin 30 → 44 ; le rail +8 seulement.
+const RAIL_ICONE := 34
+const RAIL_DESSIN := 44
 const DETAIL_X := RAIL_X + RAIL_LARGEUR + 10.0
 const DETAIL_LARGEUR := 312.0
 const HAUT := 14.0
@@ -1775,25 +1778,27 @@ func _panneau_rail() -> void:
 func _tuile_rail(icone: String, _mot: String, bulle: String) -> Button:
 	var b := Button.new()
 	# Dessin BLANC : ce sont les couleurs d'état du bouton qui le teintent.
-	b.icon = _icone(icone, 26, Color.WHITE)
+	b.icon = _icone(icone, RAIL_ICONE, Color.WHITE)
 	b.expand_icon = false
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	b.tooltip_text = bulle
+	# ⚠️ Le thème plafonne les icônes de bouton à 30.
+	b.add_theme_constant_override("icon_max_width", RAIL_DESSIN)
 	_habiller_tuile_rail(b)
 	if est_dessinee(icone):
 		# Plus grand que le trait : il remplit son carré, et l'auteur le voulait plus gros.
-		b.icon = _icone(icone, 36, Color.WHITE)
+		b.icon = _icone(icone, RAIL_DESSIN, Color.WHITE)
 	elif TEINTES.has(icone):
 		# L'aplat ne doit pas passer par la teinte d'état : le trait prend la couleur
 		# d'état dans le dessin même, et l'icône change quand la tuile s'enfonce.
 		var repos := b.get_theme_color("icon_normal_color")
 		var enfonce := b.get_theme_color("icon_pressed_color")
-		b.icon = _icone(icone, 26, repos)
+		b.icon = _icone(icone, RAIL_ICONE, repos)
 		# ⚠️ `draw` et non `toggled` : le rail s'enfonce par `set_pressed_no_signal`.
 		# Différé : une icône changée pendant le dessin ne se redessine pas.
 		b.draw.connect(func() -> void:
-			b.set_deferred("icon", _icone(icone, 26, enfonce if b.button_pressed else repos)))
+			b.set_deferred("icon", _icone(icone, RAIL_ICONE, enfonce if b.button_pressed else repos)))
 	if est_dessinee(icone) or TEINTES.has(icone):
 		# Un dessin en couleurs ne se teinte pas : le brun du thème l'aurait noirci.
 		for etat in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color"]:

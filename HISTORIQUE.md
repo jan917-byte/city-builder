@@ -867,3 +867,7 @@ Reste un vrai défaut : la chaîne sort 9 berges au lieu de 8, la 9ᵉ sans nom 
 **2026-10-20 — Courbe de couleurs douce et flou de maquette léger, à l'essai, éteints par défaut ; pas de cycle jour / nuit (décision 120).**
 Filmique et AgX forts délavaient l'image, écartés ; AgX doux ensuite baissé de moitié à la demande de l'auteur ; flou au loin, premier plan net, il suit le zoom. Coût : 0 ms et ≈ 0,9 ms.
 Planches `maquette_planche.png` et `maquette_planche_saisons.png` ; avec la courbe, la neige grisit. Essais caméra et ouverture à 0 échec, sauvegarde à 1 (berge 9, déjà connu).
+
+**2026-10-20 — Icône Ville dessinée par l'auteur (ville 2), rail agrandi.**
+Trois versions essayées au rail : la détaillée (30 fenêtres) devenait une tache grise à 26 px ; la ville 2, trois volumes sans fenêtres, est retenue ; brouillons `_ville1` et `_ville2` dans `Godot/icones/`.
+Le thème plafonnait toute icône de bouton à 30 px, le dessin « 36 » n'y était jamais : icônes du rail 26 → 34, dessin 30 → 44, rail 64 → 72 ; contour noir sur fond sombre laissé tel quel (auteur). Essai ouverture 0 échec.
