@@ -1073,6 +1073,10 @@ static func environnement(ciel: Color, ambiant: Color) -> Environment:
 	e.ssao_power = 1.2
 	e.ssao_detail = 0.5
 
+	# Rebond (SSIL), allumé au panneau. Défaut Godot (5 m, ×1) : 3 à 6 % des pixels bougent, invisible.
+	e.ssil_radius = 14.0
+	e.ssil_intensity = 3.0
+
 	# ⚠ Le SSAO travaille en espace vue : son rayon se comporte autrement en
 	# ortho. S'il casse, l'AO bakée par 07 tient debout seule — d'où l'ordre.
 
