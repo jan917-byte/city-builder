@@ -1068,6 +1068,8 @@ static func environnement(ciel: Color, ambiant: Color) -> Environment:
 	e.ambient_light_energy = 0.85
 
 	e.ssao_enabled = true
+	# Invisible à côté de l'AO bakée et du SSIL : renforcé (3 m, ×2, sur le soleil), 2 à 3 % des
+	# pixels bougent, rien à l'œil (2026-10-20).
 	e.ssao_radius = 1.4
 	e.ssao_intensity = 1.15
 	e.ssao_power = 1.2
@@ -1075,7 +1077,7 @@ static func environnement(ciel: Color, ambiant: Color) -> Environment:
 
 	# Rebond (SSIL), réglé au panneau. Défaut Godot (5 m, ×1) : 3 à 6 % des pixels bougent, invisible.
 	e.ssil_radius = 14.0
-	e.ssil_intensity = 3.0
+	e.ssil_intensity = 2.0  # 3 trop fort à l'œil de l'auteur (2026-10-20)
 
 	# ⚠ Le SSAO travaille en espace vue : son rayon se comporte autrement en
 	# ortho. S'il casse, l'AO bakée par 07 tient debout seule — d'où l'ordre.

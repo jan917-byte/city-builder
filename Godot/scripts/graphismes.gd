@@ -24,17 +24,17 @@ const COULEURS := {
 ## ② Flou de maquette : force du flou de profondeur, voir `CameraAxo.regler_flou`.
 const MAQUETTE := {"non": 0.0, "leger": 0.04}
 
-## 🔴 Textes affichés, flaggables (90). [clé, nom de la ligne, [[valeur, mot]…]]
+## 🔴 Textes affichés, flaggables (90), en termes techniques (auteur, 2026-10-20). [clé, nom, [[valeur, mot]…]]
 const LIGNES := [
-	["ombres", "Ombres", [["fines", "Fines"], ["moyennes", "Moyennes"], ["legeres", "Légères"], ["aucune", "Aucune"]]],
-	["bois", "Ombres des bois", [[true, "Oui"], [false, "Non"]]],
-	["recoins", "Ombre des recoins", [[true, "Oui"], [false, "Non"]]],
-	["rebonds", "Lumière qui rebondit", [[true, "Oui"], [false, "Non"]]],
-	["ciel", "Lumière du ciel et du sol", [[true, "Oui"], [false, "Non"]]],
-	["brume", "Brume au loin", [[true, "Oui"], [false, "Non"]]],
-	["maquette", "Flou de maquette", [["leger", "Oui"], ["non", "Non"]]],
-	["anticrenelage", "Anticrénelage", [["fort", "Fort"], ["leger", "Léger"], ["non", "Non"]]],
-	["echelle", "Résolution 3D", [["100", "100 %"], ["85", "85 %"], ["70", "70 %"]]],
+	["ombres", "Qualité des ombres", [["fines", "Ultra"], ["moyennes", "Haute"], ["legeres", "Basse"], ["aucune", "Aucune"]]],
+	["bois", "Ombres de la végétation", [[true, "Oui"], [false, "Non"]]],
+	["recoins", "Occlusion ambiante (SSAO)", [[true, "Oui"], [false, "Non"]]],
+	["rebonds", "Illumination indirecte (SSIL)", [[true, "Oui"], [false, "Non"]]],
+	["ciel", "Éclairage ambiant du ciel", [[true, "Oui"], [false, "Non"]]],
+	["brume", "Brouillard de distance", [[true, "Oui"], [false, "Non"]]],
+	["maquette", "Profondeur de champ", [["leger", "Oui"], ["non", "Non"]]],
+	["anticrenelage", "Anticrénelage (MSAA)", [["fort", "4×"], ["leger", "2×"], ["non", "Non"]]],
+	["echelle", "Échelle de rendu 3D (FSR)", [["100", "100 %"], ["85", "85 %"], ["70", "70 %"]]],
 ]
 ## Le rendu d'avant les réglages, plus le rebond (aimé par l'auteur le 2026-10-20).
 const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "rebonds": true, "ciel": false,
