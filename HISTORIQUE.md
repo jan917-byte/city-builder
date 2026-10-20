@@ -893,3 +893,6 @@ Le thème plafonnait toute icône de bouton à 30 px, le dessin « 36 » n'y ét
 **2026-10-20 — Trois lumières à l'essai au panneau Graphismes : rebond (SSIL), ciel et sol, brume au loin.**
 L'auteur veut « du low poly avec une lumière impeccable » ; le SSAO y était déjà. Éteintes par défaut ; l'ambiant en dégradé garde la luminance d'un mur (calculé en linéaire), la brume suit le zoom comme le flou ; halo, reflets de rivière et angle du soleil laissés de côté.
 Godot introuvable dans le conteneur cloud : ni capture ni mesure, couvertes par `apercu_graphismes` et `sonde_perfs --reglages`.
+**2026-10-20 — Toutes les branches GitHub fusionnées dans master ; planche « où on en est » en 8 écrans.**
+Six apportaient du neuf (lumières, Steam et titre de fenêtre, allée 121, son, moyennes de 08_jouer, pont coupé, venelles 122) ; quatre déjà reprises autrement, marquées fusionnées sans changer un fichier. Numéros de décisions et de questions des branches renumérotés sur le registre du 2026-10-12.
+Essais ouverture, étude, rebâtir, concours 0 échec, venelle ok, sauvegarde 1 comme avant ; planche `QGIS/rendus/planche_ou_on_en_est_2026-10-20.png`.

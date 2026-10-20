@@ -19,11 +19,12 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - 🏢 Densifier : le prix (95 k€ le logement) → [Densifier](Prototype/Densifier.md).
 - 🔲 Interface « vitre » et choix de la police parmi six (Rubik en place) → `QGIS/rendus/polices_comparaison.png`.
 - 🟠 La percée des îlots compacts (9 m tous les 60 m, `04d`) → `--ilots 49`.
+- 🚶 **Fusionnés le 2026-10-20** : venelles en trace (122, `QGIS/rendus/wehrau_venelles.png`), pont coupé cliquable au milieu de l'Ilse, phrase de l'autre rive, fenêtre « Desire Path ».
 - ✍️ **Les textes flaggables à réécrire** (90) → `Prototype/Textes des premières minutes.xlsx` ; les noms de lieux → `Godot/data/lieux.json`.
 
 ## À trancher (l'auteur)
 - 💶 **Les systèmes d'argent avant la seconde crue** : A recettes et entretien (59) · B budget voté (n°21) · C coûts qui durent — recommandé A puis B → `Vault - Jeu urbanisme/Production/Feuille de route.md`.
-- 🔴 **Des arbitrages pris mais jamais consignés** au vault (Questions ouvertes **et** Décisions arrêtées) : les cinq du 2026-08-18, « deux vues », perspective douce 35°, plus le retrait du verrou (contre 72), ce qu'un toit vert rachète, « solaire ou vert, au bâtiment », et la police.
+- 🔴 **Des arbitrages pris mais jamais consignés** → Questions ouvertes n°49 (plus la perspective 35° et la police) ; n°47 (parc sur une partie d'îlot), n°48 (champs dans les moyennes), n°50 (références au titre). La Feuille de route garde un seuil de 5 000 wishlists que 47 a retiré.
 - 🔴 **La facture de la crue** : 14 445 k€ pour 8 000 k€ de caisse en vingt ans → [Crue](Prototype/Crue.md).
 - 🔴 **Les nombres de *dur mais possible*** (panneau, MWh, caisse, dotation, toit vert) → [Énergie](Prototype/%C3%89nergie.md), [Crue](Prototype/Crue.md).
 - 🔴 **Ce qu'un arbre épargne** (0,34 % pour 880 k€) : un autre effet, ou l'assumer → [Trafic](Prototype/Trafic.md).
