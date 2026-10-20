@@ -15,7 +15,7 @@ const ANTICRENELAGE := {"fort": Viewport.MSAA_4X, "leger": Viewport.MSAA_2X, "no
 const ECHELLES := {"100": 1.0, "85": 0.85, "70": 0.7}
 ## ① Courbe de couleurs : [mode, exposition, blanc, contraste, saturation]. La palette est réglée
 ## en linéaire ; l'exposition rend aux tons moyens ce que la courbe leur prend (filmique et AgX
-## plus forts : délavés, 2026-10-20). Hors panneau tant que non tranché.
+## plus forts : délavés, 2026-10-20). Au panneau, éteinte tant que non tranché.
 const COULEURS := {
 	"non": [Environment.TONE_MAPPER_LINEAR, 1.0, 1.0, 1.25, 1.0],
 	"douce": [Environment.TONE_MAPPER_AGX, 1.15, 3.0, 1.45, 1.07],
@@ -31,6 +31,8 @@ const LIGNES := [
 	["rebonds", "Lumière qui rebondit", [[true, "Oui"], [false, "Non"]]],
 	["ciel", "Lumière du ciel et du sol", [[true, "Oui"], [false, "Non"]]],
 	["brume", "Brume au loin", [[true, "Oui"], [false, "Non"]]],
+	["couleurs", "Couleurs douces", [["douce", "Oui"], ["non", "Non"]]],
+	["maquette", "Flou de maquette", [["leger", "Oui"], ["non", "Non"]]],
 	["anticrenelage", "Anticrénelage", [["fort", "Fort"], ["leger", "Léger"], ["non", "Non"]]],
 	["echelle", "Résolution 3D", [["100", "100 %"], ["85", "85 %"], ["70", "70 %"]]],
 ]
@@ -147,9 +149,16 @@ func _construire_panneau() -> void:
 	v.move_child(panneau, 0)
 	panneau.add_child(ui._titre("Graphismes", 15, ui.TEXTE))
 	for l in LIGNES:
-		panneau.add_child(ui._etiquette(String(l[1]), 12, ui.GRIS))
 		var rangee := HBoxContainer.new()
 		rangee.add_theme_constant_override("separation", 3)
+		# Oui/Non sur la ligne du nom : à dix lignes, le panneau passait sous le rail (2026-10-20).
+		var court := (l[2] as Array).size() == 2
+		var nom: Control = ui._etiquette(String(l[1]), 12, ui.GRIS)
+		if court:
+			nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			rangee.add_child(nom)
+		else:
+			panneau.add_child(nom)
 		panneau.add_child(rangee)
 		for c in l[2]:
 			var b := Button.new()
