@@ -1916,6 +1916,26 @@ func _par_ruines_ponts(source: Dictionary) -> void:
 		reparations["r"][fid].mesh.set_meta("boue_acces",
 			Vector4(axe[0], axe[1], axe[-2], axe[-1]))
 		reparations["r"][fid].mesh.set_meta("boue_largeur", donnees["couloirs"][str(fid)][0])
+		_prise_pont(mi, axe, float(donnees["couloirs"][str(fid)][0]),
+			(reparations["r"][fid] as MeshInstance3D).mesh.get_aabb())
+
+
+## 🌉 Un clic au milieu de l'Ilse prend le pont coupé (auteur, 2026-10-16) : les
+## moignons seuls étaient trop durs à toucher. Une boîte invisible sous le tablier
+## à venir, 5 m de plus de chaque côté ; elle suit le corps de la ruine (`_corps`).
+func _prise_pont(ruine: MeshInstance3D, axe: Array, largeur: float, aabb: AABB) -> void:
+	var a := Vector2(float(axe[0]), float(axe[1]))
+	var b := Vector2(float(axe[-2]), float(axe[-1]))
+	var boite := BoxShape3D.new()
+	boite.size = Vector3(a.distance_to(b), maxf(aabb.size.y, 1.0), largeur + 10.0)
+	var forme := CollisionShape3D.new()
+	forme.shape = boite
+	var corps := StaticBody3D.new()
+	corps.add_child(forme)
+	var m := (a + b) * 0.5
+	corps.position = Vector3(m.x, aabb.position.y + boite.size.y * 0.5, m.y)
+	corps.rotation.y = -(b - a).angle()
+	ruine.add_child(corps)
 
 
 func _par_provisoires(source: Dictionary) -> void:
@@ -2478,7 +2498,7 @@ const THEMES := [
 		"couche": "r", "champ": "charge",
 		"resume": "La charge des rues, après la crue",
 		"bas": "Rue calme", "haut": "Saturée",
-		"note": "Violet : endommagée par la crue."},
+		"note": "Endommagée par la crue", "note_teinte": COUPEE},
 	# 🔄 Remplace « Tissu urbain » (auteur, 2026-10-09 : « elle dit rien »).
 	{"id": "agriculture", "court": "Agriculture", "nom": "Agriculture", "genre": "agriculture",
 		"icone": "nourriture", "resume": "Ce que portent les champs, ce qu'ils nourrissent"},

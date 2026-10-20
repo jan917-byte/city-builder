@@ -1028,7 +1028,9 @@ func actualiser(force := false) -> void:
 					int(jeu.ville.besoin_non_couvert(jeu.mois))
 			for fid in jeu.ville._camps:
 				if not jeu.ville.camp_accessible(int(fid), jeu.mois):
-					_texte.text += "\n%s est sur l'autre rive." % _nom_champ(int(fid))
+					# 🔴 Seconde phrase de l'auteur (2026-10-16), flaggable (90).
+					_texte.text += "\n%s est sur l'autre rive : les personnes sans logement ne peuvent pas y accéder." \
+						% _nom_champ(int(fid))
 			_poser_reperes([])
 		"choix":
 			# 🔄 LE JOUEUR CHOISIT SON ÎLOT (auteur, 2026-10-06) : ni bouton ni lieu

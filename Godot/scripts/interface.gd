@@ -463,6 +463,7 @@ var _calque_bas: Label
 var _calque_haut: Label
 var _calque_barre: TextureRect
 var _calque_note: Label
+var _calque_note_carre: Panel   # 🟪 la teinte de la note, si le thème en porte une
 ## Les trois panneaux de thème portent le MÊME en-tête, tiré de la table :
 ## le nom et le résumé ne sont écrits qu'une fois, dans `maquette.THEMES`.
 var _entetes := {}
@@ -1966,9 +1967,20 @@ func _panneau_calque() -> void:
 	_calque_haut.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(_calque_haut)
 	v.add_child(h)
+	# 🟪 Une note à teinte (Trafic) se lit comme la légende du guide, carré compris :
+	# le violet ne disparaît plus quand le guide rend le panneau (auteur, 2026-10-16).
+	var ligne_note := HBoxContainer.new()
+	ligne_note.add_theme_constant_override("separation", 8)
+	_calque_note_carre = Panel.new()
+	_calque_note_carre.custom_minimum_size = Vector2(15, 15)
+	_calque_note_carre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_calque_note_carre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ligne_note.add_child(_calque_note_carre)
 	_calque_note = _label("", 11, GRIS)
 	_calque_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(_calque_note)
+	_calque_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ligne_note.add_child(_calque_note)
+	v.add_child(ligne_note)
 	# 💧 LA CARTE DES SOLS (101) : trois teintes et le chiffre qui les résume.
 	# ⚠ Les teintes sont aussi dans `maquette.SOLS_*`, en sRGB.
 	_sols_bloc = VBoxContainer.new()
@@ -2173,6 +2185,15 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 	if _calque_panneau.visible:
 		_calque_note.text = str(t.get("note", ""))
 		_calque_note.visible = _calque_note.text != ""
+		var teinte: Variant = t.get("note_teinte")
+		_calque_note_carre.visible = _calque_note.visible and teinte is Color
+		_calque_note.add_theme_font_size_override("font_size", 12 if teinte is Color else 11)
+		_calque_note.add_theme_color_override("font_color", TEXTE if teinte is Color else GRIS)
+		if teinte is Color:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = teinte
+			sb.set_corner_radius_all(_r(4))
+			_calque_note_carre.add_theme_stylebox_override("panel", sb)
 		# Sols et champs n'ont pas d'échelle : une légende, ni rampe ni bornes.
 		var continu := genre == "calque"
 		_sols_bloc.visible = genre == "sols"
@@ -6549,7 +6570,7 @@ func _maj_camp() -> void:
 		# 🌉 Le camp promis, et personne dedans : c'est la carte, elle peut changer.
 		# Le reste (logés, containers) est dans le résumé et les tuiles.
 		_camp_texte.text = "" if ville.camp_accessible(fid, _mois) or not ville.camp_livre(fid, _mois) \
-			else "Camp vide : aucun pont n'y mène."
+			else "Camp vide : aucun pont n'y mène.\nLes personnes sans logement ne peuvent pas y accéder."
 		_camp_bouton.disabled = true
 		_camp_bouton.visible = false
 		_marquer(_camp_bouton, false)
@@ -6570,7 +6591,9 @@ func _maj_camp() -> void:
 		return
 	var places: int = ville.camp_taille(fid, _mois)
 	# 🔄 Ce que le camp abrite est passé dans les conséquences (auteur, 2026-10-08).
-	_camp_texte.text = "" if ville.camp_accessible(fid, _mois) else "⚠ Autre rive : inaccessible"
+	# 🔴 Seconde phrase de l'auteur (2026-10-16), flaggable (90).
+	_camp_texte.text = "" if ville.camp_accessible(fid, _mois) \
+		else "⚠ Autre rive : inaccessible.\nLes personnes sans logement ne peuvent pas y accéder."
 	_posee(_camp_bouton, "camp", "Installer %d containers" % places)
 	_camp_bouton.disabled = false
 	_camp_bouton.visible = true
