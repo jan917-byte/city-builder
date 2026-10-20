@@ -28,11 +28,12 @@ const LIGNES := [
 	["ombres", "Ombres", [["fines", "Fines"], ["moyennes", "Moyennes"], ["legeres", "Légères"], ["aucune", "Aucune"]]],
 	["bois", "Ombres des bois", [[true, "Oui"], [false, "Non"]]],
 	["recoins", "Ombre des recoins", [[true, "Oui"], [false, "Non"]]],
+	["rebonds", "Lumière qui rebondit", [[true, "Oui"], [false, "Non"]]],
 	["anticrenelage", "Anticrénelage", [["fort", "Fort"], ["leger", "Léger"], ["non", "Non"]]],
 	["echelle", "Résolution 3D", [["100", "100 %"], ["85", "85 %"], ["70", "70 %"]]],
 ]
 ## Le rendu d'avant les réglages : rien ne change tant qu'on n'y touche pas.
-const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "anticrenelage": "fort", "echelle": "100",
+const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "rebonds": false, "anticrenelage": "fort", "echelle": "100",
 	"couleurs": "non", "maquette": "non"}
 
 var reglages := DEFAUT.duplicate()
@@ -77,6 +78,8 @@ func appliquer() -> void:
 				(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON \
 					if reglages["bois"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_jeu._environnement.ssao_enabled = reglages["recoins"]
+	# SSIL, à l'essai (2026-10-20) : coût non mesuré, d'où éteint par défaut.
+	_jeu._environnement.ssil_enabled = reglages["rebonds"]
 	var vp: Viewport = _jeu.get_viewport()
 	vp.msaa_3d = ANTICRENELAGE[reglages["anticrenelage"]]
 	var e: float = ECHELLES[reglages["echelle"]]

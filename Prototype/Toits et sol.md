@@ -224,3 +224,10 @@ Tout bâtiment à plus d'un mètre de la rue (maisons de ville, pavillons, colle
 - 🔴 **Avec ①, la neige passe du blanc pur au gris clair** (planche des saisons, ligne D) : à juger.
 - Pas de cycle jour / nuit → décision 120 du vault.
 - Serait un défaut : un premier plan flou, des thèmes du diagnostic qui changent de couleur, un trait de sélection flou.
+
+## 13. Lumière qui rebondit (2026-10-20, demande de l'auteur : « une lumière impeccable »)
+
+Nouvelle ligne du panneau Graphismes, **éteinte par défaut** : la lumière du soleil renvoyée par les murs et le sol teinte ce qui leur fait face (SSIL de Godot, réglages d'usine). Écrite sans Godot sous la main : **ni vue, ni mesurée**.
+
+- À lancer : `apercu_graphismes.gd` → `QGIS/rendus/graphismes_coeur_rebonds_oui.png` et `..._ville_rebonds_oui.png`, à comparer aux vues `_ombres_fines` ; coût : `sonde_perfs.gd -- --reglages`, ligne « rebonds true ».
+- Serait un défaut : un halo coloré qui déborde d'un mur sur le ciel ou sur un bâtiment voisin, un scintillement quand la caméra bouge, les thèmes du diagnostic qui se teintent.
