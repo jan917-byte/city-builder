@@ -2429,6 +2429,7 @@ func _etape_tour(e: int, seul: bool) -> void:
 		if e == 0:
 			RenderingServer.global_shader_parameter_set("eau_limon", Ville.limon_eau(mois))
 			saison.poser(mois)
+			soleil.rotation_degrees.x = -Saison.Calendrier.hauteur_soleil(mois)
 			var f := saison.flocons(mois)
 			flocons.visible = f > 0.0
 			(flocons.material as ShaderMaterial).set_shader_parameter("intensite", f)

@@ -10,6 +10,10 @@ const NOMS := ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
 ## Normales mensuelles d'une vallée d'Europe centrale, °C — ordre de grandeur
 ## de Fribourg-en-Brisgau 1991-2020, pas une mesure de Wehrau.
 const TEMPERATURES := [2.4, 3.5, 7.3, 11.0, 15.0, 18.6, 20.3, 19.9, 15.6, 11.0, 6.1, 3.1]
+## ☀ Hauteur du soleil, très resserrée (auteur, 2026-10-20) : 55° au 21 juin, 41° au 21 décembre,
+## ombre 0,7 → 1,15 × la hauteur. Le vrai midi à 48° N va de 64° à 17° : l'hiver noircissait la ville.
+const SOLEIL_MOYEN := 48.0
+const SOLEIL_ECART := 7.0
 
 
 ## 0 = janvier.
@@ -39,3 +43,8 @@ static func temperature(t: float) -> float:
 	var x := MOIS_DEPART + t - 0.5
 	var m := int(floor(x))
 	return lerpf(TEMPERATURES[posmod(m, 12)], TEMPERATURES[posmod(m + 1, 12)], x - m)
+
+
+## Degrés au-dessus de l'horizon, sans saut : un cosinus dont le sommet est le 21 juin.
+static func hauteur_soleil(t: float) -> float:
+	return SOLEIL_MOYEN + SOLEIL_ECART * cos(TAU * (MOIS_DEPART + t - 5.67) / 12.0)
