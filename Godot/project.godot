@@ -14,10 +14,12 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Wehrau t0"
-config/description="Maquette de masses de Wehrau au temps zero. Affichage seul."
+config/name="Desire Path"
+config/description="Desire Path, maquette jouable de Wehrau."
 run/main_scene="res://maquette.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Godot/app_userdata/Wehrau t0"
 
 [display]
 
