@@ -22,6 +22,9 @@ C'est le critère de l'étape 6 (`Prototype/Premiers pas.md`), et elle absorbe l
 ### 32. L'université propose-t-elle un lieu ? — ouverte le 2026-09-23
 Elle **informe** déjà (100 : l'étude de la prochaine crue). Reste à trancher si elle **désigne un lieu**, une proposition à la fois, dite comme un constat (*« nos relevés montrent que… »*) — recommandé, avec la place-parking du marché en premier. À trancher avec : ce que coûte une proposition ignorée, et qui parle si l'université est inondée. ⚠️ 105 est suspendue : aujourd'hui tout s'ouvre au pont rouvert, et l'institut doit un jour redistribuer. → [[Université et recherche]]
 
+### 47. Un îlot peut-il être à moitié logement, à moitié parc ? — ouverte le 2026-10-02
+L'auteur : *« un îlot n'est pas séparé par sa fonction/tissu s'il a en même temps du logement et du parc »*. Proposé : le parc se pose **parcelle par parcelle, au curseur**, comme la densification ; le tissu reste la règle de construction de l'îlot, le parc est l'état du sol de chaque parcelle. Reste à trancher **qui choisit l'ordre** : la parcelle la plus basse d'abord, ou le joueur sur la carte. Sans réponse, un îlot est tout logement ou tout parc. → [[Décisions arrêtées]] 95 et 121
+
 ## L'écran
 
 ### 19. Combien de nombres permanents tiennent à l'écran ?
