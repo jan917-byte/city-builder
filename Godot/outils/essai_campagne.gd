@@ -114,7 +114,7 @@ func executer() -> void:
 		if v.camp_possible(fid) and abri < 0:
 			abri = fid
 	# Personne n'est relogé dans ce scénario : l'aide d'urgence a vidé la caisse.
-	v.crediter_essai_ke(1500.0)
+	v.crediter_essai_ke(maxf(0.0, -v.caisse_ke(61.0)) + v.cout_camp_ke(abri, 61.0) + 1.0)
 	verifier(abri >= 0 and v.abriter(abri, 61.0), "Un camp se pose sur le champ %d" % abri)
 	ui.reprendre_fiche("i", abri)
 	await process_frame

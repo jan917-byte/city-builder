@@ -29,16 +29,18 @@ func _initialize() -> void:
 			verifier(v.abriter(second, 0.25), "Deuxième camp engagé")
 			verifier(v.sans_toit(0.5) == 0.0 and v.reloges(0.5) == besoin,
 				"Les champs %d et %d relogent tout le monde" % [premier, second])
-			verifier(v.camp_taille(premier, 0.5) + v.camp_taille(second, 0.5) == 130,
-				"130 logements pour 260 personnes, dernier camp ajusté")
+			var logements := int(ceil(besoin / Ville.CAMP_PERSONNES_LOGEMENT))
+			verifier(v.camp_taille(premier, 0.5) + v.camp_taille(second, 0.5) == logements,
+				"%d logements pour %d personnes, dernier camp ajusté" % [logements, besoin])
 			# 🆘 L'aide d'urgence court jusqu'à chaque livraison : tous dehors
 			# jusqu'au premier camp, le reste jusqu'au second.
 			var aide := Ville.AIDE_KE_PERSONNE_MOIS * (besoin * Ville.CAMP_MOIS
 				+ (besoin - v.camp_capacite(premier)) * 0.25)
 			verifier(is_equal_approx(v.aide_cumulee_ke(0.5), aide),
 				"Aide d'urgence : %.1f k€ jusqu'au second camp" % aide)
-			verifier(is_equal_approx(v.caisse_ke(0.5), Ville.CAISSE_DEPART_KE + Ville.dotation_cumulee_ke(0.5) - 195.0 - aide),
-				"195 k€ payés pour les logements, pas pour les occupants")
+			verifier(is_equal_approx(v.caisse_ke(0.5), Ville.CAISSE_DEPART_KE + Ville.dotation_cumulee_ke(0.5) - logements * Ville.CAMP_KE_LOGEMENT - aide
+					- v.achat_nourriture_cumule_ke(0.5)),
+				"%.0f k€ payés pour les logements, pas pour les occupants (nourriture à part)" % (logements * Ville.CAMP_KE_LOGEMENT))
 			var sauvegarde := v.exporter_partie()
 			verifier(v.valider_partie(sauvegarde), "Sauvegarde valide")
 			v.importer_partie(sauvegarde)

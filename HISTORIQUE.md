@@ -860,3 +860,6 @@ Commité dans 448470a par une autre session ; essai étude à 0 échec, concours
 **2026-10-20 — Textes de l'auteur au jeu (récit en cinq pages, dont une sans titre sur la prochaine crue ; campement, projets, légende de Chantiers) ; une carte ou une fenêtre ramène ×2 et ×4 à ×1 et n'arrête plus le temps.**
 Travail de deux sessions resté non commité, commité tel quel à la demande de l'auteur ; aucune vérification à l'écran.
 Essais sans fenêtre, version commitée contre celle-ci : ouverture 1 échec (44 avant), progression 6 (13), étude, fonds, labour, rebâtir, déblaiement à 0 ; relogement 12, campagne 3, capital 2 inchangés ; vie au camp plante dans les deux (essais périmés).
+**2026-10-20 — Les essais remis à jour : tous à 0 échec sauf la sauvegarde, à 1 (la berge 9 n'a pas de nom).**
+Essais périmés, pas le jeu : 261 sinistrés lus sur la carte au lieu de 260 en dur, nourriture et confiance des camps comptées, pont provisoire avant le fonds (118), prix sur le bouton bleu, historique seul déplié (119), champs et lit de l'Ilse sans nom ; seul `chantiers.gd` (ancien prototype) pose maintenant `part_rendue`.
+Reste un vrai défaut : la chaîne sort 9 berges au lieu de 8, la 9ᵉ sans nom ; les essais se lancent un par un en 1 à 8 s, en parallèle ils se gênent.

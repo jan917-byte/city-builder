@@ -78,9 +78,13 @@ func executer() -> void:
 	verifier(m.trafic.axe_ferme(55), "La rue fermée s'est rouverte")
 	for t in attendus:
 		verifier(mesures(m, t) == attendus[t], "La trajectoire de la ville diffère au mois " + str(t))
-	verifier(m.interface._fiche_titre.text == "COUR DES TILLEULS", "Le lieu repris a perdu son nom")
+	verifier(m.interface._fiche_titre.text == "Cour des Tilleuls", "Le lieu repris a perdu son nom")
 	for couche in ["i", "r", "b"]:
 		for fid in m.ville.objets(couche):
+			# 🌾 Les champs n'ont pas de nom écrit : « Champ 1065 » est voulu (interface._titre_lieu) ;
+			# le lit de l'Ilse est transparent (maquette._teinte_sol).
+			if couche == "i" and str(m.ville.ilots[fid].get("sous_type", "")) in ["champ", "riviere"]:
+				continue
 			verifier(m.interface.lieux.noms[couche].has(str(fid)), "Lieu sans nom : " + couche + str(fid))
 	verifier(Sauvegarde.lire("autre carte", CHEMIN).has("erreur"), "Une autre carte doit être refusée")
 	if "--captures" in OS.get_cmdline_user_args():

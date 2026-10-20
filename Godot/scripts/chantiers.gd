@@ -46,6 +46,9 @@ const DECISIONS := {
 		"effets": [
 			{"portee": "cible", "couche": "i",
 				"champ": "part_toit_equipe", "valeur": 1.0},
+			# 🪜 Le jumeau que la production lit (`ville.gd`) ; courbe_rendue(1) = 1.
+			{"portee": "cible", "couche": "i",
+				"champ": "part_rendue", "valeur": 1.0},
 		],
 	},
 	"ISO": {

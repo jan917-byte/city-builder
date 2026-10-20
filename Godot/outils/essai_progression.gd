@@ -18,7 +18,10 @@ func executer() -> void:
 	verifier(not retours.compteur.visible and not retours.avis.visible, "Le récit masque le compteur et les notifications")
 	jeu.recit.terminer()
 	jeu._sur_vitesse(0.0)
-	verifier(retours.compteur.visible and "260" in retours.detail(retours.sans_logement), "Compteur permanent après le récit")
+	# Le nombre de sinistrés se lit sur la carte : il bouge quand la chaîne refait les îlots.
+	var besoin := str(int(jeu.ville.sans_toit(0.0)))
+	verifier(retours.compteur.visible and besoin in retours.detail(retours.sans_logement),
+		"Compteur permanent après le récit : %s" % retours.detail(retours.sans_logement))
 	o.ouvert = false
 	o.actualiser(true)
 	verifier(retours.compteur.visible, "Compteur conservé quand le guide est réduit")
@@ -28,9 +31,9 @@ func executer() -> void:
 	var nourris: float = jeu.ville.nourriture_personnes(0.0)
 	o.examiner("i", champ, "camp")
 	await cliquer(jeu.interface._recap_bouton)
-	verifier(jeu.ville.nourriture_personnes(0.0) < nourris and jeu.ville.sans_toit(0.0) == 260,
+	verifier(jeu.ville.nourriture_personnes(0.0) < nourris and str(int(jeu.ville.sans_toit(0.0))) == besoin,
 		"Coût agricole immédiat, aucune personne relogée avant livraison")
-	verifier("construction" in retours.detail(retours.sans_logement) and "260" in retours.detail(retours.sans_logement), "Places en préparation séparées du besoin")
+	verifier("construction" in retours.detail(retours.sans_logement) and besoin in retours.detail(retours.sans_logement), "Places en préparation séparées du besoin")
 	verifier(retours.chantiers.visible and "abris" in retours.chantiers_lignes[0]["quoi"].text,
 		"Le chantier engagé a sa barre en bas à droite")
 	await process_frame
@@ -41,17 +44,19 @@ func executer() -> void:
 	# 🔴 Le détail du problème vit dans l'infobulle de sa pastille.
 	retours.sans_logement.mouse_entered.emit()
 	await process_frame
-	verifier(retours.survol.visible and "260" in retours.survol_titre.text
+	verifier(retours.survol.visible and besoin in retours.survol_titre.text
 		and "k€ par mois" in retours.detail(retours.sans_logement)
 		and retours.survol.get_global_rect().end.y < retours.sans_logement.get_global_rect().position.y,
 		"Le survol de la pastille dit le problème et son coût, au-dessus d'elle")
 	await capture("progression_01b_survol")
 	retours.sans_logement.mouse_exited.emit()
 	actualiser(0.2)
-	verifier("22" in retours.detail(retours.sans_logement) and not "construction" in retours.detail(retours.sans_logement), "Le compteur baisse à la livraison")
+	var dehors := str(int(jeu.ville.sans_toit(0.2)))
+	verifier(dehors in retours.detail(retours.sans_logement) and not "construction" in retours.detail(retours.sans_logement),
+		"Le compteur baisse à la livraison : %s" % retours.detail(retours.sans_logement))
 	verifier(not retours.chantiers.visible, "La boîte des chantiers part avec le dernier livré")
 	verifier("aide d'urgence" in retours.detail(retours.sans_logement) and "9 k€" in retours.detail(retours.sans_logement),
-		"Les 22 personnes dehors coûtent leur aide chaque mois")
+		"Les personnes dehors coûtent leur aide chaque mois : %s" % retours.detail(retours.sans_logement))
 	verifier(retours.journal.size() >= 3, "Engagement, livraison et relogement sont conservés dans le journal")
 	await capture("progression_02_livraison")
 	var nb: int = retours.journal.size()
@@ -141,9 +146,12 @@ func executer() -> void:
 	actualiser(jeu.mois + 12.0)
 	verifier(jeu.Recherche.gains(jeu.ville, jeu.mois).all(func(g) -> bool: return "Objectif" in str(g[0])),
 		"Une année plus tard, les points ne viennent que des objectifs")
+	# Le compteur ne prend un point qu'à l'arrivée de son étoile (objectifs._voler) : on attend le vol.
+	await create_timer(4.0).timeout
 	verifier(jeu.interface._barre_valeurs["recherche"].text == str(jeu.Recherche.points(jeu.ville, jeu.mois))
 		and jeu.interface._barre_valeurs["recherche"].get_parent().visible,
-		"Le compteur du haut dit les points")
+		"Le compteur du haut dit les points : « %s » pour %d, visible %s" % [jeu.interface._barre_valeurs["recherche"].text,
+			jeu.Recherche.points(jeu.ville, jeu.mois), jeu.interface._barre_valeurs["recherche"].get_parent().visible])
 	jeu.interface.ouvrir_lieu("mairie")
 	await cliquer(jeu.interface._lieu_lignes["subv_vert"]["bouton"])
 	verifier("k€/mois" in retours.journal[-1], "Une subvention annonce son coût récurrent")

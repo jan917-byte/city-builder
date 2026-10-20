@@ -439,7 +439,8 @@ func executer() -> void:
 		return n
 	var rendus: int = abris.call(8.0) - abris.call(20.0)
 	jeu._rafraichir(true)
-	verifier(rendus == int(floor(43.0 / jeu.ville.CAMP_PERSONNES_LOGEMENT)) and jeu.camp._mmi.multimesh.instance_count == abris.call(20.0),
+	# camp_abris arrondit sur toute la ville : 43 / 2 donne 21 ou 22 selon le reste d'avant.
+	verifier(absf(rendus - 43.0 / jeu.ville.CAMP_PERSONNES_LOGEMENT) <= 0.5 and jeu.camp._mmi.multimesh.instance_count == abris.call(20.0),
 		"43 personnes rentrées, %d containers retirés de la ville" % rendus)
 	await capture("07_logements")
 	# La paire à comparer : le camp qui se vide, même cadrage, avant puis après.

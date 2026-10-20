@@ -44,9 +44,14 @@ func _initialize() -> void:
 		if v.camp_possible(fid) and v.camp_accessible(fid):
 			champs.append(fid)
 	verifier(v.abriter(champs[0], 0.0) and v.abriter(champs[1], 1.0), "Deux camps engagés")
-	verifier(is_equal_approx(v.capital(0.5), Ville.CAPITAL_DEPART), "Un seul camp livré : rien")
-	verifier(is_equal_approx(v.capital(2.0), Ville.CAPITAL_DEPART + Ville.CAPITAL_TOUS_ABRITES),
-		"Tout le monde abrité : +%.0f" % Ville.CAPITAL_TOUS_ABRITES)
+	# 🚿 Chaque camp livré rend 0,04 par personne abritée ; sans pont lancé, pas d'usure.
+	var un := v.reloges(0.5) * Ville.CAPITAL_PAR_PERSONNE_ABRITEE
+	verifier(is_equal_approx(v.capital(0.5), Ville.CAPITAL_DEPART + un),
+		"Un seul camp livré : +%.1f pour ses occupants, pas de prime" % un)
+	var tous := v.reloges(2.0) * Ville.CAPITAL_PAR_PERSONNE_ABRITEE
+	verifier(v.sans_toit(2.0) == 0.0 and is_equal_approx(v.capital(2.0),
+		Ville.CAPITAL_DEPART + tous + Ville.CAPITAL_TOUS_ABRITES),
+		"Tout le monde abrité : +%.1f pour les occupants, +%.0f de prime" % [tous, Ville.CAPITAL_TOUS_ABRITES])
 
 	# Retirer des places : coûte tout de suite ; un an après, le retour se juge
 	# sur la rue (99). Sans `trafic.gd`, la fermeture est simulée par ses rampes.

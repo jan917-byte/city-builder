@@ -73,8 +73,9 @@ func executer() -> void:
 			verifier(not n.visible, "Le diagnostic garde des arbres : " + n.name)
 	jeu._sur_theme("")
 	verifier(jeu.travaux.visible and jeu.travaux.actifs == 5, "Le retour à la ville perd ses chantiers")
+	# Repères de loin éteints depuis 44b1887 (2026-09-22) : grues et palissades suffisent.
 	jeu.pivot.viser(Vector2.ZERO, 1200.0)
-	verifier(jeu.travaux._reperes.visible, "La vue de ville ne montre aucun repère")
+	verifier(not jeu.travaux._reperes.visible, "Un repère de loin est revenu")
 	jeu.pivot.viser(Vector2.ZERO, 100.0)
 	verifier(not jeu.travaux._reperes.visible, "Le repère de loin masque le gros plan")
 	jeu.travaux.set_process(false)
@@ -83,7 +84,8 @@ func executer() -> void:
 	for fid in jeu.ville.routes:
 		if jeu.ville.routes[fid].get("etat_crue", "") != "coupe":
 			continue
-		verifier(jeu.ville.reparer("r", fid, 0.25), "Réparation du pont refusée")
+		# Provisoire : l'en dur attend le fonds de la mairie (118).
+		verifier(jeu.ville.reparer("r", fid, 0.25, true), "Réparation du pont refusée")
 		actualiser(0.25)
 		var lignes: Array = jeu.travaux._lignes("r", fid)
 		verifier(not lignes.is_empty(), "Les accès du pont ne sont pas balisés")

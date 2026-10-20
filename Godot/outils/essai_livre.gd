@@ -130,7 +130,8 @@ func executer() -> void:
 		"Le levier ouvre la place-parking, la prochaine crue reste à côté")
 	verifier(ui._permeable_bloc.visible and ui._reglages().has("permeable"),
 		"Le sol perméable est posé dans la fiche : %s" % ui._permeable_bouton.text)
-	verifier(j.apercu > j.engage + 0.05 and j.seuil > 0.0,
+	# Seuil 0 possible : dès 25 cm de moins, les îlots 62, 63 et 64 gardent des maisons.
+	verifier(j.apercu > j.engage + 0.05 and j.seuil >= 0.0,
 		"La jauge montre le réglage avant de payer : %.2f m" % j.apercu)
 	await capture("livre_04_jauge_apercu")
 

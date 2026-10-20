@@ -77,8 +77,9 @@ func executer() -> void:
 	await cliquer(ui._concours_bouton)
 	verifier(ui._pose.get("concours", false) == true, "« Lancer un concours » se pose")
 	jeu._rafraichir(true)
-	var texte := _effets(ui)
-	verifier(texte.begins_with("120") and "mois" in texte, "La fiche annonce son prix et son mois : %s" % texte)
+	# 💶 Prix et durée sur le bouton, plus dans les conséquences (auteur, 2026-10-20).
+	var texte := str(ui._recap_bouton.get_meta("prix", ""))
+	verifier("120 k€" in texte and "mois" in texte, "Le bouton annonce son prix et son mois : %s" % texte)
 	await cliquer(ui._recap_bouton)
 	actualiser(t0)
 	verifier(v.concours_lance() and absf(caisse0 - v.caisse_ke(t0) - v.CONCOURS_KE) < 0.5,
