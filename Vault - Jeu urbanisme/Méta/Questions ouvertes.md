@@ -50,6 +50,32 @@ La couleur est prête (89), rien ne la déclenche. **A** les berges, bief par bi
 ### 36. Comment le CO₂ réduit agit-il sur la température ? — ouverte le 2026-09-29
 L'auteur veut que réduire le CO₂ fasse baisser la température affichée (92), plus tard. Garde-fous : l'effet est **diffus et en retard**, et une ville de 5 000 habitants ne refroidit pas le climat seule — il porte plutôt sur **les pics** (canicules moins fortes) que sur la moyenne. À trancher avec la canicule (102). → [[Adaptation et réduction]]
 
+### 48. Les champs comptent-ils dans les moyennes de la ville ? — ouverte le 2026-10-02
+La décision 63 est appliquée dans le classeur (`08_jouer.py`) : canopée et sol imperméable pondérés par la **surface**, fragilité riveraine par les **logements**. Les champs font **57 %** de la surface hors rivière, donc ils dictent la moyenne.
+
+| Au mois 0 | Simple, par îlot | Par la surface, champs compris | Par la surface, sans les champs |
+|---|---|---|---|
+| Canopée | 0,20 | **0,14** | 0,26 |
+| Sol imperméable | 0,60 | **0,28** | 0,63 |
+
+**Options** : A, les champs comptent (Wehrau paraît déjà verte et perméable, il reste peu à gagner) ; B, « la ville », c'est le bâti et les rues, les champs ont leur propre barre (Agriculture, 91). **Recommandation : B**. Seul le classeur est touché, la maquette n'a plus ces moyennes (66). → [[Décisions arrêtées]] 63
+
+### 49. Huit arbitrages dits mais jamais consignés : les écrire tels quels ? — ouverte le 2026-10-02
+Dits par l'auteur et en place dans la maquette, sans numéro au registre. Il suffit de dire **oui, tel quel**, ou de corriger une ligne.
+
+| | Ce qui a été dit | Quand |
+|---|---|---|
+| a | La couleur d'un bâtiment suit **son époque**, plus sa typologie | 2026-08-18 |
+| b | Le calque **tissu** rend la typologie, à la demande | 2026-08-18 |
+| c | ~~**Zéro asset**~~ : levé le 2026-10-07, l'auteur modélise des assets | 2026-08-18 |
+| d | Les fenêtres viennent **du matériau**, sans un triangle | 2026-08-18 |
+| e | **Deux vues** : la ville vivante, et le diagnostic où seul le thème choisi est en couleur | 2026-08-25 |
+| f | Le **verrou de l'urgence** est retiré : réparer et équiper se disputent la même caisse (révise 72) | 2026-08-31 |
+| g | Un **toit vert** abaisse la prochaine crue dans **toute la ville** ; seul le plat verdit | 2026-08-31 |
+| h | Un toit est **solaire ou vert, jamais les deux** | 2026-08-31 |
+
+**Recommandation : tout consigner tel quel**, a et b en une décision.
+
 ## La mairie, l'université, la propriété
 
 ### 25. Ce qui reste des deux lieux

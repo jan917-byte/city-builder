@@ -635,6 +635,9 @@ L'amélioration vaut pour tous les camps ; la liste la range sous le premier cam
 **2026-10-02 — Une rue entre deux parcs peut devenir une allée du parc (décision 121 au vault, 101 sur sa branche, tranchée par l'auteur).**
 L'étape d'après « fermer aux voitures », si aucune porte ne donne sur la rue et si le réseau reste d'un seul tenant ; les deux îlots gardent leur numéro.
 Reste ouverte la question n°47 (45 sur la branche) : le parc posé sur une partie seulement d'un îlot, et qui choisit l'ordre des parcelles.
+**2026-10-02 — Les moyennes du classeur sont pondérées (63) ; deux questions s'ouvrent (48 et 49 au vault, 44 et 45 sur leur branche).**
+`08_jouer.py` : canopée et sol par la surface, riverain par les logements ; le contrôle du mois 0 se comparait au fichier qu'il venait d'écrire, il lit l'ancien d'abord, et échoue, `ilots.csv` étant plus ancien que la carte.
+Mois 0 : canopée 0,20 → 0,14, sol imperméable 0,60 → 0,28 (champs = 57 % de la surface). La question 46 de la branche (ce qui tombe au bout de l'étude) est tranchée depuis par 102 et 112.
 **2026-10-02 — Les quatre façons de rebâtir se voient : moderne (toit plat, enduit clair, étage en bois), pilotis (poteaux et vide sous 2,5 m), parc (prairie, noues, saules) ; la ruine s'efface (demande de l'auteur).**
 `07` marque la ruine et le bâti neuf, le shader en tire l'allure : aucun triangle de plus. Planches `wehrau_rebatir_miniatures.png`, `wehrau_rebatir_ville.png`.
 `essai_rebatir`, `essai_ouverture`, `essai_etude` : 0 échec ; `--essai` passe ; `essai_vie_camp` : 1 échec, venu de l'amélioration passée à 3 semaines (autre session).
