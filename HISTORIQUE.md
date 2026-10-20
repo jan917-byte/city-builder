@@ -710,6 +710,9 @@ Essais headless (l'auteur jouait) : étude, ouverture, livre, rebâtir, concours
 **2026-10-08 — Le campus est dessiné à la main : une allée sur chaque limite commune, une placette à la croisée, 8 bâtiments au lieu de 5.**
 Demande de l'auteur sur capture (« pas satisfait du look ») ; plan en table (`export_godot/campus.py`), 04c laisse les trois îlots entiers, 04d pose le plan, 07 dessine allées et parvis et écarte les arbres ; emprise 1 730 → 2 590 m², institut à 3 bâtiments ; vue numérotée `apercu_campus.py`.
 Essais étude, rebâtir, livre, concours : 0 échec ; l'avertissement « 153 îlots au lieu de 71 » était déjà là.
+**2026-10-08 — Les venelles naissent en trace dans l'herbe et le joueur les aménage (122 au vault, 106 sur sa branche, fusionnée le 2026-10-20).**
+Demande de l'auteur (« fais un et note le reste »). `07` pose une trace (herbe, herbe foulée, terre ondulée) au-dessus du pavé, cachée à la livraison ; 6 traces, 139 m de terre ; 120 €/m², 3 mois, aucun effet sur les jauges. À la fusion : fermée la première année comme tout levier ; question 50 (trois autres références) ouverte.
+`essai_venelle` : ok ; ouverture et rebâtir 0 échec, sauvegarde 1 comme avant (berge 9).
 **2026-10-08 — Le jeu s'appelle *Desire Path* (décision 106 de la branche, 111 au vault) ; la maquette porte le nom, le vault prépare la page Steam.**
 Tranché par l'auteur (écartés : Unpave, Desire Lines) ; aucun jeu de ce nom trouvé sur Steam. Formats des sept images, règles de capsule et deux voies sans IA (illustrateur, provisoire) dans `Marketing et Steam` ; trois pistes d'image à trancher.
 Godot : la fenêtre s'appelle « Desire Path », les sauvegardes restent dans « Wehrau t0 » (custom_user_dir). Puis l'auteur retire le seuil « moins de 5 000 wishlists en six mois » (47 : la page n'est plus un test de marché) ; coût et démarches de la page notés.
