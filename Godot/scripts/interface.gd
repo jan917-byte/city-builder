@@ -24,7 +24,7 @@ signal deblaiement_demande()
 signal vue_crue_demandee(id: String)
 ## Ouvrir la fiche d'un lieu, déjà réglée — `maquette.examiner`.
 signal examen_demande(couche: String, fid: int, reglage: String, valeur: Variant)
-## 🏛️ L'écran des quatre projets s'ouvre sur cet îlot : `maquette` le remonte au-dessus.
+## 🏛️ L'écran des projets s'ouvre sur cet îlot : `maquette` le remonte au-dessus.
 signal projets_ouverts(fid: int)
 ## 🛠️ Le mode choisi au lancement : histoire, ou auteur (chantiers livrés au clic).
 signal mode_choisi(auteur: bool)
@@ -498,7 +498,7 @@ var _repare_bouton: Button
 var _repare_provisoire: Button   # 🌉 l'autre choix d'un pont coupé (auteur, 2026-09-24)
 ## 🏗️ Les quatre façons de relever un îlot sinistré (`Ville.RECONSTRUCTIONS`).
 var _rebatir_boutons := {}
-## 🏛️ Le concours (104 revue) : facultatif, une fois pour la zone ; les quatre projets s'ouvrent sans lui.
+## 🏛️ Le concours (104 revue) : facultatif, une fois pour la zone ; seul il ouvre les projets neufs.
 var _concours_bouton: Button
 var _projets_bouton: Button
 var _consolider_bouton: Button   # 🌉 le pont en dur à la place du provisoire (118)
@@ -3823,7 +3823,7 @@ func _ralentir_campus() -> void:
 
 
 # ==========================================================================
-# 🏛️ LES QUATRE PROJETS d'un îlot, côte à côte (95 · 104 revue)
+# 🏛️ LES TROIS PROJETS NEUFS d'un îlot, côte à côte (95 · 104 revue)
 # ==========================================================================
 # Ouverts sans concours ; le concours, facultatif et pour toute la zone, baisse
 # le prix des projets neufs. D'un îlot à l'autre, seuls les chiffres changent.
@@ -3842,41 +3842,42 @@ func _panneau_projets() -> void:
 	_projets_panneau = p
 	p.theme = _theme_ui
 	_poser_boite(p)
-	# Au milieu de la place que laissent la colonne et la fiche, en bas : l'îlot reste visible.
-	p.anchor_left = 0.5
-	p.anchor_right = 0.5
+	# Toute la place entre les boutons de caméra (~165 px) et la fiche, en bas : le haut de l'îlot reste visible.
+	p.anchor_left = 0.0
+	p.anchor_right = 1.0
 	p.anchor_top = 1.0
 	p.anchor_bottom = 1.0
-	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	p.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	p.offset_left = -FICHE_LARGEUR / 2.0
-	p.offset_right = -FICHE_LARGEUR / 2.0
-	p.offset_bottom = -20.0
+	p.offset_left = 176.0
+	p.offset_right = -FICHE_LARGEUR - 26.0
+	p.offset_bottom = -16.0
 	p.visible = false
 	add_child(p)
 	_croix(p, fermer_projets)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
+	v.add_theme_constant_override("separation", 10)
 	p.add_child(v)
 	_projets_titre = _bandeau(v, "")
-	_projets_intro = _label("", 12, GRIS)
+	_projets_titre.add_theme_font_size_override("font_size", 24)
+	_projets_intro = _label("", 15, GRIS)
 	v.add_child(_projets_intro)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_theme_constant_override("separation", 12)
 	v.add_child(h)
-	for f in Ville.RECONSTRUCTIONS_ORDRE:
+	for f in Ville.PROJETS_CONCOURS:
 		var carte := PanelContainer.new()
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = FOND_FORT
 		sb.set_corner_radius_all(_r(9))
-		sb.set_content_margin_all(10)
+		sb.set_content_margin_all(12)
 		carte.add_theme_stylebox_override("panel", sb)
-		carte.custom_minimum_size = Vector2(218, 0)
+		carte.custom_minimum_size = Vector2(Apercu.TAILLE_PROJET.x + 24, 0)
 		h.add_child(carte)
 		var cv := VBoxContainer.new()
-		cv.add_theme_constant_override("separation", 5)
+		cv.add_theme_constant_override("separation", 7)
 		carte.add_child(cv)
-		cv.add_child(_label(str(Ville.RECONSTRUCTIONS[f]["nom"]), 16, TEXTE))
+		cv.add_child(_label(str(Ville.RECONSTRUCTIONS[f]["nom"]), 20, TEXTE))
 		# L'îlot livré, comme la miniature de la fiche (auteur, 2026-10-06).
 		var vue := TextureRect.new()
 		vue.texture = apercus_projets.get(f)
@@ -3885,16 +3886,17 @@ func _panneau_projets() -> void:
 		vue.custom_minimum_size = Vector2(0, Apercu.TAILLE_PROJET.y)
 		vue.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cv.add_child(vue)
-		var quoi := _label(PROJETS_QUOI[f], 11, GRIS)
+		var quoi := _label(PROJETS_QUOI[f], 14, GRIS)
 		quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cv.add_child(quoi)
 		cv.add_child(HSeparator.new())
 		var lignes := VBoxContainer.new()
-		lignes.add_theme_constant_override("separation", 4)
+		lignes.add_theme_constant_override("separation", 6)
 		lignes.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		cv.add_child(lignes)
 		var b := Button.new()
 		_habiller_gratuit(b)
+		b.add_theme_font_size_override("font_size", 17)
 		b.focus_mode = Control.FOCUS_NONE
 		# Le choix se pose comme un bouton de la fiche, puis l'écran se retire : il ne paie pas.
 		_decision(b, "reparer", f)
@@ -3911,6 +3913,7 @@ func ouvrir_projets() -> void:
 	_projets_panneau.visible = true
 	_maj_projets()
 	retours.actualiser_affichage()
+	_objectifs_suivre()
 	projets_ouverts.emit(_fiche_fid)
 
 
@@ -3923,6 +3926,13 @@ func fermer_projets() -> void:
 	if _projets_panneau != null:
 		_projets_panneau.visible = false
 		retours.actualiser_affichage()
+		_objectifs_suivre()
+
+
+## Les objectifs, en bas à gauche, passent sous l'écran des projets : ils s'effacent avec lui.
+func _objectifs_suivre() -> void:
+	if ouverture != null and ouverture.objectifs != null:
+		ouverture.objectifs.actualiser()
 
 
 ## Appelé à chaque image avec la fiche : les boutons suivent la pose, les chiffres
@@ -3956,12 +3966,12 @@ func _maj_projets() -> void:
 			lignes.remove_child(c)
 			c.queue_free()
 		for e in _projet(f):
-			_effet(e[0], e[1], e[2], lignes)
-	# La ville d'essai a servi aux quatre : le récapitulatif se remesure.
+			_effet(e[0], e[1], e[2], lignes, 16)
+	# La ville d'essai a servi aux trois : le récapitulatif se remesure.
 	_recap_cle = ""
 
 
-## Les mêmes cinq lignes pour les quatre projets, dans le même ordre : c'est ce qui
+## Les mêmes cinq lignes pour les trois projets, dans le même ordre : c'est ce qui
 ## les rend comparables. Mesurées comme `consequences`, sur la ville d'essai.
 func _projet(f: String) -> Array:
 	var r := {"reparer": f}
@@ -6013,7 +6023,7 @@ static func _sens(x: float) -> int:
 	return 1 if x > 0.0 else -1
 
 
-func _effet(nom: String, texte: String, sens: int, parent: Control = null) -> void:
+func _effet(nom: String, texte: String, sens: int, parent: Control = null, taille := 13) -> void:
 	var coul: Color = TEXTE if sens == 0 else (FAIT_TEXTE if sens > 0 else ALERTE)
 	if nom == "caisse" and sens == 0:
 		coul = ARGENT
@@ -6021,10 +6031,10 @@ func _effet(nom: String, texte: String, sens: int, parent: Control = null) -> vo
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 5 if recap else 4)
 	var ic := TextureRect.new()
-	ic.texture = _icone(nom, 22 if recap else 16, coul)
+	ic.texture = _icone(nom, 22 if recap else taille + 3, coul)
 	ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	h.add_child(ic)
-	var l := _titre(texte, 17, coul) if recap else _label(texte, 13, coul)
+	var l := _titre(texte, 17, coul) if recap else _label(texte, taille, coul)
 	if parent != null:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL

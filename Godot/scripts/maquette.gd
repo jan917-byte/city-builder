@@ -278,9 +278,10 @@ func _ready() -> void:
 	apercu.name = "Apercu"
 	add_child(apercu)
 	apercu.batir(mat_objet, donnees["palette"])
-	for f in Ville.RECONSTRUCTIONS_ORDRE:
+	for f in Ville.PROJETS_CONCOURS:
 		var a := Apercu.new()
 		a.name = "Projet_" + f
+		a.maquette = true
 		add_child(a)
 		a.batir(mat_objet, donnees["palette"], Apercu.TAILLE_PROJET)
 		apercus_projets[f] = a

@@ -21,11 +21,19 @@ const Echantillon := preload("res://scripts/echantillon.gd")
 ## Le format de la miniature dans la fiche : 320 px de panneau moins ses deux
 ## marges de 12 px. La fiche s'y accorde — elle lit cette constante.
 const TAILLE := Vector2i(296, 168)
-## 🏛️ Une carte du concours (104) : 218 px moins ses deux marges de 10 px.
-const TAILLE_PROJET := Vector2i(198, 104)
+## 🏛️ Une carte du concours (104) moins ses deux marges de 12 px ; l'interface en tire la largeur.
+## Agrandie 198 × 104 → 316 × 200 (auteur, 2026-10-20 : « visible en plus grand ») : trois cartes
+## tiennent à 1600 px entre les boutons de caméra et la fiche.
+const TAILLE_PROJET := Vector2i(316, 200)
 ## 🎓 Une vignette du campus : la colonne d'une partie de l'étude, ~270 px.
 const TAILLE_CAMPUS := Vector2i(264, 150)
 var _taille := TAILLE
+## 🏛️ LA MAQUETTE DU CONCOURS (auteur, 2026-10-20) : posée avant `batir`. L'existant en carton,
+## le projet en bois, le tout sur un socle ; pas le papier blanc des diagnostics. 🔴 Flaggable (90).
+var maquette := false
+var _socle: MeshInstance3D
+const SOCLE_MARGE_M := 6.0
+const SOCLE_EPAISSEUR_M := 2.5
 ## 🔴 RENDUE TROIS FOIS PLUS GRANDE, puis réduite par la fiche. Les fenêtres et
 ## les rangs de tuiles sont des motifs qui s'effacent sous ~1,5 px : à 296 px de
 ## large, un étage fait 6 px et la façade sortait nue.
@@ -143,8 +151,20 @@ func batir(mat_objet: Material, palette: Dictionary, taille := TAILLE) -> void:
 	# celle du bord de rue sur toute sa longueur — deux bandes noires le long du
 	# trottoir. Ce qu'elle doit faire, c'est fermer le vide, pas se dessiner.
 	m.disable_receive_shadows = true
+	if maquette:
+		m.albedo_color = Color8(205, 200, 190)
 	_sol.material_override = m
 	add_child(_sol)
+	if maquette:
+		_socle = MeshInstance3D.new()
+		_socle.name = "Socle"
+		_socle.mesh = BoxMesh.new()
+		var bois := Materiaux.surface(1.0)
+		bois.vertex_color_use_as_albedo = false
+		bois.albedo_color = Color8(132, 108, 84)
+		_socle.material_override = bois
+		_socle.visible = false
+		add_child(_socle)
 
 	mm_gare = Constructeur.voitures(0)
 	mm_roule = Constructeur.voitures(0, true)
@@ -212,7 +232,8 @@ func batir(mat_objet: Material, palette: Dictionary, taille := TAILLE) -> void:
 	for mi in [_objet, _futur, _ruine, _decor]:
 		mi.set_instance_shader_parameter("teinte", Color.WHITE)
 		mi.set_instance_shader_parameter("calque", Color(1.0, 1.0, 1.0, 0.0))
-		mi.set_instance_shader_parameter("maquette_blanche", 0.0)
+		mi.set_instance_shader_parameter("maquette_blanche",
+			(3.0 if mi == _futur else 2.0) if maquette else 0.0)
 
 
 ## 🏘️ UN ÎLOT : les maillages de la ville, tels quels. `sol` est sa plaque.
@@ -461,9 +482,14 @@ func regler(equipe: float, verdi: float, plate: float, futur: bool,
 func _planter_parc() -> void:
 	var liste := Constructeur.semis_parc(_parc_cle) if _parc_cle != null else []
 	var vert := _teinte("_feuillage").srgb_to_linear()
+	var tronc := _teinte("_tronc")
+	# 🏛️ En maquette, des arbres de mousse pâle sur des tiges de bois.
+	if maquette:
+		vert = Color8(178, 190, 150).srgb_to_linear()
+		tronc = Color8(176, 138, 98)
 	for essence in _parc_mmi:
 		(_parc_mmi[essence] as MultiMeshInstance3D).multimesh = null if liste.is_empty() 			else Constructeur.arbres(liste, essence,
-				vert * (1.14 if essence == Constructeur.SAULE else 1.0), _teinte("_tronc"))
+				vert * (1.14 if essence == Constructeur.SAULE else 1.0), tronc)
 
 
 ## 🌾 La culture du champ montré, codée comme dans la ville (`ville.parcelle_code`).
@@ -509,6 +535,38 @@ func _semer_points() -> void:
 		for k in 8:
 			_points.append(b.get_endpoint(k))
 	_cap = _direction(_points)
+	if _socle != null:
+		_poser_socle(bas)
+
+
+## 🏛️ La planche sous la maquette : un rectangle dans l'axe de l'îlot, marge comprise, cadré avec lui.
+func _poser_socle(bas: float) -> void:
+	var a := deg_to_rad(_cap)
+	var ax := Vector3(cos(a), 0.0, sin(a))
+	var az := Vector3(-sin(a), 0.0, cos(a))
+	var u0 := INF
+	var u1 := -INF
+	var w0 := INF
+	var w1 := -INF
+	for p in _points:
+		u0 = minf(u0, p.dot(ax))
+		u1 = maxf(u1, p.dot(ax))
+		w0 = minf(w0, p.dot(az))
+		w1 = maxf(w1, p.dot(az))
+	u0 -= SOCLE_MARGE_M
+	u1 += SOCLE_MARGE_M
+	w0 -= SOCLE_MARGE_M
+	w1 += SOCLE_MARGE_M
+	var dessus := bas + SOUS_LE_SOL - 0.05
+	(_socle.mesh as BoxMesh).size = Vector3(u1 - u0, SOCLE_EPAISSEUR_M, w1 - w0)
+	_socle.rotation = Vector3(0.0, -a, 0.0)
+	_socle.position = ax * ((u0 + u1) * 0.5) + az * ((w0 + w1) * 0.5) \
+		+ Vector3(0.0, dessus - SOCLE_EPAISSEUR_M * 0.5, 0.0)
+	_socle.visible = true
+	for u in [u0, u1]:
+		for w in [w0, w1]:
+			for y in [dessus, dessus - SOCLE_EPAISSEUR_M]:
+				_points.append(ax * u + az * w + Vector3(0.0, y, 0.0))
 
 
 ## Le cap d'un nuage au sol, en degrés : direction principale, vecteur propre

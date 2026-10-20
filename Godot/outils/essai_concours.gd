@@ -109,7 +109,7 @@ func executer() -> void:
 	await _ouvrir_projets(ui)
 	verifier(ui._projets_panneau.visible and "Forgerons" in ui._projets_titre.text
 		and ui._projets_titre.text.begins_with("Lauréats")
-		and "concours" in _lignes(ui, "moderne") and not "concours" in _lignes(ui, "tradition"),
+		and "concours" in _lignes(ui, "moderne") and not ui._projets_cartes.has("tradition"),
 		"L'écran des lauréats : %s" % _lignes(ui, "moderne"))
 	await capture("concours_04_forgerons")
 
@@ -126,12 +126,12 @@ func executer() -> void:
 			"Le trait entoure l'îlot %d, avec la caméra recadrée" % fid)
 		verifier(jeu.apercus_projets.values().all(func(a) -> bool:
 			return a.render_target_update_mode != SubViewport.UPDATE_DISABLED),
-			"Les quatre cartes montrent leur miniature")
+			"Les trois cartes montrent leur miniature")
 		lignes[fid] = {}
-		for f in v.RECONSTRUCTIONS_ORDRE:
+		for f in v.PROJETS_CONCOURS:
 			lignes[fid][f] = _lignes(ui, f)
 		await capture("concours_%02d_%s" % [5 if fid == FOUR else 6, "four" if fid == FOUR else "colombier"])
-	verifier(lignes[FOUR]["pilotis"].contains("26 perdus") and lignes[FOUR]["tradition"].contains("26 perdus"),
+	verifier(lignes[FOUR]["pilotis"].contains("26 perdus"),
 		"Au Four, les pilotis ne sauvent rien : %s" % lignes[FOUR]["pilotis"])
 	verifier(lignes[COLOMBIER]["pilotis"] != lignes[FOUR]["pilotis"],
 		"Le Colombier n'a pas les chiffres du Four : %s" % lignes[COLOMBIER]["pilotis"])

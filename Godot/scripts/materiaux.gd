@@ -818,7 +818,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t// matière et ne garde que son VOLUME (COLOR.a = l'AO bakée) :\n" \
 		+ "\t// seul le thème est en couleur, donc tout thème est lisible.\n" \
 		+ "\t// Les quatre signaux s'excluent — un thème remplit un seul.\n" \
-		+ "\tif (maquette_blanche > 0.5) {\n" \
+		+ "\tif (maquette_blanche > 0.5 && maquette_blanche < 1.5) {\n" \
 		+ "\t\t// 🔄 Le papier blanc des dangers, sur toutes les cartes (auteur, 2026-10-12).\n" \
 		+ "\t\tbase = CRUE_PAPIER * COLOR.a;\n" \
 		+ "\t\t// La maquette sans cheminées ni débris. La souche se\n" \
@@ -881,6 +881,37 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\t\t: vec3(0.716, 0.042, 0.030));\n" \
 		+ "\t\t\tbase = mix(base, signal * COLOR.a, 0.88);\n" \
 		+ "\t\t}\n" \
+		+ "\t}\n" \
+		+ "\t// 🏛️ LA MAQUETTE DU CONCOURS (auteur, 2026-10-20) : 2 = l'existant en carton,\n" \
+		+ "\t// 3 = le projet en bois clair. Pas le papier des diagnostics : un grain, un flocage.\n" \
+		+ "\tif (maquette_blanche > 1.5) {\n" \
+		+ "\t\tbool souche_m = dot(UV, UV) < 0.01 && distance(COLOR.rgb, vec3(0.198, 0.133, 0.100)) < 0.01;\n" \
+		+ "\t\tif (debris || souche_m) discard;\n" \
+		+ "\t\tvec3 vu = base / max(COLOR.a, 0.05);\n" \
+		+ "\t\tbool mur_m = abs(normale_monde.y) < 0.30 && UV.y > 1.05;\n" \
+		+ "\t\tbool toit_m = dot(UV, UV) > 0.25 && pos_monde.y > 1.0;\n" \
+		+ "\t\tvec3 m;\n" \
+		+ "\t\tif ((mur_m || toit_m) && !(toit_m && toit_vert_ici > 0.5)) {\n" \
+		+ "\t\t\tif (maquette_blanche > 2.5) {\n" \
+		+ "\t\t\t\t// Le fil du bois court le long de la façade, ou sur le toit.\n" \
+		+ "\t\t\t\tvec2 fil = mur_m ? vec2((pos_monde.x + pos_monde.z) * 0.35, pos_monde.y * 5.0)\n" \
+		+ "\t\t\t\t\t: vec2(pos_monde.x * 0.35, pos_monde.z * 5.0);\n" \
+		+ "\t\t\t\tfloat veine = bruit(fil) * 0.6 + bruit(fil * 3.1) * 0.4;\n" \
+		+ "\t\t\t\tm = (mur_m ? vec3(0.807, 0.644, 0.413) : vec3(0.672, 0.479, 0.262)) * mix(0.90, 1.06, veine);\n" \
+		+ "\t\t\t} else {\n" \
+		+ "\t\t\t\tm = (mur_m ? vec3(0.855, 0.823, 0.760) : vec3(0.745, 0.723, 0.672))\n" \
+		+ "\t\t\t\t\t* mix(0.97, 1.02, bruit(pos_monde.xz * 4.0 + pos_monde.y * 3.0));\n" \
+		+ "\t\t\t}\n" \
+		+ "\t\t} else if (vu.g - max(vu.r, vu.b) > 0.02) {\n" \
+		+ "\t\t\t// Le flocage des jardins, des parcs et des toits verts.\n" \
+		+ "\t\t\tm = vec3(0.305, 0.381, 0.188) * mix(0.82, 1.10, bruit(pos_monde.xz * 3.0));\n" \
+		+ "\t\t} else if (vu.b > vu.g && vu.b > vu.r * 1.15) {\n" \
+		+ "\t\t\tm = vec3(0.305, 0.402, 0.485);\n" \
+		+ "\t\t} else {\n" \
+		+ "\t\t\tm = vec3(0.610, 0.578, 0.515);\n" \
+		+ "\t\t}\n" \
+		+ "\t\tbase = m * COLOR.a;\n" \
+		+ "\t\trugosite = 1.0;\n" \
 		+ "\t}\n" \
 		+ "\t// La maquette blanche ne garde que le volume : pas de relief peint.\n" \
 		+ "\tif (w_relief > 0.0 && maquette_blanche < 0.5) {\n" \

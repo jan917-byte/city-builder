@@ -201,6 +201,8 @@ const RECONSTRUCTIONS := {
 		"confiance": -1.0, "hausse_m": 0.0},
 }
 const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc"]
+## 🏛️ Les lauréats ne montrent que du neuf : « comme avant » reste à la fiche (auteur, 2026-10-20).
+const PROJETS_CONCOURS := ["moderne", "pilotis", "parc"]
 # 🏛️ UN CONCOURS FACULTATIF POUR TOUTE LA ZONE SINISTRÉE (104 revue, auteur 2026-10-19) :
 # les quatre façons s'offrent sans lui ; lancé, il coûte et prend un mois, puis les projets
 # neufs (tout sauf « comme avant ») coûtent moins. 🎚️ Les trois nombres sont à juger.

@@ -203,8 +203,8 @@ var _guet_ms := -GUET_MS
 
 func actualiser(force := false) -> void:
 	var ui = jeu.interface
-	# Caché pendant le récit, comme les compteurs ; au-dessus des boutons de caméra.
-	visible = ui._menu_panneau.visible
+	# Caché pendant le récit, comme les compteurs, et sous l'écran des projets ; au-dessus des boutons de caméra.
+	visible = ui._menu_panneau.visible and ui.projets_fid() < 0
 	offset_bottom = -16.0 - ui._camera_panneau.size.y - 10.0
 	var attente := 0.0
 	var guet := force or Time.get_ticks_msec() - _guet_ms >= GUET_MS

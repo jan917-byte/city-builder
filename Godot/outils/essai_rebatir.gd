@@ -81,13 +81,18 @@ func executer() -> void:
 		"Le concours rendu : reconstruire ou voir les projets des lauréats, aucun posé")
 	await cliquer(ui._projets_bouton)
 	verifier(ui._projets_panneau.visible and ui._projets_titre.text.begins_with("Lauréats"),
-		"« Voir les projets des lauréats » ouvre les quatre")
+		"« Voir les projets des lauréats » ouvre les trois projets neufs")
 	await capture("rebatir_01_quatre_facons")
 	var n := 2
 	for f in v.RECONSTRUCTIONS_ORDRE:
-		if not ui._projets_panneau.visible:
-			await cliquer(ui._projets_bouton)
-		await cliquer(ui._projets_cartes[f]["bouton"])
+		# « Comme avant » se pose à la fiche, pas chez les lauréats.
+		if f == "tradition":
+			ui.fermer_projets()
+			await cliquer(ui._rebatir_boutons["tradition"])
+		else:
+			if not ui._projets_panneau.visible:
+				await cliquer(ui._projets_bouton)
+			await cliquer(ui._projets_cartes[f]["bouton"])
 		verifier(not ui._projets_panneau.visible, "%s : choisir referme l'écran" % f)
 		jeu._rafraichir(true)
 		var texte := _effets(ui)
