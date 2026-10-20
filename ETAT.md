@@ -8,7 +8,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 ## Prochaine action
 - 🏛️ **Jouer l'ouverture, la mairie d'abord** (117) : pont rouvert → mairie seule → concours (1 point) → étude (80 k€) → université. Quoi regarder et quels défauts chercher → [Premiers pas](Prototype/Premiers%20pas.md) § À jouer et § Ce qui attend le joueur.
 - 📸 Captures de l'ouverture à prendre (non prises le 2026-10-19) : `essai_ouverture.gd -- --ouverture --captures`.
-- 🏚️ **Non commité sur le Mac (2026-10-20)** : bâtiments de cour à un niveau, toit plat sans souche, 12 × 6 m — à voir à l'écran avant de committer.
+- 🏚️ **Bâtiments de cour** à un niveau, toit plat sans souche, 12 × 6 m (commités le 2026-10-20) — à voir à l'écran.
 
 ## À juger à l'écran
 - 💶 **Deux budgets** (118) et 🪜 **la complexité peu à peu** (119, argent sans « chaque mois » au début, trois études de cartes à la mairie) : 1 500 k€ d'urgence, le fonds de 2 000 k€ à la mairie, le pont en dur et le pont résistant → [Premiers pas](Prototype/Premiers%20pas.md) § Deux budgets.
