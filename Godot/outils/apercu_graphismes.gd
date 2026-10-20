@@ -56,6 +56,16 @@ func capturer() -> void:
 		g.choisir("rebonds", true)
 		await photo("%s_rebonds_oui" % vue[1])
 		g.choisir("rebonds", false)
+		for k in ["ciel", "brume"]:
+			g.choisir(k, true)
+			await photo("%s_%s_oui" % [vue[1], k])
+			g.choisir(k, false)
+		g.choisir("ciel", true)
+		g.choisir("brume", true)
+		g.choisir("rebonds", true)
+		await photo("%s_lumiere_tout" % vue[1])
+		for k in ["ciel", "brume", "rebonds"]:
+			g.choisir(k, false)
 		g.choisir("echelle", "70")
 		await photo("%s_resolution_70" % vue[1])
 		g.choisir("echelle", "100")

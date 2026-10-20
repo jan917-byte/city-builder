@@ -175,7 +175,8 @@ func reglages() -> void:
 		var ref := await mesurer(240)
 		ligne("par défaut", ref)
 		for r in [["ombres", "moyennes"], ["ombres", "legeres"], ["ombres", "aucune"],
-				["bois", false], ["recoins", false], ["rebonds", true], ["anticrenelage", "leger"],
+				["bois", false], ["recoins", false], ["rebonds", true], ["ciel", true], ["brume", true],
+				["anticrenelage", "leger"],
 				["anticrenelage", "non"], ["echelle", "85"], ["echelle", "70"]]:
 			g.choisir(r[0], r[1])
 			ligne("%s %s" % [r[0], str(r[1])], await mesurer(240), ref)

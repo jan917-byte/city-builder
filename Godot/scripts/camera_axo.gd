@@ -57,6 +57,7 @@ var _ancre_active := false
 var _zoom_actif := false
 var _taille_cible := 1200.0
 var flou := 0.0
+var brume: Environment = null
 
 
 func _ready() -> void:
@@ -105,6 +106,7 @@ func _appliquer() -> void:
 	camera.near = maxf(0.05, recul * 0.01)
 	rotation_degrees = Vector3(-_hauteur_vu, _lacet_vu, 0.0)
 	_maj_flou(recul)
+	_maj_brume(recul)
 	vue_changee.emit(_lacet_vu, _hauteur_vu)
 
 
@@ -132,6 +134,20 @@ func _maj_flou(recul: float) -> void:
 	a.dof_blur_near_enabled = true
 	a.dof_blur_near_distance = recul * 0.65
 	a.dof_blur_near_transition = recul * 0.15
+
+
+## Brume au loin : comme le flou, en fractions du recul. null = rien à suivre.
+func regler_brume(env: Environment) -> void:
+	brume = env
+	_appliquer()
+
+
+func _maj_brume(recul: float) -> void:
+	if brume == null:
+		return
+	# Rien sous le point visé ; ~18 % en haut du cadre à 32° (2 reculs), plus vers l'horizon.
+	brume.fog_depth_begin = recul * 0.9
+	brume.fog_depth_end = recul * 3.5
 
 
 func viser(cible: Vector2, t: float) -> void:
