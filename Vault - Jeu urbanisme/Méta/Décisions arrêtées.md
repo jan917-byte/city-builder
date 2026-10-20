@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-19
+maj: 2026-10-20
 ---
 
 # Décisions arrêtées
@@ -57,8 +57,8 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 72 | **L'adaptation d'abord**, la réduction des émissions après la réparation | 🟡 | 2026-08-21 · [[Adaptation et réduction]] |
 | 84 | **Deux champs sur trois** suffisent au relogement d'urgence ; deux personnes par container | 🔓 | 2026-09-18 · [[Relogement progressif - proposition]] |
 | 85 | **Carte sans pictogrammes**, compteur « Personnes sans logement » permanent, libre choix du pont, retours factuels | 🔓 | 2026-09-18 · [[Premiers pas après la crue]] |
-| 86 | Le budget de départ (**3 500 k€**) couvre le relogement, un pont au choix et le déblaiement | 🔓 | 2026-09-20 |
-| 87 | Le premier pont se choisit **provisoire** (2 mois, 25 % du prix, une voie) ou **en dur** (7 mois) ; ses accès se déblaient pendant le chantier | 🔓 | 2026-09-24, raccourci le 2026-10-12 |
+| 86 | ~~Le budget de départ (**3 500 k€**) couvre le relogement, un pont au choix et le déblaiement~~ (→ 118) | 🔓 | 2026-09-20 |
+| 87 | Le premier pont se choisit **provisoire** (2 mois, 25 % du prix, une voie) ou **en dur** (7 mois) ; ses accès se déblaient pendant le chantier. **L'en dur attend le fonds de reconstruction** (118) | 🔓 | 2026-09-24, raccourci le 2026-10-12, revu le 2026-10-20 |
 | 89 | **L'Ilse coule du sud au nord**, brune de crue, normale en 4 mois, limpide plus tard (déclencheur ouvert) | 🔓 | 2026-09-28 · [[Questions ouvertes]] n°35 |
 | 95 | Un îlot sinistré offre **plusieurs postures qui se valent** : à l'identique (confiance gagnée, exposé), autre tissu, parc inondable (confiance perdue, protégé) ; rebâtir en zone basse fait monter la prévision | 🟡 | 2026-09-30 · `Prototype/Premiers pas.md` |
 | 100 | L'université publie une **étude : une crue plus forte dans 6 à 8 ans** ; Dangers se lit en deux onglets, Prochaine crue et Dégâts | 🟡 | 2026-09-30, moment changé par 105 |
@@ -89,6 +89,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 114 | **L'université contient la bibliothèque et l'institut** : au rail, deux portes de même rang — mairie et université ; dans l'université, trois onglets — Études, Bibliothèque, Institut. Les trois îlots du campus restent sur la carte et ouvrent chacun son onglet | 🟡 | 2026-10-19, tranché par l'auteur · [[Université et recherche]] |
 | 116 | **L'institut range ses recherches en quatre colonnes : Bâti, Espace public, Énergie, Trafic**, une racine chacune, aucun lien d'une colonne à l'autre. **Le parc inondable** (rebâtir un îlot en prairie) s'y recherche, en Espace public, et n'a rien à voir avec les berges (« Rendre une berge ») ; « Rendre la rue » se coupe en *Retirer des places* puis *Fermer une rue* | 🟡 | 2026-10-19, tranché par l'auteur · remplace les cinq colonnes du 2026-10-09 (Logement, Eau, Toits verts, Solaire, Rues) · [[Université et recherche]] |
 | 117 | **La mairie d'abord, l'université ensuite** : le pont rouvert n'ouvre que la mairie ; elle adopte le **concours d'urbanisme** (en points), puis, le concours rendu, **commande l'étude** de la crue à l'université (en euros) ; l'étude rendue ouvre l'université, et avec elle les recherches qui répondent à la crue (pilotis, parc inondable). **Les points ouvrent, l'argent fait** : un point d'objectif se dépense à la mairie comme à l'institut | 🟡 | 2026-10-19, tranché par l'auteur (« tout arrive en même temps » à l'université) · revient sur « le pont rouvert publie l'étude » (2026-10-18) · à éprouver : trois monnaies, euros, confiance et points · `Prototype/Premiers pas.md` |
+| 118 | **Deux budgets, l'urgence puis la reconstruction** : la caisse de départ paie un pont **provisoire** au choix, les camps, leur amélioration, le déblaiement et les maisons du Lavoir, avec une petite marge pour qui ne joue pas au plus juste ; le pont rouvert, **la mairie demande le fonds de reconstruction**, qui ne paie pas tout le faubourg : rebâtir des îlots ou consolider le pont en dur, il faut choisir. **Le pont en dur** — un provisoire remplacé, ou un autre pont — n'existe qu'avec ce fonds. **L'institut met au point le pont résistant** : un pont en dur bâti après lui tient à la prochaine crue, les autres seraient emportés | 🔓 | 2026-10-20, tranché par l'auteur · revient sur 86 et sur le choix en dur de 87 · montants à juger · `Prototype/Premiers pas.md` |
 
 ## Indicateurs et interface
 
@@ -112,6 +113,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 92 | Barre du haut : **budget · CO₂ · température et saison** | 🟡 | 2026-09-29 · [[Questions ouvertes]] n°36 |
 | 93 | Une décision se voit **en trois temps** — la fiche avant, les hachures pendant, un signe sur le lieu à la livraison | 🟡 | 2026-09-30 |
 | 94 | Le diagnostic **prévoit les dégâts de la prochaine crue**, dans tous les thèmes | 🟡 | 2026-09-30 · [[Happenings]] |
+| 119 | **La complexité arrive peu à peu** : au début, l'argent ne montre que la caisse de départ et l'historique — pas ce qui part chaque mois ; **chaque carte de diagnostic reste cachée tant qu'une étude ne l'a pas ouverte**, Dangers par l'étude de la crue, Énergie, Trafic et Agriculture par la leur, commandée à la mairie | 🟡 | 2026-10-20, tranché par l'auteur · prix des trois études et moment où ce qui part chaque mois paraît, à juger · `Prototype/Premiers pas.md` |
 
 ## La ville et son échelle
 
