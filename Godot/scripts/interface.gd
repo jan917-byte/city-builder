@@ -290,10 +290,10 @@ class JaugeDanger extends Control:
 ## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
 ## nulle part ailleurs — un panneau qui s'ancre tout seul se décale du rail.
 const RAIL_X := 14.0
-const RAIL_LARGEUR := 72.0
-# Icônes du rail agrandies (auteur, 2026-10-20) : trait 26 → 34, dessin 30 → 44 ; le rail +8 seulement.
-const RAIL_ICONE := 34
-const RAIL_DESSIN := 44
+const RAIL_LARGEUR := 68.0
+# Icônes du rail (auteur, 2026-10-20) : agrandies 26 → 34, 30 → 44, puis un peu moins → 31, 40 ; rail 64 → 72 → 68.
+const RAIL_ICONE := 31
+const RAIL_DESSIN := 40
 const DETAIL_X := RAIL_X + RAIL_LARGEUR + 10.0
 const DETAIL_LARGEUR := 312.0
 const HAUT := 14.0
