@@ -1073,7 +1073,7 @@ static func environnement(ciel: Color, ambiant: Color) -> Environment:
 	e.ssao_power = 1.2
 	e.ssao_detail = 0.5
 
-	# Rebond (SSIL), allumé au panneau. Défaut Godot (5 m, ×1) : 3 à 6 % des pixels bougent, invisible.
+	# Rebond (SSIL), réglé au panneau. Défaut Godot (5 m, ×1) : 3 à 6 % des pixels bougent, invisible.
 	e.ssil_radius = 14.0
 	e.ssil_intensity = 3.0
 

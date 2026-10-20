@@ -36,8 +36,8 @@ const LIGNES := [
 	["anticrenelage", "Anticrénelage", [["fort", "Fort"], ["leger", "Léger"], ["non", "Non"]]],
 	["echelle", "Résolution 3D", [["100", "100 %"], ["85", "85 %"], ["70", "70 %"]]],
 ]
-## Le rendu d'avant les réglages : rien ne change tant qu'on n'y touche pas.
-const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "rebonds": false, "ciel": false,
+## Le rendu d'avant les réglages, plus le rebond (aimé par l'auteur le 2026-10-20).
+const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "rebonds": true, "ciel": false,
 	"brume": false, "anticrenelage": "fort", "echelle": "100",
 	"couleurs": "non", "maquette": "non"}
 
@@ -83,7 +83,7 @@ func appliquer() -> void:
 				(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON \
 					if reglages["bois"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_jeu._environnement.ssao_enabled = reglages["recoins"]
-	# SSIL, ciel et brume, à l'essai (2026-10-20) : coût non mesuré, d'où éteints par défaut.
+	# GPU (sonde_perfs --reglages, 2026-10-20) : rebond +0,4 à +0,6 ms, ciel 0, brume −0,2 à +0,5.
 	_jeu._environnement.ssil_enabled = reglages["rebonds"]
 	_jeu._environnement.ambient_light_source = Environment.AMBIENT_SOURCE_SKY if reglages["ciel"] \
 		else Environment.AMBIENT_SOURCE_COLOR
