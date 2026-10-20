@@ -1,7 +1,8 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/apercu_gains.gd -- --ouverture --captures
 ## Un gain rejoint son compteur (auteur, 2026-10-20) : le chiffre monte sur le camp livré ou sur
-## la mairie (budget de janvier), puis son icône vole à la confiance ou à la caisse.
+## la mairie (budget de janvier), puis son icône vole à la confiance ou à la caisse ; une dépense
+## fait le chemin inverse, de la caisse au lieu.
 ## → QGIS/rendus/wehrau_ouverture_gains_N_*.png
 
 
@@ -63,6 +64,15 @@ func executer() -> void:
 	await capture("gains_7_huit_pieces")
 	await attendre(1.6)
 	verifier(ui.bulles.en_vol.is_empty(), "les huit sont arrivées")
+	# Une dépense : le rouge descend sous la caisse, trois pièces partent vers le camp.
+	ui.bulles.perte_lieu("i", champ, "caisse", "−600 k€", 600.0)
+	await process_frame
+	verifier(float(ui.bulles.en_vol.get("caisse", 0.0)) < 0.0, "la caisse attend le départ des pièces")
+	await attendre(0.55)
+	await capture("gains_8_les_pieces_vont_au_camp")
+	await attendre(1.5)
+	verifier(ui.bulles.en_vol.is_empty(), "les pièces sont toutes parties")
+	verifier(ui._barre_valeurs["caisse"].text == ui._ville_valeurs["caisse"].text, "la caisse rattrape la ville après la dépense")
 	print("gains : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame

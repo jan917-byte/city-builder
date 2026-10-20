@@ -379,10 +379,10 @@ func engagement(couche: String, fid: int, r: Dictionary, duree: float, mois: flo
 	var message := "%s : %s, %s" % [lieu, prix, ui._duree(duree) if duree > 0.0 else "effet immédiat"]
 	if float(r.get("capital", 0.0)) >= 0.5:
 		message += ", −%s confiance" % ui._nb(r["capital"], 0)
-		ui.bulles.sous(ui._barre_valeurs.get("capital"), "−%s" % ui._nb(r["capital"], 0), "capital")
-	# 🎈 La dépense descend sous la caisse (auteur, 2026-10-02).
+		ui.bulles.perte_lieu(couche, fid, "capital", "−%s" % ui._nb(r["capital"], 0), float(r["capital"]))
+	# 🎈 La dépense descend sous la caisse (auteur, 2026-10-02), et ses pièces vont au chantier.
 	if r["cout_ke"] > 0.0:
-		ui.bulles.sous(ui._barre_valeurs.get("caisse"), "−%s k€" % ui._milliers(r["cout_ke"]), "")
+		ui.bulles.perte_lieu(couche, fid, "caisse", "−%s k€" % ui._milliers(r["cout_ke"]), float(r["cout_ke"]))
 	if "relogement" in r["faits"]:
 		var nourris: String = ui._nb(ui.ville.champ_nourriture(fid, mois), 0)
 		message += ", −%s nourris" % nourris

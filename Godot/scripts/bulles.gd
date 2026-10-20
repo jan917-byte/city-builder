@@ -11,8 +11,14 @@ const PERTE := Color8(255, 72, 60)
 const CONTOUR := 2     # px de noir autour du texte
 const ENVOL := 0.8     # s : le gain se lit, puis son icône part vers le compteur
 const VOLER_S := 0.8   # s, comme l'étoile des objectifs
+## 🪙 Combien d'icônes volent : une par tranche, huit au plus (auteur, 2026-10-20 : « 2 M€, plusieurs pièces »).
+const TRANCHE := {"caisse": 250.0, "capital": 10.0, "recherche": 1.0}
+const ICONES_MAX := 8
+const CADENCE := 0.08   # s entre deux icônes
+const PARTIR := 0.25    # s : le « −80 k€ » paraît sous le compteur, puis les pièces en partent
 
-## Ce qui vole encore vers un compteur : cle -> montant. La barre le retranche (`actualiser_compteur`).
+## Ce qui vole encore : cle -> montant, positif vers le compteur, négatif pas encore parti.
+## La barre le retranche (`actualiser_compteur`).
 var en_vol := {}
 
 var ui
@@ -58,6 +64,38 @@ func gain_ecran(depart: Vector2, cle: String, texte: String, montant: float) -> 
 	_poser({"ecran": depart, "vol": cle, "montant": montant}, texte, cle)
 
 
+## 💸 Une dépense décidée quelque part (auteur, 2026-10-20) : le chiffre rouge descend sous le
+## compteur, et ses icônes en partent vers le lieu ; le compteur baisse à chaque départ.
+func perte_lieu(couche: String, fid: int, cle: String, texte: String, montant: float) -> void:
+	var p: Variant = ancre_lieu.call(couche, fid) if ancre_lieu.is_valid() else null
+	sous(ui._barre_valeurs.get(cle), texte, "" if cle == "caisse" else cle)
+	if p is Vector3:
+		_perdre(cle, montant, _projeter.bind(p))
+
+
+## Une dépense sans lieu sur la carte : ses icônes vont au bouton cliqué.
+func perte_ecran(arrivee: Vector2, cle: String, texte: String, montant: float) -> void:
+	sous(ui._barre_valeurs.get(cle), texte, "" if cle == "caisse" else cle)
+	_perdre(cle, montant, func() -> Vector2: return arrivee)
+
+
+func _projeter(p: Vector3) -> Vector2:
+	if camera == null or camera.is_position_behind(p):
+		return get_viewport_rect().size * Vector2(0.5, 1.1)
+	return camera.unproject_position(p)
+
+
+func _perdre(cle: String, montant: float, vers: Callable) -> void:
+	var bloc := _bloc(cle)
+	if bloc == null:
+		return
+	var icone: Vector2 = bloc.get_child(0).get_global_rect().get_center()
+	_retenir(cle, -montant, false)
+	_gerbe(ui._icone(cle, 20, Color.BLACK), cle, montant, func() -> Vector2:
+		var b := _bloc(cle)
+		return b.get_child(0).get_global_rect().get_center() if b != null else icone, vers, PARTIR, false)
+
+
 func _poser(b: Dictionary, texte: String, icone: String) -> void:
 	# 🔄 Plus de plaque de fond (auteur, 2026-10-20) : blanc si on gagne, rouge si on perd, cerné de noir ;
 	# l'icône garde son aplat, seul son trait passe au noir.
@@ -92,8 +130,7 @@ func _poser(b: Dictionary, texte: String, icone: String) -> void:
 	b["age"] = age
 	_bulles.append(b)
 	if b.has("vol"):
-		en_vol[b["vol"]] = float(en_vol.get(b["vol"], 0.0)) + float(b["montant"])
-		ui.actualiser_compteur(b["vol"])
+		_retenir(b["vol"], b["montant"], false)
 	set_process(true)
 
 
@@ -104,7 +141,7 @@ func _process(delta: float) -> void:
 		var age: float = b["age"]
 		if age >= DUREE:
 			if b.has("vol"):
-				_arriver(b["vol"], b["montant"], false)
+				_retenir(b["vol"], -b["montant"], false)
 			p.queue_free()
 			_bulles.erase(b)
 			continue
@@ -123,7 +160,7 @@ func _process(delta: float) -> void:
 			p.modulate.a = 0.0
 			# ⚠️ Hors champ, le compteur avance quand même : un gain jamais arrivé le fausserait.
 			if age >= ENVOL and b.has("vol"):
-				_arriver(b["vol"], b["montant"], false)
+				_retenir(b["vol"], -b["montant"], false)
 				b.erase("vol")
 			continue
 		var k := age / DUREE
@@ -150,48 +187,53 @@ func _bloc(cle: String) -> Control:
 	return l.get_parent() if l != null and l.is_visible_in_tree() else null
 
 
-## 🪙 Combien d'icônes volent : une par tranche, huit au plus (auteur, 2026-10-20 : « 2 M€, plusieurs pièces »).
-const TRANCHE := {"caisse": 250.0, "capital": 10.0}
-const ICONES_MAX := 8
-const CADENCE := 0.08   # s entre deux icônes
-
-
-## La trajectoire de l'étoile des objectifs (`objectifs.gd`) ; la cible se relit à chaque pas.
-## Chaque icône porte sa part : le compteur monte par à-coups, une icône à la fois.
 func _voler(texture: Texture2D, depart: Vector2, cle: String, montant: float) -> void:
 	if _bloc(cle) == null:
-		_arriver(cle, montant, false)
+		_retenir(cle, -montant, false)
 		return
+	_gerbe(texture, cle, montant, func() -> Vector2: return depart, func() -> Vector2:
+		var b := _bloc(cle)
+		return b.get_child(0).get_global_rect().get_center() if b != null else depart, 0.0, true)
+
+
+## La trajectoire de l'étoile des objectifs (`objectifs.gd`) ; les deux bouts se relisent (la caméra bouge).
+## Chaque icône porte sa part : le compteur bouge par à-coups, une icône à la fois — à l'arrivée
+## d'un gain, au départ d'une dépense.
+func _gerbe(texture: Texture2D, cle: String, montant: float, de: Callable, vers: Callable,
+		attente: float, gain: bool) -> void:
 	var n := clampi(ceili(absf(montant) / float(TRANCHE.get(cle, INF)) - 0.001), 1, ICONES_MAX)
 	for i in n:
 		var f := Sprite2D.new()
 		f.texture = texture
-		# En gerbe autour du chiffre (angle d'or : jamais deux au même endroit), puis des arcs un peu différents.
-		var d := depart + Vector2.from_angle(i * 2.4) * (0.0 if i == 0 else 14.0)
-		var bosse := (float(i % 3) - 1.0) * 24.0
-		f.position = d
-		f.visible = i == 0
+		f.visible = false
 		ui.add_child(f)
+		# En gerbe côté lieu (angle d'or : jamais deux au même endroit), et des arcs un peu différents.
+		var ecart := Vector2.from_angle(i * 2.4) * (0.0 if i == 0 else 14.0)
+		var bosse := (float(i % 3) - 1.0) * 24.0
 		var tw := f.create_tween()
-		tw.tween_interval(i * CADENCE)
-		tw.tween_callback(f.show)
+		tw.tween_interval(attente + i * CADENCE)
+		tw.tween_callback(func() -> void:
+			f.show()
+			if not gain:
+				_retenir(cle, montant / n, true))
 		tw.tween_method(func(t: float) -> void:
-			var bloc := _bloc(cle)
-			if bloc == null:
-				return
-			var cible: Vector2 = bloc.get_child(0).get_global_rect().get_center()
-			var haut := Vector2(lerpf(d.x, cible.x, 0.3) + bosse, minf(d.y, cible.y) + 0.35 * absf(cible.y - d.y))
+			var a: Vector2 = de.call() + (ecart if gain else Vector2.ZERO)
+			var b: Vector2 = vers.call() + (Vector2.ZERO if gain else ecart)
+			var haut := Vector2(lerpf(a.x, b.x, 0.3) + bosse, minf(a.y, b.y) + 0.35 * absf(b.y - a.y))
 			var u := 1.0 - t
-			f.position = u * u * d + 2.0 * u * t * haut + t * t * cible
-			f.scale = Vector2.ONE * lerpf(1.0, 1.3, sin(t * PI)),
+			f.position = u * u * a + 2.0 * u * t * haut + t * t * b
+			f.scale = Vector2.ONE * lerpf(1.0, 1.3, sin(t * PI)) * (1.0 if gain else 1.0 - 0.4 * t * t)
+			f.modulate.a = 1.0 if gain else clampf((1.0 - t) * 5.0, 0.0, 1.0),
 			0.0, 1.0, VOLER_S).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		tw.tween_callback(func() -> void:
 			f.queue_free()
-			_arriver(cle, montant / n, true))
+			if gain:
+				_retenir(cle, -montant / n, true))
 
 
-func _arriver(cle: String, montant: float, bondir: bool) -> void:
-	en_vol[cle] = float(en_vol.get(cle, 0.0)) - montant
+## `delta` s'ajoute à ce qui vole encore ; le compteur se relit.
+func _retenir(cle: String, delta: float, bondir: bool) -> void:
+	en_vol[cle] = float(en_vol.get(cle, 0.0)) + delta
 	if absf(en_vol[cle]) < 0.001:
 		en_vol.erase(cle)
 	ui.actualiser_compteur(cle)
@@ -201,4 +243,3 @@ func _arriver(cle: String, montant: float, bondir: bool) -> void:
 		bloc.scale = Vector2.ONE * 1.3
 		bloc.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT) \
 			.tween_property(bloc, "scale", Vector2.ONE, 0.35)
-

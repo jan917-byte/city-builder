@@ -4073,7 +4073,7 @@ func _brancher_lieu() -> void:
 					var sujet: Dictionary = Recherche.SUJETS[k]
 					# 🔴 Flaggable (90).
 					retours.consigner("%s : mis au point, −%d point%s, vaut tout de suite." % [sujet["nom"], Recherche.prix(k), "s" if Recherche.prix(k) > 1 else ""], _mois)
-					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % Recherche.prix(k), "")
+					bulles.perte_ecran(b.get_global_rect().get_center(), "recherche", "−%d" % Recherche.prix(k), Recherche.prix(k))
 					retours.actualiser(_mois)
 				_maj_lieu())
 		elif String(l["genre"]) == "programme":
@@ -4084,7 +4084,7 @@ func _brancher_lieu() -> void:
 					# 🔴 Flaggable (90).
 					retours.consigner("%s adopté, −%d point." % [p["nom"], int(p["points"])], _mois)
 					retours.annoncer("Un îlot aux maisons tombées peut lancer un concours.", _mois)
-					bulles.sous(_barre_valeurs.get("recherche"), "−%d" % int(p["points"]), "")
+					bulles.perte_ecran(b.get_global_rect().get_center(), "recherche", "−%d" % int(p["points"]), int(p["points"]))
 					retours.actualiser(_mois)
 					if ouverture != null:
 						ouverture.actualiser(true)
@@ -4109,6 +4109,7 @@ func _brancher_lieu() -> void:
 					# 🔴 Flaggable (90).
 					retours.consigner("%s commandée : %s k€, rendue dans %s." % [e["nom"],
 						_milliers(float(e["ke"])), _duree(float(e["mois"]))], _mois)
+					bulles.perte_ecran(b.get_global_rect().get_center(), "caisse", "−%s k€" % _milliers(float(e["ke"])), float(e["ke"]))
 					retours.actualiser(_mois)
 				_maj_lieu())
 		elif String(l["genre"]) == "etude":
@@ -4117,6 +4118,7 @@ func _brancher_lieu() -> void:
 					# 🔴 Flaggable (90).
 					retours.consigner("Étude commandée à l'université : %s k€, rendue dans %s." % [
 						_milliers(Ville.ETUDE_KE), _duree(Ville.ETUDE_MOIS)], _mois)
+					bulles.perte_ecran(b.get_global_rect().get_center(), "caisse", "−%s k€" % _milliers(Ville.ETUDE_KE), Ville.ETUDE_KE)
 					retours.actualiser(_mois)
 					if ouverture != null:
 						ouverture.actualiser(true)
@@ -4545,13 +4547,16 @@ var points_en_vol := 0
 
 
 func actualiser_points(mois: float) -> void:
-	(_barre_valeurs["recherche"] as Label).text = str(Recherche.points(ville, mois) - points_en_vol)
+	(_barre_valeurs["recherche"] as Label).text = str(Recherche.points(ville, mois) - points_en_vol
+		- int(bulles.en_vol.get("recherche", 0.0)))
 
 
-## La caisse ou la confiance, moins ce qui vole encore vers elles (`bulles.gd`).
+## Un compteur du haut, moins ce qui vole encore vers lui ou n'en est pas encore parti (`bulles.gd`).
 func actualiser_compteur(cle: String) -> void:
 	var vol: float = bulles.en_vol.get(cle, 0.0)
-	if cle == "caisse":
+	if cle == "recherche":
+		actualiser_points(_mois)
+	elif cle == "caisse":
 		(_barre_valeurs["caisse"] as Label).text = _millions(ville.caisse_ke(_mois) - vol)
 	elif cle == "capital":
 		var usure := ville.usure_camp_mois(_mois)
