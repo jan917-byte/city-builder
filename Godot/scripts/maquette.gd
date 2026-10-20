@@ -3096,10 +3096,12 @@ func _maj_contour() -> void:
 	var groupe: Array = []
 	var appel := false
 	if ouverture != null:
-		if fid < 0:
+		# 🏛️ La mairie à trouver clignote même fiche ouverte : sinon l'îlot cliqué entre-temps
+		# l'éteignait, et le guide disait « elle clignote » sur rien (auteur, 2026-10-20).
+		if fid < 0 or ouverture.etape == "mairie":
 			groupe = ouverture.groupe_carte()
 			appel = not groupe.is_empty()
-		elif couche == "i" and interface._lieu_ouvert in interface.CAMPUS and fid in ouverture.campus():
+		if groupe.is_empty() and couche == "i" and interface._lieu_ouvert in interface.CAMPUS and fid in ouverture.campus():
 			groupe = ouverture.campus()
 	if not groupe.is_empty():
 		couche = "i"

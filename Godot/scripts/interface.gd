@@ -788,6 +788,7 @@ const RAYON := 16
 ## L'état choisi du thème, repris par `_posee` sur les boutons qui ne basculent pas.
 var _sb_choisi: StyleBoxFlat
 const Verre := preload("res://shaders/verre.gdshader")
+const Ombre := preload("res://shaders/ombre.gdshader")
 
 
 func _boite() -> StyleBoxFlat:
@@ -840,23 +841,25 @@ func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 	fond.material = mat
 	p.add_child(fond)
 	p.move_child(fond, 0)
-	var ombre: Panel
+	var ombre: ColorRect
+	var marge := 0.0
 	# 🔄 L'ombre revient sous la vitre (auteur, 2026-10-14) : sans elle, un panneau
 	# clair se perdait sur le papier blanc des diagnostics.
 	if BOIS or (VITRE and _fiche.ombre.a > 0.0):
-		ombre = Panel.new()
+		ombre = ColorRect.new()
+		ombre.name = "Ombre"
 		ombre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ombre.z_index = -2
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0, 0, 0, 0)
-		sb.set_corner_radius_all(rayon)
-		sb.shadow_color = Color(0.25, 0.12, 0.05, 0.28)
-		sb.shadow_size = 12
-		sb.shadow_offset = Vector2(0, 4)
-		if VITRE:
-			sb.shadow_color = _fiche.ombre
-			sb.shadow_size = _fiche.ombre_taille
-		ombre.add_theme_stylebox_override("panel", sb)
+		var taille: float = _fiche.ombre_taille if VITRE else 12.0
+		var mo := ShaderMaterial.new()
+		mo.shader = Ombre
+		mo.set_shader_parameter("couleur", _fiche.ombre if VITRE else Color(0.25, 0.12, 0.05, 0.40))
+		mo.set_shader_parameter("rayon", float(rayon))
+		mo.set_shader_parameter("chute", maxf(taille / 3.0, 0.5))
+		# Au-delà de cinq fois la chute du voile, l'ombre vaut moins d'un millième.
+		marge = ceilf(taille * 5.0)
+		mo.set_shader_parameter("marge", marge)
+		ombre.material = mo
 		p.add_child(ombre)
 		p.move_child(ombre, 0)
 	var suivre := func() -> void:
@@ -864,8 +867,9 @@ func _vitrer(p: Control, teinte := Color(0, 0, 0, 0), rayon := RAYON) -> void:
 		fond.size = p.size
 		mat.set_shader_parameter("taille", fond.size)
 		if ombre != null:
-			ombre.position = Vector2.ZERO
-			ombre.size = p.size
+			ombre.position = -Vector2(marge, marge)
+			ombre.size = p.size + 2.0 * Vector2(marge, marge)
+			ombre.material.set_shader_parameter("taille", p.size)
 	p.item_rect_changed.connect(suivre)
 	if p is Container:
 		(p as Container).sort_children.connect(suivre)

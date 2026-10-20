@@ -44,9 +44,10 @@ extends Resource
 @export_range(0, 40) var marge_interieure := 14
 ## Les coins : 0 = angles droits, 1 = l'arrondi des anciens habillages.
 @export_range(0.0, 2.0, 0.05) var arrondi := 0.0
-## L'ombre portée qui détache un panneau clair du papier blanc des diagnostics. A = 0 l'éteint.
-@export var ombre := Color(0.10, 0.10, 0.08, 0.22)
-## La taille de cette ombre, en pixels.
+## L'ombre portée qui détache un panneau clair du papier blanc des diagnostics.
+## A = sa noirceur au ras du panneau ; 0 l'éteint.
+@export var ombre := Color(0.10, 0.10, 0.08, 0.35)
+## Sa portée, en pixels : elle perd déjà les deux tiers au tiers de cette distance.
 @export_range(0, 40) var ombre_taille := 8
 ## Le fond des bulles qui montent de la ville.
 @export var fond_bulles := Color8(244, 245, 243)
