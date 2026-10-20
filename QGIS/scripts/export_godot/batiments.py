@@ -544,7 +544,8 @@ def _rangs_denses(volumes, st, loge, exclus=()):
 
 
 def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
-           coul_toit=None, genres=None, alea=0.0, rang_vert=1.0, famille=0):
+           coul_toit=None, genres=None, alea=0.0, rang_vert=1.0, famille=0,
+           souches=True):
     """Un prisme à deux plans horizontaux, base enterrée.
 
     🔄 `y_haut` ajoutait `altitude_relative` — le bâtiment se posait sur le
@@ -721,7 +722,7 @@ def _masse(m, anneau, d, coul, G, niveaux=None, pente=0.0, faitage=None,
             _installations(m, att, y_haut + ETAGE_M, coul, rng, G,
                            edicules=False)
     # Sur l'attique s'il y en a un : posée autour, la souche y serait noyée.
-    if not (m.dense is not None and m.dense[0] > 1.0e5):
+    if souches and not (m.dense is not None and m.dense[0] > 1.0e5):
         if moderne and att is not None:
             _souches_plates(m, att, y_haut + ETAGE_M, G)
         else:

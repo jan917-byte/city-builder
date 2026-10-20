@@ -831,12 +831,8 @@ def main():
                     emp = b["anneau"]
                     faite = _direction_faitage(p["anneau"], idx)
                     if b["cour"]:
-                        # 🏚️ Faîtage dans la longueur : il n'a pas de rue.
-                        a0, a1, a2 = emp[0], emp[1], emp[2]
-                        lg = a1 if math.dist(a0, a1) >= math.dist(a1, a2) else a2
-                        o = a0 if lg is a1 else a1
-                        L = math.dist(o, lg)
-                        faite = ((lg[0] - o[0]) / L, (lg[1] - o[1]) / L)
+                        # 🏚️ Un bâtiment secondaire : toit plat, sans souche (auteur, 2026-10-20).
+                        faite = None
                         cours_ilot.add(len(volumes))
                     # 🌊 LA HAUTEUR ET LE FAÎTAGE RESTENT CEUX DU BÂTIMENT
                     # INTACT, même pour une ruine : ce sont eux que le maillage
@@ -1018,7 +1014,8 @@ def main():
                     _masse(repare, emp, d, PAL.vers_lineaire(mur_neuf), G, niv,
                            pente_v, faite, PAL.vers_lineaire(toit_neuf),
                            genres, alea, rangs_verts.get(k_vol, 1.0),
-                           FAMILLE_FACADE.get(st, 0))
+                           FAMILLE_FACADE.get(st, 0),
+                           souches=k_vol not in cours_ilot)
                     repare.dense = None
                 else:
                     # 🏢 Tout ce que le bâtiment émet à partir d'ici porte son
@@ -1034,7 +1031,8 @@ def main():
                     a, b, c, e = _masse(masses, emp, d, c_mur, G, niv,
                                         pente_v, faite, c_toit, genres, alea,
                                         rangs_verts.get(k_vol, 1.0),
-                                        FAMILLE_FACADE.get(st, 0))
+                                        FAMILLE_FACADE.get(st, 0),
+                                        souches=k_vol not in cours_ilot)
                     masses.dense = None
                 murs_ok += a
                 murs_tot += b

@@ -270,19 +270,19 @@ PERCEE_SEGMENT_MIN = 12.0  # sous ça le tronçon restant n'est plus un immeuble
 # le bâtiment n'existe (voir `pignon`), et il n'y a plus d'écharde à balayer.
 
 # 🏚️ LE BÂTIMENT DE COUR — 2026-10-19, sur une vue aérienne de Heidelberg :
-# atelier ou remise posé dans la cour quand elle est assez grande. Ni logement
+# atelier ou remise posé dans la cour quand elle est assez grande. Secondaire :
+# un niveau, toit plat sans souche (auteur, 2026-10-20 ; 07 le rend plat). Ni logement
 # ni densification : `bascule_logements` est passée avant, 07 l'écarte du reste.
 # Mesuré : les fonds de parcelle privés ne laissent presque jamais 6 m de cour,
 # ce sont les cœurs d'îlot qui en reçoivent.
 COUR_TISSUS = {"coeur_ancien", "maisons_de_ville", "front_commercant"}
 COUR_RECUL_BATI = 6.0      # la cour qui reste entre lui et tout autre bâtiment
 COUR_RECUL_RUE = 10.0      # jamais sur la rue ni sur une venelle
-COUR_PROF = 8.0
-COUR_LONGUEUR = 16.0
+COUR_PROF = 6.0
+COUR_LONGUEUR = 12.0
 COUR_MIN = (5.0, 4.0)      # longueur, profondeur
 COUR_PART_LIBRE = 0.35     # part du sol libre de la parcelle qu'il peut prendre
 COUR_PAR_PARCELLE = 2
-COUR_ETAGE_AIRE = 45.0     # au-dessus, deux niveaux ; en dessous, un
 
 # 🌿 LA PARCELLE SANS RUE EST UNE CATÉGORIE, PAS UN RÉSIDU — 2026-08-17.
 # 🔴 MESURÉ AVANT D'ÉCRIRE, et ça a annulé le travail prévu : les 15 parcelles
@@ -2527,7 +2527,7 @@ def batiments_de_cour(parcelles, resultats, idx_bord, idx_venelle, dirs):
             anneau = [(x * u[0] + y * nrm[0], x * u[1] + y * nrm[1])
                       for x, y in ((U0, V0), (U1, V0), (U1, V1), (U0, V1))]
             aire = w * h
-            sortie.append((p, anneau, 2.0 if aire >= COUR_ETAGE_AIRE else 1.0))
+            sortie.append((p, anneau, 1.0))
             bati.setdefault(p["ilot"], []).append(anneau)
             pris += aire
     par_ilot = {}
