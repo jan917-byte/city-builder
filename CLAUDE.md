@@ -41,6 +41,8 @@ Dans le vault, quatre notes commandent les autres : `00 - Index.md` · `Méta/D�
 
 **Délégué** : les scripts de données — je les **écris et je les exécute** (65) · **le code Godot, noyau et architecture compris** (40b), le générateur de géométrie restant isolé derrière une interface propre (41) · tableurs, outillage, structuration de notes, relecture.
 
+**Sous-traiter, en restant prudent** : Opus garde la conception, le plan, le code compliqué et tout ce qui demande du jugement. Une tâche **simple et déjà conçue** va à l'agent `executant` (Sonnet) ; une tâche **purement répétitive** à l'agent `repetitif` (Haiku). Pas pour une tâche minuscule (la briefer coûte plus que la faire). Je relis toujours ce qu'ils rendent.
+
 **Non délégué** : aucun **plugin IA dans QGIS** · **les arbitrages de design** — je pose les options et je recommande, l'auteur tranche, et une question se ferme dans `Questions ouvertes.md` **et** `Décisions arrêtées.md`, jamais au détour d'une réponse · **le level design** : les listes de `fid` de `02`, les tables `TISSU`, le tracé des chemins. Un outil peut *proposer* ; la proposition se corrige à la main et ne s'écrase jamais toute seule.
 
 🔴 **IA disclosure Steam (décision 90)** : le code est exempté, pas ce que le joueur voit ou entend. Avant de produire un texte affiché, une image, une icône, un nom de lieu ou un rendu de shader destiné au jeu ou à la page Steam, je **le signale** (« ça, c'est flaggable ») et je propose une voie sans IA. S'il n'y en a pas, l'auteur coche la case.
