@@ -210,3 +210,17 @@ Tout bâtiment à plus d'un mètre de la rue (maisons de ville, pavillons, colle
 ---
 
 **Voir aussi** : [00 - Prototype.md](00%20-%20Prototype.md) · [Parcelles.md](Parcelles.md) · [ETAT.md](../ETAT.md) · `Godot/README.md`
+
+## 12. Courbe de couleurs ① et flou de maquette ② (2026-10-20, demande de l'auteur : « léger »)
+
+À l'essai, **éteints par défaut** et hors du panneau Graphismes tant que l'auteur n'a pas tranché. Planches `QGIS/rendus/maquette_planche.png` (A ville · B faubourg · C cœur ancien) et `maquette_planche_saisons.png` (A printemps → D hiver), colonnes 0 avant · 1 · 2 · 1+2 ; refaites par `Godot/outils/apercu_maquette.gd` (`-- --saisons`) puis `planche_maquette.py`.
+
+| # | Ce que ça fait | Coût mesuré (Mac Studio, 1080p) | Où ça se règle |
+|---|---|---|---|
+| 1 | Courbe AgX douce : un peu plus de relief et de saturation, mêmes tons moyens ; le diagnostic reste en linéaire | 0 ms | `COULEURS["douce"]` (`graphismes.gd`) |
+| 2 | Flou au loin, le bas du cadre presque net ; il suit le zoom | ≈ +0,9 ms | `MAQUETTE` (`graphismes.gd`) · `_maj_flou` (`camera_axo.gd`) |
+
+- Premiers essais filmique et AgX à exposition forte : délavés, écartés. La courbe a ensuite été baissée d'environ moitié à la demande de l'auteur (« un tout petit peu trop »).
+- 🔴 **Avec ①, la neige passe du blanc pur au gris clair** (planche des saisons, ligne D) : à juger.
+- Pas de cycle jour / nuit → décision 120 du vault.
+- Serait un défaut : un premier plan flou, des thèmes du diagnostic qui changent de couleur, un trait de sélection flou.

@@ -13,6 +13,15 @@ const OMBRES := {
 }
 const ANTICRENELAGE := {"fort": Viewport.MSAA_4X, "leger": Viewport.MSAA_2X, "non": Viewport.MSAA_DISABLED}
 const ECHELLES := {"100": 1.0, "85": 0.85, "70": 0.7}
+## ① Courbe de couleurs : [mode, exposition, blanc, contraste, saturation]. La palette est réglée
+## en linéaire ; l'exposition rend aux tons moyens ce que la courbe leur prend (filmique et AgX
+## plus forts : délavés, 2026-10-20). Hors panneau tant que non tranché.
+const COULEURS := {
+	"non": [Environment.TONE_MAPPER_LINEAR, 1.0, 1.0, 1.25, 1.0],
+	"douce": [Environment.TONE_MAPPER_AGX, 1.15, 3.0, 1.45, 1.07],
+}
+## ② Flou de maquette : force du flou de profondeur, voir `CameraAxo.regler_flou`.
+const MAQUETTE := {"non": 0.0, "leger": 0.04}
 
 ## 🔴 Textes affichés, flaggables (90). [clé, nom de la ligne, [[valeur, mot]…]]
 const LIGNES := [
@@ -23,7 +32,8 @@ const LIGNES := [
 	["echelle", "Résolution 3D", [["100", "100 %"], ["85", "85 %"], ["70", "70 %"]]],
 ]
 ## Le rendu d'avant les réglages : rien ne change tant qu'on n'y touche pas.
-const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "anticrenelage": "fort", "echelle": "100"}
+const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "anticrenelage": "fort", "echelle": "100",
+	"couleurs": "non", "maquette": "non"}
 
 var reglages := DEFAUT.duplicate()
 var panneau: VBoxContainer
@@ -72,7 +82,21 @@ func appliquer() -> void:
 	var e: float = ECHELLES[reglages["echelle"]]
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR if e >= 1.0 else Viewport.SCALING_3D_MODE_FSR
 	vp.scaling_3d_scale = e
+	appliquer_couleurs(_jeu.theme != "")
+	_jeu.pivot.regler_flou(MAQUETTE[reglages["maquette"]])
 	_marquer_boutons()
+
+
+func appliquer_couleurs(diagnostic: bool) -> void:
+	var c: Array = COULEURS["non" if diagnostic else reglages["couleurs"]]
+	var env: Environment = _jeu._environnement
+	env.tonemap_mode = int(c[0])
+	env.tonemap_exposure = float(c[1])
+	env.tonemap_white = float(c[2])
+	env.tonemap_agx_white = float(c[2])
+	env.tonemap_agx_contrast = float(c[3])
+	env.adjustment_enabled = float(c[4]) != 1.0
+	env.adjustment_saturation = float(c[4])
 
 
 func basculer() -> void:

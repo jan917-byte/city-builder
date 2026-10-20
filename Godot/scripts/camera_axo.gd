@@ -56,6 +56,7 @@ var _ancre_ecran := Vector2.ZERO
 var _ancre_active := false
 var _zoom_actif := false
 var _taille_cible := 1200.0
+var flou := 0.0
 
 
 func _ready() -> void:
@@ -103,7 +104,34 @@ func _appliquer() -> void:
 	camera.position = Vector3(0.0, 0.0, recul)
 	camera.near = maxf(0.05, recul * 0.01)
 	rotation_degrees = Vector3(-_hauteur_vu, _lacet_vu, 0.0)
+	_maj_flou(recul)
 	vue_changee.emit(_lacet_vu, _hauteur_vu)
+
+
+## Flou de maquette : la bande nette suit le point visé, donc il se règle en
+## fractions du recul et reste le même à tous les zooms. 0 = aucun flou.
+func regler_flou(force: float) -> void:
+	flou = force
+	_appliquer()
+
+
+func _maj_flou(recul: float) -> void:
+	if flou <= 0.0:
+		camera.attributes = null
+		return
+	var a := camera.attributes as CameraAttributesPractical
+	if a == null:
+		a = CameraAttributesPractical.new()
+		camera.attributes = a
+	a.dof_blur_amount = flou
+	# À 32°, le haut du cadre est à ~2 reculs, le bas à ~0,7 : flou surtout au loin,
+	# le bas à peine (0,85 recul : le premier plan sortait flou, 2026-10-20).
+	a.dof_blur_far_enabled = true
+	a.dof_blur_far_distance = recul * 1.3
+	a.dof_blur_far_transition = recul * 0.8
+	a.dof_blur_near_enabled = true
+	a.dof_blur_near_distance = recul * 0.65
+	a.dof_blur_near_transition = recul * 0.15
 
 
 func viser(cible: Vector2, t: float) -> void:

@@ -863,3 +863,7 @@ Essais sans fenêtre, version commitée contre celle-ci : ouverture 1 échec (44
 **2026-10-20 — Les essais remis à jour : tous à 0 échec sauf la sauvegarde, à 1 (la berge 9 n'a pas de nom).**
 Essais périmés, pas le jeu : 261 sinistrés lus sur la carte au lieu de 260 en dur, nourriture et confiance des camps comptées, pont provisoire avant le fonds (118), prix sur le bouton bleu, historique seul déplié (119), champs et lit de l'Ilse sans nom ; seul `chantiers.gd` (ancien prototype) pose maintenant `part_rendue`.
 Reste un vrai défaut : la chaîne sort 9 berges au lieu de 8, la 9ᵉ sans nom ; les essais se lancent un par un en 1 à 8 s, en parallèle ils se gênent.
+
+**2026-10-20 — Courbe de couleurs douce et flou de maquette léger, à l'essai, éteints par défaut ; pas de cycle jour / nuit (décision 120).**
+Filmique et AgX forts délavaient l'image, écartés ; AgX doux ensuite baissé de moitié à la demande de l'auteur ; flou au loin, premier plan net, il suit le zoom. Coût : 0 ms et ≈ 0,9 ms.
+Planches `maquette_planche.png` et `maquette_planche_saisons.png` ; avec la courbe, la neige grisit. Essais caméra et ouverture à 0 échec, sauvegarde à 1 (berge 9, déjà connu).

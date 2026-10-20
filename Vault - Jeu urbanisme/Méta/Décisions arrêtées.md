@@ -176,6 +176,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 41 | **Godot 4, tout en GDScript.** Le générateur de géométrie reste isolé derrière une interface : le toit expose surface, pente et ombrage, et l'énergie les lit sans savoir qui les produit — elle tourne aussi sur des toits estimés | 🟡 | 🔄 2026-10-12 : plus de C# prévu ; reprend la part encore vraie de 64 et 64b |
 | 42b | **Référence de rendu : Townscaper** — volumes doux, pastel, zéro texture, occlusion marquée ; sa géométrie est écartée | 🔓 | 2026-08-11 · [[Direction artistique]] |
 | 42c | **Pastel aux murs, sol minéral** : la grisaille de départ est une proportion, pas une teinte | 🟡 | 2026-08-11 · [[Direction artistique]] |
+| 120 | **Pas de cycle jour / nuit** : la ville reste au même jour clair du début à la fin ; une courbe de couleurs douce et un flou de maquette léger sont à l'essai | 🔓 | 2026-10-20, tranché par l'auteur · [[Direction artistique]] |
 | 43 | Pas de pixel art | 🔓 | |
 | 44 | Lancement en **anglais et allemand** | 🔓 | [[Marketing et Steam]] |
 | 45 | **Glossaire dès le jour 1** ; le système de traduction attend (108) | 🔓 | [[Glossaire]] |

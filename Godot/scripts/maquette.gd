@@ -2693,6 +2693,9 @@ func _habiller_monde(diagnostic: bool) -> void:
 	if _environnement != null:
 		_environnement.background_color = FOND_DANGERS if diagnostic \
 			else Donnees.teinte(donnees, "_ciel")
+	# La courbe de couleurs fausserait l'échelle d'un thème : le diagnostic reste en linéaire.
+	if graphismes != null:
+		graphismes.appliquer_couleurs(diagnostic)
 	# ⚠ Le même papier que CRUE_PAPIER (crue.gdshaderinc).
 	camp.en_maquette(Color(0.880, 0.870, 0.840) if diagnostic else Color(0, 0, 0, 0))
 

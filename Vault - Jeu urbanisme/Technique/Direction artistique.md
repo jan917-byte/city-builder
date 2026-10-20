@@ -1,7 +1,7 @@
 ---
 tags: [technique, da]
 statut: arrêtée pour le prototype — référence Townscaper depuis le 2026-08-11
-maj: 2026-10-12
+maj: 2026-10-20
 ---
 
 # Direction artistique
@@ -68,7 +68,7 @@ Deux conséquences :
 | | |
 |---|---|
 | **Les teintes** | fixes. Une teinte par `sous_type`, jamais modifiée — sinon ce n'est plus la même ville |
-| **La lumière** | fixe et calme. Pas de météo d'ambiance, pas de golden hour, pas de ciel gris |
+| **La lumière** | fixe et calme. Pas de météo d'ambiance, pas de golden hour, pas de ciel gris, **pas de cycle jour / nuit** → [[Décisions arrêtées]] 120 |
 | **La saturation** | bornée et déjà haute à t0. Elle monte un peu, elle ne part pas de zéro |
 | **La vie et le vivant** | 🌱 au départ, une ville réelle ; à la fin, plus luxuriante et plus habitée qu'aucune vraie ville → [[Décisions arrêtées]] 6b |
 | **La part minérale du sol** | 🎯 **c'est elle qui porte tout** — dérivée de `impermeabilise`, `canopee`, `stationnement` |
