@@ -224,3 +224,16 @@ Tout bâtiment à plus d'un mètre de la rue (maisons de ville, pavillons, colle
 - 🔴 **Avec ①, la neige passe du blanc pur au gris clair** (planche des saisons, ligne D) : à juger.
 - Pas de cycle jour / nuit → décision 120 du vault.
 - Serait un défaut : un premier plan flou, des thèmes du diagnostic qui changent de couleur, un trait de sélection flou.
+
+## 13. Trois lumières à l'essai (2026-10-20, demande de l'auteur : « une lumière impeccable »)
+
+Trois lignes du panneau Graphismes, **éteintes par défaut**, écrites sans Godot sous la main : **ni vues, ni mesurées**.
+
+| Ligne | Ce que ça fait | Où ça se règle |
+|---|---|---|
+| Lumière qui rebondit | les murs et le sol au soleil teintent ce qui leur fait face (SSIL, réglages d'usine) | `graphismes.gd` |
+| Lumière du ciel et du sol | l'ambiant vient du ciel en haut (×1,2) et d'un sol plus chaud en bas ; sur un mur, même luminance qu'avant | `Materiaux.ciel_et_sol` |
+| Brume au loin | couleur du ciel, rien sous le point visé, ~18 % en haut du cadre à 32°, plus vers l'horizon ; suit le zoom ; jamais en diagnostic | `CameraAxo._maj_brume` · `Materiaux.environnement` |
+
+- À lancer : `apercu_graphismes.gd` → `QGIS/rendus/graphismes_{coeur,ville}_{rebonds,ciel,brume}_oui.png` et `..._lumiere_tout.png` (les trois), à comparer aux vues `_ombres_fines` ; coût : `sonde_perfs.gd -- --reglages`.
+- Serait un défaut : un halo coloré qui déborde d'un mur ; un scintillement quand la caméra bouge ; des façades plus sombres ou plus claires avec le ciel (seuls toits et dessous doivent bouger) ; une brume qui voile le premier plan, ou qui saute au zoom ; un thème du diagnostic teinté ou embrumé.

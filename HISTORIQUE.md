@@ -871,3 +871,7 @@ Planches `maquette_planche.png` et `maquette_planche_saisons.png` ; avec la cour
 **2026-10-20 — Icône Ville dessinée par l'auteur (ville 2), rail agrandi.**
 Trois versions essayées au rail : la détaillée (30 fenêtres) devenait une tache grise à 26 px ; la ville 2, trois volumes sans fenêtres, est retenue ; brouillons `_ville1` et `_ville2` dans `Godot/icones/`.
 Le thème plafonnait toute icône de bouton à 30 px, le dessin « 36 » n'y était jamais : icônes du rail 26 → 34, dessin 30 → 44, rail 64 → 72 ; contour noir sur fond sombre laissé tel quel (auteur). Essai ouverture 0 échec.
+
+**2026-10-20 — Trois lumières à l'essai au panneau Graphismes : rebond (SSIL), ciel et sol, brume au loin.**
+L'auteur veut « du low poly avec une lumière impeccable » ; le SSAO y était déjà. Éteintes par défaut ; l'ambiant en dégradé garde la luminance d'un mur (calculé en linéaire), la brume suit le zoom comme le flou ; halo, reflets de rivière et angle du soleil laissés de côté.
+Godot introuvable dans le conteneur cloud : ni capture ni mesure, couvertes par `apercu_graphismes` et `sonde_perfs --reglages`.

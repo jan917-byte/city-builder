@@ -2251,6 +2251,8 @@ func _decor() -> void:
 	we.environment = Materiaux.environnement(
 		Donnees.teinte(donnees, "_ciel"), Donnees.teinte(donnees, "_ambiant"))
 	_environnement = we.environment
+	_environnement.sky = Materiaux.ciel_et_sol(
+		Donnees.teinte(donnees, "_ambiant"), Donnees.teinte(donnees, "_soleil"))
 	add_child(we)
 
 	# 🔎 La même recette que la miniature de la fiche : voir `Materiaux.soleil`.
@@ -2693,7 +2695,7 @@ func _habiller_monde(diagnostic: bool) -> void:
 	if _environnement != null:
 		_environnement.background_color = FOND_DANGERS if diagnostic \
 			else Donnees.teinte(donnees, "_ciel")
-	# La courbe de couleurs fausserait l'échelle d'un thème : le diagnostic reste en linéaire.
+	# La courbe de couleurs fausserait l'échelle d'un thème : le diagnostic reste en linéaire, sans brume.
 	if graphismes != null:
 		graphismes.appliquer_couleurs(diagnostic)
 	# ⚠ Le même papier que CRUE_PAPIER (crue.gdshaderinc).

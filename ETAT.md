@@ -13,7 +13,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 ## À juger à l'écran
 - 💶 **Deux budgets** (118) et 🪜 **la complexité peu à peu** (119, argent sans « chaque mois » au début, trois études de cartes à la mairie) : 1 500 k€ d'urgence, le fonds de 2 000 k€ à la mairie, le pont en dur et le pont résistant → [Premiers pas](Prototype/Premiers%20pas.md) § Deux budgets.
 - 🔴 Prix de l'étude, points de l'arbre de l'institut, trois nombres du concours → [Premiers pas](Prototype/Premiers%20pas.md) § L'étude, § L'institut vend les actions.
-- ⚙️ Panneau Graphismes : « ombres moyennes » ou « fines » par défaut → `QGIS/rendus/planche_graphismes_*.png` ; garder les couleurs ① et le flou ②, éteints par défaut ? → [Toits et sol](Prototype/Toits%20et%20sol.md) § 12.
+- ⚙️ Panneau Graphismes : « ombres moyennes » ou « fines » par défaut → `QGIS/rendus/planche_graphismes_*.png` ; garder les couleurs ① et le flou ②, éteints par défaut ? ; trois lumières à l'essai (rebond, ciel, brume), ni vues ni mesurées → [Toits et sol](Prototype/Toits%20et%20sol.md) § 12-13.
 - ❄️ Les saisons (printemps, essences, fumée) → [Saisons](Prototype/Saisons.md) ; couleurs, branches et flocons flaggables (90).
 - 🪵 Les dégâts de la crue, densités → [Premiers pas](Prototype/Premiers%20pas.md) § Les dégâts de la crue.
 - 🏢 Densifier : le prix (95 k€ le logement) → [Densifier](Prototype/Densifier.md).

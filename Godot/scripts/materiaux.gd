@@ -1075,4 +1075,31 @@ static func environnement(ciel: Color, ambiant: Color) -> Environment:
 
 	# ⚠ Le SSAO travaille en espace vue : son rayon se comporte autrement en
 	# ortho. S'il casse, l'AO bakée par 07 tient debout seule — d'où l'ordre.
+
+	# Brume au loin, éteinte : allumée et suivie au zoom par `graphismes.gd` et `CameraAxo`.
+	e.fog_mode = Environment.FOG_MODE_DEPTH
+	e.fog_light_color = ciel
+	e.fog_sky_affect = 0.0
+	e.fog_density = 0.45
 	return e
+
+
+## Ambiance venue du ciel en haut, du sol en bas, à la place de la couleur unie de
+## `environnement` quand le panneau le demande. Calculé en linéaire : sur un mur vertical,
+## la moyenne garde la luminance de l'ambiant uni (haut ×1,2, bas ×0,8), un peu plus chaude.
+static func ciel_et_sol(ambiant: Color, soleil: Color) -> Sky:
+	var a := ambiant.srgb_to_linear()
+	var sh := Shader.new()
+	sh.code = "shader_type sky;\n" \
+		+ "uniform vec3 haut;\n" \
+		+ "uniform vec3 bas;\n" \
+		+ "void sky() { COLOR = mix(bas, haut, smoothstep(-0.25, 0.35, EYEDIR.y)); }\n"
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("haut", a * 1.2)
+	m.set_shader_parameter("bas", a.lerp(soleil.srgb_to_linear(), 0.5) * 0.55)
+	var s := Sky.new()
+	s.sky_material = m
+	# Un dégradé sans détail : une petite carte suffit.
+	s.radiance_size = Sky.RADIANCE_SIZE_32
+	return s

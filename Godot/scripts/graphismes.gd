@@ -28,11 +28,15 @@ const LIGNES := [
 	["ombres", "Ombres", [["fines", "Fines"], ["moyennes", "Moyennes"], ["legeres", "Légères"], ["aucune", "Aucune"]]],
 	["bois", "Ombres des bois", [[true, "Oui"], [false, "Non"]]],
 	["recoins", "Ombre des recoins", [[true, "Oui"], [false, "Non"]]],
+	["rebonds", "Lumière qui rebondit", [[true, "Oui"], [false, "Non"]]],
+	["ciel", "Lumière du ciel et du sol", [[true, "Oui"], [false, "Non"]]],
+	["brume", "Brume au loin", [[true, "Oui"], [false, "Non"]]],
 	["anticrenelage", "Anticrénelage", [["fort", "Fort"], ["leger", "Léger"], ["non", "Non"]]],
 	["echelle", "Résolution 3D", [["100", "100 %"], ["85", "85 %"], ["70", "70 %"]]],
 ]
 ## Le rendu d'avant les réglages : rien ne change tant qu'on n'y touche pas.
-const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "anticrenelage": "fort", "echelle": "100",
+const DEFAUT := {"ombres": "fines", "bois": true, "recoins": true, "rebonds": false, "ciel": false,
+	"brume": false, "anticrenelage": "fort", "echelle": "100",
 	"couleurs": "non", "maquette": "non"}
 
 var reglages := DEFAUT.duplicate()
@@ -77,6 +81,10 @@ func appliquer() -> void:
 				(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON \
 					if reglages["bois"] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_jeu._environnement.ssao_enabled = reglages["recoins"]
+	# SSIL, ciel et brume, à l'essai (2026-10-20) : coût non mesuré, d'où éteints par défaut.
+	_jeu._environnement.ssil_enabled = reglages["rebonds"]
+	_jeu._environnement.ambient_light_source = Environment.AMBIENT_SOURCE_SKY if reglages["ciel"] \
+		else Environment.AMBIENT_SOURCE_COLOR
 	var vp: Viewport = _jeu.get_viewport()
 	vp.msaa_3d = ANTICRENELAGE[reglages["anticrenelage"]]
 	var e: float = ECHELLES[reglages["echelle"]]
@@ -97,6 +105,8 @@ func appliquer_couleurs(diagnostic: bool) -> void:
 	env.tonemap_agx_contrast = float(c[3])
 	env.adjustment_enabled = float(c[4]) != 1.0
 	env.adjustment_saturation = float(c[4])
+	env.fog_enabled = reglages["brume"] and not diagnostic
+	_jeu.pivot.regler_brume(env if env.fog_enabled else null)
 
 
 func basculer() -> void:
