@@ -916,4 +916,4 @@ Le cadre de `chantiers.svg`, étiré ×16 en largeur, transformait le trait blan
 Essai ouverture 234 OK, 0 échec ; avant/après dans `wehrau_icones_lisere.png`.
 **2026-10-21 — Le concours décide le corps du bâtiment, le joueur l'habille ; gabarit Blender des fenêtres de l'auteur.**
 Tranché par l'auteur : toit vert, panneaux, façade plantée, isolation sont des décisions du joueur, jamais d'un lauréat.
-Gabarit `Godot/assets/fenetres/` : 9 planches aux mesures du shader, le modèle du milieu se recopie seul ; restent la cuisson et les styles par époque.
+Gabarit `Godot/assets/fenetres/` : 7 façades types, rez varié, 27 ouvertures (porte cochère, garage, quai, loggia…) qui se recopient seules ; restent la cuisson et les styles par époque.

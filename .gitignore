@@ -40,3 +40,6 @@ Thumbs.db
 # Obsidian (état de session, pas le vault)
 **/.obsidian/workspace.json
 **/.obsidian/workspace-mobile.json
+
+# Blender : copie de secours écrite à chaque sauvegarde
+*.blend1
