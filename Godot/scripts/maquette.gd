@@ -260,6 +260,12 @@ func _ready() -> void:
 	pivot = CameraAxo.new()
 	pivot.name = "Pivot"
 	add_child(pivot)
+	var sols: Array[Mesh] = []
+	for n in [monde.get_node_or_null("Terrain"),
+			paysage.get_node_or_null("Versants") if paysage != null else null]:
+		if n != null:
+			sols.append((n as MeshInstance3D).mesh)
+	pivot.regler_relief(sols)
 	_repere("ville")
 	trafic.regler_detail(pivot.taille)
 	travaux.regler_detail(pivot.taille, pivot.camera)

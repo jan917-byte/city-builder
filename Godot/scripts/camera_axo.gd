@@ -17,6 +17,7 @@ extends Node3D
 #   flèches ← →            lacet par crans de 15°
 #   flèches ↑ ↓            hauteur du regard par crans de 8°
 #   T                      bascule vue de dessus ⇄ hauteur précédente
+# Au-dessus des versants, le regard se relève seul : l'œil ne passe jamais sous le relief.
 
 signal vue_changee(lacet: float, hauteur: float)
 signal clic_sol(position_ecran: Vector2)
@@ -29,6 +30,12 @@ const FOV := 35.0
 const TAILLE_MIN := 40.0
 ## Tous les champs (1 268 × 1 473 m) tiennent à 32°, quel que soit le lacet, dès 1 574 m (auteur, 2026-10-12).
 const TAILLE_MAX := 1600.0
+
+## Le relief sondé tous les 30 m, chaque case prenant le maximum de ses voisines.
+const RELIEF_MAILLE := 30.0
+const RELIEF_ELARGI := 1
+## Garde au-dessus du relief, en fraction du recul : sous sin(6°) = 0,105, la ville plate ne relève jamais rien.
+const RELIEF_GARDE := 0.08
 
 const CRAN_LACET := 15.0
 const CRAN_HAUTEUR := 8.0
@@ -58,6 +65,9 @@ var _zoom_actif := false
 var _taille_cible := 1200.0
 var flou := 0.0
 var brume: Environment = null
+var _relief := PackedFloat32Array()
+var _relief_origine := Vector2.ZERO
+var _relief_n := Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -102,12 +112,93 @@ func _appliquer() -> void:
 	# En perspective, `size` reste la hauteur de cadre AU POINT VISÉ : le recul
 	# qui la donne. Le cadrage de chaque `viser(…, taille)` ne bouge donc pas.
 	var recul := camera.size / (2.0 * tan(deg_to_rad(FOV * 0.5)))
+	# Sur un versant, l'œil passait sous la montagne. On relève le regard le
+	# temps qu'il faut (sans toucher `hauteur`) ; à pic et encore dessous, on recule.
+	var h := _hauteur_vu
+	if not _degage(h, recul):
+		var haut := HAUTEUR_MAX
+		if _degage(haut, recul):
+			for _i in 14:
+				var m := (h + haut) * 0.5
+				if _degage(m, recul):
+					haut = m
+				else:
+					h = m
+		else:
+			recul = (altitude(position.x, position.z) - position.y) / (1.0 - RELIEF_GARDE)
+			# Le zoom bute : sans ça, la molette continue dans le vide et il faut la défaire.
+			taille = recul * 2.0 * tan(deg_to_rad(FOV * 0.5)) \
+				* sin(deg_to_rad(HAUTEUR_DEFAUT)) / sin(deg_to_rad(_hauteur_vu))
+			_taille_cible = maxf(_taille_cible, taille)
+		h = haut
 	camera.position = Vector3(0.0, 0.0, recul)
 	camera.near = maxf(0.05, recul * 0.01)
-	rotation_degrees = Vector3(-_hauteur_vu, _lacet_vu, 0.0)
+	rotation_degrees = Vector3(-h, _lacet_vu, 0.0)
 	_maj_flou(recul)
 	_maj_brume(recul)
-	vue_changee.emit(_lacet_vu, _hauteur_vu)
+	vue_changee.emit(_lacet_vu, h)
+
+
+func _degage(h: float, recul: float) -> bool:
+	var oeil := position + Basis.from_euler(Vector3(deg_to_rad(-h), deg_to_rad(_lacet_vu), 0.0)) \
+		* Vector3(0.0, 0.0, recul)
+	return oeil.y >= altitude(oeil.x, oeil.z) + recul * RELIEF_GARDE
+
+
+## Les sols à ne pas traverser : celui de la ville (ses bords montent) et les versants.
+## Sans appel, le sol est plat à 0.
+func regler_relief(sols: Array[Mesh]) -> void:
+	var boite := AABB()
+	var sondes: Array[TriangleMesh] = []
+	for m in sols:
+		boite = m.get_aabb() if sondes.is_empty() else boite.merge(m.get_aabb())
+		sondes.append(m.generate_triangle_mesh())
+	if sondes.is_empty():
+		return
+	_relief_origine = Vector2(boite.position.x, boite.position.z)
+	_relief_n = Vector2i(int(boite.size.x / RELIEF_MAILLE) + 2, int(boite.size.z / RELIEF_MAILLE) + 2)
+	var brut := PackedFloat32Array()
+	brut.resize(_relief_n.x * _relief_n.y)
+	brut.fill(0.0)
+	var dessus := boite.end.y + 10.0
+	for j in _relief_n.y:
+		for i in _relief_n.x:
+			var p := Vector3(_relief_origine.x + (i + 0.5) * RELIEF_MAILLE, dessus,
+				_relief_origine.y + (j + 0.5) * RELIEF_MAILLE)
+			for s in sondes:
+				var r := s.intersect_ray(p, Vector3.DOWN)
+				if not r.is_empty():
+					brut[j * _relief_n.x + i] = maxf(brut[j * _relief_n.x + i], r.position.y)
+	# Le maximum des voisins, en x puis en z : entre deux sondes, le relief n'est jamais sous-estimé.
+	for sens in [Vector2i(1, 0), Vector2i(0, 1)]:
+		var large := brut.duplicate()
+		for j in _relief_n.y:
+			for i in _relief_n.x:
+				var m := 0.0
+				for d in range(-RELIEF_ELARGI, RELIEF_ELARGI + 1):
+					var a: int = i + d * sens.x
+					var b: int = j + d * sens.y
+					if a >= 0 and a < _relief_n.x and b >= 0 and b < _relief_n.y:
+						m = maxf(m, brut[b * _relief_n.x + a])
+				large[j * _relief_n.x + i] = m
+		brut = large
+	_relief = brut
+	_appliquer()
+
+
+## Le haut du relief sous (x, z), interpolé pour que le regard se relève sans à-coups.
+func altitude(x: float, z: float) -> float:
+	if _relief.is_empty():
+		return 0.0
+	var u := (x - _relief_origine.x) / RELIEF_MAILLE - 0.5
+	var w := (z - _relief_origine.y) / RELIEF_MAILLE - 0.5
+	var i := clampi(floori(u), 0, _relief_n.x - 2)
+	var j := clampi(floori(w), 0, _relief_n.y - 2)
+	var fu := clampf(u - i, 0.0, 1.0)
+	var fw := clampf(w - j, 0.0, 1.0)
+	var k := j * _relief_n.x + i
+	return lerpf(lerpf(_relief[k], _relief[k + 1], fu),
+		lerpf(_relief[k + _relief_n.x], _relief[k + _relief_n.x + 1], fu), fw)
 
 
 ## Flou de maquette : la bande nette suit le point visé, donc il se règle en

@@ -146,7 +146,28 @@ func executer() -> void:
 		bouton(centre, true, false, MOUSE_BUTTON_WHEEL_UP if limite == 40 else MOUSE_BUTTON_WHEEL_DOWN)
 		stabiliser()
 		verifier(is_equal_approx(pivot.taille, limite), "Le zoom dépasse une limite")
-	print("CAMÉRA : clic, ancrage, zoom, orbite, nord, dessus, panneaux et focus : %d échec(s)" % echecs)
+	# Un cône de 500 m centré à x = 1500, sommets tous les 65 m comme les versants.
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cone := func(i: int, j: int) -> Vector3:
+		var p := Vector2(1500.0 + i * 65.0, j * 65.0)
+		return Vector3(p.x, maxf(0.0, 500.0 - p.distance_to(Vector2(1500, 0)) * 0.5), p.y)
+	for i in range(-40, 40):
+		for j in range(-40, 40):
+			for k in [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]]:
+				st.add_vertex(cone.call(i + k[0], j + k[1]))
+	var sols: Array[Mesh] = [st.commit()]
+	pivot.regler_relief(sols)
+	pivot.caler(90, 6)
+	pivot.viser(Vector2.ZERO, 40.0)
+	verifier(is_equal_approx(pivot.rotation_degrees.x, -6.0), "Le relief relève le regard sur la ville plate")
+	for vise_x in [900.0, 1300.0, 1500.0]:
+		for t in [40.0, 300.0]:
+			pivot.caler(90, 6)
+			pivot.viser(Vector2(vise_x, 0.0), t)
+			var oeil: Vector3 = pivot.camera.global_position
+			verifier(oeil.y > pivot.altitude(oeil.x, oeil.z), "L'œil passe sous le relief : x = %d, taille %d" % [vise_x, t])
+	print("CAMÉRA : clic, ancrage, zoom, orbite, nord, dessus, panneaux, focus et relief : %d échec(s)" % echecs)
 	quit(1 if echecs else 0)
 
 
