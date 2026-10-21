@@ -38,7 +38,9 @@ VARIANTES = [
     ("v_groupees", "Maisons groupées", "pavillonnaire",
      (20.0, 26.0, "peigne"), (3.0, 2.0, 4.0, 16.0, 10.0, 0.55, D4D.DETACHE), 2),
 ]
-ILOTS = [66, 67, 59]   # Verger, Moulin, Forgerons
+# 🔴 Un parcellaire neuf seulement là où aucun bâtiment n'est resté intact (auteur, 2026-10-21) :
+# Verger, Grenier, Four. Ailleurs, les maisons debout restent et seules les tombées se rebâtissent.
+ILOTS = [66, 68, 69]
 LARG = 420
 SORTIE = os.path.join(AP.SORTIE, "wehrau_variantes_parcellaire.png")
 
