@@ -902,3 +902,6 @@ Constat de jeu : à l'an 4, 4,74 M€ en caisse et 0 point, tout l'institut bloq
 **2026-10-21 — Sept défauts d'affichage de la partie corrigés ; le bouton du pont provisoire reste tel quel (prix au clic, auteur).**
 Objectifs cachés pendant le récit, nouvelle ligne qui paraît sur place, sorties au pas des autres ; une dépense chasse la précédente sous l'argent ; icônes en vol effacées à la reprise, compteur jamais sous zéro à cause d'un vol ; virgules au lieu des tirets longs, plus de numéro d'îlot dans la bulle de la mairie ; fenêtre de la mairie à la hauteur de ses colonnes.
 Essais ouverture, étude, concours, fonds, vie_camp, rebâtir, livre, gains, objectifs 0 échec ; planche `QGIS/rendus/wehrau_playtest_apres.png`.
+**2026-10-21 — Concours d'architecture par îlot : trois lauréats selon ce que la crue a pris, 50 k€ et 15 jours, sans rabais ; chantiers d'îlot 12 → 9 mois.**
+Six projets neufs (jardins inondables, maisons amphibies, butte, maisons surélevées, îlot-éponge, maisons groupées), allure empruntée ; l'institut garde pilotis et amphibies, le parc vient du concours. Sous 1,5 m de levée rien n'est sauvé : surélevées et butte à 2 m, amphibies à 6 m.
+Essais concours, rebâtir, étude 0 échec ; captures `wehrau_ouverture_concours_04_forgerons` à `_06_colombier`.

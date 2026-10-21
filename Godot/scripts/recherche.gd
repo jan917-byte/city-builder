@@ -28,6 +28,14 @@ const SUJETS := {
 		"points": 2, "apres": [],
 		"effet": "facon_pilotis", "valeur": 1.0, "domaine": "bati",
 	},
+	# 🏛️ Le parc inondable vient du concours (auteur, 2026-10-21) ; les maisons amphibies,
+	# technique nouvelle, s'apprennent ici.
+	"amphibies": {
+		"nom": "Maisons amphibies",
+		"quoi": "Des maisons posées sur un caisson qui flotte : quand l'Ilse monte, elles montent avec elle.",
+		"points": 2, "apres": [],
+		"effet": "facon_amphibies", "valeur": 1.0, "domaine": "bati",
+	},
 	"densifier": {
 		"nom": "Densifier",
 		"quoi": "Monter un étage ou deux sur un îlot : plus de logements, sans s'étaler.",
@@ -45,13 +53,6 @@ const SUJETS := {
 		"quoi": "−20 % sur le prix d'un toit vert",
 		"points": 1, "apres": ["vert"],
 		"effet": "cout_vert_x", "valeur": 0.80, "domaine": "bati",
-	},
-	# 🌿 Une façon de rebâtir (95), sans rapport avec les berges (auteur, 2026-10-19).
-	"parc": {
-		"nom": "Parc inondable",
-		"quoi": "Rebâtir un îlot sinistré en prairie : personne ne revient, la crue baisse dans toute la ville.",
-		"points": 2, "apres": [],
-		"effet": "facon_parc", "valeur": 1.0, "domaine": "public",
 	},
 	"berge": {
 		"nom": "Rendre une berge",
@@ -116,11 +117,11 @@ const SUJETS := {
 	},
 }
 ## 🎚️ Ce que l'institut montre avant le premier achat : les réponses à la crue (auteur, 2026-10-19).
-const D_ABORD := ["pilotis", "parc", "berge"]   # 🌉 le pont résistant suit, après un premier achat
+const D_ABORD := ["pilotis", "amphibies", "berge"]   # 🌉 le pont résistant suit, après un premier achat
 const PILOTIS := "pilotis"
 const PONT := "pont_resistant"
-const PARC := "parc"
-const ORDRE := ["pilotis", "densifier", "vert", "sedum", "parc", "berge", "pre", "permeable",
+const AMPHIBIES := "amphibies"
+const ORDRE := ["pilotis", "amphibies", "densifier", "vert", "sedum", "berge", "pre", "permeable",
 	"arbres", "solaire", "rendement", "pose", "pont_resistant", "places", "rue"]
 ## 🎓 Les colonnes de l'institut (auteur, 2026-10-19 ; remplace les cinq du 2026-10-09). 🔴 Flaggable (90).
 const DOMAINES := [["bati", "Bâti"], ["public", "Espace public"], ["energie", "Énergie"],

@@ -505,7 +505,7 @@ var _consolider_bouton: Button   # 🌉 le pont en dur à la place du provisoire
 var _projets_panneau: PanelContainer
 var _projets_titre: Label
 var _projets_intro: Label
-var _projets_cartes := {}   # façon -> {bouton, lignes}
+var _projets_cartes := {}   # 0..2 -> {bouton, lignes, nom, quoi, decision, facon}
 var _projets_cle := ""
 var _repare_etat: Label   # « Chantier en cours » : remplace le bouton grisé
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
@@ -3818,16 +3818,23 @@ func _ralentir_campus() -> void:
 # ==========================================================================
 # 🏛️ LES TROIS PROJETS NEUFS d'un îlot, côte à côte (95 · 104 revue)
 # ==========================================================================
-# Ouverts sans concours ; le concours, facultatif et pour toute la zone, baisse
-# le prix des projets neufs. D'un îlot à l'autre, seuls les chiffres changent.
+# Un concours par îlot ; ses trois lauréats dépendent du lieu (`Ville.LAUREATS`) :
+# trois cartes, dont la façon change d'un îlot à l'autre.
 
-## Textes de l'auteur (2026-10-20).
+## Textes de l'auteur (2026-10-20) ; 🔴 les six derniers sont les miens, flaggables (90).
 const PROJETS_QUOI := {
 	"tradition": "Garde la forme historique des bâtiments.",
 	"moderne": "Plus de logements, isolés, sous un toit plat.",
 	"pilotis": "Logements protégés d'une crue.",
 	"parc": "Protection en cas de crue, mais sans logements.",
+	"jardins": "Des potagers que l'eau peut traverser. Personne ne rentre, mais le quartier les aime.",
+	"amphibies": "Des maisons qui flottent quand l'Ilse monte, et gardent leur allure.",
+	"butte": "Le sol relevé d'un étage. Garages et ateliers en bas, logements au-dessus.",
+	"surelevees": "Les maisons d'avant, le plancher deux mètres plus haut.",
+	"eponge": "La cour garde l'eau de pluie et de crue. Les maisons reviennent.",
+	"groupees": "Des maisons accolées : plus de logements sur le même terrain.",
 }
+const PROJETS_CARTES := 3
 
 
 func _panneau_projets() -> void:
@@ -3858,7 +3865,7 @@ func _panneau_projets() -> void:
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.add_theme_constant_override("separation", 12)
 	v.add_child(h)
-	for f in Ville.PROJETS_CONCOURS:
+	for i in PROJETS_CARTES:
 		var carte := PanelContainer.new()
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = FOND_FORT
@@ -3870,16 +3877,17 @@ func _panneau_projets() -> void:
 		var cv := VBoxContainer.new()
 		cv.add_theme_constant_override("separation", 7)
 		carte.add_child(cv)
-		cv.add_child(_label(str(Ville.RECONSTRUCTIONS[f]["nom"]), 20, TEXTE))
+		var nom := _label("", 20, TEXTE)
+		cv.add_child(nom)
 		# L'îlot livré, comme la miniature de la fiche (auteur, 2026-10-06).
 		var vue := TextureRect.new()
-		vue.texture = apercus_projets.get(f)
+		vue.texture = apercus_projets.get(i)
 		vue.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		vue.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		vue.custom_minimum_size = Vector2(0, Apercu.TAILLE_PROJET.y)
 		vue.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cv.add_child(vue)
-		var quoi := _label(PROJETS_QUOI[f], 14, GRIS)
+		var quoi := _label("", 14, GRIS)
 		quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cv.add_child(quoi)
 		cv.add_child(HSeparator.new())
@@ -3892,15 +3900,16 @@ func _panneau_projets() -> void:
 		b.add_theme_font_size_override("font_size", 17)
 		b.focus_mode = Control.FOCUS_NONE
 		# Le choix se pose comme un bouton de la fiche, puis l'écran se retire : il ne paie pas.
-		_decision(b, "reparer", f)
+		# La façon change avec l'îlot : `_maj_projets` réécrit la valeur de la décision.
+		_decision(b, "reparer", "")
 		b.pressed.connect(fermer_projets)
 		cv.add_child(b)
-		_projets_cartes[f] = {"bouton": b, "lignes": lignes}
+		_projets_cartes[i] = {"bouton": b, "lignes": lignes, "nom": nom, "quoi": quoi,
+			"decision": _decisions[-1], "facon": ""}
 
 
 func ouvrir_projets() -> void:
-	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_utile(_fiche_fid) \
-			or not ville.concours_rendu(_mois):
+	if _fiche_couche != "i" or _fiche_fid < 0 or not ville.concours_rendu(_fiche_fid, _mois):
 		return
 	_projets_cle = ""
 	_projets_panneau.visible = true
@@ -3936,28 +3945,38 @@ func _maj_projets() -> void:
 	if _fiche_couche != "i" or _fiche_fid < 0 or ville.est_repare("i", _fiche_fid):
 		fermer_projets()
 		return
-	for f in _projets_cartes:
-		var b: Button = _projets_cartes[f]["bouton"]
+	var laureats := ville.laureats(_fiche_fid)
+	for i in _projets_cartes:
+		var c: Dictionary = _projets_cartes[i]
+		var f: String = laureats[i] if i < laureats.size() else ""
+		c["facon"] = f
+		c["decision"][2] = f
+		var b: Button = c["bouton"]
 		_posee(b, "reparer", "Choisir", f)
-		b.disabled = not ville.facon_permise(_fiche_fid, f, _mois)
+		b.disabled = f == "" or not ville.facon_permise(_fiche_fid, f, _mois)
 		if b.disabled:
 			b.text = "À l'institut d'abord"   # 🔴 Flaggable (90).
 		elif str(_pose.get("reparer", "")) == f:
 			b.text = "✓ Choisi"
-	var cle := "%d %d %s" % [_fiche_fid, int(_mois), ville.concours_rendu(_mois)]
+	var cle := "%d %d %s" % [_fiche_fid, int(_mois), ",".join(laureats)]
 	if cle == _projets_cle:
 		return
 	_projets_cle = cle
-	_projets_titre.text = ("Lauréats du concours : %s" if ville.concours_rendu(_mois)
-		else "Projets : %s") % lieux.nom("i", _fiche_fid)
+	_projets_titre.text = "Lauréats du concours : %s" % lieux.nom("i", _fiche_fid)
 	_projets_intro.text = "%.0f logements perdus. La prochaine crue y mettrait %s m d'eau." % [
 		ville.base("i", _fiche_fid, "logements_sinistres"),
 		_nb(ville.valeur("i", _fiche_fid, "hauteur_eau_annonce", _mois), 1)]
-	for f in _projets_cartes:
-		var lignes: VBoxContainer = _projets_cartes[f]["lignes"]
-		for c in lignes.get_children():
-			lignes.remove_child(c)
-			c.queue_free()
+	for i in _projets_cartes:
+		var c: Dictionary = _projets_cartes[i]
+		var f: String = c["facon"]
+		(c["nom"] as Label).text = str(Ville.RECONSTRUCTIONS[f]["nom"]) if f != "" else ""
+		(c["quoi"] as Label).text = str(PROJETS_QUOI.get(f, ""))
+		var lignes: VBoxContainer = c["lignes"]
+		for e in lignes.get_children():
+			lignes.remove_child(e)
+			e.queue_free()
+		if f == "":
+			continue
 		for e in _projet(f):
 			_effet(e[0], e[1], e[2], lignes, 16)
 	# La ville d'essai a servi aux trois : le récapitulatif se remesure.
@@ -3971,8 +3990,6 @@ func _projet(f: String) -> Array:
 	var cout := ville.cout_commande_ke("i", _fiche_fid, r, _mois)
 	var duree := ville.duree_commande_mois("i", _fiche_fid, r, _mois)
 	var prix := "%s k€" % _milliers(cout)
-	if ville.laureat(_fiche_fid, f, _mois):
-		prix += ", −%d %% au concours" % int(roundf((1.0 - Ville.CONCOURS_LAUREAT_PRIX) * 100.0))
 	var out := [["caisse", prix, 0], ["duree", _duree(duree), 0]]
 	# Pas mis au point : le prix seul, la ville d'essai refuserait le chantier.
 	if ville_essai == null or not ville.facon_permise(_fiche_fid, f, _mois):
@@ -5731,14 +5748,16 @@ func _reglages() -> Dictionary:
 	return r
 
 
+## L'entrée est lue au clic : les cartes des lauréats réécrivent sa valeur (`_maj_projets`).
 func _decision(b: Button, cle: String, valeur: Variant) -> void:
+	var d := [b, cle, valeur]
 	b.pressed.connect(func() -> void:
 		_survol_ignore = b
-		_basculer(cle, valeur))
+		_basculer(d[1], d[2]))
 	b.mouse_exited.connect(func() -> void:
 		if _survol_ignore == b:
 			_survol_ignore = null)
-	_decisions.append([b, cle, valeur])
+	_decisions.append(d)
 
 
 func _survole(b: Button) -> bool:
@@ -6139,14 +6158,17 @@ func apercu_demande() -> Dictionary:
 		# 🌿 Un parc ne promet aucune maison.
 		var facon := ville.facon_reparation(_fiche_fid, str(r.get("reparer", "")))
 		for f in _rebatir_boutons:
-			if _survole(_rebatir_boutons[f]) or (_projets_cartes.has(f)
-					and _survole(_projets_cartes[f]["bouton"])):
+			if _survole(_rebatir_boutons[f]):
 				futur = true
 				facon = f
+		for c in _projets_cartes.values():
+			if c["facon"] != "" and _survole(c["bouton"]):
+				futur = true
+				facon = c["facon"]
 		# 🏗️ L'allure promise (95) : moderne, pilotis, ou la ruine rendue en parc.
 		if _fiche_couche == "i" and futur:
 			rebati = Ville.rendu_rebati(facon)
-		if _fiche_couche == "i" and facon == "parc":
+		if _fiche_couche == "i" and Ville.rendu_de(facon) == "parc":
 			futur = false
 	# 🌉 Quel pont la miniature promet : le choix posé, sinon le bouton survolé.
 	var provisoire := _fiche_couche == "r" and ville.pont_provisoire(_fiche_fid, _mois)
@@ -6506,8 +6528,8 @@ func _maj_reparation(o: Dictionary) -> void:
 	var rebatir := couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0 \
 		and not ville.est_repare(couche, _fiche_fid) and float(o.get("cout_reparation_ke", 0.0)) > 0.0
 	# 🏛️ DEUX CHOIX là où des maisons sont tombées (auteur, 2026-10-19 au soir) : reconstruire,
-	# ou le concours, adopté à la mairie (117) ; ses lauréats seuls montrent les projets.
-	var rendu := ville.concours_rendu(_mois)
+	# ou le concours de CET îlot, adopté à la mairie (117) ; ses lauréats seuls montrent les projets.
+	var rendu := ville.concours_rendu(_fiche_fid, _mois) if couche == "i" else false
 	var concours: bool = rebatir and ville.concours_utile(_fiche_fid) \
 		and (ouverture == null or ouverture.concours_offert())
 	var projets: bool = concours and rendu
@@ -6588,12 +6610,12 @@ func _maj_reparation(o: Dictionary) -> void:
 		if projets:
 			_projets_bouton.text = "Voir les projets des lauréats" if not Ville.RECONSTRUCTIONS.has(choisi) \
 				else "Projet : %s, revoir" % String(Ville.RECONSTRUCTIONS[choisi]["nom"]).to_lower()
-		if concours and ville.concours_lance():
+		if concours and ville.concours_lance(_fiche_fid):
 			_concours_bouton.text = "Concours en cours"
 			_concours_bouton.disabled = true
 			_marquer(_concours_bouton, false)
 		elif concours:
-			_posee(_concours_bouton, "concours", "Lancer un concours d'architectes")
+			_posee(_concours_bouton, "concours", "Lancer un concours d'architecture")
 			_concours_bouton.disabled = false
 	if pont:
 		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une
@@ -6606,8 +6628,12 @@ func _repare_texte_plus(phrase: String) -> void:
 
 
 ## 🏗️ Ce que la fiche dit d'un îlot relevé, selon la façon.
+## 🔴 Les six derniers sont les miens, flaggables (90).
 const FAIT_REBATI := {"tradition": "Relevé comme avant.", "moderne": "Rebâti en moderne.",
-	"pilotis": "Rebâti sur pilotis.", "parc": "Rendu à l'eau : un parc inondable."}
+	"pilotis": "Rebâti sur pilotis.", "parc": "Rendu à l'eau : un parc inondable.",
+	"jardins": "Rendu à l'eau : des jardins inondables.", "amphibies": "Rebâti en maisons amphibies.",
+	"butte": "Rebâti sur une butte.", "surelevees": "Relevé deux mètres plus haut.",
+	"eponge": "Rebâti autour d'une cour qui garde l'eau.", "groupees": "Rebâti en maisons groupées."}
 
 
 ## Un bouton qui MONTRE sans engager : un contour, sans plaque, pour ne pas

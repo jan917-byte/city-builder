@@ -75,7 +75,7 @@ var _file_deblaiement := {}
 ## 🎚️ Tout déblayer d'un coup n'est proposé qu'après autant de rues faites à la main.
 const DEBLAIEMENT_SEUIL := 3
 var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTIONS`)
-var _concours := {}        # {debut, fid} : le concours de la zone sinistrée (104), lancé depuis cet îlot
+var _concours := {}        # fid îlot -> mois du lancement : un concours d'architecture par îlot
 var _programmes := {}      # clé de `Politiques.PROGRAMMES` -> le mois de l'adoption (117)
 var _etude := {}           # {debut} : l'étude de la crue commandée par la mairie (117)
 var _etudes := {}          # id de `ETUDES_DIAGNOSTIC` -> mois de la commande
@@ -178,7 +178,7 @@ const CHAMPS_MOBILES := {
 #
 # 🎚️ LES TROIS DURÉES, elles, sont d'ici — ce sont des durées de JEU, pas des
 # chiffres de la carte. Repère : la pose solaire d'un îlot tient en un mois.
-const RECONSTRUCTION_MOIS := 12.0    # un îlot entièrement sinistré : un an de chantier
+const RECONSTRUCTION_MOIS := 9.0     # un îlot entièrement sinistré ; 12 → 9 (auteur, 2026-10-21 : « réduire un peu »)
 const RECONSTRUCTION_PART_MIN := 1.0 / 6.0
 const DEBLAIEMENT_MOIS := 2.0 / 30.0 # la vase enlevée d'une rue : deux jours (auteur, 2026-09-26)
 const PONT_MOIS := 7.0               # un franchissement rebâti en dur (87) ; 8 → 7 (auteur, 2026-10-12)
@@ -187,28 +187,51 @@ const PONT_MOIS := 7.0               # un franchissement rebâti en dur (87) ; 8
 const PONT_PROVISOIRE_MOIS := 2.0    # 3 → 2 (auteur, 2026-10-12) : l'attente du premier pont
 const PONT_PROVISOIRE_PART := 0.25
 const PONT_PROVISOIRE_CAPACITE := 0.5
-# 🏗️ REBÂTIR UN ÎLOT SINISTRÉ, quatre façons qui se valent (95, auteur 2026-10-02) :
-# chacune gagne sur un seul plan. 🎚️ LEVEL DESIGN, tout ce bloc, proposé.
-# `hausse_m` : 2,5 m, le dernier palier que `04e` a mesuré (`ruine_apres_baisse`).
+# 🏗️ REBÂTIR UN ÎLOT SINISTRÉ (95, auteur 2026-10-02) : chaque façon gagne sur un seul plan.
+# 🎚️ LEVEL DESIGN, tout ce bloc, proposé. `hausse_m` : lue sur la courbe de `04e` jusqu'à 2,5 m
+# (`ruine_apres_baisse`) ; au-dessus de l'eau annoncée, rien ne tombe. Sous 1,5 m, rien n'est
+# sauvé : l'eau annoncée dépasse 5 m sur cinq îlots sur six (mesuré le 2026-10-21). `eponge` : part de l'effet d'un parc sur la crue de la ville.
+# `rendu` : l'allure dans la maquette, une des quatre que le shader sait peindre (`rendu_rebati`).
+# `recherche` : le sujet de l'institut qui la débloque ; sans lui, le concours suffit.
 const RECONSTRUCTIONS := {
 	"tradition": {"nom": "Comme avant", "prix": 1.0, "duree": 1.0, "logements": 1.0,
-		"confiance": 1.0, "hausse_m": 0.0},
+		"confiance": 1.0, "hausse_m": 0.0, "eponge": 0.0, "rendu": "tradition"},
 	"moderne": {"nom": "Moderne", "prix": 1.3, "duree": 1.5, "logements": 1.3,
-		"confiance": 0.5, "hausse_m": 0.0},
+		"confiance": 0.5, "hausse_m": 0.0, "eponge": 0.0, "rendu": "moderne"},
 	"pilotis": {"nom": "Sur pilotis", "prix": 1.6, "duree": 1.25, "logements": 1.0,
-		"confiance": 0.75, "hausse_m": 2.5},
+		"confiance": 0.75, "hausse_m": 2.5, "eponge": 0.0, "rendu": "pilotis", "recherche": "pilotis"},
 	"parc": {"nom": "Parc inondable", "prix": 0.2, "duree": 0.5, "logements": 0.0,
-		"confiance": -1.0, "hausse_m": 0.0},
+		"confiance": -1.0, "hausse_m": 0.0, "eponge": 1.0, "rendu": "parc"},
+	# 🏛️ Six lauréats de plus, selon le lieu (auteur, 2026-10-21) ; allure empruntée en attendant la leur.
+	"jardins": {"nom": "Jardins inondables", "prix": 0.25, "duree": 0.5, "logements": 0.0,
+		"confiance": -0.5, "hausse_m": 0.0, "eponge": 0.6, "rendu": "parc"},
+	# Flottent avec l'eau : 6 m de course (Maasbommel, aux Pays-Bas, 5,5 m) passent le Four (5,6 m).
+	"amphibies": {"nom": "Maisons amphibies", "prix": 1.9, "duree": 1.25, "logements": 1.0,
+		"confiance": 1.0, "hausse_m": 6.0, "eponge": 0.0, "rendu": "tradition", "recherche": "amphibies"},
+	"butte": {"nom": "Sur une butte", "prix": 1.4, "duree": 1.25, "logements": 0.8,
+		"confiance": 0.75, "hausse_m": 2.0, "eponge": 0.0, "rendu": "pilotis"},
+	"surelevees": {"nom": "Maisons surélevées", "prix": 1.25, "duree": 1.0, "logements": 1.0,
+		"confiance": 1.0, "hausse_m": 2.0, "eponge": 0.0, "rendu": "tradition"},
+	"eponge": {"nom": "Îlot-éponge", "prix": 1.1, "duree": 1.0, "logements": 1.0,
+		"confiance": 0.75, "hausse_m": 0.0, "eponge": 0.3, "rendu": "tradition"},
+	"groupees": {"nom": "Maisons groupées", "prix": 1.2, "duree": 1.25, "logements": 1.6,
+		"confiance": 0.5, "hausse_m": 0.0, "eponge": 0.0, "rendu": "moderne"},
 }
-const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc"]
-## 🏛️ Les lauréats ne montrent que du neuf : « comme avant » reste à la fiche (auteur, 2026-10-20).
-const PROJETS_CONCOURS := ["moderne", "pilotis", "parc"]
-# 🏛️ UN CONCOURS FACULTATIF POUR TOUTE LA ZONE SINISTRÉE (104 revue, auteur 2026-10-19) :
-# les quatre façons s'offrent sans lui ; lancé, il coûte et prend un mois, puis les projets
-# neufs (tout sauf « comme avant ») coûtent moins. 🎚️ Les trois nombres sont à juger.
-const CONCOURS_KE := 120.0
-const CONCOURS_MOIS := 1.0
-const CONCOURS_LAUREAT_PRIX := 0.8
+const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc", "jardins", "amphibies",
+	"butte", "surelevees", "eponge", "groupees"]
+# 🏛️ UN CONCOURS D'ARCHITECTURE PAR ÎLOT (auteur, 2026-10-21, revient sur « un pour toute la
+# zone » de 115) : trois lauréats pensés pour le lieu, sans rabais. 🎚️ LEVEL DESIGN, proposé :
+# la situation se lit sur ce que la crue a pris (`situation`), pas sur une liste de `fid`.
+const LAUREATS := {
+	"rase": ["parc", "jardins", "amphibies"],          # petit, tout est tombé
+	"coeur": ["pilotis", "butte", "moderne"],          # grand, presque tout est tombé
+	"debout": ["surelevees", "eponge", "moderne"],     # moins de 60 % tombé
+	"pavillons": ["groupees", "pilotis", "eponge"],
+}
+const SITUATION_DEBOUT := 0.6       # part ruinée sous laquelle l'îlot est « à moitié debout »
+const SITUATION_PETIT_M2 := 5000.0  # Grenier 3 720 m², Four 3 119 ; Moulin 6 179
+const CONCOURS_KE := 50.0           # 120 → 50 (auteur, 2026-10-21), par îlot
+const CONCOURS_MOIS := 0.5          # 1 → 0,5 (auteur, 2026-10-21)
 # 🎓 L'étude de la crue, commandée par la mairie (117) ; à sa remise, l'université s'ouvre.
 # 🎚️ Proposés, à juger par l'auteur.
 const ETUDE_KE := 80.0
@@ -365,6 +388,7 @@ func exporter_partie() -> Dictionary:
 	return etat.duplicate(true)
 
 func valider_partie(etat: Dictionary) -> bool:
+	_migrer_partie(etat)
 	for champ in CHAMPS_PARTIE:
 		if not etat.has(champ):
 			if champ in CHAMPS_PARTIE_NEUFS:
@@ -403,6 +427,7 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_file_deblaiement": [routes, 0.0],
 		"_labours": [ilots, 0.0],
 		"_rebati": [ilots, ""],
+		"_concours": [ilots, 0.0],
 		"_demandes": [DEMANDES, 0.0],
 		"_recherche": [Recherche.SUJETS, 0.0],
 		"_premieres": [Recherche.PREMIERES_FOIS, 0.0],
@@ -454,6 +479,17 @@ static func _forme_partie(valeur_sauvee: Variant, modele: Variant) -> bool:
 			if not _forme_partie(element, modele[0]):
 				return false
 	return true
+
+
+## 🔄 Les parties d'avant le 2026-10-21 : un concours pour toute la zone, compté sur son îlot ;
+## le parc inondable s'achetait à l'institut, il vient du concours.
+func _migrer_partie(etat: Dictionary) -> void:
+	var c: Variant = etat.get("_concours", {})
+	if c is Dictionary and c.has("debut"):
+		etat["_concours"] = {int(c["fid"]): float(c["debut"])}
+	if etat.get("_recherche", {}) is Dictionary:
+		etat["_recherche"].erase("parc")
+
 
 func importer_partie(etat: Dictionary) -> void:
 	reinitialiser()
@@ -570,12 +606,13 @@ func baisse_crue_m(fid: int, t: float) -> float:
 
 
 ## 🌿 Un parc inondable retient l'eau pour toute la ville, comme un toit vert :
-## la part ruinée de l'îlot, rendue au sol.
+## la part ruinée de l'îlot, rendue au sol ; jardins et îlot-éponge en partie (`eponge`).
 func baisse_crue_parcs_m(t: float) -> float:
 	var ha := 0.0
 	for fid in _rebati:
-		if _rebati[fid] == "parc" and reparation_finie("i", fid, t):
-			ha += base("i", fid, "surface_m2") * base("i", fid, "part_sinistree") / 10000.0
+		var e := float(RECONSTRUCTIONS[_rebati[fid]]["eponge"])
+		if e > 0.0 and reparation_finie("i", fid, t):
+			ha += e * base("i", fid, "surface_m2") * base("i", fid, "part_sinistree") / 10000.0
 	return ha * PARC_BAISSE_M_PAR_HA
 
 
@@ -1568,7 +1605,7 @@ func _perdus(t: float) -> float:
 		var s := base("i", fid, "logements_sinistres")
 		if s <= 0.0:
 			continue
-		if not reparation_finie("i", fid, t) or facon_reparation(fid) == "parc":
+		if not reparation_finie("i", fid, t) or sans_retour(facon_reparation(fid)):
 			perdus += s
 		else:
 			ailleurs += s * (float(RECONSTRUCTIONS[facon_reparation(fid)]["logements"]) - 1.0)
@@ -2319,8 +2356,9 @@ func _mois_tous_abrites() -> float:
 ## les places retirées en coûtent ; tout le reste en rapporte à la livraison.
 func capital_commande(couche: String, fid: int, r: Dictionary, t: float) -> float:
 	# 🌿 Un parc coûte la confiance des habitants qui ne rentreront pas (95).
-	if couche == "i" and r.has("reparer") and str(r["reparer"]) == "parc" and not est_repare("i", fid):
-		return base("i", fid, "logements_sinistres") * CAPITAL_PAR_LOGEMENT_RENTRE
+	if couche == "i" and r.has("reparer") and sans_retour(str(r["reparer"])) and not est_repare("i", fid):
+		return base("i", fid, "logements_sinistres") * CAPITAL_PAR_LOGEMENT_RENTRE \
+			* -float(RECONSTRUCTIONS[str(r["reparer"])]["confiance"])
 	if couche != "r" or not (r.has("places") or r.has("axe")) \
 			or _stationnement_supprime.has(fid) or valeur("r", fid, "stationnement", t) <= 0.0:
 		return 0.0
@@ -2372,15 +2410,12 @@ func indicateurs(t: float, energie := {}, caisse := NAN) -> Dictionary:
 
 ## Ce que `04e` a chiffré pour cet objet, 0 s'il n'y a rien à réparer ou si
 ## c'est déjà payé.
-## `t` négatif : le prix sans concours (les appelants qui ne comparent que des ponts ou des rues).
 func cout_reparation_ke(couche: String, fid: int, provisoire := false, facon := "", t := -1.0) -> float:
 	if est_repare(couche, fid):
 		return 0.0
 	var part := PONT_PROVISOIRE_PART if provisoire and fid in _ponts and couche == "r" else 1.0
 	if couche == "i":
 		part = float(RECONSTRUCTIONS[facon_reparation(fid, facon)]["prix"])
-		if t >= 0.0 and laureat(fid, facon_reparation(fid, facon), t):
-			part *= CONCOURS_LAUREAT_PRIX
 	return base(couche, fid, "cout_reparation_ke") * part
 
 
@@ -2394,24 +2429,34 @@ func facon_reparation(fid: int, demandee := "") -> String:
 ## 🏗️ Ce que le shader lit d'une façon (`densification.w`, `.z`) : le mode, et
 ## l'attique du moderne ou la levée des pilotis, en mètres.
 static func rendu_rebati(facon: String) -> Vector2:
-	match facon:
+	match rendu_de(facon):
 		"moderne":
 			return Vector2(1.0, DENSE_ETAGE_M)
 		"pilotis":
-			return Vector2(2.0, float(RECONSTRUCTIONS["pilotis"]["hausse_m"]))
+			return Vector2(2.0, float(RECONSTRUCTIONS[facon]["hausse_m"]))
 		"parc":
 			return Vector2(3.0, 0.0)
 	return Vector2.ZERO
 
 
+## L'allure peinte : une des quatre que le shader connaît.
+static func rendu_de(facon: String) -> String:
+	return str(RECONSTRUCTIONS[facon]["rendu"]) if RECONSTRUCTIONS.has(facon) else "tradition"
+
+
+## 🌿 Personne ne rentre : la ruine devient sol, les habitants restent au camp.
+static func sans_retour(facon: String) -> bool:
+	return RECONSTRUCTIONS.has(facon) and float(RECONSTRUCTIONS[facon]["logements"]) <= 0.0
+
+
 ## 🏗️ Les logements rebâtis en moderne, déjà livrés : ils naissent isolés (`Energie.conso_mwh`).
 func logements_neufs_isoles(fid: int, t: float) -> float:
-	if not est_repare("i", fid) or facon_reparation(fid) != "moderne":
+	if not est_repare("i", fid) or rendu_de(facon_reparation(fid)) != "moderne":
 		return 0.0
 	return maxf(0.0, valeur("i", fid, "logements", t) - base("i", fid, "logements"))
 
 
-## 🏗️ Les pilotis lèvent le plancher : la prochaine crue le voit plus bas d'autant.
+## 🏗️ Pilotis, butte, amphibies lèvent le plancher : la prochaine crue le voit plus bas d'autant.
 func hausse_m(fid: int) -> float:
 	return float(RECONSTRUCTIONS[facon_reparation(fid)]["hausse_m"]) if est_repare("i", fid) else 0.0
 
@@ -2668,22 +2713,34 @@ func reparer(couche: String, fid: int, t: float, provisoire := false, facon := "
 	return true
 
 
-func concours_lance() -> bool:
+func concours_lance(fid: int) -> bool:
+	return _concours.has(fid)
+
+
+## Un concours au moins, n'importe où : la mairie et le guide n'ont pas d'îlot en tête.
+func concours_lance_ailleurs() -> bool:
 	return not _concours.is_empty()
 
 
-func concours_reste_mois(t: float) -> float:
-	if _concours.is_empty():
+func concours_reste_mois(fid: int, t: float) -> float:
+	if not _concours.has(fid):
 		return 0.0
-	return maxf(float(_concours["debut"]) + _delai(CONCOURS_MOIS) - t, 0.0)
+	return maxf(float(_concours[fid]) + _delai(CONCOURS_MOIS) - t, 0.0)
 
 
-func concours_rendu(t: float) -> bool:
-	return concours_lance() and concours_reste_mois(t) <= 0.0
+func concours_rendu(fid: int, t: float) -> bool:
+	return concours_lance(fid) and concours_reste_mois(fid, t) <= 0.0
 
 
-func cout_concours_ke() -> float:
-	return 0.0 if concours_lance() else CONCOURS_KE
+func un_concours_rendu(t: float) -> bool:
+	for fid in _concours:
+		if concours_rendu(fid, t):
+			return true
+	return false
+
+
+func cout_concours_ke(fid: int) -> float:
+	return 0.0 if concours_lance(fid) else CONCOURS_KE
 
 
 ## 🏛️ Sans maison détruite, pas de concours : on remet en état (auteur, 2026-10-06, le Lavoir).
@@ -2691,21 +2748,33 @@ func concours_utile(fid: int) -> bool:
 	return base("i", fid, "batiments_ruines") > 0.0
 
 
-## Comme avant toujours ; les trois projets neufs là où des maisons sont tombées, le concours
-## rendu (auteur, 2026-10-19 au soir, revient sur « concours ou non ») ; pilotis et parc après l'institut.
+## 🏛️ Ce que la crue a pris dit quels lauréats l'îlot reçoit (`LAUREATS`).
+func situation(fid: int) -> String:
+	if str(ilots[fid].get("sous_type", "")) == "pavillonnaire":
+		return "pavillons"
+	if base("i", fid, "part_ruinee") < SITUATION_DEBOUT:
+		return "debout"
+	return "rase" if base("i", fid, "surface_m2") < SITUATION_PETIT_M2 else "coeur"
+
+
+func laureats(fid: int) -> Array:
+	return LAUREATS[situation(fid)] if concours_utile(fid) else []
+
+
+## Comme avant toujours ; ailleurs, les lauréats de SON concours, rendu ; ce qui demande
+## une technique nouvelle attend l'institut (auteur, 2026-10-21).
 func facon_permise(fid: int, facon: String, t: float) -> bool:
 	if not RECONSTRUCTIONS.has(facon) or facon == "tradition":
 		return true
-	if not (concours_utile(fid) and concours_rendu(t)):
+	if not (facon in laureats(fid) and concours_rendu(fid, t)):
 		return false
-	if facon == "pilotis":
-		return Recherche.acquis(self, Recherche.PILOTIS, t)
-	return facon != "parc" or Recherche.acquis(self, Recherche.PARC, t)
+	return a_l_institut(facon, t)
 
 
-## 🏛️ Le concours rendu ne change que les projets neufs : « comme avant » n'a rien à concourir.
-func laureat(fid: int, facon: String, t: float) -> bool:
-	return facon != "tradition" and concours_rendu(t) and concours_utile(fid)
+## La technique est mise au point, ou la façon n'en demande pas.
+func a_l_institut(facon: String, t: float) -> bool:
+	var sujet := str(RECONSTRUCTIONS[facon].get("recherche", ""))
+	return sujet == "" or Recherche.acquis(self, sujet, t)
 
 
 ## 🏛️ Une fois, en points (117) : `false` si déjà adopté ou s'il en manque.
@@ -2760,10 +2829,10 @@ func commander_etude_diagnostic(id: String, t: float) -> bool:
 
 
 func lancer_concours(fid: int, t: float) -> bool:
-	var cout := cout_concours_ke()
+	var cout := cout_concours_ke(fid)
 	if cout <= 0.0 or cout > caisse_ke(t) + 0.001 or not concours_utile(fid):
 		return false
-	_concours = {"debut": t, "fid": fid}
+	_concours[fid] = t
 	_depenser("concours", cout)
 	return true
 
@@ -2790,7 +2859,7 @@ func degats(t: float, caisse := NAN) -> Dictionary:
 				valeur("i", fid, "hauteur_eau_annonce", t))
 		if est_repare("i", fid):
 			# 🌿 Un parc ne rend pas les logements : ils restent perdus.
-			if facon_reparation(fid) == "parc":
+			if sans_retour(facon_reparation(fid)):
 				perdus += base("i", fid, "logements_sinistres")
 			continue
 		perdus += base("i", fid, "logements_sinistres")
@@ -2829,8 +2898,9 @@ func prochaine_crue(t: float) -> Dictionary:
 		var tous := valeur("i", fid, "logements", t)
 		# 🏗️ Seuls les logements rebâtis sont sur pilotis ; l'ancien reste au sol.
 		var leves := maxf(0.0, tous - base("i", fid, "logements")) if hausse_m(fid) > 0.0 else 0.0
+		var au_sec := hausse_m(fid) >= valeur("i", fid, "hauteur_eau_annonce", t)
 		logements += part * (tous - leves) \
-			+ _sur_la_courbe(fid, baisse_crue_m(fid, t) + hausse_m(fid)) * leves
+			+ (0.0 if au_sec else _sur_la_courbe(fid, baisse_crue_m(fid, t) + hausse_m(fid))) * leves
 	return {
 		"ilots_sous_eau": sous_eau,
 		"ilots_cette_annee": cette_annee,
@@ -2900,7 +2970,7 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 	if r.has("culture"):
 		ke += cout_culture_ke(fid, int(r["culture"]))
 	if r.has("concours"):
-		ke += cout_concours_ke()
+		ke += cout_concours_ke(fid)
 	if r.has("reparer"):
 		ke += cout_reparation_ke(couche, fid, str(r["reparer"]) == "provisoire", str(r["reparer"]), t)
 	if r.has("consolider") and couche == "r":
@@ -2944,7 +3014,7 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			m = maxf(m, _delai(float(DEMANDES[d]["mois"])))
 	if r.has("culture"):
 		m = maxf(m, _delai(CULTURES[int(r["culture"])]["mois"]))
-	if r.has("concours") and not concours_lance():
+	if r.has("concours") and not concours_lance(fid):
 		m = maxf(m, _delai(CONCOURS_MOIS))
 	if r.has("reparer"):
 		m = maxf(m, duree_reparation_mois(couche, fid, str(r["reparer"]) == "provisoire",
@@ -3066,8 +3136,8 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 		var d := demande_en_cours(t)
 		if not d.is_empty():
 			lot.append([d[0], d[1], d[2]])
-	if couche == "i" and int(_concours.get("fid", -1)) == fid and not concours_rendu(t):
-		lot.append(["concours", _delai(CONCOURS_MOIS), concours_reste_mois(t)])
+	if couche == "i" and concours_lance(fid) and not concours_rendu(fid, t):
+		lot.append(["concours", _delai(CONCOURS_MOIS), concours_reste_mois(fid, t)])
 	if est_repare(couche, fid) and not reparation_finie(couche, fid, t):
 		lot.append([_genre_chantier(couche, fid),
 			duree_reparation_mois(couche, fid),
@@ -3200,10 +3270,11 @@ func chantiers(t: float) -> Dictionary:
 			en_cours.append({"couche": "i", "fid": fid, "genre": "labour",
 				"cout_ke": _hectares(fid) * LABOUR_KE_HA, "reste_mois": labour_reste_mois(fid, t),
 				"duree": _delai(LABOUR_MOIS)})
-	if concours_lance() and not concours_rendu(t):
-		en_cours.append({"couche": "i", "fid": int(_concours["fid"]), "genre": "concours",
-			"cout_ke": CONCOURS_KE, "reste_mois": concours_reste_mois(t),
-			"duree": _delai(CONCOURS_MOIS)})
+	for f in _concours:
+		if not concours_rendu(f, t):
+			en_cours.append({"couche": "i", "fid": f, "genre": "concours",
+				"cout_ke": CONCOURS_KE, "reste_mois": concours_reste_mois(f, t),
+				"duree": _delai(CONCOURS_MOIS)})
 	var dem := demande_en_cours(t)
 	if not dem.is_empty() and camp_principal(t) >= 0:
 		en_cours.append({"couche": "i", "fid": camp_principal(t), "genre": dem[0],

@@ -55,7 +55,7 @@ func executer() -> void:
 	verifier(o.mairie_vue and ui._lieu_ouvert == "mairie" and prog["bloc"].visible
 		and not prog["bouton"].disabled and prog["bouton"].get_meta("verbe")[0].text == "Adopter"
 		and not ligne_etude["bloc"].visible and not entouree("mairie") and tuile("mairie").visible,
-		"Trouvée, la mairie propose le concours d'urbanisme, 1 point, et sa tuile rejoint la colonne")
+		"Trouvée, la mairie propose le concours d'architecture, 1 point, et sa tuile rejoint la colonne")
 	verifier(ui._campus_panneau.visible and not ui._campus_bloc.visible and ui._fenetre_titre.text == "Mairie"
 		and ui._mairie_bloc.visible and not ui._etude_bloc.visible,
 		"La mairie s'ouvre dans la grande fenêtre, sans les onglets du campus")
@@ -176,7 +176,7 @@ func executer() -> void:
 	actualiser(jeu.mois)
 	await cliquer(ui._etude_institut)
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
-	verifier(ui._lieu_ouvert == "institut" and not ui._etude_bloc.visible and _montres(ui) == ["pilotis", "parc", "berge"]
+	verifier(ui._lieu_ouvert == "institut" and not ui._etude_bloc.visible and _montres(ui) == ["pilotis", "amphibies", "berge"]
 		and ligne["bouton"].visible and _colonnes(ui) == 2,
 		"L'institut, avant tout achat : la crue seule, sur deux colonnes : %s" % ", ".join(_montres(ui)))
 	await capture("campus_02b_institut")

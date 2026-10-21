@@ -427,10 +427,9 @@ func livraison(c: Dictionary, mois: float) -> void:
 		if not ui.trafic.pont_fonctionnel(fid, mois):
 			resultat += " Ses accès restent coupés."
 	elif c["genre"] == "concours":
-		# 🏛️ Rendu pour toute la zone (104) : le dire en haut, pas seulement au journal. 🔴 Flaggable (90).
-		var moins := int(roundf((1.0 - ui.ville.CONCOURS_LAUREAT_PRIX) * 100.0))
-		resultat = "Concours rendu : les projets neufs coûtent %d %% de moins." % moins
-		annoncer("Le concours est rendu : moderne, pilotis et parc coûtent %d %% de moins." % moins, mois)
+		# 🏛️ Le dire en haut, pas seulement au journal. 🔴 Flaggable (90).
+		resultat = "Concours rendu : trois projets."
+		annoncer("%s : le concours est rendu, trois projets à voir." % ui.lieux.nom("i", fid), mois)
 	elif c["genre"] in ["deblaiement", "reparation"] and couche == "r":
 		resultat = "Rue déblayée."
 	elif c["genre"] in ["reconstruction", "reparation"] and couche == "i":

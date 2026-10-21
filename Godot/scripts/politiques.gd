@@ -32,8 +32,8 @@ const ORDRE := ["subv_solaire", "subv_vert"]
 # fois en points ; ce qu'il ouvre (chaque concours) se paie en euros. 🔴 Textes flaggables (90).
 const PROGRAMMES := {
 	"concours": {
-		"nom": "Concours d'urbanisme",
-		"quoi": "Là où des maisons sont tombées, demander à des architectes d'autres projets que les maisons d'avant.",
+		"nom": "Concours d'architecture",
+		"quoi": "Là où des maisons sont tombées, demander à des architectes trois projets pensés pour chaque îlot.",
 		"points": 1,
 	},
 }

@@ -278,9 +278,9 @@ func _ready() -> void:
 	apercu.name = "Apercu"
 	add_child(apercu)
 	apercu.batir(mat_objet, donnees["palette"])
-	for f in Ville.PROJETS_CONCOURS:
+	for f in Interface.PROJETS_CARTES:
 		var a := Apercu.new()
-		a.name = "Projet_" + f
+		a.name = "Projet_%d" % f
 		a.maquette = true
 		add_child(a)
 		a.batir(mat_objet, donnees["palette"], Apercu.TAILLE_PROJET)
@@ -2035,7 +2035,7 @@ func _montrer_reparations() -> void:
 			var mi: MeshInstance3D = reparations[couche][fid]
 			var fini: bool = ville.reparation_finie(couche, fid, mois)
 			# 🌿 Un parc ne rebâtit rien : la ruine devient prairie (shader) et se plante.
-			if couche == "i" and ville.facon_reparation(fid) == "parc":
+			if couche == "i" and Ville.rendu_de(ville.facon_reparation(fid)) == "parc":
 				_planter_parc(fid, fini)
 				fini = false
 			# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (auteur, 2026-09-26) : le calque Trafic
@@ -3274,11 +3274,13 @@ func _maj_apercus_projets() -> void:
 			(a as Apercu).montrer((noeuds["i"][fid] as MeshInstance3D).mesh,
 				neuf.mesh if neuf != null else null, _socle("i", fid))
 	var plate := ville.valeur("i", fid, "_part_plate", mois)
-	for f in apercus_projets:
-		var a: Apercu = apercus_projets[f]
+	var laureats := ville.laureats(fid)
+	for i in apercus_projets:
+		var a: Apercu = apercus_projets[i]
+		var f: String = laureats[i] if i < laureats.size() else "tradition"
 		a.viser(pivot.lacet)
 		a.regler(ville.etat_solaire(fid, mois)["cible"], ville.etat_vert(fid, mois)["cible"],
-			plate, f != "parc", 0.0, Vector4(0.0, 1.0, 0.0, 0.0), Ville.rendu_rebati(f))
+			plate, Ville.rendu_de(f) != "parc", 0.0, Vector4(0.0, 1.0, 0.0, 0.0), Ville.rendu_rebati(f))
 
 
 ## 🌊 La chaussée de la voie qu'une berge porte : la moyenne de ses tronçons.

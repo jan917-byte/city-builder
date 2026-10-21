@@ -232,10 +232,10 @@ func _remplir_carte() -> void:
 			annonce_second.text = "Plus tard"
 		"concours":
 			# 🔴 Mes mots, flaggables (90).
-			_annonce_titre.text = "Un concours d'architectes"
+			_annonce_titre.text = "Un concours d'architecture"
 			_annonce_texte.text = ("Des maisons sont tombées. "
 				+ "Les reconstruire comme avant, c'est les exposer de nouveau à la crue.\n\n"
-				+ "Un concours demande à des architectes d'autres projets pour toute la zone sinistrée. "
+				+ "Un concours demande à des architectes trois projets pensés pour cet îlot. "
 				+ "Il dure %s et coûte %d k€. En attendant, on peut toujours reconstruire comme avant.") % [
 				jeu.interface._duree(Ville.CONCOURS_MOIS), int(Ville.CONCOURS_KE)]
 			annonce_principal.text = "Revenir à l'îlot"
@@ -513,7 +513,7 @@ func mairie_ouverte() -> void:
 func etude_proposee() -> bool:
 	if not pont_termine or etude_parue:
 		return false
-	if jeu.ville.concours_rendu(jeu.mois):
+	if jeu.ville.un_concours_rendu(jeu.mois):
 		return true
 	for fid in ilots_a_rebatir():
 		if jeu.ville.concours_utile(fid):
@@ -684,13 +684,13 @@ func berge_rendue() -> bool:
 
 ## 🏛️ Le concours s'adopte à la mairie, avant l'étude (117) ; les essais l'ouvrent hors première année.
 func concours_offert() -> bool:
-	return jeu.ville.concours_lance() or Politiques.adopte(jeu.ville, "concours", jeu.mois) \
+	return jeu.ville.concours_lance_ailleurs() or Politiques.adopte(jeu.ville, "concours", jeu.mois) \
 		or tout_ouvert and not annee_un()
 
 
 ## 🏛️ La fiche d'un îlot aux maisons tombées, le campus trouvé, annonce le concours une fois.
 func annoncer_concours() -> void:
-	if carte_concours != 0 or jeu.ville.concours_lance():
+	if carte_concours != 0 or jeu.ville.concours_lance_ailleurs():
 		return
 	carte_concours = 1
 	jeu.ralentir()
@@ -1128,9 +1128,14 @@ func _livraison_ilot(fid: int) -> String:
 				_nom("i", fid), n * float(Ville.RECONSTRUCTIONS["moderne"]["logements"])]
 		"pilotis":
 			return "%s : %.0f logements sur pilotis." % [_nom("i", fid), n]
-		"parc":
-			return "%s : rendu à l'eau." % _nom("i", fid)
-	return "%s : %.0f logements remis en état." % [_nom("i", fid), n]
+		"tradition":
+			return "%s : %.0f logements remis en état." % [_nom("i", fid), n]
+	var f: Dictionary = Ville.RECONSTRUCTIONS[jeu.ville.facon_reparation(fid)]
+	if Ville.sans_retour(jeu.ville.facon_reparation(fid)):
+		return "%s : rendu à l'eau." % _nom("i", fid)
+	# 🔴 Flaggable (90).
+	return "%s : %s, %.0f logements." % [_nom("i", fid), String(f["nom"]).to_lower(),
+		n * float(f["logements"])]
 
 
 func exporter() -> Dictionary:
