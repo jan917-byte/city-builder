@@ -304,6 +304,19 @@ func executer() -> void:
 	verifier(o.etape == "reloger" and not o.etude_lue, "Recommencer oublie l'étude")
 	jeu._sur_reprise()
 	verifier(o.etude_lue and o.prochaine_vue, "La reprise garde l'étude lue et la prochaine crue vue")
+	# 🎓 L'étude paraît fiche de l'institut et mairie ouvertes (auteur, 2026-10-21).
+	jeu._sur_choix("i", int(ui.LIEUX["institut"]["fid"]))
+	ui.ouvrir_lieu("mairie")
+	o.carte_etude = 1
+	o.actualiser(true)
+	verifier(o.annonce.visible and o.annonce_principal.text == "Lire l'étude"
+		and o.annonce.z_index > ui._campus_panneau.z_index,
+		"L'université déjà en vue, la carte propose de lire l'étude, devant la mairie")
+	await capture("campus_06_etude_universite_ouverte")
+	await cliquer(o.annonce_principal)
+	verifier(not o.annonce.visible and ui._lieu_ouvert == "universite" and ui._etude_bloc.visible,
+		"Le clic ouvre l'université sur l'étude, sans la faire chercher")
+	await capture("campus_07_etude_lue")
 	print("ÉTUDE : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame

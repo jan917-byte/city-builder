@@ -179,7 +179,8 @@ func _batir_annonce(ui) -> void:
 	annonce.visible = false
 	jeu.interface.add_child(annonce)
 	# 🎈 Au-dessus des chiffres qui montent (auteur, 2026-10-05) : ils passaient devant le texte.
-	annonce.z_index = 1
+	# 🪟 Et au-dessus de la fenêtre des lieux (z 1) : la mairie ouverte se lisait à travers (2026-10-21).
+	annonce.z_index = 3
 	# ⚠️ Ancres ET marges, comme le récit : sinon le rectangle reste nul.
 	annonce.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var voile := ColorRect.new()
@@ -221,7 +222,8 @@ func _remplir_carte() -> void:
 			# Les mots de l'auteur (2026-10-09).
 			_annonce_titre.text = "Une nouvelle étude a été publiée"
 			_annonce_texte.text = "Sur la prochaine crue de l'Ilse."
-			annonce_principal.text = "Trouver l'université"
+			# 🔴 « Lire l'étude » : mes mots, flaggables (90).
+			annonce_principal.text = "Lire l'étude" if universite_en_vue() else "Trouver l'université"
 			annonce_second.text = ""
 		"camp":
 			_annonce_titre.text = "Les habitants du camp sont mécontents"
@@ -249,9 +251,12 @@ func _sur_carte(principal: bool) -> void:
 		actualiser(true)
 		return
 	if carte == "etude":
+		var en_vue := universite_en_vue()
 		carte_etude = 2
 		actualiser(true)
-		if principal:
+		if principal and en_vue:
+			jeu.interface.ouvrir_campus()
+		elif principal:
 			chercher_campus()
 		return
 	plainte = 2
@@ -478,6 +483,14 @@ func campus() -> Array:
 	for cle in jeu.interface.CAMPUS:
 		out.append(int(jeu.interface.LIEUX[cle]["fid"]))
 	return out
+
+
+## L'université déjà ouverte quand l'étude paraît (auteur, 2026-10-21) : sa fenêtre, ou la
+## fiche d'un îlot du campus. La carte ouvre alors l'étude au lieu de la faire chercher.
+func universite_en_vue() -> bool:
+	var ui = jeu.interface
+	return (ui._campus_panneau.visible and ui._lieu_ouvert in ui.CAMPUS) \
+		or (ui._fiche_panneau.visible and ui._fiche_couche == "i" and ui._lieu_du_fid(ui._fiche_fid) in ui.CAMPUS)
 
 
 ## Le clic sur la ville : le campus que le guide entoure ouvre sa fiche.
