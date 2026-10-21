@@ -314,6 +314,8 @@ func _batir_chantiers(boite: PanelContainer) -> void:
 
 ## Le plus proche de sa fin en tête, comme `ville.chantiers` les trie.
 func _maj_chantiers(en_cours: Array) -> void:
+	var etudes := _etudes_en_cours()
+	en_cours = etudes + en_cours
 	_nb_chantiers = en_cours.size()
 	chantiers.visible = compteur.visible and _nb_chantiers > 0
 	chantiers_titre.text = "Chantiers en cours : %d" % en_cours.size()
@@ -323,6 +325,13 @@ func _maj_chantiers(en_cours: Array) -> void:
 		if i >= en_cours.size():
 			continue
 		var c: Dictionary = en_cours[i]
+		l["jauge"].colorer(ETUDE_BLEU if c.has("etude") else ui.EN_TRAVAUX)
+		if c.has("etude"):
+			(l["nom"] as Label).text = "Université"
+			(l["quoi"] as Label).text = str(c["etude"])
+			(l["reste"] as Label).text = "encore %s" % ui._duree(float(c["reste_mois"]))
+			l["jauge"].regler(float(c["part"]), float(c["part"]))
+			continue
 		var couche := str(c["couche"])
 		var fid := int(c["fid"])
 		var genre := str(c["genre"])
@@ -334,6 +343,25 @@ func _maj_chantiers(en_cours: Array) -> void:
 	var deborde := en_cours.size() - chantiers_lignes.size()
 	chantiers_deborde.visible = deborde > 0
 	chantiers_deborde.text = "… et %d de plus" % deborde
+
+
+## 🎓 Les études commandées à la mairie passent en tête, en bleu (auteur, 2026-10-21). 🔴 Flaggable (90).
+const ETUDE_BLEU := Color8(70, 98, 150)
+
+
+func _etudes_en_cours() -> Array:
+	var v = ui.ville
+	var t: float = ui._mois
+	var out := []
+	var demandes := [["Étude de la prochaine crue", v.etude_reste_mois(t), v.ETUDE_MOIS]]
+	for id in v.ETUDES_DIAGNOSTIC_ORDRE:
+		var e: Dictionary = v.ETUDES_DIAGNOSTIC[id]
+		demandes.append([e["nom"], v.etude_diagnostic_reste_mois(id, t), float(e["mois"])])
+	for d in demandes:
+		var reste := float(d[1])
+		if reste > 0.0 and reste < INF:
+			out.append({"etude": d[0], "reste_mois": reste, "part": 1.0 - reste / float(d[2])})
+	return out
 
 
 func _chantiers(mois: float, en_cours: Array = []) -> Dictionary:

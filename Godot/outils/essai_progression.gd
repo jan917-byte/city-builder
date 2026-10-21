@@ -137,8 +137,8 @@ func executer() -> void:
 	jeu.interface.ouvrir_lieu("institut")
 	var points: int = jeu.Recherche.points(jeu.ville, jeu.mois)
 	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
-	await cliquer(jeu.interface._lieu_lignes["berge"]["bouton"])
-	verifier(jeu.Recherche.acquis(jeu.ville, "berge", jeu.mois) and "−2 points," in retours.journal[-1],
+	await cliquer(jeu.interface._lieu_lignes["parc_inondable"]["bouton"])
+	verifier(jeu.Recherche.acquis(jeu.ville, "parc_inondable", jeu.mois) and "−2 points," in retours.journal[-1],
 		"Un sujet se met au point au clic, et le journal dit les points dépensés")
 	verifier(jeu.Recherche.points(jeu.ville, jeu.mois) == points - 2
 		and is_equal_approx(jeu.ville.caisse_ke(jeu.mois), caisse),

@@ -176,9 +176,9 @@ func executer() -> void:
 	actualiser(jeu.mois)
 	await cliquer(ui._etude_institut)
 	var ligne: Dictionary = ui._lieu_lignes[jeu.Recherche.PILOTIS]
-	verifier(ui._lieu_ouvert == "institut" and not ui._etude_bloc.visible and _montres(ui) == ["pilotis", "amphibies", "berge"]
-		and ligne["bouton"].visible and _colonnes(ui) == 2,
-		"L'institut, avant tout achat : la crue seule, sur deux colonnes : %s" % ", ".join(_montres(ui)))
+	verifier(ui._lieu_ouvert == "institut" and not ui._etude_bloc.visible and _montres(ui) == ["pilotis", "parc_inondable", "pont_resistant"]
+		and ligne["bouton"].visible and _colonnes(ui) == 3,
+		"L'institut, avant tout achat : la crue seule, sur trois colonnes : %s" % ", ".join(_montres(ui)))
 	await capture("campus_02b_institut")
 	ui._fermer_campus()
 	verifier(not ui._campus_panneau.visible and not ui._fiche_panneau.visible,
@@ -215,7 +215,8 @@ func executer() -> void:
 	jeu.ville._objectifs["ilot"] = jeu.mois
 	ui.ouvrir_lieu("institut")
 	var points: int = jeu.Recherche.points(jeu.ville, jeu.mois)
-	verifier(points == 2 and points >= jeu.Recherche.prix(jeu.Recherche.PILOTIS) and not ligne["bouton"].disabled,
+	verifier(points == 3 * jeu.Recherche.POINTS_OUVERTURE - 1 and points >= jeu.Recherche.prix(jeu.Recherche.PILOTIS)
+		and not ligne["bouton"].disabled,
 		"Trois objectifs moins le concours suffisent aux pilotis")
 	await cliquer(ligne["bouton"])
 	verifier(jeu.Recherche.acquis(jeu.ville, jeu.Recherche.PILOTIS, jeu.mois)
@@ -223,9 +224,11 @@ func executer() -> void:
 		and "pilotis" in str(ui.retours.journal).to_lower(),
 		"Au clic, les pilotis sont acquis, les points baissent et le journal le dit")
 	ui.ouvrir_lieu("institut")
-	verifier("densifier" in _montres(ui) and "solaire" in _montres(ui) and "places" in _montres(ui)
-		and not "sedum" in _montres(ui) and _colonnes(ui) == 4,
-		"Le premier achat fait, l'institut montre les autres racines et la suite des pilotis : %s" % ", ".join(_montres(ui)))
+	# ⚡ Le solaire est mis de côté (auteur, 2026-10-21) : la colonne Énergie se retire.
+	# 🎚️ Un achat ouvre sa suite et un sujet de `ENSUITE` (auteur, 2026-10-21).
+	verifier("densifier" in _montres(ui) and "vert" in _montres(ui) and not "places" in _montres(ui)
+		and not "solaire" in _montres(ui) and not "sedum" in _montres(ui) and _colonnes(ui) == 3,
+		"Le premier achat fait, l'institut montre la suite des pilotis et un sujet de plus : %s" % ", ".join(_montres(ui)))
 	await capture("campus_05_institut_suite")
 	ui._fermer_lieu()
 	jeu._sur_choix("i", o.MAISONS)
@@ -275,29 +278,25 @@ func executer() -> void:
 	ui.ouvrir_lieu("universite")
 	actualiser(jeu.mois)
 	await capture("etude_05d_universite")
-	# 🌳 Deux objectifs de plus : le parc inondable, puis la berge rendue paie le pré.
-	# 🔴 Un objectif de plus qu'en jeu : le point du concours (117) manque à l'arbre, à régler par l'auteur.
+	# 🌳 Deux objectifs de plus : la berge, puis le pré qu'elle ouvre.
 	jeu.ville._objectifs["logements"] = jeu.mois
 	jeu.ville._objectifs["densifier"] = jeu.mois
 	ui.ouvrir_lieu("institut")
-	verifier(not ui._lieu_lignes["pre"]["bloc"].visible and jeu.ville.acquerir_recherche("berge", jeu.mois)
-		and not jeu.ville.acquerir_recherche("pre", jeu.mois),
-		"Le pré attend le parc inondable, puis un point de plus")
+	verifier(not ui._lieu_lignes["pre"]["bloc"].visible and not jeu.ville.acquerir_recherche("pre", jeu.mois)
+		and jeu.ville.acquerir_recherche("berge", jeu.mois), "Le pré attend la berge")
 	verifier(o.objectifs.paru("berge") and o.objectifs.atteint("berge"),
 		"Le parc acheté, son objectif paraît ; la berge déjà rendue l'atteint")
 	jeu.ville._objectifs["berge"] = jeu.mois
-	verifier(jeu.ville.acquerir_recherche("pre", jeu.mois), "Le point de la berge achète le pré")
+	verifier(jeu.ville.acquerir_recherche("pre", jeu.mois), "Puis le pré s'achète")
 	actualiser(jeu.mois)
 	await capture("etude_05f_institut_arbre")
 	ui.ouvrir_lieu("bibliotheque", "eponge")
 	actualiser(jeu.mois)
-	verifier(ui._leviers_crue["pre"].is_visible_in_tree() and not ui._leviers_crue["vert"].is_visible_in_tree(),
-		"À la bibliothèque, le pré acheté s'ouvre, les toits verts attendent")
+	# 🌊 Berge et pré mis de côté (auteur, 2026-10-21) : même achetés, ils restent fermés.
+	verifier(o.levier_ferme("pre") == "Plus tard." and not ui._leviers_crue["pre"].is_visible_in_tree()
+		and not ui._leviers_crue["vert"].is_visible_in_tree(),
+		"À la bibliothèque, le pré mis de côté reste fermé, les toits verts attendent")
 	await capture("etude_05e_bibliotheque_leviers")
-	await cliquer(ui._prochaine_valeurs["levier_culture"])
-	verifier(jeu.selection.sel_fid == o.PRE and jeu.theme == "dangers",
-		"Le levier de la bibliothèque ouvre la fiche du champ sur la prochaine crue")
-	await capture("etude_06_levier_pre")
 
 	jeu._sur_sauvegarde()
 	jeu._sur_reset()

@@ -14,6 +14,7 @@ const Politiques := preload("res://scripts/politiques.gd")
 # 🔴 Garde-fou de 113 : les objectifs paient environ la MOITIÉ de l'arbre (≈ 13 sur 24),
 # sinon on finit par tout acquérir et choisir ne sert plus.
 const POINTS_OBJECTIF := 1        # chaque objectif atteint, en bas à gauche
+const POINTS_OUVERTURE := 2       # les quatre de l'ouverture (auteur, 2026-10-21 : on restait bloqué à 4 points)
 # 🎓 Les gestes dont la première livraison se note (`ville._premieres`).
 const PREMIERES_FOIS := ["berge", "toit vert", "sol perméable", "culture"]
 # Prix selon la taille : 1 un rendement, 2 un geste nouveau, 3 un objet neuf.
@@ -27,14 +28,6 @@ const SUJETS := {
 		"quoi": "Rebâtir un îlot sinistré le rez sur poteaux : l'eau passe dessous.",
 		"points": 2, "apres": [],
 		"effet": "facon_pilotis", "valeur": 1.0, "domaine": "bati",
-	},
-	# 🏛️ Le parc inondable vient du concours (auteur, 2026-10-21) ; les maisons amphibies,
-	# technique nouvelle, s'apprennent ici.
-	"amphibies": {
-		"nom": "Maisons amphibies",
-		"quoi": "Des maisons posées sur un caisson qui flotte : quand l'Ilse monte, elles montent avec elle.",
-		"points": 2, "apres": [],
-		"effet": "facon_amphibies", "valeur": 1.0, "domaine": "bati",
 	},
 	"densifier": {
 		"nom": "Densifier",
@@ -53,6 +46,13 @@ const SUJETS := {
 		"quoi": "−20 % sur le prix d'un toit vert",
 		"points": 1, "apres": ["vert"],
 		"effet": "cout_vert_x", "valeur": 0.80, "domaine": "bati",
+	},
+	# 🏛️ Lauréat d'un concours, bloqué au concours tant qu'il n'est pas mis au point (auteur, 2026-10-21).
+	"parc_inondable": {
+		"nom": "Parc inondable",
+		"quoi": "Rendre un îlot sinistré à l'eau : un parc que la crue traverse et qui la retient.",
+		"points": 2, "apres": [],
+		"effet": "facon_parc", "valeur": 1.0, "domaine": "public",
 	},
 	"berge": {
 		"nom": "Rendre une berge",
@@ -116,12 +116,19 @@ const SUJETS := {
 		"effet": "ouvre", "valeur": 1.0, "domaine": "trafic",
 	},
 }
-## 🎚️ Ce que l'institut montre avant le premier achat : les réponses à la crue (auteur, 2026-10-19).
-const D_ABORD := ["pilotis", "amphibies", "berge"]   # 🌉 le pont résistant suit, après un premier achat
+## 🎚️ Ce que l'institut montre avant le premier achat : les réponses à la crue (auteur, 2026-10-21 ;
+## remplace pilotis, amphibies, berge du 2026-10-19).
+const D_ABORD := ["pilotis", "parc_inondable", "pont_resistant"]
+## 🌊 Mis de côté (auteur, 2026-10-21 : « je mettrai les berges après ») : ni montrés ni ouverts en jeu.
+## ⚡ Le solaire et ses suites aussi, avec l'onglet énergie de la fiche (auteur, 2026-10-21).
+const PLUS_TARD := ["berge", "pre", "solaire", "rendement", "pose"]
+## 🎚️ Chaque achat ouvre sa suite et UN sujet de plus, dans cet ordre (auteur, 2026-10-21 :
+## « tout s'ouvre trop directement »). Une racine absente d'ici et de D_ABORD ne se montre jamais.
+const ENSUITE := ["vert", "permeable", "arbres", "places"]
 const PILOTIS := "pilotis"
+const PARC := "parc_inondable"
 const PONT := "pont_resistant"
-const AMPHIBIES := "amphibies"
-const ORDRE := ["pilotis", "amphibies", "densifier", "vert", "sedum", "berge", "pre", "permeable",
+const ORDRE := ["pilotis", "densifier", "vert", "sedum", "parc_inondable", "berge", "pre", "permeable",
 	"arbres", "solaire", "rendement", "pose", "pont_resistant", "places", "rue"]
 ## 🎓 Les colonnes de l'institut (auteur, 2026-10-19 ; remplace les cinq du 2026-10-09). 🔴 Flaggable (90).
 const DOMAINES := [["bati", "Bâti"], ["public", "Espace public"], ["energie", "Énergie"],
@@ -162,8 +169,12 @@ static func gains(v, t: float) -> Array:
 	var out := []
 	for id in v._objectifs:
 		if float(v._objectifs[id]) <= t:
-			out.append(["Objectif atteint : %s" % Objectifs.OBJECTIFS.get(id, id), POINTS_OBJECTIF])
+			out.append(["Objectif atteint : %s" % Objectifs.OBJECTIFS.get(id, id), points_objectif(id)])
 	return out
+
+
+static func points_objectif(id: String) -> int:
+	return POINTS_OUVERTURE if id in Objectifs.OUVERTURE else POINTS_OBJECTIF
 
 
 ## Institut et programmes de la mairie : un seul compteur (117).

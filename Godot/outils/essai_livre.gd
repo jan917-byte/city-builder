@@ -43,14 +43,14 @@ func executer() -> void:
 	var t := 4.0
 	actualiser(t)
 	# 🌳 L'étude ouvre la page ; les leviers s'achètent à l'institut (auteur, 2026-10-18).
-	verifier(o.concept_ouvert("eponge") and "institut" in o.levier_ferme("berge") and not ui._menu_boutons["sols"].visible,
-		"L'étude parue : la page de la ville-éponge, aucun levier avant l'institut")
-	# Comme en jeu : abriter et rouvrir le pont ont payé deux points, le parc inondable en coûte deux.
+	# 🌊 Berge et pré mis de côté (auteur, 2026-10-21) : fermés, même achetés.
+	verifier(o.concept_ouvert("eponge") and o.levier_ferme("berge") == "Plus tard."
+		and o.levier_ferme("pre") == "Plus tard." and not ui._menu_boutons["sols"].visible,
+		"L'étude parue : la page de la ville-éponge, la berge et le pré pour plus tard")
+	# Comme en jeu : abriter et rouvrir le pont ont payé deux points.
 	v._objectifs["abriter"] = t
 	v._objectifs["pont"] = t
-	verifier(v.acquerir_recherche("berge", t) and o.levier_ferme("berge") == "",
-		"Deux points achètent le parc inondable")
-	for l in ["permeable", "vert", "pre"]:
+	for l in ["permeable", "vert"]:
 		verifier("institut" in o.levier_ferme(l), "Fermé tant qu'il n'est pas acheté : %s" % l)
 	jeu._repere("ville")
 	ui.ouvrir_lieu("universite")
@@ -60,30 +60,19 @@ func executer() -> void:
 		"L'université renvoie à la bibliothèque, sans jaune ; aucun levier chez elle")
 	await cliquer(ui._etude_biblio)
 	actualiser(t)
-	verifier(ui._page_bloc.visible and ui._leviers_crue["berge"].is_visible_in_tree()
+	verifier(ui._page_bloc.visible and not ui._leviers_crue["berge"].is_visible_in_tree()
 		and not ui._leviers_crue["vert"].is_visible_in_tree()
 		and not ui._leviers_crue["permeable"].is_visible_in_tree() and not ui._leviers_crue["pre"].is_visible_in_tree(),
-		"La page de la ville-éponge ne propose que la berge")
-	await capture("livre_00_berge_seule")
+		"La page de la ville-éponge ne propose aucun levier avant l'institut")
+	await capture("livre_00_page_eponge")
 	ui._fermer_campus()
 	ui._sur_rail("dangers")
 	await cliquer(ui._onglets_crue["prochaine"])
 	verifier(not ui._leviers_crue["berge"].is_visible_in_tree(), "Dangers ne propose aucun levier")
 	jeu._sur_theme("")
-	jeu.voir_concept("eponge")
-	verifier(jeu.theme == "", "« Voir à Wehrau » montre la berge, sans la carte des sols")
-	# --- La berge livrée : les autres leviers et la carte des sols.
-	v.crediter_essai_ke(v.cout_berge_ke(o.BERGE, v.BERGE_RENATUREE, t))
-	jeu._sur_commande("b", o.BERGE, {"berge": v.BERGE_RENATUREE})
-	t += v.berge_reste_mois(o.BERGE, t) + 0.1
-	actualiser(t)
-	verifier(o.berge_rendue() and not ui._menu_boutons["sols"].visible
-		and "Berge rendue" in str(ui.retours.journal),
-		"La berge livrée se dit ; les sols attendent leur recherche")
-	# La berge rendue est un objectif, l'îlot relevé un autre : de quoi acheter le sol perméable.
-	v._objectifs["berge"] = t
+	# L'îlot relevé, un objectif de plus : de quoi acheter le sol perméable.
 	v._objectifs["ilot"] = t
-	verifier(v.acquerir_recherche("permeable", t), "Deux objectifs de plus achètent le sol perméable")
+	verifier(v.acquerir_recherche("permeable", t), "Les objectifs achètent le sol perméable")
 	actualiser(t)
 	verifier(ui._menu_boutons["sols"].visible and o.levier_ferme("permeable") == ""
 		and o.levier_ferme("vert") != "" and o.levier_ferme("pre") != "",
@@ -157,7 +146,7 @@ func executer() -> void:
 		"Livré : la crue baisse et la ville boit plus")
 	# 🏛️ Le concours est facultatif (104 revue, 2026-10-19) : aucun sol ne l'ouvre, aucune annonce.
 	verifier(not "concours" in str(ui.retours.journal[-1]),
-		"Après la berge, un sol livré n'annonce pas de concours : %s" % ui.retours.journal[-1])
+		"Un sol livré n'annonce pas de concours : %s" % ui.retours.journal[-1])
 	verifier(v.valeur("i", o.PARKING, "stationnement", t2) >= v.base("i", o.PARKING, "stationnement"),
 		"Les places restent")
 	ui._fermer_fiche()
@@ -193,12 +182,14 @@ func executer() -> void:
 		"Un îlot relevé : la page s'ouvre, le solaire attend l'institut")
 	v._recherche["vert"] = t3
 	v._recherche["solaire"] = t3
-	verifier(o.levier_ferme("solaire") == "", "Acheté, le solaire s'ouvre")
+	# ⚡ Mis de côté (auteur, 2026-10-21) : même acheté, le solaire reste fermé.
+	verifier(o.levier_ferme("solaire") == "Plus tard.", "Acheté, le solaire reste pour plus tard")
 	verifier("Ne pas aggraver" in str(ui.retours.journal[-1]), "Le bandeau annonce la page : %s" % ui.retours.journal[-1])
 	jeu._sur_choix("i", o.SOLAIRE)
 	ui.ouvrir_onglet("energie")
 	ui._maj_fiche()
-	verifier(ui._solaire_bloc.visible, "La fiche du toit montre le solaire")
+	# ⚡ L'onglet énergie est caché pour l'instant (auteur, 2026-10-21).
+	verifier(not ui._onglet_boutons["energie"].visible, "La fiche du toit n'a pas d'onglet énergie")
 	verifier(o.levier_ferme("arbres") != "", "Les arbres attendent l'institut")
 
 	jeu._sur_sauvegarde()
@@ -208,8 +199,6 @@ func executer() -> void:
 	actualiser(jeu.mois)
 	verifier(o.pages_lues.has("eponge") and v._permeable.has(o.PARKING),
 		"La reprise garde la page lue et le parking")
-	verifier(ui.retours.journal.filter(func(l) -> bool: return "Berge rendue" in str(l)).size() == 1,
-		"La reprise ne réannonce pas la berge")
 	print("LIVRE : %d échec(s)" % echecs)
 	jeu.queue_free()
 	await process_frame

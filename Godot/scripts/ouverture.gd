@@ -680,6 +680,8 @@ func levier_ferme(levier: String) -> String:
 		return "Plus tard."
 	if tout_ouvert and verrou() == "":
 		return ""
+	if levier in Recherche.PLUS_TARD:
+		return "Plus tard."
 	if Recherche.SUJETS.has(levier) and not Recherche.ouvre(jeu.ville, levier, jeu.mois):
 		return "S'achète à l'institut."
 	return ""

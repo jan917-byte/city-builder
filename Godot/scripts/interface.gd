@@ -1164,7 +1164,9 @@ func _calculer_dispo() -> Dictionary:
 		d["crue"] = bool(_bloc_dispo.get(_repare_bloc, false))
 		d["campagne"] = champ
 		d["bati"] = not champ
-		d["energie"] = ville.valeur("i", fid, "_toit_equipable_m2", _mois) > 0.0
+		# ⚡ Onglet énergie caché pour l'instant, solaire compris (auteur, 2026-10-21).
+		# Avant : ouvert dès que le toit est équipable (`_toit_equipable_m2` > 0).
+		d["energie"] = false
 		d["vert"] = ville.valeur("i", fid, "_part_plate", _mois) > 0.001 \
 			or ville.permeable_possible(fid)
 	elif _fiche_couche == "r":
@@ -2862,9 +2864,8 @@ func _panneau_ilot() -> void:
 	# si l'onglet vert existe sur cet îlot.
 	_grille_onglet(v, "vert_i", 3, _fiche_valeurs, [
 		["toit", "Toit"], ["plat", "Dont plat"], ["verdi", "Verdi"]])
-	_grille_onglet(v, "crue_i", 2, _fiche_valeurs, [
-		["perdus", "Logements perdus"], ["detruits", "Bâtiments détruits"],
-		["annonce", "Crue annoncée"], ["reprise", "Reprise annoncée"]])
+	# 🔄 Plus de grille crue sur l'îlot (auteur, 2026-10-21) : la ligne du haut dit
+	# déjà les logements perdus, le reste n'aidait aucune décision.
 
 	# 🔧 LA FICHE D'UNE RUE. La hiérarchie est passée sous le nom, la charge dans
 	# la ligne de résumé : il ne reste ici que ce qu'une décision consomme.
@@ -3495,7 +3496,7 @@ var _lieu_defile: ScrollContainer
 ## 🎓 Ce que chaque recherche montre, et chaque partie de l'étude (auteur, 2026-10-11 :
 ## « un aperçu du rendu, genre maison sur pilotis »).
 const VIGNETTE_RECHERCHE := {"pilotis": "pilotis", "rendement": "solaire", "pose": "solaire",
-	"sedum": "vert", "berge": "eponge", "pre": "eponge", "permeable": "eponge", "vert": "vert",
+	"sedum": "vert", "parc_inondable": "eponge", "berge": "eponge", "pre": "eponge", "permeable": "eponge", "vert": "vert",
 	"solaire": "solaire"}
 const VIGNETTES_ETUDE := ["ruine", "eponge", "pilotis"]
 const VIGNETTE_RECHERCHE_PX := 52.0
@@ -3613,6 +3614,7 @@ func _panneau_lieu() -> void:
 	_mairie_bloc = HBoxContainer.new()
 	_mairie_bloc.add_theme_constant_override("separation", 14)
 	contenu.add_child(_mairie_bloc)
+	_mairie_bloc.resized.connect(_aligner_mairie)
 	var cols := {}
 	for d in MAIRIE_COLONNES:
 		var col := VBoxContainer.new()
@@ -3728,6 +3730,10 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	var l_quoi := _label(quoi, 11, GRIS)
 	l_quoi.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(l_quoi)
+	# Une carte étirée par `_aligner_mairie` garde son bouton en bas.
+	var vide := Control.new()
+	vide.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bloc.add_child(vide)
 	var etat := _label("", 12, TEXTE)
 	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(etat)
@@ -3839,14 +3845,12 @@ func _ralentir_campus() -> void:
 # Un concours par îlot ; ses trois lauréats dépendent du lieu (`Ville.LAUREATS`) :
 # trois cartes, dont la façon change d'un îlot à l'autre.
 
-## Textes de l'auteur (2026-10-20) ; 🔴 les six derniers sont les miens, flaggables (90).
+## Textes de l'auteur (2026-10-20) ; 🔴 les quatre derniers sont les miens, flaggables (90).
 const PROJETS_QUOI := {
 	"tradition": "Garde la forme historique des bâtiments.",
 	"moderne": "Plus de logements, isolés, sous un toit plat.",
 	"pilotis": "Logements protégés d'une crue.",
 	"parc": "Protection en cas de crue, mais sans logements.",
-	"jardins": "Des potagers que l'eau peut traverser. Personne ne rentre, mais le quartier les aime.",
-	"amphibies": "Des maisons qui flottent quand l'Ilse monte, et gardent leur allure.",
 	"butte": "Le sol relevé d'un étage. Garages et ateliers en bas, logements au-dessus.",
 	"surelevees": "Les maisons d'avant, le plancher deux mètres plus haut.",
 	"eponge": "La cour garde l'eau de pluie et de crue. Les maisons reviennent.",
@@ -3922,7 +3926,7 @@ func _panneau_projets() -> void:
 		_decision(b, "reparer", "")
 		b.pressed.connect(fermer_projets)
 		cv.add_child(b)
-		_projets_cartes[i] = {"bouton": b, "lignes": lignes, "nom": nom, "quoi": quoi,
+		_projets_cartes[i] = {"bouton": b, "lignes": lignes, "nom": nom, "quoi": quoi, "vue": vue,
 			"decision": _decisions[-1], "facon": ""}
 
 
@@ -3972,11 +3976,13 @@ func _maj_projets() -> void:
 		var b: Button = c["bouton"]
 		_posee(b, "reparer", "Choisir", f)
 		b.disabled = f == "" or not ville.facon_permise(_fiche_fid, f, _mois)
+		# 🔒 Pas encore mis au point : la miniature pâlit, le bouton dit où l'apprendre (auteur, 2026-10-21).
+		(c["vue"] as Control).modulate.a = 0.4 if b.disabled else 1.0
 		if b.disabled:
-			b.text = "À l'institut d'abord"   # 🔴 Flaggable (90).
+			b.text = "À mettre au point à l'institut"   # 🔴 Flaggable (90).
 		elif str(_pose.get("reparer", "")) == f:
 			b.text = "✓ Choisi"
-	var cle := "%d %d %s" % [_fiche_fid, int(_mois), ",".join(laureats)]
+	var cle := "%d %d %s %d" % [_fiche_fid, int(_mois), ",".join(laureats), ville._recherche.size()]
 	if cle == _projets_cle:
 		return
 	_projets_cle = cle
@@ -4010,6 +4016,8 @@ func _projet(f: String) -> Array:
 	var prix := "%s k€" % _milliers(cout)
 	var out := [["caisse", prix, 0], ["duree", _duree(duree), 0]]
 	# Pas mis au point : le prix seul, la ville d'essai refuserait le chantier.
+	if not ville.a_l_institut(f, _mois):
+		out.append(["institut", "Technique pas encore maîtrisée", -1])   # 🔴 Flaggable (90).
 	if ville_essai == null or not ville.facon_permise(_fiche_fid, f, _mois):
 		return out
 	var t := _mois + duree + 0.05
@@ -4214,6 +4222,7 @@ func _maj_lieu() -> void:
 		for i in range(1, col.get_child_count()):
 			montre = montre or (col.get_child(i) as Control).visible
 		(col as Control).visible = montre
+	_aligner_mairie.call_deferred()
 	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
 	# capital, elle en demande un seuil (auteur, 2026-09-30) ; aucune n'est écrite.
 	_lieu_message.text = "" if _lieu_ouvert != "mairie" else \
@@ -4221,17 +4230,47 @@ func _maj_lieu() -> void:
 		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
 
 
+## 🏛️ Les cartes de la mairie s'alignent par rangée (auteur, 2026-10-21) : la n-ième carte de
+## chaque colonne prend la hauteur de la plus haute. Calculé sans la hauteur imposée : pas de boucle.
+func _aligner_mairie() -> void:
+	if not _mairie_bloc.visible:
+		return
+	var rangs: Array = []
+	for col in _mairie_bloc.get_children():
+		if not (col as Control).visible:
+			continue
+		var r := 0
+		for carte in col.get_children():
+			if not (carte is PanelContainer and (carte as Control).visible):
+				continue
+			if rangs.size() <= r:
+				rangs.append([])
+			rangs[r].append(carte)
+			r += 1
+	for rang: Array in rangs:
+		var h := 0.0
+		for carte: PanelContainer in rang:
+			h = maxf(h, carte.get_theme_stylebox("panel").get_minimum_size().y
+				+ (carte.get_child(0) as Control).get_combined_minimum_size().y)
+		for carte: PanelContainer in rang:
+			if carte.custom_minimum_size.y != h:
+				carte.custom_minimum_size.y = h
+
+
 ## 🌳 L'INSTITUT S'OUVRE PEU À PEU (auteur, 2026-10-19 : « tout s'ouvre trop en même temps ») :
 ## un sujet n'apparaît que ses parents acquis ; avant le premier achat, seuls ceux de la crue.
 func _sujet_montre(cle: String) -> bool:
-	if Recherche.manque(ville, cle, _mois) != "":
+	if cle in Recherche.PLUS_TARD or Recherche.manque(ville, cle, _mois) != "":
 		return false
-	if ouverture == null or ouverture.tout_ouvert or cle in Recherche.D_ABORD:
+	if ouverture == null or ouverture.tout_ouvert or cle in Recherche.D_ABORD \
+			or not (Recherche.SUJETS[cle]["apres"] as Array).is_empty() or Recherche.acquis(ville, cle, _mois):
 		return true
+	var achats := 0
 	for k in Recherche.ORDRE:
 		if Recherche.acquis(ville, k, _mois):
-			return true
-	return false
+			achats += 1
+	var rang := Recherche.ENSUITE.find(cle)
+	return rang >= 0 and rang < achats
 
 
 func _politique_ouverte(cle: String) -> bool:
@@ -4392,10 +4431,11 @@ func _maj_ligne_fonds(l: Dictionary) -> void:
 			_milliers(Ville.FONDS_RECONSTRUCTION_KE)]
 		b.visible = false
 		return
-	etat.text = "+%s k€ dans la caisse, une seule fois" % _milliers(Ville.FONDS_RECONSTRUCTION_KE)
+	etat.text = "Une seule fois."
 	b.visible = true
 	b.disabled = not _fonds_demandable()
-	_poser_ligne(b, "Demander", [], "", "" if not b.disabled else "après la réouverture d'un pont")
+	_poser_ligne(b, "Demander", [["caisse", "+%s k€" % _milliers(Ville.FONDS_RECONSTRUCTION_KE)]],
+		"", "" if not b.disabled else "après la réouverture d'un pont")
 
 
 func _maj_ligne_etude(l: Dictionary) -> void:
@@ -5488,19 +5528,6 @@ func _maj_fiche_contenu() -> void:
 	var ans := ville.valeur("i", _fiche_fid, "_rentabilite_annees", _mois)
 	(_fiche_valeurs["retour"] as Label).text = 		"—" if is_inf(ans) else "%d ans" % int(roundf(ans))
 
-	# 🌊 CE QUE LA CRUE A PRIS. La reprise annoncée est par le noyau et non par
-	# la fiche brute : une berge livrée en aval a pu la faire baisser.
-	# Relevé, l'îlot n'a plus rien de perdu : les chiffres de l'export restaient.
-	var releve := ville.reparation_finie("i", _fiche_fid, _mois)
-	(_fiche_valeurs["perdus"] as Label).text = "0" if releve else _nb(
-		float(o.get("logements_sinistres", 0)), 0)
-	(_fiche_valeurs["detruits"] as Label).text = "0" if releve else _nb(
-		float(o.get("batiments_ruines", 0)), 0)
-	(_fiche_valeurs["annonce"] as Label).text = "%s m" % _nb(
-		ville.valeur("i", _fiche_fid, "hauteur_eau_annonce", _mois), 2)
-	(_fiche_valeurs["reprise"] as Label).text = "%d %%" % int(roundf(
-		100.0 * ville.valeur("i", _fiche_fid, "part_ruinee_apres", _mois)))
-
 	# 🔴 On passe ici À CHAQUE IMAGE : le curseur ne se repositionne que sans
 	# choix en cours, sinon on garde la position de l'auteur, remontée au
 	# niveau déjà posé.
@@ -5922,7 +5949,9 @@ func _poser_bouton_verbe(b: Button, prix: Array, manque: String, sous: String) -
 	if b.get_meta("prix", "") == cle:
 		return
 	b.set_meta("prix", cle)
-	if prix.is_empty():
+	# Un gain (« +… ») reste un clic gratuit, son montant en vert (auteur, 2026-10-21).
+	var gain := not prix.is_empty() and String(prix[0][1]).begins_with("+")
+	if prix.is_empty() or gain:
 		_habiller_gratuit(b)
 	else:
 		_habiller_principal(b)
@@ -5948,7 +5977,8 @@ func _poser_bouton_verbe(b: Button, prix: Array, manque: String, sous: String) -
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		boite.add_child(ic)
-		var l := _titre(String(p[1]), 18, ALERTE if m == manque else encre)
+		var l := _titre(String(p[1]), 18, ALERTE if m == manque
+			else FAIT if gain and not b.disabled else encre)
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		boite.add_child(l)
@@ -6028,8 +6058,9 @@ func consequences(r: Dictionary, duree: float) -> Array:
 	elif absf(eau) >= 0.1:
 		# 🌾 Une prairie retient quelques millimètres : sous le centimètre, une décimale.
 		out.append(["eau", "%s cm" % ("%+.1f" % eau).replace(".", ","), -_sens(eau), "hauteur de crue"])
-	# ⚡ La première année on rebâtit : ni énergie ni CO₂ dans la fiche (auteur, 2026-10-18).
-	var energie: bool = ouverture == null or not ouverture.annee_un()
+	# ⚡ Ni énergie ni CO₂ dans le récapitulatif pour l'instant, à aucune année
+	# (auteur, 2026-10-21 ; avant : coupés la première année seulement). Ça reviendra.
+	var energie := false
 	var prod := float(b["production_mwh"]) - float(a["production_mwh"])
 	if energie and absf(prod) >= 1.0:
 		out.append(["production", "%+d MWh/an" % int(roundf(prod)), _sens(prod), "électricité produite"])
@@ -6646,10 +6677,9 @@ func _repare_texte_plus(phrase: String) -> void:
 
 
 ## 🏗️ Ce que la fiche dit d'un îlot relevé, selon la façon.
-## 🔴 Les six derniers sont les miens, flaggables (90).
+## 🔴 Les quatre derniers sont les miens, flaggables (90).
 const FAIT_REBATI := {"tradition": "Relevé comme avant.", "moderne": "Rebâti en moderne.",
 	"pilotis": "Rebâti sur pilotis.", "parc": "Rendu à l'eau : un parc inondable.",
-	"jardins": "Rendu à l'eau : des jardins inondables.", "amphibies": "Rebâti en maisons amphibies.",
 	"butte": "Rebâti sur une butte.", "surelevees": "Relevé deux mètres plus haut.",
 	"eponge": "Rebâti autour d'une cour qui garde l'eau.", "groupees": "Rebâti en maisons groupées."}
 

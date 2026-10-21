@@ -118,7 +118,8 @@ func executer() -> void:
 	for fid in [FOUR, COLOMBIER]:
 		v.crediter_essai_ke(v.CONCOURS_KE)
 		verifier(v.lancer_concours(fid, jeu.mois), "Le concours se lance aussi à l'îlot %d" % fid)
-	v._recherche.erase(jeu.Recherche.AMPHIBIES)
+	v._recherche.erase(jeu.Recherche.PILOTIS)
+	v._recherche.erase(jeu.Recherche.PARC)
 	actualiser(jeu.mois + v.CONCOURS_MOIS + 0.05)
 	for fid in [FOUR, COLOMBIER]:
 		jeu.examiner("i", fid)
@@ -136,13 +137,24 @@ func executer() -> void:
 		vus[fid] = _noms(ui)
 		await capture("concours_%02d_%s" % [5 if fid == FOUR else 6, "four" if fid == FOUR else "colombier"])
 		if fid == FOUR:
-			var amph: int = v.laureats(FOUR).find("amphibies")
-			var parc: int = v.laureats(FOUR).find("parc")
-			verifier(ui._projets_cartes[amph]["bouton"].disabled
-				and ui._projets_cartes[amph]["bouton"].text == "À l'institut d'abord"
-				and not ui._projets_cartes[parc]["bouton"].disabled,
-				"Au Four, les maisons amphibies attendent l'institut, le parc non")
-			verifier(_lignes(ui, parc).contains("Personne ne rentre"), "Le parc ne rend personne")
+			# 🔒 Pilotis et parc pas encore mis au point : bloqués, et la carte dit où les apprendre.
+			for f in ["pilotis", "parc"]:
+				var i: int = v.laureats(FOUR).find(f)
+				verifier(i >= 0 and ui._projets_cartes[i]["bouton"].disabled
+					and ui._projets_cartes[i]["bouton"].text == "À mettre au point à l'institut"
+					and "pas encore maîtrisée" in _lignes(ui, i)
+					and ui._projets_cartes[i]["vue"].modulate.a < 1.0,
+					"Au Four, %s attend l'institut : %s" % [f, _lignes(ui, max(i, 0))])
+			# 🏢 Le moderne s'offre sans l'institut (auteur, 2026-10-21).
+			var moderne: int = v.laureats(FOUR).find("moderne")
+			verifier(moderne >= 0 and not ui._projets_cartes[moderne]["bouton"].disabled
+				and not "pas encore maîtrisée" in _lignes(ui, moderne),
+				"Au Four, le moderne s'offre sans l'institut : %s" % _lignes(ui, max(moderne, 0)))
+			v._recherche[jeu.Recherche.PILOTIS] = 0.0
+			v._recherche[jeu.Recherche.PARC] = 0.0
+			jeu._rafraichir(true)
+			verifier(not ui._projets_cartes[v.laureats(FOUR).find("pilotis")]["bouton"].disabled,
+				"Mis au point, les pilotis s'offrent sans rouvrir l'écran")
 	verifier(vus[FOUR] != vus[COLOMBIER] and vus[FOUR] != _noms_attendus(v, m),
 		"Trois îlots, trois listes de lauréats")
 

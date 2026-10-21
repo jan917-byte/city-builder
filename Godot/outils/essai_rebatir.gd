@@ -151,7 +151,7 @@ func executer() -> void:
 	quit(1 if echecs > 0 else 0)
 
 
-## Une partie neuve, tout le monde au camp, l'étude lue, pilotis et maisons amphibies mis au point.
+## Une partie neuve, tout le monde au camp, l'étude lue, pilotis et parc inondable mis au point.
 ## `concours` : celui de chaque îlot aux maisons tombées, lancé au mois 0 et rendu avant `t`, payé par l'essai.
 func _apres_etude(t: float, concours := false) -> void:
 	var o = jeu.ouverture
@@ -170,7 +170,7 @@ func _apres_etude(t: float, concours := false) -> void:
 	o.mairie_vue = true
 	jeu.ville._programmes["concours"] = 0.0
 	jeu.ville._recherche[jeu.Recherche.PILOTIS] = 0.0
-	jeu.ville._recherche[jeu.Recherche.AMPHIBIES] = 0.0
+	jeu.ville._recherche[jeu.Recherche.PARC] = 0.0
 	if concours:
 		for fid in jeu.ville.ilots:
 			if jeu.ville.concours_utile(int(fid)):

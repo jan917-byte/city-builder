@@ -201,13 +201,10 @@ const RECONSTRUCTIONS := {
 	"pilotis": {"nom": "Sur pilotis", "prix": 1.6, "duree": 1.25, "logements": 1.0,
 		"confiance": 0.75, "hausse_m": 2.5, "eponge": 0.0, "rendu": "pilotis", "recherche": "pilotis"},
 	"parc": {"nom": "Parc inondable", "prix": 0.2, "duree": 0.5, "logements": 0.0,
-		"confiance": -1.0, "hausse_m": 0.0, "eponge": 1.0, "rendu": "parc"},
-	# 🏛️ Six lauréats de plus, selon le lieu (auteur, 2026-10-21) ; allure empruntée en attendant la leur.
-	"jardins": {"nom": "Jardins inondables", "prix": 0.25, "duree": 0.5, "logements": 0.0,
-		"confiance": -0.5, "hausse_m": 0.0, "eponge": 0.6, "rendu": "parc"},
-	# Flottent avec l'eau : 6 m de course (Maasbommel, aux Pays-Bas, 5,5 m) passent le Four (5,6 m).
-	"amphibies": {"nom": "Maisons amphibies", "prix": 1.9, "duree": 1.25, "logements": 1.0,
-		"confiance": 1.0, "hausse_m": 6.0, "eponge": 0.0, "rendu": "tradition", "recherche": "amphibies"},
+		"confiance": -1.0, "hausse_m": 0.0, "eponge": 1.0, "rendu": "parc", "recherche": "parc_inondable"},
+	# 🏛️ Quatre lauréats de plus, selon le lieu (auteur, 2026-10-21) ; allure empruntée en attendant la leur.
+	# 🔄 Retirés (auteur, 2026-10-21) : les maisons amphibies (6 m de course), remplacées par les
+	# pilotis ; les jardins inondables, trop proches du parc, remplacés par le moderne.
 	"butte": {"nom": "Sur une butte", "prix": 1.4, "duree": 1.25, "logements": 0.8,
 		"confiance": 0.75, "hausse_m": 2.0, "eponge": 0.0, "rendu": "pilotis"},
 	"surelevees": {"nom": "Maisons surélevées", "prix": 1.25, "duree": 1.0, "logements": 1.0,
@@ -217,13 +214,13 @@ const RECONSTRUCTIONS := {
 	"groupees": {"nom": "Maisons groupées", "prix": 1.2, "duree": 1.25, "logements": 1.6,
 		"confiance": 0.5, "hausse_m": 0.0, "eponge": 0.0, "rendu": "moderne"},
 }
-const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc", "jardins", "amphibies",
+const RECONSTRUCTIONS_ORDRE := ["tradition", "moderne", "pilotis", "parc",
 	"butte", "surelevees", "eponge", "groupees"]
 # 🏛️ UN CONCOURS D'ARCHITECTURE PAR ÎLOT (auteur, 2026-10-21, revient sur « un pour toute la
 # zone » de 115) : trois lauréats pensés pour le lieu, sans rabais. 🎚️ LEVEL DESIGN, proposé :
 # la situation se lit sur ce que la crue a pris (`situation`), pas sur une liste de `fid`.
 const LAUREATS := {
-	"rase": ["parc", "jardins", "amphibies"],          # petit, tout est tombé
+	"rase": ["parc", "moderne", "pilotis"],            # petit, tout est tombé
 	"coeur": ["pilotis", "butte", "moderne"],          # grand, presque tout est tombé
 	"debout": ["surelevees", "eponge", "moderne"],     # moins de 60 % tombé
 	"pavillons": ["groupees", "pilotis", "eponge"],
@@ -488,7 +485,14 @@ func _migrer_partie(etat: Dictionary) -> void:
 	if c is Dictionary and c.has("debut"):
 		etat["_concours"] = {int(c["fid"]): float(c["debut"])}
 	if etat.get("_recherche", {}) is Dictionary:
-		etat["_recherche"].erase("parc")
+		for cle in (etat["_recherche"] as Dictionary).keys():
+			if not Recherche.SUJETS.has(cle):
+				etat["_recherche"].erase(cle)
+	# Façons retirées le 2026-10-21 : une partie qui les a bâties garde leur plus proche.
+	if etat.get("_rebati", {}) is Dictionary:
+		for fid in etat["_rebati"]:
+			if not RECONSTRUCTIONS.has(str(etat["_rebati"][fid])):
+				etat["_rebati"][fid] = "parc" if str(etat["_rebati"][fid]) == "jardins" else "pilotis"
 
 
 func importer_partie(etat: Dictionary) -> void:
@@ -606,7 +610,7 @@ func baisse_crue_m(fid: int, t: float) -> float:
 
 
 ## 🌿 Un parc inondable retient l'eau pour toute la ville, comme un toit vert :
-## la part ruinée de l'îlot, rendue au sol ; jardins et îlot-éponge en partie (`eponge`).
+## la part ruinée de l'îlot, rendue au sol ; l'îlot-éponge en partie (`eponge`).
 func baisse_crue_parcs_m(t: float) -> float:
 	var ha := 0.0
 	for fid in _rebati:
@@ -2456,7 +2460,7 @@ func logements_neufs_isoles(fid: int, t: float) -> float:
 	return maxf(0.0, valeur("i", fid, "logements", t) - base("i", fid, "logements"))
 
 
-## 🏗️ Pilotis, butte, amphibies lèvent le plancher : la prochaine crue le voit plus bas d'autant.
+## 🏗️ Pilotis et butte lèvent le plancher : la prochaine crue le voit plus bas d'autant.
 func hausse_m(fid: int) -> float:
 	return float(RECONSTRUCTIONS[facon_reparation(fid)]["hausse_m"]) if est_repare("i", fid) else 0.0
 

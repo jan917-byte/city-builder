@@ -917,3 +917,9 @@ Essai ouverture 234 OK, 0 échec ; avant/après dans `wehrau_icones_lisere.png`.
 **2026-10-21 — Le concours décide le corps du bâtiment, le joueur l'habille ; gabarit Blender des fenêtres de l'auteur.**
 Tranché par l'auteur : toit vert, panneaux, façade plantée, isolation sont des décisions du joueur, jamais d'un lauréat.
 Gabarit `Godot/assets/fenetres/` : 7 façades types, rez varié, 27 ouvertures (porte cochère, garage, quai, loggia…) qui se recopient seules ; restent la cuisson et les styles par époque.
+**2026-10-21 — L'institut ouvre sur pilotis, parc inondable et pont résistant ; amphibies retirées, berges pour plus tard.**
+Un lauréat pilotis ou parc pas encore mis au point pâlit et dit « À mettre au point à l'institut » ; le Four reçoit moderne et pilotis à la place des jardins et des amphibies.
+Berge et pré en `PLUS_TARD` (cachés, fermés) ; essais concours, étude, rebâtir, livre, ouverture à 0 échec.
+**2026-10-21 — Mairie en cartes alignées, fonds « +2 000 k€ » en vert sur son bouton ; études en cours dans la carte des chantiers, en bleu.**
+Institut : un achat ouvre sa suite et un seul sujet de plus (`ENSUITE`) au lieu de cinq ; objectifs de l'ouverture à 2 points, 8 au départ au lieu de 4.
+Essais ouverture, étude, concours, rebâtir, livre, fonds, capital à 0 échec ; progression 3 (aide d'urgence, subventions) et sauvegarde 1 (« Lieu sans nom : b9 ») non touchés.

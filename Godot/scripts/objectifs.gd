@@ -1,7 +1,7 @@
 extends PanelContainer
 ## 🎯 Les objectifs, en bas à gauche (auteur, 2026-10-18, « comme Frostpunk ») : le BUT,
 ## jamais le moyen — le guide garde « où cliquer ». Un objectif atteint se remplit et monte
-## avec les atteints, pâlissant vers le haut ; il vaut un point de recherche (`Recherche.gains`). 🔴 Textes flaggables (90).
+## avec les atteints, pâlissant vers le haut ; il vaut un point de recherche, deux à l'ouverture (`Recherche.points_objectif`). 🔴 Textes flaggables (90).
 
 ## L'ordre est celui de la partie ; un objectif atteint le reste (`ville._objectifs`).
 ## 🌳 Après les quatre de l'ouverture, un par action de l'institut : il paraît quand
@@ -300,7 +300,7 @@ func _ligne(id: String, fait: bool) -> HBoxContainer:
 	var gain := HBoxContainer.new()
 	gain.add_theme_constant_override("separation", 1)
 	gain.visible = not fait
-	var plus: Label = ui._label("+1", 13, BLEU)
+	var plus: Label = ui._label("+%d" % ui.Recherche.points_objectif(id), 13, BLEU)
 	plus.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
 	plus.add_theme_constant_override("outline_size", 4)
 	plus.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -333,11 +333,12 @@ func _effacer(l: Control, y: float, attente: float) -> void:
 func _reussir(id: String) -> void:
 	var ui = jeu.interface
 	# Le compteur n'avance qu'à l'arrivée de l'étoile.
-	ui.points_en_vol += 1
+	var n: int = ui.Recherche.points_objectif(id)
+	ui.points_en_vol += n
 	var l: HBoxContainer = _lignes.get(id)
 	if l == null:
 		# Hors des lignes montrées : l'étoile part du bas du bloc.
-		_voler(global_position + Vector2(LARGEUR * 0.5, size.y), 0.0)
+		_voler(global_position + Vector2(LARGEUR * 0.5, size.y), 0.0, n)
 		return
 	l.set_meta("remplit", true)
 	var gain: Control = l.get_child(2)
@@ -346,10 +347,10 @@ func _reussir(id: String) -> void:
 	tw.tween_callback(func() -> void:
 		var depart: Vector2 = gain.get_child(1).get_global_rect().get_center()
 		gain.visible = false
-		_voler(depart, 0.0))
+		_voler(depart, 0.0, n))
 
 
-func _voler(depart: Vector2, attente: float) -> void:
+func _voler(depart: Vector2, attente: float, n := 1) -> void:
 	var ui = jeu.interface
 	var f := Etoile.new()
 	f.icone = ui._icone("recherche", 22, BLEU)
@@ -368,11 +369,11 @@ func _voler(depart: Vector2, attente: float) -> void:
 		0.0, 1.0, VOLER_S).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(func() -> void:
 		f.queue_free()
-		ui.points_en_vol = maxi(0, ui.points_en_vol - 1)
+		ui.points_en_vol = maxi(0, ui.points_en_vol - n)
 		ui.actualiser_points(jeu.mois)
 		var bloc: Control = ui._barre_valeurs["recherche"].get_parent()
 		bloc.pivot_offset = bloc.size / 2.0
 		var bond := bloc.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		bloc.scale = Vector2.ONE * 1.3
 		bond.tween_property(bloc, "scale", Vector2.ONE, 0.35)
-		ui.bulles.sous(bloc, "+1", "recherche"))
+		ui.bulles.sous(bloc, "+%d" % n, "recherche"))

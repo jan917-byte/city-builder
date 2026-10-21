@@ -752,9 +752,9 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(jeu.ville._objectifs.has("abriter") and jeu.ville._objectifs.has("pont")
 		and not jeu.ville._objectifs.has("ilot")
 		and obj._lignes.has("ilot") and obj._lignes.has("logements")
-		and Recherche.points(jeu.ville, jeu.mois) == 2
+		and Recherche.points(jeu.ville, jeu.mois) == 2 * Recherche.POINTS_OUVERTURE
 		and "Objectif atteint" in str(jeu.interface.retours.journal),
-		"Abriter et rouvrir un pont font deux objectifs, deux points ; les deux suivants s'affichent")
+		"Abriter et rouvrir un pont font deux objectifs, quatre points ; les deux suivants s'affichent")
 	jeu._sur_choix("i", o.MAISONS)
 	verifier(not jeu.interface._solaire_bloc.visible and not jeu.interface._vert_bloc.visible,
 		"La fiche d'un îlot sinistré ne montre que la reconstruction")
