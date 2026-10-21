@@ -6,6 +6,25 @@
 
 **Dernière mesure : 2026-08-18** (session 34, chaîne complète jusqu'à l'export Godot)
 
+## 2 decies. 🏠 Des emprises réalistes — 2026-10-21, à juger à l'écran
+
+Demandé devant la planche des variantes : *« les bâtiments doivent être réalistes dans leur emprise »*. Cinq règles dans `04d`, une dans `04c`.
+
+| | Ce qui n'allait pas | La règle |
+|---|---|---|
+| 🏡 lotissements | **69 parcelles sur 222 vides** (150 à 340 m²) : la maison d'angle ne regardait que la longue rue, la parcelle de 9–10 m n'avait pas la place de deux reculs de 1,5 m | la maison détachée essaie chaque rue ; la rue de côté se réduit comme un latéral ; dernier essai collé à une limite (`JUMELEE_TISSUS`) |
+| ✂️ pointes | une « pointe » de 1 à 15° — souvent une aiguille de découpe — renvoyait au jardin des parcelles de 200 à 350 m² | seule la pointe repart au jardin, coupée où le coin fait 9 m (`POINTE_LARGEUR`) |
+| 🏛️ bouts d'îlot | le U autour d'une cour de 9 × 20 m était comblé comme une poche : bâtiment plein d'une rue à l'autre | une poche d'au moins 6 m et 80 m² reste une cour (`COUR_VRAIE_*`) |
+| 🧱 îlots étroits | bandes des deux rues jointes : masses de 16 à 25 m d'épaisseur | au-delà de 15 m, deux maisons dos à dos (`EPAISSEUR_MAX`) |
+| 🧭 rue d'en face oblique (`04c`) | la parcelle traversante s'arrêtait à la profondeur médiane ; le reste du front d'en face partait entier à une voisine, en T (îlot 25, bâtiment « chelou » désigné par l'auteur) | la traversante prend le rayon le plus profond : chaque lanière touche les deux rues |
+| 📐 coudes de rue | un bout de rue de moins de 6 m dictait sa bande de 11 m, en biais : une dent dans le bâtiment | sa bande saute, mais seulement si la façade ne recule pas (`BANDE_ARETE_MIN`, `creux_sur_rue`) |
+
+**Mesuré** : 732 → **788** bâtiments (pavillons 153 → 189), parcelles vides « aucune forme » 69 → **33** (triangles et lots sous 150 m²), pointes au jardin 15 → **7**, parcelles de rue à sommet rentrant 116 → **111**, logements 2 381 → **2 479**, toits 9,38 → **9,72 ha**. Partition 100 %. R0 0, formes bizarres 0. Essais rebâtir, relogement, concours, ouverture : 0 échec.
+
+**À regarder** : `QGIS/rendus/emprises_avant_apres_ville.png` (îlots 63, 26, 21, 24, 37, 25, 69, 14), `ilot_25_avant_apres.png` et `emprises_avant_apres_variantes.png` (Four, Verger). **Ce qu'on perd** : un peu de vert en bout d'îlot, des pavillons qui touchent une limite, et les totaux de l'énergie et des logements bougent de 3 %.
+
+**Reste, non traité** : l'îlot fermé du Grenier (68) garde des formes biscornues ; les maisons en bande du Four (69) restent en désordre sur un îlot de 25 m ; 115 bâtiments sur 788 gardent des murs de biais, surtout aux angles obtus ; à l'îlot 25, la maison de la pointe nord reste un pentagone.
+
 ✅ **L'ÎLOT 45 EST DEVENU DEUX FRONTS COMMERÇANTS.** La rue 181 suit
 exactement le trait de l'auteur entre deux sommets existants : **45 garde
 0,51 ha, 72 prend 0,42 ha**, sans perdre un centimètre carré. Les deux sont

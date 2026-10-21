@@ -908,3 +908,6 @@ Essais concours, rebâtir, étude 0 échec ; captures `wehrau_ouverture_concours
 **2026-10-21 — Planche des parcellaires : Verger, Moulin, Forgerons redessinés en îlot ouvert, îlot fermé, maisons en bande, maisons groupées (1 à 12).**
 `apercu_variantes.py` rejoue 04c et 04d avec d'autres lignes de TISSU, sans rien écrire ; à l'auteur d'entourer ce qu'il garde avant de brancher au jeu.
 Proposé aussi : retirer les maisons amphibies, une place inondable au Four et au Grenier, nommer les projets par leur forme plutôt que « moderne ».
+**2026-10-21 — Emprises plus réalistes (04d) : lotissements complétés, seule la pointe au jardin, vraies cours gardées, dos-à-dos au-delà de 15 m ; la traversante de 04c touche la rue d'en face.**
+732 → 788 bâtiments, parcelles vides 69 → 33 en pavillonnaire, logements 2 381 → 2 479 ; l'îlot 25 désigné par l'auteur n'a plus de parcelle en T.
+Avant/après : `emprises_avant_apres_ville.png`, `emprises_avant_apres_variantes.png` ; restent les formes du Grenier fermé et les bandes du Four.
