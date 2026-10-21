@@ -905,3 +905,6 @@ Essais ouverture, étude, concours, fonds, vie_camp, rebâtir, livre, gains, obj
 **2026-10-21 — Concours d'architecture par îlot : trois lauréats selon ce que la crue a pris, 50 k€ et 15 jours, sans rabais ; chantiers d'îlot 12 → 9 mois.**
 Six projets neufs (jardins inondables, maisons amphibies, butte, maisons surélevées, îlot-éponge, maisons groupées), allure empruntée ; l'institut garde pilotis et amphibies, le parc vient du concours. Sous 1,5 m de levée rien n'est sauvé : surélevées et butte à 2 m, amphibies à 6 m.
 Essais concours, rebâtir, étude 0 échec ; captures `wehrau_ouverture_concours_04_forgerons` à `_06_colombier`.
+**2026-10-21 — Planche des parcellaires : Verger, Moulin, Forgerons redessinés en îlot ouvert, îlot fermé, maisons en bande, maisons groupées (1 à 12).**
+`apercu_variantes.py` rejoue 04c et 04d avec d'autres lignes de TISSU, sans rien écrire ; à l'auteur d'entourer ce qu'il garde avant de brancher au jeu.
+Proposé aussi : retirer les maisons amphibies, une place inondable au Four et au Grenier, nommer les projets par leur forme plutôt que « moderne ».
