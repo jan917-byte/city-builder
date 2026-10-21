@@ -155,9 +155,10 @@ TISSU_ILOT_SOUS_TYPE = {16: "equipement"}
 # La cause n'est pas le recul mais ce qu'il révèle : `rect_ancre` cherche
 # 9 × 10 m et une parcelle de lotissement de 14 m de façade n'a que 8,4 m entre
 # ses retraits latéraux.
-# 🔴 LES 73 REFUS RESTANTS SONT UN DÉFAUT ANTÉRIEUR : des parcelles de 240 à
-# 530 m² où un pavillon devrait entrer sans effort. → table `pavillonnaire`
-# et `rect_ancre`, à traiter séparément.
+# ✅ Les refus de 150 à 340 m² venaient de la pose, pas de la table : la maison
+# d'angle ne regardait que la longue rue, la parcelle de 9 à 10 m n'avait pas la
+# place de deux reculs. Réparé le 2026-10-21 (`empreinte` essaie chaque rue,
+# JUMELEE_TISSUS) ; restent des triangles et des lots de moins de 150 m².
 
 # La variation demandée sur les plages, ±15 % : sans elle une rangée entière a
 # la même profondeur au centimètre, ce qui ne ressemble à rien de bâti. Tirée de
@@ -200,6 +201,11 @@ COUR_OUVERTURE = 0.40
 # une cour, c'est une fente que le bâtiment referme presque.
 COUR_LARGEUR_MIN = 3.0
 COUR_DOIGT = 0.50
+# 🏛️ Mais une VRAIE cour, enfermée sur trois côtés, reste une cour : le bout
+# d'un îlot étroit porte un bâtiment en U, et le comblement le rendait plein
+# d'une rue à l'autre (93 % de la parcelle sous une variante à 55 %).
+COUR_VRAIE_LARGEUR = 6.0
+COUR_VRAIE_AIRE = 80.0
 
 # 🏚️ L'AILE ARRIÈRE — « éviter une cour trop régulière » (2026-08-17). Sans
 # elle, toutes les empreintes s'arrêtent sur la même ligne et le cœur d'îlot
@@ -244,6 +250,12 @@ AILE_ADOS = 0.15
 # Le tirage garde une exception sur six, et les deux nombres s'impriment.
 ANGLE_POINTE_DEG = 30.0
 POINTE_PART = 0.17
+# ✂️ Seule LA POINTE repart au jardin, pas toute la parcelle (2026-10-21) : la
+# coupe tombe là où le coin atteint POINTE_LARGEUR, et le reste se bâtit s'il
+# fait encore POINTE_RESTE_MIN. Parcelle entière, l'îlot 69 laissait 690 m²
+# vides sous une variante, et la ville quinze parcelles de 60 à 350 m².
+POINTE_LARGEUR = 9.0
+POINTE_RESTE_MIN = 120.0
 
 # 🕳️ LA PERCÉE — 2026-08-25, sur `parcelles_ilot_49.png` : « l'îlot compact
 # doit être un entre-deux, cour intérieure accessible, compact mais pas continu
@@ -333,10 +345,25 @@ RECUL_VENELLE_MIN = 1.0
 FACTEURS = (1.0, 0.75, 0.5, 0.35)
 PLANCHER_LATERAL = 1.5
 PLANCHER_FOND = 2.0
+# 🏘️ Le dernier tour de R5 colle la maison à UNE limite latérale, côté tiré de
+# la position (35) : une parcelle de 9 à 10 m n'a pas la place d'un pavillon
+# entre deux reculs, elle a celle d'une maison jumelée. Sans ce tour, 69
+# parcelles de lotissement sur 222 restaient vides (2026-10-21).
+JUMELEE_TISSUS = {"pavillonnaire"}
 
 # En dessous, il n'y a pas de bâtiment : la parcelle repart au jardin. Un cœur
 # d'îlot un peu plus grand vaut mieux qu'une maison qui ment.
 LARGEUR_MIN = 3.0          # la largeur du mur qui reste, pas l'aire
+
+# 🏘️ L'ÉPAISSEUR D'UNE MAISON MITOYENNE, au plus : le diamètre du plus grand
+# cercle qui tient dedans. Sur un îlot de moins de 26 m la parcelle traverse
+# (`04c.TRAVERSANT`), les bandes des deux rues se rejoignent, et le bâtiment
+# sortait plein d'une rue à l'autre : 16 m à l'îlot 69, 25 m sous les variantes.
+# Au-delà, il se coupe en deux maisons DOS À DOS, à mi-chemin des deux rues.
+EPAISSEUR_MAX = 15.0
+
+# Sous cette longueur, une arête sur rue est un coude : sa bande est facultative.
+BANDE_ARETE_MIN = 6.0
 
 # 🔴 X, LE SEUIL DEMANDÉ LE 2026-08-17 : « si le bâtiment est < X m², alors
 # parcelle vide ». À 25 il laissait passer des cabanes — 14 empreintes entre 25
@@ -441,7 +468,8 @@ COMPTE = {"cour": 0, "fond_cede": 0, "creux_garde": 0,
           "pointe_nue": 0, "pointe_gardee": 0, "traversante": 0,
           "morceau_jete": 0, "poche_comblee": 0,
           "encoche": 0, "encoche_bat": 0,
-          "percee": 0, "percee_parc": 0, "percee_coupe": 0}
+          "percee": 0, "percee_parc": 0, "percee_coupe": 0,
+          "dos_a_dos": 0, "pointe_coupee": 0}
 
 
 # ------------------------------------------------------------------ géométrie
@@ -850,10 +878,21 @@ def bande_sur_rue(env, ring, rues, retraits, prof):
             continue
         nx, ny = -dy / L, dx / L            # rentrant : anneau ccw
         d = retraits[i] + prof              # 🔴 depuis la FAÇADE, pas la rue
-        hp.append(((a[0] + nx * d, a[1] + ny * d), (nx, ny)))
+        hp.append(((a[0] + nx * d, a[1] + ny * d), (nx, ny), L))
     if not hp:
         return [env], []
-    devant, arriere = D4C._soustraire_convexe(env, hp)
+    devant, arriere = D4C._soustraire_convexe(env, [h[:2] for h in hp])
+    # 🧱 UN COUDE DE RUE COURT NE DICTE PAS SA BANDE si la façade n'en recule
+    # pas : la bande de 11 m d'un coude de 5 m sort en biais et plante une dent
+    # dans le bâtiment (le 198 de l'îlot 25, désigné le 2026-10-21). Essayé sans
+    # garde-fou, le même geste reculait une façade de 12,7 m : la version sans
+    # coude ne passe que si `creux_sur_rue` reste sous CREUX_TOLERE.
+    longues = [h[:2] for h in hp if h[2] >= BANDE_ARETE_MIN]
+    if longues and len(longues) < len(hp):
+        d2, a2 = D4C._soustraire_convexe(env, longues)
+        if d2 and creux_sur_rue(D4C.reunir_voisins(d2), ring, rues,
+                                retraits) <= CREUX_TOLERE:
+            devant, arriere = d2, a2
     if not devant:
         return [env], []                    # la parcelle est moins profonde que
                                             # la bande : elle est bâtie entière
@@ -910,9 +949,12 @@ def bande_sur_rue(env, ring, rues, retraits, prof):
             #     JAMAIS seul : la cour de fond du cœur ancien fait 22 m² pour
             #     9,5 m de façade, donc 2,3 m de profondeur, et un seuil de
             #     largeur seul en rebâtissait 434 sur 701.
+            vraie = (largeur_min(m) >= COUR_VRAIE_LARGEUR
+                     and abs(D4C.aire_signee(m)) >= COUR_VRAIE_AIRE)
             poche = ((ouv < COUR_OUVERTURE
                       or (largeur_min(m) < COUR_LARGEUR_MIN
                           and ouv < COUR_DOIGT))
+                     and not vraie
                      and D4C.bord_partage(morceaux[0], m) > 1e-6)
             (poches if poche else ouvertes).append(m)
         if poches:
@@ -1429,6 +1471,117 @@ def largeur_min(anneau):
     return best or 0.0
 
 
+def epaisseur(anneau, plafond, pas=0.5):
+    """Le diamètre du plus grand cercle inscrit, sur une grille de `pas`. Rend
+    `largeur_min` sans rastériser quand il est déjà sous `plafond` : c'est un
+    majorant, et c'est le cas de neuf bâtiments sur dix."""
+    w = largeur_min(anneau)
+    if w <= plafond:
+        return w
+    n = len(anneau)
+    xs = [p[0] for p in anneau]
+    ys = [p[1] for p in anneau]
+    best = 0.0
+    x = min(xs) + pas / 2.0
+    while x < max(xs):
+        y = min(ys) + pas / 2.0
+        while y < max(ys):
+            if dans(anneau, (x, y)):
+                best = max(best, min(D4C.dist_pt_seg((x, y), anneau[i],
+                                                     anneau[(i + 1) % n])
+                                     for i in range(n)))
+            y += pas
+        x += pas
+    return 2.0 * best
+
+
+def coupe_de_pointe(ring):
+    """Le demi-plan qui garde la parcelle sans sa pointe la plus aiguë, coupée
+    où le coin fait POINTE_LARGEUR ; None si ce qui reste est trop petit."""
+    an = D4C.nettoyer(ring)
+    n = len(an)
+    best = None
+    for i in range(n):
+        c = an[i]
+        e = []
+        for q in (an[(i - 1) % n], an[(i + 1) % n]):
+            L = math.hypot(q[0] - c[0], q[1] - c[1])
+            e.append(((q[0] - c[0]) / L, (q[1] - c[1]) / L) if L > 1e-9 else None)
+        if None in e:
+            continue
+        cos = max(-1.0, min(1.0, e[0][0] * e[1][0] + e[0][1] * e[1][1]))
+        th = math.acos(cos)
+        if best is None or th < best[0]:
+            best = (th, c, e)
+    if best is None or math.degrees(best[0]) >= ANGLE_POINTE_DEG:
+        return None
+    th, c, (e1, e2) = best
+    dx, dy = e1[0] + e2[0], e1[1] + e2[1]
+    L = math.hypot(dx, dy)
+    if L < 1e-9:
+        return None
+    d = (dx / L, dy / L)
+    # 🔴 La coupe se lit sur la LARGEUR MESURÉE, pas sur l'angle : la moitié
+    # des pointes de Wehrau sont des aiguilles de 1 à 15° laissées par la
+    # découpe, et `POINTE_LARGEUR / tan` y tombait à 250 m — hors de la parcelle.
+    w = (-d[1], d[0])
+    for k in range(1, 161):
+        t = 0.5 * k
+        p0 = (c[0] + d[0] * t, c[1] + d[1] * t)
+        xs = []
+        for i in range(n):
+            a, b = an[i], an[(i + 1) % n]
+            sa = (a[0] - p0[0]) * d[0] + (a[1] - p0[1]) * d[1]
+            sb = (b[0] - p0[0]) * d[0] + (b[1] - p0[1]) * d[1]
+            if (sa > 0) != (sb > 0):
+                x = (a[0] + (b[0] - a[0]) * sa / (sa - sb),
+                     a[1] + (b[1] - a[1]) * sa / (sa - sb))
+                xs.append((x[0] - p0[0]) * w[0] + (x[1] - p0[1]) * w[1])
+        xs.sort()
+        if sum(xs[j + 1] - xs[j] for j in range(0, len(xs) - 1, 2)) >= POINTE_LARGEUR:
+            reste = D4C._soustraire_convexe(an, [(p0, d)])[1]
+            if sum(abs(D4C.aire_signee(x)) for x in reste) < POINTE_RESTE_MIN:
+                return None
+            return (p0, d)
+    return None
+
+
+def dos_a_dos(m, ring, rues, a, nrm):
+    """Le bâtiment trop épais coupé en deux maisons dos à dos. Renvoie la liste
+    des morceaux, `[m]` si rien n'est à couper ou si la coupe ferait un éclat.
+
+    La coupe est la BISSECTRICE de la façade et de la rue d'en face : chaque
+    maison garde sa rue, et le mur mitoyen tombe à égale distance des deux. Une
+    rue de côté (bout d'îlot) est coupée en deux façades, jamais creusée."""
+    if epaisseur(m, EPAISSEUR_MAX) <= EPAISSEUR_MAX:
+        return [m]
+    n = len(ring)
+    face, best = None, 0.0
+    for j in range(n):
+        if not rues[j]:
+            continue
+        p, q = ring[j], ring[(j + 1) % n]
+        L = math.hypot(q[0] - p[0], q[1] - p[1])
+        if L < LONGUEUR_ARETE_MIN:
+            continue
+        nj = (-(q[1] - p[1]) / L, (q[0] - p[0]) / L)
+        if nj[0] * nrm[0] + nj[1] * nrm[1] < -0.5 and L > best:
+            face, best = (p, nj), L
+    if face is None:
+        return [m]
+    aj, nj = face
+    cx, cy = nrm[0] - nj[0], nrm[1] - nj[1]
+    c = math.hypot(cx, cy)
+    k = ((nrm[0] * a[0] + nrm[1] * a[1]) - (nj[0] * aj[0] + nj[1] * aj[1])) / c
+    cn = (cx / c, cy / c)
+    morceaux = [ccw(D4C.nettoyer(x)) for x in D4C.couper(m, (cn[0] * k, cn[1] * k), cn)]
+    if len(morceaux) < 2 or any(
+            len(x) < 3 or abs(D4C.aire_signee(x)) < AIRE_MIN
+            or largeur_min(x) < LARGEUR_MIN for x in morceaux):
+        return [m]
+    return morceaux
+
+
 def forme(anneau):
     """(nombre de coins, rectangularité) de l'empreinte.
 
@@ -1603,7 +1756,8 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None,
 
     Les gestes, dans l'ordre, et chacun répond à une règle :
       R1  chaque limite prend le retrait de son RÔLE — rue, venelle, latéral, fond
-      R2  la plus longue arête sur rue donne la façade, le bâtiment y est plaqué
+      R2  la plus longue arête sur rue donne la façade, le bâtiment y est plaqué ;
+          le détaché essaie les autres rues si rien ne tient
       R3  mitoyen : suit la parcelle · détaché : un rectangle · boîte : la
           direction de l'ÎLOT, pas celle de la parcelle
       R5  si rien ne tient, les retraits se réduisent, puis on renonce
@@ -1636,21 +1790,14 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None,
 
     # R2 — la façade est la plus longue arête sur rue. C'est elle qui donne
     # l'orientation de tout ce qui suit, y compris du faîtage en 3D.
-    meilleur, best_L = None, 0.0
-    for i in range(n):
-        if not rues[i]:
-            continue
-        a, b = ring[i], ring[(i + 1) % n]
-        L = math.hypot(b[0] - a[0], b[1] - a[1])
-        if L > best_L:
-            best_L, meilleur = L, i
-    if meilleur is None or best_L < 1e-9:
+    def longueur(i):
+        p, q = ring[i], ring[(i + 1) % n]
+        return math.hypot(q[0] - p[0], q[1] - p[1])
+
+    cotes = sorted((i for i in range(n) if rues[i] and longueur(i) >= 1e-9),
+                   key=lambda i: (-longueur(i), i))
+    if not cotes:
         return None, "sans façade", rues, [], {}
-    a = ring[meilleur]
-    b = ring[(meilleur + 1) % n]
-    L = math.hypot(b[0] - a[0], b[1] - a[1])
-    u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)      # le long de la rue
-    nrm = (-u[1], u[0])                            # rentrant : anneau ccw
 
     g = graine(ring)
     recul = max(0.0, recul0 + jeu(g, 3, JEU_RECUL))
@@ -1667,12 +1814,16 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None,
     # bout de l'îlot que l'auteur a désigné (« la pointe gauche de l'îlot 59 »).
     # Le tirage laisse passer une pointe sur six, parce que l'immeuble d'angle
     # aigu existe — il doit seulement rester une exception remarquable.
+    sans_pointe = None
     if famille == MITOYEN \
             and D4C.angle_le_plus_aigu(ring) < ANGLE_POINTE_DEG:
         if part(g, 5) >= POINTE_PART:
-            COMPTE["pointe_nue"] += 1
-            return None, "pointe rendue au jardin", rues, [], {}
-        COMPTE["pointe_gardee"] += 1
+            sans_pointe = coupe_de_pointe(ring)
+            if sans_pointe is None:
+                COMPTE["pointe_nue"] += 1
+                return None, "pointe rendue au jardin", rues, [], {}
+        else:
+            COMPTE["pointe_gardee"] += 1
 
     # ☕ L'exception du cœur ancien : cette parcelle-ci garde une cour derrière.
     cour = (st == "coeur_ancien" and aire_parcelle >= COUR_AIRE
@@ -1689,10 +1840,16 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None,
     # ⚠️ Elles sont TROIS depuis le 2026-08-19 (`04c`, table TISSU), et cette
     # ligne compte d'autant plus : trois lanières en peigne tirent leur
     # direction de trois parcelles, donc l'écart se voyait au triple.
-    if famille == BOITE and dir_ilot is not None:
-        cadre = (dir_ilot, (-dir_ilot[1], dir_ilot[0]))
-    else:
-        cadre = (u, nrm)
+    def repere(i):
+        a, b = ring[i], ring[(i + 1) % n]
+        L = longueur(i)
+        u = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)      # le long de la rue
+        nrm = (-u[1], u[0])                            # rentrant : anneau ccw
+        if famille == BOITE and dir_ilot is not None:
+            cadre = (dir_ilot, (-dir_ilot[1], dir_ilot[0]))
+        else:
+            cadre = (u, nrm)
+        return a, u, nrm, cadre
 
     # R8 BIS — LA PARCELLE ÉTROITE CREUSE. D'abord, parce qu'il ne sert à rien
     # de raboter une empreinte qui n'existe pas encore. Une façade de 5 m sur
@@ -1726,17 +1883,27 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None,
     emps = motif = None
     retraits, note = [], {}
     creuse = False
-    for _ in range(4):
-        emps, motif, retraits, note = _poser(ring, rues, venelles, u, nrm,
-                                             cadre, a, st, famille, recul,
-                                             lat0, fond0, facade, prof, g,
-                                             veut_aile, percee)
-        if emps or prof is None or motif != MOTIF_PETIT:
+    # 🏠 LA MAISON DÉTACHÉE ESSAIE CHAQUE RUE, la plus longue d'abord : sur une
+    # parcelle d'angle de lotissement (12 × 28 m), la longue rue ne laisse que
+    # 6 m de fond après ses deux reculs, et la maison renonçait alors que la
+    # petite rue lui en offrait 22. Mitoyen et boîte n'ont qu'un repère.
+    prof_depart = prof
+    for meilleur in (cotes if famille == DETACHE else cotes[:1]):
+        a, u, nrm, cadre = repere(meilleur)
+        prof, creuse = prof_depart, False
+        for _ in range(4):
+            emps, motif, retraits, note = _poser(ring, rues, venelles, u, nrm,
+                                                 cadre, a, st, famille, recul,
+                                                 lat0, fond0, facade, prof, g,
+                                                 veut_aile, percee)
+            if emps or prof is None or motif != MOTIF_PETIT:
+                break
+            if prof >= PROF_ETROITE_MAX * prof0:
+                break
+            prof = min(prof * 1.35, PROF_ETROITE_MAX * prof0)
+            creuse = True
+        if emps:
             break
-        if prof >= PROF_ETROITE_MAX * prof0:
-            break
-        prof = min(prof * 1.35, PROF_ETROITE_MAX * prof0)
-        creuse = True
     if not emps:
         par_parcelle()
         return None, motif, rues, retraits, note
@@ -1771,6 +1938,18 @@ def empreinte(parcelle, st, idx_bord, idx_venelle, dir_ilot=None,
         if rabote:
             COMPTE["rabote"] += 1
     par_parcelle()
+    if sans_pointe is not None:
+        emps = [ccw(D4C.nettoyer(x)) for e in emps
+                for x in D4C._soustraire_convexe(e, [sans_pointe])[1]]
+        emps = [x for x in emps if len(x) >= 3
+                and abs(D4C.aire_signee(x)) >= AIRE_MIN
+                and largeur_min(x) >= LARGEUR_MIN]
+        if not emps:
+            COMPTE["pointe_nue"] += 1
+            return None, "pointe rendue au jardin", rues, retraits, note
+        COMPTE["pointe_coupee"] += 1
+    if note.get("dos"):
+        COMPTE["dos_a_dos"] += 1
     return emps, None, rues, retraits, note
 
 
@@ -1786,18 +1965,28 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
     # moment où la parcelle est DÉFINITIVEMENT refusée : un essai raté puis
     # rattrapé par R5 ne doit pas figurer dans les contrôles comme un rejet.
     pire = None
-    for f in FACTEURS:
+    jumelee = st in JUMELEE_TISSUS and lat0 > 0.0
+    centre = sum((p[0] - a[0]) * u[0] + (p[1] - a[1]) * u[1] for p in ring) / n
+    for f in FACTEURS + ((None,) if jumelee else ()):
+        colle = f is None
+        if colle:
+            f = FACTEURS[-1]
         lat = 0.0 if lat0 <= 0.0 else max(PLANCHER_LATERAL, lat0 * f)
         fond = 0.0 if fond0 <= 0.0 else max(PLANCHER_FOND, fond0 * f)
-        retraits = []
+        retraits, lateraux = [], []
         for i in range(n):
+            p, q = ring[i], ring[(i + 1) % n]
+            dl = math.hypot(q[0] - p[0], q[1] - p[1])
+            cos = abs(((q[0] - p[0]) * u[0] + (q[1] - p[1]) * u[1]) / dl) \
+                if dl > 1e-9 else 0.0
             if rues[i] or venelles[i]:
                 r = max(recul, RECUL_VENELLE_MIN) if venelles[i] else recul
+                # 🏠 La rue DE CÔTÉ d'une maison détachée d'angle se réduit avec
+                # R5 comme un latéral : 4 m de recul sur les deux rues d'une
+                # parcelle de 11 m n'y laissaient pas la largeur d'une maison.
+                if famille == DETACHE and rues[i] and cos < COS_FOND:
+                    r = max(PLANCHER_LATERAL, recul * f)
             else:
-                p, q = ring[i], ring[(i + 1) % n]
-                dl = math.hypot(q[0] - p[0], q[1] - p[1])
-                cos = abs(((q[0] - p[0]) * u[0] + (q[1] - p[1]) * u[1]) / dl) \
-                    if dl > 1e-9 else 0.0
                 if cos >= COS_FOND:
                     # 🔴 UN RETRAIT DE FOND NE PREND JAMAIS PLUS DE 40 % DE CE
                     # QUE LA PARCELLE A DEVANT LUI. Sans ce plafond, les 6 m du
@@ -1808,7 +1997,19 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
                     r = min(fond, PART_FOND_MAX * _portee(ring, i))
                 else:
                     r = lat
+                    t = ((p[0] + q[0]) / 2.0 - a[0]) * u[0] \
+                        + ((p[1] + q[1]) / 2.0 - a[1]) * u[1]
+                    lateraux.append((i, t > centre))
             retraits.append(r)
+        if colle and lateraux:
+            # Le côté tiré de la position, sauf s'il n'a pas de voisin : la
+            # maison d'angle se colle au seul latéral qu'elle a.
+            cote = bool((g >> 11) & 1)
+            if all(c != cote for _, c in lateraux):
+                cote = not cote
+            for i, c in lateraux:
+                if c == cote:
+                    retraits[i] = 0.0
 
         # 🕳️ LES BANDES DE PERCÉE — une par limite mitoyenne ouverte, et elles
         # traversent toute la profondeur du bâtiment : c'est ça qui rend la cour
@@ -1949,6 +2150,10 @@ def _poser(ring, rues, venelles, u, nrm, cadre, a, st, famille,
         # L'aile s'accroche au PLUS GRAND morceau : sur une parcelle traversante,
         # c'est la maison de devant qui a une cour derrière elle ; celle de
         # derrière a la même cour devant, et une aile y serait sur la rue.
+        if famille == MITOYEN:
+            avant_dos = len(garde)
+            garde = [x for m in garde for x in dos_a_dos(m, ring, rues, a, nrm)]
+            note["dos"] = len(garde) > avant_dos
         if veut_aile:
             garde.sort(key=lambda m: -abs(D4C.aire_signee(m)))
             emp2, posee = aile_arriere(garde[0], note["cour"], a, u, nrm,
@@ -2253,6 +2458,8 @@ def controles(resultats, parcelles, refus, logements, emprises):
     print("     depuis chaque limite sur rue, et le reste est cour ou jardin.")
     print("     %-44s %5d" % ("parcelles traversantes, deux bâtiments",
                               COMPTE["traversante"]))
+    print("     %-44s %5d" % ("trop épaisses, coupées dos à dos (> %.0f m)"
+                              % EPAISSEUR_MAX, COMPTE["dos_a_dos"]))
     # 🕳️ Les deux nombres ensemble, sinon ils ne veulent rien dire : six
     # percées sur deux parcelles, c'est un bâtiment haché ; six percées sur
     # sept parcelles, c'est le rythme cherché.
@@ -2300,6 +2507,8 @@ def controles(resultats, parcelles, refus, logements, emprises):
                               % ANGLE_POINTE_DEG, COMPTE["pointe_nue"]))
     print("     %-44s %5d" % ("  … gardées, exception remarquable",
                               COMPTE["pointe_gardee"]))
+    print("     %-44s %5d" % ("  … coupées, le reste bâti",
+                              COMPTE["pointe_coupee"]))
     if COMPTE["morceau_jete"]:
         print("     %-44s %5d" % ("parcelles ayant perdu un de leurs morceaux",
                                   COMPTE["morceau_jete"]))

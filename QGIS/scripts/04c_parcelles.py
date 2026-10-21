@@ -1610,7 +1610,15 @@ def profondeur_utile(ring, a, b, u, nrm, prof, longueurs, sans_coeur=False,
             vals.append((min(prof, d), "pleine")) # la profondeur visée suffit
     if not vals:
         return prof, "pleine"
-    return sorted(vals)[len(vals) // 2]
+    median = sorted(vals)[len(vals) // 2]
+    # 🧱 LA PARCELLE TRAVERSANTE VA JUSQU'À LA RUE D'EN FACE, PARTOUT. Face à une
+    # rue oblique, la médiane laissait le long de celle-ci une bande que les
+    # dents n'atteignaient pas ; `absorber` la recollait entière à UNE voisine,
+    # qui sortait en T sur toute la façade d'en face — la parcelle 216 de
+    # l'îlot 25 et son bâtiment « chelou » (auteur, 2026-10-21).
+    if median[1] == "traversante":
+        return max(v for v in vals if v[1] == "traversante")
+    return median
 
 
 def _dents(morceaux, a, u, facade, prof):
