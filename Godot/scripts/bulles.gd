@@ -6,6 +6,7 @@ extends Control
 const DUREE := 2.6     # s
 const MONTEE := 48.0   # px
 const ECART := 0.7     # s entre deux bulles au même endroit : elles se suivent, pas l'une sur l'autre
+const CEDER := 0.2     # s : sous un compteur, la bulle précédente s'efface devant la nouvelle
 
 const PERTE := Color8(255, 72, 60)
 const CONTOUR := 2     # px de noir autour du texte
@@ -26,6 +27,20 @@ var camera: Camera3D
 ## (couche, fid) -> Vector3 du dessus de l'objet, posé par la maquette.
 var ancre_lieu: Callable
 var _bulles := []   # {noeud, lieu: Vector3 | cible: Control, age}
+var _icones := []   # les icônes en vol : leur tween meurt avec elles
+
+
+## Tout ce qui monte ou vole disparaît, et les compteurs se relisent sans retenue.
+func vider() -> void:
+	for b in _bulles:
+		(b["noeud"] as Node).queue_free()
+	_bulles.clear()
+	for f in _icones:
+		if is_instance_valid(f):
+			f.queue_free()
+	_icones.clear()
+	en_vol.clear()
+	ui.points_en_vol = 0
 
 
 func _init() -> void:
@@ -125,7 +140,11 @@ func _poser(b: Dictionary, texte: String, icone: String) -> void:
 	for autre in _bulles:
 		if autre.get("lieu") == b.get("lieu") and autre.get("cible") == b.get("cible") \
 				and autre.get("ecran") == b.get("ecran"):
-			age = minf(age, float(autre["age"]) - ECART)
+			# Sous un compteur la bulle bouge à peine : deux dépenses s'y superposaient (2026-10-21).
+			if b.has("cible"):
+				autre["age"] = maxf(float(autre["age"]), DUREE - CEDER)
+			else:
+				age = minf(age, float(autre["age"]) - ECART)
 	b["noeud"] = porteur
 	b["age"] = age
 	_bulles.append(b)
@@ -207,6 +226,7 @@ func _gerbe(texture: Texture2D, cle: String, montant: float, de: Callable, vers:
 		f.texture = texture
 		f.visible = false
 		ui.add_child(f)
+		_icones.append(f)
 		# En gerbe côté lieu (angle d'or : jamais deux au même endroit), et des arcs un peu différents.
 		var ecart := Vector2.from_angle(i * 2.4) * (0.0 if i == 0 else 14.0)
 		var bosse := (float(i % 3) - 1.0) * 24.0
@@ -226,6 +246,7 @@ func _gerbe(texture: Texture2D, cle: String, montant: float, de: Callable, vers:
 			f.modulate.a = 1.0 if gain else clampf((1.0 - t) * 5.0, 0.0, 1.0),
 			0.0, 1.0, VOLER_S).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		tw.tween_callback(func() -> void:
+			_icones.erase(f)
 			f.queue_free()
 			if gain:
 				_retenir(cle, -montant / n, true))

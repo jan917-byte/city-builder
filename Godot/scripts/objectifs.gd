@@ -220,23 +220,40 @@ func actualiser(force := false) -> void:
 			break
 	var atteints := _atteints()
 	var restants := _restants().slice(0, MONTRES)
+	# Ceux qui sortent montent au-dessus de la nouvelle première ligne, dans leur ordre :
+	# au même pas que les autres, rien ne se croise (deux lignes superposées, 2026-10-21).
+	var sortants := []
 	for k in _lignes.keys():
 		if not k in atteints and not k in restants:
-			_effacer(_lignes[k], attente)
+			sortants.append(_lignes[k])
 			_lignes.erase(k)
+	sortants.sort_custom(func(a, b) -> bool:
+		return float(a.get_meta("cible", Vector2.ZERO).x) > float(b.get_meta("cible", Vector2.ZERO).x))
+	var haut := (GARDES - atteints.size()) * LIGNE
+	for i in sortants.size():
+		_effacer(sortants[i], haut - (i + 1) * LIGNE, attente)
+	var places := []   # [id, y, alpha, fait]
 	for i in atteints.size():
 		var j := atteints.size() - 1 - i
-		_ranger(atteints[i], (GARDES - 1 - j) * LIGNE, ATTEINT_ALPHA[j], attente, true)
+		places.append([atteints[i], (GARDES - 1 - j) * LIGNE, ATTEINT_ALPHA[j], true])
 	for r in restants.size():
-		_ranger(restants[r], (GARDES + r) * LIGNE, 1.0 if r == 0 else SUIVANT_ALPHA, attente, false)
+		places.append([restants[r], (GARDES + r) * LIGNE, 1.0 if r == 0 else SUIVANT_ALPHA, false])
+	# Une ligne bouge : toutes repartent ensemble, sinon une attente restée d'avant les décale.
+	var relancer := not sortants.is_empty()
+	for p in places:
+		var l: Control = _lignes.get(p[0])
+		relancer = relancer or l == null or l.get_meta("cible", Vector2(-1, -1)) != Vector2(p[1], p[2])
+	for p in places:
+		_ranger(p[0], p[1], p[2], attente, p[3], relancer)
 
 
-func _ranger(id: String, y: float, alpha: float, attente: float, fait: bool) -> void:
+func _ranger(id: String, y: float, alpha: float, attente: float, fait: bool, relancer: bool) -> void:
 	var l: HBoxContainer = _lignes.get(id)
-	if l == null:
+	var neuve := l == null
+	if neuve:
 		l = _ligne(id, fait)
-		# Un nouveau suivant entre par le bas ; un atteint repris d'une sauvegarde, sur place.
-		l.position = Vector2(0, y if fait else y + LIGNE)
+		# 🔄 Paraît sur place : entré par le bas, il passait sous le bord du bloc et s'y coupait (2026-10-21).
+		l.position = Vector2(0, y)
 		_lignes[id] = l
 	(l.get_child(1) as Label).text = _texte(id)
 	# Atteint sans passer par `_reussir` (sauvegarde, recommencer) : le cercle se pose plein.
@@ -247,16 +264,17 @@ func _ranger(id: String, y: float, alpha: float, attente: float, fait: bool) -> 
 	elif not fait:
 		c.remplissage = 0.0
 		l.get_child(2).visible = true
-	# Appelé à chaque actualisation : on ne relance que si la place change, sinon l'attente
+	# Appelé à chaque actualisation : on ne relance que si une place change, sinon l'attente
 	# du cercle plein serait écrasée.
-	if l.get_meta("cible", Vector2(-1, -1)) == Vector2(y, alpha):
+	if not relancer:
 		return
 	l.set_meta("cible", Vector2(y, alpha))
 	if l.has_meta("tw"):
 		(l.get_meta("tw") as Tween).kill()
 	var tw := l.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(l, "position:y", y, MONTER_S).set_delay(attente)
-	tw.tween_property(l, "modulate:a", alpha, MONTER_S).set_delay(attente)
+	# Une ligne neuve paraît sur place une fois les autres rangées : elle n'en croise aucune.
+	tw.tween_property(l, "modulate:a", alpha, MONTER_S).set_delay(attente + (MONTER_S if neuve else 0.0))
 	l.set_meta("tw", tw)
 
 
@@ -300,12 +318,12 @@ func _ligne(id: String, fait: bool) -> HBoxContainer:
 	return l
 
 
-## Le plus ancien des atteints sort par le haut.
-func _effacer(l: Control, attente: float) -> void:
+## Le plus ancien des atteints sort par le haut, au pas des autres lignes.
+func _effacer(l: Control, y: float, attente: float) -> void:
 	if l.has_meta("tw"):
 		(l.get_meta("tw") as Tween).kill()
-	var tw := l.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.tween_property(l, "position:y", l.position.y - LIGNE, MONTER_S).set_delay(attente)
+	var tw := l.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position:y", y, MONTER_S).set_delay(attente)
 	tw.tween_property(l, "modulate:a", 0.0, MONTER_S).set_delay(attente)
 	tw.chain().tween_callback(l.queue_free)
 

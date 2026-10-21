@@ -346,6 +346,8 @@ func _chantiers(mois: float, en_cours: Array = []) -> Dictionary:
 
 
 func reprendre(mois: float, messages: Array = []) -> void:
+	# Une partie reprise ou recommencée : ce qui volait encore comptait pour l'ancienne (−79 vu le 2026-10-21).
+	ui.bulles.vider()
 	journal.clear()
 	for message in messages:
 		if message is String:

@@ -1601,12 +1601,12 @@ func _panneau_bilan() -> void:
 	# de jeu d'un tableau : on retrouve la caisse à la couleur, pas au mot.
 	_titre_section(v, "Données")
 	var adaptation := _ligne_bilan(v, "adaptation", Color8(46, 122, 146),
-		"Adaptation — la part de la ville relevée après la crue.", true, "adaptation")
+		"Adaptation : la part de la ville relevée après la crue.", true, "adaptation")
 	_adaptation_jauge = adaptation["jauge"]
 	_adaptation_valeur = adaptation["valeur"]
 	_adaptation_pictos = adaptation["pictos"]
 	var reduction := _ligne_bilan(v, "reduction", Color8(88, 128, 60),
-		"Réduction — la part des émissions déjà évitées.", true, "reduction")
+		"Réduction : la part des émissions déjà évitées.", true, "reduction")
 	_reduction_jauge = reduction["jauge"]
 	_reduction_valeur = reduction["valeur"]
 	_reduction_pictos = reduction["pictos"]
@@ -1766,7 +1766,7 @@ func _panneau_rail() -> void:
 
 	# 🏙️ L'EN-TÊTE EST AUSSI LE BOUTON DE LA VILLE VIVANTE : accent quand on y est.
 	var accueil := _tuile_rail("ville", "Ville",
-		"Ville — retrouver la matière, les arbres et les voitures.")
+		"Ville : retrouver la matière, les arbres et les voitures.")
 	accueil.toggle_mode = true
 	accueil.button_group = groupe
 	accueil.pressed.connect(func() -> void: _sur_rail(""))
@@ -1776,7 +1776,7 @@ func _panneau_rail() -> void:
 	for t in themes:
 		var id := str(t["id"])
 		var b := _tuile_rail(str(t.get("icone", id)), str(t.get("court", t["nom"])),
-			"%s — %s" % [str(t["nom"]), str(t.get("resume", ""))])
+			"%s : %s" % [str(t["nom"]), str(t.get("resume", ""))])
 		b.toggle_mode = true
 		b.button_group = groupe
 		b.pressed.connect(func() -> void: _sur_rail(id))
@@ -1791,8 +1791,8 @@ func _panneau_rail() -> void:
 	for lieu in RAIL_LIEUX:
 		var cle: String = lieu
 		# 🔴 Flaggable (90).
-		var bulle := "Université — ses études, sa bibliothèque, son institut de recherche." if cle == "universite" \
-			else "%s (îlot %d) — %s" % [String(LIEUX[cle]["nom"]), int(LIEUX[cle]["fid"]), String(LIEUX[cle]["quoi"])]
+		var bulle := "Université : ses études, sa bibliothèque, son institut de recherche." if cle == "universite" \
+			else "%s : %s" % [String(LIEUX[cle]["nom"]), String(LIEUX[cle]["quoi"])]
 		var b := _tuile_rail(cle, String(LIEUX[cle]["court"]), bulle)
 		b.pressed.connect(func() -> void:
 			# 🎓 Appelée depuis Dangers, la vue repasse sur la ville : la fenêtre
@@ -3265,6 +3265,7 @@ func montrer_jeu(oui: bool) -> void:
 	if oui:
 		_placer_detail()
 	retours.actualiser_affichage()
+	_objectifs_suivre()
 	if not oui:
 		for panneau in [_fiche_panneau, _diagnostic_panneau,
 				_chantiers_panneau, _calque_panneau, _campus_panneau, _detail_panneau]:
@@ -3472,6 +3473,7 @@ const MAIRIE_COLONNES := [["budgets", "Budgets"], ["programmes", "Programmes"], 
 ## Le rail : deux portes de même rang (114).
 const RAIL_LIEUX := ["mairie", "universite"]
 const CAMPUS_TAILLE := Vector2(880, 560)
+var _lieu_defile: ScrollContainer
 ## 🎓 Ce que chaque recherche montre, et chaque partie de l'étude (auteur, 2026-10-11 :
 ## « un aperçu du rendu, genre maison sur pilotis »).
 const VIGNETTE_RECHERCHE := {"pilotis": "pilotis", "rendement": "solaire", "pose": "solaire",
@@ -3550,6 +3552,7 @@ func _panneau_lieu() -> void:
 	_campus_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cv.add_child(_campus_intro)
 	var defile := ScrollContainer.new()
+	_lieu_defile = defile
 	defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	defile.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	cv.add_child(defile)
@@ -3774,6 +3777,10 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 		_detail_ouvert = false
 		_placer_detail()
 	_lieu_ouvert = cle
+	# 🏛️ La mairie à la hauteur de ses colonnes (vide aux deux tiers, 2026-10-21) ; le campus
+	# garde la sienne, pour ne pas sauter d'un onglet à l'autre.
+	_campus_panneau.custom_minimum_size = Vector2(CAMPUS_TAILLE.x, 0.0 if cle == "mairie" else CAMPUS_TAILLE.y)
+	_lieu_defile.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if cle == "mairie" 		else ScrollContainer.SCROLL_MODE_AUTO
 	_campus_panneau.visible = true
 	_campus_bloc.visible = cle in CAMPUS
 	_fenetre_titre.text = "Université" if cle in CAMPUS else String(LIEUX[cle]["nom"])
@@ -4175,7 +4182,7 @@ func _maj_lieu() -> void:
 	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
 	# capital, elle en demande un seuil (auteur, 2026-09-30) ; aucune n'est écrite.
 	_lieu_message.text = "" if _lieu_ouvert != "mairie" else \
-		"Les règles — stationnement payant, toit vert obligatoire au neuf — " \
+		"Les règles, comme le stationnement payant ou le toit vert obligatoire au neuf, " \
 		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
 
 
@@ -4543,8 +4550,15 @@ var points_en_vol := 0
 
 
 func actualiser_points(mois: float) -> void:
-	(_barre_valeurs["recherche"] as Label).text = str(Recherche.points(ville, mois) - points_en_vol
-		- int(bulles.en_vol.get("recherche", 0.0)))
+	var reels: int = Recherche.points(ville, mois)
+	(_barre_valeurs["recherche"] as Label).text = str(int(_retenu(reels, reels - points_en_vol
+		- int(bulles.en_vol.get("recherche", 0.0)))))
+
+
+## Ce qui vole ne fait jamais passer un compteur sous zéro, ni sous sa vraie valeur si elle y est
+## (points à −1 quand on dépense pendant le vol de l'étoile, vu le 2026-10-21).
+func _retenu(reel: float, montre: float) -> float:
+	return maxf(montre, minf(reel, 0.0))
 
 
 ## Un compteur du haut, moins ce qui vole encore vers lui ou n'en est pas encore parti (`bulles.gd`).
@@ -4553,10 +4567,12 @@ func actualiser_compteur(cle: String) -> void:
 	if cle == "recherche":
 		actualiser_points(_mois)
 	elif cle == "caisse":
-		(_barre_valeurs["caisse"] as Label).text = _millions(ville.caisse_ke(_mois) - vol)
+		var caisse: float = ville.caisse_ke(_mois)
+		(_barre_valeurs["caisse"] as Label).text = _millions(_retenu(caisse, caisse - vol))
 	elif cle == "capital":
 		var usure := ville.usure_camp_mois(_mois)
-		(_barre_valeurs["capital"] as Label).text = _nb(ville.capital(_mois) - vol, 0) \
+		var capital: float = ville.capital(_mois)
+		(_barre_valeurs["capital"] as Label).text = _nb(_retenu(capital, capital - vol), 0) \
 			+ (" (−%s/mois)" % _nb(usure, 1) if usure >= 0.05 else "")
 
 

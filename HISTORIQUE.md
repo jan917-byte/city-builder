@@ -899,3 +899,6 @@ Essais ouverture, étude, rebâtir, concours 0 échec, venelle ok, sauvegarde 1 
 **2026-10-21 — Partie scriptée de l'ouverture, du camp à l'institut ; 8 défauts sur planche numérotée.**
 Essais ouverture 234, étude 81, concours 45, fonds 14 OK, 0 échec ; défauts surtout d'affichage (objectifs pendant le récit et superposés, dépenses empilées, compteurs négatifs quand beaucoup de gains volent, bouton du provisoire sans prix, tirets longs au texte des règles).
 Constat de jeu : à l'an 4, 4,74 M€ en caisse et 0 point, tout l'institut bloqué ; planche `QGIS/rendus/wehrau_playtest_defauts.png`.
+**2026-10-21 — Sept défauts d'affichage de la partie corrigés ; le bouton du pont provisoire reste tel quel (prix au clic, auteur).**
+Objectifs cachés pendant le récit, nouvelle ligne qui paraît sur place, sorties au pas des autres ; une dépense chasse la précédente sous l'argent ; icônes en vol effacées à la reprise, compteur jamais sous zéro à cause d'un vol ; virgules au lieu des tirets longs, plus de numéro d'îlot dans la bulle de la mairie ; fenêtre de la mairie à la hauteur de ses colonnes.
+Essais ouverture, étude, concours, fonds, vie_camp, rebâtir, livre, gains, objectifs 0 échec ; planche `QGIS/rendus/wehrau_playtest_apres.png`.

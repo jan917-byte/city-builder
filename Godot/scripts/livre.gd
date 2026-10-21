@@ -7,7 +7,7 @@ extends RefCounted
 const CONCEPTS := {
 	"eponge": {"titre": "La ville-éponge", "chapitre": "Tenir",
 		"texte": "Une ville en dur renvoie toute la pluie vers la rivière, et vite : c'est ce qui fait monter la crue. "
-			+ "Une ville-éponge garde l'eau là où elle tombe — dans la terre, sur les toits, dans les prés — "
+			+ "Une ville-éponge garde l'eau là où elle tombe, dans la terre, sur les toits, dans les prés, "
 			+ "et laisse de la place à la rivière quand elle déborde. Chaque mètre carré qui boit retire un peu d'eau à la prochaine crue.",
 		"leviers": ["permeable", "vert", "berge", "pre"],
 		"voir": "sols", "lieux": [["i", 19], ["b", 3], ["i", 31]]},
