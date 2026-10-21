@@ -896,3 +896,6 @@ Godot introuvable dans le conteneur cloud : ni capture ni mesure, couvertes par 
 **2026-10-20 — Toutes les branches GitHub fusionnées dans master ; planche « où on en est » en 8 écrans.**
 Six apportaient du neuf (lumières, Steam et titre de fenêtre, allée 121, son, moyennes de 08_jouer, pont coupé, venelles 122) ; quatre déjà reprises autrement, marquées fusionnées sans changer un fichier. Numéros de décisions et de questions des branches renumérotés sur le registre du 2026-10-12.
 Essais ouverture, étude, rebâtir, concours 0 échec, venelle ok, sauvegarde 1 comme avant ; planche `QGIS/rendus/planche_ou_on_en_est_2026-10-20.png`.
+**2026-10-21 — Partie scriptée de l'ouverture, du camp à l'institut ; 8 défauts sur planche numérotée.**
+Essais ouverture 234, étude 81, concours 45, fonds 14 OK, 0 échec ; défauts surtout d'affichage (objectifs pendant le récit et superposés, dépenses empilées, compteurs négatifs quand beaucoup de gains volent, bouton du provisoire sans prix, tirets longs au texte des règles).
+Constat de jeu : à l'an 4, 4,74 M€ en caisse et 0 point, tout l'institut bloqué ; planche `QGIS/rendus/wehrau_playtest_defauts.png`.
