@@ -6,8 +6,8 @@
 Critère : *après la première réparation livrée, le joueur veut choisir la suite.* Les étapes 2, 4, 5, 7 et 8 sont en pause → [tableau](Prototype/00%20-%20Prototype.md).
 
 ## Prochaine action
-- 🏛️ **Jouer l'ouverture, la mairie d'abord** (117) : pont rouvert → mairie seule → concours (1 point) → étude (80 k€) → université. Quoi regarder et quels défauts chercher → [Premiers pas](Prototype/Premiers%20pas.md) § À jouer et § Ce qui attend le joueur.
-- 📸 Captures de l'ouverture à prendre (non prises le 2026-10-19) : `essai_ouverture.gd -- --ouverture --captures`.
+- 🏛️ **Jouer l'ouverture, la mairie d'abord** (117) : pont rouvert → mairie seule → concours (1 point) → étude (80 k€) → université. Quoi regarder et quels défauts chercher → [Premiers pas](Prototype/Premiers%20pas.md) § À jouer et § Ce qui attend le joueur. 📸 Captures non prises le 2026-10-19 : `essai_ouverture.gd -- --ouverture --captures`.
+- 🪟 **Tes fenêtres en 3D** : `Godot/assets/fenetres/gabarit_fenetres.blend`, une planche par famille, modéliser au milieu (LISEZ-MOI dans le fichier) ; ensuite je les cuis dans le mur. Frontière concours / habillage tranchée → [Premiers pas](Prototype/Premiers%20pas.md) § L'étude de la prochaine crue, fin.
 - 🏚️ **Bâtiments de cour** à un niveau, toit plat sans souche, 12 × 6 m (commités le 2026-10-20) — à voir à l'écran.
 
 ## À juger à l'écran
