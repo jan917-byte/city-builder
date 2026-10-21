@@ -1382,8 +1382,10 @@ static func _svg_dessine(nom: String) -> String:
 const LISERE := 0.04
 
 
-## Le dessin recopié dessous, tout en blanc et au trait épaissi ; le viewBox s'élargit d'autant.
-## Vectoriel, pour rester net en DPITexture. ⚠️ Les `<use>` (ombres en image) ne se recopient pas.
+## La silhouette recopiée dessous en blanc, décalée de `LISERE` dans 16 directions ; le viewBox
+## s'élargit d'autant. 🔄 Elle était au trait épaissi : un groupe étiré (le cadre de `chantiers.svg`,
+## ×16 en largeur) étirait le trait en grand rectangle (auteur, 2026-10-21). Vectoriel, pour rester
+## net en DPITexture. ⚠️ Les `<use>` (ombres en image) ne se recopient pas.
 static func _avec_lisere(svg: String) -> String:
 	var vb := RegEx.create_from_string(r'viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"').search(svg)
 	var ouvre := svg.find(">", svg.find("<svg")) + 1
@@ -1401,13 +1403,25 @@ static func _avec_lisere(svg: String) -> String:
 		.sub(copie, '<$1$2 style=""/>', true)
 	var morceaux := ""
 	var depuis := 0
+	var couleur := RegEx.create_from_string(r'\b(fill|stroke):(?!none)[^;]*')
+	var opacite := RegEx.create_from_string(r'(fill-|stroke-)?opacity:[^;]*;?')
 	for s in RegEx.create_from_string(r'style="([^"]*)"').search_all(copie):
-		var noir := RegEx.create_from_string(r'stroke-width:([\d.]+)').search(s.get_string(1))
-		var large := 2.0 * m + (float(noir.get_string(1)) if noir and s.get_string(1).contains("stroke:black") else 0.0)
-		morceaux += copie.substr(depuis, s.get_start() - depuis) \
-			+ 'style="fill:white;stroke:white;stroke-width:%.2fpx;stroke-linejoin:round;stroke-linecap:round"' % large
+		var style := s.get_string(1)
+		# Invisible dans le dessin, invisible dans le liseré.
+		var cache := RegEx.create_from_string(r'fill-opacity:0(\.0*)?(;|$)').search(style) != null
+		style = opacite.sub(couleur.sub(style, "$1:white", true), "", true)
+		if cache:
+			style = "fill:none;" + style
+		elif not style.contains("fill:"):
+			style = "fill:white;" + style
+		morceaux += copie.substr(depuis, s.get_start() - depuis) + 'style="%s"' % style
 		depuis = s.get_end()
 	copie = morceaux + copie.substr(depuis)
+	var halo := copie
+	for i in 16:
+		var a := TAU * i / 16.0
+		halo += '<g transform="translate(%.3f %.3f)">%s</g>' % [cos(a) * m, sin(a) * m, copie]
+	copie = halo
 	var cadre := 'viewBox="%.2f %.2f %.2f %.2f"' % [x - m, y - m, w + 2.0 * m, h + 2.0 * m]
 	var tete := svg.substr(0, ouvre).replace(vb.get_string(0), cadre)
 	tete = RegEx.create_from_string(r'(<svg[^>]*?) width="[^"]*" height="[^"]*"') \
@@ -1808,6 +1822,8 @@ func _panneau_rail() -> void:
 	v.add_child(_filet_rail())
 	# 🔄 « Début » devient Guide, à l'icône de l'auteur (2026-10-20). 🔴 Flaggable (90).
 	var debut := _tuile_rail("guide", "Guide", "Rouvrir le guide des premiers pas.")
+	# Enfoncée par `_maj_rail` tant que le guide parle.
+	debut.toggle_mode = true
 	_debut = debut
 	debut.pressed.connect(func() -> void:
 		if ouverture != null:
@@ -1899,6 +1915,8 @@ func _maj_rail() -> void:
 		var anneau: Control = b.get_meta("anneau")
 		anneau.visible = appel != "" and id == cle
 		anneau.modulate.a = pouls
+	# ⬛ Le guide parle : sa tuile sur fond sombre, comme une vue ouverte (auteur, 2026-10-21).
+	_debut.set_pressed_no_signal(ouverture != null and ouverture.visible)
 	var cible: Button = tuiles.get(cle) if appel != "" else null
 	_fleche.visible = cible != null and cible.is_visible_in_tree()
 	if _fleche.visible:

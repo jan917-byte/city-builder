@@ -911,3 +911,6 @@ Proposé aussi : retirer les maisons amphibies, une place inondable au Four et a
 **2026-10-21 — Emprises plus réalistes (04d) : lotissements complétés, seule la pointe au jardin, vraies cours gardées, dos-à-dos au-delà de 15 m ; la traversante de 04c touche la rue d'en face.**
 732 → 788 bâtiments, parcelles vides 69 → 33 en pavillonnaire, logements 2 381 → 2 479 ; l'îlot 25 désigné par l'auteur n'a plus de parcelle en T.
 Avant/après : `emprises_avant_apres_ville.png`, `emprises_avant_apres_variantes.png` ; restent les formes du Grenier fermé et les bandes du Four.
+**2026-10-21 — Liseré blanc des icônes dessinées : silhouette décalée dans 16 directions au lieu d'un trait épaissi ; tuile Guide enfoncée tant que le guide parle.**
+Le cadre de `chantiers.svg`, étiré ×16 en largeur, transformait le trait blanc en grand rectangle (désigné par l'auteur).
+Essai ouverture 234 OK, 0 échec ; avant/après dans `wehrau_icones_lisere.png`.
