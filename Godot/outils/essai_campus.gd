@@ -26,6 +26,33 @@ func executer() -> void:
 	o._pont_rouvert()
 	o.mairie_vue = true
 	verifier(jeu.ville.commander_etude(jeu.mois), "L'étude se commande")
+	# 🎓 Pendant l'étude, l'université cliquée dit son avancement et rejoint la colonne (2026-10-22).
+	var univ: Button = tuile("universite")
+	jeu._rafraichir(true)
+	ui._maj_rail()
+	verifier(not univ.visible, "L'étude commandée, l'université n'est pas encore dans la colonne")
+	actualiser(jeu.mois + jeu.ville.ETUDE_MOIS * 0.5)
+	var fid_u := int(ui.LIEUX["universite"]["fid"])
+	jeu.selection.sel_couche = "i"
+	jeu.selection.sel_fid = fid_u
+	jeu._sur_choix("i", fid_u)
+	jeu._rafraichir(true)
+	ui._maj_rail()
+	verifier(ui._fiche_panneau.visible and ui._chantier_bloc.visible
+		and ui._chantier_quoi.text == "Étude de la prochaine crue" and "encore" in ui._chantier_reste.text
+		and ui._chantier_jauge.pose > 0.3 and ui._chantier_jauge.pose < 0.7,
+		"La fiche de l'université montre l'étude à moitié faite : %s, %s, %.2f" % [
+			ui._chantier_quoi.text, ui._chantier_reste.text, ui._chantier_jauge.pose])
+	verifier(univ.visible and not univ.disabled and not ui._campus_panneau.visible
+		and ui._menu_boutons["dangers"].disabled,
+		"Cliquée, l'université rejoint la colonne sans ouvrir sa fenêtre ; Dangers attend l'étude")
+	await capture("campus_un_00_etude_en_cours")
+	await cliquer(univ)
+	verifier(ui._campus_panneau.visible and ui._univ_vide.visible and "en cours" in ui._univ_vide.text,
+		"Sa tuile ouvre la fenêtre, qui dit l'étude en cours : %s" % ui._univ_vide.text)
+	await capture("campus_un_00b_fenetre")
+	ui._fermer_campus()
+	ui._fermer_fiche()
 	# Ce qui éteignait le trait : le guide réduit, un calque ouvert.
 	o.ouvert = false
 	jeu._sur_theme("chantiers")

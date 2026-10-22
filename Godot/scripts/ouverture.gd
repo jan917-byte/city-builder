@@ -61,6 +61,8 @@ var etude_parue := false
 var etude_mois := 0.0
 var carte_etude := 0
 var etude_lue := false
+## 🎓 L'université cliquée sur la carte, l'étude commandée : sa tuile rejoint la colonne (auteur, 2026-10-22).
+var campus_vu := false
 var prochaine_vue := false
 ## 🔄 Plus de visite imposée du campus (auteur, 2026-10-08) : gardés pour les sauvegardes.
 var institut_vu := false
@@ -417,6 +419,8 @@ func boue_a_engager() -> bool:
 ## tuile reste grise tant que le guide ne l'a pas demandée, puis reste ouverte.
 func rail_ouvert(id: String) -> bool:
 	# 🎓 Le campus attend l'étude, même guide fermé : elle ne paraît plus d'elle-même (117).
+	if id == "universite" and campus_vu:
+		return true
 	if id in ["universite", "dangers", "institut", "bibliotheque"] and not (etude_lue or tout_ouvert):
 		return false
 	if suite or termine or prochaine_vue or id == "":
@@ -507,6 +511,9 @@ func universite_en_vue() -> bool:
 func trouve(couche: String, fid: int) -> void:
 	if couche != "i":
 		return
+	if fid in campus() and jeu.ville.etude_commandee() and not campus_vu:
+		campus_vu = true
+		actualiser(true)
 	# L'îlot sinistré cliqué s'ouvre sur sa reconstruction : `Maquette._sur_choix`, guide ou non.
 	if etape == "etude" and carte_etude == 2 and fid in campus():
 		jeu.interface.ouvrir_campus()
@@ -1216,7 +1223,7 @@ func exporter() -> Dictionary:
 		"chantiers_vu": chantiers_vu, "pont_termine": pont_termine,
 		"pont_termine_mois": pont_termine_mois,
 		"etude_parue": etude_parue, "etude_mois": etude_mois, "carte_etude": carte_etude,
-		"etude_lue": etude_lue, "prochaine_vue": prochaine_vue, "plainte": plainte,
+		"etude_lue": etude_lue, "campus_vu": campus_vu, "prochaine_vue": prochaine_vue, "plainte": plainte,
 		"institut_vu": institut_vu, "biblio_vue": biblio_vue,
 		"pages_lues": pages_lues.duplicate(), "degats_vus": degats_vus,
 		"carte_concours": carte_concours, "mairie_vue": mairie_vue,
@@ -1239,6 +1246,7 @@ func reprendre(etat: Dictionary) -> void:
 	etude_mois = float(etat.get("etude_mois", pont_termine_mois))
 	carte_etude = int(etat.get("carte_etude", 2 if etude_parue else 0))
 	etude_lue = bool(etat.get("etude_lue", etude_parue))
+	campus_vu = bool(etat.get("campus_vu", etude_lue))
 	prochaine_vue = bool(etat.get("prochaine_vue", etude_parue))
 	institut_vu = bool(etat.get("institut_vu", prochaine_vue))
 	biblio_vue = bool(etat.get("biblio_vue", prochaine_vue))

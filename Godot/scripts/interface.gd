@@ -2793,6 +2793,9 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	_maj_lieu()
 	if cle == "mairie" and ouverture != null:
 		ouverture.mairie_ouverte()
+	# 🎓 Sa tuile ouverte pendant l'étude, elle peut aussi être la porte de l'étude parue.
+	elif cle in CAMPUS and ouverture != null:
+		ouverture.campus_ouvert()
 
 
 ## 🎓 Le campus trouvé sur la carte : la fenêtre s'ouvre sur l'université et l'étude.
@@ -2806,7 +2809,8 @@ func ouvrir_campus() -> void:
 func ouvrir_lieu_clique(couche: String, fid: int) -> void:
 	var cle := _lieu_du_fid(ilot_du_campus(fid)) if couche == "i" else ""
 	# 🏛️ La mairie aussi, dès qu'elle est ouverte : c'est ainsi qu'on la trouve (auteur, 2026-10-20).
-	var ouvert: bool = (cle in CAMPUS and (ouverture == null or ouverture.rail_visible(cle))) \
+	# 🎓 Pendant l'étude, le clic ouvre la tuile et sa fiche dit l'avancement, sans la fenêtre.
+	var ouvert: bool = (cle in CAMPUS and etude_publiee() and (ouverture == null or ouverture.rail_visible(cle))) \
 		or (cle == "mairie" and (ouverture == null or ouverture.rail_ouvert(cle)))
 	# 🏛️ La mairie s'ouvre au clic, verrou ou non, comme son bouton de fiche (auteur, 2026-10-22).
 	if ouvert and (_verrou() == "" or cle == "mairie"):
@@ -3165,6 +3169,9 @@ func _maj_lieu() -> void:
 		(_campus_bloc.get_child(i) as Button).set_pressed_no_signal(CAMPUS[i] == _lieu_ouvert)
 	_etude_bloc.visible = _lieu_ouvert == "universite" and etude_publiee()
 	_univ_vide.visible = _lieu_ouvert == "universite" and not etude_publiee()
+	# 🔴 Flaggable (90).
+	_univ_vide.text = "Étude de la prochaine crue en cours, rendue dans %s." % _duree(ville.etude_reste_mois(_mois)) \
+		if ville.etude_commandee() else "Aucune étude publiée."
 	_recherche_bloc.visible = _lieu_ouvert == "institut"
 	_biblio_bloc.visible = _lieu_ouvert == "bibliotheque"
 	if _biblio_bloc.visible:
@@ -5274,6 +5281,18 @@ func confirmer_solaire(_cout_ke := 0.0) -> void:
 func _maj_chantier() -> void:
 	var c := ville.chantier(_fiche_couche, _fiche_fid, _mois)
 	_chantier_bloc.visible = bool(c["actif"])
+	_chantier_jauge.colorer(EN_TRAVAUX)
+	# 🎓 L'université pendant ses études (auteur, 2026-10-22) : la même barre, en bleu.
+	if not _chantier_bloc.visible and _fiche_couche == "i" and _lieu_du_fid(_fiche_fid) == "universite":
+		var etudes: Array = retours._etudes_en_cours()
+		if not etudes.is_empty():
+			var e: Dictionary = etudes[0]
+			_chantier_bloc.visible = true
+			_chantier_quoi.text = String(e["etude"])
+			_chantier_reste.text = "encore %s" % _duree(float(e["reste_mois"]))
+			_chantier_jauge.colorer(retours.ETUDE_BLEU)
+			_chantier_jauge.regler(float(e["part"]), float(e["part"]))
+		return
 	if not _chantier_bloc.visible:
 		return
 	_chantier_quoi.text = "Pont provisoire" if str(c["quoi"]) == "pont" \
