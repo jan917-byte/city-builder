@@ -164,7 +164,7 @@ func _construire_panneau() -> void:
 			var b := Button.new()
 			b.text = String(c[1])
 			b.focus_mode = Control.FOCUS_NONE
-			b.add_theme_font_size_override("font_size", 13)
+			b.add_theme_font_size_override("font_size", ui._taille(13))
 			b.pressed.connect(choisir.bind(l[0], c[0]))
 			rangee.add_child(b)
 			_boutons[b] = [l[0], c[0]]

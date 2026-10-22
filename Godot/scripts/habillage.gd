@@ -13,12 +13,21 @@ extends Resource
 @export_range(100, 900, 50) var graisse_titres := 750
 ## Graisse des boutons et des nombres.
 @export_range(100, 900, 50) var graisse_boutons := 700
-## L'encre : titres, valeurs, texte des boutons.
+## Les quatre seules tailles de texte, jamais sous 14 : tout ce qui s'écrit s'y range (auteur, 2026-10-22).
+## Phrases, étiquettes et petits boutons.
+@export_range(8, 40) var taille_texte := 14
+## Noms des cartes, boutons qui engagent.
+@export_range(8, 40) var taille_forte := 16
+## Titres de bloc, prix sur les boutons.
+@export_range(8, 40) var taille_bloc := 18
+## Titres de fenêtre et de récit.
+@export_range(8, 40) var taille_titre := 22
+## L'encre : tout le texte, sans gris (auteur, 2026-10-22).
 @export var encre := Color8(28, 32, 35)
-## Le gris des phrases secondaires.
-@export var gris := Color8(92, 98, 102)
-## Le gris des petites étiquettes, plus sombre parce qu'un mot de 11 px se lit mal.
-@export var gris_etiquettes := Color8(70, 76, 80)
+## Les phrases secondaires : l'encre aussi.
+@export var gris := Color8(28, 32, 35)
+## Les petites étiquettes : l'encre aussi.
+@export var gris_etiquettes := Color8(28, 32, 35)
 
 @export_group("Couleurs du jeu")
 ## Le vert du remplissage des curseurs (le bouton qui coûte est bleu : « Bouton qui engage »).
@@ -35,7 +44,8 @@ extends Resource
 @export_group("Panneaux")
 ## La teinte posée sur la ville floutée. La transparence (A) règle combien la ville se voit :
 ## sous 0,70 le texte se perd sur les toits rouges.
-@export var verre := Color(0.965, 0.968, 0.962, 0.74)
+## 🔄 0,74 → 0,70, et un soupçon de crème (auteur, 2026-10-22).
+@export var verre := Color(0.976, 0.966, 0.940, 0.70)
 ## Le liseré qui fait le bord du verre.
 @export var lisere := Color(1, 1, 1, 0.75)
 ## Épaisseur du liseré, en pixels.
@@ -61,16 +71,14 @@ extends Resource
 @export var lisere_histoire := Color(1, 1, 1, 0.12)
 ## Le texte de l'histoire.
 @export var encre_histoire := Color.WHITE
-## Les phrases secondaires et les petites étiquettes de l'histoire.
-@export var gris_histoire := Color8(190, 197, 201)
+## Les phrases secondaires et les petites étiquettes de l'histoire : blanc aussi, sans gris.
+@export var gris_histoire := Color.WHITE
 ## Les boutons sur le sombre : une plaque à peine plus claire, bordée de blanc.
 @export var fond_bouton_histoire := Color(1, 1, 1, 0.08)
 @export var bord_bouton_histoire := Color(1, 1, 1, 0.30)
 @export var survol_bouton_histoire := Color(1, 1, 1, 0.20)
 
 @export_group("Boutons")
-## Taille du texte des boutons.
-@export_range(8, 30) var taille := 14
 @export var fond := Color(1, 1, 1, 0.55)
 @export var bord := Color(0.109804, 0.12549, 0.137255, 0.16)
 @export var fond_survol := Color(1, 1, 1, 0.85)
@@ -85,7 +93,6 @@ extends Resource
 
 @export_group("Bouton qui engage")
 ## Tout clic qui coûte une monnaie, et lui seul : bleu, avec la pastille du prix (auteur, 2026-10-20).
-@export_range(8, 30) var taille_engage := 15
 @export var fond_engage := Color8(36, 99, 176)
 @export var bord_engage := Color8(24, 70, 130)
 @export var survol_engage := Color8(62, 126, 202)

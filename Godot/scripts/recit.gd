@@ -75,7 +75,7 @@ func batir(maquette) -> void:
 	_fleche = Button.new()
 	_fleche.text = "→"
 	_fleche.tooltip_text = "La suite"
-	_fleche.add_theme_font_size_override("font_size", 20)
+	_fleche.add_theme_font_size_override("font_size", ui._taille(20))
 	_fleche.custom_minimum_size.x = 56
 	_fleche.pressed.connect(suivant)
 	bas.add_child(_fleche)

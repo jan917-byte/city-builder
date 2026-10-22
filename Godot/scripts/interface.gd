@@ -1022,7 +1022,7 @@ func _creer_theme() -> Theme:
 	# ⚠️ Un bouton grisé doit rester lisible : il dit ce qui manque (« Mettre en place »).
 	t.set_color("font_disabled_color", "Button", GRIS)
 	t.set_font("font", "Button", _fonte_grasse)
-	t.set_font_size("font_size", "Button", _fiche.taille if VITRE else 14)
+	t.set_font_size("font_size", "Button", _taille(14))
 	t.set_constant("h_separation", "Button", 8)
 	t.set_constant("icon_max_width", "Button", 30)
 	# 🔄 Plus de trait entre les blocs (auteur, 2026-10-08) : l'espace suffit.
@@ -1040,6 +1040,11 @@ func _etiquette(txt: String, taille: int, coul: Color) -> Label:
 	var l := _label(txt, taille, coul)
 	l.add_theme_font_override("font", _fonte_grasse)
 	return l
+
+
+## 🔴 QUATRE TAILLES, JAMAIS SOUS 14 (auteur, 2026-10-22) : toute taille demandée s'y range.
+func _taille(t: int) -> int:
+	return _fiche.taille_texte if t <= 14 else _fiche.taille_forte if t <= 16 		else _fiche.taille_bloc if t <= 18 else _fiche.taille_titre
 
 
 ## L'autre moitié de la règle : ce qui NOMME. Casse normale, gras, plus grand.
@@ -1063,7 +1068,7 @@ func _bandeau(parent: Control, txt: String) -> Label:
 
 ## Le titre d'un bloc DANS la fiche : l'étiquette seule, sans filet.
 func _titre_section(parent: Control, txt: String) -> Label:
-	var l := _etiquette(txt, 12, GRIS_FORT)
+	var l := _etiquette(txt, 18, TEXTE)
 	parent.add_child(l)
 	return l
 
@@ -1631,7 +1636,7 @@ func _jauge_chantier() -> Control:
 func _label(txt: String, taille: int, coul: Color) -> Label:
 	var l := Label.new()
 	l.text = txt
-	l.add_theme_font_size_override("font_size", taille)
+	l.add_theme_font_size_override("font_size", _taille(taille))
 	l.add_theme_color_override("font_color", coul)
 	return l
 
@@ -1699,7 +1704,7 @@ func _panneau_bilan() -> void:
 		"La caisse, et ce que le solaire lui rapporte chaque année.", false)
 	_ville_valeurs["caisse"] = caisse["valeur"]
 	(caisse["valeur"] as Label).add_theme_color_override("font_color", ACCENT)
-	(caisse["valeur"] as Label).add_theme_font_size_override("font_size", 20)
+	(caisse["valeur"] as Label).add_theme_font_size_override("font_size", _taille(20))
 	var recette := _label("", 11, Color8(78, 121, 67))
 	recette.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	(caisse["colonne"] as VBoxContainer).add_child(recette)
@@ -1722,7 +1727,7 @@ func _panneau_bilan() -> void:
 	triche.text = "Essai : +1 000 k€"
 	triche.theme = _theme_ui
 	triche.focus_mode = Control.FOCUS_NONE
-	triche.add_theme_font_size_override("font_size", 11)
+	triche.add_theme_font_size_override("font_size", _taille(11))
 	triche.add_theme_color_override("font_color", GRIS)
 	triche.tooltip_text = "Outil d'essai : remplit la caisse, hors règles du jeu."
 	triche.pressed.connect(func() -> void:
@@ -2292,7 +2297,7 @@ func montrer_theme(id: String, t: Dictionary) -> void:
 		_calque_note.visible = _calque_note.text != ""
 		var teinte: Variant = t.get("note_teinte")
 		_calque_note_carre.visible = _calque_note.visible and teinte is Color
-		_calque_note.add_theme_font_size_override("font_size", 12 if teinte is Color else 11)
+		_calque_note.add_theme_font_size_override("font_size", _taille(12 if teinte is Color else 11))
 		_calque_note.add_theme_color_override("font_color", TEXTE if teinte is Color else GRIS)
 		if teinte is Color:
 			var sb := StyleBoxFlat.new()
@@ -2528,7 +2533,7 @@ func _habiller_onglets_crue() -> void:
 		var coul := ACCENT if ouvert else GRIS
 		for etat in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 			b.add_theme_color_override(etat, coul)
-		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_font_size_override("font_size", _taille(13))
 		(_vues_crue[id] as Control).visible = ouvert
 	var nouveau: bool = ouverture != null and not ouverture.prochaine_vue
 	(_onglets_crue["prochaine"] as Button).text = "Prochaine crue" + (" (nouveau)" if nouveau else "")
@@ -3442,14 +3447,13 @@ func _habiller_principal(b: Button) -> void:
 		presse.bg_color = _fiche.appuye_engage
 		eteint.bg_color = _fiche.eteint_engage
 		encre_eteinte = _fiche.encre_eteint_engage
-		taille = _fiche.taille_engage
 	b.add_theme_stylebox_override("normal", plein)
 	b.add_theme_stylebox_override("hover", survol)
 	b.add_theme_stylebox_override("pressed", presse)
 	b.add_theme_stylebox_override("disabled", eteint)
 	b.add_theme_color_override("font_disabled_color", encre_eteinte)
 	b.add_theme_color_override("icon_disabled_color", encre_eteinte)
-	b.add_theme_font_size_override("font_size", taille)
+	b.add_theme_font_size_override("font_size", _taille(taille))
 	b.add_theme_color_override("font_color", Color.WHITE)
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
 	b.add_theme_color_override("font_pressed_color", Color.WHITE)
@@ -3474,7 +3478,7 @@ func _habiller_gratuit(b: Button, sur_sombre := false) -> void:
 	b.add_theme_stylebox_override("disabled", eteint)
 	b.add_theme_color_override("font_disabled_color", Color(encre if sur_sombre else fond, 0.55))
 	b.add_theme_color_override("icon_disabled_color", Color(encre if sur_sombre else fond, 0.55))
-	b.add_theme_font_size_override("font_size", _fiche.taille_engage if VITRE else 15)
+	b.add_theme_font_size_override("font_size", _taille(15))
 	for etat in ["font_color", "font_hover_color", "font_pressed_color", "icon_normal_color",
 			"icon_hover_color", "icon_pressed_color"]:
 		b.add_theme_color_override(etat, encre)
@@ -3761,7 +3765,7 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 		var vue: Control = _vignette(vignette) if vignette != "" else Control.new()
 		vue.custom_minimum_size = Vector2(VIGNETTE_RECHERCHE_PX, VIGNETTE_RECHERCHE_PX)
 		tete.add_child(vue)
-	var l_nom := _titre(nom, 14, TEXTE)
+	var l_nom := _titre(nom, 16, TEXTE)
 	l_nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l_nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l_nom.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -3922,7 +3926,7 @@ func _panneau_projets() -> void:
 	v.add_theme_constant_override("separation", 10)
 	p.add_child(v)
 	_projets_titre = _bandeau(v, "")
-	_projets_titre.add_theme_font_size_override("font_size", 24)
+	_projets_titre.add_theme_font_size_override("font_size", _taille(24))
 	_projets_intro = _label("", 15, GRIS)
 	v.add_child(_projets_intro)
 	var h := HBoxContainer.new()
@@ -3961,7 +3965,7 @@ func _panneau_projets() -> void:
 		cv.add_child(lignes)
 		var b := Button.new()
 		_habiller_gratuit(b)
-		b.add_theme_font_size_override("font_size", 17)
+		b.add_theme_font_size_override("font_size", _taille(17))
 		b.focus_mode = Control.FOCUS_NONE
 		# Le choix se pose comme un bouton de la fiche, puis l'écran se retire : il ne paie pas.
 		# La façon change avec l'îlot : `_maj_projets` réécrit la valeur de la décision.
@@ -5046,7 +5050,7 @@ func _controles_temps() -> void:
 			b.text = choix[0]
 		b.tooltip_text = choix[2]
 		b.custom_minimum_size = Vector2(cote + 2.0, cote)
-		b.add_theme_font_size_override("font_size", 13 if VITRE else 15)
+		b.add_theme_font_size_override("font_size", _taille(13 if VITRE else 15))
 		var v: float = choix[1]
 		# ⏯️ La vitesse en cours est ENFONCÉE, pas grisée : grisée, elle se lisait
 		# comme un bouton en panne, et on ne savait plus si le temps courait.
