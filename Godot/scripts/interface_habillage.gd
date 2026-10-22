@@ -624,11 +624,16 @@ const TEINTES := {
 }
 
 
+## 💶 Les monnaies : trait BLANC partout, aplat plein et une petite ombre (auteur, 2026-10-22).
+const MONNAIES := ["caisse", "capital", "recherche"]
+const OMBRE := "<g transform='translate(0.7 1.1)' opacity='0.4'>%s</g>"
+
+
 ## Le remplissage pastel, opaque : il se lit pareil sur le crème et sur la tuile enfoncée.
 static func aplat(nom: String) -> String:
 	if not TEINTES.has(nom):
 		return ""
-	var pastel: Color = (TEINTES[nom] as Color).lerp(Color.WHITE, 0.45)
+	var pastel: Color = (TEINTES[nom] as Color).lerp(Color.WHITE, 0.0 if nom in MONNAIES else 0.45)
 	return "<g fill='#%s' stroke='none'>%s</g>" % [pastel.to_html(false), str(DESSINS[nom]).replace("@", "none")]
 
 
@@ -708,9 +713,14 @@ func _icone(nom: String, taille := 25, coul := TEXTE, angle := 0) -> Texture2D:
 	if dessin != null:
 		_icones[cle] = dessin
 		return dessin
+	if nom in MONNAIES:
+		coul = Color.WHITE
 	# 🎨 `@` = LA COULEUR DU TRAIT : c'est ce qui permet un aplat (`fill='@'`)
 	# dans une table qui est sinon tout en traits.
 	var corps: String = aplat(nom) + str(DESSINS.get(nom, DESSINS["diagnostic"])) 		.replace("@", "#" + coul.to_html(false))
+	if nom in MONNAIES:
+		# La silhouette en noir, décalée dessous.
+		corps = OMBRE % ("<g fill='#000' stroke='#000'>%s</g>" % str(DESSINS[nom]).replace("@", "#000")) + corps
 	if angle != 0:
 		corps = "<g transform='rotate(%d 12 12)'>%s</g>" % [angle, corps]
 	return _rendre_icone(cle, corps, taille, coul)
@@ -749,7 +759,15 @@ static func image_dessinee(nom: String, taille: int) -> Image:
 
 static func _svg_dessine(nom: String) -> String:
 	var chemin := "res://icones/%s.svg" % nom
-	return _avec_lisere(_sans_gabarit(FileAccess.get_file_as_string(chemin))) if FileAccess.file_exists(chemin) else ""
+	if not FileAccess.file_exists(chemin):
+		return ""
+	var svg := _sans_gabarit(FileAccess.get_file_as_string(chemin))
+	if nom in MONNAIES:
+		svg = svg.replace("stroke:black", "stroke:white").replace("fill:black", "fill:white")
+		# ⚠️ Un tracé sans style est rempli de noir par défaut : l'anneau de `caisse.svg`.
+		svg = RegEx.create_from_string(r'<(path|rect|circle)\b((?:(?!style=)[^>])*?)/>') \
+			.sub(svg, '<$1$2 style="fill:white;"/>', true)
+	return _avec_lisere(svg, nom in MONNAIES)
 
 
 ## ⬜ LE LISERÉ BLANC autour des dessins de l'auteur, partout (auteur, 2026-10-20) : 4 % du dessin.
@@ -760,7 +778,7 @@ const LISERE := 0.04
 ## s'élargit d'autant. 🔄 Elle était au trait épaissi : un groupe étiré (le cadre de `chantiers.svg`,
 ## ×16 en largeur) étirait le trait en grand rectangle (auteur, 2026-10-21). Vectoriel, pour rester
 ## net en DPITexture. ⚠️ Les `<use>` (ombres en image) ne se recopient pas.
-static func _avec_lisere(svg: String) -> String:
+static func _avec_lisere(svg: String, ombre := false) -> String:
 	var vb := RegEx.create_from_string(r'viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"').search(svg)
 	var ouvre := svg.find(">", svg.find("<svg")) + 1
 	var fin := svg.find("<defs")
@@ -795,6 +813,9 @@ static func _avec_lisere(svg: String) -> String:
 	for i in 16:
 		var a := TAU * i / 16.0
 		halo += '<g transform="translate(%.3f %.3f)">%s</g>' % [cos(a) * m, sin(a) * m, copie]
+	if ombre:
+		# 💶 Une monnaie : son trait est déjà blanc, la silhouette noire décalée fait l'ombre.
+		halo = '<g transform="translate(%.3f %.3f)" opacity="0.4">%s</g>' % [m * 0.6, m, copie.replace("white", "black")]
 	copie = halo
 	var cadre := 'viewBox="%.2f %.2f %.2f %.2f"' % [x - m, y - m, w + 2.0 * m, h + 2.0 * m]
 	var tete := svg.substr(0, ouvre).replace(vb.get_string(0), cadre)
@@ -909,7 +930,7 @@ func _habiller_tuile_rail(b: Button) -> void:
 	b.add_theme_color_override("font_disabled_color", Color(TEXTE, 0.3))
 	b.add_theme_color_override("icon_disabled_color", Color(TEXTE, 0.3))
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(0, 48)
+	b.custom_minimum_size = Vector2(0, 40)
 
 
 ## Le curseur par défaut de Godot est un trait gris sans remplissage : on y lit

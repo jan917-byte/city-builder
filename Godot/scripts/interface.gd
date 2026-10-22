@@ -162,10 +162,10 @@ class JaugeDanger extends Control:
 ## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
 ## nulle part ailleurs — un panneau qui s'ancre tout seul se décale du rail.
 const RAIL_X := 14.0
-const RAIL_LARGEUR := 68.0
-# Icônes du rail (auteur, 2026-10-20) : agrandies 26 → 34, 30 → 44, puis un peu moins → 31, 40 ; rail 64 → 72 → 68.
-const RAIL_ICONE := 31
-const RAIL_DESSIN := 40
+const RAIL_LARGEUR := 56.0
+# Icônes du rail (auteur) : 26 → 34 → 31 et 30 → 44 → 40 (2026-10-20), puis plus petites → 25, 32 (2026-10-22) ; rail 64 → 72 → 68 → 56.
+const RAIL_ICONE := 25
+const RAIL_DESSIN := 32
 const DETAIL_X := RAIL_X + RAIL_LARGEUR + 10.0
 const DETAIL_LARGEUR := 312.0
 const HAUT := 14.0
@@ -855,7 +855,7 @@ func _ligne_bilan(parent: VBoxContainer, icone: String, teinte: Color,
 func _panneau_rail() -> void:
 	_menu_panneau = PanelContainer.new()
 	_poser_boite(_menu_panneau)
-	(_menu_panneau.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(8)
+	(_menu_panneau.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(6)
 	_menu_panneau.offset_left = RAIL_X
 	_menu_panneau.offset_right = RAIL_X + RAIL_LARGEUR
 	_menu_panneau.offset_top = HAUT
