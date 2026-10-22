@@ -23,6 +23,8 @@ Godot/Ouvrir Wehrau.app/
 # relance de la chaîne. On les régénère, on ne les transporte pas.
 Godot/data/wehrau.json
 Godot/data/wehrau.bin
+# Le jeu exporté (Godot/export_presets.cfg) : refait à chaque export
+build/
 
 # Claude (config locale)
 .claude/settings.local.json

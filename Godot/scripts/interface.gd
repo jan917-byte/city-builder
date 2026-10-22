@@ -1364,7 +1364,7 @@ static func _icone_dessinee(nom: String, taille: int) -> Texture2D:
 
 ## Les icônes dessinées par l'auteur (`res://icones/⟨nom⟩.svg`, gabarit `_gabarit.svg`) :
 ## la plus grande dimension du viewBox tient dans `taille`, le groupe « gabarit » est retiré.
-## ⚠️ Lu en fichier brut : à ajouter au filtre d'export le jour où on exporte.
+## ⚠️ Lu en fichier brut : c'est `addons/icones_export` qui le glisse dans le jeu exporté.
 static func image_dessinee(nom: String, taille: int) -> Image:
 	var svg := _svg_dessine(nom)
 	if svg == "":
