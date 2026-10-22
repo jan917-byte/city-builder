@@ -1215,6 +1215,19 @@ func _campement() -> bool:
 	return _fiche_couche == "i" and _fiche_fid >= 0 and ville.est_campement(_fiche_fid, _mois)
 
 
+## 🌳 Le troisième genre d'îlot, ni champ ni bâti (auteur, 2026-10-22) : pas de « 0 logement » sur un parc.
+const ESPACES_OUVERTS := ["place_minerale", "parc", "jardins_familiaux"]
+
+
+func _espace_ouvert() -> bool:
+	return _fiche_couche == "i" and str(ville.ilots.get(_fiche_fid, {}).get("sous_type", "")) in ESPACES_OUVERTS
+
+
+## La place est un parking : son onglet prend la voiture, le parc et les jardins la feuille.
+func _dessin_ouvert() -> String:
+	return "trafic" if str(ville.ilots[_fiche_fid].get("sous_type", "")) == "place_minerale" else "feuille"
+
+
 ## Ce qui s'affiche, une fois `_dispo` connu. Trois choses : les boutons, la
 ## grille de l'onglet ouvert, et les blocs de réglage rangés sous leur thème.
 func _appliquer_onglets() -> void:
@@ -1230,14 +1243,19 @@ func _appliquer_onglets() -> void:
 		var id: String = ligne[0]
 		var b: Button = _onglet_boutons[id]
 		b.visible = bool(_dispo.get(id, false))
+		var ouvert := id == "bati" and _espace_ouvert()
+		b.tooltip_text = "Espace ouvert" if ouvert else ligne[2]
 		if b.visible:
 			_habiller_onglet(b, id == _onglet_actif,
-				"camp" if id == "campagne" and _campement() else ligne[1])
+				"camp" if id == "campagne" and _campement()
+				else (_dessin_ouvert() if ouvert else ligne[1]))
 	# Un onglet seul n'est pas un choix : la rangée disparaît (la berge).
 	_onglets.visible = _dispo.size() > 1
 	var ouverte := "%s_%s" % [_onglet_actif, _fiche_couche]
 	if ouverte == "campagne_i" and _campement():
 		ouverte = "campement_i"
+	elif ouverte == "bati_i" and _espace_ouvert():
+		ouverte = "ouvert_i"
 	for cle in _onglet_grilles:
 		(_onglet_grilles[cle] as Control).visible = cle == ouverte
 	for bloc in _bloc_onglet:
@@ -2879,6 +2897,9 @@ func _panneau_ilot() -> void:
 	# 🏕️ Le champ devenu campement (auteur, 2026-10-08) : plus de culture, des containers.
 	_grille_onglet(v, "campement_i", 3, _fiche_valeurs, [
 		["containers", "Containers"], ["surface_camp", "Surface"], ["rive_camp", "Rive"]])
+	# 🌳 Parc, place, jardins : ni niveaux ni emplois à montrer, le sol à la place.
+	_grille_onglet(v, "ouvert_i", 2, _fiche_valeurs, [
+		["surface_ouvert", "Surface"], ["sol_ouvert", "Sol perméable"]])
 	_grille_onglet(v, "energie_i", 3, _fiche_valeurs, [
 		["conso", "Conso./an"], ["production", "Solaire/an"], ["retour", "Retour"]])
 	# 🌿 La part PLATE se lit ici et nulle part ailleurs : c'est elle qui décide
@@ -5522,6 +5543,16 @@ func _maj_fiche_contenu() -> void:
 			else nom.substr(0, 1).to_upper() + nom.substr(1)
 		(_fiche_valeurs["surface_champ"] as Label).text = "%s ha" % _nb(hectares, 2)
 		(_fiche_valeurs["rive"] as Label).text = str(o.get("rive", "?"))
+	elif _espace_ouvert():
+		# 🅿️ La place rend des places (elles restent quand le sol devient perméable), le parc de l'ombre. Flaggable (90).
+		if tissu == "place_minerale":
+			_maj_resume("trafic", "%s places de stationnement" % _nb(float(o.get("stationnement", 0)), 0))
+		else:
+			_maj_resume("feuille", "%d %% sous les arbres" % int(roundf(
+				ville.valeur("i", _fiche_fid, "canopee", _mois) * 100.0)))
+		(_fiche_valeurs["surface_ouvert"] as Label).text = "%s ha" % _nb(hectares, 2)
+		(_fiche_valeurs["sol_ouvert"] as Label).text = "%d %%" % int(roundf(
+			(1.0 - ville.valeur("i", _fiche_fid, "impermeabilise", _mois)) * 100.0))
 	else:
 		# 🌊 Les perdus dans la même ligne : sans eux, un îlot en ruine se lisait intact pendant l'urgence.
 		var perdus := 0.0 if ville.reparation_finie("i", _fiche_fid, _mois) 			else float(o.get("logements_sinistres", 0))
