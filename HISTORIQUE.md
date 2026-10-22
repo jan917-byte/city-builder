@@ -923,3 +923,6 @@ Berge et pré en `PLUS_TARD` (cachés, fermés) ; essais concours, étude, rebâ
 **2026-10-21 — Mairie en cartes alignées, fonds « +2 000 k€ » en vert sur son bouton ; études en cours dans la carte des chantiers, en bleu.**
 Institut : un achat ouvre sa suite et un seul sujet de plus (`ENSUITE`) au lieu de cinq ; objectifs de l'ouverture à 2 points, 8 au départ au lieu de 4.
 Essais ouverture, étude, concours, rebâtir, livre, fonds, capital à 0 échec ; progression 3 (aide d'urgence, subventions) et sauvegarde 1 (« Lieu sans nom : b9 ») non touchés.
+**2026-10-22 — Premier export Windows ; le jeu est sur itch.io en privé, pour les potes testeurs.**
+Un seul `DesirePath.exe` (43 Mo zippé), testé décompressé hors du projet ; `addons/icones_export` embarque les icônes que le `.gdignore` faisait sauter.
+Modèles d'exportation 4.7.1 installés dans le vrai AppData par `.bat` lancé via explorer (la première copie s'était bloquée à mi-chemin) ; « Mode auteur » et « Après le pont » laissés visibles, au choix de l'auteur.
