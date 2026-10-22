@@ -176,6 +176,12 @@ func _rebatis() -> int:
 	return n
 
 
+## Ce que dit le guide rouvert au livre quand il n'a rien d'autre à dire. 🔴 Flaggable (90).
+func prochain() -> String:
+	var r := _restants()
+	return _texte(r[0]) if not r.is_empty() else "Tous les objectifs sont atteints."
+
+
 func _texte(id: String) -> String:
 	if id == "logements":
 		return "%s (%d sur %d)" % [OBJECTIFS[id], _rebatis(), _sinistres()]

@@ -82,6 +82,8 @@ var _entete: HBoxContainer
 var objectifs: Objectifs
 ## Rien à dire ni à cliquer : le guide se cache, les objectifs suffisent.
 var _muet := false
+## 📖 Rouvert au livre : un guide muet paraît quand même et dit l'objectif courant (auteur, 2026-10-22).
+var demande := false
 var _dernier_mois := -1.0
 var _reperes: Node3D
 var _reperes_poses := ""
@@ -149,6 +151,7 @@ func batir(maquette) -> void:
 	fermer.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	fermer.pressed.connect(func() -> void:
 		ouvert = false
+		demande = false
 		actualiser(true))
 	entete.add_child(fermer)
 	_texte = _paragraphe("", 14)
@@ -850,9 +853,9 @@ func _choisir_pont(fid: int) -> void:
 ## Ouvert, sans panneau de détail, carte au centre ni fenêtre du campus, et muet pendant
 ## le chantier du pont (auteur, 2026-10-05) comme pendant l'attente de sa carte.
 func paraitre() -> bool:
-	return ouvert and not _muet and not jeu.interface._detail_ouvert and not annonce.visible \
+	return ouvert and (not _muet or demande) and not jeu.interface._detail_ouvert and not annonce.visible \
 		and not jeu.interface._campus_panneau.visible \
-		and (etape not in ["pont_travaux", "pont_livre"] or guide_rebatir())
+		and (etape not in ["pont_travaux", "pont_livre"] or guide_rebatir() or demande)
 
 
 ## 🌉 La première année, le guide propose de rebâtir dès le chemin du pont dégagé.
@@ -986,6 +989,7 @@ func actualiser(force := false) -> void:
 	_annoncer_portes()
 	signature += "/%s/%s/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, degats_vus, mairie_vue,
 		jeu.ville.demande_engagee("amelioration")]
+	signature += "/%s/%s" % [demande, objectifs.prochain()]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -1019,11 +1023,15 @@ func actualiser(force := false) -> void:
 			# le chemin dégagé, les chantiers en cours portent l'avancement.
 			# 🌉 Sauf la première année, le chemin dégagé : on rebâtit pendant le pont.
 			_poser_reperes([])
+			_titre.text = ""
+			_texte.text = ""
 			if guide_rebatir():
-				_texte.text = ""
 				_texte_rebatir()
 		"pont_livre":
+			# Vidé : le livre rouvrirait sinon la phrase de l'étape d'avant.
 			_poser_reperes([])
+			_titre.text = ""
+			_texte.text = ""
 		"mairie":
 			_poser_reperes([])
 			_titre.text = "La mairie"
@@ -1097,10 +1105,14 @@ func actualiser(force := false) -> void:
 				termine = false
 				suite = true
 				actualiser(true))
+	_muet = _titre.text == "" and _texte.text == "" and _actions.get_child_count() == 0
+	if _muet and demande:
+		# 🔴 Flaggable (90).
+		_titre.text = "Prochain objectif"
+		_texte.text = objectifs.prochain()
 	_texte.visible = _texte.text != ""
 	_titre.visible = _titre.text != ""
 	_texte_en_tete(not _titre.visible)
-	_muet = _titre.text == "" and _texte.text == "" and _actions.get_child_count() == 0
 	visible = paraitre()
 	reset_size()
 

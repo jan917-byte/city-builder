@@ -926,6 +926,7 @@ func _panneau_rail() -> void:
 			_detail_ouvert = false
 			_placer_detail()
 			ouverture.ouvert = ouvrir
+			ouverture.demande = ouvrir
 			ouverture.actualiser(true))
 	v.add_child(debut)
 
