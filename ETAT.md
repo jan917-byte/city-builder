@@ -15,8 +15,8 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - 🔴 Prix de l'étude, points de l'institut ; 🏛️ **le concours par îlot** (2026-10-21 : trois lauréats selon le lieu, pilotis et parc bloqués jusqu'à l'institut, `concours_05_four`, 50 k€, 15 jours, chantiers à 9 mois, captures `wehrau_ouverture_concours_04` à `_06` ; 115 à réécrire au vault ; ✏️ les parcellaires des lauréats à entourer sur `wehrau_variantes_parcellaire.png`, `apercu_variantes.py` ; emprises refaites le 2026-10-21, avant/après → [Parcelles](Prototype/Parcelles.md) § 2 decies) → [Premiers pas](Prototype/Premiers%20pas.md) § L'étude, § L'institut vend les actions.
 - ⚙️ Panneau Graphismes : « ombres moyennes » ou « fines » par défaut → `QGIS/rendus/planche_graphismes_*.png` ; rebond allumé par défaut (+0,5 ms) ; flou, ciel et brume au panneau, éteints ; couleurs douces écartées → [Toits et sol](Prototype/Toits%20et%20sol.md) § 12-13.
 - ❄️ Les saisons (printemps, essences, fumée) → [Saisons](Prototype/Saisons.md) ; couleurs, branches et flocons flaggables (90).
-- 🪵 Les dégâts de la crue, densités → [Premiers pas](Prototype/Premiers%20pas.md) § Les dégâts de la crue.
-- 🏢 Densifier : le prix (95 k€ le logement) → [Densifier](Prototype/Densifier.md).
+- 🪵 Les dégâts de la crue, densités → [Premiers pas](Prototype/Premiers%20pas.md) § Les dégâts de la crue ; 🏢 densifier à 95 k€ le logement → [Densifier](Prototype/Densifier.md).
+- ⏱️ **Le temps à 70 s le mois, les constructions plus courtes, la carte des chantiers en %** (2026-10-22) → [Premiers pas](Prototype/Premiers%20pas.md) § La première année, fermée.
 - 🔲 Interface « vitre » et choix de la police parmi six (Rubik en place) → `QGIS/rendus/polices_comparaison.png`.
 - 🟠 La percée des îlots compacts (9 m tous les 60 m, `04d`) → `--ilots 49`.
 - 🚶 **Fusionnés le 2026-10-20** : venelles en trace (122, `QGIS/rendus/wehrau_venelles.png`), pont coupé cliquable au milieu de l'Ilse, phrase de l'autre rive, fenêtre « Desire Path ».

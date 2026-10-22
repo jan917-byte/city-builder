@@ -359,10 +359,11 @@ func executer() -> void:
 	actualiser(20.0)
 	verifier(not jeu.interface._recap_bouton.disabled, "La protection reste accessible au mois 20")
 	await cliquer(jeu.interface._recap_bouton)
-	actualiser(37.99)
+	var livree: float = 20.0 + jeu.ville.BERGE_MOIS[jeu.ville.BERGE_RENATUREE]
+	actualiser(livree - 0.01)
 	verifier(is_equal_approx(jeu.ville.valeur("i", o.MAISONS, "hauteur_eau_annonce", jeu.mois), avant),
 		"La protection attend la livraison")
-	actualiser(38.0)
+	actualiser(livree)
 	verifier(jeu.ville.valeur("i", o.MAISONS, "hauteur_eau_annonce", jeu.mois) < avant,
 		"La berge livrée réduit réellement l'eau attendue")
 	await capture("06_protection")
@@ -370,7 +371,7 @@ func executer() -> void:
 	jeu._sur_reset()
 	verifier(o.etape == "reloger" and jeu.mois == 0.0, "Recommencer remet les premiers pas à zéro")
 	jeu._sur_reprise()
-	verifier(o.etape == "suite" and jeu.mois == 38.0 and jeu.vitesse == 0.0,
+	verifier(o.etape == "suite" and jeu.mois == livree and jeu.vitesse == 0.0,
 		"La reprise retrouve la boucle, le chantier et le mois")
 	await cliquer(bouton("Continuer à mon rythme"))
 	verifier(not o.parle() and o.termine, "Le guide peut se terminer sans arrêter la partie")

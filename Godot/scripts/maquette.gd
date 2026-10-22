@@ -61,9 +61,9 @@ var chemin_sauvegarde := Sauvegarde.CHEMIN
 const RENDUS := "res://../QGIS/rendus/"
 
 # 🔄 2026-08-17 : le temps allait 60× trop vite (une seconde = un mois à ×1),
-# et une pose passait avant qu'on ait relâché la souris. UNE MINUTE POUR UN
-# MOIS, donc ×4 fait un mois en quinze secondes.
-const MOIS_PAR_SECONDE := 1.0 / 60.0
+# et une pose passait avant qu'on ait relâché la souris. 60 → 70 s le mois
+# (auteur, 2026-10-22 : « un tout petit peu plus lentement ») ; ×4 en 17,5 s.
+const MOIS_PAR_SECONDE := 1.0 / 70.0
 
 # La même rampe que `06_etat_zero.py` et `parties.html` : un calque se lit
 # pareil dans les trois outils.

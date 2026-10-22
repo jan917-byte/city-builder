@@ -932,3 +932,6 @@ Essai `essai_mairie_pause` à 0 échec ; `essai_etude` à 24 échecs dès « Ado
 **2026-10-22 — L'habillage de l'interface (thème, polices, icônes, nombres) sort dans `interface_habillage.gd`, dont `interface.gd` hérite.**
 Déplacement à l'identique : 1 173 lignes sorties, 5 654 restent ; les 23 essais donnent les mêmes OK et ÉCHEC qu'avant (étude 22, campagne 7, progression 3, vie du camp 2, sauvegarde 1).
 Le reste ne se range pas en couches : 18 appels remonteraient d'une couche basse vers une haute ; aller plus loin demande des panneaux séparés, c'est une réécriture.
+**2026-10-22 — Le temps passe à 70 s le mois, les constructions raccourcissent, la carte des chantiers tient un chantier par ligne avec sa part faite en %.**
+Durées : îlot 9 → 7,5 mois, pont 7 → 6, provisoire 2 → 1,5, berge 6/18 → 5/15, sol 6 → 5, venelle 3 → 2,5, étage 18 → 15, toit vert et places 2 → 1,5 ; la carte perd son titre, 34 px par chantier au lieu de 55.
+Essais aux mêmes échecs qu'avant (étude 22, campagne 7, progression 3, vie du camp 2, sauvegarde 1, camp hors essais) ; `essai_ouverture` lit la durée de la berge au lieu de 18 mois en dur.

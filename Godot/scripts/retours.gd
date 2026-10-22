@@ -24,7 +24,6 @@ var _survolee: Control
 ## 🚧 Les chantiers ont leur boîte, hors du compteur : deux thèmes (auteur, 2026-09-30).
 var chantiers: PanelContainer
 var chantiers_bloc: VBoxContainer
-var chantiers_titre: Label
 var chantiers_lignes := []   # {bloc, nom, quoi, reste, jauge}, bâties une fois
 var chantiers_deborde: Label
 const CHANTIERS_MAX := 5
@@ -293,26 +292,30 @@ func _ajuster_largeur() -> void:
 
 func _batir_chantiers(boite: PanelContainer) -> void:
 	chantiers_bloc = VBoxContainer.new()
-	chantiers_bloc.add_theme_constant_override("separation", 4)
+	chantiers_bloc.add_theme_constant_override("separation", 7)
 	boite.add_child(chantiers_bloc)
-	chantiers_titre = ui._label("", 14, ui.TEXTE)
-	chantiers_bloc.add_child(chantiers_titre)
+	# 📏 Une ligne par chantier, la jauge fine dessous, sans titre (auteur, 2026-10-22 : trois lignes
+	# chacun prenaient trop de place). Le nom cède devant ce qu'on y fait, qui ne se coupe pas.
 	for i in CHANTIERS_MAX:
 		var bloc := VBoxContainer.new()
-		bloc.add_theme_constant_override("separation", 1)
+		bloc.add_theme_constant_override("separation", 2)
 		chantiers_bloc.add_child(bloc)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 8)
+		bloc.add_child(h)
 		var nom: Label = ui._label("", 12, ui.TEXTE)
 		nom.clip_text = true
 		nom.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		bloc.add_child(nom)
-		var h := HBoxContainer.new()
-		bloc.add_child(h)
+		nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(nom)
 		var quoi: Label = ui._label("", 11, ui.GRIS)
-		quoi.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(quoi)
-		var reste: Label = ui._label("", 11, ui.GRIS)
+		var reste: Label = ui._label("", 12, ui.TEXTE)
+		reste.custom_minimum_size.x = 34
+		reste.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		h.add_child(reste)
 		var jauge: Control = ui._jauge_chantier()
+		jauge.custom_minimum_size.y = 4
 		bloc.add_child(jauge)
 		chantiers_lignes.append({"bloc": bloc, "nom": nom, "quoi": quoi, "reste": reste, "jauge": jauge})
 	chantiers_deborde = ui._label("", 12, ui.GRIS)
@@ -325,7 +328,6 @@ func _maj_chantiers(en_cours: Array) -> void:
 	en_cours = etudes + en_cours
 	_nb_chantiers = en_cours.size()
 	chantiers.visible = compteur.visible and _nb_chantiers > 0
-	chantiers_titre.text = "Chantiers en cours : %d" % en_cours.size()
 	for i in chantiers_lignes.size():
 		var l: Dictionary = chantiers_lignes[i]
 		(l["bloc"] as Control).visible = i < en_cours.size()
@@ -336,7 +338,7 @@ func _maj_chantiers(en_cours: Array) -> void:
 		if c.has("etude"):
 			(l["nom"] as Label).text = "Université"
 			(l["quoi"] as Label).text = str(c["etude"])
-			(l["reste"] as Label).text = "encore %s" % ui._duree(float(c["reste_mois"]))
+			(l["reste"] as Label).text = _pour_cent(float(c["part"]))
 			l["jauge"].regler(float(c["part"]), float(c["part"]))
 			continue
 		var couche := str(c["couche"])
@@ -345,11 +347,17 @@ func _maj_chantiers(en_cours: Array) -> void:
 		(l["quoi"] as Label).text = "Pont provisoire" if genre == "pont" and ui.ville.pont_provisoire(fid, ui._mois) else ui.CHANTIER_MOTS.get(genre, genre.capitalize())
 		var lieu: String = ui.lieux.nom(couche, fid, "Champ" if couche == "i" and ui.ville.est_champ(fid) else "")
 		(l["nom"] as Label).text = "%d rues sous la boue" % int(c["rues"]) if c.has("rues") else lieu
-		(l["reste"] as Label).text = "encore %s" % ui._duree(float(c["reste_mois"]))
+		(l["reste"] as Label).text = _pour_cent(float(c["part"]))
 		l["jauge"].regler(float(c["part"]), float(c["part"]))
 	var deborde := en_cours.size() - chantiers_lignes.size()
 	chantiers_deborde.visible = deborde > 0
 	chantiers_deborde.text = "… et %d de plus" % deborde
+
+
+## ⏱️ La part faite plutôt que le temps qui reste (auteur, 2026-10-22) ; la fiche garde « encore … ».
+## Arrondie vers le bas : jamais 100 % sur un chantier pas livré.
+static func _pour_cent(part: float) -> String:
+	return "%d %%" % int(floor(clampf(part, 0.0, 1.0) * 100.0))
 
 
 ## 🎓 Les études commandées à la mairie passent en tête, en bleu (auteur, 2026-10-21). 🔴 Flaggable (90).

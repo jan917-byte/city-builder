@@ -8,7 +8,7 @@ const Ville := preload("res://scripts/ville.gd")
 const Donnees := preload("res://scripts/donnees.gd")
 const DUREE := 120.0
 const PAS := 1.0 / 30.0
-## 0,05 mois de `avancer` à 60 s le mois (maquette.MOIS_PAR_SECONDE).
+## 3 s entre deux `avancer`, soit 0,04 mois à 70 s le mois (maquette.MOIS_PAR_SECONDE).
 const PULSATION := 3.0
 ## Bord du carrefour : la courbe démarre 4 m avant le nœud (`_courbe_arc`).
 const BORD := 6.0

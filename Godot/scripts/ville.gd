@@ -147,7 +147,7 @@ const SOLAIRE_MOIS_POUR_100 := 1.0
 # qui le tiennent — renaturer les huit berges coûte 8 166 k€ pour ~0,84 m par
 # bief, et dès 0,25 m 4 des 102 bâtiments condamnés sortent de la ruine. Le toit
 # vert est donc le mètre le moins cher, et le seul qui ne se voie pas d'en bas.
-const TOIT_VERT_MOIS_POUR_100 := 2.0        # étanchéité reprise, puis substrat
+const TOIT_VERT_MOIS_POUR_100 := 1.5        # étanchéité reprise, puis substrat ; 2 → 1,5 (auteur, 2026-10-22)
 const TOIT_VERT_BAISSE_M_PAR_HA := 0.25     # de crue en moins, par hectare verdi
 
 # Ce qui change dans le temps ; tout le reste est figé volontairement.
@@ -178,13 +178,13 @@ const CHAMPS_MOBILES := {
 #
 # 🎚️ LES TROIS DURÉES, elles, sont d'ici — ce sont des durées de JEU, pas des
 # chiffres de la carte. Repère : la pose solaire d'un îlot tient en un mois.
-const RECONSTRUCTION_MOIS := 9.0     # un îlot entièrement sinistré ; 12 → 9 (auteur, 2026-10-21 : « réduire un peu »)
+const RECONSTRUCTION_MOIS := 7.5     # un îlot entièrement sinistré ; 12 → 9 → 7,5 (auteur, 2026-10-21 puis 10-22 : « réduire un peu »)
 const RECONSTRUCTION_PART_MIN := 1.0 / 6.0
 const DEBLAIEMENT_MOIS := 2.0 / 30.0 # la vase enlevée d'une rue : deux jours (auteur, 2026-09-26)
-const PONT_MOIS := 7.0               # un franchissement rebâti en dur (87) ; 8 → 7 (auteur, 2026-10-12)
+const PONT_MOIS := 6.0               # un franchissement rebâti en dur (87) ; 8 → 7 → 6 (auteur, 2026-10-12 puis 10-22)
 # 🌉 LE PONT PROVISOIRE (87). 🎚️ Proposition à juger : durée, part du prix en
 # dur, débit d'une voie en alternat (lu par `trafic.gd`).
-const PONT_PROVISOIRE_MOIS := 2.0    # 3 → 2 (auteur, 2026-10-12) : l'attente du premier pont
+const PONT_PROVISOIRE_MOIS := 1.5    # 3 → 2 → 1,5 (auteur, 2026-10-12 puis 10-22) : l'attente du premier pont
 const PONT_PROVISOIRE_PART := 0.25
 const PONT_PROVISOIRE_CAPACITE := 0.5
 # 🏗️ REBÂTIR UN ÎLOT SINISTRÉ (95, auteur 2026-10-02) : chaque façon gagne sur un seul plan.
@@ -268,7 +268,7 @@ const BERGE_APAISEE := 1
 const BERGE_RENATUREE := 2
 const BERGE_NOMS := ["asphalte", "quai apaisé", "berge renaturée"]
 const BERGE_PRIX_KE_M := [0.0, 1.2, 3.4]     # k€ par mètre de rive, cumulés
-const BERGE_MOIS := [0.0, 6.0, 18.0]         # depuis l'asphalte, cumulés aussi
+const BERGE_MOIS := [0.0, 5.0, 15.0]         # depuis l'asphalte, cumulés aussi ; 6, 18 → 5, 15 (auteur, 2026-10-22)
 const BERGE_BAISSE_M_PAR_M := 0.12          # de crue en moins par mètre de rive rendue
 
 
@@ -741,9 +741,9 @@ func vider_rampes() -> void:
 	_rampes = {"i": {}, "r": {}}
 
 
-## Le temps qu'on met à enlever des places : deux mois de peinture et de
-## panneaux. C'est la barre de la fiche qui le lit aussi (`chantier`).
-const STATIONNEMENT_MOIS := 2.0
+## Le temps qu'on met à enlever des places : six semaines de peinture et de
+## panneaux (2 → 1,5, auteur, 2026-10-22). C'est la barre de la fiche qui le lit aussi (`chantier`).
+const STATIONNEMENT_MOIS := 1.5
 
 
 func supprimer_stationnement(fid: int, t: float) -> bool:
@@ -1095,7 +1095,7 @@ func baisse_crue_toits_m(t: float) -> float:
 # toit vert pour commencer.
 const PERMEABLE_SOUS_TYPES := ["place_minerale"]
 const PERMEABLE_PRIX_KE_M2 := 0.14          # par m² rendu perméable
-const PERMEABLE_MOIS := 6.0
+const PERMEABLE_MOIS := 5.0                 # 6 → 5 (auteur, 2026-10-22)
 const PERMEABLE_RESTE := 0.30               # allées et bordures restent dures
 const PERMEABLE_BAISSE_M_PAR_HA := 0.25
 var _permeable := {}       # fid -> {debut, duree, cout_ke}
@@ -1155,7 +1155,7 @@ func baisse_crue_sols_m(t: float) -> float:
 # Clin d'œil au titre (desire path), pas un système : un prix, un délai, la trace
 # devient pavé. 🎚️ LEVEL DESIGN, à juger : aucun effet sur les jauges.
 const VENELLE_PRIX_KE_M2 := 0.12
-const VENELLE_MOIS := 3.0
+const VENELLE_MOIS := 2.5                   # 3 → 2,5 (auteur, 2026-10-22)
 var _venelle := {}         # fid -> {debut, duree, cout_ke}
 
 
@@ -1220,7 +1220,7 @@ func part_sol_permeable(t: float) -> float:
 const DENSE_ETAGES_MAX := 2
 const DENSE_ETAGE_M := 2.7                # le même étage que 07 (ETAGE_M)
 const DENSE_PRIX_KE_LOGEMENT := 95.0      # poser un logement sur de l'existant
-const DENSE_MOIS_PAR_ETAGE := 18.0        # les bâtiments montent l'un après l'autre
+const DENSE_MOIS_PAR_ETAGE := 15.0        # les bâtiments montent l'un après l'autre ; 18 → 15 (auteur, 2026-10-22)
 # 🔴 LE CONTRÔLE NOMMÉ DE LA DETTE 59 — une densification pure ne doit pas
 # s'autofinancer. Loyer net moins entretien laisse 0,25 k€ par logement et par
 # mois : 380 mois pour rembourser une pose, contre 240 de partie.
@@ -2579,8 +2579,8 @@ func duree_reparation_mois(couche: String, fid: int, provisoire := false, facon 
 	return _delai(PONT_PROVISOIRE_MOIS if provisoire else PONT_MOIS)
 
 
-## ⏱️ Au prorata de ce que la crue a touché (auteur, 2026-10-18) : le Lavoir (19 %) en 2,3 mois,
-## un îlot détruit en un an. 🎚️ Plancher : deux mois.
+## ⏱️ Au prorata de ce que la crue a touché (auteur, 2026-10-18) : le Lavoir (19 %) en 1,4 mois,
+## un îlot détruit en 7,5 mois. 🎚️ Plancher : un sixième.
 func _reconstruction_mois(fid: int, facon := "") -> float:
 	var part := clampf(base("i", fid, "part_sinistree"), RECONSTRUCTION_PART_MIN, 1.0)
 	return RECONSTRUCTION_MOIS * part * float(RECONSTRUCTIONS[facon_reparation(fid, facon)]["duree"])
@@ -2994,7 +2994,7 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 			float(r["vert"])))
 	if r.has("arbres"):
 		m = maxf(m, _delai(PLANTATION_MOIS))
-	# 🅿️ La fermeture emporte les places : même chantier de deux mois, donc
+	# 🅿️ La fermeture emporte les places : même chantier, donc
 	# même durée annoncée — mais seulement s'il reste des places à retirer.
 	if r.has("places") or (couche == "r" and r.has("axe")
 			and valeur("r", fid, "stationnement", t) >= 0.5):
