@@ -497,10 +497,7 @@ func universite_en_vue() -> bool:
 func trouve(couche: String, fid: int) -> void:
 	if couche != "i":
 		return
-	# Le guide ne désigne plus l'îlot (auteur, 2026-10-06) : celui qu'on ouvre montre sa reconstruction.
-	if pont_termine and not (suite or termine) and jeu.ville.base("i", fid, "logements_sinistres") > 0.0 \
-			and not jeu.ville.est_repare("i", fid):
-		jeu.interface.ouvrir_onglet("crue")
+	# L'îlot sinistré cliqué s'ouvre sur sa reconstruction : `Maquette._sur_choix`, guide ou non.
 	if etape == "etude" and carte_etude == 2 and fid in campus():
 		jeu.interface.ouvrir_campus()
 

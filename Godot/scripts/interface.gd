@@ -557,7 +557,6 @@ var _etude_bloc: VBoxContainer
 var _campus_panneau: PanelContainer
 ## Les trois onglets, dans l'ordre de `CAMPUS`.
 var _campus_bloc: HBoxContainer
-var _campus_intro: Label
 var _recherche_bloc: HBoxContainer
 var _univ_vide: Label
 ## Le panneau du calque, caché sous la fenêtre et rendu à sa fermeture.
@@ -1156,7 +1155,7 @@ func _grille_onglet(parent: Control, cle: String, colonnes: int,
 
 
 func ouvrir_onglet(id: String) -> void:
-	_onglet_actif = id
+	_onglet_actif = _onglet_reparation() if id == "crue" else id
 	_appliquer_onglets()
 	_clamper_fiche()
 
@@ -1187,7 +1186,7 @@ func _calculer_dispo() -> Dictionary:
 	var fid := _fiche_fid
 	if _fiche_couche == "i":
 		var champ := ville.est_champ(fid)
-		d["crue"] = bool(_bloc_dispo.get(_repare_bloc, false))
+		d["crue"] = champ and bool(_bloc_dispo.get(_repare_bloc, false))
 		d["campagne"] = champ
 		d["bati"] = not champ
 		# ⚡ Onglet énergie caché pour l'instant, solaire compris (auteur, 2026-10-21).
@@ -1205,7 +1204,8 @@ func _calculer_dispo() -> Dictionary:
 	# un îlot bâti muet et oriente vers les champs sans les désigner.
 	# 🌉 Puis un seul : la crue, sur un pont coupé ou une rue qui y mène.
 	var verrou := _verrou()
-	var garde: String = {"reloger": "campagne", "pont": "crue", "rebatir": "crue"}.get(verrou, "")
+	var garde: String = {"reloger": "campagne", "pont": _onglet_reparation(),
+		"rebatir": _onglet_reparation()}.get(verrou, "")
 	# 🚿 Le camp habité garde ses demandes pendant le chantier du pont.
 	if verrou in ["pont", "rebatir"] and _fiche_couche == "i" and ville.camp_pose(fid):
 		garde = "campagne"
@@ -1218,6 +1218,12 @@ func _calculer_dispo() -> Dictionary:
 
 func _campement() -> bool:
 	return _fiche_couche == "i" and _fiche_fid >= 0 and ville.est_campement(_fiche_fid, _mois)
+
+
+## 🏗️ Sur un îlot bâti, réparer vit dans l'onglet du bâti, pas dans un onglet de crue à part :
+## caché derrière « Bâti », on ne trouvait plus comment rebâtir (auteur, 2026-10-22).
+func _onglet_reparation() -> String:
+	return "bati" if _fiche_couche == "i" and _fiche_fid >= 0 and not ville.est_champ(_fiche_fid) else "crue"
 
 
 ## 🌳 Le troisième genre d'îlot, ni champ ni bâti (auteur, 2026-10-22) : pas de « 0 logement » sur un parc.
@@ -1259,10 +1265,9 @@ func _appliquer_onglets() -> void:
 	var ouverte := "%s_%s" % [_onglet_actif, _fiche_couche]
 	if ouverte == "campagne_i" and _campement():
 		ouverte = "campement_i"
-	elif ouverte == "bati_i" and _espace_ouvert():
-		ouverte = "ouvert_i"
 	for cle in _onglet_grilles:
 		(_onglet_grilles[cle] as Control).visible = cle == ouverte
+	_bloc_onglet[_repare_bloc] = _onglet_reparation()
 	for bloc in _bloc_onglet:
 		(bloc as Control).visible = bool(_bloc_dispo.get(bloc, false)) 			and String(_bloc_onglet[bloc]) == _onglet_actif
 
@@ -2895,16 +2900,12 @@ func _panneau_ilot() -> void:
 	# sont déjà, et deux fois le même nombre à deux lignes d'écart se lit comme
 	# deux nombres. La rive est ici parce qu'elle décide qui peut atteindre le
 	# champ une fois les ponts coupés.
-	_grille_onglet(v, "bati_i", 3, _fiche_valeurs, [
-		["surface", "Surface"], ["niveaux", "Niveaux"], ["emplois", "Emplois"]])
+	# 🔄 Plus de grille sur l'îlot bâti ni sur l'espace ouvert (auteur, 2026-10-22, « pour l'instant »).
 	_grille_onglet(v, "campagne_i", 3, _fiche_valeurs, [
 		["culture", "Culture"], ["surface_champ", "Surface"], ["rive", "Rive"]])
 	# 🏕️ Le champ devenu campement (auteur, 2026-10-08) : plus de culture, des containers.
 	_grille_onglet(v, "campement_i", 3, _fiche_valeurs, [
 		["containers", "Containers"], ["surface_camp", "Surface"], ["rive_camp", "Rive"]])
-	# 🌳 Parc, place, jardins : ni niveaux ni emplois à montrer, le sol à la place.
-	_grille_onglet(v, "ouvert_i", 2, _fiche_valeurs, [
-		["surface_ouvert", "Surface"], ["sol_ouvert", "Sol perméable"]])
 	_grille_onglet(v, "energie_i", 3, _fiche_valeurs, [
 		["conso", "Conso./an"], ["production", "Solaire/an"], ["retour", "Retour"]])
 	# 🌿 La part PLATE se lit ici et nulle part ailleurs : c'est elle qui décide
@@ -2920,7 +2921,7 @@ func _panneau_ilot() -> void:
 		["largeur", "Largeur"], ["places", "Places"]])
 	_grille_onglet(v, "vert_r", 2, _rue_valeurs, [
 		["arbres", "Arbres"], ["canopee", "Canopée"]])
-	_grille_onglet(v, "crue_r", 1, _rue_valeurs, [["etat", "Crue"]])
+	# 🔄 Plus de tuile Crue sur une rue (auteur, 2026-10-22) : l'onglet ne garde que ses boutons.
 
 	# 🌊 LA FICHE D'UNE BERGE. 🔄 Le nombre qui portait la décision était les m²
 	# d'asphalte posés au-dessus de l'Ilse ; il est tombé à ~0 le 2026-08-31,
@@ -3613,9 +3614,7 @@ func _panneau_lieu() -> void:
 			b.add_theme_color_override("icon_%s_color" % etat, TEXTE)
 		b.pressed.connect(ouvrir_lieu.bind(cle))
 		_campus_bloc.add_child(b)
-	_campus_intro = _label("", 12, GRIS)
-	_campus_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cv.add_child(_campus_intro)
+	# Pas de phrase sous le titre (auteur, 2026-10-22) : le « quoi » d'un lieu ne vit plus qu'en bulle du rail.
 	var defile := ScrollContainer.new()
 	_lieu_defile = defile
 	defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -3853,7 +3852,6 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	_campus_panneau.visible = true
 	_campus_bloc.visible = cle in CAMPUS
 	_fenetre_titre.text = "Université" if cle in CAMPUS else String(LIEUX[cle]["nom"])
-	_campus_intro.text = String(LIEUX[cle]["quoi"])
 	_brancher_lieu()
 	_maj_lieu()
 	if cle == "mairie" and ouverture != null:
@@ -4226,7 +4224,6 @@ func _maj_lieu() -> void:
 	if _lieu_ouvert == "":
 		return
 	_mairie_bloc.visible = _lieu_ouvert == "mairie"
-	_campus_intro.visible = _page_ouverte == ""
 	for i in CAMPUS.size():
 		(_campus_bloc.get_child(i) as Button).set_pressed_no_signal(CAMPUS[i] == _lieu_ouvert)
 	_etude_bloc.visible = _lieu_ouvert == "universite" and etude_publiee()
@@ -4476,7 +4473,7 @@ func _maj_ligne_fonds(l: Dictionary) -> void:
 			_milliers(Ville.FONDS_RECONSTRUCTION_KE)]
 		b.visible = false
 		return
-	etat.text = "Une seule fois."
+	etat.text = ""
 	b.visible = true
 	b.disabled = not _fonds_demandable()
 	_poser_ligne(b, "Demander", [["caisse", "+%s k€" % _milliers(Ville.FONDS_RECONSTRUCTION_KE)]],
@@ -5553,20 +5550,12 @@ func _maj_fiche_contenu() -> void:
 		else:
 			_maj_resume("feuille", "%d %% sous les arbres" % int(roundf(
 				ville.valeur("i", _fiche_fid, "canopee", _mois) * 100.0)))
-		(_fiche_valeurs["surface_ouvert"] as Label).text = "%s ha" % _nb(hectares, 2)
-		(_fiche_valeurs["sol_ouvert"] as Label).text = "%d %%" % int(roundf(
-			(1.0 - ville.valeur("i", _fiche_fid, "impermeabilise", _mois)) * 100.0))
 	else:
 		# 🌊 Les perdus dans la même ligne : sans eux, un îlot en ruine se lisait intact pendant l'urgence.
 		var perdus := 0.0 if ville.reparation_finie("i", _fiche_fid, _mois) 			else float(o.get("logements_sinistres", 0))
 		_maj_resume("logement", ("aucun logement" if loges < 0.5
 			else ("1 logement" if loges < 1.5 else "%s logements" % _nb(loges, 0)))
 			+ (", %s perdus" % _nb(perdus, 0) if perdus >= 0.5 else ""))
-		(_fiche_valeurs["surface"] as Label).text = "%s ha" % _nb(hectares, 2)
-		(_fiche_valeurs["niveaux"] as Label).text = _nb(
-			float(o.get("hauteur", 0.0)), 0)
-		(_fiche_valeurs["emplois"] as Label).text = _nb(
-			float(o.get("emplois", 0)), 0)
 
 	# 🔴 « MWh/an » COUPE LA TUILE EN DEUX sur trois colonnes : le « par an » est
 	# passé dans l'étiquette, et les milliers prennent leur espace comme
@@ -6015,6 +6004,7 @@ func _poser_bouton_verbe(b: Button, prix: Array, manque: String, sous: String) -
 	(n[0] as Label).add_theme_color_override("font_color", encre)
 	var sous_coul: Color = ALERTE if manque != "" else encre
 	(n[2] as Label).text = sous
+	(n[2] as Label).get_parent().visible = sous != ""
 	(n[2] as Label).add_theme_color_override("font_color", sous_coul)
 	(n[1] as TextureRect).visible = sous != "" and manque == ""
 	(n[1] as TextureRect).texture = _icone("duree", 14, encre)
@@ -6495,9 +6485,6 @@ func _maj_fiche_rue() -> void:
 	if o.is_empty():
 		return
 	_titre_lieu("r")
-	var etat := str(o.get("etat_crue", "intact"))
-	if ville.est_repare("r", _fiche_fid):
-		etat = "repare"
 	_fiche_soustitre.text = ("provisoire" if ville.pont_provisoire(_fiche_fid, _mois) else "") \
 		if _fiche_fid in ville.ponts_coupes() \
 		else str(o.get("hierarchie", "?"))
@@ -6538,27 +6525,6 @@ func _maj_fiche_rue() -> void:
 		_marquer(_trafic_axe, false)
 		_trafic_axe.disabled = true
 	_maj_arbres()
-	# 🌳 Le verger se NOMME sur la fiche : c'est là qu'on comprend pourquoi
-	# la rue est vide. Déblayée, elle le reste tant que le quartier l'est.
-	var boue := float(o.get("part_boue", 0.0))
-	var sous_boue := boue > 0.0 and etat != "repare"
-	(_rue_valeurs["etat"] as Label).text = {
-		"coupe": "franchissement emporté",
-		"fragile": "pile déchaussée",
-		"repare": "verger déblayé" if boue > 0.0 else "remise en service",
-	}.get(etat, "le verger, %d %% sous la boue" % int(roundf(boue * 100.0))
-		if sous_boue else ("%s m d'eau" % _nb(float(o.get("hauteur_eau", 0.0)), 1)
-		if float(o.get("hauteur_eau", 0.0)) > 0.1 else "intacte"))
-	if etat == "repare" and _fiche_fid in ville.ponts_coupes():
-		(_rue_valeurs["etat"] as Label).text = ("liaison provisoire" if ville.pont_provisoire(_fiche_fid, _mois)
-			else "liaison ouverte") if trafic.pont_fonctionnel(_fiche_fid, _mois) \
-			else "pont livré, accès coupé"
-		# Engagé n'est pas livré : la fiche disait « pont livré » pendant le chantier.
-		if not ville.reparation_finie("r", _fiche_fid, _mois):
-			(_rue_valeurs["etat"] as Label).text = "en chantier, chemin dégagé" \
-				if trafic.acces_pont(_fiche_fid, _mois)["obstacles"].is_empty() else "en chantier, boue sur le chemin"
-	var l_etat := _rue_valeurs["etat"] as Label
-	l_etat.text = l_etat.text.substr(0, 1).to_upper() + l_etat.text.substr(1)
 	_maj_reparation(o)
 	_maj_recap()
 
@@ -6657,30 +6623,20 @@ func _maj_reparation(o: Dictionary) -> void:
 	var engage: bool = ville.est_repare(couche, _fiche_fid)
 	var verbe := _verbe_reparation(couche, o)
 	if fini:
-		# 🔄 Ni « Remis en état » ni « ✓ Chantier terminé » (auteur, 2026-10-08) : la tuile Crue le dit.
+		# 🔄 Ni « Remis en état » ni « ✓ Chantier terminé » (auteur, 2026-10-08).
 		_repare_texte.text = ""
 		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
 			_repare_texte.text = FAIT_REBATI[ville.facon_reparation(_fiche_fid)] \
 				if ville.concours_utile(_fiche_fid) else "Nettoyé et remis en état."
-		if pont:
-			_repare_texte.text = ouverture.description_pont(_fiche_fid) if ouverture != null else "Pont reconstruit."
-			# 🔴 Textes flaggables (90).
-			if ville.consolidation_en_cours(_fiche_fid, _mois):
-				_repare_texte_plus("Le pont en dur se bâtit à côté ; le provisoire reste ouvert.")
-			elif ville.pont_provisoire(_fiche_fid, _mois) and not en_dur:
-				_repare_texte_plus("Le fonds de reconstruction, demandé à la mairie, paiera un pont en dur.")
-			elif ville.pont_resistant(_fiche_fid):
-				_repare_texte_plus("Résistant : la prochaine crue passera dessous.")
-			if _consolider_bouton.visible:
-				_posee(_consolider_bouton, "consolider", "Remplacer par un pont en dur"
-					+ (" résistant" if Recherche.acquis(ville, Recherche.PONT, _mois) else ""))
+		# 🔄 Aucune phrase sous un pont ni sous une rue (auteur, 2026-10-22) : ni état, ni fonds, ni « résistant ».
+		if _consolider_bouton.visible:
+			_posee(_consolider_bouton, "consolider", "Remplacer par un pont en dur"
+				+ (" résistant" if Recherche.acquis(ville, Recherche.PONT, _mois) else ""))
 		_repare_bouton.visible = false
 		return
 	if engage:
 		# La barre du haut de fiche dit déjà le temps qui reste.
 		_repare_texte.text = ""
-		if pont and ouverture != null:
-			_repare_texte.text = ouverture.description_pont(_fiche_fid)
 		_repare_bouton.visible = false
 		_repare_etat.visible = true
 		_repare_etat.add_theme_color_override("font_color", GRIS_FORT)
@@ -6693,16 +6649,10 @@ func _maj_reparation(o: Dictionary) -> void:
 	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
 	# récapitulatif, où il porte le TOTAL. Réparer et poser des panneaux séparément
 	# tenaient dans la caisse ; ensemble, non — et seul le total peut le dire.
-	_repare_texte.text = _degat_en_clair(couche, o)
-	if couche == "r" and str(o.get("etat_crue", "")) == "coupe" and ouverture != null:
-		# Le dégât est dans la grille, ce qui manque en caisse dans les conséquences.
-		_repare_texte.text = ouverture.description_pont(_fiche_fid)
+	_repare_texte.text = ""
 	_posee(_repare_bouton, "reparer", verbe
 		+ (", résistant" if pont and Recherche.acquis(ville, Recherche.PONT, _mois) else ""))
 	_repare_bouton.disabled = false
-	if pont and not en_dur:
-		# 🔴 Flaggable (90).
-		_repare_texte_plus("Le pont en dur attend le fonds de reconstruction, demandé à la mairie.")
 	if rebatir:
 		# ⚖️ Aucune n'est conseillée (95) : le prix et les effets se lisent dans les conséquences.
 		# 🔴 Textes flaggables (90).
@@ -6725,10 +6675,6 @@ func _maj_reparation(o: Dictionary) -> void:
 		# 🌉 DEUX CHOIX, jamais les deux (auteur, 2026-09-24) : vite et sur une
 		# voie, ou en dur et plus long. Reposer l'autre remplace le premier.
 		_posee(_repare_provisoire, "reparer", "Pont provisoire", "provisoire")
-
-
-func _repare_texte_plus(phrase: String) -> void:
-	_repare_texte.text = phrase if _repare_texte.text == "" else _repare_texte.text + "\n" + phrase
 
 
 ## 🏗️ Ce que la fiche dit d'un îlot relevé, selon la façon.
@@ -6866,15 +6812,6 @@ func _verbe_reparation(couche: String, o: Dictionary) -> String:
 
 ## Ce que la crue a pris à CET objet, en une phrase : le pont seul ; la rue n'en
 ## a plus (auteur, 2026-10-20).
-func _degat_en_clair(couche: String, o: Dictionary) -> String:
-	if couche == "i":
-		# 🔄 Rien sous les tuiles de l'îlot (auteur, 2026-10-08) : elles disent tout.
-		return ""
-	if str(o.get("etat_crue", "")) == "coupe":
-		return "Le tablier est parti ; la rive droite n'a plus d'accès routier."
-	return ""
-
-
 ## Ce que la crue coûte encore à la ville. Trois nombres, et ils baissent quand
 ## on répare : c'est la seule contrepartie visible d'une reconstruction tant que
 ## le budget ne dépend pas de `logements` (dette nommée du prototype).

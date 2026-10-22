@@ -3357,6 +3357,9 @@ func _sur_choix(couche: String, fid: int) -> void:
 	if fid >= 0:
 		interface.montrer(couche, fid, false)
 		interface.ouvrir_lieu_clique(couche, fid)
+		# 🏗️ Un îlot sinistré s'ouvre toujours sur sa reconstruction (auteur, 2026-10-22).
+		if couche == "i" and ville.base("i", fid, "logements_sinistres") > 0.0 and not ville.est_repare("i", fid):
+			interface.ouvrir_onglet("crue")
 		if ouverture != null:
 			ouverture.trouve(couche, fid)
 	_dernier_peint = -1.0

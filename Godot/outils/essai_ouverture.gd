@@ -423,7 +423,7 @@ func executer() -> void:
 	# Huit mois plus tard : ce que le camp a coûté aux logements.
 	actualiser(8.0)
 	jeu._sur_choix("i", o.MAISONS)
-	verifier(jeu.interface._onglet_actif == "crue" and jeu.interface._repare_texte.text == "",
+	verifier(jeu.interface._onglet_actif == "bati" and jeu.interface._repare_texte.text == "",
 		"La fiche de l'îlot ouvert s'en tient aux tuiles : %s" % jeu.interface._repare_texte.text)
 	await cliquer(jeu.interface._rebatir_boutons["tradition"])
 	await cliquer(jeu.interface._recap_bouton)
@@ -573,10 +573,10 @@ func essayer_ponts(lointain: int) -> void:
 		"La fiche ouverte, le guide revient et dit quoi faire, sans bouton")
 	o._choisir_pont(pont)
 	verifier(not jeu.interface._camp_bloc.visible, "La fiche du pont ne conserve pas les informations du camp")
-	# 🏗️ L'en dur attend le fonds de reconstruction (118) : la fiche le dit, sans bouton.
+	# 🏗️ L'en dur attend le fonds de reconstruction (118), sans bouton ni phrase (auteur, 2026-10-22).
 	verifier(not jeu.interface._pose.has("reparer") and jeu.interface._repare_provisoire.visible
-		and not jeu.interface._repare_bouton.visible and "fonds de reconstruction" in jeu.interface._repare_texte.text,
-		"La fiche du pont propose le provisoire seul, sans choisir ; l'en dur attend le fonds")
+		and not jeu.interface._repare_bouton.visible and jeu.interface._repare_texte.text == "",
+		"La fiche du pont propose le provisoire seul, sans choisir ni phrase : %s" % jeu.interface._repare_texte.text)
 	verifier(jeu.ville.duree_reparation_mois("r", pont, true) < jeu.ville.duree_reparation_mois("r", pont)
 		and jeu.ville.cout_reparation_ke("r", pont, true) < jeu.ville.cout_reparation_ke("r", pont),
 		"Le provisoire est plus court et moins cher que le pont en dur")

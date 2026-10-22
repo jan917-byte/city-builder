@@ -89,4 +89,4 @@ func capturer() -> void:
 
 func _etat_fiche(fid: int) -> String:
 	jeu.interface.montrer("r", fid, false)
-	return str((jeu.interface._rue_valeurs["etat"] as Label).text) + " · trafic " 		+ str((jeu.interface._rue_valeurs["charge"] as Label).text)
+	return "trafic " + jeu.interface._resume_texte.text
