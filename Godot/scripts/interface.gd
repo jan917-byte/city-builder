@@ -351,7 +351,6 @@ var _projets_titre: Label
 var _projets_intro: Label
 var _projets_cartes := {}   # 0..2 -> {bouton, lignes, nom, quoi, decision, facon}
 var _projets_cle := ""
-var _repare_etat: Label   # « Chantier en cours » : remplace le bouton grisé
 ## 🎚️ LES BASCULES POSÉES SUR L'OBJET COURANT, pas encore mises en place. Les
 ## deux curseurs gardent leur propre mémoire, plus bas, parce qu'ils doivent
 ## survivre à une image sans se replacer sous le doigt ; `_reglages()` réunit
@@ -921,7 +920,7 @@ func _panneau_rail() -> void:
 	_debut = debut
 	debut.pressed.connect(func() -> void:
 		if ouverture != null:
-			var ouvrir: bool = not ouverture.visible
+			var ouvrir: bool = not ouverture.parle()
 			theme_demande.emit("")
 			_detail_ouvert = false
 			_placer_detail()
@@ -1011,7 +1010,7 @@ func _maj_rail() -> void:
 		anneau.visible = appel != "" and id == cle
 		anneau.modulate.a = pouls
 	# ⬛ Le guide parle : sa tuile sur fond sombre, comme une vue ouverte (auteur, 2026-10-21).
-	_debut.set_pressed_no_signal(ouverture != null and ouverture.visible)
+	_debut.set_pressed_no_signal(ouverture != null and ouverture.parle())
 	var cible: Button = tuiles.get(cle) if appel != "" else null
 	_fleche.visible = cible != null and cible.is_visible_in_tree()
 	if _fleche.visible:
@@ -1086,7 +1085,7 @@ func _placer_detail() -> void:
 	_chantiers_panneau.visible = _detail_ouvert and genre == "chantiers"
 	_calque_panneau.visible = _detail_ouvert and genre in ["calque", "sols", "agriculture"]
 	if ouverture != null:
-		ouverture.visible = ouverture.paraitre()
+		ouverture.ranger()
 
 
 const PANNEAU_DONNEES_RETIRE := true
@@ -2030,9 +2029,6 @@ func _panneau_ilot() -> void:
 	_consolider_bouton.visible = false
 	_decision(_consolider_bouton, "consolider", true)
 	_repare_bloc.add_child(_consolider_bouton)
-	_repare_etat = _etiquette("", 13, FAIT_TEXTE)
-	_repare_etat.visible = false
-	_repare_bloc.add_child(_repare_etat)
 	# 🔄 Plus de « Voir les accès » ni d'« Examiner » (auteur, 2026-09-26) : le
 	# joueur trouve lui-même la route envasée qui barre son pont.
 
@@ -3324,18 +3320,19 @@ func _maj_bibliotheque() -> void:
 		for id in Livre.ORDRE:
 			var c: Dictionary = Livre.CONCEPTS[id]
 			var ouverte := _page_ok(id)
+			# 🔄 Seules les pages ouvertes (auteur, 2026-10-22) ; une page fermée restait grisée depuis le 2026-10-08.
+			if not ouverte:
+				continue
 			var b := Button.new()
 			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			b.focus_mode = Control.FOCUS_NONE
-			var nouveau: bool = ouverte and ouverture != null and ouverture.page_nouvelle(id)
+			var nouveau: bool = ouverture != null and ouverture.page_nouvelle(id)
 			b.text = ("%s : %s" % [c["chapitre"], c["titre"]] if c["chapitre"] != c["titre"]
 				else str(c["titre"])) + (" (nouveau)" if nouveau else "")
 			_habiller_secondaire(b)
-			b.disabled = not ouverte
 			var k: String = id
 			b.pressed.connect(func() -> void: ouvrir_page(k))
-			# 🔄 Une page fermée garde son nom, grisé, sans ce qui l'ouvrira (auteur, 2026-10-08).
 			_biblio_liste.add_child(b)
 		return
 	var p: Dictionary = Livre.CONCEPTS[_page_ouverte]
@@ -5330,13 +5327,18 @@ func _maj_fiche_rue() -> void:
 	if o.is_empty():
 		return
 	_titre_lieu("r")
-	_fiche_soustitre.text = ("provisoire" if ville.pont_provisoire(_fiche_fid, _mois) else "") \
+	# 🔄 Pendant sa pose, seule la barre du chantier dit « provisoire » (auteur, 2026-10-22).
+	_fiche_soustitre.text = ("provisoire" if ville.pont_provisoire(_fiche_fid, _mois)
+		and ville.reparation_finie("r", _fiche_fid, _mois) else "") \
 		if _fiche_fid in ville.ponts_coupes() \
 		else str(o.get("hierarchie", "?"))
 	# 🚗 CE QU'UNE RUE REND, c'est le trafic qu'elle porte : c'est lui qui decide
 	# si la fermer se paie, et il est le seul chiffre de sa ligne du haut.
 	_maj_resume("trafic", "%d %% de trafic" % int(roundf(
 		ville.trafic_vu(_fiche_fid, _mois) * 100.0)))
+	# 🔄 Un pont fermé n'a rien à dire de son trafic (auteur, 2026-10-22).
+	_resume_ligne.visible = not (_fiche_fid in ville.ponts_coupes()
+		and not ville.route_praticable(_fiche_fid, _mois))
 	(_rue_valeurs["largeur"] as Label).text = "%s m" % _nb(
 		float(o.get("largeur_m", 0.0)), 0)
 	(_rue_valeurs["places"] as Label).text = _nb(
@@ -5454,7 +5456,6 @@ func _maj_reparation(o: Dictionary) -> void:
 	if concours and not rendu and ouverture != null:
 		ouverture.annoncer_concours()
 	_projets_bouton.visible = projets
-	_repare_etat.visible = false
 	# 🌉 L'en dur attend le fonds de reconstruction (118) ; livré, le provisoire peut le recevoir.
 	var en_dur := ville.pont_en_dur_permis(_mois)
 	_repare_bouton.visible = not rebatir and not (pont and not en_dur)
@@ -5480,16 +5481,9 @@ func _maj_reparation(o: Dictionary) -> void:
 		_repare_bouton.visible = false
 		return
 	if engage:
-		# La barre du haut de fiche dit déjà le temps qui reste.
+		# 🔄 Plus de « Chantier en cours » sous la barre du haut de fiche, qui le dit (auteur, 2026-10-22).
 		_repare_texte.text = ""
 		_repare_bouton.visible = false
-		_repare_etat.visible = true
-		_repare_etat.add_theme_color_override("font_color", GRIS_FORT)
-		_repare_etat.text = "Pont provisoire en cours" if pont and ville.pont_provisoire(_fiche_fid, _mois) \
-			else "Chantier en cours"
-		if couche == "i" and float(o.get("logements_sinistres", 0.0)) > 0.0:
-			_repare_etat.text += ", " + String(Ville.RECONSTRUCTIONS[
-				ville.facon_reparation(_fiche_fid)]["nom"]).to_lower()
 		return
 	# 🔄 Le prix ne dit plus non ici depuis le 2026-08-31 : le refus est dans le
 	# récapitulatif, où il porte le TOTAL. Réparer et poser des panneaux séparément

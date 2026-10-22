@@ -78,6 +78,7 @@ var _actions: VBoxContainer
 var _progression: ProgressBar
 var _detail: Label
 var _corps: VBoxContainer
+var _nouvelles: Label
 var _entete: HBoxContainer
 var objectifs: Objectifs
 ## Rien à dire ni à cliquer : le guide se cache, les objectifs suffisent.
@@ -133,9 +134,17 @@ func batir(maquette) -> void:
 	offset_top = ui.HAUT
 	custom_minimum_size.x = ui.DETAIL_LARGEUR
 	minimum_size_changed.connect(func() -> void: size.y = get_combined_minimum_size().y)
+	var dehors := VBoxContainer.new()
+	dehors.add_theme_constant_override("separation", 10)
+	add_child(dehors)
+	# 📣 Le bandeau du haut est passé ici (auteur, 2026-10-22) : un seul endroit parle.
+	_nouvelles = ui._label("", 14, ui.ENCRE_HISTOIRE)
+	_nouvelles.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_nouvelles.visible = false
+	dehors.add_child(_nouvelles)
 	_corps = VBoxContainer.new()
 	_corps.add_theme_constant_override("separation", 10)
-	add_child(_corps)
+	dehors.add_child(_corps)
 	# 🔄 Le « − » sur la ligne du titre (auteur, 2026-09-28) : seul en tête, il
 	# creusait une ligne vide au-dessus.
 	var entete := HBoxContainer.new()
@@ -629,8 +638,7 @@ func concept_ouvert(id: String) -> bool:
 	match id:
 		"eponge":
 			return etude_parue
-		"attenuer":
-			return ville_reparee()
+	# 🔄 « Ne pas aggraver » arrivera bien plus tard (auteur, 2026-10-22) ; elle s'ouvrait à la ville réparée.
 	return false
 
 
@@ -853,9 +861,50 @@ func _choisir_pont(fid: int) -> void:
 ## Ouvert, sans panneau de détail, carte au centre ni fenêtre du campus, et muet pendant
 ## le chantier du pont (auteur, 2026-10-05) comme pendant l'attente de sa carte.
 func paraitre() -> bool:
-	return ouvert and (not _muet or demande) and not jeu.interface._detail_ouvert and not annonce.visible \
-		and not jeu.interface._campus_panneau.visible \
+	return parle() or _nouvelles.visible and _place_libre()
+
+
+## Le guide dit sa consigne ; sans elle, il ne paraît que pour une nouvelle, et seule.
+func parle() -> bool:
+	return ouvert and (not _muet or demande) and _place_libre() \
 		and (etape not in ["pont_travaux", "pont_livre"] or guide_rebatir() or demande)
+
+
+func _place_libre() -> bool:
+	return not jeu.interface._detail_ouvert and not annonce.visible \
+		and not jeu.interface._campus_panneau.visible and jeu.interface.retours.compteur.visible
+
+
+## 📣 Les messages récents de `retours`, au-dessus de la consigne. Celui qui redit la
+## consigne s'efface : « La boue bloque encore… » sortait deux fois (2026-10-22).
+func nouvelles(messages: Array, opacite: float) -> void:
+	if _nouvelles == null:   # `retours` peut appeler avant `batir`
+		return
+	var gardes := []
+	for m in messages:
+		if _texte.text == "" or not _texte.visible or _clause(str(m)) != _clause(_texte.text):
+			gardes.append(m)
+	var texte := "\n".join(gardes)
+	var vu := texte != ""
+	if texte != _nouvelles.text or vu != _nouvelles.visible:
+		_nouvelles.text = texte
+		_nouvelles.visible = vu
+		ranger()
+	modulate.a = opacite if vu and not parle() else 1.0
+	_nouvelles.modulate.a = opacite if parle() else 1.0
+
+
+func _clause(s: String) -> String:
+	for i in s.length():
+		if s[i] in ".:\n":
+			return s.substr(0, i).strip_edges()
+	return s.strip_edges()
+
+
+func ranger() -> void:
+	_corps.visible = parle()
+	visible = paraitre()
+	reset_size()
 
 
 ## 🌉 La première année, le guide propose de rebâtir dès le chemin du pont dégagé.
@@ -879,9 +928,9 @@ func _ilot_engage() -> bool:
 func actualiser(force := false) -> void:
 	if objectifs != null:
 		objectifs.actualiser(force)
-	visible = paraitre()
+	ranger()
 	if _reperes != null:
-		_reperes.visible = visible and jeu.theme in ["", "chantiers"] and not suite and not termine
+		_reperes.visible = parle() and jeu.theme in ["", "chantiers"] and not suite and not termine
 		# Même règle que les pastilles : taille constante à l'écran.
 		for r in _reperes.get_children():
 			(r as Label3D).pixel_size = jeu.pivot.taille * 0.0012
@@ -968,7 +1017,7 @@ func actualiser(force := false) -> void:
 	annonce.visible = carte != ""
 	_remplir_carte()
 	# Recalculé : la carte a pu se fermer pendant cet appel.
-	visible = paraitre()
+	ranger()
 	_progression.visible = etape == "travaux"
 	_detail.visible = _progression.visible
 	if _progression.visible:
@@ -1019,7 +1068,7 @@ func actualiser(force := false) -> void:
 			if jeu.trafic.acces_pont(int(premier["fid"]), jeu.mois)["possible"]:
 				_texte.text = "La boue bloque encore le chemin jusqu'au pont : cliquez sur une rue boueuse pour la déblayer."
 		"pont_travaux":
-			# 🔇 Le guide se tait (auteur, 2026-10-05) : le bandeau dit la boue puis
+			# 🔇 Le guide se tait (auteur, 2026-10-05) : ses nouvelles disent la boue puis
 			# le chemin dégagé, les chantiers en cours portent l'avancement.
 			# 🌉 Sauf la première année, le chemin dégagé : on rebâtit pendant le pont.
 			_poser_reperes([])
@@ -1113,8 +1162,7 @@ func actualiser(force := false) -> void:
 	_texte.visible = _texte.text != ""
 	_titre.visible = _titre.text != ""
 	_texte_en_tete(not _titre.visible)
-	visible = paraitre()
-	reset_size()
+	ranger()
 
 
 ## Sans titre, le texte prend sa place, à côté du « − » : sinon une ligne vide au-dessus.

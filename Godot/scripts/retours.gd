@@ -253,7 +253,14 @@ func actualiser_affichage() -> void:
 	rangee.visible = ui.projets_fid() < 0
 	if not rangee.visible:
 		survol.hide()
-	avis.visible = compteur.visible and (_historique_ouvert or Time.get_ticks_msec() < _expiration)
+	var frais := Time.get_ticks_msec() < _expiration
+	var opacite := clampf(float(_expiration - Time.get_ticks_msec()) / 700.0, 0.0, 1.0)
+	# 📣 Le guide porte les messages (auteur, 2026-10-22) ; le panneau ne garde que le journal,
+	# et le bandeau d'avant, là où le guide n'existe pas (essais, mode auteur).
+	var guide = ui.ouverture
+	if guide != null:
+		guide.nouvelles(_recent if frais and not _historique_ouvert else [], opacite)
+	avis.visible = compteur.visible and (_historique_ouvert or frais and guide == null)
 	# ⚠️ Sous la barre, comme le détail d'un compteur : leurs verres se dessinent au même niveau.
 	if ui._detail_sujet != "" and not _historique_ouvert:
 		avis.visible = false
@@ -267,7 +274,7 @@ func actualiser_affichage() -> void:
 		var inverse := journal.duplicate()
 		inverse.reverse()
 		historique.text = "\n\n".join(inverse) if not inverse.is_empty() else "Aucune décision engagée."
-	avis.modulate.a = 1.0 if _historique_ouvert else clampf(float(_expiration - Time.get_ticks_msec()) / 700.0, 0.0, 1.0)
+	avis.modulate.a = 1.0 if _historique_ouvert else opacite
 
 
 ## ⚠️ Un Label qui passe à la ligne n'a pas de largeur propre : sans celle-ci,

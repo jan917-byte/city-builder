@@ -161,6 +161,7 @@ func executer() -> void:
 	actualiser(t2)
 	verifier(ui._biblio_bloc.visible and not ui._etude_bloc.visible and not o.page_nouvelle("eponge"),
 		"La bibliothèque a son îlot, la ville-éponge y est déjà lue")
+	verifier(ui._biblio_liste.get_child_count() == 1, "La bibliothèque ne montre que la ville-éponge")
 	await capture("livre_06_bibliotheque")
 	ui.ouvrir_page("eponge")
 	actualiser(t2)
@@ -171,20 +172,20 @@ func executer() -> void:
 	verifier(jeu.theme == "sols", "« Voir à Wehrau » ouvre la carte des sols")
 	await capture("livre_08_voir_a_wehrau")
 
-	# --- La ville réparée : un îlot sinistré relevé, la page « Ne pas aggraver » s'ouvre.
+	# --- La ville réparée : « Ne pas aggraver » reste fermée, elle viendra bien plus tard (auteur, 2026-10-22).
 	jeu._sur_theme("")
 	# Comme avant : au Lavoir, aucune maison n'est tombée.
 	var lavoir := 62
 	jeu._sur_commande("i", lavoir, {"reparer": "tradition"})
 	var t3: float = t2 + v.duree_reparation_mois("i", lavoir, false, "tradition") + 0.1
 	actualiser(t3)
-	verifier(o.ville_reparee() and o.concept_ouvert("attenuer") and o.levier_ferme("solaire") != "",
-		"Un îlot relevé : la page s'ouvre, le solaire attend l'institut")
+	verifier(o.ville_reparee() and not o.concept_ouvert("attenuer") and o.levier_ferme("solaire") != "",
+		"Un îlot relevé : la page reste fermée, le solaire attend l'institut")
 	v._recherche["vert"] = t3
 	v._recherche["solaire"] = t3
 	# ⚡ Mis de côté (auteur, 2026-10-21) : même acheté, le solaire reste fermé.
 	verifier(o.levier_ferme("solaire") == "Plus tard.", "Acheté, le solaire reste pour plus tard")
-	verifier("Ne pas aggraver" in str(ui.retours.journal[-1]), "Le bandeau annonce la page : %s" % ui.retours.journal[-1])
+	verifier(not "Ne pas aggraver" in str(ui.retours.journal), "Aucune nouvelle n'annonce « Ne pas aggraver »")
 	jeu._sur_choix("i", o.SOLAIRE)
 	ui.ouvrir_onglet("energie")
 	ui._maj_fiche()

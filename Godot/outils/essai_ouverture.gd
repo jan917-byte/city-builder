@@ -373,7 +373,7 @@ func executer() -> void:
 	verifier(o.etape == "suite" and jeu.mois == 38.0 and jeu.vitesse == 0.0,
 		"La reprise retrouve la boucle, le chantier et le mois")
 	await cliquer(bouton("Continuer à mon rythme"))
-	verifier(not o.visible and o.termine, "Le guide peut se terminer sans arrêter la partie")
+	verifier(not o.parle() and o.termine, "Le guide peut se terminer sans arrêter la partie")
 	await cliquer(jeu.interface._debut)
 	verifier(o.visible, "DÉBUT rouvre le guide")
 	jeu.interface._sur_rail("energie")
@@ -626,9 +626,9 @@ func essayer_ponts(lointain: int) -> void:
 	# 🔄 Rien ne désigne les accès (auteur, 2026-09-26) : ni le bandeau, ni la fiche.
 	var boue := str(jeu.interface.retours.journal.back())
 	actualiser(debut)
-	# 🔇 Pendant le chantier, le bandeau parle seul (auteur, 2026-10-05).
-	verifier(not o.visible and o._actions.get_child_count() == 0 and "boue" in boue,
-		"Le pont engagé, le guide se tait et le bandeau dit que la boue bloque")
+	# 🔇 Pendant le chantier, le guide ne porte que les nouvelles (auteur, 2026-10-22).
+	verifier(not o.parle() and o._actions.get_child_count() == 0 and "boue" in boue and "boue" in o._nouvelles.text,
+		"Le pont engagé, le guide ne dit que la nouvelle : la boue bloque")
 	for rue in acces["obstacles"]:
 		verifier(not o._nom("r", rue) in boue, "Le bandeau ne nomme pas l'accès %d" % rue)
 	# 🟫 Depuis le calque, la Ville s'entoure jusqu'au retour (auteur, 2026-10-06).
@@ -660,7 +660,7 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.etape == "pont_travaux", "La reprise conserve le pont en travaux")
 	# 🧹 Dit dès l'engagement, sans nommer la rue (auteur, 2026-09-26).
 	# 🌉 La première année, un îlot sinistré s'engage dès le pont lancé (auteur, 2026-10-18).
-	verifier(not o.visible and o.autorise("i", o.MAISONS),
+	verifier(not o.parle() and o.autorise("i", o.MAISONS),
 		"Pendant le chantier, le guide reste caché ; les îlots sinistrés s'engagent déjà")
 	await capture("12_pont_travaux")
 	# 🌉 Le chemin déblayé, le guide propose de rebâtir et demande Dangers (auteur, 2026-10-18).
@@ -706,7 +706,7 @@ func essayer_ponts(lointain: int) -> void:
 	jeu._sur_choix("i", o.LAVOIR)
 	# 🔄 L'îlot n'attend plus le pont (auteur, 2026-10-18 soir).
 	verifier(is_equal_approx(float(jeu.ville._repare.get("i:%d" % o.LAVOIR, -1.0)), jeu.mois)
-		and "Chantier en cours" in jeu.interface._repare_etat.text,
+		and jeu.interface._chantier_bloc.visible,
 		"Engagé pendant le chantier du pont, l'îlot commence tout de suite")
 	verifier(o.levier_ferme("solaire") != "" and o.verrou() == "pont",
 		"La première année, aucun levier ne s'ouvre")
@@ -736,7 +736,7 @@ func essayer_ponts(lointain: int) -> void:
 	verifier(o.etape == "pont_acces", "Le guide attend tant que la boue n'est pas déblayée")
 	jeu._sur_vitesse(4.0)
 	actualiser(fin)
-	verifier(o.etape == "pont_livre" and jeu.vitesse == 4.0 and not o.annonce.visible and not o.visible,
+	verifier(o.etape == "pont_livre" and jeu.vitesse == 4.0 and not o.annonce.visible and not o.parle(),
 		"Le pont livré, le temps court encore et rien ne couvre la ville")
 	o.pont_livre_ms -= o.ATTENTE_PONT_MS
 	o.actualiser(true)
