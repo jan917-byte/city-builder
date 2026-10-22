@@ -3840,7 +3840,6 @@ func ouvrir_lieu(cle: String, page := "") -> void:
 	if _page_ouverte != "" and ouverture != null:
 		ouverture.page_lue(_page_ouverte)
 	_biblio_cle = ""
-	_ralentir_campus()
 	# Le panneau du calque passait sous le verre et se lisait à travers (sur Dangers, fond blanc).
 	if _detail_ouvert and not _campus_panneau.visible:
 		_detail_avant_campus = true
@@ -3874,15 +3873,15 @@ func ouvrir_lieu_clique(couche: String, fid: int) -> void:
 	# 🏛️ La mairie aussi, dès qu'elle est ouverte : c'est ainsi qu'on la trouve (auteur, 2026-10-20).
 	var ouvert: bool = (cle in CAMPUS and (ouverture == null or ouverture.rail_visible(cle))) \
 		or (cle == "mairie" and (ouverture == null or ouverture.rail_ouvert(cle)))
-	if ouvert and _verrou() == "":
+	# 🏛️ La mairie s'ouvre au clic, verrou ou non, comme son bouton de fiche (auteur, 2026-10-22).
+	if ouvert and (_verrou() == "" or cle == "mairie"):
 		ouvrir_lieu(cle)
 
 
-## ⏩ La fenêtre ouverte ramène ×2 et ×4 à ×1 et n'arrête plus le temps (auteur, 2026-10-20).
-func _ralentir_campus() -> void:
-	if _vitesse_courante > 1.0:
-		vitesse_demandee.emit(1.0)
-		_vitesse_courante = 1.0
+## ⏸️ Une grande fenêtre au centre (lieux, concours) met le jeu en pause ; la maquette
+## le relance à sa fermeture (auteur, 2026-10-22 ; remplace le « ×1 sans pause » du 2026-10-20).
+func grande_fenetre_ouverte() -> bool:
+	return _campus_panneau.visible or (_projets_panneau != null and _projets_panneau.visible)
 
 
 # ==========================================================================

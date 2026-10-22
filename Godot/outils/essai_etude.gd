@@ -186,9 +186,11 @@ func executer() -> void:
 	jeu._sur_vitesse(4.0)
 	ui.maj({}, jeu.mois, jeu.vitesse)
 	ui.ouvrir_lieu("bibliotheque")
-	verifier(jeu.vitesse == 1.0 and ui._biblio_bloc.visible, "La fenêtre ouverte, le ×4 revient à ×1")
+	jeu._pause_fenetre()
+	verifier(jeu.vitesse == 0.0 and ui._biblio_bloc.visible, "La fenêtre ouverte, le jeu se met en pause")
 	ui._fermer_campus()
-	verifier(jeu.vitesse == 1.0, "Fermée, le temps court toujours à ×1")
+	jeu._pause_fenetre()
+	verifier(jeu.vitesse == 4.0, "Fermée, le temps repart à ×4")
 	jeu._sur_vitesse(0.0)
 	jeu._rafraichir(true)
 	# Le guide se cache sous la fenêtre ; en jeu, `_process` le rend à l'image suivante.

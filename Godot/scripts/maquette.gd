@@ -2333,6 +2333,7 @@ func _decor() -> void:
 # ------------------------------------------------------------------ le temps
 
 func _process(delta: float) -> void:
+	_pause_fenetre()
 	# L'essai pousse artificiellement la caisse au-delà des vingt ans pour
 	# éprouver le déverrouillage avec les prix non calibrés de la crue. En jeu,
 	# l'horizon reste strictement celui du projet.
@@ -3504,10 +3505,28 @@ func _sur_vitesse(nouvelle: float) -> void:
 		_derniere_vitesse = nouvelle
 
 
-## ⏩ Une carte ou une fenêtre ramène ×2 et ×4 à ×1, sans jamais mettre en pause (auteur, 2026-10-20).
+## ⏩ Une carte ramène ×2 et ×4 à ×1, sans mettre en pause (auteur, 2026-10-20).
 func ralentir() -> void:
 	if vitesse > 1.0:
 		_sur_vitesse(1.0)
+
+
+## ⏸️ La vitesse d'avant la grande fenêtre, -1 sans pause posée par elle (auteur, 2026-10-22).
+## Une vitesse choisie fenêtre ouverte l'emporte : la fermeture n'y touche plus.
+var _vitesse_avant_fenetre := -1.0
+
+func _pause_fenetre() -> void:
+	if interface == null:
+		return
+	var grande: bool = interface.grande_fenetre_ouverte()
+	if grande and _vitesse_avant_fenetre < 0.0:
+		_vitesse_avant_fenetre = vitesse
+		if vitesse > 0.0:
+			_sur_vitesse(0.0)
+	elif not grande and _vitesse_avant_fenetre >= 0.0:
+		if vitesse == 0.0 and _vitesse_avant_fenetre > 0.0:
+			_sur_vitesse(_vitesse_avant_fenetre)
+		_vitesse_avant_fenetre = -1.0
 
 
 func _creer_flocons() -> void:

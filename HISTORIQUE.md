@@ -926,3 +926,6 @@ Essais ouverture, étude, concours, rebâtir, livre, fonds, capital à 0 échec 
 **2026-10-22 — Premier export Windows ; le jeu est sur itch.io en privé, pour les potes testeurs.**
 Un seul `DesirePath.exe` (43 Mo zippé), testé décompressé hors du projet ; `addons/icones_export` embarque les icônes que le `.gdignore` faisait sauter.
 Modèles d'exportation 4.7.1 installés dans le vrai AppData par `.bat` lancé via explorer (la première copie s'était bloquée à mi-chemin) ; « Mode auteur » et « Après le pont » laissés visibles, au choix de l'auteur.
+**2026-10-22 — Le clic sur la mairie l'ouvre la première année ; une grande fenêtre (lieux, concours) met le jeu en pause.**
+« On rebâtit d'abord » bloquait l'ouverture au clic ; la pause remplace le « ×1 sans pause » du 2026-10-20 et rend à la fermeture la vitesse d'avant.
+Essai `essai_mairie_pause` à 0 échec ; `essai_etude` à 24 échecs dès « Adopter », les mêmes sans la pause : vient du chantier des polices en cours dans l'autre session.
