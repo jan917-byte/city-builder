@@ -45,7 +45,7 @@ const Livre := preload("res://scripts/livre.gd")
 var lieux := Lieux.new()
 var _reprendre: Button
 
-## 🔤 LA POLICE : Cabin (auteur, 2026-10-18). Toutes dans `Godot/polices/`, sous
+## 🔤 LA POLICE : Jost (auteur, 2026-10-22), Cabin avant. Toutes dans `Godot/polices/`, sous
 ## licence SIL OFL (leur `*-OFL.txt` est à côté) — donc libres pour un jeu vendu.
 ## `-- --police <clé>` en essaie une sans toucher au fichier ; « godot » est la police d'origine.
 const POLICES := {
@@ -57,8 +57,21 @@ const POLICES := {
 	"fredoka": "res://polices/Fredoka.ttf",
 	"baloo": "res://polices/Baloo2.ttf",
 	"cabin": "res://polices/Cabin-Regular.ttf",
+	# La jumelle libre de Futura (2026-10-22).
+	"jost": "res://polices/Jost.ttf",
 }
 const POLICE := "rubik"
+## 🧪 Essai du 2026-10-22, polices du système et non du dossier : aucune n'est sous OFL
+## (Helvetica, DIN = Monotype ; Acumin = Adobe Fonts, sans droit d'embarquer dans un jeu).
+## Windows rend Arial pour Helvetica, Bahnschrift (sa DIN 1451) pour DIN ; Acumin n'existe
+## que si Creative Cloud l'a activée, sinon Windows rend une autre police (le `print` la nomme).
+## `CORPS_MAIGRE` : corps en 400, titres et monnaies en 700 ; au 600 de la fiche, Arial n'a que du 700.
+const POLICES_SYSTEME := {
+	"helvetica": ["Helvetica Neue", "Helvetica", "Arial"],
+	"acumin": ["Acumin Pro", "Acumin Variable Concept", "Acumin Pro SemiCondensed"],
+	"din": ["DIN Next LT Pro", "DIN Pro", "DIN", "Bahnschrift"],
+}
+const CORPS_MAIGRE := ["helvetica", "acumin", "din"]
 ## 🔴 PIÈGE PAYÉ LE 2026-10-17 : Cabin variable (wght + wdth) perdait sa graisse
 ## au fil de la partie d'essai et tout sortait en 400. Elle vient donc en
 ## fichiers fixes, un par graisse ; `_peser` prend le plus proche.
@@ -610,10 +623,9 @@ var _icones := {}
 func batir() -> void:
 	_habiller()
 	_police = _charger_police()
-	# 🔴 TOUT EST PLUS GRAS DEPUIS LE 2026-09-20 (auteur, sur captures) : sur du
-	# verre, un texte maigre disparaît dès qu'un toit rouge passe dessous. Le
-	# corps du texte est déjà en demi-gras, et les trois graisses se suivent.
-	_fonte_texte = _peser(_fiche.graisse_texte if VITRE else 600, 0.16)
+	# 🔄 Corps en 400 depuis Jost (auteur, 2026-10-22) : titres et monnaies en 700 s'en détachent.
+	# Il était en 600 depuis le 2026-09-20, un texte maigre disparaissant sur un toit rouge : à surveiller.
+	_fonte_texte = _peser(400 if _nom_police in CORPS_MAIGRE else _fiche.graisse_texte if VITRE else 600, 0.16)
 	_fonte_titre = _peser(_fiche.graisse_titres if VITRE else 750, 0.38)
 	_fonte_titre.spacing_glyph = 1
 	# Les nombres du bilan sont gras : dans un panneau sans mots, c'est le seul
@@ -739,6 +751,11 @@ func _charger_police() -> Font:
 	if i >= 0 and i + 1 < args.size():
 		nom = args[i + 1]
 	_nom_police = nom
+	if POLICES_SYSTEME.has(nom):
+		var sf := SystemFont.new()
+		sf.font_names = PackedStringArray(POLICES_SYSTEME[nom])
+		print("police %s → %s" % [nom, sf.get_font_name()])
+		return sf
 	var chemin := str(POLICES.get(nom, ""))
 	if chemin == "" or not ResourceLoader.exists(chemin):
 		if chemin != "":
@@ -765,6 +782,10 @@ func _peser(poids: int, grossir: float) -> FontVariation:
 			if absi(p - poids) < absi(proche - poids):
 				proche = p
 		f.base_font = load(fichiers[proche])
+	elif _police is SystemFont:
+		var sf := (_police as SystemFont).duplicate() as SystemFont
+		sf.font_weight = poids
+		f.base_font = sf
 	elif _police != null and not _police.get_supported_variation_list().is_empty():
 		var tag := TextServerManager.get_primary_interface().name_to_tag("wght")
 		f.variation_opentype = {tag: poids}
@@ -3719,7 +3740,7 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 		var vue: Control = _vignette(vignette) if vignette != "" else Control.new()
 		vue.custom_minimum_size = Vector2(VIGNETTE_RECHERCHE_PX, VIGNETTE_RECHERCHE_PX)
 		tete.add_child(vue)
-	var l_nom := _label(nom, 14, TEXTE)
+	var l_nom := _titre(nom, 14, TEXTE)
 	l_nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l_nom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l_nom.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
