@@ -21,7 +21,7 @@ const QUOI := {
 	"pause": "Pause", "lecture": "Lecture", "mois_zero": "Retour au mois 0",
 	"sauver": "Sauvegarder", "ouvrir": "Reprendre la partie", "boussole": "* Nord (tourne)",
 	"plan": "Caméra : plan", "cube": "Caméra : 3D", "croix": "Fermer", "camp": "Camp",
-	"personnes": "Habitants", "journal": "Journal",
+	"personnes": "Habitants",
 }
 
 var jeu

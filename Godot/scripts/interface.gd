@@ -117,46 +117,6 @@ class JaugeCrue extends Control:
 			draw_line(Vector2(xp, -4.0), Vector2(xp, size.y + 4.0), Color8(30, 30, 30), 1.0)
 
 
-## 🌊 LE DANGER DE CRUE SOUS LA DATE (auteur, 2026-10-09) : bas et calme jusqu'à
-## la fenêtre de l'étude, il monte à l'approche, puis bat pendant les 6 à 8 ans.
-## 🔴 Aucune crue ne tombe encore au bout (question ouverte, autre session).
-class JaugeDanger extends Control:
-	const CALME := Color8(132, 156, 172)
-	const PROCHE := Color8(232, 126, 48)
-	const IMMINENT := Color8(196, 48, 40)
-	var part := 0.0
-	var couleur := CALME
-
-	## `ans` : années depuis l'étude.
-	func regler(ans: float) -> void:
-		var p := 0.12 + 0.08 * clampf(ans / 5.0, 0.0, 1.0)
-		var c := CALME
-		if ans >= 5.0:
-			var k := clampf(ans - 5.0, 0.0, 1.0)
-			p = lerpf(0.2, 0.5, k)
-			c = CALME.lerp(PROCHE, k)
-		if ans >= 6.0:
-			var k := clampf((ans - 6.0) / 2.0, 0.0, 1.0)
-			p = lerpf(0.5, 1.0, k)
-			c = PROCHE.lerp(IMMINENT, k)
-			c.a = 0.45 + 0.55 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.006))
-		if is_equal_approx(p, part) and c.is_equal_approx(couleur):
-			return  # ⚠️ appelé à chaque image
-		part = p
-		couleur = c
-		queue_redraw()
-
-	func _draw() -> void:
-		var r := size.y * 0.5
-		var fond := StyleBoxFlat.new()
-		fond.bg_color = Color(0, 0, 0, 0.12)
-		fond.set_corner_radius_all(int(r))
-		draw_style_box(fond, Rect2(Vector2.ZERO, size))
-		var plein := fond.duplicate() as StyleBoxFlat
-		plein.bg_color = couleur
-		draw_style_box(plein, Rect2(0.0, 0.0, maxf(size.y, size.x * part), size.y))
-
-
 ## 🧭 LA COLONNE D'ICÔNES, ET LE PANNEAU QUI S'OUVRE À CÔTÉ (2026-09-03, demande
 ## de l'auteur). Elle remplace le bandeau de neuf tuiles ET la barre du bas : le
 ## mot d'une icône est passé en infobulle. Les trois abscisses tiennent ici et
@@ -284,8 +244,7 @@ var _message: Label
 var _camera_nord: Button
 var _camera_dessus: Button
 var _temps_label: Label
-var _danger: HBoxContainer
-var _jauge_danger: JaugeDanger
+var _temps_an: Label
 var _vitesses := {}
 ## 📖 Les deux panneaux du bas, rangés pendant le récit avec tout le reste.
 var _temps_panneau: PanelContainer
@@ -3940,7 +3899,11 @@ func _controles_temps() -> void:
 		p.grow_vertical = Control.GROW_DIRECTION_END
 		var sb := p.get_theme_stylebox("panel") as StyleBoxFlat
 		sb.set_content_margin_all(5)
-		sb.content_margin_left = 12
+		# 📏 La date au bord du titre de la fiche (auteur, 2026-10-22) ; 3 px en haut et en bas
+		# gardent ses deux lignes dans les 43 px d'avant, au-dessus de la fiche.
+		sb.content_margin_left = _fiche.marge_interieure
+		sb.content_margin_top = 3
+		sb.content_margin_bottom = 3
 		cote = 30.0
 		dessin = 15
 	add_child(p)
@@ -3949,44 +3912,26 @@ func _controles_temps() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	_temps_label = _etiquette(Calendrier.date(0.0, true), 12, encre)
+	# 🔄 Plus de jauge de crue sous la date (auteur, 2026-10-22 : « pas ici, pas comme ça ») ;
+	# l'année prend sa ligne, sans quoi « Septembre, an 20 » élargissait le panneau au-delà de la fiche.
+	var date := VBoxContainer.new()
+	date.add_theme_constant_override("separation", -5)
+	date.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_child(date)
+	_temps_label = _etiquette("", 12, encre)
+	date.add_child(_temps_label)
+	_temps_an = _label("", 12, encre)
+	date.add_child(_temps_an)
+	_dater(0.0)
 	# ⚠️ En vitre, les icônes sont dessinées en blanc et teintées par l'état : une
 	# icône foncée restait foncée sur la vitesse enfoncée, donc invisible.
 	if VITRE:
 		encre = Color.WHITE
-	_temps_label.custom_minimum_size.x = 112
-	if VITRE:
-		h.add_theme_constant_override("separation", 2)
-		_temps_label.custom_minimum_size.x = 100
-		_temps_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_temps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var date := VBoxContainer.new()
-	date.add_theme_constant_override("separation", 1)
-	date.alignment = BoxContainer.ALIGNMENT_CENTER
-	date.size_flags_horizontal = _temps_label.size_flags_horizontal
-	h.add_child(date)
-	date.add_child(_temps_label)
-	# 🌊 Au clic, la carte de la prochaine crue.
-	_danger = HBoxContainer.new()
-	_danger.add_theme_constant_override("separation", 4)
-	_danger.mouse_filter = Control.MOUSE_FILTER_STOP
-	_danger.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_danger.visible = false
-	_danger.gui_input.connect(func(e: InputEvent) -> void:
-		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-			voir_prochaine_crue())
-	date.add_child(_danger)
-	var vague := TextureRect.new()
-	vague.texture = _icone("eau", 11, _temps_label.get_theme_color("font_color"))
-	vague.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	vague.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_danger.add_child(vague)
-	_jauge_danger = JaugeDanger.new()
-	_jauge_danger.custom_minimum_size = Vector2(0, 5)
-	_jauge_danger.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_jauge_danger.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_jauge_danger.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_danger.add_child(_jauge_danger)
+		# 1 px : à 2, « Septembre » poussait le panneau 3 px plus large que la fiche.
+		h.add_theme_constant_override("separation", 1)
+		date.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	else:
+		date.custom_minimum_size.x = 112
 	# 🔄 Pause et lecture en icônes (auteur, 2026-09-28) ; ×2 et ×4 restent
 	# écrits, une icône ne dirait pas le chiffre. Plus de ×12 (auteur, 2026-10-09).
 	for choix in [["pause", 0.0, "Pause"], ["lecture", 1.0, "Lecture"],
@@ -4062,6 +4007,13 @@ func _titre_lieu(couche: String) -> void:
 	_fiche_titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
+## « Mai » sur sa ligne, « an 1 » dessous : le format reste celui de `Calendrier.date`.
+func _dater(mois: float) -> void:
+	var parts := Calendrier.date(mois, true).split(", ")
+	_temps_label.text = parts[0]
+	_temps_an.text = parts[1]
+
+
 func _demander_vitesse(v: float) -> void:
 	vitesse_demandee.emit(v)
 
@@ -4119,11 +4071,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		l.get_parent().tooltip_text = ("Confiance : le camp en use %s par mois ; l'améliorer l'arrête."
 			% _nb(usure, 1)) if baisse else "Confiance"
 	_maj_durabilite(indic)
-	_temps_label.text = Calendrier.date(mois, true)
-	_danger.visible = etude_publiee()
-	if _danger.visible:
-		_jauge_danger.regler((mois - _mois_etude()) / 12.0)
-		_danger.tooltip_text = "Prochaine crue " + _quand_crue(mois)
+	_dater(mois)
 	# 🚿 Dès le premier camp, la confiance se lit en haut (auteur, 2026-10-02).
 	_barre.visible = _menu_panneau.visible and (not _bilan_differe() or not ville._camps.is_empty())
 	if _barre.visible:

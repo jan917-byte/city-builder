@@ -16,7 +16,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - ⚙️ Panneau Graphismes : « ombres moyennes » ou « fines » par défaut → `QGIS/rendus/planche_graphismes_*.png` ; rebond allumé par défaut (+0,5 ms) ; flou, ciel et brume au panneau, éteints ; couleurs douces écartées → [Toits et sol](Prototype/Toits%20et%20sol.md) § 12-13.
 - ❄️ Les saisons (printemps, essences, fumée) et 🌳 **les arbres du pack, nos couleurs** (2026-10-22, `wehrau_arbres_avant_apres.png`, pas encore satisfaisants pour l'auteur, surtout l'hiver) → [Saisons](Prototype/Saisons.md) ; couleurs et flocons flaggables (90).
 - 🪵 Les dégâts de la crue, densités → [Premiers pas](Prototype/Premiers%20pas.md) § Les dégâts de la crue ; 🏢 densifier à 95 k€ le logement → [Densifier](Prototype/Densifier.md).
-- ⏱️ **Le temps à 70 s le mois, les constructions plus courtes, la carte des chantiers en %** (2026-10-22) → [Premiers pas](Prototype/Premiers%20pas.md) § La première année, fermée.
+- ⏱️ **Le temps à 70 s le mois, les constructions plus courtes, la carte des chantiers en %** (2026-10-22) ; 🗓️ **la date sur deux lignes, au bord de la fiche, sans jauge de crue ni bouton du journal** (`wehrau_date_avant_apres.png`) → [Premiers pas](Prototype/Premiers%20pas.md) § La première année, fermée.
 - 🔲 Interface « vitre » et choix de la police parmi six (Rubik en place) → `QGIS/rendus/polices_comparaison.png`.
 - 🟠 La percée des îlots compacts (9 m tous les 60 m, `04d`) → `--ilots 49`.
 - 🚶 **Fusionnés le 2026-10-20** : venelles en trace (122, `QGIS/rendus/wehrau_venelles.png`), pont coupé cliquable au milieu de l'Ilse, phrase de l'autre rive, fenêtre « Desire Path ».

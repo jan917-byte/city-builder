@@ -2,9 +2,8 @@ extends RefCounted
 ## Problèmes en pastilles et constats de chantier, sans élément posé sur la carte.
 
 var ui
-## Colonne bas-droite : les chantiers au-dessus, le journal en bas.
+## Colonne bas-droite : les chantiers.
 var pile: VBoxContainer
-var journal_bouton: Button
 ## 🔴 Un problème = une icône dans un cercle rouge, au centre du bas, le détail au
 ## survol (auteur, 2026-10-07, « comme Frostpunk »). `compteur` = le jeu est à l'écran ;
 ## `rangee` s'efface sous les quatre projets, posés au même endroit.
@@ -29,7 +28,7 @@ var chantiers_deborde: Label
 const CHANTIERS_MAX := 5
 var avis: PanelContainer
 var texte: Label
-var historique: RichTextLabel
+## 🔄 Plus montré au joueur (auteur, 2026-10-22, son bouton « inutile ») ; gardé pour la sauvegarde et les essais.
 var journal: Array[String] = []
 var _en_cours := {}
 var _nb_chantiers := 0
@@ -45,7 +44,6 @@ var _recent: Array[String] = []
 ## restait à l'écran, tout déblayé). message → Callable, vrai tant qu'il reste à faire.
 var _tient := {}
 var _expiration := 0
-var _historique_ouvert := false
 
 
 func batir(interface) -> void:
@@ -105,27 +103,10 @@ func batir(interface) -> void:
 	survol_lignes = ui._label("", 12, ui.GRIS)
 	bloc.add_child(survol_lignes)
 	survol.hide()
-	# 🔄 Le journal reste en bas à droite (auteur, 2026-09-28), en cercle neutre.
-	var bouton := Button.new()
-	journal_bouton = bouton
-	bouton.icon = ui._icone("journal", 22)
-	bouton.tooltip_text = "Dernières décisions"
-	bouton.custom_minimum_size = Vector2(PASTILLE, PASTILLE)
-	bouton.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	for etat in ["normal", "hover", "pressed", "focus"]:
-		var sb := _rond(Color(ui.VERRE_TEINTE, 0.92 if etat == "normal" else 1.0))
-		sb.border_color = ui.GRIS if etat == "normal" else ui.TEXTE
-		sb.set_border_width_all(1)
-		bouton.add_theme_stylebox_override(etat, sb)
-	bouton.pressed.connect(func() -> void:
-		_historique_ouvert = not _historique_ouvert
-		actualiser_affichage())
-	bouton.size_flags_horizontal = Control.SIZE_SHRINK_END
-	pile.add_child(bouton)
 	pile.minimum_size_changed.connect(ui._clamper_fiche)
 	ui.add_child(survol)
 	avis = PanelContainer.new()
-	# 🌑 Le bandeau raconte : sombre comme les premiers pas (auteur, 2026-10-17), le journal avec.
+	# 🌑 Le bandeau raconte : sombre comme les premiers pas (auteur, 2026-10-17).
 	ui._poser_histoire(avis)
 	# Largeur nulle, croissance des deux côtés : le bandeau épouse son texte,
 	# centré (`_ajuster_largeur`). À 410 px fixes, un message court laissait un vide.
@@ -135,15 +116,9 @@ func batir(interface) -> void:
 	# Sous la barre des compteurs, et sous le couloir où descend la dépense (`bulles.gd`).
 	avis.offset_top = 96
 	ui.add_child(avis)
-	var contenu := VBoxContainer.new()
-	avis.add_child(contenu)
 	texte = ui._label("", 14, ui.ENCRE_HISTOIRE)
 	texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	contenu.add_child(texte)
-	historique = RichTextLabel.new()
-	historique.custom_minimum_size = Vector2(380, 250)
-	historique.bbcode_enabled = false
-	contenu.add_child(historique)
+	avis.add_child(texte)
 	avis.hide()
 
 
@@ -248,32 +223,24 @@ func actualiser_affichage() -> void:
 	if avis == null:
 		return
 	chantiers.visible = compteur.visible and _nb_chantiers > 0
-	journal_bouton.visible = compteur.visible
 	rangee.visible = ui.projets_fid() < 0
 	if not rangee.visible:
 		survol.hide()
 	var frais := Time.get_ticks_msec() < _expiration
 	var opacite := clampf(float(_expiration - Time.get_ticks_msec()) / 700.0, 0.0, 1.0)
-	# 📣 Le guide porte les messages (auteur, 2026-10-22) ; le panneau ne garde que le journal,
-	# et le bandeau d'avant, là où le guide n'existe pas (essais, mode auteur).
+	# 📣 Le guide porte les messages (auteur, 2026-10-22) ; le bandeau d'avant ne reste
+	# que là où le guide n'existe pas (essais, mode auteur).
 	var guide = ui.ouverture
 	if guide != null:
-		guide.nouvelles(_recent if frais and not _historique_ouvert else [], opacite)
-	avis.visible = compteur.visible and (_historique_ouvert or frais and guide == null)
+		guide.nouvelles(_recent if frais else [], opacite)
 	# ⚠️ Sous la barre, comme le détail d'un compteur : leurs verres se dessinent au même niveau.
-	if ui._detail_sujet != "" and not _historique_ouvert:
-		avis.visible = false
-	historique.visible = _historique_ouvert
+	avis.visible = compteur.visible and frais and guide == null and ui._detail_sujet == ""
 	# Une ligne par message : la ligne blanche entre deux creusait le bandeau.
-	var nouveau := "Dernières décisions de cette partie" if _historique_ouvert else "\n".join(_recent)
+	var nouveau := "\n".join(_recent)
 	if nouveau != texte.text:
 		texte.text = nouveau
 		_ajuster_largeur()
-	if _historique_ouvert:
-		var inverse := journal.duplicate()
-		inverse.reverse()
-		historique.text = "\n\n".join(inverse) if not inverse.is_empty() else "Aucune décision engagée."
-	avis.modulate.a = 1.0 if _historique_ouvert else opacite
+	avis.modulate.a = opacite
 
 
 ## ⚠️ Un Label qui passe à la ligne n'a pas de largeur propre : sans celle-ci,
@@ -398,7 +365,6 @@ func reprendre(mois: float, messages: Array = []) -> void:
 	_recent.clear()
 	_tient.clear()
 	_expiration = 0
-	_historique_ouvert = false
 	_en_cours = _chantiers(mois)
 	_sans_toit = int(ui.ville.sans_toit(mois))
 	_an = ui.Ville.Calendrier.an(mois)

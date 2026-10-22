@@ -37,9 +37,9 @@ func executer() -> void:
 	verifier(retours.chantiers.visible and "abris" in retours.chantiers_lignes[0]["quoi"].text,
 		"Le chantier engagé a sa barre en bas à droite")
 	await process_frame
-	verifier(retours.chantiers.get_global_rect().end.y < retours.journal_bouton.get_global_rect().position.y
+	verifier(absf(retours.chantiers.get_global_rect().end.y - (root.size.y - 16.0)) < 1.0
 		and absf(retours.sans_logement.get_global_rect().get_center().x - root.size.x / 2.0) < 40.0,
-		"Les chantiers en bas à droite, au-dessus du journal ; les problèmes au centre du bas")
+		"Les chantiers dans le coin bas-droit ; les problèmes au centre du bas")
 	await capture("progression_01_engagement")
 	# 🔴 Le détail du problème vit dans l'infobulle de sa pastille.
 	retours.sans_logement.mouse_entered.emit()
@@ -114,9 +114,6 @@ func executer() -> void:
 		verifier(jeu.trafic.voitures_visibles_sur(pont)[0] > 0, "Pont %d : les voitures reviennent" % pont)
 		if pont == 169:
 			await capture("progression_05_liaison")
-			# Le verre ajoute ses propres enfants au panneau : on cherche le bouton.
-			await cliquer(retours.journal_bouton)
-			await capture("progression_06_journal")
 			await process_frame
 			verifier(jeu.interface._fiche_panneau.get_global_rect().end.y < retours.pile.get_global_rect().position.y,
 				"La fiche ne recouvre jamais le compteur ni les chantiers")

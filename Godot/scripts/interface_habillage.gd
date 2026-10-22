@@ -684,7 +684,7 @@ const DESSINS := {
 	"feuille": "<path d='M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20'/><path d='M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13'/>",
 	"eau": "<path d='M2 6c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/><path d='M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1'/>",
 	# ⏯️ Les commandes du temps et de la caméra en icônes (auteur, 2026-09-28),
-	# Lucide : pause, play, skip-back, save, folder-open, map, box, history.
+	# Lucide : pause, play, skip-back, save, folder-open, map, box.
 	"pause": "<rect x='14' y='4' width='4' height='16' rx='1'/><rect x='6' y='4' width='4' height='16' rx='1'/>",
 	"lecture": "<path fill='@' d='M6 3l14 9-14 9z'/>",
 	"mois_zero": "<path d='M19 20L9 12l10-8zM5 19V5'/>",
@@ -700,7 +700,6 @@ const DESSINS := {
 	"camp": "<path d='M3.5 21L14 3M20.5 21L10 3M15.5 21L12 15l-3.5 6M2 21h20'/>",
 	# 👥 Lucide « users » : des personnes, là où la tente se lisait mal (auteur, 2026-10-18).
 	"personnes": "<path d='M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75'/>",
-	"journal": "<path d='M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l4 2'/>",
 }
 
 

@@ -941,3 +941,6 @@ Sans version de loin, la forêt coûtait +7 ms en vue d'ensemble ; avec (forêt 
 **2026-10-22 — L'université se clique comme un seul îlot : un trait sur les trois parties, la fiche « Université de Wehrau », la fenêtre sur Études ; l'étude devient une carte encadrée, sans phrase sous ses parties.**
 Le trait du campus à trouver s'éteignait dès qu'on cliquait un autre îlot, réduisait le guide ou gardait un calque ouvert ; « Trouver l'université » ferme le calque. Revient sur « chaque îlot ouvre son onglet » (114).
 Nouvel `essai_campus.gd` à 0 échec ; ouverture, livre, concours, pause de la mairie à 0 ; étude 21 (22 avant, sa mise en place ne suit plus le jeu).
+**2026-10-22 — Plus de bouton du journal en bas à droite, plus de jauge de crue sous la date ; la date passe sur deux lignes, au bord du titre de la fiche.**
+L'auteur trouvait le journal inutile et la jauge « pas ici, pas comme ça » ; le journal reste enregistré (sauvegarde, essais), plus montré. Le panneau du temps faisait 349 px contre 320 pour la fiche, « Septembre, an 20 » sur une ligne n'y tenait pas.
+Nouvel `apercu_date.gd` à 0 échec (douze mois à l'an 20) ; `apercu_danger_crue.gd` retiré ; ouverture et livre à 0, progression 3 et étude 21 comme avant.
