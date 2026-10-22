@@ -938,3 +938,6 @@ Essais aux mêmes échecs qu'avant (étude 22, campagne 7, progression 3, vie du
 **2026-10-22 — Les arbres et buissons prennent la forme des packs craftpix de l'auteur (`Godot/modeles/arbres/`), avec nos couleurs, nos saisons et notre écorce.**
 FBX lus au lancement par `FBXDocument`, étirés à la hauteur et à la largeur des recettes d'avant (feuillu 7, conifère 18, bouleau 5, peuplier 4, fruitier 2, saule 15, tilleul 6, buisson 7) ; le n° 1 faisait une forêt de savane ; le roseau reste dessiné par le code.
 Sans version de loin, la forêt coûtait +7 ms en vue d'ensemble ; avec (forêt seule), GPU 7,8 → 8,4 ms en vue d'ensemble et 7,2 → 8,0 ms dans le cœur ancien ; `essai_saison` à 0 échec.
+**2026-10-22 — L'université se clique comme un seul îlot : un trait sur les trois parties, la fiche « Université de Wehrau », la fenêtre sur Études ; l'étude devient une carte encadrée, sans phrase sous ses parties.**
+Le trait du campus à trouver s'éteignait dès qu'on cliquait un autre îlot, réduisait le guide ou gardait un calque ouvert ; « Trouver l'université » ferme le calque. Revient sur « chaque îlot ouvre son onglet » (114).
+Nouvel `essai_campus.gd` à 0 échec ; ouverture, livre, concours, pause de la mairie à 0 ; étude 21 (22 avant, sa mise en place ne suit plus le jeu).

@@ -2226,12 +2226,16 @@ func _planter(liste: Array, essence: int) -> MultiMesh:
 
 
 ## 🌳 Les arbres de la ville posés dans l'emprise de l'îlot, pour la miniature (auteur, 2026-10-22).
-func _arbres_de(fid: int) -> Dictionary:
-	var em: Variant = (donnees["emprises"] as Dictionary).get(str(fid))
+func _arbres_de(fids: Array) -> Dictionary:
+	var ems := []
+	for fid in fids:
+		var em: Variant = (donnees["emprises"] as Dictionary).get(str(fid))
+		if em != null:
+			ems.append(em)
 	var liste := []
-	if em != null:
+	if not ems.is_empty():
 		for a in _arbres_liste:
-			if _dans_un_camp([em], float(a[0]), float(a[2])):
+			if _dans_un_camp(ems, float(a[0]), float(a[2])):
 				liste.append(a)
 	var out := {}
 	if not liste.is_empty():
@@ -3119,17 +3123,17 @@ func _maj_contour() -> void:
 		return
 	var couche: String = selection.sel_couche
 	var fid: int = selection.sel_fid
-	# 🎓 Rien de choisi : le groupe que le guide appelle ; la fiche du campus : le campus entier.
+	# 🎓 Rien de choisi : le groupe que le guide appelle ; le campus choisi : le campus entier.
 	var groupe: Array = []
 	var appel := false
 	if ouverture != null:
-		# 🏛️ La mairie à trouver clignote même fiche ouverte : sinon l'îlot cliqué entre-temps
-		# l'éteignait, et le guide disait « elle clignote » sur rien (auteur, 2026-10-20).
-		if fid < 0 or ouverture.etape == "mairie":
+		# 🏛️🎓 La mairie et le campus à trouver clignotent même fiche ouverte : sinon l'îlot cliqué
+		# entre-temps les éteignait, et le guide disait « elle clignote » sur rien (auteur, 2026-10-20, 2026-10-22).
+		if fid < 0 or ouverture.etape in ["mairie", "etude"]:
 			groupe = ouverture.groupe_carte()
 			appel = not groupe.is_empty()
-		if groupe.is_empty() and couche == "i" and interface._lieu_ouvert in interface.CAMPUS and fid in ouverture.campus():
-			groupe = ouverture.campus()
+	if groupe.is_empty() and couche == "i" and fid in interface.fids_campus():
+		groupe = interface.fids_campus()
 	if not groupe.is_empty():
 		couche = "i"
 		fid = int(groupe[0])
@@ -3241,12 +3245,21 @@ func _maj_apercu() -> void:
 			var neuf: MeshInstance3D = ponts_provisoires.get(fid) \
 				if casse and provisoire and ponts_provisoires.has(fid) \
 				else reparations[couche].get(fid)
-			apercu.montrer((noeuds[couche][fid] as MeshInstance3D).mesh,
-				neuf.mesh if neuf != null else null, null if casse else _socle(couche, fid),
+			# 🎓 Le campus, un seul îlot à l'écran : ses trois parties dans la même miniature (auteur, 2026-10-22).
+			var parts: Array = interface.fids_campus() \
+				if couche == "i" and fid in interface.fids_campus() else [fid]
+			var objets := []
+			var socles := []
+			for f in parts:
+				objets.append((noeuds[couche][f] as MeshInstance3D).mesh)
+				socles.append(_socle(couche, f))
+			apercu.montrer(objets[0] if parts.size() == 1 else _fondre(objets),
+				neuf.mesh if neuf != null else null,
+				null if casse else (socles[0] if parts.size() == 1 else _fondre(socles)),
 				ruines_ponts[fid].mesh if casse and ruines_ponts.has(fid) else null,
 				ville.objets(couche).get(fid, {}).get("sous_type", "") == "champ")
 			if couche == "i":
-				apercu.boiser(_arbres_de(fid))
+				apercu.boiser(_arbres_de(parts))
 		else:
 			apercu.echantillon(couche, ville.objets(couche).get(fid, {}),
 				_voie_de_berge(fid) if couche == "b" else 0.0)
@@ -3290,6 +3303,42 @@ func _maj_apercu() -> void:
 		apercu.mm_velo, fid, mois,
 		bool(d["places"]), bool(d["roule"]), apercu.ech_longueur,
 		apercu.ech_chaussee)
+
+
+## Des maillages de même format en une seule surface, index décalés : la miniature
+## cadre sur la première surface de son sol (`Apercu._semer_points`).
+static func _fondre(mailles: Array) -> ArrayMesh:
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	var flags := 0
+	var base := 0
+	for m: Mesh in mailles:
+		if m == null:
+			continue
+		for s in m.get_surface_count():
+			var a := m.surface_get_arrays(s)
+			var n: int = (a[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+			for k in Mesh.ARRAY_MAX:
+				if a[k] == null:
+					continue
+				var p = a[k]
+				if k == Mesh.ARRAY_INDEX:
+					p = PackedInt32Array(p)
+					for i in p.size():
+						p[i] += base
+				if out[k] == null:
+					out[k] = p
+				else:
+					var q = out[k]
+					q.append_array(p)
+					out[k] = q
+			# ⚠️ CUSTOM0 se déclare en drapeau (`Constructeur`), sinon Godot refuse le tableau.
+			flags |= m.surface_get_format(s) & (Mesh.ARRAY_FORMAT_CUSTOM_MASK << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+			base += n
+	var fondu := ArrayMesh.new()
+	if base > 0:
+		fondu.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, out, [], {}, flags)
+	return fondu
 
 
 ## 🏛️ Les quatre cartes de projet : les maillages de la fiche, chacun réglé sur
@@ -3355,6 +3404,9 @@ func _sur_survol(_couche: String, _fid: int) -> void:
 
 func _sur_choix(couche: String, fid: int) -> void:
 	if fid >= 0:
+		if couche == "i" and interface.ilot_du_campus(fid) != fid:
+			fid = interface.ilot_du_campus(fid)
+			selection.sel_fid = fid
 		interface.montrer(couche, fid, false)
 		interface.ouvrir_lieu_clique(couche, fid)
 		# 🏗️ Un îlot sinistré s'ouvre toujours sur sa reconstruction (auteur, 2026-10-22).

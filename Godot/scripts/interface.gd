@@ -382,7 +382,7 @@ var _seuil_crue := -1.0
 var _onglets_crue := {}
 var _vues_crue := {}
 var _prochaine_valeurs := {}
-var _etude_bloc: VBoxContainer
+var _etude_bloc: PanelContainer
 ## 🎓 La fenêtre du campus (auteur, 2026-10-09) : au centre, la fiche d'îlot reste à côté.
 var _campus_panneau: PanelContainer
 ## Les trois onglets, dans l'ordre de `CAMPUS`.
@@ -2529,6 +2529,19 @@ func _lieu_du_fid(fid: int) -> String:
 	return ""
 
 
+## 🎓 LE CAMPUS SE CLIQUE COMME UN SEUL ÎLOT (auteur, 2026-10-22, revient sur « chaque îlot
+## ouvre son onglet ») : ses trois parties rendent l'université, sa fiche et ses études.
+func ilot_du_campus(fid: int) -> int:
+	return int(LIEUX["universite"]["fid"]) if _lieu_du_fid(fid) in CAMPUS else fid
+
+
+func fids_campus() -> Array:
+	var out := []
+	for cle in CAMPUS:
+		out.append(int(LIEUX[cle]["fid"]))
+	return out
+
+
 func _panneau_lieu() -> void:
 	# 🎓 LA FENÊTRE DES LIEUX (auteur, 2026-10-09 ; la mairie aussi depuis le 2026-10-19) :
 	# grande, au milieu de la place que laissent la colonne et la fiche ; un onglet par lieu du campus.
@@ -2597,23 +2610,29 @@ func _panneau_lieu() -> void:
 	# 🎓 L'ÉTUDE DE LA PROCHAINE CRUE, en trois parties (auteur, 2026-10-09) : Dangers
 	# tient la carte et les chiffres, la bibliothèque les leviers, l'institut les pilotis.
 	# 🔴 Textes de prototype, flaggables (90).
-	_etude_bloc = VBoxContainer.new()
-	_etude_bloc.add_theme_constant_override("separation", 10)
+	# 🗂️ Une étude, une carte (auteur, 2026-10-22) : la première encadrée, sans phrase sous ses parties.
+	_etude_bloc = PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = FOND_FORT
+	sb.set_corner_radius_all(_r(9))
+	sb.set_content_margin_all(12)
+	_etude_bloc.add_theme_stylebox_override("panel", sb)
 	contenu.add_child(_etude_bloc)
-	_etude_bloc.add_child(HSeparator.new())
-	_etude_bloc.add_child(_label("Nouvelle étude : la prochaine crue", 14, TEXTE))
+	var etude := VBoxContainer.new()
+	etude.add_theme_constant_override("separation", 10)
+	_etude_bloc.add_child(etude)
+	etude.add_child(_label("Nouvelle étude : la prochaine crue", 14, TEXTE))
 	var parties := HBoxContainer.new()
 	parties.add_theme_constant_override("separation", 16)
-	_etude_bloc.add_child(parties)
+	etude.add_child(parties)
 	_etude_voir = _partie_etude(parties, "dangers", "Où l'eau montera",
-		"La carte de la prochaine crue.", "Voir l'étude dans Dangers", voir_prochaine_crue, "ruine")
+		"Voir l'étude dans Dangers", voir_prochaine_crue, "ruine")
 	_etude_biblio = _partie_etude(parties, "bibliotheque", "Retenir l'eau",
-		"La ville-éponge : berges, sols, toits, prés.", "Lire à la bibliothèque",
-		ouvrir_lieu.bind("bibliotheque", "eponge"), "eponge")
+		"Lire à la bibliothèque", ouvrir_lieu.bind("bibliotheque", "eponge"), "eponge")
 	# 🔄 Plus d'anneau jaune sur la carte ni la bibliothèque (auteur, 2026-10-19) : le guide explique.
 	# Les pilotis, une recherche parmi d'autres (auteur, 2026-10-09).
 	_etude_institut = _partie_etude(parties, "institut", "S'adapter à la montée des eaux",
-		"Les recherches de l'institut, dont les pilotis.", "Voir à l'institut", ouvrir_lieu.bind("institut", ""), "pilotis")
+		"Voir à l'institut", ouvrir_lieu.bind("institut", ""), "pilotis")
 	# Les leviers attendent ici, hors de vue, que la page de la bibliothèque les prenne.
 	_leviers_reserve = VBoxContainer.new()
 	_leviers_reserve.visible = false
@@ -2765,8 +2784,8 @@ func _vignette(cle: String) -> TextureRect:
 	return vue
 
 
-## Une des trois parties de l'étude : ce qu'elle montre, l'icône du lieu où l'on va, un titre, un fait, le bouton.
-func _partie_etude(parent: HBoxContainer, icone: String, titre: String, fait: String,
+## Une des trois parties de l'étude : ce qu'elle montre, l'icône du lieu où l'on va, un titre, le bouton.
+func _partie_etude(parent: HBoxContainer, icone: String, titre: String,
 		voir: String, action: Callable, vignette: String) -> Button:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
@@ -2782,13 +2801,6 @@ func _partie_etude(parent: HBoxContainer, icone: String, titre: String, fait: St
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	tete.add_child(pic)
 	tete.add_child(_label(titre, 14, TEXTE))
-	var l := _label(fait, 12, GRIS)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(l)
-	# Les trois boutons sur la même ligne, quelle que soit la longueur du fait.
-	var vide := Control.new()
-	vide.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(vide)
 	var b := Button.new()
 	b.text = voir
 	b.focus_mode = Control.FOCUS_NONE
@@ -2831,9 +2843,9 @@ func ouvrir_campus() -> void:
 		ouverture.campus_ouvert()
 
 
-## 🎓 Un îlot du campus cliqué ouvre aussi sa fenêtre, une fois le campus trouvé.
+## 🎓 Le campus cliqué ouvre aussi sa fenêtre, sur ses études, une fois trouvé.
 func ouvrir_lieu_clique(couche: String, fid: int) -> void:
-	var cle := _lieu_du_fid(fid) if couche == "i" else ""
+	var cle := _lieu_du_fid(ilot_du_campus(fid)) if couche == "i" else ""
 	# 🏛️ La mairie aussi, dès qu'elle est ouverte : c'est ainsi qu'on la trouve (auteur, 2026-10-20).
 	var ouvert: bool = (cle in CAMPUS and (ouverture == null or ouverture.rail_visible(cle))) \
 		or (cle == "mairie" and (ouverture == null or ouverture.rail_ouvert(cle)))
@@ -4183,6 +4195,8 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# déblayer, rebâtir — et une décision qu'on ne peut pas cliquer n'existe pas.
 	if fid < 0 or (couche != "i" and couche != "r" and couche != "b"):
 		return
+	if couche == "i":
+		fid = ilot_du_campus(fid)
 	# 🎓🏛️ Cliquer la ville referme le menu : jamais deux fiches ensemble (81).
 	_fermer_lieu()
 	_fiche_panneau.visible = true

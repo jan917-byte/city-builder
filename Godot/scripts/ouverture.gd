@@ -477,6 +477,7 @@ func examiner(couche: String, fid: int, reglage := "", valeur: Variant = true) -
 ## 🎓 TROUVER LE CAMPUS (auteur, 2026-10-08) : la ville bâtie à l'écran, les trois
 ## îlots du campus sous un seul trait qui clignote ; le clic ouvre sa fiche.
 func chercher_campus() -> void:
+	jeu._sur_theme("")
 	jeu.interface._fermer_fiche()
 	jeu.selection.sel_fid = -1
 	var ville: Dictionary = jeu.donnees["reperes"]["ville"]
@@ -491,10 +492,7 @@ const CADRAGE_UNIVERSITE := 600.0
 
 
 func campus() -> Array:
-	var out := []
-	for cle in jeu.interface.CAMPUS:
-		out.append(int(jeu.interface.LIEUX[cle]["fid"]))
-	return out
+	return jeu.interface.fids_campus()
 
 
 ## L'université déjà ouverte quand l'étude paraît (auteur, 2026-10-21) : sa fenêtre, ou la
@@ -555,13 +553,16 @@ func terminer_pont() -> void:
 ## 🎓 Les îlots que le guide entoure d'un trait qui clignote, la ville nue à l'écran :
 ## le campus à trouver, puis les îlots sinistrés à rebâtir (auteur, 2026-10-08).
 func groupe_carte() -> Array:
-	if termine or not ouvert or jeu.theme != "":
+	if termine:
+		return []
+	# 🎓🏛️ Ce qu'on cherche clignote, guide réduit ou calque ouvert (auteur, 2026-10-22 : « pas entouré »).
+	if etape == "etude":
+		return campus() if carte_etude == 2 else []
+	if etape == "mairie":
+		return [int(jeu.interface.LIEUX["mairie"]["fid"])]
+	if not ouvert or jeu.theme != "":
 		return []
 	match etape:
-		"etude":
-			return campus() if carte_etude == 2 else []
-		"mairie":
-			return [int(jeu.interface.LIEUX["mairie"]["fid"])]
 		# 🧭 Le guide dit « l'îlot qui clignote » à la place des boutons (auteur, 2026-10-17).
 		"choix", "suite":
 			return _a_faire_clignoter()
