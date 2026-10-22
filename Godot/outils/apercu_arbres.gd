@@ -1,8 +1,9 @@
 extends SceneTree
 ## 🌳 LES ARBRES, à juger d'un coup d'œil : la pépinière numérotée de toutes
 ## les essences (ville, rive, forêt), puis quatre cadrages de la ville.
-## Godot --path Godot --script res://outils/apercu_arbres.gd -- [--avant] [--mois=6.5] [--loin]
+## Godot --path Godot --script res://outils/apercu_arbres.gd -- [--avant] [--mois=6.5] [--loin] [--pres]
 ## Les numéros de la pépinière sont ceux que l'auteur désigne sur l'image.
+## `--pres` : au zoom le plus serré du joueur, la pépinière en quatre images.
 
 const C := preload("res://scripts/constructeur.gd")
 
@@ -19,6 +20,10 @@ func _initialize() -> void:
 
 func capturer() -> void:
 	root.size = Vector2i(1600, 1000)
+	# `--avant` : les recettes du code, comme si aucun modèle du pack n'était là.
+	if "--avant" in OS.get_cmdline_user_args():
+		for e in C.MODELES:
+			C._modeles[e] = []
 	jeu = load("res://maquette.tscn").instantiate()
 	root.add_child(jeu)
 	jeu.vitesse = 0.0
@@ -46,6 +51,9 @@ func capturer() -> void:
 	if "--loin" in OS.get_cmdline_user_args():
 		root.mesh_lod_threshold = 1e6
 		suffixe += "_loin"
+	var pres := "--pres" in OS.get_cmdline_user_args()
+	if pres:
+		suffixe += "_pres"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--mois="):
 			jeu.mois = float(a.split("=")[1])
@@ -76,10 +84,12 @@ func capturer() -> void:
 	]
 	for vue in vues:
 		var cible = vue[5]
+		var taille: float = vue[4] if not pres or vue[0] == "06_vallee" \
+			else maxf(40.0, vue[4] * 0.35)
 		if cible is Array:
-			jeu._viser_objet(cible[0], int(cible[1]), float(vue[4]))
+			jeu._viser_objet(cible[0], int(cible[1]), taille)
 		else:
-			jeu.pivot.viser(cible, float(vue[4]))
+			jeu.pivot.viser(cible, taille)
 		jeu.pivot.caler(float(vue[2]), float(vue[3]))
 		jeu._dernier_peint = -1.0
 		jeu._rafraichir(true)
@@ -87,14 +97,14 @@ func capturer() -> void:
 		await _attendre()
 		await jeu._capturer("arbres_%s_%s" % [vue[0], suffixe])
 
-	await _pepiniere(suffixe)
+	await _pepiniere(suffixe, pres)
 	print("Arbres : cadrages rendus (%s)." % suffixe)
 	quit()
 
 
 ## La ville cachée, les essences en rang sur une dalle : même soleil, mêmes
 ## teintes que la maquette. Rang du fond = âges et tirages d'une même essence.
-func _pepiniere(suffixe: String) -> void:
+func _pepiniere(suffixe: String, pres := false) -> void:
 	jeu.monde.visible = false
 	var p := Node3D.new()
 	jeu.add_child(p)
@@ -155,19 +165,26 @@ func _pepiniere(suffixe: String) -> void:
 			"forêt peuplier"][k]])
 		x += 13.0
 
-	jeu.pivot.viser(Vector2(8.0, -4.0), 215.0)
-	jeu.pivot.caler(0.0, 24.0)
 	titre.text = "Pépinière · devant : chaque essence · fond : trois âges"
-	await _attendre()
 	for k in noms.size():
 		var l := _etiquette(15)
 		l.text = "%d %s" % [k + 1, noms[k][1]]
-		var s: Vector2 = jeu.pivot.camera.unproject_position(noms[k][0] + Vector3(0, 0, 7.0))
-		# En quinconce : seize noms ne tiennent pas sur une ligne.
-		l.position = s - Vector2(30.0, -40.0 * float(k % 2))
 		numeros.append(l)
-	await _attendre()
-	await jeu._capturer("arbres_01_pepiniere_%s" % suffixe)
+	# [centre x, taille, suffixe] : de près, quatre essences par image.
+	var cadres := [[8.0, 215.0, ""]]
+	if pres:
+		cadres = [[-80.5, 55.0, "_a"], [-28.5, 55.0, "_b"], [23.5, 55.0, "_c"], [75.5, 55.0, "_d"]]
+	for cadre in cadres:
+		jeu.pivot.viser(Vector2(cadre[0], -4.0), cadre[1])
+		jeu.pivot.caler(0.0, 24.0)
+		await _attendre()
+		for k in noms.size():
+			var s: Vector2 = jeu.pivot.camera.unproject_position(noms[k][0] + Vector3(0, 0, 7.0))
+			# En quinconce : seize noms ne tiennent pas sur une ligne.
+			numeros[k].position = s - Vector2(30.0, -40.0 * float(k % 2))
+			numeros[k].visible = s.x > 0.0 and s.x < float(root.size.x) - 60.0
+		await _attendre()
+		await jeu._capturer("arbres_01_pepiniere_%s%s" % [suffixe, cadre[2]])
 
 
 ## Recopie de `_montrer_arbres` et `_montrer_rives`, à garder d'accord.

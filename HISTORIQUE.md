@@ -944,3 +944,6 @@ Nouvel `essai_campus.gd` à 0 échec ; ouverture, livre, concours, pause de la m
 **2026-10-22 — Plus de bouton du journal en bas à droite, plus de jauge de crue sous la date ; la date passe sur deux lignes, au bord du titre de la fiche.**
 L'auteur trouvait le journal inutile et la jauge « pas ici, pas comme ça » ; le journal reste enregistré (sauvegarde, essais), plus montré. Le panneau du temps faisait 349 px contre 320 pour la fiche, « Septembre, an 20 » sur une ligne n'y tenait pas.
 Nouvel `apercu_date.gd` à 0 échec (douze mois à l'an 20) ; `apercu_danger_crue.gd` retiré ; ouverture et livre à 0, progression 3 et étude 21 comme avant.
+**2026-10-22 — Les arbres nus de la ville ont de vraies branches : le code prolonge le bois du pack dans chaque bloc de feuillage ; plus de morceaux de couronne en l'air l'hiver.**
+L'auteur, sur la pépinière de près (n° 1 à 9) : « des bouts qui flottent », « trop peu de branches » ; la brume de rameaux de ville passe de 0,3 à 0. Validé à l'écran (`wehrau_arbres_hiver_ramure.png`).
+Ramure indexée (déroulée, elle coûtait 2,25 fois plus de sommets) et retirée en vue d'ensemble : +1 ms GPU au cœur ancien en janvier, +0,3 ms en juillet ; ses ombres n'y pèsent pas. `essai_saison` à 0 échec ; `apercu_arbres.gd -- --pres`, et `--avant` rend vraiment les recettes du code.

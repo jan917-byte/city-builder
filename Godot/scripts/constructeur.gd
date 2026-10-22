@@ -736,11 +736,14 @@ const HAUTEUR := {FEUILLU: 7.4, CONIFERE: 7.5, BOULEAU: 8.1, PEUPLIER: 11.8,
 	FRUITIER: 3.8, SAULE: 5.8, TILLEUL: 9.0, BUISSON: 1.5}
 const LARGEUR := {FEUILLU: 5.25, CONIFERE: 4.0, BOULEAU: 2.55, PEUPLIER: 3.1,
 	FRUITIER: 3.5, SAULE: 5.55, TILLEUL: 4.05, BUISSON: 1.8}
-static var _modeles := {}   # essence -> [[tableaux, lods] couronne, … bois?], pied à l'origine
+static var _modeles := {}   # essence -> [[tableaux, lods] couronne, bois?, bois de ville?], pied à l'origine
 ## L'écart admis entre le modèle et sa version de loin, en mètres : Godot passe à
 ## celle-ci quand l'écart tombe sous un pixel. Sans elle, la forêt coûtait +7 ms
 ## en vue d'ensemble ; avec, le même temps que l'ancienne forêt (2026-10-22).
 const LOD_LOIN := 0.5
+## Le bois de ville perd sa ramure (`_ramure_pack`) quand cet écart, en mètres, tombe
+## sous un pixel : en vue d'ensemble, ses brindilles ne se voient plus.
+const RAMURE_LOIN := 0.5
 
 
 ## Lu une fois par essence. Vide si le modèle manque : la recette d'avant reprend.
@@ -884,6 +887,24 @@ static func _modele(essence: int) -> Array:
 		bx.resize(bv.size() * 4)
 		bx.fill(FIXE)
 		lu.append([_tableaux(bv, bn, bc, bx, b0), {LOD_LOIN: PackedInt32Array(range(b0, bv.size()))}])
+		# Le bois de ville, ramure comprise : la forêt n'en a pas (22 000 arbres).
+		if essence != SAULE:
+			var t := _ramure_pack(bv.slice(0, b0), blocs.values(), essence)
+			var fv := bv.slice(0, b0)
+			var fn := bn.slice(0, b0)
+			var fc := bc.slice(0, b0)
+			var fx := bx.slice(0, b0 * 4)
+			fv.append_array(t.v)
+			fn.append_array(t.n)
+			fc.append_array(t.c)
+			fx.append_array(t.x)
+			var a := _tableaux(fv, fn, fc, fx, b0)
+			# Indexée : déroulée en triangles, la ramure coûtait 2,25 fois plus de sommets.
+			var fi: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+			for k in t.i:
+				fi.append(b0 + k)
+			a[Mesh.ARRAY_INDEX] = fi
+			lu.append([a, {RAMURE_LOIN: PackedInt32Array(range(b0))}])
 	_modeles[essence] = lu
 	return lu
 
@@ -984,9 +1005,11 @@ static func _tableaux(v: PackedVector3Array, n: PackedVector3Array, c: PackedCol
 ## recette en plus léger, et se perd dans la brume du bord.
 ## ❄️ Nu, la part de couronne gardée en brume de rameaux. La forêt et le buisson
 ## n'ont pas de branches : sans brume, ils disparaîtraient.
+## 🔄 La ville n'en garde plus (0,3 jusqu'au 2026-10-22) : ses bouts flottaient
+## autour des branches du pack (auteur) ; `_ramure_pack` les remplace.
 const BRUME_FORET := 0.6
 const BRUME_BUISSON := 0.7
-const BRUME_VILLE := 0.3
+const BRUME_VILLE := 0.0
 const FIXE := 0.0       # ni grossi ni déplacé : brins, tronc
 const COURONNE := 1.0   # le corps de l'arbre : ±10 %, jamais effacé
 const SATELLITE := 2.0  # 2, 3, 4… : grossi, déplacé, parfois absent
@@ -1003,7 +1026,9 @@ static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMes
 		m.add_surface_from_arrays(PRIM, lu[0][0], [], lu[0][1] if loin else {}, _Volume.FORMAT)
 		m.surface_set_material(0, Materiaux.feuillage(foret, essence, brume))
 		if lu.size() > 1:
-			m.add_surface_from_arrays(PRIM, lu[1][0], [], lu[1][1] if loin else {}, _Volume.FORMAT)
+			var ramure := lu.size() > 2 and not loin
+			var bois: Array = lu[2] if ramure else lu[1]
+			m.add_surface_from_arrays(PRIM, bois[0], [], bois[1] if loin or ramure else {}, _Volume.FORMAT)
 			m.surface_set_material(1, Materiaux.ecorce(tronc, foret, essence))
 		return m
 
@@ -1132,6 +1157,59 @@ static func _ramure(t: _Volume, lobes: Array, essence: int, haut: float, rayon: 
 				d = (dir * 0.5 + cote * sens * 0.4 + Vector3.DOWN).normalized()
 				l = r * 1.3
 			t.branche(milieu, milieu + d * l, 0.065, 0.015, -role, pied, 3, 0.6, 1.0)
+
+
+## 🌳 LA RAMURE DES MODÈLES DU PACK (auteur, 2026-10-22 : nu, deux ou trois moignons
+## et des bouts qui flottent) : du bois le plus proche, une branche monte dans chaque
+## bloc de feuillage et s'y ouvre en rameaux fourchus ; repliée l'été comme `_ramure`.
+## Coût : +1 ms GPU au cœur ancien en janvier, +0,3 ms en juillet (2026-10-22).
+## ⚠️ Flaggable (90) : géométrie dessinée par le code et vue du joueur.
+static func _ramure_pack(bois: PackedVector3Array, blocs: Array, essence: int) -> _Volume:
+	var t := _Volume.new()
+	var epais := 0.025 * float(LARGEUR[essence])
+	for j in blocs.size():
+		var b: AABB = blocs[j]
+		var centre := b.get_center()
+		var demi := b.size * 0.5
+		var vise := centre - Vector3(0.0, demi.y * 0.4, 0.0)
+		var bord := bois[0]
+		for q in bois:
+			if q.distance_squared_to(vise) < bord.distance_squared_to(vise):
+				bord = q
+		# Du cœur du moignon, à son épaisseur : sinon une brindille sort d'un bout coupé.
+		var proches: Array[Vector3] = []
+		for q in bois:
+			if q.distance_to(bord) < 0.08 * float(LARGEUR[essence]):
+				proches.append(q)
+		var depart := Vector3.ZERO
+		for q in proches:
+			depart += q / proches.size()
+		var r0 := 0.0
+		for q in proches:
+			r0 += q.distance_to(depart) / proches.size()
+		r0 = clampf(r0, epais, epais * 2.5)
+		var bout := centre + Vector3(0.0, demi.y * 0.6, 0.0)
+		t.branche(depart, bout, r0, epais * 0.3, -COURONNE, depart)
+		var n := clampi(roundi(b.size.y / 1.1), 3, 7)
+		for i in n:
+			var a := TAU * float(i) / float(n) + float(j) * 2.1
+			var p0 := depart.lerp(bout, 0.25 + 0.6 * float(i) / float(n))
+			var p1 := centre + Vector3(cos(a) * demi.x, 0.0, sin(a) * demi.z) * 0.85
+			p1.y = minf(p0.y + demi.y * 0.5, centre.y + demi.y * 0.85)
+			t.branche(p0, p1, epais * 0.5, epais * 0.15, -COURONNE, depart, 3)
+			var dir := (p1 - p0).normalized()
+			var cote := dir.cross(Vector3.UP)
+			cote = cote.normalized() if cote.length() > 0.1 else Vector3.RIGHT
+			var l := p0.distance_to(p1)
+			# Un rameau au milieu, d'un côté puis de l'autre, et la fourche au bout.
+			var m := p0.lerp(p1, 0.55)
+			var s := 1.0 if i % 2 == 0 else -1.0
+			t.branche(m, m + (dir + cote * s * 0.8 + Vector3.UP * 0.5).normalized() * l * 0.45,
+				epais * 0.3, 0.008, -COURONNE, depart, 3)
+			for sens in [-1.0, 1.0]:
+				t.branche(p1, p1 + (dir + cote * sens * 0.6 + Vector3.UP * 0.4).normalized() * l * 0.3,
+					epais * 0.15, 0.006, -COURONNE, depart, 3)
+	return t
 
 
 ## Les tableaux d'une surface d'arbre. CUSTOM0 = centre du lobe et son rôle,
