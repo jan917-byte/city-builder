@@ -1595,6 +1595,8 @@ func _maj_prochaine() -> void:
 ## elle garde le mois de sa dernière mise à jour ; au clic, l'eau recule jusqu'à
 ## aujourd'hui et les chiffres disent l'écart. Lu par `maquette._regler_crue`.
 var mois_carte_crue := 0.0
+## Le mois de la carte d'avant le dernier clic : son bord reste en pointillé.
+var mois_carte_avant := 0.0
 signal carte_crue_avancee()
 var _carte_bouton: Button
 var _carte_tween: Tween
@@ -1606,6 +1608,7 @@ const CARTE_RECUL_S := 2.5
 
 func mettre_a_jour_carte() -> void:
 	_carte_avant = ville.prochaine_crue(mois_carte_crue)
+	mois_carte_avant = mois_carte_crue
 	if _carte_tween != null:
 		_carte_tween.kill()
 	_carte_tween = create_tween()
@@ -1622,6 +1625,7 @@ func caler_carte_crue(t: float) -> void:
 	if _carte_tween != null:
 		_carte_tween.kill()
 	mois_carte_crue = t
+	mois_carte_avant = t
 	_carte_avant = {}
 	_a_venir_cle = ""
 

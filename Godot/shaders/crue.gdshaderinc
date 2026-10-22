@@ -12,7 +12,9 @@ uniform vec3 crue_clair = vec3(0.55, 0.76, 0.87);
 uniform vec3 crue_fonce = vec3(0.008, 0.089, 0.305);
 // La baisse de `ville.baisse_crue_m` : la part de toute la ville, puis une par
 // berge sur son bief (fil amont, fil aval, mètres). `crue_fil` = Z au sud, au nord.
+// `_avant` et `.w` : la même baisse avant le dernier clic sur la carte.
 uniform float crue_baisse_ville = 0.0;
+uniform float crue_baisse_ville_avant = 0.0;
 uniform vec4 crue_biefs[12];
 uniform vec2 crue_fil = vec2(0.0, 1.0);
 // Le fond de la carte des dangers, blanc (auteur, 2026-10-09). ⚠ LINÉAIRE ;
@@ -26,6 +28,32 @@ float crue_baisse(float z) {
 		if (fil >= crue_biefs[k].x - 0.001 && fil <= crue_biefs[k].y + 0.001) b += crue_biefs[k].z;
 	}
 	return b;
+}
+
+// Ce que le dernier clic a rendu, en mètres : 0 hors de la prochaine crue.
+float crue_gain(float z) {
+	if (crue_vue != 2) return 0.0;
+	float fil = clamp((crue_fil.x - z) / (crue_fil.x - crue_fil.y), 0.0, 1.0);
+	float b = crue_baisse_ville - crue_baisse_ville_avant;
+	for (int k = 0; k < 12; k++) {
+		if (fil >= crue_biefs[k].x - 0.001 && fil <= crue_biefs[k].y + 0.001)
+			b += crue_biefs[k].z - crue_biefs[k].w;
+	}
+	return b;
+}
+
+// 🔄 Le bord d'avant le clic, en pointillé, jusqu'au clic suivant (auteur,
+// 2026-10-22 : 13 cm ne reculent le bord que de quelques mètres). Trait de
+// ~4 px ; tirets en damier de ~10 px, pour le couper dans toutes les directions.
+// Flaggable (90) : rendu de shader.
+float crue_bord_avant(vec2 xz, float h, float fw_h) {
+	float gain = crue_gain(xz.y);
+	if (gain < 0.005) return 0.0;
+	float fw = max(fw_h, 1e-4);
+	float trait = 1.0 - smoothstep(fw * 1.6, fw * 2.6, abs(h + gain - 0.10));
+	float pas = max(2.0, 10.0 * length(fwidth(xz)));
+	vec2 c = step(0.5, fract(xz / pas));
+	return trait * abs(c.x - c.y);
 }
 
 // Mètres d'eau en ce point. `onde` = 1 pour le sol : le bord ondule avec la

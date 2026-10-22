@@ -947,3 +947,6 @@ Nouvel `apercu_date.gd` à 0 échec (douze mois à l'an 20) ; `apercu_danger_cru
 **2026-10-22 — Les arbres nus de la ville ont de vraies branches : le code prolonge le bois du pack dans chaque bloc de feuillage ; plus de morceaux de couronne en l'air l'hiver.**
 L'auteur, sur la pépinière de près (n° 1 à 9) : « des bouts qui flottent », « trop peu de branches » ; la brume de rameaux de ville passe de 0,3 à 0. Validé à l'écran (`wehrau_arbres_hiver_ramure.png`).
 Ramure indexée (déroulée, elle coûtait 2,25 fois plus de sommets) et retirée en vue d'ensemble : +1 ms GPU au cœur ancien en janvier, +0,3 ms en juillet ; ses ombres n'y pèsent pas. `essai_saison` à 0 échec ; `apercu_arbres.gd -- --pres`, et `--avant` rend vraiment les recettes du code.
+**2026-10-22 — La carte de la prochaine crue garde en pointillé le bord d'avant le clic, jusqu'au clic suivant.**
+L'auteur ne voyait rien bouger avec 13 cm de moins : la surface en eau ne perd que 3 % (46,4 → 45,0 ha), 13 % à 50 cm, le bord recule de quelques mètres.
+Trait de ~4 px en tirets de ~10 px, dans le shader de la crue ; `essai_etude` 21, ouverture et livre 0, comme avant.

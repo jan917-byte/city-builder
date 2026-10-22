@@ -2593,18 +2593,23 @@ func _regler_crue(active: bool) -> void:
 	# 🔄 La prochaine crue au mois de sa dernière mise à jour, pas au mois courant
 	# (auteur, 2026-10-09) ; même somme que `interface._empreinte_carte`.
 	var t := interface.mois_carte_crue if vue == 2 else mois
-	_crue_param("crue_baisse_ville", ville.baisse_crue_toits_m(t)
-		+ ville.baisse_crue_champs_m(t) + ville.baisse_crue_parcs_m(t)
-		+ ville.baisse_crue_sols_m(t))
+	var t0 := interface.mois_carte_avant if vue == 2 else mois
+	_crue_param("crue_baisse_ville", _baisse_ville(t))
+	_crue_param("crue_baisse_ville_avant", _baisse_ville(t0))
 	var biefs := []
 	for b in ville.berges:
 		biefs.append(Vector4(ville.base("b", b, "fil_amont"), ville.base("b", b, "fil_aval"),
-			ville.berge_baisse_m(b, t), 0.0))
+			ville.berge_baisse_m(b, t), ville.berge_baisse_m(b, t0)))
 	if biefs.size() > 12:
 		push_error("crue.gdshaderinc ne lit que 12 berges, il y en a %d" % biefs.size())
 	while biefs.size() < 12:
 		biefs.append(Vector4.ZERO)
 	_crue_param("crue_biefs", biefs.slice(0, 12))
+
+
+func _baisse_ville(t: float) -> float:
+	return ville.baisse_crue_toits_m(t) + ville.baisse_crue_champs_m(t) \
+		+ ville.baisse_crue_parcs_m(t) + ville.baisse_crue_sols_m(t)
 
 
 func _crue_param(nom: String, valeur: Variant) -> void:
