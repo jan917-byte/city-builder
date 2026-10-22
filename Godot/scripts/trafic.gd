@@ -2039,6 +2039,21 @@ func _part_ilot(fid: int, mois: float) -> float:
 		/ (depart - Ville.PERMEABLE_RESTE), 0.0, 1.0)
 
 
+## 🅿️ Les garées d'un îlot pour la miniature : les mêmes places, le même compte, les mêmes teintes.
+func remplir_ilot(mm_gare: MultiMesh, fid: int, mois: float) -> void:
+	var n := int(ceilf(_part_ilot(fid, mois) * float(_garees_ilot.get(fid, 0))))
+	mm_gare.instance_count = n
+	var k := 0
+	for i in _garees.size():
+		if k >= n:
+			break
+		var a: Dictionary = _garees[i]
+		if a.has("ilot") and int(a["fid"]) == fid:
+			mm_gare.set_instance_transform(k, a["t"])
+			mm_gare.set_instance_color(k, allure(i, true))
+			k += 1
+
+
 func _maj_garees(mois: float, force: bool) -> void:
 	if not force and is_equal_approx(mois, _dernier_etat):
 		return

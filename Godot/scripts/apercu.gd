@@ -75,6 +75,8 @@ var _camp_mmi: MultiMeshInstance3D
 ## 🌿 Les arbres du parc inondable promis (95), semés sur la dalle des ruines.
 var _parc_mmi := {}
 var _parc_cle: Mesh
+## 🌳 Les arbres de la ville dans l'îlot montré, un nœud par essence (`maquette._arbres_de`).
+var _ilot_mmi := {}
 ## 🌿 Ce qui pousse sur la rive du morceau montré. Deux nœuds, une essence
 ## chacun : un MultiMesh ne répète qu'un seul maillage.
 var _rives := {}
@@ -240,6 +242,7 @@ func batir(mat_objet: Material, palette: Dictionary, taille := TAILLE) -> void:
 func montrer(objet: Mesh, futur: Mesh, sol: Mesh, ruine: Mesh = null, agricole := false) -> void:
 	_vider_echantillon()
 	_camp_mmi.multimesh = null
+	boiser({})
 	_objet.mesh = objet
 	_objet.set_instance_shader_parameter("parcelle_agricole", 1.0 if agricole else 0.0)
 	_champ = agricole
@@ -290,6 +293,7 @@ func echantillon(couche: String, fiche: Dictionary, voie_m := 0.0) -> void:
 	_objet.set_instance_shader_parameter("parcelle_agricole", 0.0)
 	_champ = false
 	_camp_mmi.multimesh = null
+	boiser({})
 	_ech_couche = couche
 	_ech_fiche = fiche
 	_ech_voie = voie_m
@@ -422,10 +426,23 @@ func camper(mm: MultiMesh) -> void:
 	_camp_mmi.multimesh = mm
 
 
+func boiser(par_essence: Dictionary) -> void:
+	for essence in _ilot_mmi:
+		(_ilot_mmi[essence] as MultiMeshInstance3D).multimesh = null
+	for essence in par_essence:
+		if not _ilot_mmi.has(essence):
+			var mmi := MultiMeshInstance3D.new()
+			mmi.name = "Ilot%d" % essence
+			add_child(mmi)
+			_ilot_mmi[essence] = mmi
+		(_ilot_mmi[essence] as MultiMeshInstance3D).multimesh = par_essence[essence]
+
+
 func eteindre() -> void:
 	if render_target_update_mode == SubViewport.UPDATE_DISABLED:
 		return
 	_camp_mmi.multimesh = null
+	boiser({})
 	_parc_cle = null
 	_planter_parc()
 	_vider_echantillon()

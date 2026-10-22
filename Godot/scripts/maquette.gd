@@ -196,6 +196,7 @@ var venelles := {}         # 🚶 fid d'îlot -> la trace, cachée une fois la v
 var _arbres_semis := []
 var _arbres_slots := []      # [x, y, z, échelle, lacet, fid tronçon, seuil]
 var _arbres_noeuds := {}     # essence -> MultiMeshInstance3D
+var _arbres_liste := []      # ce que la ville plante en ce moment, relu par la miniature
 var _parcs := {}             # îlot rendu en parc -> ses MultiMeshInstance3D
 var _arbres_compte := -1
 # 🌿 CE QUI POUSSE SUR UNE RIVE RENDUE AU FLEUVE, rangé PAR BERGE : c'est
@@ -2207,18 +2208,36 @@ func _montrer_arbres() -> void:
 			# plante une haie d'épicéas en ville.
 			liste.append([a[0], a[1], a[2], a[3], a[4]] + _essence_rue(int(a[5])))
 	_arbres_compte = liste.size()
-	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
-	var brun := Donnees.teinte(donnees, "_tronc")
+	_arbres_liste = liste
 	for essence in _arbres_noeuds:
-		# Variation de VALEUR sur la même teinte, pas une deuxième couleur dans
-		# la palette (Direction artistique l.67).
-		var t := vert if essence == Constructeur.FEUILLU \
-			else Color(vert.r * 0.70, vert.g * 0.80, vert.b * 0.76)
-		if VALEUR_ESSENCE.has(essence):
-			t = vert * float(VALEUR_ESSENCE[essence])
-		(_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh = \
-			Constructeur.arbres(liste, essence, t,
-				ECORCE_BOULEAU if essence == Constructeur.BOULEAU else brun)
+		(_arbres_noeuds[essence] as MultiMeshInstance3D).multimesh = _planter(liste, essence)
+
+
+func _planter(liste: Array, essence: int) -> MultiMesh:
+	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
+	# Variation de VALEUR sur la même teinte, pas une deuxième couleur dans
+	# la palette (Direction artistique l.67).
+	var t := vert if essence == Constructeur.FEUILLU \
+		else Color(vert.r * 0.70, vert.g * 0.80, vert.b * 0.76)
+	if VALEUR_ESSENCE.has(essence):
+		t = vert * float(VALEUR_ESSENCE[essence])
+	return Constructeur.arbres(liste, essence, t, ECORCE_BOULEAU
+		if essence == Constructeur.BOULEAU else Donnees.teinte(donnees, "_tronc"))
+
+
+## 🌳 Les arbres de la ville posés dans l'emprise de l'îlot, pour la miniature (auteur, 2026-10-22).
+func _arbres_de(fid: int) -> Dictionary:
+	var em: Variant = (donnees["emprises"] as Dictionary).get(str(fid))
+	var liste := []
+	if em != null:
+		for a in _arbres_liste:
+			if _dans_un_camp([em], float(a[0]), float(a[2])):
+				liste.append(a)
+	var out := {}
+	if not liste.is_empty():
+		for essence in _arbres_noeuds:
+			out[essence] = _planter(liste, essence)
+	return out
 
 
 ## 🌳 L'essence et la variété d'un alignement, une par rue, tirées de son
@@ -3225,6 +3244,8 @@ func _maj_apercu() -> void:
 				neuf.mesh if neuf != null else null, null if casse else _socle(couche, fid),
 				ruines_ponts[fid].mesh if casse and ruines_ponts.has(fid) else null,
 				ville.objets(couche).get(fid, {}).get("sous_type", "") == "champ")
+			if couche == "i":
+				apercu.boiser(_arbres_de(fid))
 		else:
 			apercu.echantillon(couche, ville.objets(couche).get(fid, {}),
 				_voie_de_berge(fid) if couche == "b" else 0.0)
@@ -3244,6 +3265,13 @@ func _maj_apercu() -> void:
 	# Les voitures du morceau montré. La signature évite de les reposer à chaque
 	# image : elles ne changent qu'au survol ou au mois. Un pont cassé n'en a
 	# pas — sa miniature est un bout de ville, pas un échantillon.
+	# 🅿️ Un îlot montre ses garées hors de la rue, celles de la ville au même mois.
+	if couche == "i" and trafic != null:
+		var signe_i := "i%d %d" % [fid, int(mois * 4.0)]
+		if signe_i != _apercu_voitures:
+			_apercu_voitures = signe_i
+			trafic.remplir_ilot(apercu.mm_gare, fid, mois)
+		return
 	if couche != "r" or trafic == null or apercu.ech_longueur <= 0.0:
 		return
 	# 🌳 Les arbres du morceau, à la MÊME densité au mètre que la rue réelle —
