@@ -3912,7 +3912,7 @@ func _controles_temps() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	p.add_child(h)
-	# 🔄 Plus de jauge de crue sous la date (auteur, 2026-10-22 : « pas ici, pas comme ça ») ;
+	# 🔄 Plus de jauge de crue sous la date (auteur, 2026-10-22 : « pas ici, pas comme ça », Dangers suffit) ;
 	# l'année prend sa ligne, sans quoi « Septembre, an 20 » élargissait le panneau au-delà de la fiche.
 	var date := VBoxContainer.new()
 	date.add_theme_constant_override("separation", -5)
