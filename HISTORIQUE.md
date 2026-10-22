@@ -929,3 +929,6 @@ Modèles d'exportation 4.7.1 installés dans le vrai AppData par `.bat` lancé v
 **2026-10-22 — Le clic sur la mairie l'ouvre la première année ; une grande fenêtre (lieux, concours) met le jeu en pause.**
 « On rebâtit d'abord » bloquait l'ouverture au clic ; la pause remplace le « ×1 sans pause » du 2026-10-20 et rend à la fermeture la vitesse d'avant.
 Essai `essai_mairie_pause` à 0 échec ; `essai_etude` à 24 échecs dès « Adopter », les mêmes sans la pause : vient du chantier des polices en cours dans l'autre session.
+**2026-10-22 — L'habillage de l'interface (thème, polices, icônes, nombres) sort dans `interface_habillage.gd`, dont `interface.gd` hérite.**
+Déplacement à l'identique : 1 173 lignes sorties, 5 654 restent ; les 23 essais donnent les mêmes OK et ÉCHEC qu'avant (étude 22, campagne 7, progression 3, vie du camp 2, sauvegarde 1).
+Le reste ne se range pas en couches : 18 appels remonteraient d'une couche basse vers une haute ; aller plus loin demande des panneaux séparés, c'est une réécriture.

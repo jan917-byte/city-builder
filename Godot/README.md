@@ -61,6 +61,7 @@ En bas à gauche, la boussole **N** remet le nord en haut ; **Dessus / 3D** alte
 | `scripts/ville.gd` · `energie.gd` | état de la ville, décisions, budget et énergie |
 | `scripts/recherche.gd` · `politiques.gd` | tables de recherche et de politiques |
 | `scripts/interface.gd` · `selection.gd` · `lieux.gd` | fiches, clic et noms affichés |
+| `scripts/interface_habillage.gd` | thème, polices, tailles, icônes et nombres écrits, dont `interface.gd` hérite ; il ne connaît ni la ville ni la fiche |
 | `scripts/sauvegarde.gd` | écriture, lecture et copie de secours de la partie |
 | `scripts/apercu.gd` · `echantillon.gd` | miniature et coupe de rue ou de berge |
 | `scripts/trafic.gd` · `materiaux.gd` · `camera_axo.gd` · `paysage.gd` | trafic, matières, caméra et décor extérieur exporté |
