@@ -935,3 +935,6 @@ Le reste ne se range pas en couches : 18 appels remonteraient d'une couche basse
 **2026-10-22 — Le temps passe à 70 s le mois, les constructions raccourcissent, la carte des chantiers tient un chantier par ligne avec sa part faite en %.**
 Durées : îlot 9 → 7,5 mois, pont 7 → 6, provisoire 2 → 1,5, berge 6/18 → 5/15, sol 6 → 5, venelle 3 → 2,5, étage 18 → 15, toit vert et places 2 → 1,5 ; la carte perd son titre, 34 px par chantier au lieu de 55.
 Essais aux mêmes échecs qu'avant (étude 22, campagne 7, progression 3, vie du camp 2, sauvegarde 1, camp hors essais) ; `essai_ouverture` lit la durée de la berge au lieu de 18 mois en dur.
+**2026-10-22 — Les arbres et buissons prennent la forme des packs craftpix de l'auteur (`Godot/modeles/arbres/`), avec nos couleurs, nos saisons et notre écorce.**
+FBX lus au lancement par `FBXDocument`, étirés à la hauteur et à la largeur des recettes d'avant (feuillu 7, conifère 18, bouleau 5, peuplier 4, fruitier 2, saule 15, tilleul 6, buisson 7) ; le n° 1 faisait une forêt de savane ; le roseau reste dessiné par le code.
+Sans version de loin, la forêt coûtait +7 ms en vue d'ensemble ; avec (forêt seule), GPU 7,8 → 8,4 ms en vue d'ensemble et 7,2 → 8,0 ms dans le cœur ancien ; `essai_saison` à 0 échec.

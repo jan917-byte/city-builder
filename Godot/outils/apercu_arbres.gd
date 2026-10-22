@@ -1,7 +1,7 @@
 extends SceneTree
 ## 🌳 LES ARBRES, à juger d'un coup d'œil : la pépinière numérotée de toutes
 ## les essences (ville, rive, forêt), puis quatre cadrages de la ville.
-## Godot --path Godot --script res://outils/apercu_arbres.gd -- [--avant]
+## Godot --path Godot --script res://outils/apercu_arbres.gd -- [--avant] [--mois=6.5] [--loin]
 ## Les numéros de la pépinière sont ceux que l'auteur désigne sur l'image.
 
 const C := preload("res://scripts/constructeur.gd")
@@ -42,6 +42,10 @@ func capturer() -> void:
 	var suffixe := "avant" if "--avant" in OS.get_cmdline_user_args() else "apres"
 	# ❄️ `-- --mois=10.3` : les mêmes vues à ce mois, météo à graine fixe.
 	jeu.changer_saison(jeu.Saison.new(7))
+	# 🔭 `-- --loin` : tous les arbres dans leur version de loin (LOD de `Constructeur`).
+	if "--loin" in OS.get_cmdline_user_args():
+		root.mesh_lod_threshold = 1e6
+		suffixe += "_loin"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--mois="):
 			jeu.mois = float(a.split("=")[1])

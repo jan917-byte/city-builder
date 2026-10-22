@@ -722,6 +722,258 @@ static func pose(a: Array, essence: int) -> Transform3D:
 	return Transform3D(b, Vector3(float(a[0]), float(a[1]), float(a[2])))
 
 
+## 🌳 LES MODÈLES DE L'AUTEUR (packs craftpix « Free Tree » et « Free Bush 3D Low
+## Poly », 2026-10-22) : leur FORME seule. Teinte, saisons et écorce restent les
+## nôtres (auteur) ; la texture du pack, verte en haut, brune en bas, ne sert
+## qu'à trier couronne et bois. Les numéros sont ceux de la planche de l'auteur.
+const MODELES := {FEUILLU: "Tree_temp_climate_007", CONIFERE: "Tree_temp_climate_018",
+	BOULEAU: "Tree_temp_climate_005", PEUPLIER: "Tree_temp_climate_004",
+	FRUITIER: "Tree_temp_climate_002", SAULE: "Tree_temp_climate_015",
+	TILLEUL: "Tree_temp_climate_006", BUISSON: "Bush_temp_climate_007"}
+## Hauteur et largeur des recettes d'avant, mesurées le 2026-10-22 : semis,
+## alignements et part d'ombre des fiches y sont réglés. Le modèle s'y étire.
+const HAUTEUR := {FEUILLU: 7.4, CONIFERE: 7.5, BOULEAU: 8.1, PEUPLIER: 11.8,
+	FRUITIER: 3.8, SAULE: 5.8, TILLEUL: 9.0, BUISSON: 1.5}
+const LARGEUR := {FEUILLU: 5.25, CONIFERE: 4.0, BOULEAU: 2.55, PEUPLIER: 3.1,
+	FRUITIER: 3.5, SAULE: 5.55, TILLEUL: 4.05, BUISSON: 1.8}
+static var _modeles := {}   # essence -> [[tableaux, lods] couronne, … bois?], pied à l'origine
+## L'écart admis entre le modèle et sa version de loin, en mètres : Godot passe à
+## celle-ci quand l'écart tombe sous un pixel. Sans elle, la forêt coûtait +7 ms
+## en vue d'ensemble ; avec, le même temps que l'ancienne forêt (2026-10-22).
+const LOD_LOIN := 0.5
+
+
+## Lu une fois par essence. Vide si le modèle manque : la recette d'avant reprend.
+## Chaque bloc de feuillage porte son centre en CUSTOM0 (rôle COURONNE) : nu,
+## il se resserre sur lui-même au lieu de glisser vers l'axe de l'arbre.
+static func _modele(essence: int) -> Array:
+	if _modeles.has(essence):
+		return _modeles[essence]
+	_modeles[essence] = []
+	if not MODELES.has(essence):
+		return []
+	var doc := FBXDocument.new()
+	var etat := FBXState.new()
+	var chemin := "res://modeles/arbres/%s.fbx" % MODELES[essence]
+	if doc.append_from_file(chemin, etat) != OK:
+		push_warning("arbre : %s illisible, recette d'avant" % chemin)
+		return []
+	var racine := doc.generate_scene(etat)
+	# La soupe de triangles, dans le repère de la racine.
+	var sv := PackedVector3Array()
+	var sn := PackedVector3Array()
+	var su := PackedFloat32Array()
+	for mi: MeshInstance3D in racine.find_children("*", "MeshInstance3D", true, false):
+		var t := mi.transform
+		var p := mi.get_parent()
+		while p != racine and p is Node3D:
+			t = (p as Node3D).transform * t
+			p = p.get_parent()
+		for s in mi.mesh.get_surface_count():
+			var a := mi.mesh.surface_get_arrays(s)
+			var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+			var nm: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+			var uv: PackedVector2Array = a[Mesh.ARRAY_TEX_UV]
+			var idx = a[Mesh.ARRAY_INDEX]
+			if idx == null:
+				idx = PackedInt32Array(range(v.size()))
+			for k in idx:
+				sv.append(t * v[k])
+				sn.append((t.basis * nm[k]).normalized())
+				su.append(uv[k].y)
+	racine.free()
+	if sv.is_empty():
+		return []
+
+	# Le pied : le bas du bois, sinon le milieu (un buisson n'a pas de tronc).
+	var bas := INF
+	var haut := -INF
+	for q in sv:
+		bas = minf(bas, q.y)
+		haut = maxf(haut, q.y)
+	var pied := Vector3.ZERO
+	var nb := 0
+	for k in sv.size():
+		if su[k] >= 0.5 and sv[k].y < bas + 0.25:
+			pied += sv[k]
+			nb += 1
+	if nb > 0:
+		pied /= nb
+	else:
+		var b := AABB(sv[0], Vector3.ZERO)
+		for q in sv:
+			b = b.expand(q)
+		pied = b.get_center()
+	pied.y = bas
+	var emprise := AABB(sv[0], Vector3.ZERO)
+	for q in sv:
+		emprise = emprise.expand(q)
+	var ech := Vector3.ONE * float(HAUTEUR[essence]) / (haut - bas)
+	var l := float(LARGEUR[essence]) / (0.5 * (emprise.size.x + emprise.size.z) * ech.y)
+	ech.x *= l
+	ech.z *= l
+	for k in sv.size():
+		sv[k] = (sv[k] - pied) * ech
+		sn[k] = (sn[k] / ech).normalized()
+	haut = (haut - bas) * ech.y
+
+	# Les blocs de feuillage : sommets soudés au millimètre, triangles réunis.
+	var cv := PackedVector3Array()
+	var cn := PackedVector3Array()
+	var bv := PackedVector3Array()
+	var bn := PackedVector3Array()
+	for t in range(0, sv.size(), 3):
+		var couronne := su[t] + su[t + 1] + su[t + 2] < 1.5
+		for j in 3:
+			(cv if couronne else bv).append(sv[t + j])
+			(cn if couronne else bn).append(sn[t + j])
+	var cle := {}
+	var soude := PackedInt32Array()
+	for q in cv:
+		var k := Vector3i((q * 1000.0).round())
+		if not cle.has(k):
+			cle[k] = cle.size()
+		soude.append(cle[k])
+	var chef := PackedInt32Array(range(cle.size()))
+	for t in range(0, soude.size(), 3):
+		for j in [1, 2]:
+			var r1 := _chef(chef, soude[t])
+			var r2 := _chef(chef, soude[t + j])
+			chef[r1] = r2
+	var blocs := {}   # chef -> AABB du bloc
+	for k in cv.size():
+		var r := _chef(chef, soude[k])
+		blocs[r] = (blocs[r] as AABB).expand(cv[k]) if blocs.has(r) else AABB(cv[k], Vector3.ZERO)
+
+	var x := PackedFloat32Array()
+	var c := PackedColorArray()
+	for k in cv.size():
+		var b: AABB = blocs[_chef(chef, soude[k])]
+		var centre := b.get_center()
+		c.append(_degrade(b, cv[k].y, haut))
+		x.append_array(PackedFloat32Array([centre.x, centre.y, centre.z, COURONNE]))
+
+	# 🔭 Le même arbre de loin : un volume à six côtés par bloc (les trois plus
+	# gros ; tous pour le conifère, ses étages font sa silhouette), le bois en un fût.
+	var gros: Array = blocs.values()
+	gros.sort_custom(func(p: AABB, q: AABB) -> bool: return p.get_volume() > q.get_volume())
+	if essence != CONIFERE:
+		gros = gros.slice(0, 3)
+	var n0 := cv.size()
+	var sous := INF
+	for b: AABB in gros:
+		_bloc_loin(cv, cn, b, essence == CONIFERE)
+		sous = minf(sous, b.position.y)
+		var centre := b.get_center()
+		for k in range(c.size(), cv.size()):
+			c.append(_degrade(b, cv[k].y, haut))
+			x.append_array(PackedFloat32Array([centre.x, centre.y, centre.z, COURONNE]))
+	var lu := [[_tableaux(cv, cn, c, x, n0), {LOD_LOIN: PackedInt32Array(range(n0, cv.size()))}]]
+	if not bv.is_empty():
+		var b0 := bv.size()
+		var r := maxf(0.1, 0.06 * float(LARGEUR[essence]))
+		var cime := 0.0
+		for q in bv:
+			cime = maxf(cime, q.y)
+		# Jusque dans la couronne ; le saule, dont les rideaux tombent bas, jusqu'à son dôme.
+		_fut(bv, bn, r, maxf(sous + 0.3, 0.75 * cime))
+		var bc := PackedColorArray()
+		bc.resize(bv.size())
+		bc.fill(Color.WHITE)
+		var bx := PackedFloat32Array()
+		bx.resize(bv.size() * 4)
+		bx.fill(FIXE)
+		lu.append([_tableaux(bv, bn, bc, bx, b0), {LOD_LOIN: PackedInt32Array(range(b0, bv.size()))}])
+	_modeles[essence] = lu
+	return lu
+
+
+## Le dégradé des lobes d'avant (0,66 → 1,10), moitié dans le bloc, moitié dans l'arbre.
+static func _degrade(b: AABB, y: float, haut: float) -> Color:
+	var dans := clampf(inverse_lerp(b.position.y, b.end.y, y), 0.0, 1.0) 		if b.size.y > 0.01 else 1.0
+	var g := lerpf(0.66, 1.10, 0.5 * dans + 0.5 * y / haut)
+	return Color(g, g, g, 1.0)
+
+
+## Le bloc vu de loin : deux anneaux décalés et deux pointes (24 triangles), ou
+## un cône ouvert dessous pour un étage de conifère (6).
+static func _bloc_loin(v: PackedVector3Array, n: PackedVector3Array, b: AABB, cone: bool) -> void:
+	var o := b.get_center()
+	var h := b.size * 0.46
+	var sommet := o + Vector3(0.0, h.y, 0.0)
+	if cone:
+		var a := _anneau(o, h, -1.0, 1.0, 0.0)
+		for i in 6:
+			_tri(v, n, a[i], a[(i + 1) % 6], sommet, o)
+		return
+	var bas := o - Vector3(0.0, h.y, 0.0)
+	var a1 := _anneau(o, h, -0.40, 0.94, 0.0)
+	var a2 := _anneau(o, h, 0.38, 0.86, PI / 6.0)
+	for i in 6:
+		var j := (i + 1) % 6
+		_tri(v, n, bas, a1[i], a1[j], o)
+		_tri(v, n, a1[i], a1[j], a2[i], o)
+		_tri(v, n, a2[i], a1[j], a2[j], o)
+		_tri(v, n, a2[i], a2[j], sommet, o)
+
+
+static func _anneau(o: Vector3, h: Vector3, t: float, f: float, decale: float) -> Array:
+	var a := []
+	for i in 6:
+		var ang := float(i) * TAU / 6.0 + decale
+		a.append(o + Vector3(cos(ang) * h.x * f, t * h.y, sin(ang) * h.z * f))
+	return a
+
+
+## Le fût vu de loin : quatre faces, du pied jusque dans la couronne.
+static func _fut(v: PackedVector3Array, n: PackedVector3Array, r: float, haut: float) -> void:
+	for i in 4:
+		var a0 := float(i) * TAU / 4.0
+		var a1 := a0 + TAU / 4.0
+		var p0 := Vector3(cos(a0) * r, 0.0, sin(a0) * r)
+		var p1 := Vector3(cos(a1) * r, 0.0, sin(a1) * r)
+		var q0 := Vector3(p0.x * 0.6, haut, p0.z * 0.6)
+		var q1 := Vector3(p1.x * 0.6, haut, p1.z * 0.6)
+		var axe := Vector3(0.0, haut * 0.5, 0.0)
+		_tri(v, n, p0, p1, q1, axe)
+		_tri(v, n, p0, q1, q0, axe)
+
+
+## Une face plate tournée vers le dehors de `dedans` : Godot montre la face
+## dont le produit vectoriel des côtés pointe vers l'intérieur.
+static func _tri(v: PackedVector3Array, n: PackedVector3Array, a: Vector3, b: Vector3,
+		c: Vector3, dedans: Vector3) -> void:
+	var cr := (b - a).cross(c - a)
+	if cr.dot((a + b + c) / 3.0 - dedans) > 0.0:
+		var t := b
+		b = c
+		c = t
+		cr = -cr
+	var nn := -cr.normalized()
+	v.append_array(PackedVector3Array([a, b, c]))
+	n.append_array(PackedVector3Array([nn, nn, nn]))
+
+
+static func _chef(chef: PackedInt32Array, k: int) -> int:
+	while chef[k] != k:
+		chef[k] = chef[chef[k]]
+		k = chef[k]
+	return k
+
+
+## `n0` premiers sommets : le modèle ; les suivants : sa version de loin (LOD).
+static func _tableaux(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
+		x: PackedFloat32Array, n0: int) -> Array:
+	var a := []
+	a.resize(Mesh.ARRAY_MAX)
+	a[Mesh.ARRAY_VERTEX] = v
+	a[Mesh.ARRAY_NORMAL] = n
+	a[Mesh.ARRAY_COLOR] = c
+	a[Mesh.ARRAY_CUSTOM0] = x
+	a[Mesh.ARRAY_INDEX] = PackedInt32Array(range(n0))
+	return a
+
+
 ## 🌳 UNE RECETTE PAR ESSENCE, et chaque arbre la joue à sa façon : chaque lobe
 ## porte son centre et son rôle, et `feuillage.gdshader` grossit, déplace ou
 ## efface les lobes satellites d'après la position de l'arbre. Mille arbres,
@@ -741,6 +993,22 @@ const SATELLITE := 2.0  # 2, 3, 4… : grossi, déplacé, parfois absent
 
 static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMesh:
 	var m := ArrayMesh.new()
+	var brume := BRUME_FORET if foret != Vector2.ZERO \
+		else (BRUME_BUISSON if essence == BUISSON else BRUME_VILLE)
+	var lu := _modele(essence)
+	if not lu.is_empty():
+		# 🔭 La version de loin pour la forêt seule : en ville elle ne gagnait rien
+		# (sonde du 2026-10-22) et cachait les modèles dès 340 m de recul.
+		var loin := foret != Vector2.ZERO
+		m.add_surface_from_arrays(PRIM, lu[0][0], [], lu[0][1] if loin else {}, _Volume.FORMAT)
+		m.surface_set_material(0, Materiaux.feuillage(foret, essence, brume))
+		if lu.size() > 1:
+			m.add_surface_from_arrays(PRIM, lu[1][0], [], lu[1][1] if loin else {}, _Volume.FORMAT)
+			m.surface_set_material(1, Materiaux.ecorce(tronc, foret, essence))
+		return m
+
+	# 🔄 RETOUR EN ARRIÈRE SIGNALÉ (2026-10-22) : les recettes ci-dessous ne
+	# servent plus qu'au roseau, et en secours si un modèle manque.
 	var f := _Volume.new()
 	f.cotes = 6 if foret != Vector2.ZERO else 8
 	# En forêt, deux satellites suffisent : 22 000 arbres, vus de loin.
@@ -808,8 +1076,7 @@ static func arbre(essence: int, tronc: Color, foret := Vector2.ZERO) -> ArrayMes
 		f.lobe(Vector3(-0.80, 3.75, -1.25), 1.45, 0.58, 0.94, SATELLITE + 3)
 
 	m.add_surface_from_arrays(PRIM, f.surface(), [], {}, _Volume.FORMAT)
-	m.surface_set_material(0, Materiaux.feuillage(foret, essence, BRUME_FORET
-		if foret != Vector2.ZERO else (BRUME_BUISSON if essence == BUISSON else BRUME_VILLE)))
+	m.surface_set_material(0, Materiaux.feuillage(foret, essence, brume))
 
 	# 🔴 Ni roseau ni buisson n'a de tronc : une deuxième surface pour un fût
 	# de 3 cm coûterait un matériau et ne se verrait jamais.
