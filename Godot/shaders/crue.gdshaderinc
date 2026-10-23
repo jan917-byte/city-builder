@@ -91,7 +91,8 @@ float crue_bord_avant(vec2 xz, float px) {
 	vec2 pente = vec2(crue_annonce_lisse(xz + vec2(PAS, 0.0)) - crue_annonce_lisse(xz - vec2(PAS, 0.0)),
 		crue_annonce_lisse(xz + vec2(0.0, PAS)) - crue_annonce_lisse(xz - vec2(0.0, PAS))) / (2.0 * PAS);
 	float d = abs(h) / max(length(pente), 1e-3);
-	float demi = max(2.0 * px, 0.5);
+	// ~2 px (auteur, 2026-10-23 : à 4 px il prenait trop de place).
+	float demi = max(1.0 * px, 0.25);
 	// Un trait plein : les traitillés essayés le 2026-10-23 se brouillaient (auteur).
 	return 1.0 - smoothstep(demi - 0.7 * px, demi + 0.7 * px, d);
 }
