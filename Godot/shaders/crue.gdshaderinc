@@ -42,18 +42,16 @@ float crue_gain(float z) {
 	return b;
 }
 
-// 🔄 Le bord d'avant le clic, en pointillé, jusqu'au clic suivant (auteur,
-// 2026-10-22 : 13 cm ne reculent le bord que de quelques mètres). Trait de
-// ~4 px ; tirets en damier de ~10 px, pour le couper dans toutes les directions.
-// Flaggable (90) : rendu de shader.
+// 🔄 Le bord d'avant le clic, en trait continu, jusqu'au clic suivant (auteur,
+// 2026-10-22 : 13 cm ne reculent le bord que de quelques mètres ; 2026-10-23 :
+// le pointillé ne se lisait pas de loin). Flaggable (90) : rendu de shader.
 float crue_bord_avant(vec2 xz, float h, float fw_h) {
 	float gain = crue_gain(xz.y);
-	if (gain < 0.005) return 0.0;
+	// Hors de `crue_annonce`, h retombe à 0 : sans ce test, un trait au cadre.
+	vec2 uv = (xz - crue_annonce_repere.xy) / crue_annonce_repere.zw;
+	if (gain < 0.005 || any(lessThan(uv, vec2(0.01))) || any(greaterThan(uv, vec2(0.99)))) return 0.0;
 	float fw = max(fw_h, 1e-4);
-	float trait = 1.0 - smoothstep(fw * 1.6, fw * 2.6, abs(h + gain - 0.10));
-	float pas = max(2.0, 10.0 * length(fwidth(xz)));
-	vec2 c = step(0.5, fract(xz / pas));
-	return trait * abs(c.x - c.y);
+	return 1.0 - smoothstep(fw * 1.8, fw * 2.8, abs(h + gain - 0.10));
 }
 
 // Mètres d'eau en ce point. `onde` = 1 pour le sol : le bord ondule avec la
