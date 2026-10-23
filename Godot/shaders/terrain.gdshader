@@ -39,7 +39,7 @@ void fragment() {
 	if (diagnostic && crue_vue > 0 && monde.y < 1.5) {
 		vec4 eau = crue_sol(h_eau, fw_eau);
 		ALBEDO = mix(ALBEDO, eau.rgb * COLOR.a, eau.a);
-		ALBEDO = mix(ALBEDO, crue_fonce * 0.6 * COLOR.a, crue_bord_avant(monde.xz, px_eau));
+		ALBEDO = mix(ALBEDO, CRUE_BORD_AVANT * COLOR.a, crue_bord_avant(monde.xz, px_eau));
 	}
 	if (!diagnostic) {
 		vec4 depot = depot_boue(monde);

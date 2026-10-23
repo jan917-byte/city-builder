@@ -864,7 +864,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tif (diagnostic_bati < 0.5 || (ruine < 0.5 && !mur && !toit)) {\n" \
 		+ "\t\t\t\tvec4 eau = crue_sol(h_eau, fw_eau);\n" \
 		+ "\t\t\t\tbase = mix(base, eau.rgb * COLOR.a, eau.a);\n" \
-		+ "\t\t\t\tbase = mix(base, crue_fonce * 0.6 * COLOR.a, crue_bord_avant(pos_monde.xz, px_eau));\n" \
+		+ "\t\t\t\tbase = mix(base, CRUE_BORD_AVANT * COLOR.a, crue_bord_avant(pos_monde.xz, px_eau));\n" \
 		+ "\t\t\t} else if (ruine > 0.5 || (crue_vue == 2 && h_pied >= 2.60)) {\n" \
 		+ "\t\t\t\tbase = mix(base, vec3(0.262, 0.012, 0.021) * COLOR.a, 0.94);\n" \
 		+ "\t\t\t} else if (h_pied > 0.10) {\n" \

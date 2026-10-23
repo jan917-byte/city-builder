@@ -80,6 +80,7 @@ float crue_annonce_lisse(vec2 xz) {
 // fwidth(h), qui saute d'une case et d'un maillage à l'autre. `px` = mètres par
 // pixel, lu par l'appelant hors de toute branche. Flaggable (90) : rendu de shader.
 float crue_bord_avant(vec2 xz, float px) {
+	px = max(px, 0.01);
 	float gain = crue_gain(xz.y);
 	vec2 uv = (xz - crue_annonce_repere.xy) / crue_annonce_repere.zw;
 	if (gain < 0.005 || any(lessThan(uv, vec2(0.01))) || any(greaterThan(uv, vec2(0.99)))) return 0.0;
@@ -90,9 +91,13 @@ float crue_bord_avant(vec2 xz, float px) {
 	vec2 pente = vec2(crue_annonce_lisse(xz + vec2(PAS, 0.0)) - crue_annonce_lisse(xz - vec2(PAS, 0.0)),
 		crue_annonce_lisse(xz + vec2(0.0, PAS)) - crue_annonce_lisse(xz - vec2(0.0, PAS))) / (2.0 * PAS);
 	float d = abs(h) / max(length(pente), 1e-3);
-	float demi = max(1.3 * px, 0.35);
+	float demi = max(2.0 * px, 0.5);
+	// Un trait plein : les traitillés essayés le 2026-10-23 se brouillaient (auteur).
 	return 1.0 - smoothstep(demi - 0.7 * px, demi + 0.7 * px, d);
 }
+
+// Rouge (auteur, 2026-10-23), celui des rues coupées (#DC3A30), ⚠ LINÉAIRE.
+const vec3 CRUE_BORD_AVANT = vec3(0.716, 0.042, 0.030);
 
 // Mètres d'eau en ce point. `onde` = 1 pour le sol : le bord ondule avec la
 // même dérive que la boue, donc la carte et la vase tracent la même limite ;
