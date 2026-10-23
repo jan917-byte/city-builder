@@ -29,6 +29,7 @@ void fragment() {
 	// La carte des dangers ne s'arrête pas au dernier îlot : le champ, si.
 	float h_eau = crue_vue > 0 ? crue_hauteur(monde.xz, 1.0) : 0.0;
 	float fw_eau = fwidth(h_eau);
+	float px_eau = length(fwidth(monde.xz)) * 0.7071;
 	if (diagnostic) {
 		// Un fond de carte, pas un relief : ni ombre de colline ni forêt peinte,
 		// sur toutes les cartes (auteur, 2026-10-12).
@@ -38,7 +39,7 @@ void fragment() {
 	if (diagnostic && crue_vue > 0 && monde.y < 1.5) {
 		vec4 eau = crue_sol(h_eau, fw_eau);
 		ALBEDO = mix(ALBEDO, eau.rgb * COLOR.a, eau.a);
-		ALBEDO = mix(ALBEDO, crue_fonce * 0.6 * COLOR.a, crue_bord_avant(monde.xz, h_eau, fw_eau));
+		ALBEDO = mix(ALBEDO, crue_fonce * 0.6 * COLOR.a, crue_bord_avant(monde.xz, px_eau));
 	}
 	if (!diagnostic) {
 		vec4 depot = depot_boue(monde);

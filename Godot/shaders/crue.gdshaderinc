@@ -42,16 +42,56 @@ float crue_gain(float z) {
 	return b;
 }
 
-// 🔄 Le bord d'avant le clic, en trait continu, jusqu'au clic suivant (auteur,
-// 2026-10-22 : 13 cm ne reculent le bord que de quelques mètres ; 2026-10-23 :
-// le pointillé ne se lisait pas de loin). Flaggable (90) : rendu de shader.
-float crue_bord_avant(vec2 xz, float h, float fw_h) {
+// B-spline cubique en 4 lectures bilinéaires : le bilinéaire seul casse le
+// contour à chaque case de 12 m.
+vec4 crue_cubique(float v) {
+	vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v;
+	vec4 s = n * n * n;
+	float x = s.x;
+	float y = s.y - 4.0 * s.x;
+	float z = s.z - 4.0 * s.y + 6.0 * s.x;
+	return vec4(x, y, z, 6.0 - x - y - z) / 6.0;
+}
+
+// Mètres d'eau annoncés, lissés, avec les lobes mais sans la dérive fine.
+float crue_annonce_lisse(vec2 xz) {
+	vec2 lobes = vec2(boue_bruit(xz * 0.017 + 7.0), boue_bruit(xz.yx * 0.019 + 19.0)) - 0.5;
+	vec2 ts = vec2(textureSize(crue_annonce, 0));
+	vec2 uv = ((xz + lobes * 26.0) - crue_annonce_repere.xy) / crue_annonce_repere.zw * ts - 0.5;
+	vec2 f = fract(uv);
+	uv -= f;
+	vec4 xc = crue_cubique(f.x);
+	vec4 yc = crue_cubique(f.y);
+	vec4 c = uv.xxyy + vec2(-0.5, 1.5).xyxy;
+	vec4 s = vec4(xc.xz + xc.yw, yc.xz + yc.yw);
+	vec4 o = (c + vec4(xc.yw, yc.yw) / s) / ts.xxyy;
+	float a = textureLod(crue_annonce, o.xz, 0.0).r;
+	float b = textureLod(crue_annonce, o.yz, 0.0).r;
+	float d = textureLod(crue_annonce, o.xw, 0.0).r;
+	float e = textureLod(crue_annonce, o.yw, 0.0).r;
+	float sx = s.x / (s.x + s.y);
+	float sy = s.z / (s.z + s.w);
+	return mix(mix(e, d, sx), mix(b, a, sx), sy) * crue_annonce_niveau;
+}
+
+// 🔄 Le bord d'avant le clic, tracé jusqu'au clic suivant (auteur, 2026-10-22 :
+// 13 cm ne reculent le bord que de quelques mètres ; 2026-10-23 : un trait net,
+// sans cassures). Distance au contour en mètres (pente lue à ±3 m), pas par
+// fwidth(h), qui saute d'une case et d'un maillage à l'autre. `px` = mètres par
+// pixel, lu par l'appelant hors de toute branche. Flaggable (90) : rendu de shader.
+float crue_bord_avant(vec2 xz, float px) {
 	float gain = crue_gain(xz.y);
-	// Hors de `crue_annonce`, h retombe à 0 : sans ce test, un trait au cadre.
 	vec2 uv = (xz - crue_annonce_repere.xy) / crue_annonce_repere.zw;
 	if (gain < 0.005 || any(lessThan(uv, vec2(0.01))) || any(greaterThan(uv, vec2(0.99)))) return 0.0;
-	float fw = max(fw_h, 1e-4);
-	return 1.0 - smoothstep(fw * 1.8, fw * 2.8, abs(h + gain - 0.10));
+	float seuil = 0.10 + crue_baisse(xz.y) - gain;
+	float h = crue_annonce_lisse(xz) - seuil;
+	if (abs(h) > 1.5) return 0.0;
+	const float PAS = 3.0;
+	vec2 pente = vec2(crue_annonce_lisse(xz + vec2(PAS, 0.0)) - crue_annonce_lisse(xz - vec2(PAS, 0.0)),
+		crue_annonce_lisse(xz + vec2(0.0, PAS)) - crue_annonce_lisse(xz - vec2(0.0, PAS))) / (2.0 * PAS);
+	float d = abs(h) / max(length(pente), 1e-3);
+	float demi = max(1.3 * px, 0.35);
+	return 1.0 - smoothstep(demi - 0.7 * px, demi + 0.7 * px, d);
 }
 
 // Mètres d'eau en ce point. `onde` = 1 pour le sol : le bord ondule avec la

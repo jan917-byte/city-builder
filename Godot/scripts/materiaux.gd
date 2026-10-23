@@ -858,12 +858,13 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat h_eau = crue_vue > 0 ? crue_hauteur(pos_monde.xz, 1.0) : 0.0;\n" \
 		+ "\t\tfloat h_pied = crue_vue > 0 ? crue_hauteur(pos_monde.xz, 0.0) : 0.0;\n" \
 		+ "\t\tfloat fw_eau = fwidth(h_eau);\n" \
+		+ "\t\tfloat px_eau = length(fwidth(pos_monde.xz)) * 0.7071;\n" \
 		+ "\t\tif (crue_vue > 0 && diagnostic_sol > 0.5 && diagnostic_sol < 2.5) {\n" \
 		+ "\t\t\t// 2,60 = SEUIL_RUINE de `04e`, le plafond du rez.\n" \
 		+ "\t\t\tif (diagnostic_bati < 0.5 || (ruine < 0.5 && !mur && !toit)) {\n" \
 		+ "\t\t\t\tvec4 eau = crue_sol(h_eau, fw_eau);\n" \
 		+ "\t\t\t\tbase = mix(base, eau.rgb * COLOR.a, eau.a);\n" \
-		+ "\t\t\t\tbase = mix(base, crue_fonce * 0.6 * COLOR.a, crue_bord_avant(pos_monde.xz, h_eau, fw_eau));\n" \
+		+ "\t\t\t\tbase = mix(base, crue_fonce * 0.6 * COLOR.a, crue_bord_avant(pos_monde.xz, px_eau));\n" \
 		+ "\t\t\t} else if (ruine > 0.5 || (crue_vue == 2 && h_pied >= 2.60)) {\n" \
 		+ "\t\t\t\tbase = mix(base, vec3(0.262, 0.012, 0.021) * COLOR.a, 0.94);\n" \
 		+ "\t\t\t} else if (h_pied > 0.10) {\n" \
