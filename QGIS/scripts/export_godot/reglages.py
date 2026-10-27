@@ -461,8 +461,7 @@ DENSE_ILOTS = ["dense_n", "dense_logements_etage", "dense_cumul"]
 # rejoignent pas à pied —, et le nombre de places de camp mesuré sur le champ.
 ACCES_ILOTS = ["morceau", "camp_places"]
 
-# 🚶 La venelle naît en trace dans l'herbe (desire path) ; `ville.gd` en tire
-# le prix de l'aménager.
+# 🚶 La venelle se creuse seule dans l'herbe (122) ; `ville.gd` y lit qu'elle existe.
 VENELLE_ILOTS = ["venelle_m2"]
 
 # 🔴 Un champ n'est riverain d'aucune rue : la berge l'en sépare. Sous ce
@@ -626,9 +625,9 @@ ACCES_LARGEUR = 1.40
 
 ACCES_OUVERTURE = ACCES_LARGEUR + HAIE_LARGEUR
 
-# 🚶 LA TRACE D'UNE VENELLE PAS ENCORE AMÉNAGÉE : la terre battue au milieu,
+# 🚶 LA TRACE D'UNE VENELLE, UNE FOIS CREUSÉE : la terre battue au milieu,
 # l'herbe foulée autour, et une ondulation — un raccourci n'est jamais tiré au
-# cordeau. 🎚️ Level design, à juger sur `apercu_venelles.gd`.
+# cordeau. 🎚️ Level design, à juger sur `essai_venelle.gd`.
 VENELLE_TERRE_M = 1.5
 VENELLE_FOULEE_M = 2.6
 VENELLE_ONDULATION_M = 0.5

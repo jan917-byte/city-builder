@@ -187,7 +187,8 @@ var ponts_provisoires := {}
 # 🅿️ Les files de stationnement peintes, un nœud par tronçon : elles se cachent
 # quand la rue n'a plus de places (fid de tronçon -> MeshInstance3D).
 var places_rue := {}
-var venelles := {}         # 🚶 fid d'îlot -> la trace, cachée une fois la venelle aménagée
+var venelles := {}         # 🚶 fid d'îlot -> la trace, qui se creuse avec les mois
+var _venelles_sources := {}  # fid -> {arrays, couleurs finales, herbe, foulee, usure peinte}
 # 🌳 LES ARBRES SE REBÂTISSENT quand la canopée bouge. Le semis des îlots est
 # figé ; les emplacements d'alignement portent leur tronçon et leur seuil, et
 # `_montrer_arbres` refait les deux MultiMesh quand le compte visible change.
@@ -1874,8 +1875,8 @@ func _par_places(source: Dictionary) -> void:
 	print("  %-8s %3d rues marquées" % ["Places", parent.get_child_count()])
 
 
-## 🚶 LA TRACE DES VENELLES, un nœud par îlot, posée sur le pavé. Sans corps de
-## collision : le clic tombe sur l'îlot dessous.
+## 🚶 LA TRACE DES VENELLES, un nœud par îlot, dans l'herbe. Sans corps de
+## collision : le clic tombe sur l'îlot dessous. Elle se creuse seule (122).
 func _par_venelles(source: Dictionary) -> void:
 	if _ignore("Ilots"):
 		return
@@ -1893,7 +1894,59 @@ func _par_venelles(source: Dictionary) -> void:
 		mi.set_meta("couche", "i")
 		parent.add_child(mi)
 		venelles[fid] = mi
+		# `venelles.py` émet le couloir d'herbe en premier : son sommet 0 est l'herbe.
+		var arr: Array = mi.mesh.surface_get_arrays(0)
+		var finales: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+		var herbe := finales[0]
+		var foulee := herbe
+		var terre := herbe
+		for c in finales:
+			if _ecart(c, herbe) > _ecart(terre, herbe):
+				terre = c
+		for c in finales:
+			if _ecart(c, herbe) > 0.01 and _ecart(c, terre) > 0.01:
+				foulee = c
+		_venelles_sources[fid] = {"arrays": arr, "finales": finales, "herbe": herbe,
+			"foulee": foulee, "terre": terre, "usure": -1.0}
+		_user_venelle(fid, 0.0)
 	print("  %-8s %3d traces" % ["Venelles", parent.get_child_count()])
+
+
+static func _ecart(a: Color, b: Color) -> float:
+	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
+
+
+## 🚶 L'herbe se couche, puis la terre perce, par plaques : un bruit doux sur la
+## position décale le seuil, donc la trace se troue avant de se rejoindre.
+func _user_venelle(fid: int, u: float) -> void:
+	var src: Dictionary = _venelles_sources[fid]
+	if absf(float(src["usure"]) - u) < 0.01:
+		return
+	src["usure"] = u
+	var arr: Array = src["arrays"]
+	var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var finales: PackedColorArray = src["finales"]
+	var herbe: Color = src["herbe"]
+	var foulee: Color = src["foulee"]
+	var terre: Color = src["terre"]
+	var co := PackedColorArray()
+	co.resize(finales.size())
+	for k in finales.size():
+		var c := finales[k]
+		var p := vs[k]
+		var bruit := 0.5 + 0.25 * (sin(p.x * 0.9 + fid) + sin(p.z * 0.7 - fid * 1.3))
+		var f1 := smoothstep(0.0, 1.0, (u - 0.35 * bruit) / 0.4)
+		var f2 := smoothstep(0.0, 1.0, (u - 0.4 - 0.35 * bruit) / 0.25)
+		if _ecart(c, herbe) < 0.01:
+			co[k] = c
+		elif _ecart(c, terre) < 0.01:
+			co[k] = herbe.lerp(foulee, f1).lerp(terre, f2)
+		else:
+			co[k] = herbe.lerp(foulee, f1)
+	arr[Mesh.ARRAY_COLOR] = co
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	(venelles[fid] as MeshInstance3D).mesh = m
 
 
 ## 🌊 LES DEUX CORPS ÉCHANGEABLES D'UNE BERGE — le mur de quai et le talus qui
@@ -2845,7 +2898,7 @@ func _peindre(part := 0, parts := 1) -> void:
 				(places_rue[fid] as MeshInstance3D).visible = \
 					ville.valeur("r", fid, "stationnement", mois) > 0.5
 			if couche == "i" and venelles.has(fid):
-				(venelles[fid] as MeshInstance3D).visible = not ville.venelle_amenagee(fid, mois)
+				_user_venelle(fid, ville.venelle_usure(fid, mois))
 			for mj in [mi, reparations[couche].get(fid),
 					ruines_ponts.get(fid) if couche == "r" else null,
 					ponts_provisoires.get(fid) if couche == "r" else null,

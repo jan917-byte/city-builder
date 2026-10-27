@@ -26,7 +26,7 @@ Elle **informe** déjà (100 : l'étude de la prochaine crue). Reste à trancher
 L'auteur : *« un îlot n'est pas séparé par sa fonction/tissu s'il a en même temps du logement et du parc »*. Proposé : le parc se pose **parcelle par parcelle, au curseur**, comme la densification ; le tissu reste la règle de construction de l'îlot, le parc est l'état du sol de chaque parcelle. Reste à trancher **qui choisit l'ordre** : la parcelle la plus basse d'abord, ou le joueur sur la carte. Sans réponse, un îlot est tout logement ou tout parc. → [[Décisions arrêtées]] 95 et 121
 
 ### 50. Comment faire référence au *desire path* dans le jeu ? — ouverte le 2026-10-08
-Un clin d'œil au titre, pas un système. **Retenu** : les venelles naissent en trace dans l'herbe, et le joueur les aménage → [[Décisions arrêtées]] 122. **Notées, non tranchées** :
+Un clin d'œil au titre, pas un système. **Retenu** : les venelles se creusent seules dans l'herbe, sans qu'on les aménage → [[Décisions arrêtées]] 122. **Notées, non tranchées** :
 - **La ville répond** : après une rue piétonne ou un parc, des traces apparaissent dans l'herbe, saison après saison, là où les gens coupent. Un effet visuel, pas une règle.
 - **Un calque « où l'on marche vraiment »**, dans le diagnostic : les raccourcis à travers les parkings et les bas-côtés. → [[Diagnostic et calques]]
 - **La première image du jeu** : une trace de terre à côté d'une route vide, la même que sur la capsule Steam.

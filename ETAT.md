@@ -19,7 +19,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - ⏱️ **Le temps à 70 s le mois, les constructions plus courtes, la carte des chantiers en %** (2026-10-22) ; 🗓️ **la date sur deux lignes, au bord de la fiche, sans jauge de crue ni bouton du journal** (`wehrau_date_avant_apres.png`) → [Premiers pas](Prototype/Premiers%20pas.md) § La première année, fermée.
 - 🔲 Interface « vitre » et choix de la police parmi six (Rubik en place) → `QGIS/rendus/polices_comparaison.png`.
 - 🟠 La percée des îlots compacts (9 m tous les 60 m, `04d`) → `--ilots 49`.
-- 🚶 **Fusionnés le 2026-10-20** : venelles en trace (122, `QGIS/rendus/wehrau_venelles.png`), pont coupé cliquable au milieu de l'Ilse, phrase de l'autre rive, fenêtre « Desire Path ».
+- 🚶 **Les venelles se creusent seules, plus de bouton « Aménager »** (2026-10-27, 122) → [Parcelles](Prototype/Parcelles.md) § 🚶 ; fusionnés le 2026-10-20 : pont coupé cliquable au milieu de l'Ilse, phrase de l'autre rive, fenêtre « Desire Path ».
 - ✍️ **Les textes flaggables à réécrire** (90) → `Prototype/Textes des premières minutes.xlsx` ; les noms de lieux → `Godot/data/lieux.json`.
 
 ## À trancher (l'auteur)

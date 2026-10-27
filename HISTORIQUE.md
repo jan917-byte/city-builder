@@ -947,3 +947,6 @@ Nouvel `apercu_date.gd` à 0 échec (douze mois à l'an 20) ; `apercu_danger_cru
 **2026-10-22 — Les arbres nus de la ville ont de vraies branches : le code prolonge le bois du pack dans chaque bloc de feuillage ; plus de morceaux de couronne en l'air l'hiver.**
 L'auteur, sur la pépinière de près (n° 1 à 9) : « des bouts qui flottent », « trop peu de branches » ; la brume de rameaux de ville passe de 0,3 à 0. Validé à l'écran (`wehrau_arbres_hiver_ramure.png`).
 Ramure indexée (déroulée, elle coûtait 2,25 fois plus de sommets) et retirée en vue d'ensemble : +1 ms GPU au cœur ancien en janvier, +0,3 ms en juillet ; ses ombres n'y pèsent pas. `essai_saison` à 0 échec ; `apercu_arbres.gd -- --pres`, et `--avant` rend vraiment les recettes du code.
+**2026-10-27 — Les venelles se creusent seules dans l'herbe ; plus de bouton « Aménager la venelle », plus de pavé dessous.**
+L'auteur : « elles ne doivent pas être aménagées, elles doivent apparaître de manière organique » ; il choisit l'usure avec le temps (décision 122 réécrite).
+Herbe au mois 0, terre battue entre 13 et 26 mois selon la venelle, par plaques ; `essai_venelle` 0 échec, sauvegarde 0 ; ouverture, livre, progression, étude non relancés (arrêtés à la demande de l'auteur).

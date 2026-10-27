@@ -371,12 +371,12 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
 	"_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
-	"_fonds", "_consolide", "_etudes", "_venelle"]
+	"_fonds", "_consolide", "_etudes"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
 	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
-	"_fonds", "_consolide", "_etudes", "_venelle"]
+	"_fonds", "_consolide", "_etudes"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -416,7 +416,6 @@ func valider_partie(etat: Dictionary) -> bool:
 			"cout_ke": 0.0, "arbres": 0}],
 		"_camps": [ilots, {"debut": 0.0, "places": 0, "cout_ke": 0.0}],
 		"_permeable": [ilots, {"debut": 0.0, "duree": 0.0, "cout_ke": 0.0}],
-		"_venelle": [ilots, {"debut": 0.0, "duree": 0.0, "cout_ke": 0.0}],
 		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
@@ -902,7 +901,6 @@ func reinitialiser() -> void:
 	_demandes.clear()
 	_cultures.clear()
 	_permeable.clear()
-	_venelle.clear()
 	_crue_champs_mois = INF
 	_depense_ke = 0.0
 	_depense_genre = {}
@@ -1150,48 +1148,29 @@ func baisse_crue_sols_m(t: float) -> float:
 
 
 # ==========================================================================
-# 🚶 LA VENELLE AMÉNAGÉE — les habitants ont tracé le chemin, la ville le pave
+# 🚶 LA VENELLE SE CREUSE TOUTE SEULE (122, 🔄 2026-10-27) — on ne l'aménage pas
 # ==========================================================================
-# Clin d'œil au titre (desire path), pas un système : un prix, un délai, la trace
-# devient pavé. 🎚️ LEVEL DESIGN, à juger : aucun effet sur les jauges.
-const VENELLE_PRIX_KE_M2 := 0.12
-const VENELLE_MOIS := 2.5                   # 3 → 2,5 (auteur, 2026-10-22)
-var _venelle := {}         # fid -> {debut, duree, cout_ke}
+# Herbe au mois 0, puis herbe foulée, puis terre battue ; chacune à son rythme.
+# 🎚️ LEVEL DESIGN, à juger : aucun effet sur les jauges.
+const VENELLE_DEBUT_MOIS := [1.0, 6.0]      # le premier pas, selon la venelle
+const VENELLE_USURE_MOIS := [12.0, 20.0]    # de l'herbe à la terre
 
 
 func venelle_possible(fid: int) -> bool:
 	return base("i", fid, "venelle_m2") > 0.0
 
 
-func cout_venelle_ke(fid: int) -> float:
-	return 0.0 if _venelle.has(fid) or not venelle_possible(fid) \
-		else base("i", fid, "venelle_m2") * VENELLE_PRIX_KE_M2
-
-
-func amenager_venelle(fid: int, t: float) -> bool:
-	if _venelle.has(fid) or not venelle_possible(fid):
-		return false
-	var cout := cout_venelle_ke(fid)
-	if cout > caisse_ke(t) + 0.001:
-		return false
-	_venelle[fid] = {"debut": t, "duree": _delai(VENELLE_MOIS), "cout_ke": cout}
-	_depenser("venelle", cout)
-	return true
-
-
-func venelle_en_cours(fid: int, t: float) -> bool:
-	return _venelle.has(fid) and t < float(_venelle[fid]["debut"]) + float(_venelle[fid]["duree"])
-
-
-func venelle_reste_mois(fid: int, t: float) -> float:
-	if not _venelle.has(fid):
+## 0 = herbe intacte, 1 = trace achevée. Le tirage suit le fid : la même
+## venelle se creuse au même rythme d'une partie à l'autre.
+func venelle_usure(fid: int, t: float) -> float:
+	if not venelle_possible(fid):
 		return 0.0
-	return maxf(0.0, float(_venelle[fid]["debut"]) + float(_venelle[fid]["duree"]) - t)
-
-
-## La trace se voit tant que le pavé n'est pas livré.
-func venelle_amenagee(fid: int, t: float) -> bool:
-	return _venelle.has(fid) and not venelle_en_cours(fid, t)
+	var r := absf(sin(float(fid) * 12.9898) * 43758.5453)
+	var a := r - floorf(r)
+	var b := fposmod(r * 7.0, 1.0)
+	var debut := lerpf(VENELLE_DEBUT_MOIS[0], VENELLE_DEBUT_MOIS[1], a)
+	var duree := lerpf(VENELLE_USURE_MOIS[0], VENELLE_USURE_MOIS[1], b)
+	return clampf((t - debut) / duree, 0.0, 1.0)
 
 
 ## 💧 La part du sol de la ville bâtie qui boit la pluie, toits verts compris ;
@@ -2939,7 +2918,6 @@ const SEUIL_EAU_M := 0.10
 #   berge    int    l'état visé                    (berge)
 #   camp     true   accueillir les sinistrés       (champ)
 #   permeable true  rendre le sol perméable        (place-parking)
-#   venelle  true   aménager la venelle            (îlot qui en porte une)
 #   dense    dict   {part, etages} : la part des bâtiments visée et la
 #                   hauteur — 🪜 un cran du curseur = un bâtiment  (îlot)
 
@@ -2966,8 +2944,6 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 		ke += cout_labour_ke(fid)
 	if r.has("permeable"):
 		ke += cout_permeable_ke(fid)
-	if r.has("venelle"):
-		ke += cout_venelle_ke(fid)
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d):
 			ke += cout_demande_ke(d)
@@ -3011,8 +2987,6 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 		m = maxf(m, _delai(LABOUR_MOIS))
 	if r.has("permeable") and not _permeable.has(fid):
 		m = maxf(m, _delai(PERMEABLE_MOIS))
-	if r.has("venelle") and not _venelle.has(fid):
-		m = maxf(m, _delai(VENELLE_MOIS))
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d) and not _demandes.has(d):
 			m = maxf(m, _delai(float(DEMANDES[d]["mois"])))
@@ -3071,8 +3045,6 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("labour")
 	if r.has("permeable") and rendre_permeable(fid, t):
 		faits.append("sol perméable")
-	if r.has("venelle") and amenager_venelle(fid, t):
-		faits.append("venelle")
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d) and equiper_camp(d, t):
 			faits.append(str(DEMANDES[d]["nom"]).to_lower())
@@ -3115,7 +3087,7 @@ func etat_chantier(couche: String, fid: int, t: float) -> int:
 	if couche == "i" and ((_solaire.has(fid) and etat_solaire(fid, t)["en_cours"])
 			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])
 			or (_dense.has(fid) and etat_dense(fid, t)["en_cours"])
-			or permeable_en_cours(fid, t) or venelle_en_cours(fid, t)):
+			or permeable_en_cours(fid, t)):
 		return CHANTIER_EN_COURS
 	if base(couche, fid, "cout_reparation_ke") <= 0.0:
 		return CHANTIER_INTACT
@@ -3158,9 +3130,6 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "i" and permeable_en_cours(fid, t):
 		lot.append(["sol perméable", float(_permeable[fid]["duree"]),
 			permeable_reste_mois(fid, t)])
-	if couche == "i" and venelle_en_cours(fid, t):
-		lot.append(["venelle", float(_venelle[fid]["duree"]),
-			venelle_reste_mois(fid, t)])
 	if couche == "i" and culture_en_cours(fid, t):
 		lot.append(["culture", _delai(CULTURES[champ_culture(fid, t)]["mois"]),
 			culture_reste_mois(fid, t)])
@@ -3294,11 +3263,6 @@ func chantiers(t: float) -> Dictionary:
 			en_cours.append({"couche": "i", "fid": fid, "genre": "sol perméable",
 				"cout_ke": float(_permeable[fid]["cout_ke"]),
 				"reste_mois": permeable_reste_mois(fid, t), "duree": float(_permeable[fid]["duree"])})
-	for fid in _venelle:
-		if venelle_en_cours(fid, t):
-			en_cours.append({"couche": "i", "fid": fid, "genre": "venelle",
-				"cout_ke": float(_venelle[fid]["cout_ke"]),
-				"reste_mois": venelle_reste_mois(fid, t), "duree": float(_venelle[fid]["duree"])})
 	for fid in _dense:
 		var d := etat_dense(fid, t)
 		if d["en_cours"]:

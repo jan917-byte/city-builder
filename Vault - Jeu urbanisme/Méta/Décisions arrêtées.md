@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-20
+maj: 2026-10-27
 ---
 
 # Décisions arrêtées
@@ -62,7 +62,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 89 | **L'Ilse coule du sud au nord**, brune de crue, normale en 4 mois, limpide plus tard (déclencheur ouvert) | 🔓 | 2026-09-28 · [[Questions ouvertes]] n°35 |
 | 95 | Un îlot sinistré offre **plusieurs postures qui se valent** : à l'identique (confiance gagnée, exposé), autre tissu, parc inondable (confiance perdue, protégé) ; rebâtir en zone basse fait monter la prévision | 🟡 | 2026-09-30 · `Prototype/Premiers pas.md` |
 | 121 | **Une rue entre deux parcs peut devenir une allée du parc** — rue, rue fermée, puis allée ; seulement si aucune porte ne donne sur la rue et si le réseau reste d'un seul tenant. L'allée sort des charges (59) et rend son sol perméable ; les deux îlots gardent leur numéro | 🟡 | 2026-10-02, tranché par l'auteur, précise 95 · prix, durée et confiance à fixer · [[Questions ouvertes]] n°47 |
-| 122 | **Les venelles naissent en trace dans l'herbe, et le joueur peut les aménager** : « Aménager la venelle » (onglet Bâti de l'îlot) change le chemin de terre en passage pavé ; un prix, un délai, aucun effet sur les jauges. Un clin d'œil au titre (111), pas un système | 🔓 | 2026-10-08, demandé par l'auteur (106 sur sa branche) · fermée la première année comme tout levier · `Prototype/Parcelles.md` · [[Questions ouvertes]] n°50 |
+| 122 | **Les venelles se creusent seules dans l'herbe, et on ne les aménage pas** : herbe au début, puis herbe foulée, puis terre battue, en un à deux ans, chacune à son rythme ; aucun bouton, aucun prix, aucun effet sur les jauges. Un clin d'œil au titre (111), pas un système | 🔓 | 2026-10-08, demandé par l'auteur (106 sur sa branche) · 🔄 2026-10-27, tranché par l'auteur : *« elles ne doivent pas être aménagées, elles doivent apparaître de manière organique »* ; écarté : le bouton « Aménager la venelle » · `Prototype/Parcelles.md` · [[Questions ouvertes]] n°50 |
 | 100 | L'université publie une **étude : une crue plus forte dans 6 à 8 ans** ; Dangers se lit en deux onglets, Prochaine crue et Dégâts | 🟡 | 2026-09-30, moment changé par 105 |
 | 102 | **Pas de répétition** avant la crue annoncée ; la **canicule** sera la deuxième urgence, plus tard | 🟡 | 2026-10-06 |
 | 103 | **« Ne pas aggraver » s'ouvre quand la ville est réparée** : tout le monde à l'abri, aucun quartier habité coupé, un îlot sinistré relevé | 🟡 | 2026-10-06 · [[Adaptation et réduction]] |
