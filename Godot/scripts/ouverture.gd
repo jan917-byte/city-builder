@@ -133,6 +133,14 @@ var carte_concours := 0
 ## 🏛️ La mairie ouverte une fois après le pont ; l'étude proposée vue à la mairie (117).
 var mairie_vue := false
 var etude_proposee_vue := false
+## 💫 LE GUIDE RESPIRE QUAND ON LE PERD (auteur, 2026-10-28, « très doux ») : un clic sur la carte
+## que la consigne ne demande pas, ou 20 s réelles sans que la consigne change.
+const PULSE_INACTIF_MS := 20000
+const PULSE_DUREE := 1.4
+const PULSE_ECHELLE := 0.015
+const PULSE_ECLAT := 0.12
+var _pulse: Tween
+var _consigne_ms := 0
 
 
 func batir(maquette) -> void:
@@ -515,11 +523,64 @@ func universite_en_vue() -> bool:
 
 ## Le clic sur la ville : le campus que le guide entoure ouvre sa fiche.
 func trouve(couche: String, fid: int) -> void:
+	if _clic_hors_consigne(couche, fid):
+		pulser()
 	if couche != "i":
 		return
 	# L'îlot sinistré cliqué s'ouvre sur sa reconstruction : `Maquette._sur_choix`, guide ou non.
 	if etape == "etude" and carte_etude == 2 and fid in campus():
 		jeu.interface.ouvrir_campus()
+
+
+## Ce qui clignote est demandé ; sinon, ce que le verrou refuse, et tout autre lieu quand
+## le guide cherche la mairie ou le campus.
+func _clic_hors_consigne(couche: String, fid: int) -> bool:
+	var groupe := groupe_carte()
+	if couche == "i" and fid in groupe:
+		return false
+	if verrou() != "" and not autorise(couche, fid):
+		return true
+	return etape in ["mairie", "etude"] and not groupe.is_empty()
+
+
+## La cible de la respiration : le guide s'il parle ; réduit par « − », sa tuile Guide.
+func _cible_pulse() -> Control:
+	if _muet or termine or annonce.visible:
+		return null
+	if parle():
+		return self
+	if not ouvert and _place_libre() and jeu.interface._debut.is_visible_in_tree():
+		return jeu.interface._debut
+	return null
+
+
+## Rien à attendre du joueur : un chantier qui avance, ou le guide qui dit d'attendre le pont.
+func _attente() -> bool:
+	return etape in ["travaux", "pont_livre", "camp_attente"] or dire_attente()
+
+
+## 🕰️ Chaque image : 20 s sans que la consigne change, il respire, puis toutes les 20 s.
+func _veiller() -> void:
+	var maintenant := Time.get_ticks_msec()
+	if _cible_pulse() == null or _attente() or _pulse != null and _pulse.is_running():
+		_consigne_ms = maintenant
+	elif maintenant - _consigne_ms >= PULSE_INACTIF_MS:
+		pulser()
+
+
+## Une seule respiration : il grossit à peine et s'éclaire, puis revient.
+func pulser() -> void:
+	_consigne_ms = Time.get_ticks_msec()
+	var cible := _cible_pulse()
+	if cible == null or _pulse != null and _pulse.is_running():
+		return
+	cible.pivot_offset = cible.size / 2.0
+	_pulse = create_tween()
+	_pulse.tween_method(func(t: float) -> void:
+		var s := sin(PI * t)
+		cible.scale = Vector2.ONE * (1.0 + PULSE_ECHELLE * s)
+		var k := 1.0 + PULSE_ECLAT * s
+		cible.modulate = Color(k, k, k, cible.modulate.a), 0.0, 1.0, PULSE_DUREE)
 
 
 ## 🌉 Le pont livré et vu cinq secondes : le bandeau le dit, la mairie s'ouvre (117).
@@ -961,6 +1022,8 @@ func actualiser(force := false) -> void:
 	if objectifs != null:
 		objectifs.actualiser(force)
 	ranger()
+	if annonce != null:
+		_veiller()
 	if _reperes != null:
 		_reperes.visible = parle() and jeu.theme in ["", "chantiers"] and not suite and not termine
 		# Même règle que les pastilles : taille constante à l'écran.
@@ -1075,6 +1138,7 @@ func actualiser(force := false) -> void:
 	if signature == _signature:
 		return
 	_signature = signature
+	_consigne_ms = Time.get_ticks_msec()
 	for enfant in _actions.get_children():
 		_actions.remove_child(enfant)
 		enfant.queue_free()
