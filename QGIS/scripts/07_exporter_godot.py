@@ -718,6 +718,7 @@ def main():
     # Plus sombre que la pelouse : à la distance de jeu, c'est le contraste
     # vertical qui doit dessiner la limite, pas une nouvelle teinte de palette.
     coul_haie = tuple(c * 0.68 for c in coul_jardin)
+    # ⚠ Recopié dans `materiaux.gd` (PELOUSE_TOIT) : le toit vert.
     # 🚪 L'allée d'entrée prolonge le trottoir : sur le sol nu d'une cour, le
     # minéral clair d'avant ne s'en distinguait pas.
     coul_allee = PAL.vers_lineaire(PAL.TROTTOIR)

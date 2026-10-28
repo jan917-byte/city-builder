@@ -2,6 +2,8 @@ extends RefCounted
 # Matières procédurales, sans texture importée (Direction artistique l.19).
 # La couleur voyage dans ARRAY_COLOR, donc UN matériau suffit pour les 69 îlots.
 
+## 🌿 Le vert des jardins (07, `coul_jardin`), linéaire : le dessus d'un toit vert et ses touffes.
+const PELOUSE_TOIT := Color(0.332, 0.452, 0.234)
 
 # 🏢 LA SURÉLÉVATION, ET DEUX MATÉRIAUX LA PARTAGENT : la ville et le masque de
 # sélection. Posée dans un seul des deux, le trait de sélection reste sur
@@ -136,12 +138,11 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "// 92 % de sRGB, sinon le liseré brûle et mange le bleu au dézoom.\n" \
 		+ "const vec3 BLEU = vec3(0.013, 0.119, 0.570);\n" \
 		+ "const vec3 BLANC = vec3(0.83);\n" \
-		+ "// 🌿 LINÉAIRE. #4C6B3C et #7A8A4E en sRGB : un sédum en juin et le\n" \
-		+ "// même en août. ⚠ Mesuré le 2026-08-31 : deux tons clairs (#6F8455)\n" \
-		+ "// sortaient KHAKI sur un enduit crème — il faut descendre sous la\n" \
-		+ "// valeur du mur pour qu'un toit se lise planté.\n" \
-		+ "const vec3 SEDUM = vec3(0.072, 0.147, 0.045);\n" \
-		+ "const vec3 SEDUM_SEC = vec3(0.194, 0.254, 0.076);\n" \
+		+ "// 🌿 LE TOIT VERT A LE VERT DES JARDINS (auteur, 2026-10-28), LINÉAIRE :\n" \
+		+ "// `coul_jardin` de 07 = PELOUSE_TOIT ; buissons et touffes y sont de vrais\n" \
+		+ "// objets (`toits_verts.gd`). 🔄 RETOUR EN ARRIÈRE SIGNALÉ : le sédum sombre\n" \
+		+ "// (#4C6B3C) du 2026-08-31 jurait avec la carte.\n" \
+		+ ("const vec3 PELOUSE = vec3(%.3f, %.3f, %.3f);\n" % [PELOUSE_TOIT.r, PELOUSE_TOIT.g, PELOUSE_TOIT.b]) \
 		+ "// 🎨 LES ACCENTS DE FAÇADE (2026-09-26), LINÉAIRES. Volets et portes :\n" \
 		+ "// #5E7A5A #5A6E80 #8A4A3E #6B5440 #B3AEA2. Stores : #B5654A #7A9470\n" \
 		+ "// #3E5670 #C99A45, rayés de #D8CFB8. Allèges de 1970 : #C98B4A #5F8F86\n" \
@@ -384,9 +385,6 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\tfloat posee = mix(pan, step(h, pan), net) * (1.0 - pan_vert);\n" \
 		+ "\t\tfloat posee_v = pan_vert;\n" \
 		+ "\t\ttoit_vert_ici = pan_vert;\n" \
-		+ "\t\t// Sans liseré : deux cases voisines doivent se souder. La\n" \
-		+ "\t\t// variation est un tirage de la case, pas de la nappe.\n" \
-		+ "\t\tfloat hv = fract(sin(dot(floor(g), vec2(11.917, 57.301))) * 15731.113);\n" \
 		+ "\t\t// ☀️ LE PANNEAU A UNE ÉPAISSEUR ET REFLÈTE LE CIEL (2026-09-26).\n" \
 		+ "\t\t// Le bleu franc du 2026-08-17 reste le fond : c'est lui qui se lit\n" \
 		+ "\t\t// de loin. De près : cellules, cadre éclairé en haut, ombre en bas.\n" \
@@ -435,7 +433,7 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tvec3 moyen = mix(BLEU * 0.80, BLANC * 0.90, bord * 0.85) * COLOR.a;\n" \
 		+ "\t\t\tc_pan = mix(moyen, motif, clamp(1.2 - 4.0 * aq, 0.0, 1.0));\n" \
 		+ "\t\t}\n" \
-		+ "\t\tvec3 c_vert = mix(SEDUM, SEDUM_SEC, hv) * COLOR.a;\n" \
+		+ "\t\tvec3 c_vert = herbe_saison(PELOUSE, 1.0) * COLOR.a;\n" \
 		+ "\t\t// COLOR.a garde le volume sous les deux motifs. Somme et non\n" \
 		+ "\t\t// deux `mix` enchaînés : au loin le second rendrait du carton\n" \
 		+ "\t\t// visible sous un toit pourtant couvert de bout en bout.\n" \
