@@ -3212,6 +3212,8 @@ func _maj_lieu() -> void:
 			else (_lieu_ouvert == "mairie" and (_etude_montree() if genre == "etude"
 				else _diagnostic_montre(String(cle).trim_prefix("diagnostic_")) if genre == "diagnostic"
 				else Calendrier.an(_mois) >= 2 if genre == "budget"
+				# 🗳️ Le premier budget prend la place du fonds reçu (auteur, 2026-10-28) ; pas reçu, il reste.
+				else not (Calendrier.an(_mois) >= 2 and ville.fonds_recu(_mois)) if genre == "fonds"
 				else genre in ["programme", "fonds", "regle"] or _politique_ouverte(String(cle))))
 		if not bloc.visible:
 			continue

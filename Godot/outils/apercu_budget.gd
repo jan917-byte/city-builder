@@ -31,6 +31,12 @@ func executer() -> void:
 	ui.ouvrir_lieu("mairie")
 	var carte: Dictionary = ui._lieu_lignes["budget"]
 	verifier((carte["bloc"] as Control).visible, "La mairie montre la carte « Budget de l'année »")
+	verifier((ui._lieu_lignes["fonds"]["bloc"] as Control).visible == not jeu.ville.fonds_recu(jeu.mois),
+		"Le fonds reçu laisse sa place au budget ; pas reçu, il reste")
+	if not jeu.ville.fonds_recu(jeu.mois):
+		jeu.ville.demander_fonds(jeu.mois)
+		ui._maj_lieu()
+		verifier(not (ui._lieu_lignes["fonds"]["bloc"] as Control).visible, "Le fonds demandé en janvier disparaît")
 	poser(ui)
 	# Le panneau s'ouvre en fondu : l'image attend qu'il soit posé.
 	await create_timer(0.8).timeout
