@@ -968,3 +968,6 @@ Demande de l'auteur (« un peu de volume, de l'herbe, que ça dépasse ») : dé
 2026-10-28 · vault: le budget se vote en janvier, sans impôts (124) — remplace 59, revoit 60, ferme Q21.
 Aide fixe État + ville, prime de résultats notée sur logements rendus, trafic, économie, confiance, et règles signées ; maquettes de la fenêtre montrées en chat.
 Reste : construire la fenêtre dans Godot et calibrer les montants.
+2026-10-28 · godot: la fenêtre du budget s'ouvre le 1er janvier et se vote (124) — `budget.gd`, `fenetre_budget.gd`.
+Aide fixe 360 k€, prime notée de 1 à 5 sur logements, trafic, économie, confiance (12 k€ la case), règles ; ouverture jouée 96 k€ de prime contre 84 ignorée.
+Texte réduit à la demande de l'auteur ; `essai_ouverture` vote d'office ; `essai_sauvegarde` avait déjà 1 échec avant.

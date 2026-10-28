@@ -11,6 +11,7 @@ const Recherche := preload("res://scripts/recherche.gd")
 const Objectifs := preload("res://scripts/objectifs.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 const Calendrier := preload("res://scripts/calendrier.gd")
+const Budget := preload("res://scripts/budget.gd")
 var _ponts: Array[int] = []
 
 const HORIZON_MOIS := 240                  # 20 ans. Le classeur s'arrête à 60.
@@ -32,8 +33,8 @@ const CAISSE_DEPART_KE := 1500.0
 # 🏗️ LE FONDS DE RECONSTRUCTION (118), demandé à la mairie le pont rouvert : il ne paie pas tout
 # le faubourg (6 îlots 4 940 k€, ponts en dur 1 498 à 2 860). Somme des deux = l'ancienne caisse, 3 500.
 const FONDS_RECONSTRUCTION_KE := 2000.0
-# 🗓️ Versée en une fois chaque janvier, au lieu de 30 k€ par mois (auteur, 2026-10-18).
-const DOTATION_KE_AN := 360.0
+# 🗓️ L'aide fixe, versée en une fois chaque janvier (auteur, 2026-10-18) ; détail dans `budget.gd` (124).
+const DOTATION_KE_AN := Budget.AIDE_KE_AN
 
 # 🌳 CE QU'IL RESTE DE TRAFIC AU VERGER tant que la boue y est — voir
 # `part_trafic`. 🎚️ Level design, à juger devant l'image.
@@ -2170,11 +2171,23 @@ func _integrale_part_rendue(fid: int, t: float, m: Array) -> float:
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + dotation_cumulee_ke(t) + fonds_recu_ke(t) \
 		+ recette_cumulee_ke(t) + solde_dense_ke(t) + stationnement_cumule_ke(t) + _credit_essai_ke \
+		+ Budget.prime_cumulee_ke(self, t) \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Politiques.depense_ke(self, t)
 
 
-## Les budgets de janvier reçus jusqu'au mois `t` ; l'an 1 n'a que la caisse de départ.
+## 🗳️ Les bilans de janvier déjà calculés (`Budget.bilan`), vidés dès qu'une décision change.
+var _bilans := {}
+var _bilans_etat := ""
+
+
+func cle_etat() -> String:
+	return "%d/%d/%d/%d/%d/%d/%d/%s/%d" % [_repare.hash(), _provisoire.hash(), _camps.hash(),
+		_rebati.hash(), _dense.hash(), _demandes.hash(), _stationnement_supprime.hash(),
+		livraison_immediate, _rampes_version]
+
+
+## Les aides fixes de janvier reçues jusqu'au mois `t` ; l'an 1 n'a que la caisse de départ.
 static func dotation_cumulee_ke(t: float) -> float:
 	return DOTATION_KE_AN * (Calendrier.an(t) - 1)
 

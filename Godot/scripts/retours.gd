@@ -516,12 +516,10 @@ func actualiser(mois: float) -> void:
 		consigner("%d personnes abritées, %d encore dehors." % [_sans_toit - n, n] if n > 0
 			else "%d personnes abritées, plus personne dehors." % (_sans_toit - n), mois)
 	_sans_toit = n
-	# 🗓️ Le budget de janvier (auteur, 2026-10-18). 🔴 Flaggable (90).
+	# 🗳️ Le 1er janvier, la fenêtre du budget (124) ; le chiffre monte au vote.
 	var an: int = ui.Ville.Calendrier.an(mois)
 	if _an > 0 and an > _an:
-		var budget: String = ui._milliers(ui.Ville.DOTATION_KE_AN)
-		annoncer("Budget de l'an %d : %s k€." % [an, budget], mois)
-		ui.bulles.gain_lieu("i", int(ui.LIEUX["mairie"]["fid"]), "caisse", "+%s k€" % budget, ui.Ville.DOTATION_KE_AN)
+		ui.fenetre_budget.ouvrir(an, mois)
 	_an = an
 	_dire_capital(mois)
 	_retirer_faits()

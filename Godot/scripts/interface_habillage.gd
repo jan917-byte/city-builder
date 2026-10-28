@@ -699,6 +699,9 @@ const DESSINS := {
 	"croix": "<path d='M18 6L6 18M6 6l12 12'/>",
 	"camp": "<path d='M3.5 21L14 3M20.5 21L10 3M15.5 21L12 15l-3.5 6M2 21h20'/>",
 	# 👥 Lucide « users » : des personnes, là où la tente se lisait mal (auteur, 2026-10-18).
+	# 🗳️ Lucide « factory » et « square-parking », pour la fenêtre du budget (124).
+	"usine": "<path d='M2 20a2 2 0 002 2h16a2 2 0 002-2V8l-7 5V8l-7 5V4a2 2 0 00-2-2H4a2 2 0 00-2 2z'/><path d='M17 18h1M12 18h1M7 18h1'/>",
+	"parking": "<rect width='18' height='18' x='3' y='3' rx='2'/><path d='M9 17V7h4a3 3 0 010 6H9'/>",
 	"personnes": "<path d='M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75'/>",
 }
 

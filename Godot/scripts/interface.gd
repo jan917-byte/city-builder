@@ -142,6 +142,8 @@ var saison      # `saison.gd` : la température du mois tirée pour la partie
 var trafic
 var ouverture
 var retours := preload("res://scripts/retours.gd").new()
+## 🗳️ Le budget de janvier (124).
+var fenetre_budget := preload("res://scripts/fenetre_budget.gd").new()
 ## 🎈 Les chiffres qui montent ; sous tous les panneaux.
 var bulles := preload("res://scripts/bulles.gd").new()
 var _debut: Button
@@ -421,6 +423,8 @@ func batir() -> void:
 	_controles_temps()
 	_barre_compteurs()
 	retours.batir(self)
+	add_child(fenetre_budget)
+	fenetre_budget.batir(self)
 	_sans_focus(self)
 
 
@@ -2827,7 +2831,8 @@ func ouvrir_lieu_clique(couche: String, fid: int) -> void:
 ## ⏸️ Une grande fenêtre au centre (lieux, concours) met le jeu en pause ; la maquette
 ## le relance à sa fermeture (auteur, 2026-10-22 ; remplace le « ×1 sans pause » du 2026-10-20).
 func grande_fenetre_ouverte() -> bool:
-	return _campus_panneau.visible or (_projets_panneau != null and _projets_panneau.visible)
+	return _campus_panneau.visible or (_projets_panneau != null and _projets_panneau.visible) \
+		or fenetre_budget.visible
 
 
 # ==========================================================================
@@ -3799,6 +3804,7 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		["Électricité solaire vendue", float(indic["recette_ke_an"]) / 12.0],
 		["Loyers des étages ajoutés", dense_mois],
 		["Stationnement payant", ville.stationnement_mensuel_ke(mois)],
+		["Prime de résultats", Ville.Budget.prime_mensuelle_ke(ville, mois)],
 		["Mairie", -ville.charge_mensuelle_ke(mois)],
 	]
 	# 🪜 LA COMPLEXITÉ VIENT PEU À PEU (auteur, 2026-10-20) : au début, la caisse de départ
@@ -3813,13 +3819,14 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		if ouverture == null or ouverture.rail_visible("agriculture"):
 			flux.insert(3, ["Nourriture achetée en plus" if nourriture > 0.0 else "Nourriture économisée", -nourriture])
 		out.append_array(_blocs_mensuels(flux, func(v): return _nb(v, 1) + " k€/mois", 0.05))
-		# 🗓️ Le budget tombe en janvier (auteur, 2026-10-18), comme les points de recherche.
-		out.append(["En janvier", "+%s k€" % _milliers(Ville.DOTATION_KE_AN), 0, false])
+		# 🗓️ L'aide fixe tombe en janvier (auteur, 2026-10-18), comme les points de recherche.
+		out.append(["Aide fixe, en janvier", "+%s k€" % _milliers(Ville.DOTATION_KE_AN), 0, false])
 	out.append([HISTORIQUE, null, 0, false])
 	var cumul := [
 		["Caisse de départ", Ville.CAISSE_DEPART_KE],
 		["Fonds de reconstruction", ville.fonds_recu_ke(mois)],
-		["Budgets de janvier", Ville.dotation_cumulee_ke(mois)],
+		["Aides fixes de janvier", Ville.dotation_cumulee_ke(mois)],
+		["Primes de résultats", Ville.Budget.prime_cumulee_ke(ville, mois)],
 		["Électricité solaire vendue", ville.recette_cumulee_ke(mois)],
 		["Loyers des étages ajoutés", ville.solde_dense_ke(mois)],
 		["Stationnement payant", ville.stationnement_cumule_ke(mois)],
