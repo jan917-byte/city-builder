@@ -27,6 +27,23 @@ func executer() -> void:
 	await capture("budget_1_an_2")
 	_fermer(ui)
 	verifier(not ui.fenetre_budget.visible, "« Continuer » la referme")
+	# 🏛️ Le rappel à la mairie : la même fenêtre, sans rien recevoir de plus.
+	ui.ouvrir_lieu("mairie")
+	var carte: Dictionary = ui._lieu_lignes["budget"]
+	verifier((carte["bloc"] as Control).visible, "La mairie montre la carte « Budget de l'année »")
+	poser(ui)
+	# Le panneau s'ouvre en fondu : l'image attend qu'il soit posé.
+	await create_timer(0.8).timeout
+	await capture("budget_3_mairie")
+	var caisse: float = jeu.ville.caisse_ke(jeu.mois)
+	var journal: int = ui.retours.journal.size()
+	(carte["bouton"] as Button).pressed.emit()
+	verifier(ui.fenetre_budget.visible, "« Voir le budget » rouvre la fenêtre")
+	await capture("budget_4_rappel")
+	_fermer(ui)
+	verifier(is_equal_approx(jeu.ville.caisse_ke(jeu.mois), caisse) and ui.retours.journal.size() == journal,
+		"Le rappel ne reçoit rien et n'écrit rien")
+	ui._fermer_lieu()
 	avancer(Budget.debut_an(3) + 0.01)
 	verifier(ui.fenetre_budget.visible, "Elle revient le 1er janvier de l'an 3")
 	poser(ui)

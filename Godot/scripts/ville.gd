@@ -33,7 +33,7 @@ const CAISSE_DEPART_KE := 1500.0
 # 🏗️ LE FONDS DE RECONSTRUCTION (118), demandé à la mairie le pont rouvert : il ne paie pas tout
 # le faubourg (6 îlots 4 940 k€, ponts en dur 1 498 à 2 860). Somme des deux = l'ancienne caisse, 3 500.
 const FONDS_RECONSTRUCTION_KE := 2000.0
-# 🗓️ L'aide fixe, versée en une fois chaque janvier (auteur, 2026-10-18) ; détail dans `budget.gd` (124).
+# 🗓️ L'aide de l'État, versée en une fois chaque janvier (auteur, 2026-10-18) ; détail dans `budget.gd` (124).
 const DOTATION_KE_AN := Budget.AIDE_KE_AN
 
 # 🌳 CE QU'IL RESTE DE TRAFIC AU VERGER tant que la boue y est — voir

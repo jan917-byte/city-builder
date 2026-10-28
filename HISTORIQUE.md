@@ -973,3 +973,4 @@ Aide fixe 360 k€, prime notée de 1 à 5 sur logements, trafic, économie, con
 Texte réduit à la demande de l'auteur ; `essai_ouverture` vote d'office ; `essai_sauvegarde` avait déjà 1 échec avant.
 2026-10-28 · godot: fenêtre du budget, titre, total, aide fixe et titres des parts en gras (demande de l'auteur).
 2026-10-28 · godot+vault: « Voter le budget » devient « Continuer » — l'argent arrive seul (auteur : « ça doit venir direct »), 124 révisée.
+2026-10-28 · godot: aide de l'État seule, 400 k€ (360 avant) ; carte « Budget de l'année » à la mairie qui rouvre la fenêtre en rappel (demandes de l'auteur).

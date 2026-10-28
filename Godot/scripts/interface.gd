@@ -2597,6 +2597,9 @@ func _panneau_lieu() -> void:
 		_mairie_bloc.add_child(col)
 		_titre_section(col, String(d[1]))
 		cols[d[0]] = col
+	# 🗳️ Le rappel du budget de l'an (124, auteur 2026-10-28), dès l'an 2. 🔴 Flaggable (90).
+	_lieu_lignes["budget"] = _ligne_lieu(cols["budgets"], "budget", "Budget de l'année",
+		"Ce que la ville reçoit cette année, et pourquoi.")
 	# 🏗️ Le fonds de reconstruction (118). 🔴 Textes flaggables (90).
 	_lieu_lignes["fonds"] = _ligne_lieu(cols["budgets"], "fonds", "Fonds de reconstruction",
 		"Le pont rouvert, demander à l'État de quoi rebâtir le faubourg. Il ne suffira pas à tout.")
@@ -3141,6 +3144,9 @@ func _brancher_lieu() -> void:
 					retours.annoncer("Les rues payantes rapportent chaque mois.", _mois)
 					retours.actualiser(_mois)
 				_maj_lieu())
+		elif String(l["genre"]) == "budget":
+			b.pressed.connect(func() -> void:
+				fenetre_budget.ouvrir(Calendrier.an(_mois), _mois, true))
 		elif String(l["genre"]) == "fonds":
 			b.pressed.connect(func() -> void:
 				if _fonds_demandable() and ville.demander_fonds(_mois):
@@ -3203,6 +3209,7 @@ func _maj_lieu() -> void:
 		bloc.visible = (_lieu_ouvert == "institut" and _sujet_montre(String(cle))) if recherche \
 			else (_lieu_ouvert == "mairie" and (_etude_montree() if genre == "etude"
 				else _diagnostic_montre(String(cle).trim_prefix("diagnostic_")) if genre == "diagnostic"
+				else Calendrier.an(_mois) >= 2 if genre == "budget"
 				else genre in ["programme", "fonds", "regle"] or _politique_ouverte(String(cle))))
 		if not bloc.visible:
 			continue
@@ -3217,6 +3224,8 @@ func _maj_lieu() -> void:
 			_maj_ligne_diagnostic(String(cle).trim_prefix("diagnostic_"), l)
 		elif genre == "fonds":
 			_maj_ligne_fonds(l)
+		elif genre == "budget":
+			_poser_ligne(l["bouton"], "Voir le budget", [])
 		elif genre == "regle":
 			_maj_ligne_regle(String(cle).trim_prefix("regle_"), l)
 		else:
@@ -3819,13 +3828,13 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		if ouverture == null or ouverture.rail_visible("agriculture"):
 			flux.insert(3, ["Nourriture achetée en plus" if nourriture > 0.0 else "Nourriture économisée", -nourriture])
 		out.append_array(_blocs_mensuels(flux, func(v): return _nb(v, 1) + " k€/mois", 0.05))
-		# 🗓️ L'aide fixe tombe en janvier (auteur, 2026-10-18), comme les points de recherche.
-		out.append(["Aide fixe, en janvier", "+%s k€" % _milliers(Ville.DOTATION_KE_AN), 0, false])
+		# 🗓️ L'aide de l'État tombe en janvier (auteur, 2026-10-18), comme les points de recherche.
+		out.append(["Aide de l'État, en janvier", "+%s k€" % _milliers(Ville.DOTATION_KE_AN), 0, false])
 	out.append([HISTORIQUE, null, 0, false])
 	var cumul := [
 		["Caisse de départ", Ville.CAISSE_DEPART_KE],
 		["Fonds de reconstruction", ville.fonds_recu_ke(mois)],
-		["Aides fixes de janvier", Ville.dotation_cumulee_ke(mois)],
+		["Aides de l'État", Ville.dotation_cumulee_ke(mois)],
 		["Primes de résultats", Ville.Budget.prime_cumulee_ke(ville, mois)],
 		["Électricité solaire vendue", ville.recette_cumulee_ke(mois)],
 		["Loyers des étages ajoutés", ville.solde_dense_ke(mois)],

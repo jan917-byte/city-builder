@@ -18,11 +18,11 @@ Le 1er janvier, une fenêtre s'ouvre au milieu de l'écran, le jeu en pause, et 
 
 | Part | Quand | Ce qui la fait |
 |---|---|---|
-| **Aide fixe** — l'État, la ville | versée le jour même | rien : elle ne bouge pas |
+| **Aide de l'État** | versée le jour même | rien : elle ne bouge pas |
 | **Prime de résultats** | notée sur l'an passé, versée chaque mois | quatre critères notés de 1 à 5, chacun avec sa raison en une phrase : logements rendus · trafic · économie · confiance |
 | **Règles signées** | chaque mois | le stationnement payant (123), puis les suivantes |
 
-**Pas d'impôts sur les logements, pas d'entretien des rues** : l'auteur les écarte, le jeu deviendrait trop complexe. La prime dit au joueur ce que sa ville a réussi ; l'aide fixe garantit qu'une mauvaise année ne le met pas à zéro (*dur mais possible*). En haut de la fenêtre, l'écart avec l'an passé.
+**Pas d'impôts sur les logements, pas d'entretien des rues** : l'auteur les écarte, le jeu deviendrait trop complexe. La prime dit au joueur ce que sa ville a réussi ; l'aide de l'État garantit qu'une mauvaise année ne le met pas à zéro (*dur mais possible*). En haut de la fenêtre, l'écart avec l'an passé.
 
 Ce qui suit, jusqu'aux deux garde-fous exclus, est **remplacé** par ce paragraphe : on le garde pour le raisonnement.
 

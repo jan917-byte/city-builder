@@ -1,5 +1,5 @@
 extends RefCounted
-# 🗳️ LE BUDGET VOTÉ EN JANVIER (décision 124) : une aide fixe, une prime notée sur
+# 🗳️ LE BUDGET DE JANVIER (décision 124) : l'aide de l'État, une prime notée sur
 # l'an passé, les règles signées. Aucun impôt (auteur, 2026-10-28 : « trop complexe »).
 # Fonctions pures du temps, comme la caisse : la note de l'an N se lit au 1er janvier de N.
 
@@ -8,10 +8,8 @@ const Calendrier := preload("res://scripts/calendrier.gd")
 # ==========================================================================
 # 🎚️ LEVEL DESIGN — à juger devant la fenêtre
 # ==========================================================================
-## L'aide fixe : 360 k€, la dotation d'avant la décision 124.
-const AIDE_ETAT_KE_AN := 240.0
-const PART_VILLE_KE_AN := 120.0
-const AIDE_KE_AN := AIDE_ETAT_KE_AN + PART_VILLE_KE_AN
+## L'aide de l'État, seule (auteur, 2026-10-28 : plus de « part de la ville », et un peu plus que les 360 d'avant).
+const AIDE_KE_AN := 400.0
 ## Chaque point de note vaut tant par an : quatre critères à 5 points = 240 k€ au plus.
 const PRIME_KE_POINT := 12.0
 const NOTE_MAX := 5

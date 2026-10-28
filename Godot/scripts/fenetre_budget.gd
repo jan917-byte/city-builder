@@ -12,6 +12,8 @@ var ui
 var _corps: VBoxContainer
 var _an := 0
 var _mois := 0.0
+## Rouverte depuis la mairie : rien n'est reçu à la fermeture.
+var _rappel := false
 
 
 func batir(interface) -> void:
@@ -41,9 +43,10 @@ func batir(interface) -> void:
 	boite.add_child(_corps)
 
 
-func ouvrir(an: int, mois: float) -> void:
+func ouvrir(an: int, mois: float, rappel := false) -> void:
 	_an = an
 	_mois = mois
+	_rappel = rappel
 	for n in _corps.get_children():
 		n.queue_free()
 	_remplir()
@@ -82,7 +85,7 @@ func _remplir() -> void:
 	var marge_aide := Control.new()
 	marge_aide.custom_minimum_size.y = 8
 	_corps.add_child(marge_aide)
-	_ligne("caisse", "Aide fixe de l'État et de la ville", "", Budget.AIDE_KE_AN, "", -1, Color.BLACK, true)
+	_ligne("caisse", "Aide de l'État", "", Budget.AIDE_KE_AN, "", -1, Color.BLACK, true)
 
 	_section("Prime de résultats")
 	for c in Budget.CRITERES:
@@ -97,7 +100,7 @@ func _remplir() -> void:
 
 	# 🔄 « Continuer », plus « Voter le budget » (auteur, 2026-10-28) : l'argent arrive seul, le bouton ne fait que fermer.
 	var voter := Button.new()
-	voter.text = "Continuer"
+	voter.text = "Fermer" if _rappel else "Continuer"
 	voter.focus_mode = Control.FOCUS_NONE
 	ui._habiller_gratuit(voter)
 	voter.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -194,6 +197,8 @@ func _raison(c: String, d: Dictionary) -> String:
 
 func _fermer() -> void:
 	visible = false
+	if _rappel:
+		return
 	ui.retours.consigner("Budget de l'an %d reçu : %s k€ d'aide, %s k€ de prime." % [_an,
 		ui._milliers(Budget.AIDE_KE_AN), ui._milliers(Budget.prime_ke_an(ui.ville, _an))], _mois)
 	ui.bulles.gain_lieu("i", int(ui.LIEUX["mairie"]["fid"]), "caisse",
