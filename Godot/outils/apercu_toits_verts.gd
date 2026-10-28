@@ -3,6 +3,7 @@ extends SceneTree
 ## Les toits plats les plus grands, verdis au maximum : de près, puis au zoom de jeu.
 
 const Energie := preload("res://scripts/energie.gd")
+const Saison := preload("res://scripts/saison.gd")
 
 func _initialize() -> void:
 	call_deferred("capturer")
@@ -41,7 +42,9 @@ func capturer() -> void:
 		var fid: int = p[1]
 		v.ajouter_rampe("i", fid, "part_toit_vert", v.part_vert_max(fid, 0.0), 0.0, 0.0, 0.01)
 		choisis.append(fid)
-	jeu.mois = 6.0
+	# Juin de l'an 1 (la partie part en mars), météo à graine fixe : deux images égales.
+	jeu.changer_saison(Saison.new(1))
+	jeu.mois = 3.0
 	var n := 0
 	for fid in choisis:
 		for vue in [[30.0, 45.0, 45.0], [210.0, 50.0, 140.0]]:
@@ -56,6 +59,7 @@ func capturer() -> void:
 				await RenderingServer.frame_post_draw
 			await jeu._capturer("toits_verts_%d" % n)
 	for fid in choisis:
-		var noeuds: Array = jeu._toits_verts.get(fid, {}).get("noeuds", [])
-		print("îlot %d : %s" % [fid, noeuds.map(func(x): return x.multimesh.instance_count if x is MultiMeshInstance3D else x.mesh.get_faces().size() / 6)])
+		var noeud = jeu._toits_verts[fid]["noeud"]
+		print("îlot %d : %d triangles d'herbe pour %.0f m² plats" % [fid,
+			noeud.mesh.get_faces().size() / 3, Energie.toit_plat_equipable_m2(v, fid)])
 	quit()

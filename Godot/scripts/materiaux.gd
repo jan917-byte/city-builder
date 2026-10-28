@@ -2,7 +2,7 @@ extends RefCounted
 # Matières procédurales, sans texture importée (Direction artistique l.19).
 # La couleur voyage dans ARRAY_COLOR, donc UN matériau suffit pour les 69 îlots.
 
-## 🌿 Le vert des jardins (07, `coul_jardin`), linéaire : le dessus d'un toit vert et ses touffes.
+## 🌿 Le vert des jardins (07, `coul_jardin`), linéaire : le dessus d'un toit vert.
 const PELOUSE_TOIT := Color(0.332, 0.452, 0.234)
 
 # 🏢 LA SURÉLÉVATION, ET DEUX MATÉRIAUX LA PARTAGENT : la ville et le masque de
@@ -139,8 +139,8 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "const vec3 BLEU = vec3(0.013, 0.119, 0.570);\n" \
 		+ "const vec3 BLANC = vec3(0.83);\n" \
 		+ "// 🌿 LE TOIT VERT A LE VERT DES JARDINS (auteur, 2026-10-28), LINÉAIRE :\n" \
-		+ "// `coul_jardin` de 07 = PELOUSE_TOIT ; buissons et touffes y sont de vrais\n" \
-		+ "// objets (`toits_verts.gd`). 🔄 RETOUR EN ARRIÈRE SIGNALÉ : le sédum sombre\n" \
+		+ "// `coul_jardin` de 07 = PELOUSE_TOIT ; la couche d'herbe posée dessus\n" \
+		+ "// est un vrai objet (`toits_verts.gd`). 🔄 RETOUR EN ARRIÈRE SIGNALÉ : le sédum sombre\n" \
 		+ "// (#4C6B3C) du 2026-08-31 jurait avec la carte.\n" \
 		+ ("const vec3 PELOUSE = vec3(%.3f, %.3f, %.3f);\n" % [PELOUSE_TOIT.r, PELOUSE_TOIT.g, PELOUSE_TOIT.b]) \
 		+ "// 🎨 LES ACCENTS DE FAÇADE (2026-09-26), LINÉAIRES. Volets et portes :\n" \
@@ -433,7 +433,9 @@ static func objet(etage_m: float = 2.7) -> ShaderMaterial:
 		+ "\t\t\tvec3 moyen = mix(BLEU * 0.80, BLANC * 0.90, bord * 0.85) * COLOR.a;\n" \
 		+ "\t\t\tc_pan = mix(moyen, motif, clamp(1.2 - 4.0 * aq, 0.0, 1.0));\n" \
 		+ "\t\t}\n" \
-		+ "\t\tvec3 c_vert = herbe_saison(PELOUSE, 1.0) * COLOR.a;\n" \
+		+ "\t\t// 🌿 Le grain des champs : ce qu'on voit sous la couche d'herbe tant qu'elle se refait.\n" \
+		+ "\t\tvec3 c_vert = PELOUSE * grain_champ(pos_monde.xz) * mix(0.96, 1.03, champ_bruit(pos_monde.xz * 0.6));\n" \
+		+ "\t\tc_vert = herbe_saison(c_vert, 1.0) * COLOR.a;\n" \
 		+ "\t\t// COLOR.a garde le volume sous les deux motifs. Somme et non\n" \
 		+ "\t\t// deux `mix` enchaînés : au loin le second rendrait du carton\n" \
 		+ "\t\t// visible sous un toit pourtant couvert de bout en bout.\n" \

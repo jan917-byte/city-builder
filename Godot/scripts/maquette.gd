@@ -200,7 +200,7 @@ var _arbres_slots := []      # [x, y, z, échelle, lacet, fid tronçon, seuil]
 var _arbres_noeuds := {}     # essence -> MultiMeshInstance3D
 var _arbres_liste := []      # ce que la ville plante en ce moment, relu par la miniature
 var _parcs := {}             # îlot rendu en parc -> ses MultiMeshInstance3D
-var _toits_verts := {}       # îlot -> {semis, signature, noeuds} (`_verdir_toits`)
+var _toits_verts := {}       # îlot -> {semis, signature, noeud} (`_verdir_toits`)
 var _arbres_compte := -1
 # 🌿 CE QUI POUSSE SUR UNE RIVE RENDUE AU FLEUVE, rangé PAR BERGE : c'est
 # l'état de la berge, et lui seul, qui décide si on le montre. Même semis que
@@ -2138,62 +2138,42 @@ func _planter_parc(fid: int, livre: bool) -> void:
 		(_parcs[fid] as Array).append(mmi)
 
 
-## 🌿 Buissons, touffes et cadre de terre des toits verdis (`toits_verts.gd`). Semés au premier
-## mois où l'îlot verdit ; refaits seulement quand un toit de plus passe au vert
-## ou que le bâti monte.
+## 🌿 La couche d'herbe des toits verdis (`toits_verts.gd`). Ses toits et ses bords sont
+## lus au premier mois où l'îlot verdit ; refaite seulement quand un toit de plus passe
+## au vert ou que le bâti monte.
 func _verdir_toits(fid: int, mi: MeshInstance3D) -> void:
 	var verdi := ville.valeur("i", fid, "part_toit_vert", mois)
 	var e: Dictionary = _toits_verts.get(fid, {})
 	if verdi <= 0.0 and e.is_empty():
 		return
 	if e.is_empty():
-		e = {"semis": ToitsVerts.semis(mi.mesh, fid), "signature": "", "noeuds": []}
+		e = {"semis": ToitsVerts.semis(mi.mesh), "signature": "", "noeud": null}
 		_toits_verts[fid] = e
 	var part_v := clampf(verdi / maxf(ville.valeur("i", fid, "_part_plate", mois), 0.001), 0.0, 1.0)
-	var n := ToitsVerts.compte(e["semis"]["plantes"], part_v) if verdi > 0.0 else 0
-	var nc := ToitsVerts.compte(e["semis"]["cadre"], part_v, 3) if verdi > 0.0 else 0
+	var nt := ToitsVerts.compte(e["semis"]["toits"], part_v) if verdi > 0.0 else 0
+	var nb := ToitsVerts.compte(e["semis"]["bords"], part_v) if verdi > 0.0 else 0
 	var dn := ville.rendu_dense(fid, mois)
-	var signature := "%d|%d|%s" % [n, nc, dn]
-	for noeud in e["noeuds"]:
-		(noeud as Node3D).visible = mi.visible
+	var signature := "%d|%d|%s" % [nt, nb, dn]
+	if e["noeud"] != null:
+		(e["noeud"] as Node3D).visible = mi.visible
 	if signature == e["signature"]:
 		return
 	e["signature"] = signature
-	for noeud in e["noeuds"]:
-		(noeud as Node).queue_free()
-	e["noeuds"] = []
-	if n == 0:
+	if e["noeud"] != null:
+		(e["noeud"] as Node).queue_free()
+		e["noeud"] = null
+	if nt == 0:
 		return
-	var liste: Array = (e["semis"]["plantes"] as Array).slice(0, n)
-	var vert := Donnees.teinte(donnees, "_feuillage").srgb_to_linear()
-	var b := MultiMeshInstance3D.new()
-	b.name = "ToitBuissons%d" % fid
-	b.multimesh = Constructeur.arbres(ToitsVerts.buissons(liste, dn), Constructeur.BUISSON,
-		vert, Donnees.teinte(donnees, "_tronc"))
-	ToitsVerts.teinter(b.multimesh, Materiaux.PELOUSE_TOIT)
-	var h := MultiMeshInstance3D.new()
-	h.name = "ToitHerbe%d" % fid
-	# Plus vertes que la pelouse dessous : sinon elles s'y fondent.
-	h.multimesh = ToitsVerts.touffes(liste, dn, Materiaux.PELOUSE_TOIT * Color(0.80, 0.95, 0.72))
-	var m := ShaderMaterial.new()
-	m.shader = preload("res://shaders/touffe.gdshader")
-	h.material_override = m
-	# Des brins de 30 cm ne se voient plus en vue d'ensemble : la pelouse suffit.
-	h.visibility_range_end = 450.0
-	h.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var c := MeshInstance3D.new()
-	c.name = "ToitCadre%d" % fid
-	c.mesh = ToitsVerts.cadre((e["semis"]["cadre"] as Array).slice(0, nc), dn)
+	c.name = "ToitHerbe%d" % fid
+	c.mesh = ToitsVerts.couche((e["semis"]["toits"] as Array).slice(0, nt),
+		(e["semis"]["bords"] as Array).slice(0, nb), dn, Materiaux.PELOUSE_TOIT)
 	var mc := ShaderMaterial.new()
-	mc.shader = m.shader
-	# ⚠ En sRGB : Godot linéarise lui-même une Color posée sur un vec3 (vu le 2026-10-28, orange).
-	mc.set_shader_parameter("terre", ToitsVerts.CADRE)
+	mc.shader = preload("res://shaders/herbe_toit.gdshader")
 	c.material_override = mc
-	c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	for noeud in [b, h, c]:
-		noeud.visible = mi.visible
-		monde.add_child(noeud)
-		(e["noeuds"] as Array).append(noeud)
+	c.visible = mi.visible
+	monde.add_child(c)
+	e["noeud"] = c
 
 
 ## 🌳 Un arbre planté sort de terre au rythme de la canopée de sa rue. Le

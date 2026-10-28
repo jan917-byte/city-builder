@@ -962,3 +962,6 @@ Un testeur lançait un chantier puis attendait sa fin au ×4 ; choix de l'auteur
 **2026-10-28 — La confiance ouvre les règles sans se dépenser ; le stationnement payant, première règle, rapporte chaque mois.**
 Demande de l'auteur : rendre la confiance utile avant de montrer qu'elle s'use ; 98 redit, la note Mairie et politiques corrigée (elle disait « consomme »).
 `essai_regle` et `apercu_mairie` 0 échec ; `essai_capital` 0 ; `essai_sauvegarde` (1) échouait déjà avant.
+**2026-10-28 — Le toit vert devient un coussin d'herbe qui déborde du muret, sans cadre de terre.**
+Demande de l'auteur (« un peu de volume, de l'herbe, que ça dépasse ») : débord irrégulier, mèches en touffes, shader d'herbe à trois échelles ; il n'est toujours pas convaincu, à reprendre.
+`apercu_toits_verts` : 28 k triangles pour 4 030 m² plats (îlot 31) ; temps d'image pas mesuré.
