@@ -965,3 +965,6 @@ Demande de l'auteur : rendre la confiance utile avant de montrer qu'elle s'use ;
 **2026-10-28 — Le toit vert devient un coussin d'herbe qui déborde du muret, sans cadre de terre.**
 Demande de l'auteur (« un peu de volume, de l'herbe, que ça dépasse ») : débord irrégulier, mèches en touffes, shader d'herbe à trois échelles ; il n'est toujours pas convaincu, à reprendre.
 `apercu_toits_verts` : 28 k triangles pour 4 030 m² plats (îlot 31) ; temps d'image pas mesuré.
+2026-10-28 · vault: le budget se vote en janvier, sans impôts (124) — remplace 59, revoit 60, ferme Q21.
+Aide fixe État + ville, prime de résultats notée sur logements rendus, trafic, économie, confiance, et règles signées ; maquettes de la fenêtre montrées en chat.
+Reste : construire la fenêtre dans Godot et calibrer les montants.

@@ -8,6 +8,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 ## Prochaine action
 - 🏛️ **Jouer l'ouverture, la mairie d'abord** (117) : pont rouvert → mairie seule → concours (1 point) → étude (80 k€) → université, **cliquée comme un seul îlot, son étude encadrée** (2026-10-22, `essai_campus.gd`). Quoi regarder et quels défauts chercher → [Premiers pas](Prototype/Premiers%20pas.md) § À jouer et § Ce qui attend le joueur. 📸 Captures non prises le 2026-10-19 : `essai_ouverture.gd -- --ouverture --captures`.
 - 🪟 **Tes fenêtres en 3D** : `Godot/assets/fenetres/gabarit_fenetres.blend`, une façade type par famille, rez compris, 27 ouvertures à modéliser dans leur cadre orange (LISEZ-MOI dans le fichier, plan numéroté `QGIS/rendus/gabarit_fenetres.png`) ; ensuite je les cuis dans le mur. Frontière concours / habillage tranchée → [Premiers pas](Prototype/Premiers%20pas.md) § L'étude de la prochaine crue, fin.
+- 💶 **Le budget voté en janvier** (124, tranché le 2026-10-28) : aide fixe + prime sur 4 critères + règles ; fenêtre à construire → `Vault - Jeu urbanisme/Systèmes/Ressources.md`.
 - 🏚️ **Bâtiments de cour** à un niveau, toit plat sans souche, 12 × 6 m (commités le 2026-10-20) — à voir à l'écran.
 
 ## À juger à l'écran
@@ -23,7 +24,6 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - ✍️ **Les textes flaggables à réécrire** (90) → `Prototype/Textes des premières minutes.xlsx` ; les noms de lieux → `Godot/data/lieux.json`.
 
 ## À trancher (l'auteur)
-- 💶 **Les systèmes d'argent avant la seconde crue** : A recettes et entretien (59) · B budget voté (n°21) · C coûts qui durent — recommandé A puis B → `Vault - Jeu urbanisme/Production/Feuille de route.md`.
 - 🔴 **Des arbitrages pris mais jamais consignés** → Questions ouvertes n°49 (plus la perspective 35° et la police) ; n°47 (parc sur une partie d'îlot), n°48 (champs dans les moyennes), n°50 (références au titre). La Feuille de route garde un seuil de 5 000 wishlists que 47 a retiré.
 - 🔴 **La facture de la crue** : 14 445 k€ pour 8 000 k€ de caisse en vingt ans → [Crue](Prototype/Crue.md).
 - 🔴 **Les nombres de *dur mais possible*** (panneau, MWh, caisse, dotation, toit vert) → [Énergie](Prototype/%C3%89nergie.md), [Crue](Prototype/Crue.md).

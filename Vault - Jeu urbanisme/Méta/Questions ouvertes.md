@@ -39,9 +39,6 @@ Les indicateurs sont tranchés (91 : le CO₂ et six thèmes). **Restent les res
 ### 20. La jauge globale, refusée par [[Déclin et défaite]]
 La note refuse une note globale de résilience ; le thème **Dangers naturels** en est une. Résolution proposée, non confirmée : ce que la note refusait est une jauge **sans carte** — 53 la lève, puisque chaque barre ouvre son calque. Si ça ne tient pas, c'est la barre qui saute, pas la règle.
 
-### 21. Comment le joueur comprend-il que l'économie commande son budget ?
-L'économie (60) n'est pas dans la maquette : la dotation est fixe. Trois pistes compatibles, aucune tranchée : **le budget se vote une fois par an** et l'annonce dit pourquoi (*« l'économie repart »*) ; **la barre nomme sa conséquence** (*« les recettes rentrent mal »*) ; **le budget se décompose au survol** (ta ville · la conjoncture). Recommandation : les trois. → [[Ressources]]
-
 ## La crue, l'eau, le climat
 
 ### 24. Que fait une berge transformée au reste de la ville ?

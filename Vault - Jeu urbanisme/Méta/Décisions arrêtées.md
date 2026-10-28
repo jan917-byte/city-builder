@@ -61,7 +61,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 87 | Le premier pont se choisit **provisoire** (2 mois, 25 % du prix, une voie) ou **en dur** (7 mois) ; ses accès se déblaient pendant le chantier. **L'en dur attend le fonds de reconstruction** (118) | 🔓 | 2026-09-24, raccourci le 2026-10-12, revu le 2026-10-20 |
 | 89 | **L'Ilse coule du sud au nord**, brune de crue, normale en 4 mois, limpide plus tard (déclencheur ouvert) | 🔓 | 2026-09-28 · [[Questions ouvertes]] n°35 |
 | 95 | Un îlot sinistré offre **plusieurs postures qui se valent** : à l'identique (confiance gagnée, exposé), autre tissu, parc inondable (confiance perdue, protégé) ; rebâtir en zone basse fait monter la prévision | 🟡 | 2026-09-30 · `Prototype/Premiers pas.md` |
-| 121 | **Une rue entre deux parcs peut devenir une allée du parc** — rue, rue fermée, puis allée ; seulement si aucune porte ne donne sur la rue et si le réseau reste d'un seul tenant. L'allée sort des charges (59) et rend son sol perméable ; les deux îlots gardent leur numéro | 🟡 | 2026-10-02, tranché par l'auteur, précise 95 · prix, durée et confiance à fixer · [[Questions ouvertes]] n°47 |
+| 121 | **Une rue entre deux parcs peut devenir une allée du parc** — rue, rue fermée, puis allée ; seulement si aucune porte ne donne sur la rue et si le réseau reste d'un seul tenant. L'allée rend son sol perméable ; les deux îlots gardent leur numéro | 🟡 | 2026-10-02, tranché par l'auteur, précise 95 · prix, durée et confiance à fixer · [[Questions ouvertes]] n°47 |
 | 122 | **Les venelles se creusent seules dans l'herbe, et on ne les aménage pas** : herbe au début, puis herbe foulée, puis terre battue, en un à deux ans, chacune à son rythme ; aucun bouton, aucun prix, aucun effet sur les jauges. Un clin d'œil au titre (111), pas un système | 🔓 | 2026-10-08, demandé par l'auteur (106 sur sa branche) · 🔄 2026-10-27, tranché par l'auteur : *« elles ne doivent pas être aménagées, elles doivent apparaître de manière organique »* ; écarté : le bouton « Aménager la venelle » · `Prototype/Parcelles.md` · [[Questions ouvertes]] n°50 |
 | 100 | L'université publie une **étude : une crue plus forte dans 6 à 8 ans** ; Dangers se lit en deux onglets, Prochaine crue et Dégâts | 🟡 | 2026-09-30, moment changé par 105 |
 | 102 | **Pas de répétition** avant la crue annoncée ; la **canicule** sera la deuxième urgence, plus tard | 🟡 | 2026-10-06 |
@@ -103,8 +103,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 56 | Le CO₂ et le renouvelable sont **dérivés**, pas simulés ; le **carbone gris** compte | 🟡 | 2026-08-12 · [[Indicateurs globaux]] |
 | 57 | Le bout d'une barre est **un jalon nommé**, montré seulement à l'approche | 🔓 | 2026-08-12 · [[Milestones]] |
 | 58 | Ressources en **compteurs**, indicateurs en **barres** ; le budget montre ce qu'on a, l'engagé et le libre | 🔓 | 2026-08-12 |
-| 59 | Budget : **recettes ∝ logements, charges ∝ mètres de voirie** — pas encore calibré | 🟡 | 2026-08-12 · dette de `Prototype/00 - Prototype.md` |
-| 60 | **L'économie est un état sans chiffre** qui multiplie le budget ; le calcul est caché — absente de la maquette | 🟡 | 2026-08-12 · [[Ressources]] |
+| 60 | **L'économie est un état sans chiffre**, l'un des quatre critères de la prime de résultats (124) ; le calcul est caché — absente de la maquette | 🟡 | 2026-08-12 · 🔄 2026-10-28 : elle ne multiplie plus le budget · [[Ressources]] |
 | 60b | **Formule cachée ≠ causalité cachée** : quand l'économie bouge, une phrase dit pourquoi ; elle ne règle jamais la difficulté | 🔓 | 2026-08-12 |
 | 63 | Un indicateur vit à deux échelles : **les stocks s'additionnent, les taux se pondèrent** par leur dénominateur | 🔓 | 2026-08-12 · [[Indicateurs globaux]] |
 | 63b | La fiche d'un îlot reprend les indicateurs du bandeau, même ordre, mêmes icônes | 🔓 | 2026-08-12 |
@@ -117,6 +116,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 93 | Une décision se voit **en trois temps** — la fiche avant, les hachures pendant, un signe sur le lieu à la livraison | 🟡 | 2026-09-30 |
 | 94 | Le diagnostic **prévoit les dégâts de la prochaine crue**, dans tous les thèmes | 🟡 | 2026-09-30 · [[Happenings]] |
 | 119 | **La complexité arrive peu à peu** : au début, l'argent ne montre que la caisse de départ et l'historique — pas ce qui part chaque mois ; **chaque carte de diagnostic reste cachée tant qu'une étude ne l'a pas ouverte**, Dangers par l'étude de la crue, Énergie, Trafic et Agriculture par la leur, commandée à la mairie | 🟡 | 2026-10-20, tranché par l'auteur · prix des trois études et moment où ce qui part chaque mois paraît, à juger · `Prototype/Premiers pas.md` |
+| 124 | **Le budget se vote le 1er janvier, dans une fenêtre qui dit comment il est calculé**, en trois parts et **sans aucun impôt** : ① une **aide fixe** de l'État et de la ville, versée le jour même ; ② une **prime de résultats**, notée sur l'année passée selon quatre critères — logements rendus, trafic, économie, confiance —, chacun avec sa note et sa raison en une phrase, versée chaque mois ; ③ l'argent des **règles signées** (123), chaque mois | 🟡 | 2026-10-28, tranché par l'auteur (« le jeu deviendrait trop complexe » avec des impôts) · remplace 59, revoit 60, ferme [[Questions ouvertes]] n°21 · montants et barèmes à juger · [[Ressources]] |
 
 ## La ville et son échelle
 
@@ -203,6 +203,7 @@ Gardées ici parce que des notes et du code citent encore leur numéro. Leur tex
 
 | # | Ce qu'elle disait | Ce qui l'a remplacée |
 |---|---|---|
+| 59 | Recettes ∝ logements, charges ∝ mètres de voirie | 124 — pas d'impôts : aide fixe, prime de résultats, règles |
 | 25 | Trois calques parents : vert, mobilité, social | les six thèmes (91) |
 | 33 | Un `.qml` comme référence couleur | 33b — le fichier n'a jamais existé |
 | 37 | Pas de SVG : PNG, world file et décalquage | la carte est générée (31b) ; l'auteur dessine dans Illustrator, `atelier_svg.py` reprend |

@@ -64,7 +64,7 @@ Une seule étape ouverte à la fois, toujours. L'ordre ci-dessous est celui dans
 
 | | Ce qu'il faut mettre en place | Pourquoi maintenant | Quand |
 |---|---|---|---|
-| 1 | **L'argent qui fait hésiter** — calibrer les deux formules (59), puis les systèmes d'argent qui manquent (choisis par l'auteur) | aucune décision n'a encore été refusée faute d'argent : il n'y a pas d'arbitrage | avant le test 1 |
+| 1 | **L'argent qui fait hésiter** — le budget voté en janvier (124), puis les systèmes d'argent qui manquent (choisis par l'auteur) | aucune décision n'a encore été refusée faute d'argent : il n'y a pas d'arbitrage | avant le test 1 |
 | 2 | **Les ouvertures redistribuées** (105, suspendue) et **l'interface allégée** au début | trop d'options d'un coup après le pont | avant le test 1 |
 | 3 | **La seconde crue tombe, et un bilan la raconte** | c'est l'examen de tout ce qu'on a préparé, et la preuve que la prévention se voit → [[Boucle de jeu]] | déc. 2026 – janv. 2027 |
 | 4 | **Le point de vue épinglé** — la même vue, des années d'écart | c'est la récompense d'une transformation lente, **et** la machine à captures pour Steam | slice |
