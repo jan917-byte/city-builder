@@ -2706,10 +2706,41 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	var etat := _label("", 12, TEXTE)
 	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(etat)
+	var out := {"bloc": carte, "genre": genre, "etat": etat}
+	if genre == "regle":
+		out.merge(_jauge_seuil(bloc))
 	var b := _bouton_verbe("")
 	b.focus_mode = Control.FOCUS_NONE
 	bloc.add_child(b)
-	return {"bloc": carte, "genre": genre, "etat": etat, "bouton": b}
+	out["bouton"] = b
+	return out
+
+
+## 🗳️ Un seuil se REMPLIT, il ne se paie pas (auteur, 2026-10-28) : la confiance du moment
+## contre un trait au seuil, verte une fois passée. Rien sur le bouton, qui reste gratuit.
+func _jauge_seuil(parent: VBoxContainer) -> Dictionary:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	parent.add_child(h)
+	var ic := TextureRect.new()
+	ic.texture = _icone("capital", 16, _teinte_monnaie("capital"))
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	h.add_child(ic)
+	var jauge := Control.new()
+	jauge.custom_minimum_size = Vector2(0, 10)
+	jauge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	jauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	jauge.set_meta("part", 0.0)
+	jauge.draw.connect(func() -> void:
+		var part: float = jauge.get_meta("part")
+		var r := Rect2(Vector2.ZERO, jauge.size)
+		jauge.draw_rect(r, Color(GRIS, 0.18))
+		jauge.draw_rect(Rect2(r.position, Vector2(r.size.x * minf(part, 1.0), r.size.y)),
+			FAIT if part >= 1.0 else ALERTE))
+	h.add_child(jauge)
+	var txt := _titre("", 13, TEXTE)
+	h.add_child(txt)
+	return {"jauge": jauge, "jauge_txt": txt}
 
 
 ## 🎓 La miniature d'une vignette du campus, rendue par la maquette.
@@ -3390,21 +3421,31 @@ func _fonds_demandable() -> bool:
 	return ouverture == null or ouverture.pont_termine or ouverture.tout_ouvert
 
 
-## 🗳️ Le seuil se lit sur le bouton, « ≥ », pour ne pas passer pour un prix (98).
+## 🗳️ Le seuil se lit sur la jauge, pas sur le bouton : un prix y passerait pour une dépense (98).
 func _maj_ligne_regle(cle: String, l: Dictionary) -> void:
 	var etat: Label = l["etat"]
 	var b: Button = l["bouton"]
 	if Politiques.signee(ville, cle, _mois):
 		etat.text = "Signé %s : +%s k€ par mois." % [Calendrier.en(float(ville._regles[cle])),
 			_nb(ville.stationnement_mensuel_ke(_mois), 0)]
+		(l["jauge"] as Control).get_parent().visible = false
 		b.visible = false
 		return
 	var seuil := float(Politiques.REGLES[cle]["seuil"])
 	var manque := seuil - _capital
-	etat.text = "Demande %s de confiance, sans la dépenser." % _nb(seuil, 0)
+	etat.text = "Il faut %s de confiance. Signer ne la dépense pas." % _nb(seuil, 0)
+	var jauge: Control = l["jauge"]
+	jauge.get_parent().visible = true
+	var part := clampf(_capital / seuil, 0.0, 1.0) if manque > 0.001 else 1.0
+	if not is_equal_approx(float(jauge.get_meta("part")), part):
+		jauge.set_meta("part", part)
+		jauge.queue_redraw()
+	var txt: Label = l["jauge_txt"]
+	txt.text = "%s / %s" % [_nb(minf(_capital, seuil) if manque > 0.001 else _capital, 0), _nb(seuil, 0)]
+	txt.add_theme_color_override("font_color", ALERTE if manque > 0.001 else FAIT)
 	b.visible = true
 	b.disabled = manque > 0.001
-	_poser_ligne(b, "Signer", [["capital", "≥ %s" % _nb(seuil, 0)]], "capital" if b.disabled else "",
+	_poser_ligne(b, "Signer", [], "capital" if b.disabled else "",
 		"il manque %s de confiance" % _nb(ceilf(manque), 0) if b.disabled else "")
 
 

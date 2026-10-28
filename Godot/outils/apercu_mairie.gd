@@ -30,8 +30,12 @@ func executer() -> void:
 	var h := (cartes[0] as Control).size.y
 	verifier(cartes.all(func(c) -> bool: return is_equal_approx((c as Control).size.y, h)),
 		"Les premières cartes des %d colonnes ont la même hauteur" % cartes.size())
-	# 🗳️ Le stationnement payant signé sans dépenser la confiance (98).
+	# 🗳️ Le stationnement payant : sous le seuil, puis signé sans dépenser la confiance (98).
 	var k: float = jeu.ville.capital(jeu.mois)
+	await capture_sous_le_seuil(ui, 49.0)
+	ui._capital = k
+	ui._maj_lieu()
+	await capture("mairie_2c_regle_au_dessus")
 	(ui._lieu_lignes["regle_stationnement_payant"]["bouton"] as Button).pressed.emit()
 	verifier(jeu.ville._regles.has("stationnement_payant") and is_equal_approx(jeu.ville.capital(jeu.mois), k),
 		"Stationnement payant signé à %.0f de confiance, sans la dépenser" % k)
@@ -49,3 +53,17 @@ func executer() -> void:
 	await capture("mairie_4_etude_en_cours")
 	print("Échecs : %d" % echecs)
 	quit(1 if echecs else 0)
+
+
+## `capture` relit la confiance : on la force APRÈS, le temps d'une image.
+func capture_sous_le_seuil(ui, k: float) -> void:
+	if not "--captures" in OS.get_cmdline_user_args():
+		return
+	jeu._rafraichir(false)
+	ui._capital = k
+	ui._maj_lieu()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	verifier(root.get_texture().get_image().save_png(
+		"res://../QGIS/rendus/wehrau_ouverture_mairie_2b_regle_sous_le_seuil.png") == OK,
+		"Capture mairie_2b_regle_sous_le_seuil")
