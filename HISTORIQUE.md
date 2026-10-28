@@ -971,3 +971,4 @@ Reste : construire la fenêtre dans Godot et calibrer les montants.
 2026-10-28 · godot: la fenêtre du budget s'ouvre le 1er janvier et se vote (124) — `budget.gd`, `fenetre_budget.gd`.
 Aide fixe 360 k€, prime notée de 1 à 5 sur logements, trafic, économie, confiance (12 k€ la case), règles ; ouverture jouée 96 k€ de prime contre 84 ignorée.
 Texte réduit à la demande de l'auteur ; `essai_ouverture` vote d'office ; `essai_sauvegarde` avait déjà 1 échec avant.
+2026-10-28 · godot: fenêtre du budget, titre, total, aide fixe et titres des parts en gras (demande de l'auteur).

@@ -59,11 +59,11 @@ func _remplir() -> void:
 
 	# ✂️ Court (auteur, 2026-10-28) : ni date (l'horloge la dit), ni sous-titres, ni total de la prime.
 	var tete := HBoxContainer.new()
-	var titre: Label = ui._label("Budget de l'an %d" % _an, 21, ui.TEXTE)
+	var titre: Label = ui._titre("Budget de l'an %d" % _an, 21, ui.TEXTE)
 	titre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tete.add_child(titre)
 	var droite := VBoxContainer.new()
-	var somme: Label = ui._label("%s k€" % ui._milliers(total), 24, ui.ARGENT)
+	var somme: Label = ui._titre("%s k€" % ui._milliers(total), 24, ui.ARGENT)
 	somme.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	droite.add_child(somme)
 	# L'écart avec l'an passé ; l'an 2 n'en a pas, l'an 1 n'avait que la caisse de départ.
@@ -82,7 +82,7 @@ func _remplir() -> void:
 	var marge_aide := Control.new()
 	marge_aide.custom_minimum_size.y = 8
 	_corps.add_child(marge_aide)
-	_ligne("caisse", "Aide fixe de l'État et de la ville", "", Budget.AIDE_KE_AN, "")
+	_ligne("caisse", "Aide fixe de l'État et de la ville", "", Budget.AIDE_KE_AN, "", -1, Color.BLACK, true)
 
 	_section("Prime de résultats")
 	for c in Budget.CRITERES:
@@ -111,13 +111,14 @@ func _section(titre: String) -> void:
 	var marge := Control.new()
 	marge.custom_minimum_size.y = 8
 	_corps.add_child(marge)
-	_corps.add_child(ui._label(titre, 12, ui.GRIS_FORT))
+	# Hiérarchie (auteur, 2026-10-28) : les parts en gras, comme le titre et le total.
+	_corps.add_child(ui._titre(titre, 14, ui.TEXTE))
 	_corps.add_child(HSeparator.new())
 
 
 ## Une ligne : icône, nom (et sa raison dessous), la note en cinq cases s'il y en a une, le montant.
 func _ligne(icone: String, nom: String, raison: String, ke: float, suffixe: String,
-		note := -1, teinte := Color.BLACK) -> void:
+		note := -1, teinte := Color.BLACK, gras := false) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
 	var ic := TextureRect.new()
@@ -128,7 +129,7 @@ func _ligne(icone: String, nom: String, raison: String, ke: float, suffixe: Stri
 	var mots := VBoxContainer.new()
 	mots.add_theme_constant_override("separation", 0)
 	mots.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mots.add_child(ui._label(nom, 14, ui.TEXTE))
+	mots.add_child(ui._titre(nom, 14, ui.TEXTE) if gras else ui._label(nom, 14, ui.TEXTE))
 	if raison != "":
 		var r: Label = ui._label(raison, 12, teinte)
 		r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
