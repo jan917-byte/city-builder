@@ -16,6 +16,7 @@ Puis ouvrir `Godot/` dans Godot 4.7 et lancer (F5). Le mode choisi, un récit de
 🎨 **`Godot/habillage.tres` est la fiche de l'auteur** : police, graisses, couleurs, arrondis et marges de l'habillage vitre, réglés dans l'inspecteur sans code (↺ rend la valeur d'origine, écrite dans `scripts/habillage.gd`). `-- --police <clé>` passe outre pour un essai ; polices et licences OFL dans `Godot/polices/`.
 L'interface est en habillage « vitre » (verre neutre, angles droits, le temps en haut à droite) ; `-- --habillage bois` ou `verre` rend un ancien habillage pour comparer, et se combine avec `--police` et `--interface`.
 `Godot --path Godot -- --interface` sort rapidement les captures de contrôle de l'interface : la fiche d'une rue, son diagnostic, la fiche d'un îlot et celle d'une berge, les deux menus de lieu, plus chaque miniature seule à sa taille de rendu.
+🫥 **Captures sans gêner l'écran (Mac)** : `Godot/outils/discret.sh res://outils/<script>.gd -- <options>` remplace `Godot --path Godot --script …` ; fenêtre hors écran, souris et son coupés, la main rendue aussitôt à l'application en cours. `--headless` ne donne jamais d'image.
 ## Sauvegarder une partie
 
 Les boutons **Sauvegarder** (F5 dans le jeu) et **Reprendre** (F9) sont à côté du temps. Une seule partie manuelle est conservée, avec une copie de secours ; reprendre revient en pause. « Recommencer » ne supprime pas la sauvegarde.

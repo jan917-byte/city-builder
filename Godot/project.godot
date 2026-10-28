@@ -21,6 +21,10 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Godot/app_userdata/Wehrau t0"
 
+[autoload]
+
+Discret="*res://scripts/discret.gd"
+
 [display]
 
 window/size/viewport_width=1600
