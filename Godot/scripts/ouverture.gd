@@ -44,6 +44,16 @@ const DIRE_FONDS := "Le budget d'urgence ne rebâtira pas tout : demandez le fon
 const TITRE_REBATIR := "Reconstruction"
 ## ⏩ Rues engagées et campement amélioré, le pont pas encore rouvert : on attend, et c'est le
 ## seul endroit qui dit ×4 (auteur, 2026-10-20). 🔴 Flaggable (90).
+## 🏗️ PLUSIEURS CHANTIERS À LA FOIS (auteur, 2026-10-28 : un testeur attendait chaque fin au ×4).
+## Dits tant que la caisse paie un autre îlot. 🔴 Flaggable (90).
+const DIRE_AUTRE_ILOT := "Pas besoin d'attendre la fin d'un chantier : cliquez sur un autre îlot qui clignote pour le lancer aussi."
+const DIRE_CAMP := "%d personnes vivent encore au camp, et chaque mois y use la confiance."
+const DIRE_ACCELERER := "Rien n'oblige à attendre : %d personnes vivent encore au camp, et la caisse peut lancer un autre îlot."
+## Au ×2 ou ×4, le rappel ne revient qu'après ce délai de jeu, et trois fois au plus.
+const ACCELERER_ECART_MOIS := 6.0
+const ACCELERER_MAX := 3
+var _accelerer_dits := 0
+var _accelerer_mois := -INF
 const DIRE_ATTENTE := "Quand le pont rouvrira, la mairie pourra débloquer un nouveau budget. Vous pouvez cliquer sur ×2 ou ×4 pour accélérer le temps."
 
 var jeu
@@ -570,6 +580,8 @@ func groupe_carte() -> Array:
 			return _a_faire_clignoter() if guide_rebatir() else []
 		"livraison":
 			return [int(premier["fid"])] if premier["couche"] == "i" else []
+		"travaux":
+			return _a_faire_clignoter() if ilot_abordable() else []
 	return []
 
 
@@ -915,7 +927,26 @@ func guide_rebatir() -> bool:
 
 func dire_attente() -> bool:
 	return annee_un() and etape == "pont_travaux" and rues_deblayees() \
-		and jeu.ville.demande_engagee("amelioration")
+		and jeu.ville.demande_engagee("amelioration") and not ilot_abordable()
+
+
+## Un îlot sinistré pas encore engagé que la caisse paie, rebâti comme avant.
+func ilot_abordable() -> bool:
+	for fid in ilots_a_rebatir():
+		if jeu.ville.cout_reparation_ke("i", fid) <= jeu.ville.caisse_ke(jeu.mois) + 0.001:
+			return true
+	return false
+
+
+## ⏩ Le joueur passe au ×2 ou ×4 alors qu'il pourrait lancer un îlot : une nouvelle le lui dit.
+func accelere() -> void:
+	var camp := int(jeu.ville.reloges(jeu.mois))
+	if parle() or camp <= 0 or not rues_deblayees() or not ilot_abordable() \
+			or _accelerer_dits >= ACCELERER_MAX or jeu.mois - _accelerer_mois < ACCELERER_ECART_MOIS:
+		return
+	_accelerer_dits += 1
+	_accelerer_mois = jeu.mois
+	jeu.interface.retours.annoncer(DIRE_ACCELERER % camp, jeu.mois)
 
 
 ## Un îlot sinistré déjà engagé.
@@ -1007,7 +1038,7 @@ func actualiser(force := false) -> void:
 		jeu.interface._placer_detail()
 		visible = true
 	# 🚿 Le pont passe d'abord : la plainte attend qu'il soit quitté.
-	if plainte == 0 and etape != "pont_livre" \
+	if plainte == 0 and etape != "pont_livre" and not jeu.ville.demande_engagee("amelioration") \
 			and jeu.ville.usure_camp_mois(jeu.mois) > 0.0:
 		plainte = 1
 		jeu.ralentir()
@@ -1039,7 +1070,8 @@ func actualiser(force := false) -> void:
 	_annoncer_portes()
 	signature += "/%s/%s/%s/%s/%s" % [concept_ouvert("attenuer"), etude_parue, degats_vus, mairie_vue,
 		jeu.ville.demande_engagee("amelioration")]
-	signature += "/%s/%s" % [demande, objectifs.prochain()]
+	signature += "/%s/%s/%s/%d" % [demande, objectifs.prochain(), ilot_abordable(),
+		int(jeu.ville.reloges(jeu.mois))]
 	if signature == _signature:
 		return
 	_signature = signature
@@ -1116,6 +1148,10 @@ func actualiser(force := false) -> void:
 		"travaux":
 			_titre.text = "Le premier chantier avance"
 			_texte.text = "%s : chantier en cours." % _nom(premier["couche"], premier["fid"])
+			if ilot_abordable():
+				_texte.text += "\n\n" + DIRE_AUTRE_ILOT
+			if jeu.ville.reloges(jeu.mois) >= 1.0:
+				_texte.text += "\n\n" + DIRE_CAMP % int(jeu.ville.reloges(jeu.mois))
 		"livraison":
 			_titre.text = "Un lieu reprend vie"
 			if premier["couche"] == "r":
@@ -1182,8 +1218,10 @@ func _texte_rebatir() -> void:
 	var lignes := [] if _texte.text == "" else [_texte.text]
 	if not rues_deblayees():
 		lignes.append(_dire_deblayer())
-	elif not (_ilot_engage() and etape == "pont_travaux"):
+	elif not _ilot_engage():
 		lignes.append(DIRE_LAVOIR if lavoir_conseille() else DIRE_ILOT)
+	elif ilot_abordable():
+		lignes.append(DIRE_AUTRE_ILOT)
 	if pont_termine and not jeu.ville.fonds_recu(jeu.mois):
 		lignes.append(DIRE_FONDS)
 	if dire_attente():

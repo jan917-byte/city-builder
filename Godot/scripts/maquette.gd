@@ -3611,6 +3611,8 @@ func _sur_vitesse(nouvelle: float) -> void:
 		t.regler_vitesse(nouvelle)
 	if nouvelle > 0.0:
 		_derniere_vitesse = nouvelle
+	if nouvelle > 1.0 and ouverture != null:
+		ouverture.accelere()
 
 
 ## ⏩ Une carte ramène ×2 et ×4 à ×1, sans mettre en pause (auteur, 2026-10-20).

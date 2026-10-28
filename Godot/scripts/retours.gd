@@ -455,7 +455,7 @@ func livraison(c: Dictionary, mois: float) -> void:
 			("première récolte dans %s" % ui._duree(attente)) if attente > 0.0
 			else "%s nourris" % ui._nb(ui.ville.champ_rendement(fid, mois), 0)]
 	elif ui.Ville.DEMANDES.has(c["genre"]):
-		resultat = "%s : le camp n'use plus la confiance." % ui.Ville.DEMANDES[c["genre"]]["fait"]
+		resultat = "%s : le camp use deux fois moins la confiance." % ui.Ville.DEMANDES[c["genre"]]["fait"]
 	elif c["genre"] == "toit vert":
 		resultat = "Toiture végétalisée : %.0f %% du toit retient la pluie." % (100.0 * ui.ville.valeur("i", fid, "part_toit_vert", mois))
 	consigner("%s : %s" % [nom, resultat], mois)
@@ -496,8 +496,11 @@ func actualiser(mois: float) -> void:
 	var lignes := ["%d personnes vivent dans les containers" % int(ui.ville.reloges(mois))]
 	for cle in ui.Ville.DEMANDES_ORDRE:
 		if not ui.ville.demande_engagee(cle):
-			lignes.append("« %s » l'arrête" % ui.Ville.DEMANDES[cle]["nom"])
-	camp_mecontent.set_meta("detail", {"titre": "Les habitants du camp se plaignent",
+			lignes.append("« %s » la ralentit" % ui.Ville.DEMANDES[cle]["nom"])
+	# ⏳ Amélioré, il use encore (auteur, 2026-10-28) : rebâtir seul l'arrête. 🔴 Flaggable (90).
+	var ameliore: bool = ui.ville.demande_engagee("amelioration")
+	camp_mecontent.set_meta("detail", {"titre": "Les habitants attendent de rentrer chez eux" if ameliore
+		else "Les habitants du camp se plaignent",
 		"couts": {"capital": "−%s confiance par mois" % ui._nb(usure, 1)}, "lignes": lignes})
 	# Même seuil que le rouge de la confiance, en haut.
 	camp_mecontent.visible = usure >= 0.05

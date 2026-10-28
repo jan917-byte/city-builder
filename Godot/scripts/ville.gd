@@ -1702,13 +1702,16 @@ func camp_occupants(fid: int, t: float) -> float:
 
 # ============================ 🚿 LA VIE AU CAMP (auteur, 2026-10-02) ========
 # Un toit rend de la confiance à la livraison, puis le camp l'use chaque mois
-# tant qu'on y vit ; l'améliorer arrête l'usure.
+# tant qu'on y vit ; l'améliorer la divise par deux.
 # 🎚️ LEVEL DESIGN, tout ce bloc : 260 au camp = +10 puis −2,6 par mois.
 const CAPITAL_PAR_PERSONNE_ABRITEE := 0.04
 const CAMP_USURE_PERSONNE_MOIS := 0.01
 ## L'usure part ce délai après le LANCEMENT du premier pont : une minute à ×1 de
 ## déblaiement, pendant le chantier (auteur, 2026-10-02).
 const CAMP_USURE_APRES_PONT_MOIS := 1.0
+## ⏳ Amélioré, le camp use encore, à moitié (auteur, 2026-10-28 : attendre au ×4 ne coûtait
+## plus rien ; revient sur « l'améliorer arrête l'usure » du 2026-10-02). 🔴 À juger.
+const CAMP_USURE_AMELIORE := 0.5
 const CAPITAL_PAR_DEMANDE := 6.0
 # 🔄 Un seul bouton au lieu de trois (sanitaires, cantine, classe), même prix et
 # même effet cumulés (auteur, 2026-10-02). 🔴 Noms affichés, flaggables (90).
@@ -1786,7 +1789,8 @@ func usure_camp_mois(t: float) -> float:
 	for cle in _demandes:
 		if demande_livree(cle, t):
 			faites += 1
-	return reloges(t) * CAMP_USURE_PERSONNE_MOIS * (1.0 - float(faites) / DEMANDES.size())
+	return reloges(t) * CAMP_USURE_PERSONNE_MOIS \
+		* (1.0 - (1.0 - CAMP_USURE_AMELIORE) * float(faites) / DEMANDES.size())
 
 
 ## ∫ `usure_camp_mois` de 0 à `t`, exacte : même marches que `aide_cumulee_ke`,

@@ -3782,7 +3782,7 @@ func _lignes_capital(mois: float) -> Array:
 	var usure := ville.usure_camp_mois(mois)
 	# La confiance n'a aucune entrée fixe : seul le camp la fait bouger chaque mois.
 	if usure >= 0.05:
-		out.append_array(_blocs_mensuels([["Le camp use la confiance ; l'améliorer l'arrête", -usure]],
+		out.append_array(_blocs_mensuels([["Le camp use la confiance ; l'améliorer la ralentit", -usure]],
 			func(v): return _nb(v, 1) + "/mois", 0.05))
 	out.append([HISTORIQUE, null, 0, false])
 	var passes := [["Confiance de départ", Ville.CAPITAL_DEPART]]
@@ -4050,7 +4050,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		var teinte: Color = ALERTE if baisse else TEXTE
 		if l.get_theme_color("font_color") != teinte:
 			l.add_theme_color_override("font_color", teinte)
-		l.get_parent().tooltip_text = ("Confiance : le camp en use %s par mois ; l'améliorer l'arrête."
+		l.get_parent().tooltip_text = ("Confiance : le camp en use %s par mois."
 			% _nb(usure, 1)) if baisse else "Confiance"
 	_maj_durabilite(indic)
 	_dater(mois)

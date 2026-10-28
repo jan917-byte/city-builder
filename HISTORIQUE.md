@@ -956,3 +956,6 @@ Zip de 67 Mo ; l'appli exportée charge toute la carte en headless (214 523 tria
 **2026-10-28 — Le mois passe de 70 à 90 s à ×1.**
 Retour des potes testeurs : ils prenaient beaucoup de temps pour chaque action ; ×4 en 22,5 s.
 `essai_ouverture` 0 échec ; rien d'autre ne dépend de la durée réelle du mois.
+**2026-10-28 — Plusieurs chantiers à la fois : le guide le propose, le ×4 le rappelle, le camp amélioré use encore la confiance à moitié.**
+Un testeur lançait un chantier puis attendait sa fin au ×4 ; choix de l'auteur : coût de l'attente en confiance, ×4 gardé.
+`essai_plusieurs_chantiers` et `essai_vie_camp` 0 échec ; `essai_progression` (3) et `essai_sauvegarde` (1) échouaient déjà avant.
