@@ -30,6 +30,12 @@ func executer() -> void:
 	var h := (cartes[0] as Control).size.y
 	verifier(cartes.all(func(c) -> bool: return is_equal_approx((c as Control).size.y, h)),
 		"Les premières cartes des %d colonnes ont la même hauteur" % cartes.size())
+	# 🗳️ Le stationnement payant signé sans dépenser la confiance (98).
+	var k: float = jeu.ville.capital(jeu.mois)
+	(ui._lieu_lignes["regle_stationnement_payant"]["bouton"] as Button).pressed.emit()
+	verifier(jeu.ville._regles.has("stationnement_payant") and is_equal_approx(jeu.ville.capital(jeu.mois), k),
+		"Stationnement payant signé à %.0f de confiance, sans la dépenser" % k)
+	await capture("mairie_3_regle_signee")
 	# L'étude commandée se suit dans la carte des chantiers, en bleu.
 	ui._fermer_lieu()
 	var t: float = jeu.mois
@@ -40,6 +46,6 @@ func executer() -> void:
 	var lignes: Array = jeu.interface.retours.chantiers_lignes
 	verifier((lignes[0]["quoi"] as Label).text == "Étude de la prochaine crue"
 		and (lignes[0]["bloc"] as Control).visible, "L'étude en cours ouvre la carte des chantiers")
-	await capture("mairie_3_etude_en_cours")
+	await capture("mairie_4_etude_en_cours")
 	print("Échecs : %d" % echecs)
 	quit(1 if echecs else 0)

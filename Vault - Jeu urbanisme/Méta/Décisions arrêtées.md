@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-27
+maj: 2026-10-28
 ---
 
 # Décisions arrêtées
@@ -85,13 +85,14 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 80 | La mairie signe des **règles** (payées en confiance) et des **subventions** (payées chaque mois) | 🔓 | 2026-09-02 · [[Mairie et politiques]] |
 | 96 | **La confiance** se dépense à la décision et se regagne à la livraison ; habitants rentrés et pont rouvert en rendent le plus | 🟡 | 2026-09-30 · [[Ressources]] |
 | 97 | À l'écran, le capital politique s'appelle **« confiance »** | 🔓 | 2026-09-30 · [[Glossaire]] |
-| 98 | Une règle se signe **au-dessus d'un seuil** de confiance, qui monte à chaque règle signée | 🟡 | 2026-09-30 |
+| 98 | Une règle se signe **au-dessus d'un seuil** de confiance, **sans la dépenser** ; le seuil monte à chaque règle signée | 🟡 | 2026-09-30 · redit par l'auteur le 2026-10-28 · [[Mairie et politiques]] |
 | 99 | Retirer des places rend de la confiance **selon ce que la rue est devenue**, un an après | 🟡 | 2026-09-30 |
 | 101 | **Un livre des concepts** à la bibliothèque de l'université : un concept s'ouvre quand la ville le rencontre, et ouvre ses leviers ; aucune page sans lieu | 🟡 | 2026-10-06 · [[Université et recherche]] |
 | 114 | **L'université contient la bibliothèque et l'institut** : au rail, deux portes de même rang — mairie et université ; dans l'université, trois onglets — Études, Bibliothèque, Institut. Les trois îlots du campus restent sur la carte et ouvrent chacun son onglet | 🟡 | 2026-10-19, tranché par l'auteur · [[Université et recherche]] |
 | 116 | **L'institut range ses recherches en quatre colonnes : Bâti, Espace public, Énergie, Trafic**, une racine chacune, aucun lien d'une colonne à l'autre. **Le parc inondable** (rebâtir un îlot en prairie) s'y recherche, en Espace public, et n'a rien à voir avec les berges (« Rendre une berge ») ; « Rendre la rue » se coupe en *Retirer des places* puis *Fermer une rue* | 🟡 | 2026-10-19, tranché par l'auteur · remplace les cinq colonnes du 2026-10-09 (Logement, Eau, Toits verts, Solaire, Rues) · [[Université et recherche]] |
 | 117 | **La mairie d'abord, l'université ensuite** : le pont rouvert n'ouvre que la mairie ; elle adopte le **concours d'urbanisme** (en points), puis, le concours rendu, **commande l'étude** de la crue à l'université (en euros) ; l'étude rendue ouvre l'université, et avec elle les recherches qui répondent à la crue (pilotis, parc inondable). **Les points ouvrent, l'argent fait** : un point d'objectif se dépense à la mairie comme à l'institut | 🟡 | 2026-10-19, tranché par l'auteur (« tout arrive en même temps » à l'université) · revient sur « le pont rouvert publie l'étude » (2026-10-18) · à éprouver : trois monnaies, euros, confiance et points · `Prototype/Premiers pas.md` |
 | 118 | **Deux budgets, l'urgence puis la reconstruction** : la caisse de départ paie un pont **provisoire** au choix, les camps, leur amélioration, le déblaiement et les maisons du Lavoir, avec une petite marge pour qui ne joue pas au plus juste ; le pont rouvert, **la mairie demande le fonds de reconstruction**, qui ne paie pas tout le faubourg : rebâtir des îlots ou consolider le pont en dur, il faut choisir. **Le pont en dur** — un provisoire remplacé, ou un autre pont — n'existe qu'avec ce fonds. **L'institut met au point le pont résistant** : un pont en dur bâti après lui tient à la prochaine crue, les autres seraient emportés | 🔓 | 2026-10-20, tranché par l'auteur · revient sur 86 et sur le choix en dur de 87 · montants à juger · `Prototype/Premiers pas.md` |
+| 123 | **Le stationnement payant est la première règle** : à la mairie dès son ouverture, il se signe au-dessus d'un seuil de confiance (98) et rend de l'argent **chaque mois**, selon les places qui restent | 🟡 | 2026-10-28, tranché par l'auteur · seuil et tarif ouverts · [[Mairie et politiques]] |
 
 ## Indicateurs et interface
 

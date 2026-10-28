@@ -52,9 +52,25 @@ static func points_depenses(v, t: float) -> int:
 			n += int(PROGRAMMES[cle]["points"])
 	return n
 
-# 🔴 LES RÈGLES NE SONT PAS ÉCRITES. Stationnement payant, toit vert obligatoire
-# au neuf : ni argent ni capital dépensé, mais un SEUIL de capital politique pour
-# les signer, relevé à chaque règle signée (98). Leurs effets restent à concevoir.
+# 🗳️ LES RÈGLES (98, auteur 2026-10-28) : ni argent ni confiance dépensés, un SEUIL de confiance
+# pour les signer. Signée, une règle tient même si la confiance retombe (🔴 à juger) ; pas de retrait (Q. 25).
+# 🎚️ Level design : un seuil par règle — celui de la suivante plus haut que celui-ci (98).
+# 🔴 Textes flaggables (90).
+const REGLES := {
+	"stationnement_payant": {
+		"nom": "Stationnement payant",
+		"quoi": "Faire payer les places dans les rues. Rapporte chaque mois, selon les places qui restent.",
+		"seuil": 60.0,
+	},
+}
+const REGLES_ORDRE := ["stationnement_payant"]
+# 🎚️ ≈ 60 €/place/an net, toutes rues confondues : 3 430 places → ≈ 17 k€/mois, ≈ 200 k€/an,
+# l'ordre d'une petite ville allemande (6b : l'argent ne triche pas). Retirer des places en retire.
+const STATIONNEMENT_KE_PLACE_MOIS := 0.005
+
+
+static func signee(v, cle: String, t: float) -> bool:
+	return v._regles.has(cle) and t >= float(v._regles[cle])
 
 
 ## Une politique est en vigueur si sa dernière période est encore ouverte.

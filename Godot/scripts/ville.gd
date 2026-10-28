@@ -77,6 +77,7 @@ const DEBLAIEMENT_SEUIL := 3
 var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTIONS`)
 var _concours := {}        # fid îlot -> mois du lancement : un concours d'architecture par îlot
 var _programmes := {}      # clé de `Politiques.PROGRAMMES` -> le mois de l'adoption (117)
+var _regles := {}          # clé de `Politiques.REGLES` -> le mois de la signature (98)
 var _etude := {}           # {debut} : l'étude de la crue commandée par la mairie (117)
 var _etudes := {}          # id de `ETUDES_DIAGNOSTIC` -> mois de la commande
 var _fonds := {}           # {debut} : le fonds de reconstruction reçu (118)
@@ -371,12 +372,12 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
 	"_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
-	"_fonds", "_consolide", "_etudes"]
+	"_fonds", "_consolide", "_etudes", "_regles"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
 	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
-	"_fonds", "_consolide", "_etudes"]
+	"_fonds", "_consolide", "_etudes", "_regles"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -428,7 +429,8 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_recherche": [Recherche.SUJETS, 0.0],
 		"_premieres": [Recherche.PREMIERES_FOIS, 0.0],
 		"_objectifs": [Objectifs.OBJECTIFS, 0.0],
-		"_programmes": [Politiques.PROGRAMMES, 0.0]}
+		"_programmes": [Politiques.PROGRAMMES, 0.0],
+		"_regles": [Politiques.REGLES, 0.0]}
 	for champ in formes:
 		if not etat.has(champ):
 			continue
@@ -889,6 +891,7 @@ func reinitialiser() -> void:
 	_objectifs.clear()
 	_politiques.clear()
 	_programmes.clear()
+	_regles.clear()
 	_etude.clear()
 	_etudes.clear()
 	_vert.clear()
@@ -2166,7 +2169,7 @@ func _integrale_part_rendue(fid: int, t: float, m: Array) -> float:
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + dotation_cumulee_ke(t) + fonds_recu_ke(t) \
-		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
+		+ recette_cumulee_ke(t) + solde_dense_ke(t) + stationnement_cumule_ke(t) + _credit_essai_ke \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Politiques.depense_ke(self, t)
 
@@ -2772,6 +2775,47 @@ func adopter_programme(cle: String, t: float) -> bool:
 		return false
 	_programmes[cle] = t
 	return true
+
+
+## 🗳️ Sans dépenser la confiance (98) : `false` si déjà signée ou sous le seuil.
+func signer_regle(cle: String, t: float) -> bool:
+	if not Politiques.REGLES.has(cle) or _regles.has(cle):
+		return false
+	if capital(t) < float(Politiques.REGLES[cle]["seuil"]) - 0.001:
+		return false
+	_regles[cle] = t
+	return true
+
+
+## 🅿️ Les places de toute la ville au mois `t`, retirées comprises.
+func places_stationnement(t: float) -> float:
+	var n := 0.0
+	for fid in routes:
+		n += valeur("r", fid, "stationnement", t)
+	return n
+
+
+## En k€ depuis la signature : ∫ des places × le tarif. Exacte, comme la caisse.
+func stationnement_cumule_ke(t: float) -> float:
+	if not _regles.has("stationnement_payant"):
+		return 0.0
+	var t0 := float(_regles["stationnement_payant"])
+	if t <= t0:
+		return 0.0
+	var places_mois := 0.0
+	for fid in routes:
+		places_mois += base("r", fid, "stationnement") * (t - t0)
+		for r in _rampes["r"].get(fid, []):
+			if r["champ"] == "stationnement":
+				places_mois += float(r["ecart"]) * (_integrale_avancement(t, r["d"], r["L"], r["M"])
+					- _integrale_avancement(t0, r["d"], r["L"], r["M"]))
+	return places_mois * Politiques.STATIONNEMENT_KE_PLACE_MOIS
+
+
+func stationnement_mensuel_ke(t: float) -> float:
+	if not Politiques.signee(self, "stationnement_payant", t):
+		return 0.0
+	return places_stationnement(t) * Politiques.STATIONNEMENT_KE_PLACE_MOIS
 
 
 func etude_commandee() -> bool:

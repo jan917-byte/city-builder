@@ -255,7 +255,6 @@ var _rail_lieux: Array[Button] = []
 var _fenetre_titre: Label
 ## 🏛️ La mairie en colonnes, comme l'institut (auteur, 2026-10-19) : ce qui viendra s'y range.
 var _mairie_bloc: HBoxContainer
-var _lieu_message: Label
 var _lieu_lignes := {}
 var _lieu_ouvert := ""
 var _lieu_bouton: Button
@@ -2606,6 +2605,9 @@ func _panneau_lieu() -> void:
 		var e: Dictionary = Ville.ETUDES_DIAGNOSTIC[id]
 		_lieu_lignes["diagnostic_" + id] = _ligne_lieu(cols["etudes"], "diagnostic",
 			String(e["nom"]), String(e["quoi"]))
+	for cle in Politiques.REGLES_ORDRE:
+		_lieu_lignes["regle_" + cle] = _ligne_lieu(cols["regles"], "regle",
+			String(Politiques.REGLES[cle]["nom"]), String(Politiques.REGLES[cle]["quoi"]))
 	for cle in Politiques.ORDRE:
 		_lieu_lignes[cle] = _ligne_lieu(cols["subventions"], "politique",
 			String(Politiques.POLITIQUES[cle]["nom"]),
@@ -2662,10 +2664,6 @@ func _panneau_lieu() -> void:
 	_habiller_secondaire(retour)
 	retour.pressed.connect(func() -> void: ouvrir_page(""))
 	_page_bloc.add_child(retour)
-
-	_lieu_message = _label("", 11, GRIS)
-	_lieu_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cols["regles"].add_child(_lieu_message)
 
 
 ## Une ligne de menu : ce que c'est, ce que ça fait, où ça en est, et LE bouton.
@@ -3097,6 +3095,16 @@ func _brancher_lieu() -> void:
 					if ouverture != null:
 						ouverture.actualiser(true)
 				_maj_lieu())
+		elif String(l["genre"]) == "regle":
+			var regle: String = k.trim_prefix("regle_")
+			b.pressed.connect(func() -> void:
+				if ville.signer_regle(regle, _mois):
+					# 🔴 Flaggable (90).
+					retours.consigner("%s signé : la confiance ne baisse pas, +%s k€ par mois." % [
+						Politiques.REGLES[regle]["nom"], _nb(ville.stationnement_mensuel_ke(_mois), 0)], _mois)
+					retours.annoncer("Les rues payantes rapportent chaque mois.", _mois)
+					retours.actualiser(_mois)
+				_maj_lieu())
 		elif String(l["genre"]) == "fonds":
 			b.pressed.connect(func() -> void:
 				if _fonds_demandable() and ville.demander_fonds(_mois):
@@ -3159,7 +3167,7 @@ func _maj_lieu() -> void:
 		bloc.visible = (_lieu_ouvert == "institut" and _sujet_montre(String(cle))) if recherche \
 			else (_lieu_ouvert == "mairie" and (_etude_montree() if genre == "etude"
 				else _diagnostic_montre(String(cle).trim_prefix("diagnostic_")) if genre == "diagnostic"
-				else genre in ["programme", "fonds"] or _politique_ouverte(String(cle))))
+				else genre in ["programme", "fonds", "regle"] or _politique_ouverte(String(cle))))
 		if not bloc.visible:
 			continue
 		if recherche:
@@ -3173,6 +3181,8 @@ func _maj_lieu() -> void:
 			_maj_ligne_diagnostic(String(cle).trim_prefix("diagnostic_"), l)
 		elif genre == "fonds":
 			_maj_ligne_fonds(l)
+		elif genre == "regle":
+			_maj_ligne_regle(String(cle).trim_prefix("regle_"), l)
 		else:
 			_maj_ligne_politique(String(cle), l)
 		# Le prix est sur le bouton : une ligne d'état vide ne garde pas sa place.
@@ -3184,11 +3194,6 @@ func _maj_lieu() -> void:
 			montre = montre or (col.get_child(i) as Control).visible
 		(col as Control).visible = montre
 	_aligner_mairie.call_deferred()
-	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
-	# capital, elle en demande un seuil (auteur, 2026-09-30) ; aucune n'est écrite.
-	_lieu_message.text = "" if _lieu_ouvert != "mairie" else \
-		"Les règles, comme le stationnement payant ou le toit vert obligatoire au neuf, " \
-		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
 
 
 ## 🏛️ Les cartes de la mairie s'alignent par rangée (auteur, 2026-10-21) : la n-ième carte de
@@ -3383,6 +3388,24 @@ func _maj_ligne_diagnostic(id: String, l: Dictionary) -> void:
 ## 🏗️ Le pont rouvert (118) : la mairie l'ouvre au même moment ; les essais sans guide, toujours.
 func _fonds_demandable() -> bool:
 	return ouverture == null or ouverture.pont_termine or ouverture.tout_ouvert
+
+
+## 🗳️ Le seuil se lit sur le bouton, « ≥ », pour ne pas passer pour un prix (98).
+func _maj_ligne_regle(cle: String, l: Dictionary) -> void:
+	var etat: Label = l["etat"]
+	var b: Button = l["bouton"]
+	if Politiques.signee(ville, cle, _mois):
+		etat.text = "Signé %s : +%s k€ par mois." % [Calendrier.en(float(ville._regles[cle])),
+			_nb(ville.stationnement_mensuel_ke(_mois), 0)]
+		b.visible = false
+		return
+	var seuil := float(Politiques.REGLES[cle]["seuil"])
+	var manque := seuil - _capital
+	etat.text = "Demande %s de confiance, sans la dépenser." % _nb(seuil, 0)
+	b.visible = true
+	b.disabled = manque > 0.001
+	_poser_ligne(b, "Signer", [["capital", "≥ %s" % _nb(seuil, 0)]], "capital" if b.disabled else "",
+		"il manque %s de confiance" % _nb(ceilf(manque), 0) if b.disabled else "")
 
 
 func _maj_ligne_fonds(l: Dictionary) -> void:
@@ -3734,6 +3757,7 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 	var choisis := [
 		["Électricité solaire vendue", float(indic["recette_ke_an"]) / 12.0],
 		["Loyers des étages ajoutés", dense_mois],
+		["Stationnement payant", ville.stationnement_mensuel_ke(mois)],
 		["Mairie", -ville.charge_mensuelle_ke(mois)],
 	]
 	# 🪜 LA COMPLEXITÉ VIENT PEU À PEU (auteur, 2026-10-20) : au début, la caisse de départ
@@ -3757,6 +3781,7 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		["Budgets de janvier", Ville.dotation_cumulee_ke(mois)],
 		["Électricité solaire vendue", ville.recette_cumulee_ke(mois)],
 		["Loyers des étages ajoutés", ville.solde_dense_ke(mois)],
+		["Stationnement payant", ville.stationnement_cumule_ke(mois)],
 		["Crédit d'essai", ville._credit_essai_ke],
 	]
 	var genres := ville.depenses_par_genre()

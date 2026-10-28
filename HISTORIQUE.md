@@ -959,3 +959,6 @@ Retour des potes testeurs : ils prenaient beaucoup de temps pour chaque action ;
 **2026-10-28 — Plusieurs chantiers à la fois : le guide le propose, le ×4 le rappelle, le camp amélioré use encore la confiance à moitié.**
 Un testeur lançait un chantier puis attendait sa fin au ×4 ; choix de l'auteur : coût de l'attente en confiance, ×4 gardé.
 `essai_plusieurs_chantiers` et `essai_vie_camp` 0 échec ; `essai_progression` (3) et `essai_sauvegarde` (1) échouaient déjà avant.
+**2026-10-28 — La confiance ouvre les règles sans se dépenser ; le stationnement payant, première règle, rapporte chaque mois.**
+Demande de l'auteur : rendre la confiance utile avant de montrer qu'elle s'use ; 98 redit, la note Mairie et politiques corrigée (elle disait « consomme »).
+`essai_regle` et `apercu_mairie` 0 échec ; `essai_capital` 0 ; `essai_sauvegarde` (1) échouait déjà avant.

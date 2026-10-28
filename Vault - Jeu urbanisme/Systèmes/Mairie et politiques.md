@@ -1,7 +1,7 @@
 ---
 tags: [système, gameplay, ressources]
 statut: en cours de spécification
-maj: 2026-09-02
+maj: 2026-10-28
 ---
 
 # Mairie et politiques
@@ -31,9 +31,9 @@ C'est le premier objet du jeu à **coût récurrent**, et c'est ce qui le rend i
 | **A · Elle vise le programme, pas un propriétaire** | subventionner, c'est **choisir son axe** : accélérer le solaire en ralentissant tout le reste, et l'assumer devant la caisse | ⭐ ne rouvre rien, marche dès [[Wehrau]] |
 | **B · 70 se rouvre** | des habitants et des commerçants possèdent ; la subvention les décide à agir — ou pas | 🔴 riche, mais c'est un autre jeu, et il coûte cher à écrire. Pour [[Vallmar]], pas pour le prototype |
 
-### 🗳️ La règle — elle contraint, et elle se paie en capital politique
+### 🗳️ La règle — elle contraint, et elle demande un seuil de confiance
 
-*Stationnement payant · toit végétalisé obligatoire au neuf · interdiction de bâtir en zone inondable.* Elle ne coûte pas d'argent — certaines en **rapportent** — et elle consomme du **capital politique** au moment où on la signe. C'est l'échange déjà décrit dans [[Ressources]] : **imposer plutôt que payer**.
+*Stationnement payant · toit végétalisé obligatoire au neuf · interdiction de bâtir en zone inondable.* Elle ne coûte pas d'argent — certaines en **rapportent** — et **elle ne coûte pas de confiance non plus** : elle ne se signe qu'**au-dessus d'un minimum de confiance**, qui reste au compteur ([[Décisions arrêtées]] 98, redit par l'auteur le 2026-10-28). C'est **imposer plutôt que payer** ([[Ressources]]) : on n'impose que ce que la ville est prête à accepter.
 
 Une règle est ce qui manque aujourd'hui au jeu : le joueur n'a que sa caisse, donc tout se ramène à « ai-je les moyens ». Une règle lui donne un second levier — et un second plafond.
 
