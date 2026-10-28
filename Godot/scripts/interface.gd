@@ -2600,6 +2600,8 @@ func _panneau_lieu() -> void:
 	# 🗳️ Le rappel du budget de l'an (124, auteur 2026-10-28), dès l'an 2. 🔴 Flaggable (90).
 	_lieu_lignes["budget"] = _ligne_lieu(cols["budgets"], "budget", "Budget de l'année",
 		"Ce que la ville reçoit cette année, et pourquoi.")
+	# Cachée dès sa naissance : l'alignement par rangée (`resized`) la rangeait sinon avant le fonds.
+	(_lieu_lignes["budget"]["bloc"] as Control).visible = false
 	# 🏗️ Le fonds de reconstruction (118). 🔴 Textes flaggables (90).
 	_lieu_lignes["fonds"] = _ligne_lieu(cols["budgets"], "fonds", "Fonds de reconstruction",
 		"Le pont rouvert, demander à l'État de quoi rebâtir le faubourg. Il ne suffira pas à tout.")
