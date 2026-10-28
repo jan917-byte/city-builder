@@ -950,3 +950,6 @@ Ramure indexée (déroulée, elle coûtait 2,25 fois plus de sommets) et retiré
 **2026-10-27 — Les venelles se creusent seules dans l'herbe ; plus de bouton « Aménager la venelle », plus de pavé dessous.**
 L'auteur : « elles ne doivent pas être aménagées, elles doivent apparaître de manière organique » ; il choisit l'usure avec le temps (décision 122 réécrite).
 Herbe au mois 0, terre battue entre 13 et 26 mois selon la venelle, par plaques ; `essai_venelle` 0 échec, sauvegarde 0 ; ouverture, livre, progression, étude non relancés (arrêtés à la demande de l'auteur).
+**2026-10-28 — Version Mac du jeu pour itch.io : préréglage d'export « macOS », appli Intel + Apple signée ad hoc.**
+Demande de l'auteur ; modèles d'exportation 4.7.2 installés sur le Mac (1,28 Go) ; le Mac exige ASTC, d'où `import_etc2_astc` dans `project.godot`.
+Zip de 67 Mo ; l'appli exportée charge toute la carte en headless (214 523 triangles), seuls avertissements déjà connus (153 îlots).

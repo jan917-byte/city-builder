@@ -4,7 +4,7 @@
 
 ## Étape ouverte — 6, [Les premiers pas](Prototype/Premiers%20pas.md)
 Critère : *après la première réparation livrée, le joueur veut choisir la suite.* Les étapes 2, 4, 5, 7 et 8 sont en pause → [tableau](Prototype/00%20-%20Prototype.md).
-🎮 **Le jeu est sur itch.io, en privé, pour les potes testeurs** (2026-10-22, version Windows). Refaire le zip → `Godot/README.md` § Le lancer, puis le redéposer sur la page.
+🎮 **Le jeu est sur itch.io, en privé, pour les potes testeurs** (Windows le 2026-10-22 ; **Mac prêt le 2026-10-28, `build/mac/DesirePath.zip`, à déposer**). Refaire les zips → `Godot/README.md` § Le lancer.
 ## Prochaine action
 - 🏛️ **Jouer l'ouverture, la mairie d'abord** (117) : pont rouvert → mairie seule → concours (1 point) → étude (80 k€) → université, **cliquée comme un seul îlot, son étude encadrée** (2026-10-22, `essai_campus.gd`). Quoi regarder et quels défauts chercher → [Premiers pas](Prototype/Premiers%20pas.md) § À jouer et § Ce qui attend le joueur. 📸 Captures non prises le 2026-10-19 : `essai_ouverture.gd -- --ouverture --captures`.
 - 🪟 **Tes fenêtres en 3D** : `Godot/assets/fenetres/gabarit_fenetres.blend`, une façade type par famille, rez compris, 27 ouvertures à modéliser dans leur cadre orange (LISEZ-MOI dans le fichier, plan numéroté `QGIS/rendus/gabarit_fenetres.png`) ; ensuite je les cuis dans le mur. Frontière concours / habillage tranchée → [Premiers pas](Prototype/Premiers%20pas.md) § L'étude de la prochaine crue, fin.
