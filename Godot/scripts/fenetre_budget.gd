@@ -1,6 +1,6 @@
 extends Control
 # 🗳️ LA FENÊTRE DE JANVIER (décision 124) : le budget de l'an, et pourquoi il fait ce montant.
-# Elle s'ouvre seule le 1er janvier, le temps en pause (`interface.grande_fenetre_ouverte`).
+# Elle s'ouvre seule le 1er janvier, le temps en pause (`interface.grande_fenetre_ouverte`) ; l'argent est déjà là.
 # 🔴 Tous ses textes sont les miens, flaggables (90).
 
 const Budget := preload("res://scripts/budget.gd")
@@ -95,12 +95,13 @@ func _remplir() -> void:
 		_section("Règles")
 		_ligne("parking", "Stationnement payant", "", regles, "/mois")
 
+	# 🔄 « Continuer », plus « Voter le budget » (auteur, 2026-10-28) : l'argent arrive seul, le bouton ne fait que fermer.
 	var voter := Button.new()
-	voter.text = "Voter le budget"
+	voter.text = "Continuer"
 	voter.focus_mode = Control.FOCUS_NONE
 	ui._habiller_gratuit(voter)
 	voter.size_flags_horizontal = Control.SIZE_SHRINK_END
-	voter.pressed.connect(_voter)
+	voter.pressed.connect(_fermer)
 	var marge := Control.new()
 	marge.custom_minimum_size.y = 6
 	_corps.add_child(marge)
@@ -191,9 +192,9 @@ func _raison(c: String, d: Dictionary) -> String:
 	return ""
 
 
-func _voter() -> void:
+func _fermer() -> void:
 	visible = false
-	ui.retours.consigner("Budget de l'an %d voté : %s k€ d'aide, %s k€ de prime." % [_an,
+	ui.retours.consigner("Budget de l'an %d reçu : %s k€ d'aide, %s k€ de prime." % [_an,
 		ui._milliers(Budget.AIDE_KE_AN), ui._milliers(Budget.prime_ke_an(ui.ville, _an))], _mois)
 	ui.bulles.gain_lieu("i", int(ui.LIEUX["mairie"]["fid"]), "caisse",
 		"+%s k€" % ui._milliers(Budget.AIDE_KE_AN), Budget.AIDE_KE_AN)

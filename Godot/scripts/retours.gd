@@ -516,7 +516,7 @@ func actualiser(mois: float) -> void:
 		consigner("%d personnes abritées, %d encore dehors." % [_sans_toit - n, n] if n > 0
 			else "%d personnes abritées, plus personne dehors." % (_sans_toit - n), mois)
 	_sans_toit = n
-	# 🗳️ Le 1er janvier, la fenêtre du budget (124) ; le chiffre monte au vote.
+	# 🗳️ Le 1er janvier, la fenêtre du budget (124) ; le chiffre monte à sa fermeture.
 	var an: int = ui.Ville.Calendrier.an(mois)
 	if _an > 0 and an > _an:
 		ui.fenetre_budget.ouvrir(an, mois)

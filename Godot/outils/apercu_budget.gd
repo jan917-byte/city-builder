@@ -1,6 +1,6 @@
 extends "res://outils/essai_ouverture.gd"
 ## --script res://outils/apercu_budget.gd -- --ouverture --captures
-## 🗳️ La fenêtre du budget (124) : elle s'ouvre seule le 1er janvier, le temps en pause, et se vote.
+## 🗳️ La fenêtre du budget (124) : elle s'ouvre seule le 1er janvier, le temps en pause, et « Continuer » la ferme.
 ## → QGIS/rendus/wehrau_ouverture_budget_*.png
 const Budget := preload("res://scripts/budget.gd")
 
@@ -25,18 +25,18 @@ func executer() -> void:
 	verifier(ui.grande_fenetre_ouverte(), "Elle compte comme grande fenêtre : le temps s'arrête")
 	poser(ui)
 	await capture("budget_1_an_2")
-	_voter(ui)
-	verifier(not ui.fenetre_budget.visible, "Voter la referme")
+	_fermer(ui)
+	verifier(not ui.fenetre_budget.visible, "« Continuer » la referme")
 	avancer(Budget.debut_an(3) + 0.01)
 	verifier(ui.fenetre_budget.visible, "Elle revient le 1er janvier de l'an 3")
 	poser(ui)
 	await capture("budget_2_an_3")
-	_voter(ui)
+	_fermer(ui)
 	print("Échecs : %d" % echecs)
 	quit(1 if echecs else 0)
 
 
-## `actualiser` sans le vote d'office d'`essai_ouverture`.
+## `actualiser` sans la fermeture d'office d'`essai_ouverture`.
 func avancer(mois: float) -> void:
 	jeu.mois = mois
 	jeu.trafic.avancer(mois)
@@ -51,7 +51,7 @@ func poser(ui) -> void:
 		ui.actualiser_compteur(cle)
 
 
-func _voter(ui) -> void:
+func _fermer(ui) -> void:
 	for n in ui.fenetre_budget._corps.get_children():
 		if n is Button:
 			(n as Button).pressed.emit()

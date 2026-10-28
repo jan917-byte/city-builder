@@ -12,9 +12,9 @@ maj: 2026-10-28
 
 Finance les décisions.
 
-#### ✅ Un budget voté en janvier, sans impôts — arrêté le 2026-10-28
+#### ✅ Un budget qui arrive en janvier, sans impôts — arrêté le 2026-10-28
 
-Le 1er janvier, une fenêtre s'ouvre au milieu de l'écran, le jeu en pause, et dit **combien et pourquoi**. Un seul bouton : « Voter le budget ». → [[Décisions arrêtées]] 124
+Le 1er janvier, une fenêtre s'ouvre au milieu de l'écran, le jeu en pause, et dit **combien et pourquoi**. L'argent est déjà versé ; un seul bouton, « Continuer », la referme — rien à voter (auteur : « ça doit venir direct »). → [[Décisions arrêtées]] 124
 
 | Part | Quand | Ce qui la fait |
 |---|---|---|
