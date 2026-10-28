@@ -62,8 +62,8 @@ const RENDUS := "res://../QGIS/rendus/"
 
 # 🔄 2026-08-17 : le temps allait 60× trop vite (une seconde = un mois à ×1),
 # et une pose passait avant qu'on ait relâché la souris. 60 → 70 s le mois
-# (auteur, 2026-10-22 : « un tout petit peu plus lentement ») ; ×4 en 17,5 s.
-const MOIS_PAR_SECONDE := 1.0 / 70.0
+# (2026-10-22), puis 70 → 90 s (2026-10-28 : les testeurs manquaient de temps) ; ×4 en 22,5 s.
+const MOIS_PAR_SECONDE := 1.0 / 90.0
 
 # La même rampe que `06_etat_zero.py` et `parties.html` : un calque se lit
 # pareil dans les trois outils.

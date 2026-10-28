@@ -953,3 +953,6 @@ Herbe au mois 0, terre battue entre 13 et 26 mois selon la venelle, par plaques 
 **2026-10-28 — Version Mac du jeu pour itch.io : préréglage d'export « macOS », appli Intel + Apple signée ad hoc.**
 Demande de l'auteur ; modèles d'exportation 4.7.2 installés sur le Mac (1,28 Go) ; le Mac exige ASTC, d'où `import_etc2_astc` dans `project.godot`.
 Zip de 67 Mo ; l'appli exportée charge toute la carte en headless (214 523 triangles), seuls avertissements déjà connus (153 îlots).
+**2026-10-28 — Le mois passe de 70 à 90 s à ×1.**
+Retour des potes testeurs : ils prenaient beaucoup de temps pour chaque action ; ×4 en 22,5 s.
+`essai_ouverture` 0 échec ; rien d'autre ne dépend de la durée réelle du mois.
