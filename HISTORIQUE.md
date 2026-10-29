@@ -993,3 +993,6 @@ Carte de la prochaine crue à 6 m et codée en racine (1 cm près du bord) ; `ap
 2026-10-29 · chaine: la prochaine crue pousse aussi des bras légers en rive gauche, côté ville (0,20 m, 10 à 60 m, `04e` PLAT_OUEST_).
 Demande de l'auteur : « un peu sur le parking, mais léger » ; 90 m jugés trop longs, 60 m validés à l'écran.
 Dégâts de la chaîne identiques ; sur la carte, un ou deux pâtés de rive gauche passent en orange.
+2026-10-30 · proto: diagnostic des routes et du trafic, sans code changé → Trafic.md § Ce qui reste.
+À l'œil : voitures qui s'allument d'un coup et se traversent aux carrefours, piétons qui sautent au début de leur segment, ruelles partagées.
+Machine : la pulsation monte à 32 ms à ×4 (impraticables recalculés cinq fois), voitures à 778 triangles dessinées cachées comprises.
