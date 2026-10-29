@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-28
+maj: 2026-10-29
 ---
 
 # Décisions arrêtées
@@ -184,7 +184,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 44 | Lancement en **anglais et allemand** | 🔓 | [[Marketing et Steam]] |
 | 45 | **Glossaire dès le jour 1** ; le système de traduction attend (108) | 🔓 | [[Glossaire]] |
 | 46 | ~10 000 mots de texte | 🔓 | [[Ton et règles d'écriture]] |
-| 47 | Page Steam en ligne tôt, pour récolter des wishlists ; **aucun seuil de wishlists ne décide de la suite** | 🔓 | 2026-10-08, tranché par l'auteur · [[Marketing et Steam]] |
+| 47 | Page Steam en ligne tôt, pour récolter des wishlists ; **aucun seuil de wishlists ne décide de la suite** ; objectif : 2 000 avant le Next Fest | 🔓 | 2026-10-08, tranché par l'auteur, objectif ajouté le 2026-10-29 · [[Marketing et Steam]] |
 | 48 | Pas de dépense avant le vertical slice | 🔓 | [[Calendrier et budget]] |
 | 52 | **Règle de production** : aucun asset dessiné à la main, tout visuel dérive d'un attribut — *« si je devais en faire 200, est-ce que je tiendrais ? »* | 🔓 | 2026-08-12 · [[Direction artistique]] |
 | 65 | **Claude écrit et exécute les scripts de données** ; garde-fous : arbre propre, passe à blanc d'abord, contrôles en français | 🔓 | 2026-08-12 · `CLAUDE.md` §3 |

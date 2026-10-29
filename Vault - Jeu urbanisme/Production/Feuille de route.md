@@ -1,7 +1,7 @@
 ---
 tags: [production, plan, calendrier]
 statut: Next Fest d'octobre 2027 tranché (110) — le reste proposé, à revoir à chaque jalon
-maj: 2026-10-12
+maj: 2026-10-29
 ---
 
 # Feuille de route
@@ -40,7 +40,7 @@ gantt
   Page Steam en ligne              :milestone, m2, 2027-03-15, 0d
   Démo publique                    :milestone, m3, 2027-08-15, 0d
   Steam Next Fest                  :crit, m4, 2027-10-11, 7d
-  Seuil des 5 000 wishlists        :milestone, m5, 2027-09-15, 0d
+  Objectif des 2 000 wishlists     :milestone, m5, 2027-09-15, 0d
 ```
 
 ## Les six jalons
@@ -56,7 +56,7 @@ gantt
 
 **Pourquoi octobre 2027 et pas juin** : un jeu ne fait **qu'un seul Next Fest**. Juin laisserait trois mois de page et une démo jamais vue ; octobre donne sept mois de wishlists et deux mois de démo publique. Les Next Fest tombent en février, juin et octobre — **dates exactes à vérifier sur Steamworks** avant de s'inscrire.
 
-**Le point de contrôle de [[Marketing et Steam]]** : six mois après la page, **moins de 5 000 wishlists** veut dire que le positionnement ne prend pas — on revoit le pitch et les images avant le Next Fest, pas après.
+**L'objectif de [[Marketing et Steam]]** : **2 000 wishlists** six mois après la page, avant le Next Fest (auteur, 2026-10-29). Un cap à viser, pas un couperet : il ne décide rien (47).
 
 ## Le gameplay, par ordre d'importance
 

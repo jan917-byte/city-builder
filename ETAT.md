@@ -4,7 +4,7 @@
 
 ## Étape ouverte — 6, [Les premiers pas](Prototype/Premiers%20pas.md)
 Critère : *après la première réparation livrée, le joueur veut choisir la suite.* Les étapes 2, 4, 5, 7 et 8 sont en pause → [tableau](Prototype/00%20-%20Prototype.md).
-🎮 **Le jeu est sur itch.io, en privé, pour les potes testeurs** (Windows le 2026-10-22 ; **Mac prêt le 2026-10-28, `build/mac/DesirePath.zip`, à déposer**). Refaire les zips → `Godot/README.md` § Le lancer.
+🎮 **Le jeu est sur itch.io, en privé, pour les potes testeurs** (Windows le 2026-10-22, Mac le 2026-10-29). **Testé jusqu'à l'an 1 environ par l'auteur et ses amis** : tout tient, le plaisir commence à venir, reste à équilibrer. Refaire les zips → `Godot/README.md` § Le lancer.
 ## Prochaine action
 - 🏛️ **Jouer l'ouverture, la mairie d'abord** (117) : pont rouvert → mairie seule → concours (1 point) → étude (80 k€) → université, **cliquée comme un seul îlot, son étude encadrée** (2026-10-22, `essai_campus.gd`). Quoi regarder et quels défauts chercher → [Premiers pas](Prototype/Premiers%20pas.md) § À jouer et § Ce qui attend le joueur. 📸 Captures non prises le 2026-10-19 : `essai_ouverture.gd -- --ouverture --captures`.
 - 🪟 **Tes fenêtres en 3D** : `Godot/assets/fenetres/gabarit_fenetres.blend`, une façade type par famille, rez compris, 27 ouvertures à modéliser dans leur cadre orange (LISEZ-MOI dans le fichier, plan numéroté `QGIS/rendus/gabarit_fenetres.png`) ; ensuite je les cuis dans le mur. Frontière concours / habillage tranchée → [Premiers pas](Prototype/Premiers%20pas.md) § L'étude de la prochaine crue, fin.
@@ -24,7 +24,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - ✍️ **Les textes flaggables à réécrire** (90) → `Prototype/Textes des premières minutes.xlsx` ; les noms de lieux → `Godot/data/lieux.json`.
 
 ## À trancher (l'auteur)
-- 🔴 **Des arbitrages pris mais jamais consignés** → Questions ouvertes n°49 (plus la perspective 35° et la police) ; n°47 (parc sur une partie d'îlot), n°48 (champs dans les moyennes), n°50 (références au titre). La Feuille de route garde un seuil de 5 000 wishlists que 47 a retiré.
+- 🔴 **Des arbitrages pris mais jamais consignés** → Questions ouvertes n°49 (plus la perspective 35° et la police) ; n°47 (parc sur une partie d'îlot), n°48 (champs dans les moyennes), n°50 (références au titre).
 - 🔴 **La facture de la crue** : 14 445 k€ pour 8 000 k€ de caisse en vingt ans → [Crue](Prototype/Crue.md).
 - 🔴 **Les nombres de *dur mais possible*** (panneau, MWh, caisse, dotation, toit vert) → [Énergie](Prototype/%C3%89nergie.md), [Crue](Prototype/Crue.md).
 - 🔴 **Ce qu'un arbre épargne** (0,34 % pour 880 k€) : un autre effet, ou l'assumer → [Trafic](Prototype/Trafic.md).

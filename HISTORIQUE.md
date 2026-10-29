@@ -975,3 +975,6 @@ Texte réduit à la demande de l'auteur ; `essai_ouverture` vote d'office ; `ess
 2026-10-28 · godot+vault: « Voter le budget » devient « Continuer » — l'argent arrive seul (auteur : « ça doit venir direct »), 124 révisée.
 2026-10-28 · godot: aide de l'État seule, 400 k€ (360 avant) ; carte « Budget de l'année » à la mairie qui rouvre la fenêtre en rappel (demandes de l'auteur).
 2026-10-28 · godot: à partir du premier budget, la carte « Budget de l'année » remplace celle du fonds reçu (demande de l'auteur).
+2026-10-29 · vault: objectif de 2 000 wishlists avant le Next Fest (auteur) — un cap, pas un couperet, 47 complétée ; l'ancien seuil de 5 000 retiré de la Feuille de route.
+Version Mac déposée sur itch.io ; le jeu testé jusqu'à l'an 1 par l'auteur et ses amis : tout tient, le plaisir commence, reste à équilibrer.
+Questions 48 et 49 remises sous les yeux de l'auteur, pas encore tranchées.

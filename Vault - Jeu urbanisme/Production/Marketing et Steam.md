@@ -1,7 +1,7 @@
 ---
 tags: [production, marketing]
 statut: en préparation
-maj: 2026-10-20
+maj: 2026-10-29
 ---
 
 # Marketing et Steam
@@ -18,7 +18,7 @@ Le marché confirme le créneau : aucun city-builder existant ne simule le *proc
 
 **Mettre la page en ligne tôt**, pour que chaque post ait un lien où ajouter le jeu à sa liste de souhaits. Un premier jet propre suffit : tout s'y change ensuite, sauf le nom.
 
-**Le nombre de wishlists se regarde, il ne décide rien** — aucun seuil n'arrête ni ne relance le projet (auteur, 2026-10-08).
+**Le nombre de wishlists se regarde, il ne décide rien** — aucun seuil n'arrête ni ne relance le projet (auteur, 2026-10-08). **Objectif : 2 000 wishlists** six mois après la page, avant le Next Fest (auteur, 2026-10-29).
 
 **Ouvrir la page** : **100 $ par jeu** (Steam Direct), remboursés une fois que le jeu a rapporté 1 000 $. Le compte Steamworks demande l'identité, le compte bancaire et un questionnaire fiscal ; Valve relit la page en 1 à 5 jours. La sortie, elle, attend 30 jours après le paiement et deux semaines de page publique. 🔴 **S'enregistrer comme indépendant** dépend du pays et du contrat de travail de l'auteur, pas de Steam : à vérifier avant le premier euro gagné.
 
