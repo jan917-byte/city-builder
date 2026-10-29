@@ -54,7 +54,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | # | Décision | | Depuis · où lire |
 |---|---|---|---|
 | 23b | **Le jeu s'ouvre sur une crue** qui ruine le faubourg de **rive droite** (13 îlots), et **une seconde crue est annoncée** | 🔓 | 2026-08-11 · [[Premiers pas après la crue]] |
-| 72 | **L'adaptation d'abord**, la réduction des émissions après la réparation | 🟡 | 2026-08-21 · [[Adaptation et réduction]] |
+| 72 | **L'adaptation d'abord**, la réduction des émissions après la réparation | 🟡 | 2026-08-21 · [[Adaptation et réduction]] · révisée par 129 |
 | 84 | **Deux champs sur trois** suffisent au relogement d'urgence ; deux personnes par container | 🔓 | 2026-09-18 · [[Relogement progressif - proposition]] |
 | 85 | **Carte sans pictogrammes**, compteur « Personnes sans logement » permanent, libre choix du pont, retours factuels | 🔓 | 2026-09-18 · [[Premiers pas après la crue]] |
 | 86 | ~~Le budget de départ (**3 500 k€**) couvre le relogement, un pont au choix et le déblaiement~~ (→ 118) | 🔓 | 2026-09-20 |
@@ -69,6 +69,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 104 | ~~Un concours **obligatoire** avant les projets neufs~~ (→ 115) ; un pour toute la zone sinistrée, un mois, un prix | 🟡 | 2026-10-06 · `Prototype/Premiers pas.md` |
 | 115 | **Le concours est facultatif** : là où des maisons sont tombées, les quatre façons de rebâtir s'offrent côte à côte sans lui (pilotis après l'institut) ; lancé, il coûte et prend un mois pour toute la zone, puis les projets neufs coûtent moins — « comme avant » ne change pas. Par îlot, le joueur choisit lequel, comment, et s'il prend le temps | 🟡 | 2026-10-19, tranché par l'auteur (piste C) · écartés : le concours obligatoire (un péage avant le choix), les quatre façons sans concours (pas de pari sur le temps) · `Prototype/Premiers pas.md` |
 | 105 | **Une livraison ouvre une porte** : l'étude, puis la berge seule, puis les autres sols, puis le concours. ⏸️ **Suspendue le 2026-10-12** : tout s'ouvre au pont rouvert, l'institut distribuera plus tard | 🟡 | 2026-10-06 · `Prototype/Premiers pas.md` |
+| 129 | **Pas de verrou de l'urgence** : réparer et équiper se paient avec la même caisse | 🔓 | dit par l'auteur le 2026-08-31, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 · révise 72 |
 
 ## Les leviers et les lieux
 
@@ -93,6 +94,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 117 | **La mairie d'abord, l'université ensuite** : le pont rouvert n'ouvre que la mairie ; elle adopte le **concours d'urbanisme** (en points), puis, le concours rendu, **commande l'étude** de la crue à l'université (en euros) ; l'étude rendue ouvre l'université, et avec elle les recherches qui répondent à la crue (pilotis, parc inondable). **Les points ouvrent, l'argent fait** : un point d'objectif se dépense à la mairie comme à l'institut | 🟡 | 2026-10-19, tranché par l'auteur (« tout arrive en même temps » à l'université) · revient sur « le pont rouvert publie l'étude » (2026-10-18) · à éprouver : trois monnaies, euros, confiance et points · `Prototype/Premiers pas.md` |
 | 118 | **Deux budgets, l'urgence puis la reconstruction** : la caisse de départ paie un pont **provisoire** au choix, les camps, leur amélioration, le déblaiement et les maisons du Lavoir, avec une petite marge pour qui ne joue pas au plus juste ; le pont rouvert, **la mairie demande le fonds de reconstruction**, qui ne paie pas tout le faubourg : rebâtir des îlots ou consolider le pont en dur, il faut choisir. **Le pont en dur** — un provisoire remplacé, ou un autre pont — n'existe qu'avec ce fonds. **L'institut met au point le pont résistant** : un pont en dur bâti après lui tient à la prochaine crue, les autres seraient emportés | 🔓 | 2026-10-20, tranché par l'auteur · revient sur 86 et sur le choix en dur de 87 · montants à juger · `Prototype/Premiers pas.md` |
 | 123 | **Le stationnement payant est la première règle** : à la mairie dès son ouverture, il se signe au-dessus d'un seuil de confiance (98) et rend de l'argent **chaque mois**, selon les places qui restent | 🟡 | 2026-10-28, tranché par l'auteur · seuil et tarif ouverts · [[Mairie et politiques]] |
+| 130 | **Un toit vert abaisse la prochaine crue dans toute la ville**, et seul un toit plat verdit ; un toit est **solaire ou vert, jamais les deux** | 🔓 | dit par l'auteur le 2026-08-31, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
 
 ## Indicateurs et interface
 
@@ -117,6 +119,8 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 94 | Le diagnostic **prévoit les dégâts de la prochaine crue**, dans tous les thèmes | 🟡 | 2026-09-30 · [[Happenings]] |
 | 119 | **La complexité arrive peu à peu** : au début, l'argent ne montre que la caisse de départ et l'historique — pas ce qui part chaque mois ; **chaque carte de diagnostic reste cachée tant qu'une étude ne l'a pas ouverte**, Dangers par l'étude de la crue, Énergie, Trafic et Agriculture par la leur, commandée à la mairie | 🟡 | 2026-10-20, tranché par l'auteur · prix des trois études et moment où ce qui part chaque mois paraît, à juger · `Prototype/Premiers pas.md` |
 | 124 | **Le budget arrive seul le 1er janvier, dans une fenêtre qui dit comment il est calculé** (un bouton « Continuer », rien à voter), en trois parts et **sans aucun impôt** : ① l'**aide de l'État**, fixe, versée le jour même ; ② une **prime de résultats**, notée sur l'année passée selon quatre critères — logements rendus, trafic, économie, confiance —, chacun avec sa note et sa raison en une phrase, versée chaque mois ; ③ l'argent des **règles signées** (123), chaque mois | 🟡 | 2026-10-28, tranché par l'auteur (« le jeu deviendrait trop complexe » avec des impôts) · 🔄 2026-10-28 : plus de bouton « Voter » (« ça doit venir direct »), plus de part de la ville · remplace 59, revoit 60, ferme [[Questions ouvertes]] n°21 · montants et barèmes à juger · [[Ressources]] |
+| 125 | **Les champs ne comptent pas dans les moyennes de la ville** : canopée et sol imperméable se pondèrent sur le bâti et les rues ; les champs ont leur barre Agriculture (91) | 🔓 | 2026-10-29, tranché par l'auteur, précise 63, ferme [[Questions ouvertes]] n°48 · [[Indicateurs globaux]] |
+| 128 | **Deux vues** : la ville vivante, et le diagnostic où seul le thème choisi est en couleur | 🔓 | dit par l'auteur le 2026-08-25, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
 
 ## La ville et son échelle
 
@@ -169,6 +173,8 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 67b | Un chemin va **au pli**, jamais au milieu, et se juge sur la forme des parcelles | 🔓 | 2026-08-14 |
 | 67c | Un cœur d'îlot ne se reparcelle pas | 🔓 | 2026-08-14 |
 | 67d | Sur un grand îlot, les parcelles s'arrêtent à une profondeur : **le reste est un cœur d'îlot** | 🔓 | 2026-08-14 |
+| 126 | **La couleur d'un bâtiment suit son époque**, plus sa typologie ; le calque « tissu » rend la typologie, à la demande | 🔓 | dit par l'auteur le 2026-08-18, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
+| 127 | **Les fenêtres viennent du matériau du mur**, sans un triangle | 🔓 | dit par l'auteur le 2026-08-18, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
 
 ## Production
 

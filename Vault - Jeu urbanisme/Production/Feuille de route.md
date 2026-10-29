@@ -47,7 +47,7 @@ gantt
 
 | Quand | Jalon | Ce qui doit être vrai | Ce qui prouverait qu'on n'y est pas |
 |---|---|---|---|
-| **fin nov. 2026** | **L'argent fait hésiter** | les systèmes d'argent du début sont en place, et dans les premières années **au moins une dépense se refuse** faute de caisse | toutes les décisions se paient sans y penser |
+| **fin nov. 2026** | **Les trois monnaies font hésiter** | argent, confiance et points du début sont en place, et dans les premières années **chacune manque au moins une fois** : une dépense se refuse faute de caisse, une règle attend la confiance, un sujet de l'institut attend ses points (auteur, 2026-10-29) | tout se paie sans y penser |
 | **fin nov. 2026** | **Test 1** — 5 amis joueurs | ils jouent **le début** — de la crue aux premières années de préparation — 30 à 45 min, et on les regarde **sans rien dire** | on a dû expliquer quoi cliquer |
 | **mi-fév. 2027** | **Vertical slice + test 2** | 30 à 45 min, belles, du récit au bilan ; 10 testeurs, dont **2 urbanistes** | un urbaniste trouve une causalité fausse |
 | **mi-mars 2027** | **Page Steam en ligne** | titre, capsule pro, 5 captures, un GIF avant/après, texte EN + DE | la page part avec des captures de débogage |

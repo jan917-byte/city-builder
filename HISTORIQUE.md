@@ -978,3 +978,6 @@ Texte réduit à la demande de l'auteur ; `essai_ouverture` vote d'office ; `ess
 2026-10-29 · vault: objectif de 2 000 wishlists avant le Next Fest (auteur) — un cap, pas un couperet, 47 complétée ; l'ancien seuil de 5 000 retiré de la Feuille de route.
 Version Mac déposée sur itch.io ; le jeu testé jusqu'à l'an 1 par l'auteur et ses amis : tout tient, le plaisir commence, reste à équilibrer.
 Questions 48 et 49 remises sous les yeux de l'auteur, pas encore tranchées.
+2026-10-29 · vault+chaine: les champs sortent des moyennes de la ville (125, ferme Q48) ; les arbitrages de Q49 consignés tels quels, 126 à 130, révisables.
+Le jalon de fin novembre devient « les trois monnaies font hésiter » (argent, confiance, points) ; Q51 ouverte : débloquer avec des points ou de la confiance quand la caisse est vide.
+`08_jouer.py` au mois 0 : canopée 0,26 et sol imperméable 0,61 sans les champs (0,14 et 0,28 avec) ; `partie.csv` non commité, dérivé.

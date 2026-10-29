@@ -518,9 +518,12 @@ class Partie(object):
             # Décision 63 : un taux se pondère par ce dont il est le taux —
             # le sol par la surface, les gens par les logements (population
             # = logements × 2,1, constante) ; un îlot inhabité pèse zéro.
+            # Décision 125 : les champs (57 % de la surface) sortent des
+            # moyennes de la ville ; ils ont leur barre Agriculture.
+            ville = [o for o in bati if o.get("sous_type") != "champ"]
             def pond(ch, poids):
-                tot = sum(o.get(poids) or 0 for o in bati)
-                return (sum((o.get(ch) or 0) * (o.get(poids) or 0) for o in bati)
+                tot = sum(o.get(poids) or 0 for o in ville)
+                return (sum((o.get(ch) or 0) * (o.get(poids) or 0) for o in ville)
                         / tot) if tot else 0.0
             r = {
                 "mois": t, "annee": ANNEE_0 + t // 12,
