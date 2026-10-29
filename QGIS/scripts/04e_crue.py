@@ -95,6 +95,11 @@ PLAT_LONG_M = 260.0
 PLAT_MAILLE_M = 140.0           # l'écart entre deux branches
 ETIRE = 1.7                     # les branches s'allongent loin de l'Ilse
 EXPO = 1.5                      # haut : des doigts fins ; bas : des lobes
+# Rive gauche, la ville (auteur, 2026-10-29 : « des bras à l'ouest, mais léger ») :
+# la carte n'affiche l'eau qu'au-delà de 10 cm (`crue.gdshaderinc`) ; partent d'où le profil tombe à PLAT_OUEST_M.
+PLAT_OUEST_M = 0.20
+PLAT_OUEST_COURT_M = 10.0
+PLAT_OUEST_LONG_M = 60.0
 
 # Les paliers de dégât, en mètres d'eau AU PIED du bâtiment.
 # 🔴 2,60 m n'est pas un réglage libre : c'est la hauteur sous plafond d'un
@@ -167,13 +172,15 @@ def hauteur_eau(dist_eau, fil, rive, niveau):
     return max(0.0, niveau - sol_m(dist_eau, fil, rive))
 
 
-def plaine_plate(p, au_dela):
+def plaine_plate(p, au_dela, plat=PLAT_M, court=PLAT_COURT_M, long_=PLAT_LONG_M,
+                 decalage=(31.0, 17.0)):
     """L'eau de la plaine plate, `au_dela` mètres après la borne."""
     if au_dela <= 0.0:
-        return PLAT_M
-    r = rides(p[0] / (ETIRE * PLAT_MAILLE_M) + 31.0, p[1] / PLAT_MAILLE_M + 17.0)
-    longueur = PLAT_COURT_M + (PLAT_LONG_M - PLAT_COURT_M) * min(1.0, r) ** EXPO
-    return max(0.0, PLAT_M * (1.0 - au_dela / longueur))
+        return plat
+    r = rides(p[0] / (ETIRE * PLAT_MAILLE_M) + decalage[0],
+              p[1] / PLAT_MAILLE_M + decalage[1])
+    longueur = court + (long_ - court) * min(1.0, r) ** EXPO
+    return max(0.0, plat * (1.0 - au_dela / longueur))
 
 
 def etat(h):
@@ -210,7 +217,9 @@ class ChampCrue:
         d, fil, rive = self._mesure(p)
         h = hauteur_eau(d, fil, rive, niveau)
         if rive != "droite":
-            return h
+            depart = (niveau - BERGE_GAUCHE_M - PLAT_OUEST_M) * PENTE_GAUCHE
+            return max(h, plaine_plate(p, d - depart, PLAT_OUEST_M, PLAT_OUEST_COURT_M,
+                                       PLAT_OUEST_LONG_M, (-53.0, 71.0)))
         bord = limite_est(p[1], self.contour)
         coupe = self.rives.coupe(p[1])
         boue = max(0.0, bord - coupe[1]) if bord is not None and coupe else 0.0

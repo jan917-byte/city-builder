@@ -990,3 +990,6 @@ Prochaine action proposée : mesurer, année par année, quand chaque monnaie ma
 2026-10-29 · chaine+godot: la prochaine crue s'étale au-delà de sa borne en plaine plate et ramifiée (0,40 m d'eau, branches de 25 à 260 m, `04e` PLAT_).
 Effet voulu par l'auteur : quelques centimètres de baisse font reculer le bleu clair à vue ; dégâts des bâtiments quasi inchangés (alea de 2 îlots +0,01 à +0,04).
 Carte de la prochaine crue à 6 m et codée en racine (1 cm près du bord) ; `apercu_dangers.gd -- --baisses` : 0, 10, 25 cm, non lancé ici.
+2026-10-29 · chaine: la prochaine crue pousse aussi des bras légers en rive gauche, côté ville (0,20 m, 10 à 60 m, `04e` PLAT_OUEST_).
+Demande de l'auteur : « un peu sur le parking, mais léger » ; 90 m jugés trop longs, 60 m validés à l'écran.
+Dégâts de la chaîne identiques ; sur la carte, un ou deux pâtés de rive gauche passent en orange.
