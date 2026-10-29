@@ -21,6 +21,22 @@ func photo(nom: String, cible: Vector2, taille: float, lacet: float, hauteur: fl
 	await jeu._capturer(nom)
 
 
+## `-- --baisses [--avant]` : la prochaine crue à 0, 10 et 25 cm de baisse, même cadrage.
+func baisses() -> void:
+	var suffixe := "_avant" if "--avant" in OS.get_cmdline_user_args() else ""
+	jeu._sur_vue_crue("prochaine")
+	for cm in [0, 10, 25]:
+		jeu.pivot.viser(Vector2(250, -150), 700.0)
+		jeu.pivot.caler(0.0, 70.0)
+		jeu._dernier_peint = -1.0
+		jeu._rafraichir(true)
+		jeu._crue_param("crue_baisse_ville", cm / 100.0)
+		for frame in 8:
+			await process_frame
+			await RenderingServer.frame_post_draw
+		await jeu._capturer("dangers_baisse_%02d%s" % [cm, suffixe])
+
+
 func capturer() -> void:
 	root.size = Vector2i(1600, 1000)
 	jeu = load("res://maquette.tscn").instantiate()
@@ -36,6 +52,10 @@ func capturer() -> void:
 	jeu.set_process(false)
 	jeu.horloge_trafic.stop()
 	jeu._sur_theme("dangers")
+	if "--baisses" in OS.get_cmdline_user_args():
+		await baisses()
+		quit()
+		return
 	jeu._sur_vue_crue("degats")
 	await photo("dangers_01_degats", Vector2(250, -150), 700.0, 0.0, 70.0)
 	await photo("dangers_03_degats_pres", Vector2(290, -200), 200.0, 25.0, 45.0)

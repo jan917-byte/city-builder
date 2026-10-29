@@ -43,6 +43,7 @@ sys.path.insert(0, ICI)
 
 from apercu_carte import gpkg_vers_wkb, lire_wkb  # noqa: E402
 from geographie_crue import Rives, limite_est, LIMITE_DEPOT_EST
+from export_godot.paysage import rides
 
 D4 = import_module("04_deriver_attributs")   # dist_pt_seg, centroide, borne
 
@@ -82,6 +83,18 @@ NIVEAU_ANNONCE_M = 6.00         # celle qu'on annonce — c'est elle qui fait `a
 # touchés sans être détruits, au pied des coteaux.
 PORTEE_ANNONCE = 0.25
 FONDU_ANNONCE_M = 15.0
+
+# 🌿 AU-DELÀ DE LA BORNE, UNE PLAINE TRÈS PLATE EN BRANCHES (auteur, 2026-10-29 :
+# « que quelques centimètres de baisse se voient au premier clic »). L'eau y
+# tient PLAT_M puis s'amincit jusqu'à 0 sur une longueur qui suit les crêtes
+# d'un bruit ridé (`paysage.rides`) : de PLAT_COURT_M entre les doigts à
+# PLAT_LONG_M au bout des branches. Sous 40 cm, rien n'y est détruit.
+PLAT_M = 0.40
+PLAT_COURT_M = 25.0
+PLAT_LONG_M = 260.0
+PLAT_MAILLE_M = 140.0           # l'écart entre deux branches
+ETIRE = 1.7                     # les branches s'allongent loin de l'Ilse
+EXPO = 1.5                      # haut : des doigts fins ; bas : des lobes
 
 # Les paliers de dégât, en mètres d'eau AU PIED du bâtiment.
 # 🔴 2,60 m n'est pas un réglage libre : c'est la hauteur sous plafond d'un
@@ -154,6 +167,15 @@ def hauteur_eau(dist_eau, fil, rive, niveau):
     return max(0.0, niveau - sol_m(dist_eau, fil, rive))
 
 
+def plaine_plate(p, au_dela):
+    """L'eau de la plaine plate, `au_dela` mètres après la borne."""
+    if au_dela <= 0.0:
+        return PLAT_M
+    r = rides(p[0] / (ETIRE * PLAT_MAILLE_M) + 31.0, p[1] / PLAT_MAILLE_M + 17.0)
+    longueur = PLAT_COURT_M + (PLAT_LONG_M - PLAT_COURT_M) * min(1.0, r) ** EXPO
+    return max(0.0, PLAT_M * (1.0 - au_dela / longueur))
+
+
 def etat(h):
     if h >= SEUIL_RUINE:
         return "ruine"
@@ -194,7 +216,7 @@ class ChampCrue:
         boue = max(0.0, bord - coupe[1]) if bord is not None and coupe else 0.0
         plein = NIVEAU_ANNONCE_M * pente_droite(fil)
         portee = boue + PORTEE_ANNONCE * (plein - boue)
-        return min(h, max(0.0, (portee - d) / FONDU_ANNONCE_M))
+        return min(h, max((portee - d) / FONDU_ANNONCE_M, plaine_plate(p, d - portee)))
 
     # 🌳 LE VERGER (2026-09-17, auteur) : le quartier de rive droite que le
     # limon a couvert. L'Ilse le borne à l'ouest, le contour annoté à l'est.

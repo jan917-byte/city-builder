@@ -112,8 +112,9 @@ float crue_hauteur(vec2 xz, float onde) {
 	vec2 uv1 = (p - boue_repere.xy) / boue_repere.zw;
 	vec2 uv2 = (p - crue_annonce_repere.xy) / crue_annonce_repere.zw;
 	float d1 = textureLod(boue_carte, clamp(uv1, 0.0, 1.0), 0.0).r * 6.0;
-	float d2 = textureLod(crue_annonce, clamp(uv2, 0.0, 1.0), 0.0).r * crue_annonce_niveau
-		- crue_baisse(xz.y);
+	// Codée en racine (`boue._carte_annonce`) : le bord plat garde le centimètre.
+	float r2 = textureLod(crue_annonce, clamp(uv2, 0.0, 1.0), 0.0).r;
+	float d2 = r2 * r2 * crue_annonce_niveau - crue_baisse(xz.y);
 	vec2 uv = crue_vue == 1 ? uv1 : uv2;
 	float dehors = float(any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))));
 	return (crue_vue == 1 ? d1 : d2) * (1.0 - dehors);

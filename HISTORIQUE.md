@@ -987,3 +987,6 @@ Le jalon de fin novembre devient « les trois monnaies font hésiter » (argent,
 2026-10-29 · vault: les points et la confiance ne paient jamais à la place de l'argent, ils débloquent des rentrées (131, ferme Q51).
 Exemple de l'auteur : le stationnement payant (123). Ressources.md précise « imposer plutôt que négocier ».
 Prochaine action proposée : mesurer, année par année, quand chaque monnaie manque (jalon de fin novembre).
+2026-10-29 · chaine+godot: la prochaine crue s'étale au-delà de sa borne en plaine plate et ramifiée (0,40 m d'eau, branches de 25 à 260 m, `04e` PLAT_).
+Effet voulu par l'auteur : quelques centimètres de baisse font reculer le bleu clair à vue ; dégâts des bâtiments quasi inchangés (alea de 2 îlots +0,01 à +0,04).
+Carte de la prochaine crue à 6 m et codée en racine (1 cm près du bord) ; `apercu_dangers.gd -- --baisses` : 0, 10, 25 cm, non lancé ici.
