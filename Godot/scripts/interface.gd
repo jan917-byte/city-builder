@@ -65,7 +65,6 @@ const CHANTIER_MOTS := {
 	"concours": "Concours", "consolidation": "Pont en dur",
 	"toit vert": "Toit végétalisé", "plantation": "Plantation",
 	"sol perméable": "Sol rendu perméable",
-	"venelle": "Venelle aménagée",
 }
 
 
@@ -143,6 +142,8 @@ var saison      # `saison.gd` : la température du mois tirée pour la partie
 var trafic
 var ouverture
 var retours := preload("res://scripts/retours.gd").new()
+## 🗳️ Le budget de janvier (124).
+var fenetre_budget := preload("res://scripts/fenetre_budget.gd").new()
 ## 🎈 Les chiffres qui montent ; sous tous les panneaux.
 var bulles := preload("res://scripts/bulles.gd").new()
 var _debut: Button
@@ -215,9 +216,6 @@ var _dense_bloc: VBoxContainer
 var _permeable_bloc: VBoxContainer
 var _permeable_texte: Label
 var _permeable_bouton: Button
-var _venelle_bloc: VBoxContainer
-var _venelle_texte: Label
-var _venelle_bouton: Button
 var _dense_valeur: Label
 var _dense_boutons: Array[Button] = []
 var _dense_curseur: HSlider
@@ -259,7 +257,6 @@ var _rail_lieux: Array[Button] = []
 var _fenetre_titre: Label
 ## 🏛️ La mairie en colonnes, comme l'institut (auteur, 2026-10-19) : ce qui viendra s'y range.
 var _mairie_bloc: HBoxContainer
-var _lieu_message: Label
 var _lieu_lignes := {}
 var _lieu_ouvert := ""
 var _lieu_bouton: Button
@@ -426,6 +423,8 @@ func batir() -> void:
 	_controles_temps()
 	_barre_compteurs()
 	retours.batir(self)
+	add_child(fenetre_budget)
+	fenetre_budget.batir(self)
 	_sans_focus(self)
 
 
@@ -2199,20 +2198,6 @@ func _panneau_ilot() -> void:
 	_decision(_permeable_bouton, "permeable", true)
 	_permeable_bloc.add_child(_permeable_bouton)
 
-	# 🚶 LA VENELLE (desire path) : un bouton, la trace devient pavé.
-	_venelle_bloc = VBoxContainer.new()
-	_venelle_bloc.add_theme_constant_override("separation", 6)
-	_venelle_bloc.visible = false
-	v.add_child(_venelle_bloc)
-	_venelle_bloc.add_child(HSeparator.new())
-	_titre_section(_venelle_bloc, "Venelle")
-	_venelle_texte = _label("", 12, TEXTE)
-	_venelle_texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_venelle_bloc.add_child(_venelle_texte)
-	_venelle_bouton = Button.new()
-	_venelle_bouton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_decision(_venelle_bouton, "venelle", true)
-	_venelle_bloc.add_child(_venelle_bouton)
 	# 🔄 Un levier fermé ne s'annonce plus dans la fiche (auteur, 2026-10-08).
 
 	# 🗂️ CHAQUE BLOC DE RÉGLAGE SOUS SON THÈME. C'est ce qui fait qu'un onglet
@@ -2222,7 +2207,7 @@ func _panneau_ilot() -> void:
 		_repare_bloc: "crue", _camp_bloc: "campagne", _culture_bloc: "campagne",
 		_dense_bloc: "bati",
 		_solaire_bloc: "energie", _vert_bloc: "vert", _arbres_bloc: "vert",
-		_permeable_bloc: "vert", _venelle_bloc: "bati",
+		_permeable_bloc: "vert",
 		_trafic_bloc: "trafic", _berge_bloc: "berge",
 	}
 
@@ -2616,6 +2601,11 @@ func _panneau_lieu() -> void:
 		_mairie_bloc.add_child(col)
 		_titre_section(col, String(d[1]))
 		cols[d[0]] = col
+	# 🗳️ Le rappel du budget de l'an (124, auteur 2026-10-28), dès l'an 2. 🔴 Flaggable (90).
+	_lieu_lignes["budget"] = _ligne_lieu(cols["budgets"], "budget", "Budget de l'année",
+		"Ce que la ville reçoit cette année, et pourquoi.")
+	# Cachée dès sa naissance : l'alignement par rangée (`resized`) la rangeait sinon avant le fonds.
+	(_lieu_lignes["budget"]["bloc"] as Control).visible = false
 	# 🏗️ Le fonds de reconstruction (118). 🔴 Textes flaggables (90).
 	_lieu_lignes["fonds"] = _ligne_lieu(cols["budgets"], "fonds", "Fonds de reconstruction",
 		"Le pont rouvert, demander à l'État de quoi rebâtir le faubourg. Il ne suffira pas à tout.")
@@ -2628,6 +2618,9 @@ func _panneau_lieu() -> void:
 		var e: Dictionary = Ville.ETUDES_DIAGNOSTIC[id]
 		_lieu_lignes["diagnostic_" + id] = _ligne_lieu(cols["etudes"], "diagnostic",
 			String(e["nom"]), String(e["quoi"]))
+	for cle in Politiques.REGLES_ORDRE:
+		_lieu_lignes["regle_" + cle] = _ligne_lieu(cols["regles"], "regle",
+			String(Politiques.REGLES[cle]["nom"]), String(Politiques.REGLES[cle]["quoi"]))
 	for cle in Politiques.ORDRE:
 		_lieu_lignes[cle] = _ligne_lieu(cols["subventions"], "politique",
 			String(Politiques.POLITIQUES[cle]["nom"]),
@@ -2685,10 +2678,6 @@ func _panneau_lieu() -> void:
 	retour.pressed.connect(func() -> void: ouvrir_page(""))
 	_page_bloc.add_child(retour)
 
-	_lieu_message = _label("", 11, GRIS)
-	_lieu_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cols["regles"].add_child(_lieu_message)
-
 
 ## Une ligne de menu : ce que c'est, ce que ça fait, où ça en est, et LE bouton.
 func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
@@ -2730,10 +2719,41 @@ func _ligne_lieu(parent: VBoxContainer, genre: String, nom: String,
 	var etat := _label("", 12, TEXTE)
 	etat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bloc.add_child(etat)
+	var out := {"bloc": carte, "genre": genre, "etat": etat}
+	if genre == "regle":
+		out.merge(_jauge_seuil(bloc))
 	var b := _bouton_verbe("")
 	b.focus_mode = Control.FOCUS_NONE
 	bloc.add_child(b)
-	return {"bloc": carte, "genre": genre, "etat": etat, "bouton": b}
+	out["bouton"] = b
+	return out
+
+
+## 🗳️ Un seuil se REMPLIT, il ne se paie pas (auteur, 2026-10-28) : la confiance du moment
+## contre un trait au seuil, verte une fois passée. Rien sur le bouton, qui reste gratuit.
+func _jauge_seuil(parent: VBoxContainer) -> Dictionary:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	parent.add_child(h)
+	var ic := TextureRect.new()
+	ic.texture = _icone("capital", 16, _teinte_monnaie("capital"))
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	h.add_child(ic)
+	var jauge := Control.new()
+	jauge.custom_minimum_size = Vector2(0, 10)
+	jauge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	jauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	jauge.set_meta("part", 0.0)
+	jauge.draw.connect(func() -> void:
+		var part: float = jauge.get_meta("part")
+		var r := Rect2(Vector2.ZERO, jauge.size)
+		jauge.draw_rect(r, Color(GRIS, 0.18))
+		jauge.draw_rect(Rect2(r.position, Vector2(r.size.x * minf(part, 1.0), r.size.y)),
+			FAIT if part >= 1.0 else ALERTE))
+	h.add_child(jauge)
+	var txt := _titre("", 13, TEXTE)
+	h.add_child(txt)
+	return {"jauge": jauge, "jauge_txt": txt}
 
 
 ## 🎓 La miniature d'une vignette du campus, rendue par la maquette.
@@ -2824,7 +2844,8 @@ func ouvrir_lieu_clique(couche: String, fid: int) -> void:
 ## ⏸️ Une grande fenêtre au centre (lieux, concours) met le jeu en pause ; la maquette
 ## le relance à sa fermeture (auteur, 2026-10-22 ; remplace le « ×1 sans pause » du 2026-10-20).
 func grande_fenetre_ouverte() -> bool:
-	return _campus_panneau.visible or (_projets_panneau != null and _projets_panneau.visible)
+	return _campus_panneau.visible or (_projets_panneau != null and _projets_panneau.visible) \
+		or fenetre_budget.visible
 
 
 # ==========================================================================
@@ -3123,6 +3144,19 @@ func _brancher_lieu() -> void:
 					if ouverture != null:
 						ouverture.actualiser(true)
 				_maj_lieu())
+		elif String(l["genre"]) == "regle":
+			var regle: String = k.trim_prefix("regle_")
+			b.pressed.connect(func() -> void:
+				if ville.signer_regle(regle, _mois):
+					# 🔴 Flaggable (90).
+					retours.consigner("%s signé : la confiance ne baisse pas, +%s k€ par mois." % [
+						Politiques.REGLES[regle]["nom"], _nb(ville.stationnement_mensuel_ke(_mois), 0)], _mois)
+					retours.annoncer("Les rues payantes rapportent chaque mois.", _mois)
+					retours.actualiser(_mois)
+				_maj_lieu())
+		elif String(l["genre"]) == "budget":
+			b.pressed.connect(func() -> void:
+				fenetre_budget.ouvrir(Calendrier.an(_mois), _mois, true))
 		elif String(l["genre"]) == "fonds":
 			b.pressed.connect(func() -> void:
 				if _fonds_demandable() and ville.demander_fonds(_mois):
@@ -3188,7 +3222,10 @@ func _maj_lieu() -> void:
 		bloc.visible = (_lieu_ouvert == "institut" and _sujet_montre(String(cle))) if recherche \
 			else (_lieu_ouvert == "mairie" and (_etude_montree() if genre == "etude"
 				else _diagnostic_montre(String(cle).trim_prefix("diagnostic_")) if genre == "diagnostic"
-				else genre in ["programme", "fonds"] or _politique_ouverte(String(cle))))
+				else Calendrier.an(_mois) >= 2 if genre == "budget"
+				# 🗳️ Le premier budget prend la place du fonds reçu (auteur, 2026-10-28) ; pas reçu, il reste.
+				else not (Calendrier.an(_mois) >= 2 and ville.fonds_recu(_mois)) if genre == "fonds"
+				else genre in ["programme", "fonds", "regle"] or _politique_ouverte(String(cle))))
 		if not bloc.visible:
 			continue
 		if recherche:
@@ -3202,6 +3239,10 @@ func _maj_lieu() -> void:
 			_maj_ligne_diagnostic(String(cle).trim_prefix("diagnostic_"), l)
 		elif genre == "fonds":
 			_maj_ligne_fonds(l)
+		elif genre == "budget":
+			_poser_ligne(l["bouton"], "Voir le budget", [])
+		elif genre == "regle":
+			_maj_ligne_regle(String(cle).trim_prefix("regle_"), l)
 		else:
 			_maj_ligne_politique(String(cle), l)
 		# Le prix est sur le bouton : une ligne d'état vide ne garde pas sa place.
@@ -3213,11 +3254,6 @@ func _maj_lieu() -> void:
 			montre = montre or (col.get_child(i) as Control).visible
 		(col as Control).visible = montre
 	_aligner_mairie.call_deferred()
-	# 🔴 Ce qui manque est DIT, pas simulé à moitié : une règle ne coûte pas de
-	# capital, elle en demande un seuil (auteur, 2026-09-30) ; aucune n'est écrite.
-	_lieu_message.text = "" if _lieu_ouvert != "mairie" else \
-		"Les règles, comme le stationnement payant ou le toit vert obligatoire au neuf, " \
-		+ "s'ouvriront à partir d'un certain niveau de confiance, sans la dépenser."
 
 
 ## 🏛️ Les cartes de la mairie s'alignent par rangée (auteur, 2026-10-21) : la n-ième carte de
@@ -3412,6 +3448,34 @@ func _maj_ligne_diagnostic(id: String, l: Dictionary) -> void:
 ## 🏗️ Le pont rouvert (118) : la mairie l'ouvre au même moment ; les essais sans guide, toujours.
 func _fonds_demandable() -> bool:
 	return ouverture == null or ouverture.pont_termine or ouverture.tout_ouvert
+
+
+## 🗳️ Le seuil se lit sur la jauge, pas sur le bouton : un prix y passerait pour une dépense (98).
+func _maj_ligne_regle(cle: String, l: Dictionary) -> void:
+	var etat: Label = l["etat"]
+	var b: Button = l["bouton"]
+	if Politiques.signee(ville, cle, _mois):
+		etat.text = "Signé %s : +%s k€ par mois." % [Calendrier.en(float(ville._regles[cle])),
+			_nb(ville.stationnement_mensuel_ke(_mois), 0)]
+		(l["jauge"] as Control).get_parent().visible = false
+		b.visible = false
+		return
+	var seuil := float(Politiques.REGLES[cle]["seuil"])
+	var manque := seuil - _capital
+	etat.text = "Il faut %s de confiance. Signer ne la dépense pas." % _nb(seuil, 0)
+	var jauge: Control = l["jauge"]
+	jauge.get_parent().visible = true
+	var part := clampf(_capital / seuil, 0.0, 1.0) if manque > 0.001 else 1.0
+	if not is_equal_approx(float(jauge.get_meta("part")), part):
+		jauge.set_meta("part", part)
+		jauge.queue_redraw()
+	var txt: Label = l["jauge_txt"]
+	txt.text = "%s / %s" % [_nb(minf(_capital, seuil) if manque > 0.001 else _capital, 0), _nb(seuil, 0)]
+	txt.add_theme_color_override("font_color", ALERTE if manque > 0.001 else FAIT)
+	b.visible = true
+	b.disabled = manque > 0.001
+	_poser_ligne(b, "Signer", [], "capital" if b.disabled else "",
+		"il manque %s de confiance" % _nb(ceilf(manque), 0) if b.disabled else "")
 
 
 func _maj_ligne_fonds(l: Dictionary) -> void:
@@ -3671,7 +3735,7 @@ const GENRES_DEPENSE := {
 	"vert": "Toits verts", "dense": "Étages ajoutés", "berge": "Berges",
 	"plantation": "Arbres plantés", "culture": "Cultures", "concours": "Concours",
 	"labour": "Labours", "etude": "Étude de la crue", "etudes": "Études des cartes",
-	"venelle": "Venelles",
+	"venelle": "Venelles",   # parties sauvées avant le 2026-10-27
 	"autres": "Autres chantiers",
 }
 
@@ -3763,6 +3827,8 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 	var choisis := [
 		["Électricité solaire vendue", float(indic["recette_ke_an"]) / 12.0],
 		["Loyers des étages ajoutés", dense_mois],
+		["Stationnement payant", ville.stationnement_mensuel_ke(mois)],
+		["Prime de résultats", Ville.Budget.prime_mensuelle_ke(ville, mois)],
 		["Mairie", -ville.charge_mensuelle_ke(mois)],
 	]
 	# 🪜 LA COMPLEXITÉ VIENT PEU À PEU (auteur, 2026-10-20) : au début, la caisse de départ
@@ -3777,15 +3843,17 @@ func _lignes_caisse(indic: Dictionary, mois: float) -> Array:
 		if ouverture == null or ouverture.rail_visible("agriculture"):
 			flux.insert(3, ["Nourriture achetée en plus" if nourriture > 0.0 else "Nourriture économisée", -nourriture])
 		out.append_array(_blocs_mensuels(flux, func(v): return _nb(v, 1) + " k€/mois", 0.05))
-		# 🗓️ Le budget tombe en janvier (auteur, 2026-10-18), comme les points de recherche.
-		out.append(["En janvier", "+%s k€" % _milliers(Ville.DOTATION_KE_AN), 0, false])
+		# 🗓️ L'aide de l'État tombe en janvier (auteur, 2026-10-18), comme les points de recherche.
+		out.append(["Aide de l'État, en janvier", "+%s k€" % _milliers(Ville.DOTATION_KE_AN), 0, false])
 	out.append([HISTORIQUE, null, 0, false])
 	var cumul := [
 		["Caisse de départ", Ville.CAISSE_DEPART_KE],
 		["Fonds de reconstruction", ville.fonds_recu_ke(mois)],
-		["Budgets de janvier", Ville.dotation_cumulee_ke(mois)],
+		["Aides de l'État", Ville.dotation_cumulee_ke(mois)],
+		["Primes de résultats", Ville.Budget.prime_cumulee_ke(ville, mois)],
 		["Électricité solaire vendue", ville.recette_cumulee_ke(mois)],
 		["Loyers des étages ajoutés", ville.solde_dense_ke(mois)],
+		["Stationnement payant", ville.stationnement_cumule_ke(mois)],
 		["Crédit d'essai", ville._credit_essai_ke],
 	]
 	var genres := ville.depenses_par_genre()
@@ -3811,7 +3879,7 @@ func _lignes_capital(mois: float) -> Array:
 	var usure := ville.usure_camp_mois(mois)
 	# La confiance n'a aucune entrée fixe : seul le camp la fait bouger chaque mois.
 	if usure >= 0.05:
-		out.append_array(_blocs_mensuels([["Le camp use la confiance ; l'améliorer l'arrête", -usure]],
+		out.append_array(_blocs_mensuels([["Le camp use la confiance ; l'améliorer la ralentit", -usure]],
 			func(v): return _nb(v, 1) + "/mois", 0.05))
 	out.append([HISTORIQUE, null, 0, false])
 	var passes := [["Confiance de départ", Ville.CAPITAL_DEPART]]
@@ -4079,7 +4147,7 @@ func maj(indic: Dictionary, mois: float, vitesse: float) -> void:
 		var teinte: Color = ALERTE if baisse else TEXTE
 		if l.get_theme_color("font_color") != teinte:
 			l.add_theme_color_override("font_color", teinte)
-		l.get_parent().tooltip_text = ("Confiance : le camp en use %s par mois ; l'améliorer l'arrête."
+		l.get_parent().tooltip_text = ("Confiance : le camp en use %s par mois."
 			% _nb(usure, 1)) if baisse else "Confiance"
 	_maj_durabilite(indic)
 	_dater(mois)
@@ -4183,9 +4251,6 @@ func montrer(couche: String, fid: int, _garder := true) -> void:
 	# le front commerçant, et tout ce qui n'est pas bâti.
 	_bloc_dispo[_dense_bloc] = couche == "i" and ville.dense_logements_etage(fid) > 0 \
 		and _levier_ferme("densifier") == ""
-	# 🚶 Fermée la première année, comme tout levier (ouverture.levier_ferme).
-	_bloc_dispo[_venelle_bloc] = couche == "i" and ville.venelle_possible(fid) \
-		and _levier_ferme("venelle") == ""
 	_leviers_sig = ""
 	_maj_fiche()
 
@@ -4275,27 +4340,6 @@ func _maj_permeable() -> void:
 		_permeable_bouton.disabled = false
 
 
-## 🔴 Textes provisoires, flaggables (90) : l'auteur les réécrit.
-func _maj_venelle() -> void:
-	var fid := _fiche_fid
-	if _fiche_couche != "i" or not ville.venelle_possible(fid):
-		return
-	if ville.venelle_amenagee(fid, _mois):
-		_venelle_texte.text = "Le raccourci que les habitants avaient tracé est devenu un passage."
-		_venelle_bouton.text = "Venelle aménagée"
-		_venelle_bouton.disabled = true
-		_marquer(_venelle_bouton, false)
-		return
-	_venelle_texte.text = "Un chemin de terre traverse l'îlot : les habitants l'ont tracé à force d'y passer."
-	if ville.venelle_en_cours(fid, _mois):
-		_venelle_bouton.text = "Chantier en cours"
-		_venelle_bouton.disabled = true
-		_marquer(_venelle_bouton, false)
-	else:
-		_posee(_venelle_bouton, "venelle", "Aménager la venelle · %s k€" % _milliers(ville.cout_venelle_ke(fid)))
-		_venelle_bouton.disabled = false
-
-
 func _maj_fiche() -> void:
 	_dispo_leviers()
 	_maj_fiche_contenu()
@@ -4341,7 +4385,6 @@ func _maj_fiche_contenu() -> void:
 	_maj_camp()
 	_maj_culture()
 	_maj_permeable()
-	_maj_venelle()
 	if _fiche_couche == "r":
 		_maj_fiche_rue()
 		return

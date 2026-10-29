@@ -63,7 +63,8 @@ func executer() -> void:
 	actualiser(debut + 0.05)
 	verifier(o.annonce.visible and o.carte == "camp" and jeu.vitesse == 1.0 and o.etape == "pont_travaux",
 		"Les habitants se plaignent pendant le chantier du pont, au centre, le ×4 revenu à ×1")
-	verifier(absf(v.usure_camp_mois(jeu.mois) - 2.6) < 0.05, "260 au camp usent %.2f par mois" % v.usure_camp_mois(jeu.mois))
+	verifier(is_equal_approx(v.usure_camp_mois(jeu.mois), v.reloges(jeu.mois) * 0.01),
+		"%.0f au camp usent %.2f par mois" % [v.reloges(jeu.mois), v.usure_camp_mois(jeu.mois)])
 	verifier("/mois" in ui._barre_valeurs["capital"].text, "Le compteur dit la baisse : %s" % ui._barre_valeurs["capital"].text)
 	await capture("camp_02_plainte")
 	var camp: int = o.camp_le_plus_plein()
@@ -78,9 +79,9 @@ func executer() -> void:
 	pastille.mouse_entered.emit()
 	await process_frame
 	verifier(pastille.visible and ui.retours.survol.visible
-		and "−2,6 confiance par mois" in ui.retours.detail(pastille)
+		and "−%s confiance par mois" % ui._nb(v.usure_camp_mois(jeu.mois), 1) in ui.retours.detail(pastille)
 		and "Améliorer le campement" in ui.retours.detail(pastille),
-		"La pastille du camp dit la confiance perdue et ce qui l'arrête : %s" % ui.retours.detail(pastille))
+		"La pastille du camp dit la confiance perdue et ce qui la ralentit : %s" % ui.retours.detail(pastille))
 	await capture("camp_02b_pastille")
 	pastille.mouse_exited.emit()
 	await cliquer(ui._demande_boutons["amelioration"])
@@ -99,9 +100,11 @@ func executer() -> void:
 	var avant: float = v.usure_camp_mois(jeu.mois)
 	actualiser(jeu.mois + v.DEMANDES["amelioration"]["mois"] + 0.05)
 	var apres: float = v.usure_camp_mois(jeu.mois)
-	verifier(avant > 2.0 and apres == 0.0, "Le campement amélioré arrête l'usure : %.2f → %.2f" % [avant, apres])
+	verifier(avant > 2.0 and is_equal_approx(apres, avant * v.CAMP_USURE_AMELIORE),
+		"Le campement amélioré divise l'usure par deux : %.2f → %.2f" % [avant, apres])
 	verifier(not o.annonce.visible, "La plainte ne revient pas")
-	verifier(not ui.retours.camp_mecontent.visible, "La pastille du camp part avec l'usure")
+	verifier(ui.retours.camp_mecontent.visible and "rentrer chez eux" in ui.retours.detail(ui.retours.camp_mecontent),
+		"La pastille du camp reste : les habitants attendent de rentrer")
 	ui._maj_fiche()
 	verifier(ui._demande_boutons["amelioration"].disabled, "L'amélioration livrée ne se recommande pas")
 	await capture("camp_04_ameliore")

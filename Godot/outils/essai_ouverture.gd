@@ -29,6 +29,9 @@ func actualiser(mois: float) -> void:
 	jeu.ouverture.actualiser(true)
 	if not plainte_testee and jeu.ouverture.carte == "camp":
 		jeu.ouverture._sur_carte(false)
+	# 🗳️ Le budget de janvier (124) bloque les clics : fermé d'office, `apercu_budget` le regarde.
+	if jeu.interface.fenetre_budget.visible:
+		jeu.interface.fenetre_budget._fermer()
 
 
 ## 🧭 Une tuile de la colonne de gauche : ouverte, et entourée.

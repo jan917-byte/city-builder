@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""🚶 La trace d'une venelle pas encore aménagée : herbe, herbe foulée, terre.
-Posée AU-DESSUS du pavé de `07` ; Godot la cache quand le joueur aménage."""
+"""🚶 La trace d'une venelle : herbe, herbe foulée, terre (122).
+Le couloir d'herbe sort EN PREMIER : Godot y lit l'herbe, puis creuse la trace."""
 
 import math
 

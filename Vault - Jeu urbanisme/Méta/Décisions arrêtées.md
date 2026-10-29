@@ -1,7 +1,7 @@
 ---
 tags: [méta, registre]
 statut: vivant
-maj: 2026-10-20
+maj: 2026-10-29
 ---
 
 # Décisions arrêtées
@@ -54,21 +54,22 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | # | Décision | | Depuis · où lire |
 |---|---|---|---|
 | 23b | **Le jeu s'ouvre sur une crue** qui ruine le faubourg de **rive droite** (13 îlots), et **une seconde crue est annoncée** | 🔓 | 2026-08-11 · [[Premiers pas après la crue]] |
-| 72 | **L'adaptation d'abord**, la réduction des émissions après la réparation | 🟡 | 2026-08-21 · [[Adaptation et réduction]] |
+| 72 | **L'adaptation d'abord**, la réduction des émissions après la réparation | 🟡 | 2026-08-21 · [[Adaptation et réduction]] · révisée par 129 |
 | 84 | **Deux champs sur trois** suffisent au relogement d'urgence ; deux personnes par container | 🔓 | 2026-09-18 · [[Relogement progressif - proposition]] |
 | 85 | **Carte sans pictogrammes**, compteur « Personnes sans logement » permanent, libre choix du pont, retours factuels | 🔓 | 2026-09-18 · [[Premiers pas après la crue]] |
 | 86 | ~~Le budget de départ (**3 500 k€**) couvre le relogement, un pont au choix et le déblaiement~~ (→ 118) | 🔓 | 2026-09-20 |
 | 87 | Le premier pont se choisit **provisoire** (2 mois, 25 % du prix, une voie) ou **en dur** (7 mois) ; ses accès se déblaient pendant le chantier. **L'en dur attend le fonds de reconstruction** (118) | 🔓 | 2026-09-24, raccourci le 2026-10-12, revu le 2026-10-20 |
 | 89 | **L'Ilse coule du sud au nord**, brune de crue, normale en 4 mois, limpide plus tard (déclencheur ouvert) | 🔓 | 2026-09-28 · [[Questions ouvertes]] n°35 |
 | 95 | Un îlot sinistré offre **plusieurs postures qui se valent** : à l'identique (confiance gagnée, exposé), autre tissu, parc inondable (confiance perdue, protégé) ; rebâtir en zone basse fait monter la prévision | 🟡 | 2026-09-30 · `Prototype/Premiers pas.md` |
-| 121 | **Une rue entre deux parcs peut devenir une allée du parc** — rue, rue fermée, puis allée ; seulement si aucune porte ne donne sur la rue et si le réseau reste d'un seul tenant. L'allée sort des charges (59) et rend son sol perméable ; les deux îlots gardent leur numéro | 🟡 | 2026-10-02, tranché par l'auteur, précise 95 · prix, durée et confiance à fixer · [[Questions ouvertes]] n°47 |
-| 122 | **Les venelles naissent en trace dans l'herbe, et le joueur peut les aménager** : « Aménager la venelle » (onglet Bâti de l'îlot) change le chemin de terre en passage pavé ; un prix, un délai, aucun effet sur les jauges. Un clin d'œil au titre (111), pas un système | 🔓 | 2026-10-08, demandé par l'auteur (106 sur sa branche) · fermée la première année comme tout levier · `Prototype/Parcelles.md` · [[Questions ouvertes]] n°50 |
+| 121 | **Une rue entre deux parcs peut devenir une allée du parc** — rue, rue fermée, puis allée ; seulement si aucune porte ne donne sur la rue et si le réseau reste d'un seul tenant. L'allée rend son sol perméable ; les deux îlots gardent leur numéro | 🟡 | 2026-10-02, tranché par l'auteur, précise 95 · prix, durée et confiance à fixer · [[Questions ouvertes]] n°47 |
+| 122 | **Les venelles se creusent seules dans l'herbe, et on ne les aménage pas** : herbe au début, puis herbe foulée, puis terre battue, en un à deux ans, chacune à son rythme ; aucun bouton, aucun prix, aucun effet sur les jauges. Un clin d'œil au titre (111), pas un système | 🔓 | 2026-10-08, demandé par l'auteur (106 sur sa branche) · 🔄 2026-10-27, tranché par l'auteur : *« elles ne doivent pas être aménagées, elles doivent apparaître de manière organique »* ; écarté : le bouton « Aménager la venelle » · `Prototype/Parcelles.md` · [[Questions ouvertes]] n°50 |
 | 100 | L'université publie une **étude : une crue plus forte dans 6 à 8 ans** ; Dangers se lit en deux onglets, Prochaine crue et Dégâts | 🟡 | 2026-09-30, moment changé par 105 |
 | 102 | **Pas de répétition** avant la crue annoncée ; la **canicule** sera la deuxième urgence, plus tard | 🟡 | 2026-10-06 |
 | 103 | **« Ne pas aggraver » s'ouvre quand la ville est réparée** : tout le monde à l'abri, aucun quartier habité coupé, un îlot sinistré relevé | 🟡 | 2026-10-06 · [[Adaptation et réduction]] |
 | 104 | ~~Un concours **obligatoire** avant les projets neufs~~ (→ 115) ; un pour toute la zone sinistrée, un mois, un prix | 🟡 | 2026-10-06 · `Prototype/Premiers pas.md` |
 | 115 | **Le concours est facultatif** : là où des maisons sont tombées, les quatre façons de rebâtir s'offrent côte à côte sans lui (pilotis après l'institut) ; lancé, il coûte et prend un mois pour toute la zone, puis les projets neufs coûtent moins — « comme avant » ne change pas. Par îlot, le joueur choisit lequel, comment, et s'il prend le temps | 🟡 | 2026-10-19, tranché par l'auteur (piste C) · écartés : le concours obligatoire (un péage avant le choix), les quatre façons sans concours (pas de pari sur le temps) · `Prototype/Premiers pas.md` |
 | 105 | **Une livraison ouvre une porte** : l'étude, puis la berge seule, puis les autres sols, puis le concours. ⏸️ **Suspendue le 2026-10-12** : tout s'ouvre au pont rouvert, l'institut distribuera plus tard | 🟡 | 2026-10-06 · `Prototype/Premiers pas.md` |
+| 129 | **Pas de verrou de l'urgence** : réparer et équiper se paient avec la même caisse | 🔓 | dit par l'auteur le 2026-08-31, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 · révise 72 |
 
 ## Les leviers et les lieux
 
@@ -85,13 +86,16 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 80 | La mairie signe des **règles** (payées en confiance) et des **subventions** (payées chaque mois) | 🔓 | 2026-09-02 · [[Mairie et politiques]] |
 | 96 | **La confiance** se dépense à la décision et se regagne à la livraison ; habitants rentrés et pont rouvert en rendent le plus | 🟡 | 2026-09-30 · [[Ressources]] |
 | 97 | À l'écran, le capital politique s'appelle **« confiance »** | 🔓 | 2026-09-30 · [[Glossaire]] |
-| 98 | Une règle se signe **au-dessus d'un seuil** de confiance, qui monte à chaque règle signée | 🟡 | 2026-09-30 |
+| 98 | Une règle se signe **au-dessus d'un seuil** de confiance, **sans la dépenser** ; le seuil monte à chaque règle signée | 🟡 | 2026-09-30 · redit par l'auteur le 2026-10-28 · [[Mairie et politiques]] |
 | 99 | Retirer des places rend de la confiance **selon ce que la rue est devenue**, un an après | 🟡 | 2026-09-30 |
 | 101 | **Un livre des concepts** à la bibliothèque de l'université : un concept s'ouvre quand la ville le rencontre, et ouvre ses leviers ; aucune page sans lieu | 🟡 | 2026-10-06 · [[Université et recherche]] |
 | 114 | **L'université contient la bibliothèque et l'institut** : au rail, deux portes de même rang — mairie et université ; dans l'université, trois onglets — Études, Bibliothèque, Institut. Les trois îlots du campus restent sur la carte et ouvrent chacun son onglet | 🟡 | 2026-10-19, tranché par l'auteur · [[Université et recherche]] |
 | 116 | **L'institut range ses recherches en quatre colonnes : Bâti, Espace public, Énergie, Trafic**, une racine chacune, aucun lien d'une colonne à l'autre. **Le parc inondable** (rebâtir un îlot en prairie) s'y recherche, en Espace public, et n'a rien à voir avec les berges (« Rendre une berge ») ; « Rendre la rue » se coupe en *Retirer des places* puis *Fermer une rue* | 🟡 | 2026-10-19, tranché par l'auteur · remplace les cinq colonnes du 2026-10-09 (Logement, Eau, Toits verts, Solaire, Rues) · [[Université et recherche]] |
 | 117 | **La mairie d'abord, l'université ensuite** : le pont rouvert n'ouvre que la mairie ; elle adopte le **concours d'urbanisme** (en points), puis, le concours rendu, **commande l'étude** de la crue à l'université (en euros) ; l'étude rendue ouvre l'université, et avec elle les recherches qui répondent à la crue (pilotis, parc inondable). **Les points ouvrent, l'argent fait** : un point d'objectif se dépense à la mairie comme à l'institut | 🟡 | 2026-10-19, tranché par l'auteur (« tout arrive en même temps » à l'université) · revient sur « le pont rouvert publie l'étude » (2026-10-18) · à éprouver : trois monnaies, euros, confiance et points · `Prototype/Premiers pas.md` |
 | 118 | **Deux budgets, l'urgence puis la reconstruction** : la caisse de départ paie un pont **provisoire** au choix, les camps, leur amélioration, le déblaiement et les maisons du Lavoir, avec une petite marge pour qui ne joue pas au plus juste ; le pont rouvert, **la mairie demande le fonds de reconstruction**, qui ne paie pas tout le faubourg : rebâtir des îlots ou consolider le pont en dur, il faut choisir. **Le pont en dur** — un provisoire remplacé, ou un autre pont — n'existe qu'avec ce fonds. **L'institut met au point le pont résistant** : un pont en dur bâti après lui tient à la prochaine crue, les autres seraient emportés | 🔓 | 2026-10-20, tranché par l'auteur · revient sur 86 et sur le choix en dur de 87 · montants à juger · `Prototype/Premiers pas.md` |
+| 123 | **Le stationnement payant est la première règle** : à la mairie dès son ouverture, il se signe au-dessus d'un seuil de confiance (98) et rend de l'argent **chaque mois**, selon les places qui restent | 🟡 | 2026-10-28, tranché par l'auteur · seuil et tarif ouverts · [[Mairie et politiques]] |
+| 131 | **Les points et la confiance ne paient jamais à la place de l'argent ; ils débloquent des rentrées d'argent** — le stationnement payant (123) en est la première. Quand la caisse est vide, on ne paie pas autrement : on ouvre une recette | 🔓 | 2026-10-29, tranché par l'auteur, ferme [[Questions ouvertes]] n°51 · précise 117 (« les points ouvrent, l'argent fait ») · quelles recettes, à quel prix : à fixer · [[Ressources]] |
+| 130 | **Un toit vert abaisse la prochaine crue dans toute la ville**, et seul un toit plat verdit ; un toit est **solaire ou vert, jamais les deux** | 🔓 | dit par l'auteur le 2026-08-31, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
 
 ## Indicateurs et interface
 
@@ -102,8 +106,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 56 | Le CO₂ et le renouvelable sont **dérivés**, pas simulés ; le **carbone gris** compte | 🟡 | 2026-08-12 · [[Indicateurs globaux]] |
 | 57 | Le bout d'une barre est **un jalon nommé**, montré seulement à l'approche | 🔓 | 2026-08-12 · [[Milestones]] |
 | 58 | Ressources en **compteurs**, indicateurs en **barres** ; le budget montre ce qu'on a, l'engagé et le libre | 🔓 | 2026-08-12 |
-| 59 | Budget : **recettes ∝ logements, charges ∝ mètres de voirie** — pas encore calibré | 🟡 | 2026-08-12 · dette de `Prototype/00 - Prototype.md` |
-| 60 | **L'économie est un état sans chiffre** qui multiplie le budget ; le calcul est caché — absente de la maquette | 🟡 | 2026-08-12 · [[Ressources]] |
+| 60 | **L'économie est un état sans chiffre**, l'un des quatre critères de la prime de résultats (124) ; le calcul est caché — absente de la maquette | 🟡 | 2026-08-12 · 🔄 2026-10-28 : elle ne multiplie plus le budget · [[Ressources]] |
 | 60b | **Formule cachée ≠ causalité cachée** : quand l'économie bouge, une phrase dit pourquoi ; elle ne règle jamais la difficulté | 🔓 | 2026-08-12 |
 | 63 | Un indicateur vit à deux échelles : **les stocks s'additionnent, les taux se pondèrent** par leur dénominateur | 🔓 | 2026-08-12 · [[Indicateurs globaux]] |
 | 63b | La fiche d'un îlot reprend les indicateurs du bandeau, même ordre, mêmes icônes | 🔓 | 2026-08-12 |
@@ -116,6 +119,9 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 93 | Une décision se voit **en trois temps** — la fiche avant, les hachures pendant, un signe sur le lieu à la livraison | 🟡 | 2026-09-30 |
 | 94 | Le diagnostic **prévoit les dégâts de la prochaine crue**, dans tous les thèmes | 🟡 | 2026-09-30 · [[Happenings]] |
 | 119 | **La complexité arrive peu à peu** : au début, l'argent ne montre que la caisse de départ et l'historique — pas ce qui part chaque mois ; **chaque carte de diagnostic reste cachée tant qu'une étude ne l'a pas ouverte**, Dangers par l'étude de la crue, Énergie, Trafic et Agriculture par la leur, commandée à la mairie | 🟡 | 2026-10-20, tranché par l'auteur · prix des trois études et moment où ce qui part chaque mois paraît, à juger · `Prototype/Premiers pas.md` |
+| 124 | **Le budget arrive seul le 1er janvier, dans une fenêtre qui dit comment il est calculé** (un bouton « Continuer », rien à voter), en trois parts et **sans aucun impôt** : ① l'**aide de l'État**, fixe, versée le jour même ; ② une **prime de résultats**, notée sur l'année passée selon quatre critères — logements rendus, trafic, économie, confiance —, chacun avec sa note et sa raison en une phrase, versée chaque mois ; ③ l'argent des **règles signées** (123), chaque mois | 🟡 | 2026-10-28, tranché par l'auteur (« le jeu deviendrait trop complexe » avec des impôts) · 🔄 2026-10-28 : plus de bouton « Voter » (« ça doit venir direct »), plus de part de la ville · remplace 59, revoit 60, ferme [[Questions ouvertes]] n°21 · montants et barèmes à juger · [[Ressources]] |
+| 125 | **Les champs ne comptent pas dans les moyennes de la ville** : canopée et sol imperméable se pondèrent sur le bâti et les rues ; les champs ont leur barre Agriculture (91) | 🔓 | 2026-10-29, tranché par l'auteur, précise 63, ferme [[Questions ouvertes]] n°48 · [[Indicateurs globaux]] |
+| 128 | **Deux vues** : la ville vivante, et le diagnostic où seul le thème choisi est en couleur | 🔓 | dit par l'auteur le 2026-08-25, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
 
 ## La ville et son échelle
 
@@ -168,6 +174,8 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 67b | Un chemin va **au pli**, jamais au milieu, et se juge sur la forme des parcelles | 🔓 | 2026-08-14 |
 | 67c | Un cœur d'îlot ne se reparcelle pas | 🔓 | 2026-08-14 |
 | 67d | Sur un grand îlot, les parcelles s'arrêtent à une profondeur : **le reste est un cœur d'îlot** | 🔓 | 2026-08-14 |
+| 126 | **La couleur d'un bâtiment suit son époque**, plus sa typologie ; le calque « tissu » rend la typologie, à la demande | 🔓 | dit par l'auteur le 2026-08-18, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
+| 127 | **Les fenêtres viennent du matériau du mur**, sans un triangle | 🔓 | dit par l'auteur le 2026-08-18, consigné le 2026-10-29, ferme [[Questions ouvertes]] n°49 |
 
 ## Production
 
@@ -183,7 +191,7 @@ Légende : 🔒 change la nature du jeu, ou coûte des semaines à défaire · �
 | 44 | Lancement en **anglais et allemand** | 🔓 | [[Marketing et Steam]] |
 | 45 | **Glossaire dès le jour 1** ; le système de traduction attend (108) | 🔓 | [[Glossaire]] |
 | 46 | ~10 000 mots de texte | 🔓 | [[Ton et règles d'écriture]] |
-| 47 | Page Steam en ligne tôt, pour récolter des wishlists ; **aucun seuil de wishlists ne décide de la suite** | 🔓 | 2026-10-08, tranché par l'auteur · [[Marketing et Steam]] |
+| 47 | Page Steam en ligne tôt, pour récolter des wishlists ; **aucun seuil de wishlists ne décide de la suite** ; objectif : 2 000 avant le Next Fest | 🔓 | 2026-10-08, tranché par l'auteur, objectif ajouté le 2026-10-29 · [[Marketing et Steam]] |
 | 48 | Pas de dépense avant le vertical slice | 🔓 | [[Calendrier et budget]] |
 | 52 | **Règle de production** : aucun asset dessiné à la main, tout visuel dérive d'un attribut — *« si je devais en faire 200, est-ce que je tiendrais ? »* | 🔓 | 2026-08-12 · [[Direction artistique]] |
 | 65 | **Claude écrit et exécute les scripts de données** ; garde-fous : arbre propre, passe à blanc d'abord, contrôles en français | 🔓 | 2026-08-12 · `CLAUDE.md` §3 |
@@ -202,6 +210,7 @@ Gardées ici parce que des notes et du code citent encore leur numéro. Leur tex
 
 | # | Ce qu'elle disait | Ce qui l'a remplacée |
 |---|---|---|
+| 59 | Recettes ∝ logements, charges ∝ mètres de voirie | 124 — pas d'impôts : aide fixe, prime de résultats, règles |
 | 25 | Trois calques parents : vert, mobilité, social | les six thèmes (91) |
 | 33 | Un `.qml` comme référence couleur | 33b — le fichier n'a jamais existé |
 | 37 | Pas de SVG : PNG, world file et décalquage | la carte est générée (31b) ; l'auteur dessine dans Illustrator, `atelier_svg.py` reprend |

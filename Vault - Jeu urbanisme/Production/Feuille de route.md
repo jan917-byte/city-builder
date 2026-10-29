@@ -1,7 +1,7 @@
 ---
 tags: [production, plan, calendrier]
 statut: Next Fest d'octobre 2027 tranché (110) — le reste proposé, à revoir à chaque jalon
-maj: 2026-10-12
+maj: 2026-10-29
 ---
 
 # Feuille de route
@@ -40,14 +40,14 @@ gantt
   Page Steam en ligne              :milestone, m2, 2027-03-15, 0d
   Démo publique                    :milestone, m3, 2027-08-15, 0d
   Steam Next Fest                  :crit, m4, 2027-10-11, 7d
-  Seuil des 5 000 wishlists        :milestone, m5, 2027-09-15, 0d
+  Objectif des 2 000 wishlists     :milestone, m5, 2027-09-15, 0d
 ```
 
 ## Les six jalons
 
 | Quand | Jalon | Ce qui doit être vrai | Ce qui prouverait qu'on n'y est pas |
 |---|---|---|---|
-| **fin nov. 2026** | **L'argent fait hésiter** | les systèmes d'argent du début sont en place, et dans les premières années **au moins une dépense se refuse** faute de caisse | toutes les décisions se paient sans y penser |
+| **fin nov. 2026** | **Les trois monnaies font hésiter** | argent, confiance et points du début sont en place, et dans les premières années **chacune manque au moins une fois** : une dépense se refuse faute de caisse, une règle attend la confiance, un sujet de l'institut attend ses points (auteur, 2026-10-29) | tout se paie sans y penser |
 | **fin nov. 2026** | **Test 1** — 5 amis joueurs | ils jouent **le début** — de la crue aux premières années de préparation — 30 à 45 min, et on les regarde **sans rien dire** | on a dû expliquer quoi cliquer |
 | **mi-fév. 2027** | **Vertical slice + test 2** | 30 à 45 min, belles, du récit au bilan ; 10 testeurs, dont **2 urbanistes** | un urbaniste trouve une causalité fausse |
 | **mi-mars 2027** | **Page Steam en ligne** | titre, capsule pro, 5 captures, un GIF avant/après, texte EN + DE | la page part avec des captures de débogage |
@@ -56,7 +56,7 @@ gantt
 
 **Pourquoi octobre 2027 et pas juin** : un jeu ne fait **qu'un seul Next Fest**. Juin laisserait trois mois de page et une démo jamais vue ; octobre donne sept mois de wishlists et deux mois de démo publique. Les Next Fest tombent en février, juin et octobre — **dates exactes à vérifier sur Steamworks** avant de s'inscrire.
 
-**Le point de contrôle de [[Marketing et Steam]]** : six mois après la page, **moins de 5 000 wishlists** veut dire que le positionnement ne prend pas — on revoit le pitch et les images avant le Next Fest, pas après.
+**L'objectif de [[Marketing et Steam]]** : **2 000 wishlists** six mois après la page, avant le Next Fest (auteur, 2026-10-29). Un cap à viser, pas un couperet : il ne décide rien (47).
 
 ## Le gameplay, par ordre d'importance
 
@@ -64,7 +64,7 @@ Une seule étape ouverte à la fois, toujours. L'ordre ci-dessous est celui dans
 
 | | Ce qu'il faut mettre en place | Pourquoi maintenant | Quand |
 |---|---|---|---|
-| 1 | **L'argent qui fait hésiter** — calibrer les deux formules (59), puis les systèmes d'argent qui manquent (choisis par l'auteur) | aucune décision n'a encore été refusée faute d'argent : il n'y a pas d'arbitrage | avant le test 1 |
+| 1 | **L'argent qui fait hésiter** — le budget de janvier (124), puis les systèmes d'argent qui manquent (choisis par l'auteur) | aucune décision n'a encore été refusée faute d'argent : il n'y a pas d'arbitrage | avant le test 1 |
 | 2 | **Les ouvertures redistribuées** (105, suspendue) et **l'interface allégée** au début | trop d'options d'un coup après le pont | avant le test 1 |
 | 3 | **La seconde crue tombe, et un bilan la raconte** | c'est l'examen de tout ce qu'on a préparé, et la preuve que la prévention se voit → [[Boucle de jeu]] | déc. 2026 – janv. 2027 |
 | 4 | **Le point de vue épinglé** — la même vue, des années d'écart | c'est la récompense d'une transformation lente, **et** la machine à captures pour Steam | slice |

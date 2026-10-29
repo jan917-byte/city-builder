@@ -11,6 +11,7 @@ const Recherche := preload("res://scripts/recherche.gd")
 const Objectifs := preload("res://scripts/objectifs.gd")
 const Politiques := preload("res://scripts/politiques.gd")
 const Calendrier := preload("res://scripts/calendrier.gd")
+const Budget := preload("res://scripts/budget.gd")
 var _ponts: Array[int] = []
 
 const HORIZON_MOIS := 240                  # 20 ans. Le classeur s'arrête à 60.
@@ -32,8 +33,8 @@ const CAISSE_DEPART_KE := 1500.0
 # 🏗️ LE FONDS DE RECONSTRUCTION (118), demandé à la mairie le pont rouvert : il ne paie pas tout
 # le faubourg (6 îlots 4 940 k€, ponts en dur 1 498 à 2 860). Somme des deux = l'ancienne caisse, 3 500.
 const FONDS_RECONSTRUCTION_KE := 2000.0
-# 🗓️ Versée en une fois chaque janvier, au lieu de 30 k€ par mois (auteur, 2026-10-18).
-const DOTATION_KE_AN := 360.0
+# 🗓️ L'aide de l'État, versée en une fois chaque janvier (auteur, 2026-10-18) ; détail dans `budget.gd` (124).
+const DOTATION_KE_AN := Budget.AIDE_KE_AN
 
 # 🌳 CE QU'IL RESTE DE TRAFIC AU VERGER tant que la boue y est — voir
 # `part_trafic`. 🎚️ Level design, à juger devant l'image.
@@ -77,6 +78,7 @@ const DEBLAIEMENT_SEUIL := 3
 var _rebati := {}          # fid îlot -> la façon de le relever (`RECONSTRUCTIONS`)
 var _concours := {}        # fid îlot -> mois du lancement : un concours d'architecture par îlot
 var _programmes := {}      # clé de `Politiques.PROGRAMMES` -> le mois de l'adoption (117)
+var _regles := {}          # clé de `Politiques.REGLES` -> le mois de la signature (98)
 var _etude := {}           # {debut} : l'étude de la crue commandée par la mairie (117)
 var _etudes := {}          # id de `ETUDES_DIAGNOSTIC` -> mois de la commande
 var _fonds := {}           # {debut} : le fonds de reconstruction reçu (118)
@@ -371,12 +373,12 @@ const CHAMPS_PARTIE := ["_rampes", "_solaire", "_vert", "_stationnement_supprime
 	"_repare", "_berge", "_toit_avant", "_plantation", "_camps", "_provisoire",
 	"_cultures", "_demandes", "_depense_genre", "_rebati", "_file_deblaiement",
 	"_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
-	"_fonds", "_consolide", "_etudes", "_venelle"]
+	"_fonds", "_consolide", "_etudes", "_regles"]
 
 ## Champs apparus après coup : une partie sauvegardée avant eux reste jouable.
 const CHAMPS_PARTIE_NEUFS := ["_camps", "_provisoire", "_cultures", "_demandes", "_depense_genre",
 	"_rebati", "_file_deblaiement", "_permeable", "_concours", "_labours", "_premieres", "_objectifs", "_programmes", "_etude",
-	"_fonds", "_consolide", "_etudes", "_venelle"]
+	"_fonds", "_consolide", "_etudes", "_regles"]
 
 func exporter_partie() -> Dictionary:
 	var etat := {}
@@ -416,7 +418,6 @@ func valider_partie(etat: Dictionary) -> bool:
 			"cout_ke": 0.0, "arbres": 0}],
 		"_camps": [ilots, {"debut": 0.0, "places": 0, "cout_ke": 0.0}],
 		"_permeable": [ilots, {"debut": 0.0, "duree": 0.0, "cout_ke": 0.0}],
-		"_venelle": [ilots, {"debut": 0.0, "duree": 0.0, "cout_ke": 0.0}],
 		"_cultures": [ilots, [{"debut": 0.0, "culture": 0, "cout_ke": 0.0}]],
 		"_toit_avant": [ilots, 0.0], "_stationnement_supprime": [routes, 0.0],
 		"_provisoire": [routes, true],
@@ -429,7 +430,8 @@ func valider_partie(etat: Dictionary) -> bool:
 		"_recherche": [Recherche.SUJETS, 0.0],
 		"_premieres": [Recherche.PREMIERES_FOIS, 0.0],
 		"_objectifs": [Objectifs.OBJECTIFS, 0.0],
-		"_programmes": [Politiques.PROGRAMMES, 0.0]}
+		"_programmes": [Politiques.PROGRAMMES, 0.0],
+		"_regles": [Politiques.REGLES, 0.0]}
 	for champ in formes:
 		if not etat.has(champ):
 			continue
@@ -890,6 +892,7 @@ func reinitialiser() -> void:
 	_objectifs.clear()
 	_politiques.clear()
 	_programmes.clear()
+	_regles.clear()
 	_etude.clear()
 	_etudes.clear()
 	_vert.clear()
@@ -902,7 +905,6 @@ func reinitialiser() -> void:
 	_demandes.clear()
 	_cultures.clear()
 	_permeable.clear()
-	_venelle.clear()
 	_crue_champs_mois = INF
 	_depense_ke = 0.0
 	_depense_genre = {}
@@ -1150,48 +1152,29 @@ func baisse_crue_sols_m(t: float) -> float:
 
 
 # ==========================================================================
-# 🚶 LA VENELLE AMÉNAGÉE — les habitants ont tracé le chemin, la ville le pave
+# 🚶 LA VENELLE SE CREUSE TOUTE SEULE (122, 🔄 2026-10-27) — on ne l'aménage pas
 # ==========================================================================
-# Clin d'œil au titre (desire path), pas un système : un prix, un délai, la trace
-# devient pavé. 🎚️ LEVEL DESIGN, à juger : aucun effet sur les jauges.
-const VENELLE_PRIX_KE_M2 := 0.12
-const VENELLE_MOIS := 2.5                   # 3 → 2,5 (auteur, 2026-10-22)
-var _venelle := {}         # fid -> {debut, duree, cout_ke}
+# Herbe au mois 0, puis herbe foulée, puis terre battue ; chacune à son rythme.
+# 🎚️ LEVEL DESIGN, à juger : aucun effet sur les jauges.
+const VENELLE_DEBUT_MOIS := [1.0, 6.0]      # le premier pas, selon la venelle
+const VENELLE_USURE_MOIS := [12.0, 20.0]    # de l'herbe à la terre
 
 
 func venelle_possible(fid: int) -> bool:
 	return base("i", fid, "venelle_m2") > 0.0
 
 
-func cout_venelle_ke(fid: int) -> float:
-	return 0.0 if _venelle.has(fid) or not venelle_possible(fid) \
-		else base("i", fid, "venelle_m2") * VENELLE_PRIX_KE_M2
-
-
-func amenager_venelle(fid: int, t: float) -> bool:
-	if _venelle.has(fid) or not venelle_possible(fid):
-		return false
-	var cout := cout_venelle_ke(fid)
-	if cout > caisse_ke(t) + 0.001:
-		return false
-	_venelle[fid] = {"debut": t, "duree": _delai(VENELLE_MOIS), "cout_ke": cout}
-	_depenser("venelle", cout)
-	return true
-
-
-func venelle_en_cours(fid: int, t: float) -> bool:
-	return _venelle.has(fid) and t < float(_venelle[fid]["debut"]) + float(_venelle[fid]["duree"])
-
-
-func venelle_reste_mois(fid: int, t: float) -> float:
-	if not _venelle.has(fid):
+## 0 = herbe intacte, 1 = trace achevée. Le tirage suit le fid : la même
+## venelle se creuse au même rythme d'une partie à l'autre.
+func venelle_usure(fid: int, t: float) -> float:
+	if not venelle_possible(fid):
 		return 0.0
-	return maxf(0.0, float(_venelle[fid]["debut"]) + float(_venelle[fid]["duree"]) - t)
-
-
-## La trace se voit tant que le pavé n'est pas livré.
-func venelle_amenagee(fid: int, t: float) -> bool:
-	return _venelle.has(fid) and not venelle_en_cours(fid, t)
+	var r := absf(sin(float(fid) * 12.9898) * 43758.5453)
+	var a := r - floorf(r)
+	var b := fposmod(r * 7.0, 1.0)
+	var debut := lerpf(VENELLE_DEBUT_MOIS[0], VENELLE_DEBUT_MOIS[1], a)
+	var duree := lerpf(VENELLE_USURE_MOIS[0], VENELLE_USURE_MOIS[1], b)
+	return clampf((t - debut) / duree, 0.0, 1.0)
 
 
 ## 💧 La part du sol de la ville bâtie qui boit la pluie, toits verts compris ;
@@ -1723,13 +1706,16 @@ func camp_occupants(fid: int, t: float) -> float:
 
 # ============================ 🚿 LA VIE AU CAMP (auteur, 2026-10-02) ========
 # Un toit rend de la confiance à la livraison, puis le camp l'use chaque mois
-# tant qu'on y vit ; l'améliorer arrête l'usure.
+# tant qu'on y vit ; l'améliorer la divise par deux.
 # 🎚️ LEVEL DESIGN, tout ce bloc : 260 au camp = +10 puis −2,6 par mois.
 const CAPITAL_PAR_PERSONNE_ABRITEE := 0.04
 const CAMP_USURE_PERSONNE_MOIS := 0.01
 ## L'usure part ce délai après le LANCEMENT du premier pont : une minute à ×1 de
 ## déblaiement, pendant le chantier (auteur, 2026-10-02).
 const CAMP_USURE_APRES_PONT_MOIS := 1.0
+## ⏳ Amélioré, le camp use encore, à moitié (auteur, 2026-10-28 : attendre au ×4 ne coûtait
+## plus rien ; revient sur « l'améliorer arrête l'usure » du 2026-10-02). 🔴 À juger.
+const CAMP_USURE_AMELIORE := 0.5
 const CAPITAL_PAR_DEMANDE := 6.0
 # 🔄 Un seul bouton au lieu de trois (sanitaires, cantine, classe), même prix et
 # même effet cumulés (auteur, 2026-10-02). 🔴 Noms affichés, flaggables (90).
@@ -1807,7 +1793,8 @@ func usure_camp_mois(t: float) -> float:
 	for cle in _demandes:
 		if demande_livree(cle, t):
 			faites += 1
-	return reloges(t) * CAMP_USURE_PERSONNE_MOIS * (1.0 - float(faites) / DEMANDES.size())
+	return reloges(t) * CAMP_USURE_PERSONNE_MOIS \
+		* (1.0 - (1.0 - CAMP_USURE_AMELIORE) * float(faites) / DEMANDES.size())
 
 
 ## ∫ `usure_camp_mois` de 0 à `t`, exacte : même marches que `aide_cumulee_ke`,
@@ -2183,12 +2170,24 @@ func _integrale_part_rendue(fid: int, t: float, m: Array) -> float:
 ## n'a rien à rembobiner, et deux parties jouées pareil donnent le même solde.
 func caisse_ke(t: float) -> float:
 	return CAISSE_DEPART_KE + dotation_cumulee_ke(t) + fonds_recu_ke(t) \
-		+ recette_cumulee_ke(t) + solde_dense_ke(t) + _credit_essai_ke \
+		+ recette_cumulee_ke(t) + solde_dense_ke(t) + stationnement_cumule_ke(t) + _credit_essai_ke \
+		+ Budget.prime_cumulee_ke(self, t) \
 		- _depense_ke - aide_cumulee_ke(t) - achat_nourriture_cumule_ke(t) \
 		- Politiques.depense_ke(self, t)
 
 
-## Les budgets de janvier reçus jusqu'au mois `t` ; l'an 1 n'a que la caisse de départ.
+## 🗳️ Les bilans de janvier déjà calculés (`Budget.bilan`), vidés dès qu'une décision change.
+var _bilans := {}
+var _bilans_etat := ""
+
+
+func cle_etat() -> String:
+	return "%d/%d/%d/%d/%d/%d/%d/%s/%d" % [_repare.hash(), _provisoire.hash(), _camps.hash(),
+		_rebati.hash(), _dense.hash(), _demandes.hash(), _stationnement_supprime.hash(),
+		livraison_immediate, _rampes_version]
+
+
+## Les aides fixes de janvier reçues jusqu'au mois `t` ; l'an 1 n'a que la caisse de départ.
 static func dotation_cumulee_ke(t: float) -> float:
 	return DOTATION_KE_AN * (Calendrier.an(t) - 1)
 
@@ -2791,6 +2790,47 @@ func adopter_programme(cle: String, t: float) -> bool:
 	return true
 
 
+## 🗳️ Sans dépenser la confiance (98) : `false` si déjà signée ou sous le seuil.
+func signer_regle(cle: String, t: float) -> bool:
+	if not Politiques.REGLES.has(cle) or _regles.has(cle):
+		return false
+	if capital(t) < float(Politiques.REGLES[cle]["seuil"]) - 0.001:
+		return false
+	_regles[cle] = t
+	return true
+
+
+## 🅿️ Les places de toute la ville au mois `t`, retirées comprises.
+func places_stationnement(t: float) -> float:
+	var n := 0.0
+	for fid in routes:
+		n += valeur("r", fid, "stationnement", t)
+	return n
+
+
+## En k€ depuis la signature : ∫ des places × le tarif. Exacte, comme la caisse.
+func stationnement_cumule_ke(t: float) -> float:
+	if not _regles.has("stationnement_payant"):
+		return 0.0
+	var t0 := float(_regles["stationnement_payant"])
+	if t <= t0:
+		return 0.0
+	var places_mois := 0.0
+	for fid in routes:
+		places_mois += base("r", fid, "stationnement") * (t - t0)
+		for r in _rampes["r"].get(fid, []):
+			if r["champ"] == "stationnement":
+				places_mois += float(r["ecart"]) * (_integrale_avancement(t, r["d"], r["L"], r["M"])
+					- _integrale_avancement(t0, r["d"], r["L"], r["M"]))
+	return places_mois * Politiques.STATIONNEMENT_KE_PLACE_MOIS
+
+
+func stationnement_mensuel_ke(t: float) -> float:
+	if not Politiques.signee(self, "stationnement_payant", t):
+		return 0.0
+	return places_stationnement(t) * Politiques.STATIONNEMENT_KE_PLACE_MOIS
+
+
 func etude_commandee() -> bool:
 	return not _etude.is_empty()
 
@@ -2939,7 +2979,6 @@ const SEUIL_EAU_M := 0.10
 #   berge    int    l'état visé                    (berge)
 #   camp     true   accueillir les sinistrés       (champ)
 #   permeable true  rendre le sol perméable        (place-parking)
-#   venelle  true   aménager la venelle            (îlot qui en porte une)
 #   dense    dict   {part, etages} : la part des bâtiments visée et la
 #                   hauteur — 🪜 un cran du curseur = un bâtiment  (îlot)
 
@@ -2966,8 +3005,6 @@ func cout_commande_ke(couche: String, fid: int, r: Dictionary, t: float) -> floa
 		ke += cout_labour_ke(fid)
 	if r.has("permeable"):
 		ke += cout_permeable_ke(fid)
-	if r.has("venelle"):
-		ke += cout_venelle_ke(fid)
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d):
 			ke += cout_demande_ke(d)
@@ -3011,8 +3048,6 @@ func duree_commande_mois(couche: String, fid: int, r: Dictionary, t: float) -> f
 		m = maxf(m, _delai(LABOUR_MOIS))
 	if r.has("permeable") and not _permeable.has(fid):
 		m = maxf(m, _delai(PERMEABLE_MOIS))
-	if r.has("venelle") and not _venelle.has(fid):
-		m = maxf(m, _delai(VENELLE_MOIS))
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d) and not _demandes.has(d):
 			m = maxf(m, _delai(float(DEMANDES[d]["mois"])))
@@ -3071,8 +3106,6 @@ func commander(couche: String, fid: int, r: Dictionary, t: float) -> Dictionary:
 		faits.append("labour")
 	if r.has("permeable") and rendre_permeable(fid, t):
 		faits.append("sol perméable")
-	if r.has("venelle") and amenager_venelle(fid, t):
-		faits.append("venelle")
 	for d in DEMANDES_ORDRE:
 		if r.has("demande_" + d) and equiper_camp(d, t):
 			faits.append(str(DEMANDES[d]["nom"]).to_lower())
@@ -3115,7 +3148,7 @@ func etat_chantier(couche: String, fid: int, t: float) -> int:
 	if couche == "i" and ((_solaire.has(fid) and etat_solaire(fid, t)["en_cours"])
 			or (_vert.has(fid) and etat_vert(fid, t)["en_cours"])
 			or (_dense.has(fid) and etat_dense(fid, t)["en_cours"])
-			or permeable_en_cours(fid, t) or venelle_en_cours(fid, t)):
+			or permeable_en_cours(fid, t)):
 		return CHANTIER_EN_COURS
 	if base(couche, fid, "cout_reparation_ke") <= 0.0:
 		return CHANTIER_INTACT
@@ -3158,9 +3191,6 @@ func chantier(couche: String, fid: int, t: float) -> Dictionary:
 	if couche == "i" and permeable_en_cours(fid, t):
 		lot.append(["sol perméable", float(_permeable[fid]["duree"]),
 			permeable_reste_mois(fid, t)])
-	if couche == "i" and venelle_en_cours(fid, t):
-		lot.append(["venelle", float(_venelle[fid]["duree"]),
-			venelle_reste_mois(fid, t)])
 	if couche == "i" and culture_en_cours(fid, t):
 		lot.append(["culture", _delai(CULTURES[champ_culture(fid, t)]["mois"]),
 			culture_reste_mois(fid, t)])
@@ -3294,11 +3324,6 @@ func chantiers(t: float) -> Dictionary:
 			en_cours.append({"couche": "i", "fid": fid, "genre": "sol perméable",
 				"cout_ke": float(_permeable[fid]["cout_ke"]),
 				"reste_mois": permeable_reste_mois(fid, t), "duree": float(_permeable[fid]["duree"])})
-	for fid in _venelle:
-		if venelle_en_cours(fid, t):
-			en_cours.append({"couche": "i", "fid": fid, "genre": "venelle",
-				"cout_ke": float(_venelle[fid]["cout_ke"]),
-				"reste_mois": venelle_reste_mois(fid, t), "duree": float(_venelle[fid]["duree"])})
 	for fid in _dense:
 		var d := etat_dense(fid, t)
 		if d["en_cours"]:

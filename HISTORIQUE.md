@@ -950,3 +950,40 @@ Ramure indexée (déroulée, elle coûtait 2,25 fois plus de sommets) et retiré
 **2026-10-22 — La carte de la prochaine crue garde en pointillé le bord d'avant le clic, jusqu'au clic suivant.**
 L'auteur ne voyait rien bouger avec 13 cm de moins : la surface en eau ne perd que 3 % (46,4 → 45,0 ha), 13 % à 50 cm, le bord recule de quelques mètres.
 Trait de ~4 px en tirets de ~10 px, dans le shader de la crue ; `essai_etude` 21, ouverture et livre 0, comme avant.
+**2026-10-27 — Les venelles se creusent seules dans l'herbe ; plus de bouton « Aménager la venelle », plus de pavé dessous.**
+L'auteur : « elles ne doivent pas être aménagées, elles doivent apparaître de manière organique » ; il choisit l'usure avec le temps (décision 122 réécrite).
+Herbe au mois 0, terre battue entre 13 et 26 mois selon la venelle, par plaques ; `essai_venelle` 0 échec, sauvegarde 0 ; ouverture, livre, progression, étude non relancés (arrêtés à la demande de l'auteur).
+**2026-10-28 — Version Mac du jeu pour itch.io : préréglage d'export « macOS », appli Intel + Apple signée ad hoc.**
+Demande de l'auteur ; modèles d'exportation 4.7.2 installés sur le Mac (1,28 Go) ; le Mac exige ASTC, d'où `import_etc2_astc` dans `project.godot`.
+Zip de 67 Mo ; l'appli exportée charge toute la carte en headless (214 523 triangles), seuls avertissements déjà connus (153 îlots).
+**2026-10-28 — Le mois passe de 70 à 90 s à ×1.**
+Retour des potes testeurs : ils prenaient beaucoup de temps pour chaque action ; ×4 en 22,5 s.
+`essai_ouverture` 0 échec ; rien d'autre ne dépend de la durée réelle du mois.
+**2026-10-28 — Plusieurs chantiers à la fois : le guide le propose, le ×4 le rappelle, le camp amélioré use encore la confiance à moitié.**
+Un testeur lançait un chantier puis attendait sa fin au ×4 ; choix de l'auteur : coût de l'attente en confiance, ×4 gardé.
+`essai_plusieurs_chantiers` et `essai_vie_camp` 0 échec ; `essai_progression` (3) et `essai_sauvegarde` (1) échouaient déjà avant.
+**2026-10-28 — La confiance ouvre les règles sans se dépenser ; le stationnement payant, première règle, rapporte chaque mois.**
+Demande de l'auteur : rendre la confiance utile avant de montrer qu'elle s'use ; 98 redit, la note Mairie et politiques corrigée (elle disait « consomme »).
+`essai_regle` et `apercu_mairie` 0 échec ; `essai_capital` 0 ; `essai_sauvegarde` (1) échouait déjà avant.
+**2026-10-28 — Le toit vert devient un coussin d'herbe qui déborde du muret, sans cadre de terre.**
+Demande de l'auteur (« un peu de volume, de l'herbe, que ça dépasse ») : débord irrégulier, mèches en touffes, shader d'herbe à trois échelles ; il n'est toujours pas convaincu, à reprendre.
+`apercu_toits_verts` : 28 k triangles pour 4 030 m² plats (îlot 31) ; temps d'image pas mesuré.
+2026-10-28 · vault: le budget se vote en janvier, sans impôts (124) — remplace 59, revoit 60, ferme Q21.
+Aide fixe État + ville, prime de résultats notée sur logements rendus, trafic, économie, confiance, et règles signées ; maquettes de la fenêtre montrées en chat.
+Reste : construire la fenêtre dans Godot et calibrer les montants.
+2026-10-28 · godot: la fenêtre du budget s'ouvre le 1er janvier et se vote (124) — `budget.gd`, `fenetre_budget.gd`.
+Aide fixe 360 k€, prime notée de 1 à 5 sur logements, trafic, économie, confiance (12 k€ la case), règles ; ouverture jouée 96 k€ de prime contre 84 ignorée.
+Texte réduit à la demande de l'auteur ; `essai_ouverture` vote d'office ; `essai_sauvegarde` avait déjà 1 échec avant.
+2026-10-28 · godot: fenêtre du budget, titre, total, aide fixe et titres des parts en gras (demande de l'auteur).
+2026-10-28 · godot+vault: « Voter le budget » devient « Continuer » — l'argent arrive seul (auteur : « ça doit venir direct »), 124 révisée.
+2026-10-28 · godot: aide de l'État seule, 400 k€ (360 avant) ; carte « Budget de l'année » à la mairie qui rouvre la fenêtre en rappel (demandes de l'auteur).
+2026-10-28 · godot: à partir du premier budget, la carte « Budget de l'année » remplace celle du fonds reçu (demande de l'auteur).
+2026-10-29 · vault: objectif de 2 000 wishlists avant le Next Fest (auteur) — un cap, pas un couperet, 47 complétée ; l'ancien seuil de 5 000 retiré de la Feuille de route.
+Version Mac déposée sur itch.io ; le jeu testé jusqu'à l'an 1 par l'auteur et ses amis : tout tient, le plaisir commence, reste à équilibrer.
+Questions 48 et 49 remises sous les yeux de l'auteur, pas encore tranchées.
+2026-10-29 · vault+chaine: les champs sortent des moyennes de la ville (125, ferme Q48) ; les arbitrages de Q49 consignés tels quels, 126 à 130, révisables.
+Le jalon de fin novembre devient « les trois monnaies font hésiter » (argent, confiance, points) ; Q51 ouverte : débloquer avec des points ou de la confiance quand la caisse est vide.
+`08_jouer.py` au mois 0 : canopée 0,26 et sol imperméable 0,61 sans les champs (0,14 et 0,28 avec) ; `partie.csv` non commité, dérivé.
+2026-10-29 · vault: les points et la confiance ne paient jamais à la place de l'argent, ils débloquent des rentrées (131, ferme Q51).
+Exemple de l'auteur : le stationnement payant (123). Ressources.md précise « imposer plutôt que négocier ».
+Prochaine action proposée : mesurer, année par année, quand chaque monnaie manque (jalon de fin novembre).

@@ -1,10 +1,11 @@
 extends SceneTree
 ## --headless --script res://outils/essai_venelle.gd [-- --captures, sans --headless]
-## 🚶 Les venelles naissent en trace dans l'herbe ; « Aménager » la change en pavé.
-## `--captures` : planche numérotée avant | après → QGIS/rendus/wehrau_venelles.png.
+## 🚶 Les venelles se creusent seules dans l'herbe (122) : rien à aménager.
+## `--captures` : planche numérotée mois 0 | 10 | 30 → QGIS/rendus/wehrau_venelles.png.
 const Ville := preload("res://scripts/ville.gd")
 const N_VENELLES := 6
-const TUILE := Vector2i(560, 380)
+const TUILE := Vector2i(520, 350)
+const MOIS := [0.0, 10.0, 30.0]
 var echecs := 0
 
 
@@ -27,22 +28,24 @@ func executer() -> void:
 			fids.append(fid)
 	fids.sort()
 	verifier(fids.size() == N_VENELLES, "%d îlots portent une venelle : %s" % [fids.size(), fids])
-	var fid: int = fids[0]
-	var cout := v.cout_venelle_ke(fid)
-	verifier(cout > 0.0 and is_equal_approx(v.cout_commande_ke("i", fid, {"venelle": true}, 0.0), cout),
-		"Îlot %d : %.0f m², %.1f k€" % [fid, v.base("i", fid, "venelle_m2"), cout])
-	var r := v.commander("i", fid, {"venelle": true}, 0.0)
-	verifier(r["ok"] and "venelle" in r["faits"], "Commande engagée")
-	verifier(v.venelle_en_cours(fid, 1.0) and not v.venelle_amenagee(fid, 1.0)
-		and v.etat_chantier("i", fid, 1.0) == Ville.CHANTIER_EN_COURS, "En chantier au mois 1")
-	verifier(v.venelle_amenagee(fid, Ville.VENELLE_MOIS), "Livrée au mois %.0f" % Ville.VENELLE_MOIS)
-	verifier(v.cout_venelle_ke(fid) == 0.0 and not v.amenager_venelle(fid, 4.0), "On n'aménage pas deux fois")
-	var etat := v.exporter_partie()
-	verifier(v.valider_partie(etat), "La partie sauvée se relit")
-	v.reinitialiser()
-	verifier(not v.venelle_amenagee(fid, 10.0), "Recommencer rend la trace")
-	v.importer_partie(etat)
-	verifier(v.venelle_amenagee(fid, 10.0), "Reprendre rend le pavé")
+	var a_zero := true
+	var au_bout := true
+	var monte := true
+	var rythmes := {}
+	for fid in fids:
+		a_zero = a_zero and v.venelle_usure(fid, 0.0) == 0.0
+		au_bout = au_bout and v.venelle_usure(fid, 30.0) == 1.0
+		var avant := 0.0
+		for m in range(0, 31):
+			var u := v.venelle_usure(fid, float(m))
+			monte = monte and u >= avant
+			avant = u
+		rythmes[snappedf(v.venelle_usure(fid, 10.0), 0.01)] = true
+	verifier(a_zero, "Mois 0 : de l'herbe partout")
+	verifier(au_bout, "Mois 30 : toutes creusées")
+	verifier(monte, "L'usure ne recule jamais")
+	verifier(rythmes.size() >= 4, "Au mois 10, %d rythmes différents sur %d" % [rythmes.size(), fids.size()])
+	verifier(v.cout_commande_ke("i", fids[0], {"venelle": true}, 0.0) == 0.0, "Plus rien à payer pour une venelle")
 
 	var jeu = load("res://maquette.tscn").instantiate()
 	root.add_child(jeu)
@@ -50,16 +53,29 @@ func executer() -> void:
 	for i in 8:
 		await process_frame
 	verifier(jeu.venelles.size() == N_VENELLES, "%d traces dans la ville" % jeu.venelles.size())
-	jeu.ville.livraison_immediate = true
-	jeu.ville.crediter_essai_ke(1000.0)
 	if "--captures" in OS.get_cmdline_user_args():
 		await capturer(jeu, fids)
 	else:
-		jeu.ville.commander("i", fid, {"venelle": true}, jeu.mois)
+		var fid: int = fids[0]
+		var src: Dictionary = jeu._venelles_sources[fid]
+		jeu.mois = 0.0
 		jeu._rafraichir(true)
-		verifier(not (jeu.venelles[fid] as MeshInstance3D).visible, "Aménagée : la trace disparaît")
+		verifier(_nb_teinte(jeu, fid, src["terre"]) == 0, "Mois 0 : aucune terre visible")
+		jeu.mois = 30.0
+		jeu._rafraichir(true)
+		verifier(_nb_teinte(jeu, fid, src["terre"]) > 0, "Mois 30 : la terre battue apparaît")
+		verifier((jeu.venelles[fid] as MeshInstance3D).visible, "La trace reste visible")
 	print("VENELLES : %s" % ("ok" if echecs == 0 else "%d échec(s)" % echecs))
 	quit(echecs)
+
+
+func _nb_teinte(jeu, fid: int, teinte: Color) -> int:
+	var co: PackedColorArray = (jeu.venelles[fid] as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var n := 0
+	for c in co:
+		if jeu._ecart(c, teinte) < 0.01:
+			n += 1
+	return n
 
 
 func capturer(jeu, fids: Array) -> void:
@@ -78,28 +94,26 @@ func capturer(jeu, fids: Array) -> void:
 	fond.set_content_margin_all(10)
 	label.add_theme_stylebox_override("normal", fond)
 	couche.add_child(label)
-	var planche := Image.create(TUILE.x * 4, TUILE.y * 3, false, Image.FORMAT_RGB8)
+	var planche := Image.create(TUILE.x * 6, TUILE.y * 3, false, Image.FORMAT_RGB8)
 	for k in fids.size():
 		var fid: int = fids[k]
 		var mi: MeshInstance3D = jeu.venelles[fid]
 		var c := mi.get_aabb().get_center() + mi.global_position
-		for apres in [false, true]:
-			if apres:
-				jeu.ville.commander("i", fid, {"venelle": true}, jeu.mois)
+		for e in MOIS.size():
+			jeu.mois = MOIS[e]
 			jeu.pivot.caler(30.0, 50.0)
 			jeu.pivot.viser(Vector2(c.x, c.z), 40.0)
 			jeu._rafraichir(true)
-			label.text = "%d · îlot %d · %s" % [k + 1, fid, "aménagée" if apres else "trace"]
+			label.text = "%d · îlot %d · mois %d" % [k + 1, fid, int(MOIS[e])]
 			for i in 4:
 				await process_frame
 				await RenderingServer.frame_post_draw
 			var img: Image = root.get_texture().get_image()
 			img.convert(Image.FORMAT_RGB8)
 			img.resize(TUILE.x, TUILE.y, Image.INTERPOLATE_LANCZOS)
-			var col := (k % 2) * 2 + (1 if apres else 0)
+			var col := (k % 2) * 3 + e
 			@warning_ignore("integer_division")
 			planche.blit_rect(img, Rect2i(Vector2i.ZERO, TUILE), Vector2i(col * TUILE.x, (k / 2) * TUILE.y))
-		verifier(not mi.visible, "%d · îlot %d : la trace disparaît une fois aménagée" % [k + 1, fid])
 	var dossier := ProjectSettings.globalize_path(jeu.RENDUS)
 	DirAccess.make_dir_recursive_absolute(dossier)
 	var chemin := dossier + "wehrau_venelles.png"

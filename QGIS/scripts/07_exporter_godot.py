@@ -718,16 +718,14 @@ def main():
     # Plus sombre que la pelouse : à la distance de jeu, c'est le contraste
     # vertical qui doit dessiner la limite, pas une nouvelle teinte de palette.
     coul_haie = tuple(c * 0.68 for c in coul_jardin)
+    # ⚠ Recopié dans `materiaux.gd` (PELOUSE_TOIT) : le toit vert.
     # 🚪 L'allée d'entrée prolonge le trottoir : sur le sol nu d'une cour, le
     # minéral clair d'avant ne s'en distinguait pas.
     coul_allee = PAL.vers_lineaire(PAL.TROTTOIR)
     coul_seuil = PAL.vers_lineaire(PAL.SEUIL)
     coul_hall = PAL.vers_lineaire(PAL.PORTE_HALL)
-    # 🚶 Le pavé de la venelle : le minéral CLAIR, celui du sol nu, et non le
-    # minéral de la chaussée. Vue d'en haut, la différence dit tout ce qu'il y
-    # a à dire — on passe du noir de l'asphalte au gris du pavé, donc d'une rue
-    # à un passage. Assombri d'un cheveu : une venelle de 3 m entre deux murs
-    # ne voit pas beaucoup de ciel.
+    # 🎓 Le pavé des allées du campus : le minéral CLAIR, celui du sol nu, et
+    # non le minéral de la chaussée — on lit un passage, pas une rue.
     coul_chemin = tuple(c * 0.94 for c in PAL.vers_lineaire(PAL.MINERAL_CLAIR))
     coul_sentier = PAL.vers_lineaire(PAL.SENTIER)
     coul_foulee = PAL.vers_lineaire(PAL.melanger(
@@ -744,7 +742,7 @@ def main():
     places_ilot = {}           # 🅿️ îlot -> voitures garées hors de la rue
     n_tri_parc = 0
     n_chemin = 0
-    aire_chemin = 0.0
+    aire_venelle = 0.0
     n_champ = n_bande = n_maille_talus = 0
     camps = {}                 # 🏕️ champ -> places de containers semées
     n_neuf = 0                 # bâtiments préparés pour la reconstruction
@@ -1088,31 +1086,23 @@ def main():
             # Ils partent dans le maillage des MASSES, dans le groupe de
             # l'îlot : le cœur d'îlot appartient à l'îlot, donc il se clique
             # avec lui et se teinte avec lui quand un calque s'allume.
-            # 🚶 LA VENELLE, AU SOL. Elle passe dans le maillage des MASSES,
-            # donc dans le groupe de son îlot : elle appartient à l'îlot, elle
-            # se clique avec lui et se teinte avec lui quand un calque
-            # s'allume. C'est la traduction en 3D de la seule chose qui compte
-            # ici — le chemin n'a pas fabriqué une deuxième décision.
-            # Elle est PAVÉE et jamais plantée : un tirage cour/jardin lui
-            # mettrait des arbres au milieu d'un passage.
-            # 🚶 Le pavé reste dessous : c'est la venelle aménagée. La trace
-            # part dans son propre maillage, que Godot cache à l'aménagement.
+            # 🚶 LA VENELLE, AU SOL : jamais pavée ni plantée (122, 🔄
+            # 2026-10-27). Sa trace part dans son propre maillage, un groupe
+            # par îlot, et Godot la creuse avec les mois.
             if chemins_ilot:
                 venelles_m.marque(fid)
                 n_venelles += 1
             for c in chemins_ilot:
                 if len(c) >= 3:
-                    aire_chemin += abs(D4C.aire_signee(c))
+                    aire_venelle += abs(D4C.aire_signee(c))
                     d["venelle_m2"] = round(d.get("venelle_m2", 0.0)
                                             + abs(D4C.aire_signee(c)), 1)
-                    _sol(masses, c, coul_chemin, G)
                     long_trace += trace_venelle(
                         venelles_m, c, d["venelles_axes"], coul_jardin,
                         coul_foulee, coul_sentier, G, fid)
             # 🎓 Les allées du campus sur les limites communes, la placette, les parvis.
             allees_campus = CP.sols(fid, {f: ilots[f]["anneau"] for f in CAMPUS})                 if fid in CAMPUS else []
             for c in allees_campus:
-                aire_chemin += abs(D4C.aire_signee(c))
                 _sol(masses, c, coul_chemin, G, y=Y_SOL + 0.015)
 
             part_verte = VERDURE.get(st, VERDURE_DEFAUT)
@@ -1379,10 +1369,10 @@ def main():
               " et le délaissé se cliquent et se teintent avec leur îlot"
               % (aire_sol_ilot / 1e4, n_masse))
         if n_chemin:
-            print("  chemins %d → %.0f m² de venelle pavée, dans le groupe de"
-                  " leur îlot" % (n_chemin, aire_chemin))
-            print("  venelles : %d traces, %.0f m de terre battue — cachées"
-                  " quand le joueur aménage  %s"
+            print("  chemins %d → %.0f m² de venelle, en herbe au départ"
+                  % (n_chemin, aire_venelle))
+            print("  venelles : %d traces, %.0f m de terre battue une fois"
+                  " creusées  %s"
                   % (n_venelles, long_trace,
                      "✅" if long_trace > 0.0 else "❌"))
         # 🔗 Ce que l'énergie viendra lire. À imprimer maintenant, parce que
