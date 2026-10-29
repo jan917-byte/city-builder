@@ -37,10 +37,11 @@ MARGE_ANNONCE_M = 120.0
 
 
 # 🌊 LA PROCHAINE CRUE, pour la carte des dangers : `ChampCrue.annonce`, que
-# `04e` lit au centre de chaque bâtiment, sur toute la ville. 12 m et non 3 : le champ est
-# linéaire en distance à l'eau, et 47 µs le point (mesuré) font 20 s à 3 m.
+# `04e` lit au centre de chaque bâtiment, sur toute la ville. 6 m : les branches
+# de la plaine plate se perdaient à 12 m ; 47 µs le point (mesuré) font 20 s à 3 m.
+# Codée en RACINE (le shader l'élève au carré) : 1 cm près du bord, et non 2,4.
 def _carte_annonce(champ, niveau, chenal, x0, y0, largeur, hauteur, cx, cy,
-                   pas=12.0):
+                   pas=6.0):
     nx = math.ceil(largeur / pas) + 1
     ny = math.ceil(hauteur / pas) + 1
     pixels = []
@@ -48,7 +49,7 @@ def _carte_annonce(champ, niveau, chenal, x0, y0, largeur, hauteur, cx, cy,
         y = y0 + j * pas
         for i in range(nx):
             h = champ.annonce((x0 + i * pas, y), niveau) / niveau
-            pixels.append(round(max(0.0, min(1.0, h)) * 255))
+            pixels.append(round(math.sqrt(max(0.0, min(1.0, h))) * 255))
     ysud, ynord = chenal._y_rive
     # `fil` en Z de Godot : 0 à l'amont (sud), 1 à l'aval, comme `position_fil_eau`.
     return {"taille": [nx, ny], "niveau_m": niveau, "fil_z": [cy - ysud, cy - ynord],
