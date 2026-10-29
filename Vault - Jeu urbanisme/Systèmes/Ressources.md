@@ -1,7 +1,7 @@
 ---
 tags: [système, économie]
 statut: arrêté (paramètres ouverts)
-maj: 2026-10-28
+maj: 2026-10-29
 ---
 
 # Ressources
@@ -94,6 +94,8 @@ Elles s'échangent **mal, mais pas jamais** :
 
 - Dépenser **beaucoup d'argent pour éviter un coût politique** → concertation, compensations, phasage lent
 - Dépenser **du capital politique pour éviter de l'argent** → imposer plutôt que négocier
+
+🔴 **Mais la confiance et les points ne paient jamais un chantier à la place de l'argent** : ils débloquent des **rentrées** d'argent, comme le stationnement payant ([[Décisions arrêtées]] 131, 2026-10-29).
 
 Ce sont les deux vrais leviers du métier. Le joueur les sentira sans jamais lire le mot « procédure ».
 

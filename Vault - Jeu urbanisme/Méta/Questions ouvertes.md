@@ -31,9 +31,6 @@ Un clin d'œil au titre, pas un système. **Retenu** : les venelles se creusent 
 - **Un calque « où l'on marche vraiment »**, dans le diagnostic : les raccourcis à travers les parkings et les bas-côtés. → [[Diagnostic et calques]]
 - **La première image du jeu** : une trace de terre à côté d'une route vide, la même que sur la capsule Steam.
 
-### 51. Sans argent, peut-on débloquer avec des points ou de la confiance ? — ouverte le 2026-10-29
-L'auteur : ce ne sont pas seulement les euros qui doivent faire hésiter, mais **les trois monnaies** — argent, confiance, points ; et *« si on n'a plus d'argent, on peut peut-être débloquer avec des points, ou de la confiance »*. Ça prolonge [[Ressources]] : les monnaies s'échangent mal, mais pas jamais (imposer plutôt que négocier). Garde-fous : l'échange coûte **plus cher** que l'argent, sinon la caisse ne mord plus ; et la confiance se dépense à la place de l'argent, elle ne s'achète jamais ([[Pièges connus]]). Reste à trancher : **quoi** se débloque ainsi (un chantier, une étude, un délai) et **à quel taux**. → [[Décisions arrêtées]] 98 et 124
-
 ## L'écran
 
 ### 19. Combien de nombres permanents tiennent à l'écran ?

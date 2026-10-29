@@ -24,7 +24,7 @@ Critère : *après la première réparation livrée, le joueur veut choisir la s
 - ✍️ **Les textes flaggables à réécrire** (90) → `Prototype/Textes des premières minutes.xlsx` ; les noms de lieux → `Godot/data/lieux.json`.
 
 ## À trancher (l'auteur)
-- 🔴 **Des arbitrages pris mais jamais consignés** → la perspective 35° et la police ; Questions ouvertes n°47 (parc sur une partie d'îlot), n°50 (références au titre), n°51 (débloquer sans argent, avec des points ou de la confiance).
+- 🔴 **Des arbitrages pris mais jamais consignés** → la perspective 35° et la police ; Questions ouvertes n°47 (parc sur une partie d'îlot) et n°50 (références au titre).
 - 🔴 **La facture de la crue** : 14 445 k€ pour 8 000 k€ de caisse en vingt ans → [Crue](Prototype/Crue.md).
 - 🔴 **Les nombres de *dur mais possible*** (panneau, MWh, caisse, dotation, toit vert) → [Énergie](Prototype/%C3%89nergie.md), [Crue](Prototype/Crue.md).
 - 🔴 **Ce qu'un arbre épargne** (0,34 % pour 880 k€) : un autre effet, ou l'assumer → [Trafic](Prototype/Trafic.md).

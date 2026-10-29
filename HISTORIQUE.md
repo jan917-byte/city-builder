@@ -981,3 +981,6 @@ Questions 48 et 49 remises sous les yeux de l'auteur, pas encore tranchées.
 2026-10-29 · vault+chaine: les champs sortent des moyennes de la ville (125, ferme Q48) ; les arbitrages de Q49 consignés tels quels, 126 à 130, révisables.
 Le jalon de fin novembre devient « les trois monnaies font hésiter » (argent, confiance, points) ; Q51 ouverte : débloquer avec des points ou de la confiance quand la caisse est vide.
 `08_jouer.py` au mois 0 : canopée 0,26 et sol imperméable 0,61 sans les champs (0,14 et 0,28 avec) ; `partie.csv` non commité, dérivé.
+2026-10-29 · vault: les points et la confiance ne paient jamais à la place de l'argent, ils débloquent des rentrées (131, ferme Q51).
+Exemple de l'auteur : le stationnement payant (123). Ressources.md précise « imposer plutôt que négocier ».
+Prochaine action proposée : mesurer, année par année, quand chaque monnaie manque (jalon de fin novembre).
