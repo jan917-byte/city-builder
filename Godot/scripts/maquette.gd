@@ -2456,9 +2456,9 @@ func _sur_vue_changee(_lacet: float, _hauteur: float) -> void:
 
 func _sur_pulsation_trafic() -> void:
 	var reseau: String = trafic._indisponibles_connues
-	trafic.avancer(mois)
+	trafic.avancer(mois, true)
 	for t in _copies_trafic:
-		t.avancer(mois)
+		t.avancer(mois, true)
 	if reseau != trafic._indisponibles_connues:
 		_dernier_peint = -1.0
 

@@ -2565,6 +2565,12 @@ func est_repare(couche: String, fid: int) -> bool:
 	return _repare.has(couche + ":" + str(fid))
 
 
+## Change avec tout chantier engagé : la clé des caches qui lisent `route_praticable`.
+func signature_reparations() -> String:
+	return "%d/%d/%d/%s" % [_repare.hash(), _provisoire.hash(), _file_deblaiement.hash(),
+		livraison_immediate]
+
+
 ## Combien de mois dure CE chantier-là. Un pont n'est pas une rue. Engagé,
 ## le pont garde son mode ; sinon `provisoire` dit lequel on annonce.
 func duree_reparation_mois(couche: String, fid: int, provisoire := false, facon := "") -> float:

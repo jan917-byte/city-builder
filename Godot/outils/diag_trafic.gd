@@ -52,7 +52,7 @@ func executer() -> void:
 		l.sort()
 		print("  rue à 30 km/h, %s : %d arcs, au plus lent %.0f km/h (médiane)" % [genre, l.size(), l[l.size() / 2]])
 	var n: int = t._roulantes.size()
-	var vus := t._visibles_roule.duplicate()
+	var vus := _allumees(t)
 	var apparitions := [0, 0]
 	var effacements := [0, 0]
 	var contacts := {}
@@ -67,21 +67,23 @@ func executer() -> void:
 		if temps >= prochaine:
 			prochaine += PULSATION
 			t._maj_roulantes(t._mois + 0.0001, false)
+		var maintenant := _allumees(t)
 		for k in n:
-			if t._visibles_roule[k] == vus[k]:
+			if maintenant[k] == vus[k]:
 				continue
 			var bord := _au_carrefour(t, k)
-			if t._visibles_roule[k] == 1:
+			if maintenant[k] == 1:
 				apparitions[0 if bord else 1] += 1
 			else:
 				effacements[0 if bord else 1] += 1
-		vus = t._visibles_roule.duplicate()
+		vus = maintenant
 		if images % 6 != 0:
 			continue
 		var poses := []
 		var grille := {}
 		for k in n:
-			if t._visibles_roule[k] == 0:
+			# Une voiture à moins de moitié de son fondu ne compte pas.
+			if t._visibles_roule[k] == 0 or _fondu(t, k) < 0.5:
 				poses.append(null)
 				continue
 			var p := _pose(t, k)
@@ -120,7 +122,7 @@ func executer() -> void:
 								genres[genre] = int(genres.get(genre, 0)) + 1
 	var visibles := 0
 	for v in t._visibles_roule:
-		visibles += v
+		visibles += int(v == 1)
 	print("DIAG TRAFIC sur %d s : %d voitures visibles sur %d en circuit" % [int(DUREE), visibles, n])
 	print("  apparitions : %d au carrefour, %d en pleine rue" % apparitions)
 	print("  effacements : %d au carrefour, %d en pleine rue" % effacements)
@@ -129,9 +131,29 @@ func executer() -> void:
 	quit(0)
 
 
+## Celles qui s'effacent (état 2) comptent déjà comme éteintes.
+func _allumees(t: Node) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(t._visibles_roule.size())
+	for k in out.size():
+		out[k] = 1 if t._visibles_roule[k] == 1 else 0
+	return out
+
+
 func _avance(t: Node, k: int) -> float:
 	var a: Dictionary = t._roulantes[k]
-	return clampf(float(a["phase"]) + t._temps_trafic * float(a["v"]), 0.0, t._arc_L[int(a["arc"])])
+	return Trafic._position(float(a["phase"]) + t._temps_trafic * float(a["v"]),
+		t._arc_L[int(a["arc"])], float(a["retard"]))
+
+
+## Le fondu du shader, recopié.
+func _fondu(t: Node, k: int) -> float:
+	var a: Dictionary = t._roulantes[k]
+	var etendue := minf(Trafic.FONDU, 0.8 * t._arc_L[int(a["arc"])])
+	var f := clampf(_avance(t, k) / etendue, 0.0, 1.0)
+	if a["nait"]:
+		return f
+	return 1.0 - f if t._visibles_roule[k] == 2 else 1.0
 
 
 func _au_carrefour(t: Node, k: int) -> bool:

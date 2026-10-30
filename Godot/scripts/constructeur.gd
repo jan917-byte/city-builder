@@ -423,7 +423,9 @@ const TETE := Color(1.18, 1.06, 0.98)
 ## fiche, elle, montre un morceau droit sans suite : elle reboucle.
 static func voitures(nombre: int, anime := false, circuit := false) -> MultiMesh:
 	var mesh := _voiture()
-	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, circuit, true))
+	# La fiche reboucle ses voitures sur 40 m : elles s'effacent au bout.
+	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, circuit, true,
+		0.0 if circuit else 3.0))
 	return _instances(mesh, nombre, anime)
 
 
@@ -449,6 +451,25 @@ static func voitures_ombre(nombre: int, anime := false) -> MultiMesh:
 	var mesh := _surface(v, n, c, i)
 	mesh.surface_set_material(0, _glisse(anime, 0.0, 0.0, false, true))
 	return _instances(mesh, nombre, anime)
+
+
+## 🚗 LA VOITURE VUE DE LOIN : 48 triangles au lieu de 778, mêmes cotes que l'ombre
+## ci-dessus — dessous sombre, caisse, vitrage, toit. Au-delà de
+## `Trafic.TAILLE_VOITURE_SIMPLE` elle fait une vingtaine de pixels : les 2 000
+## instances y coûtaient 2 à 3 ms de GPU (GTX 1650, 2026-10-30). Le matériau
+## est celui de la voiture qu'elle remplace : l'appelant le pose.
+static func voiture_simple() -> ArrayMesh:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var i := PackedInt32Array()
+	var sombre := Color(0.10, 0.10, 0.11)
+	_boite(v, n, c, i, Vector3(1.62, 0.30, 3.0), Vector3(0.0, 0.15, 0.0), sombre)
+	_boite(v, n, c, i, Vector3(1.76, 0.62, 3.3), Vector3(0.0, 0.58, 0.0), Color.WHITE)
+	_boite(v, n, c, i, Vector3(1.40, 0.48, 1.80), Vector3(0.0, 1.13, -0.50),
+		Color(0.16, 0.18, 0.21))
+	_boite(v, n, c, i, Vector3(1.36, 0.10, 1.56), Vector3(0.0, 1.42, -0.58), Color.WHITE)
+	return _surface(v, n, c, i)
 
 
 ## 🚗 La voiture allégée par `outils/voiture_blender.py` (778 triangles, 3,33 m,
@@ -491,7 +512,7 @@ static func pietons(nombre: int) -> MultiMesh:
 	var mesh := _surface(v, n, c, i)
 	# 3,5 cm de balancement à 1,9 pas par seconde : à 45 m c'est le seul indice
 	# qui distingue un marcheur d'un plot posé sur le trottoir.
-	mesh.surface_set_material(0, _glisse(true, 0.035, 1.9))
+	mesh.surface_set_material(0, _glisse(true, 0.035, 1.9, false, false, 1.5))
 	return _instances(mesh, nombre, true)
 
 
@@ -511,7 +532,7 @@ static func cyclistes(nombre: int) -> MultiMesh:
 		TETE)
 	var mesh := _surface(v, n, c, i)
 	# Le pédalage : deux fois plus rapide que le pas, deux fois moins ample.
-	mesh.surface_set_material(0, _glisse(true, 0.018, 3.6))
+	mesh.surface_set_material(0, _glisse(true, 0.018, 3.6, false, false, 2.5))
 	return _instances(mesh, nombre, true)
 
 
@@ -528,8 +549,10 @@ const HORLOGE := "temps_trafic"
 ## `circuit` change UNE chose : la course s'arrête au bout du segment au lieu
 ## d'y reboucler, et un retard d'une image se voit comme un arrêt, pas comme un
 ## saut en arrière.
+## `fondu` : les mètres où il naît et s'efface aux deux bouts du segment, en trame —
+## sans lui le bouclage se voyait comme un saut de 65 m en arrière (2026-10-30).
 static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
-		circuit := false, allonge := false) -> Material:
+		circuit := false, allonge := false, fondu := 0.0) -> Material:
 	var etire := ALLONGE if allonge else ""
 	if not anime and allonge:
 		var fixe := Shader.new()
@@ -556,6 +579,16 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
 		course = "clamp(INSTANCE_CUSTOM.x + %s * INSTANCE_CUSTOM.y, 0.0, longueur)"
 	var entete := "global uniform float %s;\n" % HORLOGE
 	var horloge := HORLOGE
+	var avance := "  VERTEX.z += " + (course % horloge) + ";\n"
+	var jeter := ""
+	if fondu > 0.0:
+		entete += "varying float fondu;\n"
+		avance = "  float course = " + (course % horloge) + ";\n" \
+			+ "  fondu = clamp(min(course, longueur - course) / min(%f, 0.3 * longueur), 0.0, 1.0);\n" % fondu \
+			+ "  VERTEX *= step(0.001, fondu);\n" \
+			+ "  VERTEX.z += course;\n"
+		# Bruit de gradient entrelacé : opaque, sans tri, il s'éteint grain à grain.
+		jeter = "  if (fondu < fract(52.9829 * fract(dot(FRAGCOORD.xy, vec2(0.06711, 0.00584))))) { discard; }\n"
 	var shader := Shader.new()
 	shader.code = "shader_type spatial;\n" \
 		+ entete \
@@ -563,11 +596,11 @@ static func _glisse(anime: bool, balance := 0.0, cadence := 0.0,
 		+ "void vertex() {\n" \
 		+ etire \
 		+ "  float longueur = max(INSTANCE_CUSTOM.z, 0.01);\n" \
-		+ "  VERTEX.z += " + (course % horloge) + ";\n" \
+		+ avance \
 		+ pas \
 		+ "  teinte = COLOR;\n" \
 		+ "}\n" \
-		+ "void fragment() { ALBEDO = teinte.rgb; ROUGHNESS = 0.72; }\n"
+		+ "void fragment() {\n" + jeter + "  ALBEDO = teinte.rgb; ROUGHNESS = 0.72;\n}\n"
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	return mat
