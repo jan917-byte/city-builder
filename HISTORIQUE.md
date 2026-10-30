@@ -996,3 +996,6 @@ Dégâts de la chaîne identiques ; sur la carte, un ou deux pâtés de rive gau
 2026-10-30 · proto: diagnostic des routes et du trafic, sans code changé → Trafic.md § Ce qui reste.
 À l'œil : voitures qui s'allument d'un coup et se traversent aux carrefours, piétons qui sautent au début de leur segment, ruelles partagées.
 Machine : la pulsation monte à 32 ms à ×4 (impraticables recalculés cinq fois), voitures à 778 triangles dessinées cachées comprises.
+2026-10-30 · godot/chaine: les voitures cèdent le passage et s'allument en fondu, les piétons s'arrêtent au bord de la chaussée, plus de voiture qui roule dans une ruelle → Trafic.md § Ce qui reste.
+Contacts au carrefour en 2 min : 456 → 143 ; pulsation à ×4 : 1,0 ms en médiane et 6 ms au pire (7 et 32) ; de loin, une voiture de 48 triangles, −2,5 ms de GPU.
+Carrefour en Y : la ligne en biais recule jusqu'à sortir de la branche, 5 pointes de chaussée comblent le sol nu devant un trottoir en biseau ; la rive 101 était une fausse alerte.
