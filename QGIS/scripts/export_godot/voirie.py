@@ -759,6 +759,8 @@ class DecoupeChaussees:
     def emettre_noeuds(self, m, fid, coul, G, y):
         for forme in self.noeuds.get(fid, ()):
             for poly in self.hors(forme, fid):
+                if _aire_xy(poly) < 0.0:
+                    poly = poly[::-1]
                 for a, b, c in trianguler(poly):
                     m.triangle(G(*poly[a], y), G(*poly[b], y), G(*poly[c], y), coul)
 
@@ -891,24 +893,48 @@ def _noeuds_voirie(routes):
             continue
         ch = min(D4.EMPRISE_CIRCULATION.get(d["hierarchie"], 8.5), larg)
         for ip, part in enumerate(d["parts"]):
-            for p in (part[0], part[-1]):
+            if len(part) < 2:
+                continue
+            for p, q in ((part[0], part[1]), (part[-1], part[-2])):
                 k = (round(p[0] / 0.25), round(p[1] / 0.25))
-                nd.setdefault(k, []).append((d["fid"], ip, ch))
+                nd.setdefault(k, []).append((d["fid"], ip, ch, _unite(p, q)))
     return nd
 
 
-def _zone_echange(nd, p, fid, ip):
+# Le plus long recul qu'une branche en biais impose (rue à 12° de la suivante).
+RECUL_BIAIS_MAX = 20.0
+
+
+def _zone_echange(nd, p, fid, ip, biais=False):
     """De combien le marquage d'un tronçon doit reculer devant ce nœud.
 
     ⚠️ C'est la demi-chaussée de la rue LA PLUS LARGE QUI Y PASSE, pas la
     sienne : c'est la surface que les autres branches balaient, et y peindre
     une ligne d'axe la ferait traverser le carrefour. Sur une continuation à
-    deux branches, il n'y a rien à traverser : le recul est nul."""
+    deux branches, il n'y a rien à traverser : le recul est nul.
+    📐 Une branche qui repart en biais balaie la sienne plus loin : il faut
+    (demi-chaussée de l'autre + sa demi-chaussée × cos) / sin pour en sortir —
+    sans ça, au Y de (−276, −316), la ligne de rive croisait celle de la voisine.
+    Lignes et places seulement (`biais`) : les passages piétons restent où ils étaient."""
     br = nd.get((round(p[0] / 0.25), round(p[1] / 0.25)), [])
     if len(br) < 3:
         return 0.0
-    autres = [c for (f, i, c) in br if not (f == fid and i == ip)]
-    return (max(autres) / 2.0) if autres else 0.0
+    autres = [b for b in br if not (b[0] == fid and b[1] == ip)]
+    if not autres:
+        return 0.0
+    recul = max(b[2] for b in autres) / 2.0
+    moi = next((b for b in br if b[0] == fid and b[1] == ip), None)
+    if moi is None or not biais:
+        return recul
+    u = moi[3]
+    for _f, _i, c, w in autres:
+        cos = u[0] * w[0] + u[1] * w[1]
+        if cos <= 0.0:
+            continue
+        sin = abs(u[0] * w[1] - u[1] * w[0])
+        recul = max(recul, min(RECUL_BIAIS_MAX,
+                               (c / 2.0 + moi[2] / 2.0 * cos) / max(sin, 0.2)))
+    return recul
 
 
 def _est_carrefour(nd, p):
@@ -1042,6 +1068,8 @@ def _zones_interdites(d, axe, cum, ip, ch, nd, chenal, gardes=None):
     if gardes is not None:
         tv = [t for t in tv
               if _cle_passage(_le_long(axe, cum, t)[0]) in gardes]
+    r0 = _zone_echange(nd, axe[0], d["fid"], ip, biais=True)
+    r1 = _zone_echange(nd, axe[-1], d["fid"], ip, biais=True)
     return r0, r1, tv, sans_trottoir, sur_eau
 
 
@@ -1438,20 +1466,43 @@ def _bordure(m, a, b, vers, coul, G, dy=0.0, decoupe=None):
     return 2
 
 
+def _onglet(V, p, e):
+    """Les deux bords décalés au sommet `V`, et où ils se rejoignent (None
+    s'ils sont parallèles)."""
+    a = (V[0] + p["n"][0] * p["w"], V[1] + p["n"][1] * p["w"])
+    b = (V[0] + e["n"][0] * e["w"], V[1] + e["n"][1] * e["w"])
+    den = p["u"][0] * e["u"][1] - p["u"][1] * e["u"][0]
+    if abs(den) <= 1e-9:
+        return a, b, None
+    t = ((b[0] - a[0]) * e["u"][1] - (b[1] - a[1]) * e["u"][0]) / den
+    return a, b, (a[0] + p["u"][0] * t, a[1] + p["u"][1] * t)
+
+
 def _coin_vif(V, p, e):
     """Le coin de trottoir d'un carrefour : l'onglet des deux bords décalés,
     écrêté en biseau quand il part en pointe. C'est ce que l'auteur a demandé
     — le carrefour garde son angle."""
-    a = (V[0] + p["n"][0] * p["w"], V[1] + p["n"][1] * p["w"])
-    b = (V[0] + e["n"][0] * e["w"], V[1] + e["n"][1] * e["w"])
-    den = p["u"][0] * e["u"][1] - p["u"][1] * e["u"][0]
-    if abs(den) > 1e-9:
-        t = ((b[0] - a[0]) * e["u"][1] - (b[1] - a[1]) * e["u"][0]) / den
-        M = (a[0] + p["u"][0] * t, a[1] + p["u"][1] * t)
-        if math.hypot(M[0] - V[0], M[1] - V[1]) <= \
-                LIMITE_MITRE_TROTTOIR * max(p["w"], e["w"]):
-            return (M, M)
+    a, b, M = _onglet(V, p, e)
+    if M is not None and math.hypot(M[0] - V[0], M[1] - V[1]) <= \
+            LIMITE_MITRE_TROTTOIR * max(p["w"], e["w"]):
+        return (M, M)
     return (a, b)                               # biseau
+
+
+# Au-delà, les deux rues sont presque parallèles : leurs bordures ne se rejoignent pas.
+POINTE_MAX = 20.0
+
+
+def _pointe(V, p, e):
+    """🧩 Le triangle qu'un biseau laisse devant lui, jusqu'où les deux bordures
+    se rejoignent : de la chaussée. Sans lui, la plaque de sol se voyait au coin
+    aigu d'un carrefour, d'une autre teinte (rues 51 et 59, 2026-10-30)."""
+    if p["u"][0] * e["u"][1] - p["u"][1] * e["u"][0] <= 0.0:
+        return None                             # coin rentrant : rien devant
+    a, b, M = _onglet(V, p, e)
+    if M is None or math.hypot(M[0] - V[0], M[1] - V[1]) > POINTE_MAX:
+        return None
+    return [a, M, b]
 
 
 def _coin_arrondi(V, p, e, coudes):
@@ -1518,7 +1569,8 @@ def _trottoirs(ilots, routes, coudes):
     depuis le même jour la place-parking, elle, est dessinée — 123 places
     peintes sur les 127 annoncées, § `_places_de_parc`. Les rues, non.
 
-    Sortie : {fid de tronçon: [faces]}. Les faces sont rangées sous LA RUE que
+    Sortie : {fid de tronçon: [faces]} — "plat", "mur", et "pointe" : de la
+    chaussée devant un biseau. Les faces sont rangées sous LA RUE que
     longe l'arête, pas sous l'îlot — cliquer un trottoir ouvre la fiche du
     tronçon. ⚠️ Les fid d'îlot et de tronçon se recouvrent (71 et 178) : mêlés
     dans le même maillage, ils rendraient la ville cliquable n'importe
@@ -1530,7 +1582,7 @@ def _trottoirs(ilots, routes, coudes):
     faces = {}
     marches = {}
     stats = {"ilots": 0, "aretes": 0, "avec_rue": 0, "avec_trottoir": 0,
-             "coins": 0, "arrondis": 0, "long": 0.0}
+             "coins": 0, "arrondis": 0, "pointes": 0, "long": 0.0}
     # Un coude a DEUX bords, et les deux doivent s'arrondir pour que la rue
     # garde sa largeur dans le virage. Le compte le dit au lieu de le supposer.
     par_coude = {}
@@ -1586,6 +1638,10 @@ def _trottoirs(ilots, routes, coudes):
             arc = _coin_arrondi(V, p, e, coudes)
             if arc is None:
                 arc = _coin_vif(V, p, e)
+                pointe = _pointe(V, p, e) if arc[0] != arc[-1] else None
+                if pointe:
+                    faces.setdefault(e["rue"][0], []).append(("pointe", pointe))
+                    stats["pointes"] += 1
             else:
                 stats["arrondis"] += 1
                 cle = (p["rue"][0], p["rue"][1],

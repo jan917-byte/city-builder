@@ -1874,7 +1874,16 @@ def main():
         # bordent, pas par lui — mais il est rangé sous SON fid, dans son
         # groupe : cliquer un trottoir ouvre la fiche de la rue.
         for f in trot.get(d["fid"], ()):
-            if f[0] == "plat":
+            if f[0] == "pointe":
+                # De la chaussée, au niveau de la chaussée : seul `dy` le dit.
+                n_tri_tr += _dessus_trottoir(voirie, f[1], coul_ch_d, Gv,
+                                            Y_CHAUSSEE - Y_TROTTOIR,
+                                            decoupe=decoupe_chaussee)
+                if lavage:
+                    _dessus_trottoir(repare_voirie, f[1], coul_ch, Gv,
+                                     RELEVE + Y_CHAUSSEE - Y_TROTTOIR,
+                                     decoupe=decoupe_chaussee)
+            elif f[0] == "plat":
                 n_tri_tr += _dessus_trottoir(voirie, f[1], coul_tr_d, Gv,
                                             decoupe=decoupe_chaussee)
                 if lavage:
@@ -1959,8 +1968,10 @@ def main():
           % (st_tr["avec_rue"], st_tr["aretes"], st_tr["avec_trottoir"],
              LARGEUR_TROTTOIR))
     print("        %d coins de trottoir, dont %d arrondis — %d coudes le sont"
-          " des DEUX bords, donc à largeur de rue constante"
-          % (st_tr["coins"], st_tr["arrondis"], st_tr["coudes_entiers"]))
+          " des DEUX bords, donc à largeur de rue constante — %d pointes"
+          " de chaussée devant un biseau"
+          % (st_tr["coins"], st_tr["arrondis"], st_tr["coudes_entiers"],
+             st_tr["pointes"]))
     print("        piétons : %d tronçons où marcher, %d lignes de trottoir sur"
           " %.2f km, %d passages traversés — %.1f m de marche sur une chaussée"
           "  %s"
